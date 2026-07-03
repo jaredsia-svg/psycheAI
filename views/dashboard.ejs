@@ -1,0 +1,68 @@
+<%- include('partials/header') %>
+
+<h1>Hi, <%= user.display_name %> 👋</h1>
+
+<% if (!profile || !profile.completed) { %>
+  <div class="card notice">
+    <h2>Finish your profile to start matching</h2>
+    <p>Your compatibility profile isn't complete yet. It takes about 5 minutes — socials, a short
+       personality questionnaire, your values and interests.</p>
+    <a class="btn" href="/profile/edit">Complete my profile</a>
+  </div>
+<% } %>
+
+<div class="grid-2">
+  <div class="card qr-card">
+    <h2>Your QR code</h2>
+    <p class="muted">Let someone scan this with Kindred to test your compatibility.</p>
+    <img class="qr-img" src="<%= qrDataUrl %>" alt="Your Kindred QR code">
+    <p class="qr-code-text"><code><%= user.qr_code %></code></p>
+    <a class="btn btn-ghost" href="/scan">Scan someone else's code →</a>
+  </div>
+
+  <div class="card">
+    <h2>Your profile</h2>
+    <% if (profile && profile.completed) { %>
+      <% const bf = profile.traits.bigFive || {}; %>
+      <div class="trait-bars">
+        <% for (const [trait, label] of [['openness','Openness'],['conscientiousness','Conscientiousness'],['extraversion','Extraversion'],['agreeableness','Agreeableness'],['neuroticism','Emotional sensitivity']]) { %>
+          <div class="trait-row">
+            <span class="trait-label"><%= label %></span>
+            <div class="bar"><div class="bar-fill" style="width: <%= bf[trait] || 0 %>%"></div></div>
+            <span class="trait-num"><%= bf[trait] || 0 %></span>
+          </div>
+        <% } %>
+      </div>
+      <p><strong>Attachment style:</strong> <span class="pill"><%= profile.traits.attachment.style %></span></p>
+      <% if (profile.interests.length) { %>
+        <p class="tag-row"><% for (const t of profile.interests.slice(0, 12)) { %><span class="tag"><%= t %></span><% } %></p>
+      <% } %>
+      <a class="btn btn-ghost btn-sm" href="/profile/edit">Edit profile</a>
+    <% } else { %>
+      <p class="muted">Nothing here yet — complete your profile to see your personality snapshot.</p>
+    <% } %>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Match history</h2>
+  <% if (!matches.length) { %>
+    <p class="muted">No matches yet. Scan someone's QR code to get your first compatibility report.</p>
+  <% } else { %>
+    <table class="match-table">
+      <thead><tr><th>With</th><th>Score</th><th>When</th><th></th></tr></thead>
+      <tbody>
+      <% for (const m of matches) { %>
+        <tr>
+          <td><%= m.scanner_id === user.id ? m.scanned_name : m.scanner_name %></td>
+          <td><span class="score-pill s<%= Math.floor(m.score / 20) %>"><%= m.score %></span></td>
+          <td class="muted"><%= m.created_at %></td>
+          <td><a href="/match/<%= m.id %>">View report →</a></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

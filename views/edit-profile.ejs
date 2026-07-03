@@ -1,0 +1,139 @@
+<%- include('partials/header') %>
+
+<%
+  const p = profile || { socials: {}, answers: {}, interests: [], social_text: '', bio: '', age: '', location: '' };
+  const ans = p.answers || {};
+  const lls = ans.love_languages || [];
+%>
+
+<h1>Build your compatibility profile</h1>
+<p class="lede">Five minutes now, better matches forever. Everything is optional except the questionnaire.</p>
+
+<form method="POST" action="/profile/edit" class="stack profile-form">
+
+  <div class="card">
+    <h2>1 · The basics</h2>
+    <div class="grid-3">
+      <label>Age <input type="number" name="age" min="18" max="119" value="<%= p.age || '' %>"></label>
+      <label>Location <input name="location" maxlength="100" value="<%= p.location || '' %>" placeholder="Singapore"></label>
+    </div>
+    <label>Short bio <textarea name="bio" rows="3" maxlength="1000" placeholder="A couple of sentences about you…"><%= p.bio || '' %></textarea></label>
+  </div>
+
+  <div class="card">
+    <h2>2 · Your online presence</h2>
+    <p class="muted">Add your profile links so matches can verify it's really you. Kindred doesn't scrape
+       these platforms — instead, paste any bios, "about" sections or posts you're happy for us to analyse,
+       and we'll extract interests and personality signals from them.</p>
+    <div class="grid-3">
+      <label>LinkedIn <input name="social_linkedin" value="<%= p.socials.linkedin || '' %>" placeholder="linkedin.com/in/…"></label>
+      <label>Instagram <input name="social_instagram" value="<%= p.socials.instagram || '' %>" placeholder="@handle"></label>
+      <label>Twitter / X <input name="social_twitter" value="<%= p.socials.twitter || '' %>" placeholder="@handle"></label>
+      <label>TikTok <input name="social_tiktok" value="<%= p.socials.tiktok || '' %>" placeholder="@handle"></label>
+      <label>Facebook <input name="social_facebook" value="<%= p.socials.facebook || '' %>" placeholder="facebook.com/…"></label>
+      <label>Website <input name="social_website" value="<%= p.socials.website || '' %>" placeholder="https://…"></label>
+    </div>
+    <label>Paste your bios / posts / LinkedIn about section
+      <textarea name="social_text" rows="6" maxlength="20000"
+        placeholder="Paste anything public you've written about yourself — Instagram bio, LinkedIn summary, favourite posts. We'll mine it for interests and tone."><%= p.social_text || '' %></textarea>
+    </label>
+  </div>
+
+  <div class="card">
+    <h2>3 · Personality</h2>
+    <p class="muted">How much do you agree with each statement?</p>
+    <% for (const item of Q.BIG_FIVE_ITEMS.concat(Q.ATTACHMENT_ITEMS)) { %>
+      <fieldset class="likert">
+        <legend><%= item.text %></legend>
+        <div class="likert-opts">
+          <% for (const opt of Q.LIKERT) { %>
+            <label class="likert-opt">
+              <input type="radio" name="<%= item.id %>" value="<%= opt.value %>" required
+                <%= String(ans[item.id]) === String(opt.value) ? 'checked' : '' %>>
+              <span><%= opt.value %></span>
+            </label>
+          <% } %>
+        </div>
+        <div class="likert-ends"><span>Strongly disagree</span><span>Strongly agree</span></div>
+      </fieldset>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>4 · What matters to you</h2>
+    <p class="muted">How important is each of these in your life?</p>
+    <% for (const v of Q.VALUES) { %>
+      <fieldset class="likert">
+        <legend><%= v.label %></legend>
+        <div class="likert-opts">
+          <% for (const opt of Q.IMPORTANCE) { %>
+            <label class="likert-opt">
+              <input type="radio" name="val_<%= v.id %>" value="<%= opt.value %>" required
+                <%= String(ans['val_' + v.id]) === String(opt.value) ? 'checked' : '' %>>
+              <span><%= opt.value %></span>
+            </label>
+          <% } %>
+        </div>
+        <div class="likert-ends"><span>Not important</span><span>Essential</span></div>
+      </fieldset>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>5 · How you feel loved</h2>
+    <p class="muted">Pick your top two love languages.</p>
+    <div class="check-grid" id="love-langs">
+      <% for (const l of Q.LOVE_LANGUAGES) { %>
+        <label class="check-tag">
+          <input type="checkbox" name="love_languages" value="<%= l.id %>" <%= lls.includes(l.id) ? 'checked' : '' %>>
+          <span><%= l.label %></span>
+        </label>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>6 · Lifestyle</h2>
+    <% for (const q of Q.LIFESTYLE) { %>
+      <fieldset class="likert">
+        <legend><%= q.text %></legend>
+        <div class="choice-row">
+          <% for (const opt of q.options) { %>
+            <label class="check-tag">
+              <input type="radio" name="<%= q.id %>" value="<%= opt.value %>" required
+                <%= ans[q.id] === opt.value ? 'checked' : '' %>>
+              <span><%= opt.label %></span>
+            </label>
+          <% } %>
+        </div>
+      </fieldset>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>7 · Your interests</h2>
+    <p class="muted">Pick everything that's genuinely you. (We'll also add interests we detect in your pasted social text.)</p>
+    <div class="check-grid">
+      <% for (const t of Q.INTEREST_TAGS) { %>
+        <label class="check-tag">
+          <input type="checkbox" name="interests" value="<%= t %>" <%= p.interests.includes(t) ? 'checked' : '' %>>
+          <span><%= t %></span>
+        </label>
+      <% } %>
+    </div>
+  </div>
+
+  <button class="btn btn-lg" type="submit">Save my profile</button>
+</form>
+
+<script>
+  // Cap love languages at two.
+  const ll = document.getElementById('love-langs');
+  ll.addEventListener('change', () => {
+    const checked = ll.querySelectorAll('input:checked');
+    ll.querySelectorAll('input:not(:checked)').forEach(i => i.disabled = checked.length >= 2);
+  });
+  ll.dispatchEvent(new Event('change'));
+</script>
+
+<%- include('partials/footer') %>

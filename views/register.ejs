@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+
+<div class="auth-card card">
+  <h1>Create your account</h1>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="POST" action="/register" class="stack">
+    <label>Your name <input name="display_name" required maxlength="60" placeholder="Alex Chen"></label>
+    <label>Email <input type="email" name="email" required placeholder="you@example.com"></label>
+    <label>Password <input type="password" name="password" required minlength="8" placeholder="At least 8 characters"></label>
+    <button class="btn" type="submit">Sign up</button>
+  </form>
+  <p class="muted">Already have an account? <a href="/login">Log in</a></p>
+</div>
+
+<%- include('partials/footer') %>
