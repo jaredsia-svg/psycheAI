@@ -33,7 +33,26 @@ partner each other.
   together" section with specific, named advice for each person.
 - **Match history** — both people can revisit any report from their dashboard.
 
-## Run it
+## Two ways to run it
+
+### Option 1 — hosted webapp, no installation (recommended)
+
+The `docs/` folder contains a **zero-server version** that runs entirely in the browser:
+your profile is stored on your device and encoded *inside* your QR code, so scanning works
+between any two people with no accounts, database, or backend.
+
+Host it on GitHub Pages (no command line needed):
+
+1. On GitHub, open the repository **Settings → Pages**.
+2. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+3. Pick this branch and the **`/docs`** folder, then **Save**.
+4. After a minute, the app is live at `https://<user>.github.io/<repo>/` — share that link.
+
+How it differs from the server version: no login (one profile per browser, kept in
+localStorage), and the QR code carries the full profile payload (~190 characters), so
+compatibility is computed locally by whoever scans it. Match history is saved on-device.
+
+### Option 2 — full server version
 
 ```bash
 npm install

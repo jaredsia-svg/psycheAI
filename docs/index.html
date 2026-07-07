@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kindred — compatibility, decoded</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
+</head>
+<body>
+<nav class="nav">
+  <a class="brand" href="#" data-nav="home">💞 Kindred</a>
+  <div class="nav-links">
+    <a href="#" data-nav="dashboard">My profile</a>
+    <a href="#" data-nav="scan">Scan a match</a>
+  </div>
+</nav>
+<main class="container">
+
+  <!-- Welcome -->
+  <section id="view-welcome" class="view" hidden>
+    <div class="hero">
+      <h1>Know your chemistry <span class="accent">before the first date</span></h1>
+      <p class="lede">
+        Kindred builds a rich personality profile from your online presence and a science-informed
+        questionnaire — then turns it into a personal QR code. Scan someone else's code and get an
+        instant, honest read on your romantic compatibility, with practical advice on how to be
+        great together. Everything runs in your browser: your answers never leave your device.
+      </p>
+      <div class="cta-row">
+        <button class="btn btn-lg" data-nav="edit">Create my profile</button>
+      </div>
+    </div>
+    <div class="features">
+      <div class="card feature"><div class="feature-icon">🪞</div><h3>A profile that's actually you</h3>
+        <p>Paste your bios and posts, answer Big Five personality, attachment-style, values and
+           love-language questions. Kindred blends it all into one profile.</p></div>
+      <div class="card feature"><div class="feature-icon">📱</div><h3>Your personal QR code</h3>
+        <p>Your whole profile lives inside your QR code — no account, no server, no database.
+           Show it at a party or set it as your lock screen.</p></div>
+      <div class="card feature"><div class="feature-icon">💘</div><h3>Real compatibility insight</h3>
+        <p>A weighted score across six dimensions — plus concrete "how to partner each other"
+           advice, not just a number.</p></div>
+    </div>
+  </section>
+
+  <!-- Scanned someone before having a profile -->
+  <section id="view-pending" class="view" hidden>
+    <div class="card notice">
+      <h1>💌 You scanned <span id="pending-name">someone</span>'s Kindred code!</h1>
+      <p>To see your compatibility report, you need your own profile first. It takes about five
+         minutes — your answers stay on your device.</p>
+      <button class="btn" data-nav="edit">Build my profile</button>
+    </div>
+  </section>
+
+  <!-- Profile editor -->
+  <section id="view-edit" class="view" hidden>
+    <h1 id="edit-title">Build your compatibility profile</h1>
+    <p class="lede">Five minutes now, better matches forever.</p>
+    <form id="profile-form" class="stack profile-form"></form>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="view-dashboard" class="view" hidden>
+    <h1 id="dash-greeting">Hi 👋</h1>
+    <div class="grid-2">
+      <div class="card qr-card">
+        <h2>Your QR code</h2>
+        <p class="muted">Let someone scan this with Kindred to test your compatibility. Your whole
+           profile is encoded inside it.</p>
+        <canvas id="qr-canvas" class="qr-img"></canvas>
+        <p><button class="btn btn-ghost btn-sm" id="copy-link">Copy my profile link</button></p>
+        <button class="btn" data-nav="scan">Scan someone else's code →</button>
+      </div>
+      <div class="card">
+        <h2>Your profile</h2>
+        <div id="dash-traits"></div>
+        <button class="btn btn-ghost btn-sm" data-nav="edit">Edit profile</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Match history <span class="muted" style="font-weight:400;font-size:0.85rem">(saved on this device)</span></h2>
+      <div id="dash-history"></div>
+    </div>
+  </section>
+
+  <!-- Scan -->
+  <section id="view-scan" class="view" hidden>
+    <h1>Scan a match</h1>
+    <div id="scan-alert"></div>
+    <div class="grid-2">
+      <div class="card">
+        <h2>📷 Scan with camera</h2>
+        <p class="muted">Point your camera at another person's Kindred QR code.</p>
+        <div class="scanner-wrap"><video id="scan-video" playsinline muted></video><canvas id="scan-canvas" hidden></canvas></div>
+        <button class="btn" id="start-scan" type="button">Start camera</button>
+        <p class="muted" id="scan-status"></p>
+      </div>
+      <div class="card">
+        <h2>🔗 Or paste their link / code</h2>
+        <p class="muted">Ask them to tap "Copy my profile link" on their dashboard and send it to you.</p>
+        <form id="paste-form" class="stack">
+          <label>Their link or code <textarea id="paste-input" rows="4" placeholder="https://…#p=… or the long code" required></textarea></label>
+          <button class="btn" type="submit">Test our compatibility 💘</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- Report -->
+  <section id="view-report" class="view" hidden>
+    <div id="report-root"></div>
+    <div class="cta-row">
+      <button class="btn" data-nav="scan">Scan another match</button>
+      <button class="btn btn-ghost" data-nav="dashboard">Back to my profile</button>
+    </div>
+  </section>
+
+</main>
+<footer class="footer">
+  <p>Kindred runs entirely in your browser — profiles live in your QR code and matches are saved
+     only on your own device. Compatibility scores are a conversation starter, not a verdict. 💜</p>
+</footer>
+
+<script src="vendor/qrcode.js"></script>
+<script src="vendor/jsqr.js"></script>
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
