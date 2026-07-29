@@ -180,6 +180,17 @@ try {
   check('attachment still carries its caveat', /cannot be read reliably/i.test(attachment));
 
   check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
+  // A bare letter means nothing to anyone who has not read the literature.
+  check('each MBTI letter is spelled out',
+    (await page.locator('.axis-name').allInnerTexts()).join('|') ===
+    'Extraversion|Intuition|Feeling|Judging',
+    (await page.locator('.axis-name').allInnerTexts()).join('|'));
+  check('each letter names the pole it was chosen over',
+    (await page.locator('.axis-against').allInnerTexts()).join('|') ===
+    'over Introversion|over Sensing|over Thinking|over Perceiving',
+    (await page.locator('.axis-against').allInnerTexts()).join('|'));
+  check('the letter itself is still shown',
+    (await page.locator('.axis-letter').allInnerTexts()).join('') === 'ENFJ');
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));

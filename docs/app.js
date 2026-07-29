@@ -297,6 +297,29 @@
     neuroticism: 'Emotional sensitivity',
   };
 
+  // The four axes spelled out. A letter on its own means nothing to anyone who
+  // has not read the MBTI literature, and the pairing is fixed vocabulary, so
+  // it is resolved here rather than asked of the model — which could get it
+  // wrong, and would cost tokens to get right.
+  const MBTI_POLES = {
+    E: { name: 'Extraversion', opposite: 'I' },
+    I: { name: 'Introversion', opposite: 'E' },
+    N: { name: 'Intuition', opposite: 'S' },
+    S: { name: 'Sensing', opposite: 'N' },
+    T: { name: 'Thinking', opposite: 'F' },
+    F: { name: 'Feeling', opposite: 'T' },
+    J: { name: 'Judging', opposite: 'P' },
+    P: { name: 'Perceiving', opposite: 'J' },
+  };
+
+  /** "E" → "Extraversion over Introversion", falling back to the raw axis. */
+  function axisLabel(letter, axis) {
+    const key = String(letter || '').toUpperCase().replace(/[^EINSTFJP]/g, '').charAt(0);
+    const pole = MBTI_POLES[key];
+    if (!pole) return { name: String(axis || ''), against: '' };
+    return { name: pole.name, against: MBTI_POLES[pole.opposite].name };
+  }
+
   function profileUrl(payload) {
     return location.origin + location.pathname + '#p=' + payload;
   }
@@ -360,13 +383,16 @@
         (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : ''),
         'Confidence: ' + esc(mbti.confidence));
 
-    html += '<div class="axes">' + (mbti.letters || []).map(letter =>
-      '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
-      '<div><span class="axis-name">' + esc(letter.axis) + '</span>' +
-      '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
-      '<p>' + esc(letter.why) + '</p>' +
-      (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
-      '</div></div>').join('') + '</div>';
+    html += '<div class="axes">' + (mbti.letters || []).map(letter => {
+      const pole = axisLabel(letter.choice, letter.axis);
+      return '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
+        '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
+        (pole.against ? '<span class="axis-against">over ' + esc(pole.against) + '</span>' : '') +
+        '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
+        '<p>' + esc(letter.why) + '</p>' +
+        (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
+        '</div></div>';
+    }).join('') + '</div>';
 
     if (mbti.portrait) html += '<div class="portrait">' + paragraphs(mbti.portrait) + '</div>';
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';

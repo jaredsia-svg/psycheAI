@@ -369,7 +369,8 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
   border-radius: 12px; background: var(--accent-soft); color: var(--accent);
   font-weight: 700; font-size: 1.1rem;
 }
-.axis-name { font-weight: 650; margin-right: .4rem; }
+.axis-name { font-weight: 650; margin-right: .35rem; }
+.axis-against { color: var(--ink-soft); font-size: .86rem; margin-right: .4rem; }
 .axis p { margin: .2rem 0 0; font-size: .92rem; }
 /* A slight lean should look slighter than a clear one at a glance. */
 .pill-slight { opacity: .6; }
