@@ -110,9 +110,19 @@
 
   const VIEWS = ['welcome', 'working', 'profile', 'scan', 'report', 'about'];
 
+  // Both links lead somewhere that redirects straight back to the upload page
+  // until a profile exists, so until then they are noise. They start hidden in
+  // the markup and appear the moment there is something to point at.
+  function syncNav() {
+    const ready = Boolean(state.profile);
+    $('#nav-profile').hidden = !ready;
+    $('#nav-scan').hidden = !ready;
+  }
+
   function show(view) {
     if (view !== 'scan') stopCamera();
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
+    syncNav();
     window.scrollTo(0, 0);
   }
 

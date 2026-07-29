@@ -101,26 +101,11 @@ try {
   check('step two is attributed to PsycheAI',
     (await page.locator('.step-card h3').nth(1).innerText()) === 'PsycheAI reads it');
 
-  // ---- the nav on a phone ----
-  //
-  // The three links wrapped onto a second row below about 410px, which is
-  // most phones. Check the real widths rather than the breakpoints.
-  for (const width of [320, 360, 375, 390, 412]) {
-    await page.setViewportSize({ width, height: 760 });
-    const nav = await page.evaluate(() => {
-      const links = [...document.querySelectorAll('.nav-links a')];
-      return {
-        rows: new Set(links.map(a => a.getBoundingClientRect().top.toFixed(0))).size,
-        smallest: Math.min(...links.map(a => parseFloat(getComputedStyle(a).fontSize))),
-        hScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      };
-    });
-    check('nav links stay on one row at ' + width + 'px', nav.rows === 1, nav.rows + ' rows');
-    check('nav links stay legible at ' + width + 'px', nav.smallest >= 11, nav.smallest + 'px');
-    check('the page does not scroll sideways at ' + width + 'px', nav.hScroll === 0, nav.hScroll + 'px');
-  }
-  await shot('1-welcome-mobile');
-  await page.setViewportSize({ width: 1100, height: 900 });
+  // Until a profile exists both of these lead straight back to the upload
+  // page, so they are noise on a first visit.
+  const visibleNav = () => page.locator('.nav-links a:not([hidden])').allInnerTexts();
+  check('a first-time visitor sees only "How it works"',
+    (await visibleNav()).join('|') === 'How it works', (await visibleNav()).join('|'));
 
   await shot('1-welcome');
 
@@ -164,6 +149,34 @@ try {
 
   check('the share panel no longer explains the storage model',
     !/There is no account and no database/.test(await page.locator('.qr-actions').innerText()));
+
+  check('the profile and scan links appear once there is a profile',
+    (await visibleNav()).join('|') === 'My profile|Scan a code|How it works',
+    (await visibleNav()).join('|'));
+
+  // ---- the nav on a phone ----
+  //
+  // All three links wrapped onto a second row below about 410px, which is
+  // most phones. Measured at real widths rather than at the breakpoints, and
+  // with a profile loaded so all three are actually on screen.
+  for (const width of [320, 360, 375, 390, 412]) {
+    await page.setViewportSize({ width, height: 760 });
+    const nav = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('.nav-links a')].filter(a => !a.hidden);
+      return {
+        count: links.length,
+        rows: new Set(links.map(a => a.getBoundingClientRect().top.toFixed(0))).size,
+        smallest: Math.min(...links.map(a => parseFloat(getComputedStyle(a).fontSize))),
+        hScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    check('all three links are up at ' + width + 'px', nav.count === 3, String(nav.count));
+    check('nav links stay on one row at ' + width + 'px', nav.rows === 1, nav.rows + ' rows');
+    check('nav links stay legible at ' + width + 'px', nav.smallest >= 11, nav.smallest + 'px');
+    check('the page does not scroll sideways at ' + width + 'px', nav.hScroll === 0, nav.hScroll + 'px');
+  }
+  await shot('2a-profile-mobile');
+  await page.setViewportSize({ width: 1100, height: 900 });
 
   const profileText = await page.locator('#profile-body').innerText();
   for (const [label, needle] of [
@@ -510,7 +523,21 @@ try {
   const overflow = await page.evaluate(() =>
     document.documentElement.scrollWidth - document.documentElement.clientWidth);
   check('no horizontal overflow on a phone', overflow <= 1, overflow + 'px of overflow');
-  await shot('5-mobile');
+  await shot('6-mobile');
+
+  // ---- deleting everything puts the links away again ----
+  await page.setViewportSize({ width: 1100, height: 900 });
+  page.once('dialog', dialog => dialog.accept());
+  await page.click('#delete-profile');
+  await page.waitForSelector('#view-welcome:not([hidden])');
+  check('deleting the profile returns you to the upload page',
+    await page.locator('#view-welcome').isVisible());
+  check('deleting the profile hides the links again',
+    (await visibleNav()).join('|') === 'How it works', (await visibleNav()).join('|'));
+  check('the links are still hidden after a reload', await (async () => {
+    await page.reload({ waitUntil: 'load' });
+    return (await visibleNav()).join('|') === 'How it works';
+  })());
 
   check('no console errors anywhere in the flow', consoleErrors.length === 0, consoleErrors.join(' | '));
 } catch (error) {
