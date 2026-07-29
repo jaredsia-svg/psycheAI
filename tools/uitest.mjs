@@ -156,6 +156,11 @@ try {
   }));
   check('the caption under the QR code is gone',
     (await page.locator('.qr-caption').count()) === 0);
+  check('the share panel is framed as testing compatibility',
+    (await page.locator('.qr-title').innerText()) === 'Test your compatibility',
+    await page.locator('.qr-title').innerText());
+  check('it says what scanning is for',
+    /how compatible you both are/.test(await page.locator('.qr-actions').innerText()));
 
   check('the profile and scan links appear once there is a profile',
     (await visibleNav()).join('|') === 'My profile|Scan a code|How it works',
