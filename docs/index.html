@@ -51,6 +51,10 @@
     <h2>Start here</h2>
     <div id="server-status" class="alert" hidden></div>
 
+    <label class="field">What should people call you?
+      <input type="text" id="display-name" maxlength="24" placeholder="Alex — shown on the other person's report">
+    </label>
+
     <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose your Instagram export zip files">
       <div class="dropzone-icon">📦</div>
       <p><strong>Drop your Instagram .zip here</strong></p>
@@ -58,17 +62,14 @@
       <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
     </div>
 
-    <label class="field">What should people call you?
-      <input type="text" id="display-name" maxlength="24" placeholder="Alex — shown on the other person's report">
-    </label>
-
     <label class="switch-row">
-      <input type="checkbox" id="include-dms">
+      <input type="checkbox" id="include-dms" checked>
       <span>
-        <strong>Include direct messages</strong>
-        <span class="muted">Off by default. When on, Kindred counts your conversations and samples only
-        your own messages. Nobody else's words are sent. Turning this on means a sample of your DMs
-        goes to the model along with everything else.</span>
+        <strong>Include direct messages — on</strong>
+        <span class="muted">How you write to people you know is the single most revealing thing in
+        the export, so this is on by default. Kindred counts your conversations and samples
+        <strong>only your own messages</strong> — nobody else's words are ever sent. Untick it to
+        leave your DMs out entirely; everything else still works.</span>
       </span>
     </label>
 
@@ -190,8 +191,10 @@
     <p>It then builds an <strong>evidence digest</strong>: your counts and activity rhythm, a sample
       of your own captions and comments, the accounts you follow, and the topics Instagram itself
       has inferred about you. That digest — not the archive — is what gets sent to the model for
-      analysis. Direct messages are excluded unless you opt in, and even then only your own
-      messages are sampled.</p>
+      analysis. Direct messages are included by default because how you write to people who know
+      you is the most revealing text in the export — but only <em>your own</em> messages are ever
+      sampled, never the other side of a conversation, and you can untick that box before uploading
+      to leave them out entirely.</p>
     <p>Nothing is stored on the server. Your profile and reports live in this browser's local
       storage and are deleted when you press the delete button.</p>
   </div>

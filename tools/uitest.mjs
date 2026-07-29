@@ -54,6 +54,19 @@ try {
   check('there is no questionnaire left in the app',
     (await page.content()).toLowerCase().includes('questionnaire') === false ||
     (await page.locator('#step-form').count()) === 0);
+
+  // Direct messages are on by default; the switch is the opt-out.
+  check('direct messages are included by default', await page.locator('#include-dms').isChecked());
+  check('the switch says only the user\'s own messages are sent',
+    /only your own messages/i.test(await page.locator('.switch-row').innerText()));
+
+  // The name is asked for before the upload, not after.
+  check('the name field comes before the upload box', await page.evaluate(() => {
+    const name = document.querySelector('#display-name');
+    const drop = document.querySelector('#dropzone');
+    return Boolean(name.compareDocumentPosition(drop) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+
   await shot('1-welcome');
 
   // ---- upload ----
@@ -106,7 +119,25 @@ try {
   const digest = await page.evaluate(() => JSON.parse(localStorage.getItem('kindred3_digest')));
   check('the evidence digest was kept for re-analysis', !!digest && digest.schema === 'kindred-digest/1');
   check('the digest carries no raw archive', JSON.stringify(digest).length < 250000);
-  check('the digest excluded DMs by default', digest.directMessages === undefined);
+  check('the digest included DMs by default', !!digest.directMessages);
+  check('the digest records that DMs were included', digest.coverage.directMessagesIncluded === true);
+  check('only the user\'s own messages were sent',
+    JSON.stringify(digest.directMessages).includes('Own message') &&
+    !JSON.stringify(digest.directMessages).includes('Their reply'));
+
+  // ---- the opt-out actually opts out ----
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.uncheck('#include-dms');
+  await page.fill('#display-name', 'Alec');
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('kindred3_digest')));
+  check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
+  check('the opt-out is recorded for the model', optedOut.coverage.directMessagesIncluded === false);
+  check('no message text survives the opt-out', !JSON.stringify(optedOut).includes('Own message'));
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {

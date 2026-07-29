@@ -69,7 +69,7 @@ This is the part worth reading carefully.
 | The `.zip` archive itself | An **evidence digest**: activity counts, hour-of-day and day-of-week histograms, posting regularity, a sample of your own captions and comments, accounts you follow, and the topics Instagram itself inferred about you |
 | Your photos and videos — never opened | |
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
-| Direct messages, unless you opt in | If you opt in: DM counts plus a sample of **your own** messages only |
+| Direct messages, if you untick the box | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
 
 ### What is complete and what is sampled
 
@@ -84,7 +84,7 @@ topics. **Sampled** — the text:
 | Comments you wrote | 360 |
 | Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
 | Accounts you like / save most | 240 / 120 |
-| Your own DMs (opt-in only) | 280 |
+| Your own DMs | 280 — included by default, untick the box before uploading to exclude them |
 
 A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
 inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
@@ -94,6 +94,11 @@ whole picture.
 
 Images are never analysed — for a heavily visual account with few captions, that is a real blind
 spot.
+
+**Direct messages are included by default**, because how someone writes to people who already know
+them is the most revealing text in the export. Only the user's own messages are ever sampled — the
+other side of every conversation is counted for the statistics and then discarded, before anything
+leaves the browser. The switch on the upload page turns the whole thing off.
 
 The archive is unzipped in the browser with the File API. The server proxies two model calls and
 stores nothing — your profile and reports live in this browser's local storage until you press
@@ -146,13 +151,13 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 94 checks: synthesises a real ZIP export and runs
+npm test           # 102 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; validates
                    # both prompt schemas against the structured-output rules and
                    # the keyword subset Gemini supports; and exercises every
                    # branch of provider selection
-npm run test:ui    # 39 checks: drives the real UI in Chromium against a
+npm run test:ui    # 47 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report
 npm run test:live  # 15 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.

@@ -91,6 +91,28 @@ function at(daysAgo, hour) {
   return Math.floor(d.getTime() / 1000);
 }
 
+// Direct messages are included by default, so the fixture has to carry some —
+// otherwise the default path is untested. `sender_name` uses the same
+// mojibaked spelling as personal_information.json so the parser's owner
+// detection matches after repairing both.
+function messageThreads() {
+  const owner = 'Aleç';
+  return [1, 2, 3].map(thread => ({
+    name: 'your_instagram_activity/messages/inbox/friend_' + thread + '_123/message_1.json',
+    content: JSON.stringify({
+      participants: [{ name: owner }, { name: 'Friend ' + thread }],
+      thread_path: 'inbox/friend_' + thread + '_123',
+      messages: Array.from({ length: 12 }, (_, i) => ({
+        sender_name: i % 2 === 0 ? owner : 'Friend ' + thread,
+        timestamp_ms: at(thread * 5 + i, 20) * 1000,
+        content: i % 2 === 0
+          ? 'Own message ' + i + ' in thread ' + thread + '. Are you around this weekend for a run?'
+          : 'Their reply ' + i + ', which must be counted and then discarded.',
+      })),
+    }),
+  }));
+}
+
 // An outdoorsy, organised, family-oriented persona: steady weekly posting in
 // the morning, hiking and running language, warm tone.
 function buildExport() {
@@ -201,6 +223,7 @@ function buildExport() {
     },
     { name: 'media/posts/0.jpg', content: 'not json, must be ignored' },
     { name: 'start_here.html', content: '<html>an HTML index that must not confuse the parser</html>' },
+    ...messageThreads(),
   ];
 
   return makeZip(files);

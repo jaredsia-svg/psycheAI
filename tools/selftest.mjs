@@ -202,17 +202,35 @@ check('digest samples follows across the whole list',
 check('digest passes through Instagram\'s own topics', digest.instagramTopics.includes('Running'));
 check('digest ranks most-liked accounts', digest.mostLikedAccounts.length > 0 && digest.mostLikedAccounts[0].count > 0);
 check('digest flags that its text is sampled', /text samples below are/.test(digest.coverage.samplingNote));
-check('digest omits DMs when not opted in', digest.directMessages === undefined);
+check('digest omits DMs when the user opts out', digest.directMessages === undefined);
+check('the opt-out is recorded for the model to see', digest.coverage.directMessagesIncluded === false);
 check('digest stays inside its size budget',
   digest.coverage.digestChars <= Digest.LIMITS.totalChars, digest.coverage.digestChars + ' chars');
 check('digest holds no raw archive bytes', !JSON.stringify(digest).includes('PK'));
 
-const withDms = Digest.build(
-  { ...signals, messages: { threads: 12, groupThreads: 2, total: 400, sent: 220, received: 180, avgSentLength: 47, ownTexts: ['mock own message', 'another own message'] } },
-  { includeMessages: true, displayName: 'Alec' });
-check('digest includes DM aggregates when opted in', withDms.directMessages.threads === 12);
+// Direct messages are included by default now, so the default path is tested
+// against the real fixture rather than a hand-built stand-in.
+const withDmSignals = await IG.readExports([file], { includeMessages: true });
+const withDms = Digest.build(withDmSignals, { includeMessages: true, displayName: 'Alec' });
+
+check('DMs are parsed when included', withDmSignals.messages.threads === 3, String(withDmSignals.messages.threads));
+check('the account owner is identified in the threads', withDmSignals.messages.owner === 'Aleç',
+  JSON.stringify(withDmSignals.messages.owner));
+check('sent and received are counted separately',
+  withDmSignals.messages.sent === 18 && withDmSignals.messages.received === 18,
+  withDmSignals.messages.sent + '/' + withDmSignals.messages.received);
+check('digest includes DM aggregates', withDms.directMessages.threads === 3);
 check('digest samples only the user\'s own messages',
   /Only the user's own messages/.test(withDms.directMessages.note));
+check('DM sampling coverage is reported', withDms.coverage.sampling.ownMessages.available === 18);
+
+// The privacy claim that matters: the other side of every conversation is
+// counted and then thrown away.
+const dmJson = JSON.stringify(withDms.directMessages);
+check('the other side of a conversation never reaches the digest', !dmJson.includes('Their reply'));
+check('the user\'s own messages do reach the digest', dmJson.includes('Own message'));
+check('raw message text is dropped after summarising',
+  withDmSignals.messageTexts.length === 0 && withDmSignals.messageEvents.length === 0);
 
 // ---------- scale: a heavy account ----------
 //
