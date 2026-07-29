@@ -71,6 +71,30 @@ This is the part worth reading carefully.
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
 | Direct messages, unless you opt in | If you opt in: DM counts plus a sample of **your own** messages only |
 
+### What is complete and what is sampled
+
+The distinction matters more than the digest's size. **Complete** — every count, the full
+hour-of-day and day-of-week histograms computed over every timestamped event, month-by-month
+activity across your whole account history, posting regularity, and Instagram's own inferred
+topics. **Sampled** — the text:
+
+| Source | Cap |
+|---|---|
+| Captions | 560 |
+| Comments you wrote | 360 |
+| Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
+| Accounts you like / save most | 240 / 120 |
+| Your own DMs (opt-in only) | 280 |
+
+A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
+inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
+carries a `coverage.sampling` field saying what fraction of each source the model is seeing, and the
+prompt tells it to factor that into its confidence score rather than treating the sample as the
+whole picture.
+
+Images are never analysed — for a heavily visual account with few captions, that is a real blind
+spot.
+
 The archive is unzipped in the browser with the File API. The server proxies two model calls and
 stores nothing — your profile and reports live in this browser's local storage until you press
 delete. Whichever provider you configure receives the digest, so pick the one whose data-handling
@@ -122,11 +146,12 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 82 checks: synthesises a real ZIP export and runs
-                   # unzip → parse → digest → card → QR → decode; validates both
-                   # prompt schemas against the structured-output rules and the
-                   # keyword subset Gemini supports; and exercises every branch
-                   # of provider selection
+npm test           # 94 checks: synthesises a real ZIP export and runs
+                   # unzip → parse → digest → card → QR → decode; proves the
+                   # digest caps and budget hold on a heavy account; validates
+                   # both prompt schemas against the structured-output rules and
+                   # the keyword subset Gemini supports; and exercises every
+                   # branch of provider selection
 npm run test:ui    # 39 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report
 npm run test:live  # 15 checks: two real model calls against whichever provider

@@ -201,7 +201,7 @@ check('digest samples follows across the whole list',
   digest.following.length === Digest.LIMITS.following || digest.following.length === signals.following.length);
 check('digest passes through Instagram\'s own topics', digest.instagramTopics.includes('Running'));
 check('digest ranks most-liked accounts', digest.mostLikedAccounts.length > 0 && digest.mostLikedAccounts[0].count > 0);
-check('digest flags that captions are sampled', /sample, not the full set/.test(digest.coverage.samplingNote));
+check('digest flags that its text is sampled', /text samples below are/.test(digest.coverage.samplingNote));
 check('digest omits DMs when not opted in', digest.directMessages === undefined);
 check('digest stays inside its size budget',
   digest.coverage.digestChars <= Digest.LIMITS.totalChars, digest.coverage.digestChars + ' chars');
@@ -213,6 +213,63 @@ const withDms = Digest.build(
 check('digest includes DM aggregates when opted in', withDms.directMessages.threads === 12);
 check('digest samples only the user\'s own messages',
   /Only the user's own messages/.test(withDms.directMessages.note));
+
+// ---------- scale: a heavy account ----------
+//
+// The small fixture never reaches the caps, so synthesise an account big
+// enough to bind every one of them and confirm the digest still fits its
+// budget and reports its own sampling honestly.
+
+function heavySignals() {
+  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+  return {
+    ...signals,
+    captions: many(4000, i => 'Caption number ' + i + '. ' + 'A sentence about the day and what happened. '.repeat(3)),
+    comments: many(3000, i => 'Comment number ' + i + ', a reply to somebody.'),
+    searches: many(500, i => 'search term ' + i),
+    topics: many(600, i => 'Topic ' + i),
+    adInterests: many(600, i => 'Ad interest ' + i),
+    following: many(4000, i => ({ name: 'account_number_' + i, ts: 0 })),
+    likedAuthors: new Map(many(900, i => ['liked_author_' + i, 900 - i])),
+    savedAuthors: new Map(many(400, i => ['saved_author_' + i, 400 - i])),
+    commentedOn: new Map(many(700, i => ['engaged_' + i, 700 - i])),
+  };
+}
+
+const heavy = Digest.build(heavySignals(), { includeMessages: false, displayName: 'Heavy' });
+
+check('heavy account caps captions', heavy.samples.captions.length === Digest.LIMITS.captions,
+  heavy.samples.captions.length + ' captions');
+check('heavy account caps comments', heavy.samples.comments.length === Digest.LIMITS.comments);
+check('heavy account caps following', heavy.following.length === Digest.LIMITS.following);
+check('heavy account caps liked accounts', heavy.mostLikedAccounts.length === Digest.LIMITS.likedAuthors);
+check('heavy account caps topics', heavy.instagramTopics.length === Digest.LIMITS.topics);
+check('heavy account still fits the total budget',
+  heavy.coverage.digestChars <= Digest.LIMITS.totalChars, heavy.coverage.digestChars + ' chars');
+check('heavy account digest is under 400KB in practice',
+  heavy.coverage.digestChars < 400000, heavy.coverage.digestChars + ' chars');
+
+// The model is told what fraction it is seeing so it can calibrate confidence.
+check('digest reports how much of each source was sampled',
+  heavy.coverage.sampling.captions.shown === Digest.LIMITS.captions &&
+  heavy.coverage.sampling.captions.available === 4000,
+  JSON.stringify(heavy.coverage.sampling.captions));
+check('sampling coverage is reported for follows too',
+  heavy.coverage.sampling.following.shown === Digest.LIMITS.following &&
+  heavy.coverage.sampling.following.available === 4000);
+check('sampling counts stay honest on a small account',
+  digest.coverage.sampling.captions.shown === digest.samples.captions.length &&
+  digest.coverage.sampling.captions.available === signals.captions.length);
+check('the prompt tells the model to use the sampling coverage',
+  /coverage\.sampling/.test(prompts.PROFILE_SYSTEM));
+
+// Follows are sampled across the whole list, not just the head — otherwise a
+// long-standing account is read entirely from who they followed years ago.
+check('follows are sampled across the whole list, not the head',
+  heavy.following.includes('account_number_0') && heavy.following.some(name => {
+    const n = Number(name.replace('account_number_', ''));
+    return n > 3000;
+  }));
 
 // ---------- mock analysis and the card ----------
 
@@ -275,8 +332,9 @@ check('compatibility gives each person their own advice',
 // ---------- results ----------
 
 console.log('\nKindred self-test');
-console.log('  digest size       : ' + digest.coverage.digestChars + ' chars');
-console.log('  captions sampled  : ' + digest.samples.captions.length + '/' + signals.captions.length);
+console.log('  digest size       : ' + digest.coverage.digestChars + ' chars (small fixture)');
+console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
+  heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
 
 if (failures.length) {

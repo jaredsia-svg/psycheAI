@@ -130,10 +130,12 @@
     return null;
   }
 
-  // Guard rails so a huge archive can't lock up the tab.
+  // Guard rails so a huge archive can't lock up the tab. corpusChars sits
+  // above what the digest will ever sample, so the ceiling that decides how
+  // much text the model sees is the digest's, not this one.
   const LIMITS = {
     messageThreads: 500,
-    corpusChars: 1500000,
+    corpusChars: 4000000,
     followRows: 20000,
     likeRows: 40000,
   };

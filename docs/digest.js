@@ -9,18 +9,24 @@
 
   // Budgets, chosen so a full digest stays well inside a single request and
   // costs a predictable amount to analyse.
+  //
+  // These were raised 4x after measuring a real export: the per-section caps
+  // were binding at roughly a fifth of the total budget, so the model was
+  // seeing far less than it could have. Both providers have a 1M-token
+  // context, so a digest this size is still comfortable — a heavy account
+  // lands around 150KB, which is well inside it.
   const LIMITS = {
-    captions: 140,
-    comments: 90,
-    messages: 70,
-    following: 250,
-    likedAuthors: 60,
-    savedAuthors: 30,
-    searches: 40,
-    topics: 120,
-    adInterests: 120,
+    captions: 560,
+    comments: 360,
+    messages: 280,
+    following: 1000,
+    likedAuthors: 240,
+    savedAuthors: 120,
+    searches: 160,
+    topics: 400,
+    adInterests: 400,
     textChars: 600,
-    totalChars: 220000,
+    totalChars: 600000,
   };
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
@@ -190,9 +196,20 @@
         filesSeen: signals.files.total,
         sections: Object.keys(signals.files.byRoute),
         directMessagesIncluded: !!opts.includeMessages,
-        samplingNote: 'Captions and comments are a sample, not the full set. Counts above are complete.',
+        samplingNote: 'The counts and histograms above are complete. The text samples below are ' +
+          'a subset — "sampling" says how much of each source you are seeing, so weight your ' +
+          'confidence accordingly.',
+        sampling: {
+          captions: { shown: 0, available: signals.captions.length },
+          comments: { shown: 0, available: signals.comments.length },
+          following: { shown: 0, available: signals.following.length },
+        },
       },
     };
+
+    digest.coverage.sampling.captions.shown = digest.samples.captions.length;
+    digest.coverage.sampling.comments.shown = digest.samples.comments.length;
+    digest.coverage.sampling.following.shown = digest.following.length;
 
     if (opts.includeMessages && messages.total) {
       digest.directMessages = {
@@ -205,6 +222,10 @@
         note: 'Only the user\'s own messages are sampled below. The other side of every conversation was counted and discarded.',
         ownMessageSample: sampleTexts(messages.ownTexts, LIMITS.messages, 240),
       };
+      digest.coverage.sampling.ownMessages = {
+        shown: digest.directMessages.ownMessageSample.length,
+        available: messages.ownTexts.length,
+      };
     }
 
     // Final belt-and-braces bound. If a pathological export still produces an
@@ -213,6 +234,8 @@
     while (encoded.length > LIMITS.totalChars && digest.samples.captions.length > 20) {
       digest.samples.captions = digest.samples.captions.slice(0, Math.floor(digest.samples.captions.length * 0.75));
       digest.samples.comments = digest.samples.comments.slice(0, Math.floor(digest.samples.comments.length * 0.75));
+      digest.coverage.sampling.captions.shown = digest.samples.captions.length;
+      digest.coverage.sampling.comments.shown = digest.samples.comments.length;
       encoded = JSON.stringify(digest);
     }
     digest.coverage.digestChars = encoded.length;
