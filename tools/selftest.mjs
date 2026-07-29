@@ -147,6 +147,16 @@ check('profile schema covers everything the brief asked for',
 check('the profile asks for no unused headline', !('headline' in prompts.PROFILE_SCHEMA.properties));
 check('the shareable card still has its own headline', 'headline' in prompts.CARD_SCHEMA.properties);
 
+// "Who you are" has to stand alone for someone who reads no further.
+check('the opening summary carries the findings from below',
+  /land the findings from every section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
+check('the opening summary names the type and traits outright',
+  /Name the type and the traits explicitly/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
+check('the opening summary may not contradict the sections',
+  /do not contradict any section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
+check('the MBTI portrait is asked for as one paragraph',
+  /One paragraph/.test(prompts.PROFILE_SCHEMA.properties.mbti.properties.portrait.description));
+
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on one noun with an icon and a reason',
   ['noun', 'icon', 'why'].every(k => k in essenceProps));
@@ -219,6 +229,7 @@ for (const [label, needle] of [
   ['wants a concrete, surprising noun', /concrete, slightly surprising/],
   ['rejects a compliment dressed as a noun', /a compliment in a costume/],
   ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
+  ['keeps the MBTI portrait to one paragraph', /six good sentences beat twelve padded ones/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }

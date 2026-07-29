@@ -246,6 +246,29 @@ try {
   }));
   check('the noun sits inside "Who you are"', await page.evaluate(() =>
     document.querySelector('.essence').closest('.card').innerText.includes('Who you are')));
+
+  // The headline findings are repeated up top, taken from the sections below
+  // rather than restated by the model, so they cannot drift apart.
+  const glance = await page.locator('.glance').innerText();
+  check('the opening section shows the headline findings at a glance',
+    (await page.locator('.glance-item').count()) === 4, glance.replace(/\n/g, ' / '));
+  check('the glance names the MBTI type', /ENFJ/.test(glance));
+  check('the glance names the highest and lowest traits',
+    /Agreeableness/.test(glance) && /Emotional sensitivity/.test(glance), glance.replace(/\n/g, ' / '));
+  check('the glance agrees with the Big Five section below', await page.evaluate(() => {
+    const values = [...document.querySelectorAll('.glance-item')].map(i => i.innerText);
+    const high = values.find(v => v.startsWith('HIGHEST'));
+    const low = values.find(v => v.startsWith('LOWEST'));
+    const scores = [...document.querySelectorAll('.trait-num')].map(n => Number(n.textContent));
+    return high.includes(String(Math.max(...scores))) && low.includes(String(Math.min(...scores)));
+  }));
+  check('the glance carries the attachment guess, labelled as one',
+    /Attachment/i.test(glance) && /a guess/i.test(glance));
+  check('the glance sits above the summary prose', await page.evaluate(() => {
+    const g = document.querySelector('.glance');
+    const p = g.parentElement.querySelector('p:not([class])');
+    return Boolean(g.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
   check('the icon really is a pictograph, not text',
     (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
 

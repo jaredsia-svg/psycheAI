@@ -480,6 +480,19 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .essence-why { margin: 0; font-size: .93rem; }
 .callout .essence-label { margin-top: .9rem; }
+
+/* The four headline findings, so someone who reads only the first section
+   still leaves with the answers. */
+.glance {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: .9rem 1rem; margin: 0 0 1.3rem;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  padding: .9rem 0;
+}
+.glance-item { display: flex; flex-direction: column; gap: .1rem; }
+.glance-label { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.glance-value { font-weight: 650; font-size: 1rem; line-height: 1.2; }
+.glance-note { font-size: .8rem; color: var(--ink-soft); }
 /* Chips inside the callout share its background, so give them their own. */
 .callout .ev { background: var(--bg-alt); }
 .callout .fineprint { margin-top: .9rem; }

@@ -167,6 +167,13 @@ surprising, and explicitly rejects a compliment in a costume ("Diamond", "Star")
 a hobby. Because a model told to send exactly one emoji will occasionally send a sentence, the
 client checks the glyph and substitutes a placeholder rather than printing prose where the icon goes.
 
+Under the noun sits a **glance strip** — MBTI type, highest and lowest Big Five trait, attachment
+read — then a two-or-three-paragraph summary that lands the findings from every section below, so
+someone who reads only the opening still leaves with the answers. The strip is derived in
+`docs/app.js` from the sections themselves rather than asked of the model a second time: restating
+them in another field costs tokens and creates something that can disagree with itself. A UI check
+compares the strip against the trait bars to prove it cannot.
+
 Then Big Five with per-trait evidence; interests, beliefs and values; relationship and career
 strengths and weaknesses — the **attachment** guess shows its working, naming the behavioural traces
 it rests on, the style it rejected, and what it means in practice for them and for a partner, since
@@ -174,8 +181,9 @@ a named style with no reasoning is worthless and slightly harmful. And two longe
 
 **MBTI**, written to be worth reading rather than worth skimming. The type and its nickname, then
 per axis how strongly the data leans (`slight` / `moderate` / `clear`) and what that letter looks
-like in their ordinary week — followed by a portrait in their own second person covering where the
-type serves them, where it costs them and how they get misread. The prompt is explicit that a
+like in their ordinary week — followed by a one-paragraph portrait in their own second person
+covering where the type serves them, where it costs them and how they get misread. The prompt is
+explicit that a
 sentence which would survive being pasted into a stranger's profile must be rewritten or cut, that
 the portrait should sting slightly somewhere, and that a hedged letter beats a confident wrong one.
 
@@ -223,14 +231,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 167 checks: synthesises a real ZIP export and runs
+npm test           # 172 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 151 checks: drives the real UI in Chromium against a
+npm run test:ui    # 180 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

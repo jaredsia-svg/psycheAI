@@ -99,6 +99,40 @@
       '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
   }
 
+  // The headline findings, pulled straight out of the sections below rather
+  // than asked of the model a second time — restating them in a second field
+  // is tokens spent on something that can then disagree with itself.
+  function glanceBlock(report) {
+    const items = [];
+
+    if (report.mbti && report.mbti.type) {
+      items.push({ label: 'Type', value: report.mbti.type, note: report.mbti.nickname || '' });
+    }
+
+    const traits = Object.keys(TRAIT_LABELS)
+      .map(key => ({ key, item: report.bigFive && report.bigFive[key] }))
+      .filter(t => t.item && Number.isFinite(Number(t.item.score)))
+      .sort((a, b) => b.item.score - a.item.score);
+    if (traits.length >= 2) {
+      const top = traits[0];
+      const bottom = traits[traits.length - 1];
+      items.push({ label: 'Highest', value: TRAIT_LABELS[top.key], note: top.item.score + '/100' });
+      items.push({ label: 'Lowest', value: TRAIT_LABELS[bottom.key], note: bottom.item.score + '/100' });
+    }
+
+    const attachment = report.relationship && report.relationship.attachment;
+    if (attachment && attachment.style) {
+      items.push({ label: 'Attachment', value: attachment.style, note: 'a guess' });
+    }
+
+    if (!items.length) return '';
+    return '<div class="glance">' + items.map(item =>
+      '<div class="glance-item"><span class="glance-label">' + esc(item.label) + '</span>' +
+      '<span class="glance-value">' + esc(item.value) + '</span>' +
+      (item.note ? '<span class="glance-note">' + esc(item.note) + '</span>' : '') +
+      '</div>').join('') + '</div>';
+  }
+
   function bar(label, value, extra) {
     const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
     return '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
@@ -367,7 +401,7 @@
     let html = '';
 
     html += '<div class="card section-card">' + head('👤', 'Who you are') +
-      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
+      essenceBlock(report.essence) + glanceBlock(report) + paragraphs(report.summary) + '</div>';
 
     // Big Five.
     html += '<div class="card section-card">' +
