@@ -139,8 +139,24 @@ for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMP
 }
 
 check('profile schema covers everything the brief asked for',
-  ['bigFive', 'mbti', 'interests', 'beliefs', 'values', 'relationship', 'career', 'activity', 'card']
-    .every(key => key in prompts.PROFILE_SCHEMA.properties));
+  ['bigFive', 'mbti', 'interests', 'beliefs', 'values', 'relationship', 'career', 'activity',
+    'essence', 'card'].every(key => key in prompts.PROFILE_SCHEMA.properties));
+
+const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
+check('the profile opens on one noun with an icon and a reason',
+  ['noun', 'icon', 'why'].every(k => k in essenceProps));
+check('the noun is asked for as a noun, not a personality label',
+  /Not an adjective, not a personality label/.test(essenceProps.noun.description));
+check('the icon is asked for as a single emoji',
+  /Exactly one emoji character/.test(essenceProps.icon.description));
+
+const attachProps = prompts.PROFILE_SCHEMA.properties.relationship.properties.attachment.properties;
+check('attachment shows its working',
+  ['style', 'why', 'derivedFrom', 'implications', 'caveat'].every(k => k in attachProps));
+check('attachment names the signals it rests on',
+  /Name the actual numbers or patterns/.test(attachProps.derivedFrom.description));
+check('attachment spells out what it means for a partner',
+  /what a partner will feel/.test(attachProps.implications.description));
 
 const mbtiProps = prompts.PROFILE_SCHEMA.properties.mbti.properties;
 check('MBTI goes beyond four letters and a caveat',
@@ -195,6 +211,9 @@ for (const [label, needle] of [
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
   ['does not moralise about screen time', /not to moralise about screen time/],
+  ['wants a concrete, surprising noun', /concrete, slightly surprising/],
+  ['rejects a compliment dressed as a noun', /a compliment in a costume/],
+  ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }

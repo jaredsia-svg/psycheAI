@@ -155,6 +155,30 @@ try {
     at('Instagram behaviour') < at('QR code'));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
+  // ---- the one-noun opener ----
+  check('the profile opens on a single noun', await page.locator('.essence-noun').isVisible());
+  check('the noun carries an icon',
+    (await page.locator('.essence-icon').innerText()).trim().length > 0);
+  check('the noun comes before the summary prose', await page.evaluate(() => {
+    const essence = document.querySelector('.essence');
+    const prose = essence.parentElement.querySelector('p:not([class])');
+    return Boolean(essence.compareDocumentPosition(prose) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  check('the noun sits inside "Who you are"', await page.evaluate(() =>
+    document.querySelector('.essence').closest('.card').innerText.includes('Who you are')));
+  check('the icon really is a pictograph, not text',
+    (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
+
+  // ---- attachment ----
+  const attachment = await page.locator('.callout').first().innerText();
+  check('attachment names the signals it was read from', /Read from/i.test(attachment));
+  check('attachment lists what it means in practice', /What it means in practice/i.test(attachment));
+  check('attachment evidence renders as chips',
+    (await page.locator('.callout .ev').count()) >= 2);
+  check('attachment implications render as points',
+    (await page.locator('.callout .points dt').count()) >= 2);
+  check('attachment still carries its caveat', /cannot be read reliably/i.test(attachment));
+
   check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
@@ -348,6 +372,21 @@ try {
   await page.waitForSelector('#view-profile:not([hidden])');
   check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Aleç'));
   check('match history is kept', (await page.locator('#profile-body').innerText()).includes('Jordan'));
+
+  // A model told to send exactly one emoji will occasionally send a sentence.
+  // Drive the real render path with a bad one rather than trusting the guard.
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+    saved.report.essence.icon = 'a lighthouse, probably';
+    localStorage.setItem('psycheai_profile', JSON.stringify(saved));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])');
+  const swapped = (await page.locator('.essence-icon').innerText()).trim();
+  check('a wordy icon is swapped for a placeholder rather than printed',
+    !/lighthouse/.test(swapped) && swapped.codePointAt(0) > 0x2000, swapped);
+  check('the noun itself is untouched by the icon guard',
+    (await page.locator('.essence-noun').innerText()).includes('Riverbed'));
 
   await page.click('[data-nav="scan"]');
   await page.fill('#paste-input', 'https://example.com/#p=notarealpsycheaicode');

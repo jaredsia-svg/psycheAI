@@ -161,8 +161,16 @@ suite so they survive edits to the prompt.
 
 ## What the report contains
 
-Big Five with per-trait evidence; interests, beliefs and values; relationship and career strengths
-and weaknesses — and two longer sections:
+It opens on **one noun** — an animal, a material, a place, a trade, with an emoji and the reasoning
+for why that one and not a neighbouring one. The prompt asks for something concrete and slightly
+surprising, and explicitly rejects a compliment in a costume ("Diamond", "Star") or a restatement of
+a hobby. Because a model told to send exactly one emoji will occasionally send a sentence, the
+client checks the glyph and substitutes a placeholder rather than printing prose where the icon goes.
+
+Then Big Five with per-trait evidence; interests, beliefs and values; relationship and career
+strengths and weaknesses — the **attachment** guess shows its working, naming the behavioural traces
+it rests on, the style it rejected, and what it means in practice for them and for a partner, since
+a named style with no reasoning is worthless and slightly harmful. And two longer sections:
 
 **MBTI**, written to be worth reading rather than worth skimming. The type and its nickname, then
 per axis how strongly the data leans (`slight` / `moderate` / `clear`) and what that letter looks
@@ -215,14 +223,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 156 checks: synthesises a real ZIP export and runs
+npm test           # 165 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 113 checks: drives the real UI in Chromium against a
+npm run test:ui    # 125 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -80,6 +80,25 @@
     return '<p class="tag-row">' + values.map(t => '<span class="tag">' + esc(t) + '</span>').join('') + '</p>';
   }
 
+  // The model is asked for exactly one emoji, but a model asked for one emoji
+  // will occasionally send a word, a sentence, or three. Keep it only if it is
+  // plausibly a pictograph: no ASCII, and short once ZWJ sequences and skin
+  // tone modifiers are accounted for.
+  function safeIcon(value) {
+    const glyphs = Array.from(String(value || '').trim());
+    if (!glyphs.length || glyphs.length > 8) return '✳️';
+    if (glyphs.some(g => g.codePointAt(0) < 0x2000)) return '✳️';
+    return glyphs.join('');
+  }
+
+  function essenceBlock(essence) {
+    if (!essence || !essence.noun) return '';
+    return '<div class="essence"><span class="essence-icon">' + esc(safeIcon(essence.icon)) + '</span>' +
+      '<div><p class="essence-label">In one word, you are</p>' +
+      '<p class="essence-noun">' + esc(essence.noun) + '</p>' +
+      '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
+  }
+
   function bar(label, value, extra) {
     const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
     return '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
@@ -319,7 +338,7 @@
       esc(report.confidence.rationale) + '</p></div>';
 
     html += '<div class="card section-card">' + head('👤', 'Who you are') +
-      paragraphs(report.summary) + '</div>';
+      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
 
     // Big Five.
     html += '<div class="card section-card">' +
@@ -392,6 +411,14 @@
       '<div><h3 class="h-warn">Weaknesses</h3>' + points(relationship.weaknesses) + '</div></div>' +
       '<div class="callout"><h3>Attachment: ' + esc(relationship.attachment.style) + '</h3>' +
       '<p>' + esc(relationship.attachment.why) + '</p>' +
+      ((relationship.attachment.derivedFrom || []).length
+        ? '<p class="essence-label">Read from</p>' +
+          '<p class="trait-evidence">' + relationship.attachment.derivedFrom
+            .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
+        : '') +
+      ((relationship.attachment.implications || []).length
+        ? '<p class="essence-label">What it means in practice</p>' + points(relationship.attachment.implications)
+        : '') +
       '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p></div>' +
       '<h3>How to love you</h3>' + list(relationship.howToLoveThem, 'ticks') +
       '<h3>Who fits</h3><p>' + esc(relationship.idealPartner) + '</p></div>';

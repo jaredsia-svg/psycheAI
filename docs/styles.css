@@ -420,6 +420,33 @@ ul.ticks { list-style: none; padding-left: 0; margin: .4rem 0 0; }
 ul.ticks li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
 ul.ticks li::before { content: "\2713"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
 
+
+/* The one-noun opener. It is the first thing on the report, so it gets to be
+   the biggest thing on the report. */
+.essence {
+  display: flex; gap: 1rem; align-items: center;
+  padding: 1rem 1.1rem; margin-bottom: 1.3rem;
+  border-radius: 14px;
+  background: linear-gradient(120deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 35%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.essence-icon { flex: none; font-size: 2.9rem; line-height: 1; }
+.essence-label {
+  margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.essence-noun {
+  margin: .1rem 0 .35rem; font-size: 1.55rem; font-weight: 700; line-height: 1.15;
+  letter-spacing: -.02em;
+  background: linear-gradient(100deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.essence-why { margin: 0; font-size: .93rem; }
+.callout .essence-label { margin-top: .9rem; }
+/* Chips inside the callout share its background, so give them their own. */
+.callout .ev { background: var(--bg-alt); }
+.callout .fineprint { margin-top: .9rem; }
+
 /* ---------- tiles ---------- */
 
 .tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .7rem; margin: .5rem 0 0; }
@@ -483,6 +510,8 @@ ul.ticks li::before { content: "\2713"; position: absolute; left: 0; color: var(
   .section-card { border-top: 2px solid #4a2464; }
   .card-icon { border: 1px solid #ccc; }
   .tile { background: none; border: 1px solid #ccc; }
+  .essence { background: none; border: 1px solid #999; break-inside: avoid; }
+  .essence-noun { -webkit-text-fill-color: currentColor; color: #4a2464; background: none; }
   .callout { background: none; border: 1px solid #ccc; }
 
   h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
