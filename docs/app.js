@@ -434,7 +434,6 @@
         '</div></div>';
     }).join('') + '</div>';
 
-    if (mbti.portrait) html += '<div class="portrait">' + paragraphs(mbti.portrait) + '</div>';
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
 
     // Interests.

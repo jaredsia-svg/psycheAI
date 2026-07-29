@@ -208,10 +208,18 @@ try {
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
-  // The five MBTI sub-sections were removed; nothing should reintroduce them.
+  // The MBTI prose sections were removed; nothing should reintroduce them.
   for (const gone of ['At your best', 'Under stress', 'How people misread you', 'Growth edges', 'Key takeaways']) {
     check('MBTI no longer shows "' + gone + '"', !profileText.includes(gone));
   }
+  check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
+  check('MBTI is the axes and nothing else', await page.evaluate(() => {
+    const card = [...document.querySelectorAll('#profile-body .card')]
+      .find(c => /^MBTI:/.test(c.querySelector('h2').textContent));
+    // Head, the four axes, and the caveat line — no loose prose between.
+    return card.querySelectorAll(':scope > p').length === 1 &&
+      card.querySelector(':scope > p').classList.contains('fineprint');
+  }));
   check('values and beliefs are one card, not two',
     (await page.locator('#profile-body h2').allInnerTexts())
       .filter(t => /^Values|^Beliefs/.test(t)).length === 1);

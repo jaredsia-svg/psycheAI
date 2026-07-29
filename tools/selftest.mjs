@@ -154,8 +154,6 @@ check('the opening summary names the type and traits outright',
   /Name the type and the traits explicitly/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
 check('the opening summary may not contradict the sections',
   /do not contradict any section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
-check('the MBTI portrait is asked for as one paragraph',
-  /One paragraph/.test(prompts.PROFILE_SCHEMA.properties.mbti.properties.portrait.description));
 
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on one noun with an icon and a reason',
@@ -174,12 +172,13 @@ check('attachment spells out what it means for a partner',
   /what a partner will feel/.test(attachProps.implications.description));
 
 const mbtiProps = prompts.PROFILE_SCHEMA.properties.mbti.properties;
-check('MBTI goes beyond four letters and a caveat',
-  ['portrait', 'nickname'].every(k => k in mbtiProps));
-// The sub-sections were dropped from the UI, so they must not stay in the
-// schema burning output budget on text nobody renders.
+check('MBTI names the type and works through the axes',
+  ['type', 'nickname', 'letters', 'caveat'].every(k => k in mbtiProps));
+// Every prose section around the axes has been dropped from the UI over
+// time. None may stay in the schema burning output budget on text nobody
+// renders — the per-axis writing carries the section now.
 check('MBTI asks for nothing the report does not show',
-  ['atYourBest', 'underStress', 'misreadAs', 'growthEdges', 'keyTakeaways']
+  ['portrait', 'atYourBest', 'underStress', 'misreadAs', 'growthEdges', 'keyTakeaways']
     .every(k => !(k in mbtiProps)));
 check('each MBTI letter carries strength and a practical reading',
   ['axis', 'choice', 'strength', 'why', 'inPractice'].every(k => k in mbtiProps.letters.items.properties));
@@ -220,8 +219,9 @@ for (const [label, needle] of [
   ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
   ['says what may be taken from an image', /the setting, the activity, the company kept/],
   ['keeps images as weak evidence', /weakest evidence per item/],
-  ['demands the MBTI portrait be personal', /would be true of every INFP alive/],
-  ['wants the portrait to land somewhere uncomfortable', /should sting slightly in at least one place/],
+  ['demands the per-axis writing be personal', /pasted into a stranger's profile/],
+  ['wants one of the four axes to land uncomfortably', /let at least one of the four sting slightly/],
+  ['forbids smuggling a summary into the last axis', /do not write one into the last axis instead/],
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
@@ -229,7 +229,6 @@ for (const [label, needle] of [
   ['wants a concrete, surprising noun', /concrete, slightly surprising/],
   ['rejects a compliment dressed as a noun', /a compliment in a costume/],
   ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
-  ['keeps the MBTI portrait to one paragraph', /six good sentences beat twelve padded ones/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }

@@ -179,13 +179,12 @@ strengths and weaknesses — the **attachment** guess shows its working, naming 
 it rests on, the style it rejected, and what it means in practice for them and for a partner, since
 a named style with no reasoning is worthless and slightly harmful. And two longer sections:
 
-**MBTI**, written to be worth reading rather than worth skimming. The type and its nickname, then
-per axis how strongly the data leans (`slight` / `moderate` / `clear`) and what that letter looks
-like in their ordinary week — followed by a one-paragraph portrait in their own second person
-covering where the type serves them, where it costs them and how they get misread. The prompt is
-explicit that a
-sentence which would survive being pasted into a stranger's profile must be rewritten or cut, that
-the portrait should sting slightly somewhere, and that a hedged letter beats a confident wrong one.
+**MBTI**, which is four axes and nothing else. The type and its nickname, then per axis how strongly
+the data leans (`slight` / `moderate` / `clear`), what in their data put it there, and what that
+letter looks like in their ordinary week. There is no summary paragraph, and the prompt says so
+outright so the model does not smuggle one into the last axis. It also requires that a sentence
+which would survive being pasted into a stranger's profile be rewritten or cut, that one of the four
+sting slightly, and that a hedged letter beats a confident wrong one.
 
 **Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
 in what mix, when they reach for the app, how their use changed month by month, whether they publish
@@ -231,14 +230,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 172 checks: synthesises a real ZIP export and runs
+npm test           # 171 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 180 checks: drives the real UI in Chromium against a
+npm run test:ui    # 182 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

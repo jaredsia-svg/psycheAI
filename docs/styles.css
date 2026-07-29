@@ -520,8 +520,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .facet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
 .facet p { margin: 0; font-size: .9rem; }
 
-.portrait { margin-top: .4rem; }
-.portrait p:first-child::first-letter { font-size: 2.4em; line-height: .9; float: left; padding: .05em .12em 0 0; color: var(--accent); font-weight: 700; }
 
 /* ---------- print / PDF export ---------- */
 /*
