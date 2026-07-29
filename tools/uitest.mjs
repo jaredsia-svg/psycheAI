@@ -92,25 +92,27 @@ try {
   check('the image switch says video is never sent',
     /never video/i.test(await page.locator('#include-images ~ span').innerText()));
 
-  // The name is asked for before the upload, not after.
-  check('the name field comes before the upload box', await page.evaluate(() => {
-    const name = document.querySelector('#display-name');
-    const drop = document.querySelector('#dropzone');
-    return Boolean(name.compareDocumentPosition(drop) & Node.DOCUMENT_POSITION_FOLLOWING);
-  }));
+  // Nothing is asked for before the upload — the export carries the name.
+  check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
+  check('the upload box is the only thing to do',
+    (await page.locator('.upload-card input[type=text]').count()) === 0);
+  check('the hero is down to a headline',
+    (await page.locator('#view-welcome .hero .lede').count()) === 0);
+  check('step two is attributed to PsycheAI',
+    (await page.locator('.step-card h3').nth(1).innerText()) === 'PsycheAI reads it');
 
   await shot('1-welcome');
 
   // ---- upload ----
-  await page.fill('#display-name', 'Alec');
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
-  check('profile is titled with the chosen name',
-    (await page.locator('#profile-title').innerText()).includes('Alec'));
+  check('profile is titled with the name from the export',
+    (await page.locator('#profile-title').innerText()).includes('Aleç'),
+    await page.locator('#profile-title').innerText());
   await shot('2-profile');
 
   const profileText = await page.locator('#profile-body').innerText();
@@ -215,7 +217,6 @@ try {
   await page.reload({ waitUntil: 'load' });
   await page.uncheck('#include-dms');
   await page.uncheck('#include-images');
-  await page.fill('#display-name', 'Alec');
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
@@ -251,7 +252,7 @@ try {
 
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   const reportText = await page.locator('#report-body').innerText();
-  check('report names both people', reportText.includes('Alec') && reportText.includes('Jordan'));
+  check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
   check('report shows two scores', (await page.locator('.ring').count()) === 2);
   check('report separates romantic and platonic', /Romantic/.test(reportText) && /Platonic/.test(reportText));
   check('report has a how-to-partner playbook', /How to partner each other/i.test(reportText));
@@ -270,7 +271,7 @@ try {
   // ---- persistence, history, rejection ----
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
-  check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Alec'));
+  check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Aleç'));
   check('match history is kept', (await page.locator('#profile-body').innerText()).includes('Jordan'));
 
   await page.click('[data-nav="scan"]');

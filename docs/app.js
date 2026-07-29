@@ -180,7 +180,6 @@
 
     const includeMessages = $('#include-dms').checked;
     const includeImages = $('#include-images').checked;
-    const displayName = String($('#display-name').value || '').trim().slice(0, 24);
 
     $('#working-title').textContent = 'Reading your export';
     $('#working-note').textContent = 'The archive is being unpacked on this device.';
@@ -209,9 +208,7 @@
 
       setProgress(95, 'Building your evidence summary…');
       await new Promise(resolve => setTimeout(resolve, 30));
-      digest = Digest.build(signals, {
-        includeMessages, includeImages, imageCount: images.length, displayName,
-      });
+      digest = Digest.build(signals, { includeMessages, includeImages, imageCount: images.length });
     } catch (error) {
       show('welcome');
       flash('#upload-error', (error && error.message) || 'Could not read that archive.');

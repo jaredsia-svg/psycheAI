@@ -43,7 +43,7 @@ const check = (label, ok, detail) => {
 
 const signals = await globalThis.PsycheInstagram.readExports(
   [new File([buildExportZip()], 'export.zip')], { includeMessages: false });
-const digest = globalThis.PsycheDigest.build(signals, { displayName: 'Alec' });
+const digest = globalThis.PsycheDigest.build(signals, {});
 
 console.log('Provider: ' + status.provider + ' · model: ' + status.model);
 console.log('Sending a ' + digest.coverage.digestChars + '-char digest…');

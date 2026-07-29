@@ -143,7 +143,7 @@
 
   /**
    * @param {object} signals  output of PsycheInstagram.readExports
-   * @param {object} options  { includeMessages, includeImages, imageCount, displayName }
+   * @param {object} options  { includeMessages, includeImages, imageCount }
    */
   function build(signals, options) {
     const opts = options || {};
@@ -153,7 +153,9 @@
       schema: 'psycheai-digest/1',
       generatedAt: new Date().toISOString(),
       profile: {
-        name: opts.displayName || signals.profile.name || signals.profile.username || '',
+        // The app no longer asks for a name — the export already carries one,
+        // and it is the name this person's friends would recognise anyway.
+        name: signals.profile.name || signals.profile.username || '',
         username: signals.profile.username || '',
         bio: trim(signals.profile.bio, 400),
         city: signals.profile.city || '',

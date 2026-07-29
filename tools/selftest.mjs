@@ -254,10 +254,12 @@ check('a count above the ceiling is clamped',
 
 // ---------- digest ----------
 
-const digest = Digest.build(signals, { includeMessages: false, displayName: 'Alec' });
+const digest = Digest.build(signals, { includeMessages: false });
 
 check('digest declares its schema', digest.schema === 'psycheai-digest/1');
-check('digest uses the display name', digest.profile.name === 'Alec');
+// The app no longer asks for a name, so the export's own must come through —
+// mojibake repaired, since that is the name the other person will read.
+check('digest takes the name from the export', digest.profile.name === 'Aleç', digest.profile.name);
 check('digest carries complete counts', digest.counts.posts === 12 && digest.counts.postsLiked === 240);
 check('digest samples captions', digest.samples.captions.length > 0 && digest.samples.captions.length <= Digest.LIMITS.captions);
 check('digest samples comments', digest.samples.comments.length > 0);
@@ -279,7 +281,7 @@ check('digest holds no raw archive bytes', !JSON.stringify(digest).includes('PK
 // Direct messages are included by default now, so the default path is tested
 // against the real fixture rather than a hand-built stand-in.
 const withDmSignals = await IG.readExports([file], { includeMessages: true });
-const withDms = Digest.build(withDmSignals, { includeMessages: true, displayName: 'Alec' });
+const withDms = Digest.build(withDmSignals, { includeMessages: true });
 
 check('DMs are parsed when included', withDmSignals.messages.threads === 3, String(withDmSignals.messages.threads));
 check('the account owner is identified in the threads', withDmSignals.messages.owner === 'Aleç',
@@ -303,7 +305,7 @@ check('raw message text is dropped after summarising',
 // ---------- how images reach the model ----------
 
 const withPhotos = Digest.build(withImages, {
-  includeMessages: false, includeImages: true, imageCount: picked.length, displayName: 'Alec',
+  includeMessages: false, includeImages: true, imageCount: picked.length,
 });
 check('digest records that images were sent', withPhotos.coverage.images.included === true &&
   withPhotos.coverage.images.attached === picked.length);
@@ -364,7 +366,7 @@ function heavySignals() {
   };
 }
 
-const heavy = Digest.build(heavySignals(), { includeMessages: false, displayName: 'Heavy' });
+const heavy = Digest.build(heavySignals(), { includeMessages: false });
 
 check('heavy account caps captions', heavy.samples.captions.length === Digest.LIMITS.captions,
   heavy.samples.captions.length + ' captions');
