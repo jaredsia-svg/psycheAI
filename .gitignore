@@ -1,4 +1,4 @@
 node_modules/
-data/
+tools/screenshots/
 *.log
 .env

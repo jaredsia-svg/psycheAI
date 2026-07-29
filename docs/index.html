@@ -1,131 +1,285 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kindred — compatibility, decoded</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindred — your Instagram, read properly</title>
+<meta name="description" content="Turn your Instagram data export into a detailed personality profile, then scan a friend's QR code for romantic and platonic compatibility.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
 </head>
 <body>
+
 <nav class="nav">
-  <a class="brand" href="#" data-nav="home">💞 Kindred</a>
+  <a class="brand" href="#" data-nav="home">💞 <span>Kindred</span></a>
   <div class="nav-links">
-    <a href="#" data-nav="dashboard">My profile</a>
-    <a href="#" data-nav="scan">Scan a match</a>
+    <a href="#" data-nav="profile">My profile</a>
+    <a href="#" data-nav="scan">Scan a code</a>
+    <a href="#" data-nav="about">How it works</a>
   </div>
 </nav>
+
 <main class="container">
 
-  <!-- Welcome -->
-  <section id="view-welcome" class="view" hidden>
-    <div class="hero">
-      <h1>Know your chemistry <span class="accent">before the first date</span></h1>
-      <p class="lede">
-        Kindred builds a rich personality profile from your online presence and a science-informed
-        questionnaire — then turns it into a personal QR code. Scan someone else's code and get an
-        instant, honest read on your romantic compatibility, with practical advice on how to be
-        great together. Everything runs in your browser: your answers never leave your device.
-      </p>
-      <div class="cta-row">
-        <button class="btn btn-lg" data-nav="edit">Create my profile</button>
-      </div>
-    </div>
-    <div class="features">
-      <div class="card feature"><div class="feature-icon">🪞</div><h3>A profile that's actually you</h3>
-        <p>Paste your bios and posts, answer Big Five personality, attachment-style, values and
-           love-language questions. Kindred blends it all into one profile.</p></div>
-      <div class="card feature"><div class="feature-icon">📱</div><h3>Your personal QR code</h3>
-        <p>Your whole profile lives inside your QR code — no account, no server, no database.
-           Show it at a party or set it as your lock screen.</p></div>
-      <div class="card feature"><div class="feature-icon">💘</div><h3>Real compatibility insight</h3>
-        <p>A weighted score across six dimensions — plus concrete "how to partner each other"
-           advice, not just a number.</p></div>
-    </div>
-  </section>
+<!-- ══════════════ welcome ══════════════ -->
+<section id="view-welcome" class="view" hidden>
+  <header class="hero">
+    <p class="eyebrow">Private by construction — nothing leaves this device</p>
+    <h1>Your Instagram already knows who you are.<br><span class="accent">Kindred reads it back to you.</span></h1>
+    <p class="lede">
+      Upload your Instagram data export. Kindred reads your captions, comments, activity rhythm,
+      the accounts you follow and the topics Instagram itself has tagged you with, and builds a
+      detailed profile of your personality, interests, beliefs, values and relationship
+      preferences — guided by a structured personality questionnaire you fill in afterwards.
+      You get a QR code. Scan someone else's and find out how you would work together, as
+      partners and as friends.
+    </p>
+  </header>
 
-  <!-- Scanned someone before having a profile -->
-  <section id="view-pending" class="view" hidden>
-    <div class="card notice">
-      <h1>💌 You scanned <span id="pending-name">someone</span>'s Kindred code!</h1>
-      <p>To see your compatibility report, you need your own profile first. It takes about five
-         minutes — your answers stay on your device.</p>
-      <button class="btn" data-nav="edit">Build my profile</button>
-    </div>
-  </section>
+  <div class="steps-row">
+    <div class="step-card"><span class="step-num">1</span><h3>Upload your export</h3>
+      <p>The .zip file Instagram emails you. It is parsed inside your browser — there is no server to send it to.</p></div>
+    <div class="step-card"><span class="step-num">2</span><h3>Read your profile</h3>
+      <p>Big Five traits with the evidence behind each one, plus your themes, rhythm, values and beliefs.</p></div>
+    <div class="step-card"><span class="step-num">3</span><h3>Answer the questionnaire</h3>
+      <p>Three steps, pre-filled from your Instagram. Correct anything that is wrong — your answers win.</p></div>
+    <div class="step-card"><span class="step-num">4</span><h3>Swap QR codes</h3>
+      <p>Two scores, romantic and platonic, plus a straight assessment of how to partner each other.</p></div>
+  </div>
 
-  <!-- Profile editor -->
-  <section id="view-edit" class="view" hidden>
-    <h1 id="edit-title">Build your compatibility profile</h1>
-    <p class="lede">Five minutes now, better matches forever.</p>
-    <form id="profile-form" class="stack profile-form"></form>
-  </section>
+  <div class="card upload-card">
+    <h2>Start here</h2>
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose your Instagram export zip files">
+      <div class="dropzone-icon">📦</div>
+      <p><strong>Drop your Instagram .zip here</strong></p>
+      <p class="muted">or click to choose — you can select several parts at once</p>
+      <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
+    </div>
 
-  <!-- Dashboard -->
-  <section id="view-dashboard" class="view" hidden>
-    <h1 id="dash-greeting">Hi 👋</h1>
-    <div class="grid-2">
-      <div class="card qr-card">
-        <h2>Your QR code</h2>
-        <p class="muted">Let someone scan this with Kindred to test your compatibility. Your whole
-           profile is encoded inside it.</p>
-        <canvas id="qr-canvas" class="qr-img"></canvas>
-        <p><button class="btn btn-ghost btn-sm" id="copy-link">Copy my profile link</button></p>
-        <button class="btn" data-nav="scan">Scan someone else's code →</button>
-      </div>
-      <div class="card">
-        <h2>Your profile</h2>
-        <div id="dash-traits"></div>
-        <button class="btn btn-ghost btn-sm" data-nav="edit">Edit profile</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Match history <span class="muted" style="font-weight:400;font-size:0.85rem">(saved on this device)</span></h2>
-      <div id="dash-history"></div>
-    </div>
-  </section>
+    <label class="switch-row">
+      <input type="checkbox" id="include-dms">
+      <span>
+        <strong>Include direct messages</strong>
+        <span class="muted">Off by default. When on, Kindred counts your conversations and reads only
+        your own messages, for social-energy and tone signals. Nobody else's words are kept, and
+        no message text is stored or put into your QR code.</span>
+      </span>
+    </label>
 
-  <!-- Scan -->
-  <section id="view-scan" class="view" hidden>
-    <h1>Scan a match</h1>
-    <div id="scan-alert"></div>
-    <div class="grid-2">
-      <div class="card">
-        <h2>📷 Scan with camera</h2>
-        <p class="muted">Point your camera at another person's Kindred QR code.</p>
-        <div class="scanner-wrap"><video id="scan-video" playsinline muted></video><canvas id="scan-canvas" hidden></canvas></div>
-        <button class="btn" id="start-scan" type="button">Start camera</button>
-        <p class="muted" id="scan-status"></p>
-      </div>
-      <div class="card">
-        <h2>🔗 Or paste their link / code</h2>
-        <p class="muted">Ask them to tap "Copy my profile link" on their dashboard and send it to you.</p>
-        <form id="paste-form" class="stack">
-          <label>Their link or code <textarea id="paste-input" rows="4" placeholder="https://…#p=… or the long code" required></textarea></label>
-          <button class="btn" type="submit">Test our compatibility 💘</button>
-        </form>
-      </div>
-    </div>
-  </section>
+    <div id="upload-error" class="alert" hidden></div>
 
-  <!-- Report -->
-  <section id="view-report" class="view" hidden>
-    <div id="report-root"></div>
-    <div class="cta-row">
-      <button class="btn" data-nav="scan">Scan another match</button>
-      <button class="btn btn-ghost" data-nav="dashboard">Back to my profile</button>
+    <details class="help">
+      <summary>How do I get my Instagram data?</summary>
+      <ol>
+        <li>In the Instagram app, open <strong>Settings</strong> → <strong>Accounts Centre</strong>.</li>
+        <li>Go to <strong>Your information and permissions</strong> → <strong>Download your information</strong>.</li>
+        <li>Choose <strong>Download or transfer information</strong>, pick your account, then
+            <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
+        <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
+            Kindred cannot read the HTML format.</li>
+        <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
+        <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
+      </ol>
+      <p class="muted">Media quality does not matter — Kindred never opens your photos or videos,
+        only the JSON files describing your activity.</p>
+    </details>
+  </div>
+
+  <p class="fineprint">
+    Kindred is a self-knowledge and conversation tool, not a psychometric instrument and not a
+    background check. It infers from behaviour, it is often wrong, and it tells you how confident it is.
+  </p>
+</section>
+
+<!-- ══════════════ analysing ══════════════ -->
+<section id="view-analysing" class="view" hidden>
+  <div class="card centre">
+    <h2>Reading your export</h2>
+    <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+    <p id="progress-label" class="muted">Opening the archive…</p>
+    <p class="fineprint">Large exports can take a minute. Everything is happening on this device.</p>
+  </div>
+</section>
+
+<!-- ══════════════ analysis ══════════════ -->
+<section id="view-analysis" class="view" hidden>
+  <header class="page-head">
+    <h1 id="analysis-title">What your Instagram says about you</h1>
+    <p id="analysis-sub" class="muted"></p>
+  </header>
+  <div id="analysis-body"></div>
+  <div class="cta-row">
+    <button class="btn btn-lg" data-nav="questionnaire">Continue to the questionnaire →</button>
+    <button class="btn btn-ghost" data-nav="home">Start over</button>
+  </div>
+</section>
+
+<!-- ══════════════ questionnaire ══════════════ -->
+<section id="view-questionnaire" class="view" hidden>
+  <header class="page-head">
+    <h1 id="step-title">Step 1 of 3</h1>
+    <p id="step-sub" class="muted"></p>
+    <div class="progress slim"><div id="step-progress" class="progress-bar"></div></div>
+  </header>
+  <div id="step-alert" class="alert" hidden></div>
+  <form id="step-form" autocomplete="off"></form>
+  <div class="cta-row">
+    <button class="btn btn-ghost" id="step-back">← Back</button>
+    <button class="btn btn-lg" id="step-next">Next →</button>
+  </div>
+</section>
+
+<!-- ══════════════ profile ══════════════ -->
+<section id="view-profile" class="view" hidden>
+  <header class="page-head">
+    <h1 id="profile-title">Your profile</h1>
+    <p id="profile-sub" class="muted"></p>
+  </header>
+
+  <div class="qr-panel card">
+    <div class="qr-holder">
+      <canvas id="qr-canvas" width="280" height="280" aria-label="Your Kindred QR code"></canvas>
+      <p class="muted qr-caption">Your whole profile lives inside this code.</p>
     </div>
-  </section>
+    <div class="qr-actions">
+      <h2>Share your code</h2>
+      <p class="muted">Let someone scan this, or send them the link. There is no account and no
+        database — the code itself carries everything the other person's report needs.
+        Your written answers stay on this device.</p>
+      <div class="btn-row">
+        <button class="btn" id="copy-link">Copy my link</button>
+        <button class="btn btn-ghost" id="download-qr">Download PNG</button>
+        <button class="btn btn-ghost" data-nav="scan">Scan someone →</button>
+      </div>
+      <p class="fineprint" id="payload-size"></p>
+    </div>
+  </div>
+
+  <div id="profile-body"></div>
+
+  <div class="cta-row">
+    <button class="btn btn-ghost" id="edit-answers">Edit my answers</button>
+    <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
+  </div>
+</section>
+
+<!-- ══════════════ scan ══════════════ -->
+<section id="view-scan" class="view" hidden>
+  <header class="page-head">
+    <h1>Scan a Kindred code</h1>
+    <p class="muted">Point your camera at their QR code, upload a photo of it, or paste their link.</p>
+  </header>
+  <div id="scan-alert" class="alert" hidden></div>
+  <div class="card">
+    <div class="btn-row">
+      <button class="btn" id="start-camera">Use my camera</button>
+      <button class="btn btn-ghost" id="upload-qr">Upload a photo of a code</button>
+      <input type="file" id="qr-file" accept="image/*" hidden>
+    </div>
+    <div id="camera-holder" hidden>
+      <video id="scan-video" playsinline muted></video>
+      <canvas id="scan-canvas" hidden></canvas>
+    </div>
+    <p id="scan-status" class="muted"></p>
+    <hr>
+    <label class="field">Or paste their link or code
+      <input type="text" id="paste-input" placeholder="https://…/#p=… or the raw code">
+    </label>
+    <button class="btn" id="paste-go">Get our report</button>
+  </div>
+  <div id="scan-history"></div>
+</section>
+
+<!-- ══════════════ report ══════════════ -->
+<section id="view-report" class="view" hidden>
+  <div id="report-body"></div>
+  <div class="cta-row">
+    <button class="btn btn-ghost" data-nav="scan">Scan someone else</button>
+    <button class="btn btn-ghost" data-nav="profile">Back to my profile</button>
+  </div>
+</section>
+
+<!-- ══════════════ about ══════════════ -->
+<section id="view-about" class="view" hidden>
+  <header class="page-head"><h1>How Kindred works</h1></header>
+
+  <div class="card">
+    <h2>Where the profile comes from</h2>
+    <p>Two sources, in this order.</p>
+    <p><strong>Your Instagram export.</strong> Kindred reads the JSON files describing your posts and
+      captions, stories and reels, comments you have written, posts you liked and saved, the accounts
+      you follow, the topics Instagram itself has inferred about you, your bio, and — only if you
+      opt in — aggregate statistics about your direct messages. It never opens your photos.</p>
+    <p><strong>The questionnaire.</strong> A three-step personality test covering background,
+      personality and relationship preferences. Every answer that overlaps with something Kindred
+      guessed overrides the guess. The Instagram analysis is a starting point, not a verdict.</p>
+  </div>
+
+  <div class="card">
+    <h2>How the personality estimate is made</h2>
+    <p>Big Five traits are estimated from a weighted blend of language markers and behaviour:
+      the words you use, how varied your vocabulary is, how regularly you post, what time of day
+      you are active, how many people you engage with, and which themes dominate your activity.
+      This follows the open-vocabulary approach used in personality research — language use does
+      correlate with personality, but modestly, and only in aggregate.</p>
+    <p>So every trait shows you the evidence that moved it, and the whole profile carries a
+      confidence figure driven by how much data your export actually contained. A thin export
+      produces a hedged profile, and says so.</p>
+    <p><strong>What Kindred does not infer:</strong> your attachment style, your love languages,
+      your dealbreakers, your religion or whether you want children. Nothing in an Instagram
+      export predicts these reliably, so they come from your answers only. Kindred also does not
+      classify the people you follow by appearance or gender.</p>
+  </div>
+
+  <div class="card">
+    <h2>How compatibility is scored</h2>
+    <p>Eight dimensions, weighted differently for romance and friendship — because what makes a
+      good partner is not what makes a good friend. Shared interests carry a friendship;
+      attachment style and life direction decide a relationship.</p>
+    <div class="table-scroll">
+      <table class="weights-table">
+        <thead><tr><th>Dimension</th><th>Romantic</th><th>Platonic</th></tr></thead>
+        <tbody id="weights-body"></tbody>
+      </table>
+    </div>
+    <p class="muted">Dealbreakers are only ever checked against habits the other person has
+      declared about themselves. Anything that cannot be checked — infidelity, anger, drugs —
+      is listed as a conversation to have rather than folded into a score.</p>
+  </div>
+
+  <div class="card">
+    <h2>Privacy</h2>
+    <p>There is no server, no account and no database. The page is static; your export is read in
+      the browser with the File API, and your profile is kept in this browser's local storage.
+      Your QR code contains only structured fields — your name, background, tick-box answers,
+      trait scores and a digest of your Instagram signals. Your written explanations are never
+      encoded into it.</p>
+    <p>Deleting your profile on the profile page removes everything Kindred has stored.</p>
+  </div>
+
+  <div class="card">
+    <h2>What this is not</h2>
+    <p>Kindred is not a validated psychometric instrument, not a diagnosis, and not a background
+      check. It is a mirror and a conversation starter. A low score is a list of things worth
+      talking about, not a reason to walk away — and a high score is not a promise.</p>
+  </div>
+</section>
 
 </main>
+
 <footer class="footer">
-  <p>Kindred runs entirely in your browser — profiles live in your QR code and matches are saved
-     only on your own device. Compatibility scores are a conversation starter, not a verdict. 💜</p>
+  <p>Kindred · runs entirely in your browser · <a href="#" data-nav="about">how it works</a></p>
 </footer>
 
 <script src="vendor/qrcode.js"></script>
 <script src="vendor/jsqr.js"></script>
-<script src="engine.js"></script>
+<script src="zip.js"></script>
+<script src="lexicon.js"></script>
+<script src="questionnaire.js"></script>
+<script src="analysis.js"></script>
+<script src="codec.js"></script>
+<script src="compat.js"></script>
+<script src="instagram.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
