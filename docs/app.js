@@ -1,4 +1,4 @@
-// Kindred SPA: upload → digest → Claude → profile → QR → scan → compatibility.
+// Kindred SPA: upload → digest → model → profile → QR → scan → compatibility.
 // All state lives in localStorage; the server holds nothing.
 (function () {
   'use strict';
@@ -192,8 +192,12 @@
     await runAnalysis(digest);
   }
 
+  function modelName() {
+    return state.server.model || 'The model';
+  }
+
   async function runAnalysis(digest) {
-    $('#working-title').textContent = 'Claude is reading your profile';
+    $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary was sent for analysis. ' +
       'This usually takes a minute or two — the model is writing a long report.';
@@ -354,7 +358,7 @@
       html += '<div class="card"><h2>Your matches</h2>' + historyTable(history) + '</div>';
     }
 
-    html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'Claude') + ' on ' +
+    html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'the model') + ' on ' +
       esc(new Date(profile.createdAt).toLocaleString()) + '.</p>';
 
     $('#profile-body').innerHTML = html;
@@ -519,7 +523,7 @@
     const other = await Card.decodeCard(Card.extractPayload(rawText));
     if (!other) return false;
 
-    $('#working-title').textContent = 'Claude is comparing you';
+    $('#working-title').textContent = modelName() + ' is comparing you';
     $('#working-note').textContent = 'Two profile cards were sent — nothing else.';
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
@@ -614,17 +618,18 @@
       : state.server.mock
         ? 'This server is running in mock mode — analyses are canned, and no API calls are made.'
         : state.server.ready
-          ? 'This server is configured and using ' + state.server.model + '.'
-          : 'This server has no ANTHROPIC_API_KEY set, so analysis will fail.';
+          ? 'This server is using ' + state.server.provider + ' · ' + state.server.model + '.'
+          : 'This server has no model provider configured. ' + (state.server.hint || '');
   }
 
   function renderServerStatus() {
     if (state.server.mock) {
-      flash('#server-status', 'Mock mode: this server returns canned analyses so you can click through the app. Nothing is sent to Claude.');
+      flash('#server-status', 'Mock mode: this server returns canned analyses so you can click through the app. Nothing is sent to any model provider.');
     } else if (state.server.unreachable) {
       flash('#server-status', 'Cannot reach the Kindred server. Start it with "npm start".');
     } else if (!state.server.ready) {
-      flash('#server-status', 'This server has no ANTHROPIC_API_KEY configured, so the analysis will fail. Set one and restart, or run with KINDRED_MOCK=1 to try the app.');
+      flash('#server-status', 'No model provider is configured, so the analysis will fail. ' +
+        (state.server.hint || 'Set GEMINI_API_KEY or ANTHROPIC_API_KEY and restart.'));
     } else {
       flash('#server-status', '');
     }

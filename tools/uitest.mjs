@@ -49,6 +49,8 @@ try {
   check('welcome view renders', await page.locator('#view-welcome').isVisible());
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
+  check('the status endpoint reports which provider is active',
+    (await page.evaluate(() => fetch('/api/status').then(r => r.json()))).provider === 'mock');
   check('there is no questionnaire left in the app',
     (await page.content()).toLowerCase().includes('questionnaire') === false ||
     (await page.locator('#step-form').count()) === 0);

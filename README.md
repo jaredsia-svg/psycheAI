@@ -1,22 +1,28 @@
 # 💞 Kindred
 
 Upload your Instagram data export. Kindred unpacks it in your browser, distils it into an evidence
-summary, and hands that to **Claude**, which writes you a detailed profile: your Big Five and MBTI
-with the reasoning behind each, your interests, beliefs and values, and your strengths and
-weaknesses — both in relationships and in your career.
+summary, and hands that to a language model — **Google Gemini** or **Anthropic Claude** — which
+writes you a detailed profile: your Big Five and MBTI with the reasoning behind each, your interests,
+beliefs and values, and your strengths and weaknesses — both in relationships and in your career.
 
-That profile is tagged to a **QR code**. Scan someone else's and Claude assesses how the two of you
-would work together, scoring **romantic** and **platonic** compatibility separately and writing a
+That profile is tagged to a **QR code**. Scan someone else's and the model assesses how the two of
+you would work together, scoring **romantic** and **platonic** compatibility separately and writing a
 playbook aimed at each of you about the other.
 
 ## Running it
 
-Kindred needs a server because an API key cannot ship inside a web page.
+Kindred needs a server because an API key cannot ship inside a web page. Set whichever key you have:
 
 ```bash
 npm install
-export ANTHROPIC_API_KEY=sk-ant-...
+
+# Google Gemini — get a key at aistudio.google.com/apikey
+export GEMINI_API_KEY=...
 npm start                 # http://localhost:3000
+
+# …or Anthropic Claude
+export ANTHROPIC_API_KEY=sk-ant-...
+npm start
 ```
 
 Or click through the whole app with canned analyses and no API calls:
@@ -25,8 +31,34 @@ Or click through the whole app with canned analyses and no API calls:
 npm run mock              # http://localhost:3000, KINDRED_MOCK=1
 ```
 
-Set `KINDRED_MODEL` to use a different model (default `claude-opus-5`). Camera scanning needs HTTPS
-or `localhost`; pasting a link and uploading a photo of a code always work.
+Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
+work.
+
+### Choosing a provider and model
+
+| Variable | Effect |
+|---|---|
+| `GEMINI_API_KEY` | Uses Gemini. Takes priority if both keys are set. |
+| `ANTHROPIC_API_KEY` | Uses Claude. |
+| `KINDRED_PROVIDER` | Forces `gemini` or `anthropic` when you have both keys. |
+| `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
+| `KINDRED_MODEL` | Claude model ID. Default `claude-opus-5`. |
+| `KINDRED_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
+
+Gemini model IDs change often, so the default here will go stale. List what your key can actually
+reach:
+
+```bash
+npm run models            # needs GEMINI_API_KEY
+```
+
+`gemini-3.6-flash` is the default because it is generally available and cheap enough to re-run
+freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
+but preview-only.
+
+Both providers share the same prompts and the same output schemas (`lib/prompts.js`) — Gemini's
+`responseJsonSchema` accepts real JSON Schema, so nothing is translated between them. The server
+picks a provider at startup and the rest of the app never knows which one ran.
 
 ## What is sent where
 
@@ -39,9 +71,10 @@ This is the part worth reading carefully.
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
 | Direct messages, unless you opt in | If you opt in: DM counts plus a sample of **your own** messages only |
 
-The archive is unzipped in the browser with the File API. The server proxies two Claude calls and
+The archive is unzipped in the browser with the File API. The server proxies two model calls and
 stores nothing — your profile and reports live in this browser's local storage until you press
-delete.
+delete. Whichever provider you configure receives the digest, so pick the one whose data-handling
+terms you are happy with.
 
 ## How the analysis works
 
@@ -56,8 +89,8 @@ evidence honestly:
 - **Absence is weak evidence.** Most people are near the middle on most traits.
 
 Both calls use **structured outputs**, so the response is guaranteed to match the schema and the UI
-renders it without defensive parsing. Both stream, because adaptive thinking and a long report share
-one token budget.
+renders it without defensive parsing. Both stream, because thinking tokens and a long report share
+one output budget.
 
 ### What the model is told not to do
 
@@ -89,19 +122,23 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 65 checks: synthesises a real ZIP export and runs
-                   # unzip → parse → digest → card → QR → decode, and validates
-                   # both prompt schemas against the structured-output rules
-npm run test:ui    # 38 checks: drives the real UI in Chromium against a
+npm test           # 82 checks: synthesises a real ZIP export and runs
+                   # unzip → parse → digest → card → QR → decode; validates both
+                   # prompt schemas against the structured-output rules and the
+                   # keyword subset Gemini supports; and exercises every branch
+                   # of provider selection
+npm run test:ui    # 39 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report
-npm run test:live  # 15 checks: two real Claude calls. Skips without a key.
+npm run test:live  # 15 checks: two real model calls against whichever provider
+                   # is configured. Skips cleanly without a key.
 ```
 
 `test:ui` needs Playwright (installed by `npm install`); add `--shots` to write screenshots to
 `tools/screenshots/`.
 
 Only `test:live` exercises the actual model call — everything else runs against `lib/mock.js`, which
-returns schema-shaped canned data so the rest of the pipeline can be tested without tokens.
+returns schema-shaped canned data so the rest of the pipeline can be tested without tokens. Run
+`test:live` once against your own key before trusting the app end to end.
 
 ## Layout
 
@@ -116,11 +153,13 @@ docs/                 the browser app — no build step
   llm.js              client for the two server endpoints
   vendor/             qrcode (generation) · jsQR (scanning)
 lib/
-  prompts.js          both system prompts and both output schemas
+  prompts.js          both system prompts and both output schemas, provider-neutral
+  provider.js         picks Gemini, Claude or mock from the environment
+  gemini.js           the Google GenAI SDK calls
   claude.js           the Anthropic SDK calls
   mock.js             canned analyses for tests and for clicking around
 server.js             static hosting + /api/analyse + /api/compatibility
-tools/                test suites and the synthetic export fixture
+tools/                test suites, the synthetic export fixture, model listing
 ```
 
 ## What this is not

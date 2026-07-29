@@ -3,7 +3,7 @@
 // Builds a synthetic Instagram export as a real ZIP, then runs
 // unzip → parse → digest → (mock) analysis → card → QR payload → decode,
 // and validates the prompt schemas against the structured-output rules.
-// The live Claude call is covered by tools/livetest.mjs, which needs a key.
+// The live model call is covered by tools/livetest.mjs, which needs a key.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,6 +34,54 @@ const Card = globalThis.KindredCard;
 
 const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
+const claude = await import('../lib/claude.js').then(m => m.default);
+const gemini = await import('../lib/gemini.js').then(m => m.default);
+
+// ---------- provider parity ----------
+//
+// Both providers share the prompts and schemas and must be interchangeable
+// from the server's point of view, so assert the interface rather than
+// trusting it.
+
+for (const engine of [claude, gemini, mock]) {
+  const missing = ['name', 'analyseProfile', 'analyseCompatibility', 'describeError', 'hasKey', 'MODEL']
+    .filter(key => !(key in engine));
+  check(engine.name + ' implements the provider interface', missing.length === 0, 'missing ' + missing);
+  check(engine.name + ' names a model', typeof engine.MODEL === 'string' && engine.MODEL.length > 0);
+}
+
+check('providers are distinguishable', new Set([claude.name, gemini.name, mock.name]).size === 3);
+check('gemini can list models for discovery', typeof gemini.listModels === 'function');
+
+// Provider selection is env-driven, so exercise the branches rather than
+// documenting them and hoping.
+async function selectionFor(env) {
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync(process.execPath,
+    ['-e', 'process.stdout.write(JSON.stringify(require("' + join(root, 'lib', 'provider.js') + '").describe()))'],
+    { env: { PATH: process.env.PATH, ...env } });
+  return JSON.parse(out.toString());
+}
+
+const selections = {
+  gemini: await selectionFor({ GEMINI_API_KEY: 'x' }),
+  anthropic: await selectionFor({ ANTHROPIC_API_KEY: 'x' }),
+  both: await selectionFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x' }),
+  forced: await selectionFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x', KINDRED_PROVIDER: 'anthropic' }),
+  mock: await selectionFor({ KINDRED_MOCK: '1' }),
+  none: await selectionFor({}),
+  customModel: await selectionFor({ GEMINI_API_KEY: 'x', GEMINI_MODEL: 'gemini-3.1-pro-preview' }),
+};
+
+check('a Gemini key selects Gemini', selections.gemini.provider === 'gemini' && selections.gemini.ready);
+check('an Anthropic key selects Anthropic', selections.anthropic.provider === 'anthropic' && selections.anthropic.ready);
+check('Gemini wins when both keys are present', selections.both.provider === 'gemini');
+check('KINDRED_PROVIDER overrides the key order', selections.forced.provider === 'anthropic');
+check('mock mode wins over everything', selections.mock.mock === true);
+check('no key reports not-ready with a hint',
+  selections.none.ready === false && /GEMINI_API_KEY/.test(selections.none.hint), selections.none.hint);
+check('GEMINI_MODEL overrides the default model',
+  selections.customModel.model === 'gemini-3.1-pro-preview', selections.customModel.model);
 
 // ---------- schema validation ----------
 //
@@ -63,10 +111,30 @@ function walkSchema(node, path, report) {
   if (node.type === 'array') walkSchema(node.items, path + '[]', report);
 }
 
+// Gemini's responseJsonSchema takes real JSON Schema but honours only a
+// documented subset of keywords; anything outside it is silently ignored,
+// which is worse than an error. Keep both providers inside the intersection.
+const GEMINI_SUPPORTED = new Set(['$id', '$defs', '$ref', '$anchor', 'type', 'format', 'title',
+  'description', 'enum', 'items', 'prefixItems', 'minItems', 'maxItems', 'minimum', 'maximum',
+  'anyOf', 'oneOf', 'properties', 'additionalProperties', 'required', 'propertyOrdering']);
+
+function walkKeywords(node, path, report) {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+  for (const key of Object.keys(node)) {
+    if (!GEMINI_SUPPORTED.has(key)) report.push(path + ' uses "' + key + '"');
+  }
+  for (const key of Object.keys(node.properties || {})) walkKeywords(node.properties[key], path + '.' + key, report);
+  if (node.items) walkKeywords(node.items, path + '[]', report);
+}
+
 for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMPATIBILITY_SCHEMA', prompts.COMPATIBILITY_SCHEMA]]) {
   const report = [];
   walkSchema(schema, name, report);
   check(name + ' obeys the structured-output rules', report.length === 0, report.slice(0, 4).join('; '));
+
+  const keywords = [];
+  walkKeywords(schema, name, keywords);
+  check(name + ' stays inside the keywords Gemini supports', keywords.length === 0, keywords.slice(0, 4).join('; '));
 }
 
 check('profile schema covers everything the brief asked for',

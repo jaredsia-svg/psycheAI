@@ -1,14 +1,15 @@
 {
   "name": "kindred",
   "version": "3.0.0",
-  "description": "Reads your Instagram data export with Claude into a detailed personality profile, tagged to a QR code, with romantic and platonic compatibility reports",
+  "description": "Reads your Instagram data export with a language model into a detailed personality profile, tagged to a QR code, with romantic and platonic compatibility reports",
   "private": true,
   "scripts": {
     "start": "node server.js",
     "mock": "KINDRED_MOCK=1 node server.js",
     "test": "node tools/selftest.mjs",
     "test:ui": "node tools/uitest.mjs",
-    "test:live": "node tools/livetest.mjs"
+    "test:live": "node tools/livetest.mjs",
+    "models": "node tools/models.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -17,6 +18,7 @@
     "playwright": "1.56"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0"
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@google/genai": "^2.13.0"
   }
 }

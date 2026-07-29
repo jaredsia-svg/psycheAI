@@ -1,4 +1,4 @@
-// Browser client for the two server endpoints that call Claude.
+// Browser client for the two server endpoints that call the model provider.
 //
 // The server does the model call because an API key cannot ship in a static
 // page. What crosses this boundary is the evidence digest (bounded, sampled)
@@ -6,8 +6,8 @@
 (function (root) {
   'use strict';
 
-  // Opus at high effort on a long report is a slow call by design; the UI
-  // shows elapsed time rather than pretending otherwise.
+  // A long report with thinking enabled is a slow call by design, on either
+  // provider; the UI shows elapsed time rather than pretending otherwise.
   const TIMEOUT_MS = 10 * 60 * 1000;
 
   async function post(path, body) {
