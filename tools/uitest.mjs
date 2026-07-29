@@ -101,6 +101,27 @@ try {
   check('step two is attributed to PsycheAI',
     (await page.locator('.step-card h3').nth(1).innerText()) === 'PsycheAI reads it');
 
+  // ---- the nav on a phone ----
+  //
+  // The three links wrapped onto a second row below about 410px, which is
+  // most phones. Check the real widths rather than the breakpoints.
+  for (const width of [320, 360, 375, 390, 412]) {
+    await page.setViewportSize({ width, height: 760 });
+    const nav = await page.evaluate(() => {
+      const links = [...document.querySelectorAll('.nav-links a')];
+      return {
+        rows: new Set(links.map(a => a.getBoundingClientRect().top.toFixed(0))).size,
+        smallest: Math.min(...links.map(a => parseFloat(getComputedStyle(a).fontSize))),
+        hScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    check('nav links stay on one row at ' + width + 'px', nav.rows === 1, nav.rows + ' rows');
+    check('nav links stay legible at ' + width + 'px', nav.smallest >= 11, nav.smallest + 'px');
+    check('the page does not scroll sideways at ' + width + 'px', nav.hScroll === 0, nav.hScroll + 'px');
+  }
+  await shot('1-welcome-mobile');
+  await page.setViewportSize({ width: 1100, height: 900 });
+
   await shot('1-welcome');
 
   // ---- upload ----

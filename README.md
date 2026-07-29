@@ -223,14 +223,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 165 checks: synthesises a real ZIP export and runs
+npm test           # 167 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 125 checks: drives the real UI in Chromium against a
+npm run test:ui    # 151 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
