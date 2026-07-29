@@ -438,7 +438,41 @@ try {
     /How to befriend each other/i.test(await page.locator('#tab-platonic').innerText()));
   await shot('4-report-platonic');
 
+  // ---- how it works ----
+  await page.click('[data-nav="about"]');
+  await page.waitForSelector('#view-about:not([hidden])');
+  const about = await page.locator('#view-about').innerText();
+
+  check('the about page is four sections, not six',
+    (await page.locator('#view-about .card').count()) === 4,
+    String(await page.locator('#view-about .card').count()));
+  check('every about section has a glyph and a one-line purpose',
+    (await page.locator('#view-about .card-icon').count()) === 4 &&
+    (await page.locator('#view-about .card-sub').count()) === 4);
+  check('it opens on where the data goes', /Your data stays with you/.test(about));
+  check('stays-here and gets-sent are shown side by side',
+    (await page.locator('#view-about .split .ticks li').count()) >= 3 &&
+    (await page.locator('#view-about .split .sends li').count()) >= 3);
+  check('what you get back is a grid, not a paragraph',
+    (await page.locator('#view-about .tile').count()) === 8);
+  check('the QR and matching are one section now',
+    /Your code, and matching/.test(about) && /romantic/i.test(about) && /platonic/i.test(about));
+  check('the limits are still stated', /not a diagnosis, not a background check/.test(about));
+  check('the guardrails are still listed',
+    (await page.locator('#view-about .nots li').count()) === 4);
+  check('prohibitions are not marked with ticks', await page.evaluate(() => {
+    const mark = getComputedStyle(document.querySelector('#view-about .nots li'), '::before');
+    return mark.content.includes('✕') || mark.content.includes('\\2715');
+  }));
+  check('the server status line survived the rewrite',
+    (await page.locator('#about-status').innerText()).length > 0);
+  check('no dev setup instructions are left on a user-facing page',
+    !/GEMINI_API_KEY|npm start|PSYCHEAI_MOCK/.test(about));
+  await shot('5-about');
+
   // ---- persistence, history, rejection ----
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])');
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
   check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Aleç'));

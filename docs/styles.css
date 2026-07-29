@@ -445,6 +445,16 @@ ul.ticks { list-style: none; padding-left: 0; margin: .4rem 0 0; }
 ul.ticks li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
 ul.ticks li::before { content: "\2713"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
 
+/* A tick beside a prohibition reads as approval, so rules get a cross. */
+ul.nots { list-style: none; padding-left: 0; margin: .4rem 0 0; }
+ul.nots li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
+ul.nots li::before { content: "\2715"; position: absolute; left: 0; color: var(--danger); font-weight: 700; }
+
+/* The counterpart to .ticks: things that go out rather than stay put. */
+ul.sends { list-style: none; padding-left: 0; margin: .4rem 0 0; }
+ul.sends li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
+ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(--warn); font-weight: 700; }
+
 
 /* The one-noun opener. It is the first thing on the report, so it gets to be
    the biggest thing on the report. */

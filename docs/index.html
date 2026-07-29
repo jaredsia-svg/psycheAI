@@ -198,93 +198,89 @@
 <section id="view-about" class="view" hidden>
   <header class="page-head"><h1>How PsycheAI works</h1></header>
 
-  <div class="card">
-    <h2>What happens to your data</h2>
-    <p>Your Instagram export is a <code>.zip</code> containing your posts, messages, contacts and
-      location history. PsycheAI opens it <strong>in your browser</strong> using the File API and
-      reads the JSON files describing your activity. Your videos are never opened at all.</p>
-    <p>Photographs are the one exception, and they are opt-out rather than hidden. Left switched on,
-      PsycheAI picks roughly <strong>fourteen of your own stills</strong> — spread across your whole
-      account history rather than the latest few — shrinks them in your browser and sends those
-      alongside the summary. Without them the model reads only text, which is a real blind spot for
-      anyone who posts without captions. Untick the box before uploading and not a single pixel
-      leaves your device.</p>
-    <p>It then builds an <strong>evidence digest</strong>: your counts and activity rhythm, a sample
-      of your own captions and comments, the accounts you follow, and the topics Instagram itself
-      has inferred about you. That digest — not the archive — is what gets sent to the model for
-      analysis. Direct messages are included by default because how you write to people who know
-      you is the most revealing text in the export — but only <em>your own</em> messages are ever
-      sampled, never the other side of a conversation, and you can untick that box before uploading
-      to leave them out entirely.</p>
-    <p>Nothing is stored on the server. Your profile and reports live in this browser's local
-      storage and are deleted when you press the delete button.</p>
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">🔒</span><div>
+      <h2>Your data stays with you</h2>
+      <p class="card-sub">The .zip is opened here, in this browser. It is never uploaded anywhere.</p>
+    </div></div>
+
+    <div class="split">
+      <div>
+        <h3 class="h-good">Never leaves your device</h3>
+        <ul class="ticks">
+          <li>The .zip itself</li>
+          <li>Every video in it</li>
+          <li>Your full written report</li>
+          <li>The other person's side of every DM</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="h-warn">Sent off to be read</h3>
+        <ul class="sends">
+          <li>A summary: your counts, your timings, a sample of your own words</li>
+          <li>About 14 of your own photos, shrunk down — switch it off to send none</li>
+          <li>A short version of your profile, when someone scans your code</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="fineprint">Nothing is kept on the server. Your profile lives in this browser until you
+      press delete.</p>
   </div>
 
-  <div class="card">
-    <h2>What the model is asked to do</h2>
-    <p>The model is given the digest and asked to weigh it honestly: a person's own words are the
-      strongest signal, Instagram's inferred topics are real but noisy, and accounts followed mix
-      interest with aspiration. It is told that most people are near the middle on most traits, and
-      to reserve extreme scores for extreme evidence.</p>
-    <p>It opens by naming you in a single noun — an animal, a material, a place, a trade — with the
-      reasoning for why that one and not a neighbouring one. Then your Big Five with per-trait
-      evidence; a long-form MBTI reading — the type and
-      its nickname, how strongly each axis leans, what that letter looks like in your actual week,
-      and a portrait written to you; your interests, values and beliefs; your strengths and
-      weaknesses from both a relationship and a career perspective; and a read of your Instagram
-      behaviour itself — what you post, when you are here, how it has changed, whether you publish
-      more than you read, and where your attention goes. Plus a confidence score for the whole
-      thing.</p>
-    <p>The finished report exports to PDF from the buttons at the top and bottom of your profile.
-      That goes through your browser's own print dialog — choose <strong>Save as PDF</strong> —
-      which keeps the text selectable and searchable rather than turning it into a picture.</p>
-    <p><strong>What it is told not to do:</strong> identify or speculate about other people in your
-      data, or infer sexual orientation, health, immigration status or political affiliation unless
-      you have stated it outright in your own words. It does not classify anyone by appearance or
-      by the demographics of who they follow.</p>
-    <p>The photographs carry stricter limits still. Other people appear in them and never agreed to
-      any of this, so the model is told to say nothing at all about them — and nothing about anyone's
-      race, body, age, attractiveness or wealth, including yours. It may read the setting, the
-      activity, whether you are alone or in company, and the care taken over a shot. It is also told
-      that fourteen pictures out of thousands are weak evidence, and that Instagram is where people
-      post their best day of the month.</p>
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">📄</span><div>
+      <h2>What you get back</h2>
+      <p class="card-sub">One long report, written to you, with the evidence for every claim in it.</p>
+    </div></div>
+
+    <div class="tile-grid">
+      <div class="tile"><h4>You in one word</h4><p>A noun — an animal, a material, a place — and why that one.</p></div>
+      <div class="tile"><h4>Big Five</h4><p>Five scores out of 100, each with what in your data put it there.</p></div>
+      <div class="tile"><h4>MBTI</h4><p>Your type, how strongly each letter leans, and what it looks like in your week.</p></div>
+      <div class="tile"><h4>Values &amp; beliefs</h4><p>What you seem to hold to — and how firmly the data actually says so.</p></div>
+      <div class="tile"><h4>In relationships</h4><p>How you'd be to be close to, your attachment style, and how to love you.</p></div>
+      <div class="tile"><h4>At work</h4><p>Where you'd thrive, how you work, and what tends to hold you back.</p></div>
+      <div class="tile"><h4>Your Instagram habits</h4><p>When you post, how that changed, and where your attention goes.</p></div>
+      <div class="tile"><h4>A confidence score</h4><p>How much of the above to believe, and why.</p></div>
+    </div>
+
+    <p class="fineprint">Save the whole thing as a PDF from the button on your profile.</p>
   </div>
 
-  <div class="card">
-    <h2>The QR code</h2>
-    <p>Along with your full report, the model produces a compact <em>card</em> — the same profile
-      reduced to short phrases. That card is deflate-compressed and encoded directly into your QR
-      code, so there is nothing to look up and no account to create.</p>
-    <p>When someone scans you, their browser decodes your card and sends both cards to the model,
-      which writes the compatibility report. Your long-form report never leaves your device.</p>
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">💞</span><div>
+      <h2>Your code, and matching</h2>
+      <p class="card-sub">No account, no database, nothing to look up.</p>
+    </div></div>
+    <p>Your profile is squeezed down to a handful of short phrases and packed <em>inside</em> the QR
+      code itself. That is the whole thing — the code is not a link to a profile, it is the profile.</p>
+    <p>When someone scans you, their phone reads your card, sends it along with theirs, and gets back
+      two scores: <strong>romantic</strong> and <strong>platonic</strong>, kept separate because they
+      are genuinely different questions. You can be a great friendship and a poor romance, and the
+      report will say so. Each comes with what works, what will rub, and specific advice for each of
+      you about the other.</p>
   </div>
 
-  <div class="card">
-    <h2>How compatibility is judged</h2>
-    <p>Romantic and platonic fit are scored separately, because they are different questions.
-      Romance turns on life direction, values, emotional safety and whether two daily rhythms can
-      coexist. Friendship turns on shared interests, compatible energy and low friction. A pair can
-      be a great friendship and a poor romance — the report says so when that is the case.</p>
-    <p>Each mode gets a score, an honest verdict, what works, what will rub, and a playbook aimed
-      at each person individually about the other.</p>
-  </div>
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">⚖️</span><div>
+      <h2>The honest bit</h2>
+      <p class="card-sub">This is a mirror and a conversation starter. It is not a test.</p>
+    </div></div>
+    <p>Not a psychometric instrument, not a diagnosis, not a background check. It is a language model
+      reading traces of your behaviour, and it is often wrong — which is why it tells you how sure it
+      is. A low match score is a list of things worth talking about, not a reason to walk away. A
+      high one is not a promise.</p>
 
-  <div class="card">
-    <h2>Running it yourself</h2>
-    <p>PsycheAI needs a server because an API key cannot ship inside a web page. Set either
-      <code>GEMINI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> and run <code>npm start</code> —
-      whichever key is present decides the provider, and <code>PSYCHEAI_PROVIDER</code> forces one if
-      you have both. Set <code>PSYCHEAI_MOCK=1</code> to click through the whole app with canned
-      analyses and no API calls.</p>
-    <p id="about-status" class="muted"></p>
-  </div>
+    <h3>What it is told never to do</h3>
+    <ul class="nots">
+      <li>Say anything about other people in your data or your photos — they never agreed to this</li>
+      <li>Guess at your sexuality, health, immigration status or politics unless you said it yourself</li>
+      <li>Judge anyone by their appearance, or by who they follow</li>
+      <li>Treat a handful of photos as proof — Instagram is where people post their best day of the month</li>
+    </ul>
 
-  <div class="card">
-    <h2>What this is not</h2>
-    <p>Not a validated psychometric instrument, not a diagnosis, not a background check. A language
-      model reading behavioural traces is a mirror and a conversation starter. A low compatibility
-      score is a list of things worth talking about, not a reason to walk away — and a high one is
-      not a promise.</p>
+    <p class="fineprint" id="about-status"></p>
   </div>
 </section>
 
