@@ -4,6 +4,7 @@
   'use strict';
 
   const IG = window.KindredInstagram;
+  const Images = window.KindredImages;
   const Digest = window.KindredDigest;
   const Card = window.KindredCard;
   const LLM = window.KindredLLM;
@@ -31,6 +32,8 @@
   const state = {
     profile: store.read(KEYS.profile, null),
     digest: store.read(KEYS.digest, null),
+    // In memory only, and only for as long as this page lives — see handleFiles.
+    images: [],
     server: { ready: false, mock: false, model: null },
   };
 
@@ -165,6 +168,7 @@
     }
 
     const includeMessages = $('#include-dms').checked;
+    const includeImages = $('#include-images').checked;
     const displayName = String($('#display-name').value || '').trim().slice(0, 24);
 
     $('#working-title').textContent = 'Reading your export';
@@ -173,14 +177,30 @@
     show('working');
 
     let digest;
+    let images = [];
     try {
       const signals = await IG.readExports(chosen, {
         includeMessages,
-        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 90), p.label),
+        includeImages,
+        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 80), p.label),
       });
+
+      if (includeImages) {
+        const chosenImages = Images.select(signals);
+        // Decoding and re-encoding is the slowest client-side step by a wide
+        // margin, so it gets its own slice of the bar rather than appearing
+        // as a stall at the end.
+        images = await Images.extract(signals, chosenImages, (done, total) => {
+          setProgress(80 + Math.round((done / Math.max(1, total)) * 14),
+            'Preparing image ' + done + ' of ' + total + '…');
+        });
+      }
+
       setProgress(95, 'Building your evidence summary…');
       await new Promise(resolve => setTimeout(resolve, 30));
-      digest = Digest.build(signals, { includeMessages, displayName });
+      digest = Digest.build(signals, {
+        includeMessages, includeImages, imageCount: images.length, displayName,
+      });
     } catch (error) {
       show('welcome');
       flash('#upload-error', (error && error.message) || 'Could not read that archive.');
@@ -188,24 +208,31 @@
     }
 
     state.digest = digest;
+    // The images are deliberately not persisted: a dozen JPEGs would blow the
+    // localStorage quota, and keeping the user's photographs on disk is not
+    // something to do as a side effect. A retry after a reload runs on the
+    // digest alone.
+    state.images = images;
     store.write(KEYS.digest, digest);
-    await runAnalysis(digest);
+    await runAnalysis(digest, images);
   }
 
   function modelName() {
     return state.server.model || 'The model';
   }
 
-  async function runAnalysis(digest) {
+  async function runAnalysis(digest, images) {
+    const sent = (images || []).length;
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
-      'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary was sent for analysis. ' +
+      'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary' +
+      (sent ? ' and ' + sent + ' of your photos were' : ' was') + ' sent for analysis. ' +
       'This usually takes a minute or two — the model is writing a long report.';
     startElapsed('Analysing');
     show('working');
 
     try {
-      const result = await LLM.analyseProfile(digest);
+      const result = await LLM.analyseProfile(digest, images);
       const payload = await Card.encodeCard(result.data.card);
       state.profile = {
         report: result.data,
@@ -410,8 +437,13 @@
       flash('#upload-error', 'The evidence summary is gone from this browser — upload your export again.');
       return show('welcome');
     }
-    if (!window.confirm('Run the analysis again on the same export? This makes a fresh model call.')) return;
-    await runAnalysis(state.digest);
+    const warning = state.digest.coverage.images && state.digest.coverage.images.attached && !state.images.length
+      ? 'Run the analysis again on the same export? This makes a fresh model call. Your photos are not ' +
+        'kept between page loads, so this run will use the written evidence only — re-upload the .zip to ' +
+        'include them again.'
+      : 'Run the analysis again on the same export? This makes a fresh model call.';
+    if (!window.confirm(warning)) return;
+    await runAnalysis(state.digest, state.images);
   });
 
   $('#delete-profile').addEventListener('click', () => {
@@ -419,6 +451,7 @@
     store.clearAll();
     state.profile = null;
     state.digest = null;
+    state.images = [];
     show('welcome');
   });
 

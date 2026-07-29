@@ -24,11 +24,12 @@ const check = (label, ok, detail) => {
 
 // ---------- load the browser modules ----------
 
-for (const file of ['zip.js', 'instagram.js', 'digest.js', 'card.js']) {
+for (const file of ['zip.js', 'instagram.js', 'images.js', 'digest.js', 'card.js']) {
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
 const IG = globalThis.KindredInstagram;
+const Images = globalThis.KindredImages;
 const Digest = globalThis.KindredDigest;
 const Card = globalThis.KindredCard;
 
@@ -158,6 +159,15 @@ for (const [label, needle] of [
   ['blocks appearance-based classification', /classify anyone by appearance/],
   ['tells the model to weigh the sources', /Their own words/],
   ['warns about base rates', /Most people are near the middle/],
+  // The images are the newest and sharpest way this could go wrong, so every
+  // limit on them is pinned individually rather than as one loose match.
+  ['says images may be attached', /you are also given up to twenty of their own photographs/i],
+  ['protects other people in the photos', /do not describe, count, identify or infer anything whatsoever about them/i],
+  ['blocks appearance inference from photos', /race, ethnicity, body, attractiveness, age, gender, wealth or health/i],
+  ['blocks locating someone from a photo', /Do not read a location precisely enough/],
+  ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
+  ['says what may be taken from an image', /the setting, the activity, the company kept/],
+  ['keeps images as weak evidence', /weakest evidence per item/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
@@ -183,6 +193,64 @@ check('reads followers', signals.counts.followers === 320);
 check('reads curated topics', signals.topics.length === 6);
 check('repairs mojibake in names', signals.profile.name === 'Aleç', JSON.stringify(signals.profile.name));
 check('ignores non-JSON media', !signals.files.byRoute.media);
+
+// ---------- image selection ----------
+//
+// Only selection is covered here. Decoding and downscaling need canvas and
+// createImageBitmap, so the extraction half is exercised by the Chromium
+// suite against these same files.
+
+check('opting out of images indexes nothing', signals.mediaIndex.total === 0);
+check('opting out of images selects nothing', Images.select(signals).length === 0);
+
+const withImages = await IG.readExports(
+  [new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' })],
+  { includeMessages: false, includeImages: true });
+
+check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 42,
+  'got ' + withImages.mediaRefs.length);
+check('indexes the image files in the archive', withImages.mediaIndex.total === 24,
+  'got ' + withImages.mediaIndex.total);
+check('resolves a media uri to its archive entry',
+  Boolean(IG.findMedia(withImages.mediaIndex, 'media/posts/3.png')));
+check('resolves a uri nested under an export folder',
+  Boolean(IG.findMedia(withImages.mediaIndex, 'instagram-alec-2025/media/posts/3.png')));
+check('does not invent a match for a missing file',
+  IG.findMedia(withImages.mediaIndex, 'media/posts/999.png') === null);
+
+const picked = Images.select(withImages);
+
+check('selects at least ten images', picked.length >= 10, 'got ' + picked.length);
+check('never exceeds the hard ceiling', picked.length <= Images.LIMITS.max);
+check('drops stills whose file is not in the archive',
+  picked.every(p => IG.findMedia(withImages.mediaIndex, p.path)));
+check('drops files below the size floor',
+  picked.every(p => p.bytes >= Images.LIMITS.minBytes) &&
+  !picked.some(p => /thumb/.test(p.path)));
+check('never sends a video', picked.every(p => !/\.(mp4|mov|webm)$/i.test(p.path)));
+check('returns them oldest first',
+  picked.every((p, i) => i === 0 || picked[i - 1].ts <= p.ts));
+// Scoring alone would cluster the picks in whichever era has the biggest
+// files, so check the result actually reaches across everything available.
+const datedRefs = withImages.mediaRefs
+  .filter(r => r.ts > 0 && IG.findMedia(withImages.mediaIndex, r.path))
+  .map(r => r.ts);
+const availableSpan = Math.max(...datedRefs) - Math.min(...datedRefs);
+const pickedSpan = picked[picked.length - 1].ts - picked[0].ts;
+check('spans the whole account history rather than one era',
+  pickedSpan >= availableSpan * 0.8,
+  Math.round(pickedSpan / 86400) + ' of ' + Math.round(availableSpan / 86400) + ' days');
+check('takes no two images from the same day',
+  new Set(picked.map(p => Math.floor(p.ts / 86400))).size === picked.length);
+check('prefers posts over stories',
+  picked.filter(p => p.kind === 'post').length > picked.filter(p => p.kind === 'story').length,
+  JSON.stringify(picked.map(p => p.kind)));
+check('favours the wordless posts the text misses',
+  picked.some(p => p.captionLen === 0));
+check('a lower count is honoured', Images.select(withImages, { count: 4 }).length === 4);
+check('a count of zero sends nothing', Images.select(withImages, { count: 0 }).length === 0);
+check('a count above the ceiling is clamped',
+  Images.select(withImages, { count: 500 }).length <= Images.LIMITS.max);
 
 // ---------- digest ----------
 
@@ -231,6 +299,48 @@ check('the other side of a conversation never reaches the digest', !dmJson.inclu
 check('the user\'s own messages do reach the digest', dmJson.includes('Own message'));
 check('raw message text is dropped after summarising',
   withDmSignals.messageTexts.length === 0 && withDmSignals.messageEvents.length === 0);
+
+// ---------- how images reach the model ----------
+
+const withPhotos = Digest.build(withImages, {
+  includeMessages: false, includeImages: true, imageCount: picked.length, displayName: 'Alec',
+});
+check('digest records that images were sent', withPhotos.coverage.images.included === true &&
+  withPhotos.coverage.images.attached === picked.length);
+check('digest records how many stills existed to choose from',
+  withPhotos.coverage.images.availableStills === withImages.mediaRefs.length);
+check('digest says images are a spread, not the latest few',
+  /spread across the whole account history/.test(withPhotos.coverage.images.note));
+check('opting out is visible to the model', digest.coverage.images.included === false &&
+  digest.coverage.images.attached === 0);
+check('no pixels ride along inside the digest',
+  !JSON.stringify(withPhotos).includes('base64') && withPhotos.coverage.digestChars < 200000);
+
+const fakeImages = [
+  { mime: 'image/jpeg', data: 'AAAA', takenAt: '2019-03-04', kind: 'post', hasCaption: false },
+  { mime: 'image/jpeg', data: 'BBBB', takenAt: '2024-11-20', kind: 'story', hasCaption: true },
+];
+const blocks = prompts.profileBlocks(withPhotos, fakeImages);
+const imageBlocks = blocks.filter(b => b.type === 'image');
+
+check('the digest leads the request', blocks[0].type === 'text' && blocks[0].text.includes('<evidence>'));
+check('every image is passed through', imageBlocks.length === 2);
+check('each image is dated for the model',
+  /Image 1 — posted 2019-03-04, post, no caption\./.test(blocks.map(b => b.text || '').join('\n')) &&
+  /Image 2 — posted 2024-11-20, story, had a caption\./.test(blocks.map(b => b.text || '').join('\n')));
+check('each label sits immediately before its image',
+  blocks.findIndex(b => b.type === 'image') === blocks.findIndex(b => /^Image 1 /.test(b.text || '')) + 1);
+check('the image limits are restated in the user turn',
+  blocks.some(b => /hard limits on what you may take from them/.test(b.text || '')));
+check('no images means no image blocks',
+  prompts.profileBlocks(withPhotos, []).every(b => b.type === 'text') &&
+  prompts.profileBlocks(withPhotos, null).length === 1);
+check('more images than the ceiling are truncated',
+  prompts.profileBlocks(withPhotos, new Array(60).fill(fakeImages[0]))
+    .filter(b => b.type === 'image').length === prompts.MAX_IMAGES);
+check('the ceiling matches the client\'s own', prompts.MAX_IMAGES === Images.LIMITS.max);
+check('compatibility never carries images',
+  prompts.compatibilityBlocks({ name: 'A' }, { name: 'B' }).every(b => b.type === 'text'));
 
 // ---------- scale: a heavy account ----------
 //
@@ -354,6 +464,8 @@ console.log('  digest size       : ' + digest.coverage.digestChars + ' chars (sm
 console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
   heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
+console.log('  images selected   : ' + picked.length + ' of ' + withImages.mediaRefs.length +
+  ' stills, spanning ' + Math.round(pickedSpan / 86400) + ' days');
 
 if (failures.length) {
   console.error('\n' + failures.length + ' failed, ' + passed + ' passed:');

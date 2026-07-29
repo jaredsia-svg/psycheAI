@@ -56,14 +56,16 @@
           <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
       <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
           Kindred cannot read the HTML format.</li>
-      <li>Set <strong>Media quality</strong> to <strong>Lower quality</strong>. Kindred never opens
-          your photos or videos, so this costs you nothing and can take the download from several
-          gigabytes to a few hundred megabytes — much faster to receive and to upload here.</li>
+      <li>Set <strong>Media quality</strong> to <strong>Lower quality</strong>. It takes the download
+          from several gigabytes to a few hundred megabytes — much faster to receive and to open
+          here — and costs you nothing: Kindred shrinks the handful of photos it looks at anyway,
+          and never opens your videos at all.</li>
       <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
       <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
     </ol>
-    <p class="muted">Only the JSON files describing your activity are ever read — the media in the
-      archive is skipped entirely, whatever quality you picked.</p>
+    <p class="muted">Kindred reads the JSON files describing your activity, plus — unless you turn
+      it off below — about fourteen of your own photographs. Everything else in the archive,
+      including every video, is skipped without being opened.</p>
   </div>
 
   <div class="card upload-card">
@@ -89,6 +91,19 @@
         the export, so this is on by default. Kindred counts your conversations and samples
         <strong>only your own messages</strong> — nobody else's words are ever sent. Untick it to
         leave your DMs out entirely; everything else still works.</span>
+      </span>
+    </label>
+
+    <label class="switch-row">
+      <input type="checkbox" id="include-images" checked>
+      <span>
+        <strong>Include a sample of your photos — on</strong>
+        <span class="muted">Without this the model reads only text, so a wordless photo of a
+        mountain and a wordless photo of a nightclub look identical to it. Kindred picks about
+        <strong>14 of your own pictures</strong>, spread across your whole account history, shrinks
+        them and sends only those — never video, never anything from a message. This is the one
+        thing that leaves your device besides the written summary, so untick it if you would rather
+        it did not.</span>
       </span>
     </label>
 
@@ -190,7 +205,13 @@
     <h2>What happens to your data</h2>
     <p>Your Instagram export is a <code>.zip</code> containing your posts, messages, contacts and
       location history. Kindred opens it <strong>in your browser</strong> using the File API and
-      reads only the JSON files describing your activity — never your photos or videos.</p>
+      reads the JSON files describing your activity. Your videos are never opened at all.</p>
+    <p>Photographs are the one exception, and they are opt-out rather than hidden. Left switched on,
+      Kindred picks roughly <strong>fourteen of your own stills</strong> — spread across your whole
+      account history rather than the latest few — shrinks them in your browser and sends those
+      alongside the summary. Without them the model reads only text, which is a real blind spot for
+      anyone who posts without captions. Untick the box before uploading and not a single pixel
+      leaves your device.</p>
     <p>It then builds an <strong>evidence digest</strong>: your counts and activity rhythm, a sample
       of your own captions and comments, the accounts you follow, and the topics Instagram itself
       has inferred about you. That digest — not the archive — is what gets sent to the model for
@@ -215,6 +236,12 @@
       data, or infer sexual orientation, health, immigration status or political affiliation unless
       you have stated it outright in your own words. It does not classify anyone by appearance or
       by the demographics of who they follow.</p>
+    <p>The photographs carry stricter limits still. Other people appear in them and never agreed to
+      any of this, so the model is told to say nothing at all about them — and nothing about anyone's
+      race, body, age, attractiveness or wealth, including yours. It may read the setting, the
+      activity, whether you are alone or in company, and the care taken over a shot. It is also told
+      that fourteen pictures out of thousands are weak evidence, and that Instagram is where people
+      post their best day of the month.</p>
   </div>
 
   <div class="card">
@@ -265,6 +292,7 @@
 <script src="vendor/jsqr.js"></script>
 <script src="zip.js"></script>
 <script src="instagram.js"></script>
+<script src="images.js"></script>
 <script src="digest.js"></script>
 <script src="card.js"></script>
 <script src="llm.js"></script>

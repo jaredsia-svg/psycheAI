@@ -138,13 +138,30 @@
     corpusChars: 4000000,
     followRows: 20000,
     likeRows: 40000,
+    mediaRefs: 20000,
   };
+
+  // Only formats every target browser can decode through createImageBitmap.
+  // HEIC appears in some exports and cannot be decoded, so it is left out
+  // rather than failing later during extraction.
+  const IMAGE_EXT = /\.(jpe?g|png|webp)$/i;
+  const VIDEO_EXT = /\.(mp4|mov|m4v|webm|avi)$/i;
 
   // ---------- per-route extraction ----------
 
   function pushEvent(out, kind, timestamp) {
     const ts = toSeconds(timestamp);
     if (ts > 0) out.events.push({ kind, ts });
+  }
+
+  // Records that an image exists, not the image itself. Selection happens
+  // later, once the whole timeline is known, and the bytes are only read for
+  // the handful that get chosen.
+  function addMedia(out, kind, uri, timestamp, captionLen) {
+    if (out.mediaRefs.length >= LIMITS.mediaRefs) return;
+    const path = String(uri || '');
+    if (!path || !IMAGE_EXT.test(path)) return;
+    out.mediaRefs.push({ path, kind, ts: toSeconds(timestamp) || 0, captionLen: captionLen || 0 });
   }
 
   function addText(out, text) {
@@ -168,10 +185,16 @@
           .map(t => fixText(t || '')).sort((a, b) => b.length - a.length)[0] || '';
         addText(out, caption);
         if (media.length > 1) out.counts.carousels++;
+        // Only the first still of a carousel is a candidate — it is the frame
+        // they chose as the cover, and taking all ten would let one post crowd
+        // out a decade of others.
+        let cover = '';
         for (const m of media) {
           const uri = String((m && m.uri) || '');
-          if (/\.(mp4|mov)$/i.test(uri)) out.counts.videoPosts++;
+          if (VIDEO_EXT.test(uri)) out.counts.videoPosts++;
+          else if (!cover && IMAGE_EXT.test(uri)) cover = uri;
         }
+        addMedia(out, 'post', cover, (media[0] && media[0].creation_timestamp) || ts, caption.length);
       }
     },
     stories(out, data) {
@@ -179,6 +202,7 @@
         pushEvent(out, 'story', story.creation_timestamp);
         out.counts.stories++;
         addText(out, story.title);
+        addMedia(out, 'story', story.uri, story.creation_timestamp, fixText(story.title || '').length);
       }
     },
     reels(out, data) {
@@ -201,6 +225,7 @@
       for (const item of asArray(data, 'ig_profile_picture')) {
         pushEvent(out, 'profilePhoto', item.creation_timestamp);
         out.counts.profilePhotos++;
+        addMedia(out, 'profile', item.uri, item.creation_timestamp, 0);
       }
     },
     likedPosts(out, data) {
@@ -355,8 +380,40 @@
       messageEvents: [],
       messageTexts: [],
       corpusChars: 0,
+      // Where the images live. Only paths and sizes — no pixels are read here.
+      mediaRefs: [],
+      mediaIndex: { byPath: new Map(), byName: new Map(), total: 0 },
       files: { total: 0, used: 0, byRoute: {}, htmlOnly: false },
     };
+  }
+
+  // The `uri` in the JSON is archive-relative ("media/posts/…"), but the entry
+  // is often nested under an export folder, and in a split export the image can
+  // sit in a different .zip part from the JSON that references it. So index
+  // every image by full path, by the path from "media/" onwards, and by bare
+  // filename — the last only when it is unambiguous.
+  const mediaKey = path => String(path || '').toLowerCase().replace(/^\/+/, '');
+
+  function indexMedia(index, archive, entry) {
+    const key = mediaKey(entry.name);
+    const record = { archive, entry, bytes: entry.uncompressedSize || 0 };
+    index.total++;
+    index.byPath.set(key, record);
+    const at = key.indexOf('media/');
+    if (at > 0) index.byPath.set(key.slice(at), record);
+    const base = key.slice(key.lastIndexOf('/') + 1);
+    // A collision means the filename alone cannot identify the file, so poison
+    // the entry rather than resolving it to the wrong photo.
+    if (base) index.byName.set(base, index.byName.has(base) ? null : record);
+  }
+
+  /** Resolves a JSON media `uri` to an archive entry, or null. */
+  function findMedia(index, path) {
+    const key = mediaKey(path);
+    if (index.byPath.has(key)) return index.byPath.get(key);
+    const at = key.indexOf('media/');
+    if (at > 0 && index.byPath.has(key.slice(at))) return index.byPath.get(key.slice(at));
+    return index.byName.get(key.slice(key.lastIndexOf('/') + 1)) || null;
   }
 
   // Once threads are parsed we can tell which participant is the account
@@ -409,6 +466,7 @@
    * @param {File[]|FileList} files      the .zip files the user picked
    * @param {object} options
    * @param {boolean} options.includeMessages  opt in to DM aggregates
+   * @param {boolean} options.includeImages    index images so a few can be sampled
    * @param {(p:{phase:string,done:number,total:number,label:string})=>void} options.onProgress
    */
   async function readExports(files, options) {
@@ -428,6 +486,7 @@
       for (const entry of archive.entries) {
         const lower = entry.name.toLowerCase();
         if (lower.endsWith('.html') || lower.endsWith('.htm')) sawHtml = true;
+        if (opts.includeImages && IMAGE_EXT.test(lower)) indexMedia(signals.mediaIndex, archive, entry);
         if (!lower.endsWith('.json')) continue;
         sawJson = true;
         signals.files.total++;
@@ -469,5 +528,5 @@
     return signals;
   }
 
-  root.KindredInstagram = { readExports, fixText, routeOf, LIMITS };
+  root.KindredInstagram = { readExports, fixText, routeOf, findMedia, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

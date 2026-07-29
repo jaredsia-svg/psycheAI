@@ -143,7 +143,7 @@
 
   /**
    * @param {object} signals  output of KindredInstagram.readExports
-   * @param {object} options  { includeMessages, displayName }
+   * @param {object} options  { includeMessages, includeImages, imageCount, displayName }
    */
   function build(signals, options) {
     const opts = options || {};
@@ -196,6 +196,16 @@
         filesSeen: signals.files.total,
         sections: Object.keys(signals.files.byRoute),
         directMessagesIncluded: !!opts.includeMessages,
+        // The pictures ride alongside the digest rather than inside it, but
+        // the model needs to know whether it is looking at an account it can
+        // see or only one it can count.
+        images: {
+          included: !!opts.includeImages,
+          attached: opts.imageCount || 0,
+          availableStills: (signals.mediaRefs || []).length,
+          note: 'Attached images are a spread across the whole account history, not the latest few. ' +
+            'They are downscaled stills; videos are never sent.',
+        },
         samplingNote: 'The counts and histograms above are complete. The text samples below are ' +
           'a subset — "sampling" says how much of each source you are seeing, so weight your ' +
           'confidence accordingly.',

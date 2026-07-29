@@ -3,7 +3,7 @@
 // Shared by the unit suite (tools/selftest.mjs) and the browser suite
 // (tools/uitest.mjs) so both exercise the same realistic input. Entries
 // alternate between stored and deflated so the reader's two paths are covered.
-import { deflateRawSync } from 'node:zlib';
+import { deflateRawSync, deflateSync } from 'node:zlib';
 
 // ---------- minimal ZIP writer ----------
 
@@ -31,7 +31,7 @@ function makeZip(files) {
 
   files.forEach((file, index) => {
     const name = encoder.encode(file.name);
-    const raw = encoder.encode(file.content);
+    const raw = file.bytes ? file.bytes : encoder.encode(file.content);
     // Alternate the two compression methods so both reader paths are covered.
     const deflated = index % 2 === 1;
     const data = deflated ? new Uint8Array(deflateRawSync(Buffer.from(raw))) : raw;
@@ -74,6 +74,62 @@ function makeZip(files) {
   eocd.writeUInt32LE(offset, 16);
 
   return Buffer.concat([...locals, centralBuf, eocd]);
+}
+
+// ---------- synthetic photographs ----------
+//
+// Real decodable image files, because the image path is not exercised at all
+// by a placeholder: the browser suite actually decodes these through
+// createImageBitmap and re-encodes them to JPEG.
+//
+// The pixels are deterministic noise rather than flat colour so the PNG does
+// not compress down to a few hundred bytes — the selector treats anything
+// under 12KB as a thumbnail or a screenshot and discards it, and a fixture
+// whose images were all silently dropped would prove nothing.
+
+function chunk(type, data) {
+  const out = Buffer.alloc(12 + data.length);
+  out.writeUInt32BE(data.length, 0);
+  out.write(type, 4, 'ascii');
+  Buffer.from(data).copy(out, 8);
+  out.writeUInt32BE(crc32(out.subarray(4, 8 + data.length)), 8 + data.length);
+  return out;
+}
+
+function makePng(size, seed) {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8;   // bit depth
+  ihdr[9] = 2;   // truecolour RGB
+  // compression 0, filter 0, interlace 0 are already zero.
+
+  // mulberry32: stays inside 32 bits via Math.imul, so every seed really does
+  // produce a different picture. A plain multiply-and-mask LCG does not — it
+  // runs past 2^53, loses its low bits to float rounding, and quietly returns
+  // the same pixels for every seed.
+  let state = seed | 0;
+  const next = () => {
+    state = state + 0x6d2b79f5 | 0;
+    let t = Math.imul(state ^ state >>> 15, 1 | state);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return (t ^ t >>> 14) >>> 0;
+  };
+
+  const stride = size * 3;
+  const rows = Buffer.alloc(size * (stride + 1));
+  for (let y = 0; y < size; y++) {
+    const base = y * (stride + 1);
+    rows[base] = 0; // filter type: none
+    for (let x = 0; x < stride; x++) rows[base + 1 + x] = next() & 0xff;
+  }
+
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
 }
 
 // ---------- synthetic export ----------
@@ -131,11 +187,16 @@ function buildExport() {
     'Grateful for my people this year. Thank you all, really.',
   ];
 
-  const posts = captions.map((title, i) => ({
-    media: [{ uri: 'media/posts/' + i + '.jpg', creation_timestamp: at(i * 14, 7), title }],
-    title,
-    creation_timestamp: at(i * 14, 7),
-  }));
+  // Every third post is wordless, which is the case the image sampling exists
+  // to cover — and which the selector is supposed to favour.
+  const posts = captions.map((title, i) => {
+    const caption = i % 3 === 2 ? '' : title;
+    return {
+      media: [{ uri: 'media/posts/' + i + '.png', creation_timestamp: at(i * 14, 7), title: caption }],
+      title: caption,
+      creation_timestamp: at(i * 14, 7),
+    };
+  });
 
   // Morning-weighted activity, spread over roughly two years.
   const likes = [];
@@ -215,7 +276,7 @@ function buildExport() {
       name: 'your_instagram_activity/content/stories.json',
       content: JSON.stringify({
         ig_stories: Array.from({ length: 30 }, (_, i) => ({
-          uri: 'media/stories/' + i + '.jpg',
+          uri: 'media/stories/' + i + '.png',
           creation_timestamp: at(i * 5, 7),
           title: '',
         })),
@@ -224,6 +285,14 @@ function buildExport() {
     { name: 'media/posts/0.jpg', content: 'not json, must be ignored' },
     { name: 'start_here.html', content: '<html>an HTML index that must not confuse the parser</html>' },
     ...messageThreads(),
+
+    // One real still per post, and stories for only the first ten — the rest
+    // are referenced by JSON that has no matching file, which is the ordinary
+    // case for a split export and must not break selection.
+    ...captions.map((_, i) => ({ name: 'media/posts/' + i + '.png', bytes: makePng(72, i) })),
+    ...Array.from({ length: 10 }, (_, i) => ({ name: 'media/stories/' + i + '.png', bytes: makePng(72, 100 + i) })),
+    // Under the size floor: a thumbnail, not a photograph.
+    { name: 'media/posts/thumb.png', bytes: makePng(8, 7) },
   ];
 
   return makeZip(files);

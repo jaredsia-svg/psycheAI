@@ -51,7 +51,7 @@
     }
   }
 
-  const analyseProfile = digest => post('/api/analyse', { digest });
+  const analyseProfile = (digest, images) => post('/api/analyse', { digest, images: images || [] });
   const analyseCompatibility = (a, b) => post('/api/compatibility', { a, b });
 
   root.KindredLLM = { status, analyseProfile, analyseCompatibility };

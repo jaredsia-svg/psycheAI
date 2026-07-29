@@ -37,6 +37,15 @@ await new Promise(resolve => setTimeout(resolve, 600));
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
 
+// What actually goes over the wire is the only honest test of the privacy
+// claims, so keep every analyse request body and assert against it.
+const analyseBodies = [];
+page.on('request', request => {
+  if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) {
+    analyseBodies.push(request.postData());
+  }
+});
+
 const consoleErrors = [];
 page.on('console', message => { if (message.type() === 'error') consoleErrors.push(message.text()); });
 page.on('pageerror', error => consoleErrors.push('pageerror: ' + error.message));
@@ -58,7 +67,14 @@ try {
   // Direct messages are on by default; the switch is the opt-out.
   check('direct messages are included by default', await page.locator('#include-dms').isChecked());
   check('the switch says only the user\'s own messages are sent',
-    /only your own messages/i.test(await page.locator('.switch-row').innerText()));
+    /only your own messages/i.test(await page.locator('#include-dms ~ span').innerText()));
+
+  // So are images, and the switch has to be honest about what leaves the device.
+  check('a photo sample is included by default', await page.locator('#include-images').isChecked());
+  check('the image switch says how many photos are sent',
+    /14 of your own pictures/i.test(await page.locator('#include-images ~ span').innerText()));
+  check('the image switch says video is never sent',
+    /never video/i.test(await page.locator('#include-images ~ span').innerText()));
 
   // The name is asked for before the upload, not after.
   check('the name field comes before the upload box', await page.evaluate(() => {
@@ -125,10 +141,43 @@ try {
     JSON.stringify(digest.directMessages).includes('Own message') &&
     !JSON.stringify(digest.directMessages).includes('Their reply'));
 
+  // ---- the images that were sent ----
+  //
+  // This is the half the Node suite cannot reach: real ZIP entries decoded
+  // through createImageBitmap, drawn to a canvas and re-encoded.
+  const sentBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  const sentImages = sentBody.images || [];
+
+  check('images were sent with the digest', sentImages.length >= 10 && sentImages.length <= 20,
+    sentImages.length + ' images');
+  check('the digest agrees with what was sent',
+    digest.coverage.images.attached === sentImages.length && digest.coverage.images.included === true);
+  check('every image is declared as a JPEG', sentImages.every(i => i.mime === 'image/jpeg'));
+  check('every image is dated for the model', sentImages.every(i => /^\d{4}-\d{2}-\d{2}$/.test(i.takenAt)));
+  check('images are sent oldest first',
+    sentImages.every((img, i) => i === 0 || sentImages[i - 1].takenAt <= img.takenAt));
+
+  const decoded = sentImages.map(i => Buffer.from(i.data, 'base64'));
+  check('the bytes really are JPEGs',
+    decoded.every(b => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff),
+    decoded.length ? decoded[0].subarray(0, 3).toString('hex') : 'none');
+  check('the originals were re-encoded rather than forwarded',
+    !analyseBodies[analyseBodies.length - 1].includes('iVBORw0KGgo'));
+  check('each image is small enough to be worth sending',
+    decoded.every(b => b.length < 200000),
+    Math.max(...decoded.map(b => b.length)) + ' bytes');
+  check('the whole request stays inside the server\'s limit',
+    Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) < 24 * 1024 * 1024);
+  check('no two images are byte-identical',
+    new Set(sentImages.map(i => i.data)).size === sentImages.length);
+  check('the photos are not persisted to this browser',
+    !JSON.stringify(await page.evaluate(() => ({ ...localStorage }))).includes('/9j/'));
+
   // ---- the opt-out actually opts out ----
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
   await page.uncheck('#include-dms');
+  await page.uncheck('#include-images');
   await page.fill('#display-name', 'Alec');
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -138,6 +187,12 @@ try {
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
   check('the opt-out is recorded for the model', optedOut.coverage.directMessagesIncluded === false);
   check('no message text survives the opt-out', !JSON.stringify(optedOut).includes('Own message'));
+
+  const optedOutBody = analyseBodies[analyseBodies.length - 1];
+  check('unticking the image switch sends no images', JSON.parse(optedOutBody).images.length === 0);
+  check('the image opt-out is recorded for the model', optedOut.coverage.images.included === false &&
+    optedOut.coverage.images.attached === 0);
+  check('not one pixel leaves after the image opt-out', !optedOutBody.includes('/9j/'));
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {

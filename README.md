@@ -67,7 +67,7 @@ This is the part worth reading carefully.
 | Stays on your device | Sent to the model |
 |---|---|
 | The `.zip` archive itself | An **evidence digest**: activity counts, hour-of-day and day-of-week histograms, posting regularity, a sample of your own captions and comments, accounts you follow, and the topics Instagram itself inferred about you |
-| Your photos and videos — never opened | |
+| Every video — never opened | By default: about **14 of your own photographs**, downscaled, spread across your whole account history |
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
 | Direct messages, if you untick the box | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
 
@@ -92,8 +92,32 @@ carries a `coverage.sampling` field saying what fraction of each source the mode
 prompt tells it to factor that into its confidence score rather than treating the sample as the
 whole picture.
 
-Images are never analysed — for a heavily visual account with few captions, that is a real blind
-spot.
+### The photographs
+
+Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
+nightclub are the same row in the digest. So **a small sample of images is sent by default**, and
+the switch on the upload page turns it off.
+
+`docs/images.js` picks them. Candidates are the stills the JSON references — carousels contribute
+only their cover frame, videos never qualify, and anything under 12KB is discarded as a thumbnail
+or a screenshot of text. Each is scored: posts outrank stories, **wordless posts get a bonus**
+because they are precisely what the digest cannot see, and larger files break ties. Then the
+timeline is cut into as many buckets as there are slots and the best of each bucket is taken, with
+no two picks from the same day — so the result spans first post to last rather than fifteen photos
+from one good summer.
+
+The chosen images are decoded, downscaled to a 768px long edge and re-encoded as JPEG **in the
+browser**, which also strips whatever EXIF the originals carried, GPS included. About 14 images
+land near 1MB of base64 and add roughly $0.01 to a Gemini Flash run.
+
+The prompt's limits on them are stricter than anything else in the app, and the test suite pins
+each one: nothing about any other person in the frame, nothing about anyone's race, body, age,
+attractiveness or wealth, no reading a location closely enough to place someone, and no quoting
+text out of a photo. What the model may use is the setting, the activity, whether someone is alone
+or in company, and the care taken over the shot.
+
+The images are held in memory only. They are never written to localStorage, so re-running the
+analysis after a page reload uses the written evidence alone unless you upload the `.zip` again.
 
 **Direct messages are included by default**, because how someone writes to people who already know
 them is the most revealing text in the export. Only the user's own messages are ever sampled — the
@@ -115,6 +139,8 @@ evidence honestly:
 - **Accounts followed** mix interest, aspiration and social circle.
 - **Behavioural rhythm** — when and how regularly they post, how much they engage outward — is
   genuine trait evidence and usually overlooked.
+- **Their photographs** show what captions leave out — setting, activity, alone or in company —
+  but are the weakest evidence per item and the easiest to over-read.
 - **Absence is weak evidence.** Most people are near the middle on most traits.
 
 Both calls use **structured outputs**, so the response is guaranteed to match the schema and the UI
@@ -125,8 +151,9 @@ one output budget.
 
 Identify or speculate about specific other people in your data, or infer sexual orientation, health
 conditions, immigration status or political affiliation unless you have stated it outright in your
-own words. It does not classify anyone by appearance or by the demographics of who they follow.
-These guardrails are asserted by the test suite so they survive edits to the prompt.
+own words. It does not classify anyone by appearance or by the demographics of who they follow, and
+the photographs carry the further limits described above. These guardrails are asserted by the test
+suite so they survive edits to the prompt.
 
 ## The QR code
 
@@ -151,14 +178,18 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 102 checks: synthesises a real ZIP export and runs
+npm test           # 143 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
-                   # digest caps and budget hold on a heavy account; validates
-                   # both prompt schemas against the structured-output rules and
-                   # the keyword subset Gemini supports; and exercises every
-                   # branch of provider selection
-npm run test:ui    # 47 checks: drives the real UI in Chromium against a
-                   # mock-mode server, upload through to a compatibility report
+                   # digest caps and budget hold on a heavy account; checks the
+                   # image selector spans the timeline and drops what it should;
+                   # validates both prompt schemas against the structured-output
+                   # rules and the keyword subset Gemini supports; and exercises
+                   # every branch of provider selection
+npm run test:ui    # 64 checks: drives the real UI in Chromium against a
+                   # mock-mode server, upload through to a compatibility report.
+                   # Decodes and re-encodes the fixture's real PNGs, and asserts
+                   # against the actual request body that the images sent are
+                   # JPEGs, are not the originals, and vanish on opt-out
 npm run test:live  # 15 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```
@@ -178,6 +209,7 @@ docs/                 the browser app — no build step
   app.js              upload, profile report, QR, scanner, compatibility report
   zip.js              ZIP reader (ZIP64-aware, inflates only the JSON entries)
   instagram.js        export parser → normalised signals
+  images.js           picks ~14 photos worth looking at, downscales them
   digest.js           signals → the bounded evidence digest that gets sent
   card.js             shareable card ⇄ compressed QR payload
   llm.js              client for the two server endpoints
