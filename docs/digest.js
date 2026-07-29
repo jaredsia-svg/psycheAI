@@ -142,7 +142,7 @@
   // ---------- entry point ----------
 
   /**
-   * @param {object} signals  output of KindredInstagram.readExports
+   * @param {object} signals  output of PsycheInstagram.readExports
    * @param {object} options  { includeMessages, includeImages, imageCount, displayName }
    */
   function build(signals, options) {
@@ -150,7 +150,7 @@
     const messages = signals.messages || {};
 
     const digest = {
-      schema: 'kindred-digest/1',
+      schema: 'psycheai-digest/1',
       generatedAt: new Date().toISOString(),
       profile: {
         name: opts.displayName || signals.profile.name || signals.profile.username || '',
@@ -253,5 +253,5 @@
     return digest;
   }
 
-  root.KindredDigest = { build, LIMITS };
+  root.PsycheDigest = { build, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

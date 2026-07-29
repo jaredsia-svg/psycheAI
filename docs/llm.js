@@ -24,7 +24,7 @@
     } catch (error) {
       clearTimeout(timer);
       if (error && error.name === 'AbortError') throw new Error('The analysis took too long and was cancelled.');
-      throw new Error('Could not reach the Kindred server. Is it running?');
+      throw new Error('Could not reach the PsycheAI server. Is it running?');
     }
     clearTimeout(timer);
 
@@ -54,5 +54,5 @@
   const analyseProfile = (digest, images) => post('/api/analyse', { digest, images: images || [] });
   const analyseCompatibility = (a, b) => post('/api/compatibility', { a, b });
 
-  root.KindredLLM = { status, analyseProfile, analyseCompatibility };
+  root.PsycheLLM = { status, analyseProfile, analyseCompatibility };
 })(typeof window !== 'undefined' ? window : globalThis);

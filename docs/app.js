@@ -1,20 +1,31 @@
-// Kindred SPA: upload → digest → model → profile → QR → scan → compatibility.
+// PsycheAI SPA: upload → digest → model → profile → QR → scan → compatibility.
 // All state lives in localStorage; the server holds nothing.
 (function () {
   'use strict';
 
-  const IG = window.KindredInstagram;
-  const Images = window.KindredImages;
-  const Digest = window.KindredDigest;
-  const Card = window.KindredCard;
-  const LLM = window.KindredLLM;
+  const IG = window.PsycheInstagram;
+  const Images = window.PsycheImages;
+  const Digest = window.PsycheDigest;
+  const Card = window.PsycheCard;
+  const LLM = window.PsycheLLM;
 
   const $ = sel => document.querySelector(sel);
   const KEYS = {
-    profile: 'kindred3_profile',
-    digest: 'kindred3_digest',
-    history: 'kindred3_history',
+    profile: 'psycheai_profile',
+    digest: 'psycheai_digest',
+    history: 'psycheai_history',
   };
+
+  // The app stored under kindred3_* before the rename. Carry anything left
+  // behind over on first load, so an existing profile survives — there is no
+  // server copy to fall back on.
+  try {
+    for (const [name, key] of Object.entries(KEYS)) {
+      const old = localStorage.getItem('kindred3_' + name);
+      if (old !== null && localStorage.getItem(key) === null) localStorage.setItem(key, old);
+      if (old !== null) localStorage.removeItem('kindred3_' + name);
+    }
+  } catch (error) { /* storage disabled — nothing to migrate */ }
 
   const store = {
     read(key, fallback) {
@@ -246,9 +257,9 @@
       }
       stopElapsed();
 
-      const pending = sessionStorage.getItem('kindred3_pending');
+      const pending = sessionStorage.getItem('psycheai_pending');
       if (pending) {
-        sessionStorage.removeItem('kindred3_pending');
+        sessionStorage.removeItem('psycheai_pending');
         if (await runMatch(pending)) return;
       }
       renderProfile();
@@ -427,7 +438,7 @@
 
   $('#download-qr').addEventListener('click', () => {
     const link = document.createElement('a');
-    link.download = 'kindred-' + (state.profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-') + '.png';
+    link.download = 'psycheai-' + (state.profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-') + '.png';
     link.href = $('#qr-canvas').toDataURL('image/png');
     link.click();
   });
@@ -515,7 +526,7 @@
         stopCamera();
         runMatch(found.data).then(ok => {
           if (!ok) {
-            flash('#scan-alert', 'That QR code is not a Kindred profile.');
+            flash('#scan-alert', 'That QR code is not a PsycheAI profile.');
             $('#scan-status').textContent = '';
           }
         });
@@ -539,7 +550,7 @@
       const data = context.getImageData(0, 0, canvas.width, canvas.height);
       const found = window.jsQR(data.data, data.width, data.height);
       URL.revokeObjectURL(image.src);
-      if (!found || !(await runMatch(found.data))) flash('#scan-alert', 'No Kindred code found in that image.');
+      if (!found || !(await runMatch(found.data))) flash('#scan-alert', 'No PsycheAI code found in that image.');
     };
     image.onerror = () => flash('#scan-alert', 'Could not read that image.');
     image.src = URL.createObjectURL(file);
@@ -547,7 +558,7 @@
 
   $('#paste-go').addEventListener('click', async () => {
     if (!(await runMatch($('#paste-input').value))) {
-      flash('#scan-alert', 'That is not a Kindred profile code. Copy the whole link they sent you.');
+      flash('#scan-alert', 'That is not a PsycheAI profile code. Copy the whole link they sent you.');
     }
   });
 
@@ -647,7 +658,7 @@
 
   function renderAbout() {
     $('#about-status').textContent = state.server.unreachable
-      ? 'This page cannot reach the Kindred server right now.'
+      ? 'This page cannot reach the PsycheAI server right now.'
       : state.server.mock
         ? 'This server is running in mock mode — analyses are canned, and no API calls are made.'
         : state.server.ready
@@ -659,7 +670,7 @@
     if (state.server.mock) {
       flash('#server-status', 'Mock mode: this server returns canned analyses so you can click through the app. Nothing is sent to any model provider.');
     } else if (state.server.unreachable) {
-      flash('#server-status', 'Cannot reach the Kindred server. Start it with "npm start".');
+      flash('#server-status', 'Cannot reach the PsycheAI server. Start it with "npm start".');
     } else if (!state.server.ready) {
       flash('#server-status', 'No model provider is configured, so the analysis will fail. ' +
         (state.server.hint || 'Set GEMINI_API_KEY or ANTHROPIC_API_KEY and restart.'));
@@ -669,7 +680,7 @@
   }
 
   // A shared link may arrive as a fresh page load or as a hash change in a tab
-  // that already has Kindred open. Both have to work.
+  // that already has PsycheAI open. Both have to work.
   async function consumeIncomingLink() {
     if (!/^#p=/.test(location.hash)) return false;
     const incoming = Card.extractPayload(location.hash);
@@ -678,9 +689,9 @@
     history.replaceState(null, '', location.pathname + location.search);
     if (state.profile && await runMatch(incoming)) return true;
 
-    sessionStorage.setItem('kindred3_pending', incoming);
+    sessionStorage.setItem('psycheai_pending', incoming);
     show('welcome');
-    flash('#upload-error', 'Someone shared their Kindred code with you. Build your own profile and the comparison runs automatically.');
+    flash('#upload-error', 'Someone shared their PsycheAI code with you. Build your own profile and the comparison runs automatically.');
     return true;
   }
 

@@ -3,15 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kindred — your Instagram, read properly</title>
+<title>PsycheAI — the personality analysis you didn't know you needed</title>
 <meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code for romantic and platonic compatibility.">
 <link rel="stylesheet" href="styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b3fa0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z'/><path d='M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z'/><path d='M12 4.3v16.4'/><path d='M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2'/><path d='M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2'/></svg>">
 </head>
 <body>
 
 <nav class="nav">
-  <a class="brand" href="#" data-nav="home">💞 <span>Kindred</span></a>
+  <a class="brand" href="#" data-nav="home">
+    <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z"/>
+      <path d="M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z"/>
+      <path d="M12 4.3v16.4"/>
+      <path d="M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2"/>
+      <path d="M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2"/>
+    </svg>
+    <span>PsycheAI</span>
+  </a>
   <div class="nav-links">
     <a href="#" data-nav="profile">My profile</a>
     <a href="#" data-nav="scan">Scan a code</a>
@@ -25,9 +35,9 @@
 <section id="view-welcome" class="view" hidden>
   <header class="hero">
     <p class="eyebrow">Your export is read on this device — only a summary is sent for analysis</p>
-    <h1>Your Instagram already knows who you are.<br><span class="accent">Have it read back to you.</span></h1>
+    <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
     <p class="lede">
-      Upload your Instagram data export. Kindred unpacks it in your browser, distils it into an
+      Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an
       evidence summary, and hands that to a language model, which writes you a detailed profile:
       your Big Five and MBTI with the reasoning behind each, your interests, beliefs and values,
       and your strengths and weaknesses — in relationships and in your career. You get a QR code.
@@ -55,15 +65,15 @@
       <li>Choose <strong>Download or transfer information</strong>, pick your account, then
           <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
       <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
-          Kindred cannot read the HTML format.</li>
+          PsycheAI cannot read the HTML format.</li>
       <li>Set <strong>Media quality</strong> to <strong>Lower quality</strong>. It takes the download
           from several gigabytes to a few hundred megabytes — much faster to receive and to open
-          here — and costs you nothing: Kindred shrinks the handful of photos it looks at anyway,
+          here — and costs you nothing: PsycheAI shrinks the handful of photos it looks at anyway,
           and never opens your videos at all.</li>
       <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
       <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
     </ol>
-    <p class="muted">Kindred reads the JSON files describing your activity, plus — unless you turn
+    <p class="muted">PsycheAI reads the JSON files describing your activity, plus — unless you turn
       it off below — about fourteen of your own photographs. Everything else in the archive,
       including every video, is skipped without being opened.</p>
   </div>
@@ -88,7 +98,7 @@
       <span>
         <strong>Include direct messages — on</strong>
         <span class="muted">How you write to people you know is the single most revealing thing in
-        the export, so this is on by default. Kindred counts your conversations and samples
+        the export, so this is on by default. PsycheAI counts your conversations and samples
         <strong>only your own messages</strong> — nobody else's words are ever sent. Untick it to
         leave your DMs out entirely; everything else still works.</span>
       </span>
@@ -99,7 +109,7 @@
       <span>
         <strong>Include a sample of your photos — on</strong>
         <span class="muted">Without this the model reads only text, so a wordless photo of a
-        mountain and a wordless photo of a nightclub look identical to it. Kindred picks about
+        mountain and a wordless photo of a nightclub look identical to it. PsycheAI picks about
         <strong>14 of your own pictures</strong>, spread across your whole account history, shrinks
         them and sends only those — never video, never anything from a message. This is the one
         thing that leaves your device besides the written summary, so untick it if you would rather
@@ -111,7 +121,7 @@
   </div>
 
   <p class="fineprint">
-    Kindred is a self-knowledge and conversation tool, not a psychometric instrument and not a
+    PsycheAI is a self-knowledge and conversation tool, not a psychometric instrument and not a
     background check. The model is inferring from behaviour, it is often wrong, and it says how
     confident it is.
   </p>
@@ -136,7 +146,7 @@
 
   <div class="qr-panel card">
     <div class="qr-holder">
-      <canvas id="qr-canvas" width="300" height="300" aria-label="Your Kindred QR code"></canvas>
+      <canvas id="qr-canvas" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
       <p class="muted qr-caption">Your shareable profile lives inside this code.</p>
     </div>
     <div class="qr-actions">
@@ -164,7 +174,7 @@
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
   <header class="page-head">
-    <h1>Scan a Kindred code</h1>
+    <h1>Scan a PsycheAI code</h1>
     <p class="muted">Point your camera at their QR code, upload a photo of it, or paste their link.</p>
   </header>
   <div id="scan-alert" class="alert" hidden></div>
@@ -199,15 +209,15 @@
 
 <!-- ══════════════ about ══════════════ -->
 <section id="view-about" class="view" hidden>
-  <header class="page-head"><h1>How Kindred works</h1></header>
+  <header class="page-head"><h1>How PsycheAI works</h1></header>
 
   <div class="card">
     <h2>What happens to your data</h2>
     <p>Your Instagram export is a <code>.zip</code> containing your posts, messages, contacts and
-      location history. Kindred opens it <strong>in your browser</strong> using the File API and
+      location history. PsycheAI opens it <strong>in your browser</strong> using the File API and
       reads the JSON files describing your activity. Your videos are never opened at all.</p>
     <p>Photographs are the one exception, and they are opt-out rather than hidden. Left switched on,
-      Kindred picks roughly <strong>fourteen of your own stills</strong> — spread across your whole
+      PsycheAI picks roughly <strong>fourteen of your own stills</strong> — spread across your whole
       account history rather than the latest few — shrinks them in your browser and sends those
       alongside the summary. Without them the model reads only text, which is a real blind spot for
       anyone who posts without captions. Untick the box before uploading and not a single pixel
@@ -265,10 +275,10 @@
 
   <div class="card">
     <h2>Running it yourself</h2>
-    <p>Kindred needs a server because an API key cannot ship inside a web page. Set either
+    <p>PsycheAI needs a server because an API key cannot ship inside a web page. Set either
       <code>GEMINI_API_KEY</code> or <code>ANTHROPIC_API_KEY</code> and run <code>npm start</code> —
-      whichever key is present decides the provider, and <code>KINDRED_PROVIDER</code> forces one if
-      you have both. Set <code>KINDRED_MOCK=1</code> to click through the whole app with canned
+      whichever key is present decides the provider, and <code>PSYCHEAI_PROVIDER</code> forces one if
+      you have both. Set <code>PSYCHEAI_MOCK=1</code> to click through the whole app with canned
       analyses and no API calls.</p>
     <p id="about-status" class="muted"></p>
   </div>
@@ -285,7 +295,7 @@
 </main>
 
 <footer class="footer">
-  <p>Kindred · <a href="#" data-nav="about">how it works</a></p>
+  <p>PsycheAI · <a href="#" data-nav="about">how it works</a></p>
 </footer>
 
 <script src="vendor/qrcode.js"></script>

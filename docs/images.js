@@ -1,7 +1,7 @@
 // Picks a dozen-ish photographs worth looking at, and prepares them for the
 // model.
 //
-// The rest of Kindred reads only JSON, which leaves a real blind spot: a
+// The rest of PsycheAI reads only JSON, which leaves a real blind spot: a
 // wordless photo of a summit and a wordless photo of a nightclub are the same
 // row in the digest. This module closes some of that gap — but it is also the
 // one place where the user's actual pictures leave the device, so it is
@@ -68,7 +68,7 @@
    * taken: the result spans the account from first post to last, and eras when
    * they posted more still get proportionally more slots.
    *
-   * @param {object} signals  from KindredInstagram.readExports
+   * @param {object} signals  from PsycheInstagram.readExports
    * @param {object} options  { count }
    * @returns {Array<{path,kind,ts,captionLen,bytes}>} chronological
    */
@@ -85,7 +85,7 @@
     const seenPath = new Set();
     for (const ref of refs) {
       if (seenPath.has(ref.path)) continue;
-      const hit = root.KindredInstagram.findMedia(index, ref.path);
+      const hit = root.PsycheInstagram.findMedia(index, ref.path);
       if (!hit) continue;
       const bytes = hit.bytes || 0;
       if (bytes < LIMITS.minBytes || bytes > LIMITS.maxBytes) continue;
@@ -174,7 +174,7 @@
     const out = [];
     let done = 0;
     for (const candidate of chosen) {
-      const hit = root.KindredInstagram.findMedia(signals.mediaIndex, candidate.path);
+      const hit = root.PsycheInstagram.findMedia(signals.mediaIndex, candidate.path);
       done++;
       report(done, chosen.length);
       if (!hit) continue;
@@ -194,5 +194,5 @@
     return out;
   }
 
-  root.KindredImages = { select, extract, LIMITS };
+  root.PsycheImages = { select, extract, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

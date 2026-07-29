@@ -482,7 +482,7 @@
 
     for (const file of list) {
       report({ phase: 'open', done: 0, total: 1, label: 'Opening ' + file.name });
-      const archive = await root.KindredZip.open(file);
+      const archive = await root.PsycheZip.open(file);
       for (const entry of archive.entries) {
         const lower = entry.name.toLowerCase();
         if (lower.endsWith('.html') || lower.endsWith('.htm')) sawHtml = true;
@@ -528,5 +528,5 @@
     return signals;
   }
 
-  root.KindredInstagram = { readExports, fixText, routeOf, findMedia, LIMITS };
+  root.PsycheInstagram = { readExports, fixText, routeOf, findMedia, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

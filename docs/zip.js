@@ -184,5 +184,5 @@
     };
   }
 
-  root.KindredZip = { open, ZipError };
+  root.PsycheZip = { open, ZipError };
 })(typeof window !== 'undefined' ? window : globalThis);

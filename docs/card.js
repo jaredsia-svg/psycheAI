@@ -157,5 +157,5 @@
     return match ? match[1] : raw.replace(/\s+/g, '');
   }
 
-  root.KindredCard = { encodeCard, decodeCard, extractPayload, shape, CAPS, COMFORTABLE_PAYLOAD };
+  root.PsycheCard = { encodeCard, decodeCard, extractPayload, shape, CAPS, COMFORTABLE_PAYLOAD };
 })(typeof window !== 'undefined' ? window : globalThis);

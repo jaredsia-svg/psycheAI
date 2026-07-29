@@ -28,10 +28,10 @@ for (const file of ['zip.js', 'instagram.js', 'images.js', 'digest.js', 'card.js
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
-const IG = globalThis.KindredInstagram;
-const Images = globalThis.KindredImages;
-const Digest = globalThis.KindredDigest;
-const Card = globalThis.KindredCard;
+const IG = globalThis.PsycheInstagram;
+const Images = globalThis.PsycheImages;
+const Digest = globalThis.PsycheDigest;
+const Card = globalThis.PsycheCard;
 
 const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
@@ -68,8 +68,8 @@ const selections = {
   gemini: await selectionFor({ GEMINI_API_KEY: 'x' }),
   anthropic: await selectionFor({ ANTHROPIC_API_KEY: 'x' }),
   both: await selectionFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x' }),
-  forced: await selectionFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x', KINDRED_PROVIDER: 'anthropic' }),
-  mock: await selectionFor({ KINDRED_MOCK: '1' }),
+  forced: await selectionFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x', PSYCHEAI_PROVIDER: 'anthropic' }),
+  mock: await selectionFor({ PSYCHEAI_MOCK: '1' }),
   none: await selectionFor({}),
   customModel: await selectionFor({ GEMINI_API_KEY: 'x', GEMINI_MODEL: 'gemini-3.1-pro-preview' }),
 };
@@ -77,7 +77,7 @@ const selections = {
 check('a Gemini key selects Gemini', selections.gemini.provider === 'gemini' && selections.gemini.ready);
 check('an Anthropic key selects Anthropic', selections.anthropic.provider === 'anthropic' && selections.anthropic.ready);
 check('Gemini wins when both keys are present', selections.both.provider === 'gemini');
-check('KINDRED_PROVIDER overrides the key order', selections.forced.provider === 'anthropic');
+check('PSYCHEAI_PROVIDER overrides the key order', selections.forced.provider === 'anthropic');
 check('mock mode wins over everything', selections.mock.mock === true);
 check('no key reports not-ready with a hint',
   selections.none.ready === false && /GEMINI_API_KEY/.test(selections.none.hint), selections.none.hint);
@@ -256,7 +256,7 @@ check('a count above the ceiling is clamped',
 
 const digest = Digest.build(signals, { includeMessages: false, displayName: 'Alec' });
 
-check('digest declares its schema', digest.schema === 'kindred-digest/1');
+check('digest declares its schema', digest.schema === 'psycheai-digest/1');
 check('digest uses the display name', digest.profile.name === 'Alec');
 check('digest carries complete counts', digest.counts.posts === 12 && digest.counts.postsLiked === 240);
 check('digest samples captions', digest.samples.captions.length > 0 && digest.samples.captions.length <= Digest.LIMITS.captions);
@@ -423,11 +423,11 @@ check('card round-trips career strengths',
 check('card excludes the long-form report',
   !JSON.stringify(decoded).includes('Mock summary paragraph'));
 
-check('a foreign code is rejected', (await Card.decodeCard('https://example.com/not-kindred')) === null);
+check('a foreign code is rejected', (await Card.decodeCard('https://example.com/not-psycheai')) === null);
 check('a corrupted payload is rejected', (await Card.decodeCard(cardPayload.slice(0, -8) + 'AAAAAAAA')) === null);
 check('a payload without the version prefix is rejected', (await Card.decodeCard(cardPayload.slice(2))) === null);
 check('a payload is extracted from a URL',
-  Card.extractPayload('https://x.example/kindred/#p=K3ABC-_123') === 'K3ABC-_123');
+  Card.extractPayload('https://x.example/psycheai/#p=K3ABC-_123') === 'K3ABC-_123');
 
 // Oversized model output must be trimmed, not passed through.
 const bloated = Card.shape({
@@ -459,7 +459,7 @@ check('compatibility gives each person their own advice',
 
 // ---------- results ----------
 
-console.log('\nKindred self-test');
+console.log('\nPsycheAI self-test');
 console.log('  digest size       : ' + digest.coverage.digestChars + ' chars (small fixture)');
 console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
   heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');

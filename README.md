@@ -1,6 +1,8 @@
-# 💞 Kindred
+# 🧠 PsycheAI
 
-Upload your Instagram data export. Kindred unpacks it in your browser, distils it into an evidence
+*The personality analysis you didn't know you needed.*
+
+Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an evidence
 summary, and hands that to a language model — **Google Gemini** or **Anthropic Claude** — which
 writes you a detailed profile: your Big Five and MBTI with the reasoning behind each, your interests,
 beliefs and values, and your strengths and weaknesses — both in relationships and in your career.
@@ -11,7 +13,7 @@ playbook aimed at each of you about the other.
 
 ## Running it
 
-Kindred needs a server because an API key cannot ship inside a web page. Set whichever key you have:
+PsycheAI needs a server because an API key cannot ship inside a web page. Set whichever key you have:
 
 ```bash
 npm install
@@ -28,7 +30,7 @@ npm start
 Or click through the whole app with canned analyses and no API calls:
 
 ```bash
-npm run mock              # http://localhost:3000, KINDRED_MOCK=1
+npm run mock              # http://localhost:3000, PSYCHEAI_MOCK=1
 ```
 
 Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
@@ -40,10 +42,10 @@ work.
 |---|---|
 | `GEMINI_API_KEY` | Uses Gemini. Takes priority if both keys are set. |
 | `ANTHROPIC_API_KEY` | Uses Claude. |
-| `KINDRED_PROVIDER` | Forces `gemini` or `anthropic` when you have both keys. |
+| `PSYCHEAI_PROVIDER` | Forces `gemini` or `anthropic` when you have both keys. |
 | `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
-| `KINDRED_MODEL` | Claude model ID. Default `claude-opus-5`. |
-| `KINDRED_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
+| `PSYCHEAI_MODEL` | Claude model ID. Default `claude-opus-5`. |
+| `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 
 Gemini model IDs change often, so the default here will go stale. List what your key can actually
 reach:

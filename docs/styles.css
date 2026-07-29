@@ -1,4 +1,4 @@
-/* Kindred — a warm, readable, single-column app shell. */
+/* PsycheAI — a warm, readable, single-column app shell. */
 
 :root {
   --bg: #faf7fb;
@@ -73,7 +73,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
-.brand { font-weight: 700; text-decoration: none; color: var(--ink); font-size: 1.05rem; }
+.brand { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; text-decoration: none; color: var(--ink); font-size: 1.05rem; }
+/* The mark inherits the accent through currentColor, so it follows the theme
+   rather than needing a second copy for dark mode. */
+.brand-mark { width: 1.5em; height: 1.5em; flex: none; color: var(--accent); }
 .nav-links { display: flex; gap: clamp(.6rem, 2vw, 1.4rem); flex-wrap: wrap; }
 .nav-links a { color: var(--ink-soft); text-decoration: none; font-size: .92rem; }
 .nav-links a:hover { color: var(--accent); }

@@ -3,7 +3,7 @@
 //
 //   GEMINI_API_KEY=...    node tools/livetest.mjs
 //   ANTHROPIC_API_KEY=... node tools/livetest.mjs
-//   KINDRED_PROVIDER=anthropic node tools/livetest.mjs   # when both are set
+//   PSYCHEAI_PROVIDER=anthropic node tools/livetest.mjs   # when both are set
 //
 // This is the one thing the mock-mode suites cannot cover: that the prompts
 // and schemas are actually accepted by the API and that the model fills every
@@ -41,9 +41,9 @@ const check = (label, ok, detail) => {
   else failures.push(label + (detail === undefined ? '' : ' — ' + detail));
 };
 
-const signals = await globalThis.KindredInstagram.readExports(
+const signals = await globalThis.PsycheInstagram.readExports(
   [new File([buildExportZip()], 'export.zip')], { includeMessages: false });
-const digest = globalThis.KindredDigest.build(signals, { displayName: 'Alec' });
+const digest = globalThis.PsycheDigest.build(signals, { displayName: 'Alec' });
 
 console.log('Provider: ' + status.provider + ' · model: ' + status.model);
 console.log('Sending a ' + digest.coverage.digestChars + '-char digest…');
@@ -68,11 +68,11 @@ check('career strengths and weaknesses are both filled',
   report.career.strengths.length > 0 && report.career.weaknesses.length > 0);
 check('confidence is honest about a thin export', report.confidence.score <= 75, String(report.confidence.score));
 
-const card = globalThis.KindredCard.shape(report.card);
-const payload = await globalThis.KindredCard.encodeCard(card);
+const card = globalThis.PsycheCard.shape(report.card);
+const payload = await globalThis.PsycheCard.encodeCard(card);
 check('the real card fits a scannable QR code',
-  payload.length <= globalThis.KindredCard.COMFORTABLE_PAYLOAD, payload.length + ' chars');
-check('the card round-trips', (await globalThis.KindredCard.decodeCard(payload)) !== null);
+  payload.length <= globalThis.PsycheCard.COMFORTABLE_PAYLOAD, payload.length + ' chars');
+check('the card round-trips', (await globalThis.PsycheCard.decodeCard(payload)) !== null);
 
 const other = {
   ...card,
@@ -99,7 +99,7 @@ check('the report names both people',
   JSON.stringify(compat).includes(card.name) && JSON.stringify(compat).includes('Jordan'));
 check('caveats are stated', typeof compat.caveats === 'string' && compat.caveats.length > 20);
 
-console.log('\nKindred live test (' + status.provider + ' · ' + status.model + ')');
+console.log('\nPsycheAI live test (' + status.provider + ' · ' + status.model + ')');
 console.log('  QR payload    : ' + payload.length + ' chars');
 console.log('  big five      : ' + Object.entries(report.bigFive).map(([k, v]) => k.slice(0, 4) + ' ' + v.score).join('  '));
 console.log('  mbti          : ' + report.mbti.type + ' (' + report.mbti.confidence + ')');

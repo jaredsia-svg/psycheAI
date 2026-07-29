@@ -1,4 +1,4 @@
-// Kindred server: serves the static app and proxies the two model calls.
+// PsycheAI server: serves the static app and proxies the two model calls.
 //
 // The proxy exists because an API key cannot ship in a static page. Everything
 // else still happens in the browser — the Instagram archive is unzipped and
@@ -190,7 +190,7 @@ const server = http.createServer((request, response) => {
 
 server.listen(PORT, () => {
   const status = provider.describe();
-  console.log('Kindred running at http://localhost:' + PORT);
+  console.log('PsycheAI running at http://localhost:' + PORT);
   if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
   else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
   else console.log('  Not configured. ' + status.hint);

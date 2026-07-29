@@ -26,7 +26,7 @@ const check = (label, ok, detail) => {
 
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
-  env: { ...process.env, PORT: String(PORT), KINDRED_MOCK: '1' },
+  env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1' },
   stdio: 'ignore',
 });
 const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } };
@@ -56,6 +56,22 @@ const shot = async name => { if (shots) await page.screenshot({ path: join(shotD
 try {
   await page.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
   check('welcome view renders', await page.locator('#view-welcome').isVisible());
+
+  // ---- identity ----
+  check('the app is called PsycheAI', (await page.locator('.brand span').innerText()).trim() === 'PsycheAI');
+  check('nothing still calls it Kindred', !/kindred/i.test(await page.content()));
+  check('the brand carries a brain mark', await page.locator('.brand .brand-mark path').count() >= 4);
+  check('the mark follows the theme rather than a fixed colour',
+    await page.evaluate(() => {
+      const svg = document.querySelector('.brand-mark');
+      return svg.getAttribute('stroke') === 'currentColor' &&
+        getComputedStyle(svg).color !== 'rgb(0, 0, 0)';
+    }));
+  check('the headline is the new one',
+    /The personality analysis\s+you didn't know you needed/.test(
+      await page.locator('#view-welcome h1').innerText()));
+  check('the tab title matches the headline',
+    (await page.title()).includes("the personality analysis you didn't know you needed"));
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
   check('the status endpoint reports which provider is active',
@@ -132,8 +148,8 @@ try {
   check('QR code actually rendered', darkPixels > 500, darkPixels + ' dark pixels');
 
   // ---- the digest that was sent ----
-  const digest = await page.evaluate(() => JSON.parse(localStorage.getItem('kindred3_digest')));
-  check('the evidence digest was kept for re-analysis', !!digest && digest.schema === 'kindred-digest/1');
+  const digest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
+  check('the evidence digest was kept for re-analysis', !!digest && digest.schema === 'psycheai-digest/1');
   check('the digest carries no raw archive', JSON.stringify(digest).length < 250000);
   check('the digest included DMs by default', !!digest.directMessages);
   check('the digest records that DMs were included', digest.coverage.directMessagesIncluded === true);
@@ -173,6 +189,27 @@ try {
   check('the photos are not persisted to this browser',
     !JSON.stringify(await page.evaluate(() => ({ ...localStorage }))).includes('/9j/'));
 
+  // ---- a profile saved under the old name survives the rename ----
+  //
+  // There is no server copy, so a botched key change would silently delete
+  // someone's only profile.
+  const migrated = await page.evaluate(async () => {
+    const profile = localStorage.getItem('psycheai_profile');
+    localStorage.clear();
+    localStorage.setItem('kindred3_profile', profile);
+    return true;
+  }) && await (async () => {
+    await page.reload({ waitUntil: 'load' });
+    return page.evaluate(() => ({
+      moved: localStorage.getItem('psycheai_profile') !== null,
+      cleared: localStorage.getItem('kindred3_profile') === null,
+    }));
+  })();
+  check('a profile stored under the old name is carried over', migrated.moved);
+  check('the old key is not left behind', migrated.cleared);
+  check('the carried-over profile still renders',
+    await page.locator('#view-profile').isVisible());
+
   // ---- the opt-out actually opts out ----
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
@@ -183,7 +220,7 @@ try {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
-  const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('kindred3_digest')));
+  const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
   check('the opt-out is recorded for the model', optedOut.coverage.directMessagesIncluded === false);
   check('no message text survives the opt-out', !JSON.stringify(optedOut).includes('Own message'));
@@ -196,8 +233,8 @@ try {
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {
-    const mine = JSON.parse(localStorage.getItem('kindred3_profile')).card;
-    return window.KindredCard.encodeCard({
+    const mine = JSON.parse(localStorage.getItem('psycheai_profile')).card;
+    return window.PsycheCard.encodeCard({
       ...mine,
       name: 'Jordan',
       headline: 'Night-owl promoter',
@@ -237,7 +274,7 @@ try {
   check('match history is kept', (await page.locator('#profile-body').innerText()).includes('Jordan'));
 
   await page.click('[data-nav="scan"]');
-  await page.fill('#paste-input', 'https://example.com/#p=notarealkindredcode');
+  await page.fill('#paste-input', 'https://example.com/#p=notarealpsycheaicode');
   await page.click('#paste-go');
   check('a foreign code is rejected cleanly', await page.locator('#scan-alert').isVisible());
 
