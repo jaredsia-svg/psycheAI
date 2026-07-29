@@ -298,12 +298,13 @@ textarea { resize: vertical; }
 
 /* ---------- profile ---------- */
 
-.qr-panel { display: grid; grid-template-columns: auto 1fr; gap: 1.4rem; align-items: start; }
+.qr-panel { display: grid; grid-template-columns: auto 1fr; gap: 0 1.4rem; align-items: start; }
+/* The heading sits above both columns rather than beside the code. */
+.qr-title { grid-column: 1 / -1; margin-bottom: 1rem; }
 .qr-holder { text-align: center; }
 /* The card payload is a few hundred characters, so the code has many more
    modules than a short URL — it needs the size to stay scannable. */
 #qr-canvas { width: 288px; height: 288px; max-width: 100%; border-radius: 12px; background: #fff; padding: 10px; }
-.qr-caption { font-size: .78rem; margin: .5rem 0 0; }
 .facts { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .3rem .9rem; margin: 0; }
 .facts dt { color: var(--ink-soft); font-size: .88rem; }
 .facts dd { margin: 0; }
@@ -365,8 +366,9 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 /* ---------- responsive ---------- */
 
 @media (max-width: 620px) {
-  .qr-panel { grid-template-columns: 1fr; }
+  .qr-panel { grid-template-columns: 1fr; gap: .9rem; }
   .qr-holder { justify-self: center; }
+  .qr-title { margin-bottom: 0; }
   .trait-row { grid-template-columns: 1fr 2.5rem; grid-template-areas: "label num" "bar bar"; }
   .trait-label { grid-area: label; }
   .trait-num { grid-area: num; }

@@ -149,6 +149,13 @@ try {
 
   check('the share panel no longer explains the storage model',
     !/There is no account and no database/.test(await page.locator('.qr-actions').innerText()));
+  check('the share heading sits above the QR code, not beside it', await page.evaluate(() => {
+    const title = document.querySelector('.qr-title');
+    const code = document.querySelector('#qr-canvas');
+    return title.getBoundingClientRect().bottom <= code.getBoundingClientRect().top;
+  }));
+  check('the caption under the QR code is gone',
+    (await page.locator('.qr-caption').count()) === 0);
 
   check('the profile and scan links appear once there is a profile',
     (await visibleNav()).join('|') === 'My profile|Scan a code|How it works',
