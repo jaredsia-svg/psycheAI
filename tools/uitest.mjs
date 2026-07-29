@@ -127,22 +127,44 @@ try {
     ['career strengths and weaknesses', /At work/],
     ['what the QR code contains', /What your QR code contains/],
     ['the MBTI nickname', /The Protagonist/],
-    ['what each MBTI letter looks like in practice', /At your best/],
-    ['how the type comes apart', /Under stress/],
-    ['how people misread the type', /How people misread you/],
-    ['MBTI growth edges', /Growth edges/],
-    ['MBTI key takeaways', /Key takeaways/],
+    ['values and beliefs as one section', /Values & Beliefs/],
     ['the Instagram behaviour section', /Your Instagram behaviour/],
-    ['what they post', /What you post/],
-    ['when they are active', /When you are here/],
-    ['how their use changed', /How it changed/],
-    ['publishing against reading', /Publishing vs reading/],
-    ['where their attention goes', /Where your attention goes/],
+    ['what they post', /What you post/i],
+    ['when they are active', /When you are here/i],
+    ['how their use changed', /How it changed/i],
+    ['publishing against reading', /Publishing vs reading/i],
+    ['where their attention goes', /Where your attention goes/i],
     ['behavioural implications', /What it suggests/],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
+  // The five MBTI sub-sections were removed; nothing should reintroduce them.
+  for (const gone of ['At your best', 'Under stress', 'How people misread you', 'Growth edges', 'Key takeaways']) {
+    check('MBTI no longer shows "' + gone + '"', !profileText.includes(gone));
+  }
+  check('values and beliefs are one card, not two',
+    (await page.locator('#profile-body h2').allInnerTexts())
+      .filter(t => /^Values|^Beliefs/.test(t)).length === 1);
+
+  // Behaviour is evidence for the verdicts, so it reads after them.
+  const order = await page.locator('#profile-body h2').allInnerTexts();
+  const at = needle => order.findIndex(t => t.includes(needle));
+  check('Instagram behaviour comes after At work', at('Instagram behaviour') > at('At work'),
+    order.join(' | '));
+  check('Instagram behaviour still comes before the QR summary',
+    at('Instagram behaviour') < at('QR code'));
+  check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
+
   check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
+  check('every section carries a heading glyph',
+    (await page.locator('#profile-body .card-icon').count()) ===
+    (await page.locator('#profile-body .section-card').count()));
+  check('strengths and weaknesses sit side by side',
+    (await page.locator('#profile-body .split').count()) === 2);
+  check('interests and values render as tiles',
+    (await page.locator('#profile-body .tile').count()) >= 4);
+  check('behaviour facets render as their own blocks',
+    (await page.locator('#profile-body .facet').count()) === 5);
   check('each axis shows how strongly it leans',
     (await page.locator('.axis .pill').count()) === 4);
   check('a slight lean is marked as such',

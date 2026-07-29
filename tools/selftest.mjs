@@ -144,8 +144,12 @@ check('profile schema covers everything the brief asked for',
 
 const mbtiProps = prompts.PROFILE_SCHEMA.properties.mbti.properties;
 check('MBTI goes beyond four letters and a caveat',
-  ['portrait', 'atYourBest', 'underStress', 'misreadAs', 'growthEdges', 'keyTakeaways', 'nickname']
-    .every(k => k in mbtiProps));
+  ['portrait', 'nickname'].every(k => k in mbtiProps));
+// The sub-sections were dropped from the UI, so they must not stay in the
+// schema burning output budget on text nobody renders.
+check('MBTI asks for nothing the report does not show',
+  ['atYourBest', 'underStress', 'misreadAs', 'growthEdges', 'keyTakeaways']
+    .every(k => !(k in mbtiProps)));
 check('each MBTI letter carries strength and a practical reading',
   ['axis', 'choice', 'strength', 'why', 'inPractice'].every(k => k in mbtiProps.letters.items.properties));
 check('a letter can be marked as a slight lean',
@@ -185,7 +189,8 @@ for (const [label, needle] of [
   ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
   ['says what may be taken from an image', /the setting, the activity, the company kept/],
   ['keeps images as weak evidence', /weakest evidence per item/],
-  ['demands MBTI takeaways be personal', /would be true of every INFP alive/],
+  ['demands the MBTI portrait be personal', /would be true of every INFP alive/],
+  ['wants the portrait to land somewhere uncomfortable', /should sting slightly in at least one place/],
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],

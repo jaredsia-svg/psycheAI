@@ -302,6 +302,14 @@
       (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
       ' Your full report is not included.';
 
+    // Every section opens the same way: a glyph, a title and a line saying
+    // what the section is for. It gives the long report a rhythm to scroll
+    // through instead of a wall of identical cards.
+    const head = (icon, title, sub) =>
+      '<div class="card-head"><span class="card-icon">' + icon + '</span>' +
+      '<div><h2>' + title + '</h2>' +
+      (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
+
     let html = '';
 
     // Confidence first — it frames everything under it.
@@ -310,11 +318,12 @@
       '<p><strong>Confidence: ' + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p></div>';
 
-    html += '<div class="card"><h2>Who you are</h2>' + paragraphs(report.summary) + '</div>';
+    html += '<div class="card section-card">' + head('👤', 'Who you are') +
+      paragraphs(report.summary) + '</div>';
 
     // Big Five.
-    html += '<div class="card"><h2>Big Five</h2>' +
-      '<p class="muted">0–100, where 50 is an average person. Each score lists the evidence behind it.</p>';
+    html += '<div class="card section-card">' +
+      head('📊', 'Big Five', '0–100, where 50 is an average person. Each score lists the evidence behind it.');
     for (const trait of Object.keys(TRAIT_LABELS)) {
       const item = report.bigFive[trait];
       if (!item) continue;
@@ -325,12 +334,12 @@
     }
     html += '</div>';
 
-    // MBTI. The long one — this is the section people actually read out to
-    // each other, so it gets the room.
+    // MBTI.
     const mbti = report.mbti;
-    html += '<div class="card"><h2>MBTI: ' + esc(mbti.type) +
-      (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : '') + '</h2>' +
-      '<p class="muted">Confidence: ' + esc(mbti.confidence) + '</p>';
+    html += '<div class="card section-card">' +
+      head('🧭', 'MBTI: ' + esc(mbti.type) +
+        (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : ''),
+        'Confidence: ' + esc(mbti.confidence));
 
     html += '<div class="axes">' + (mbti.letters || []).map(letter =>
       '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
@@ -340,22 +349,70 @@
       (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
       '</div></div>').join('') + '</div>';
 
-    if (mbti.portrait) html += paragraphs(mbti.portrait);
-    if (mbti.atYourBest) html += '<h3>At your best</h3><p>' + esc(mbti.atYourBest) + '</p>';
-    if (mbti.underStress) html += '<h3>Under stress</h3><p>' + esc(mbti.underStress) + '</p>';
-    if (mbti.misreadAs) html += '<h3>How people misread you</h3><p>' + esc(mbti.misreadAs) + '</p>';
-    if ((mbti.growthEdges || []).length) html += '<h3>Growth edges</h3>' + points(mbti.growthEdges);
-    if ((mbti.keyTakeaways || []).length) {
-      html += '<h3>Key takeaways</h3><ul class="takeaways">' +
-        mbti.keyTakeaways.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul>';
-    }
+    if (mbti.portrait) html += '<div class="portrait">' + paragraphs(mbti.portrait) + '</div>';
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
 
+    // Interests.
+    html += '<div class="card section-card">' + head('✨', 'Interests');
+    if ((report.interests || []).length) {
+      html += '<div class="tile-grid">' + report.interests.map(item =>
+        '<div class="tile tile-' + esc(item.intensity) + '">' +
+        '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span></h4>' +
+        '<p>' + esc(item.detail) + '</p>' +
+        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
+    } else {
+      html += '<p class="muted">Nothing stood out strongly.</p>';
+    }
+    html += '</div>';
+
+    // Values and beliefs, together — they answer the same question from two
+    // directions, and splitting them left two thin cards.
+    html += '<div class="card section-card">' +
+      head('🧿', 'Values &amp; Beliefs', 'What you appear to hold to, and how firmly the data actually says so.') +
+      '<h3>Values</h3>';
+    html += (report.values || []).length
+      ? '<div class="tile-grid">' + report.values.map(item =>
+        '<div class="tile"><h4>' + esc(item.value) + '</h4><p>' + esc(item.detail) + '</p>' +
+        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
+      : '<p class="muted">The export did not support any confident read here.</p>';
+
+    html += '<h3>Beliefs</h3>';
+    html += (report.beliefs || []).length
+      ? '<div class="tile-grid">' + report.beliefs.map(item =>
+        '<div class="tile"><h4>' + esc(item.belief) +
+        '<span class="pill">' + esc(item.confidence) + ' confidence</span></h4>' +
+        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
+      : '<p class="muted">Nothing in the export supported a confident read on beliefs — which is a perfectly ordinary result.</p>';
+    html += '</div>';
+
+    // Relationships.
+    const relationship = report.relationship;
+    html += '<div class="card section-card">' + head('💞', 'In relationships') +
+      '<div class="split"><div><h3 class="h-good">Strengths</h3>' + points(relationship.strengths) + '</div>' +
+      '<div><h3 class="h-warn">Weaknesses</h3>' + points(relationship.weaknesses) + '</div></div>' +
+      '<div class="callout"><h3>Attachment: ' + esc(relationship.attachment.style) + '</h3>' +
+      '<p>' + esc(relationship.attachment.why) + '</p>' +
+      '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p></div>' +
+      '<h3>How to love you</h3>' + list(relationship.howToLoveThem, 'ticks') +
+      '<h3>Who fits</h3><p>' + esc(relationship.idealPartner) + '</p></div>';
+
+    // Career.
+    const career = report.career;
+    html += '<div class="card section-card">' + head('💼', 'At work') +
+      '<div class="split"><div><h3 class="h-good">Strengths</h3>' + points(career.strengths) + '</div>' +
+      '<div><h3 class="h-warn">Weaknesses</h3>' + points(career.weaknesses) + '</div></div>' +
+      '<h3>How you work</h3><p>' + esc(career.workStyle) + '</p>' +
+      '<h3>Where you would thrive</h3>' + list(career.environments, 'ticks') +
+      '<h3>What could hold you back</h3><p>' + esc(career.watchOuts) + '</p></div>';
+
     // Instagram behaviour: the part of the export nobody reads themselves.
+    // It sits after the personality sections because it is the evidence
+    // underneath them rather than another verdict.
     const activity = report.activity;
     if (activity) {
-      html += '<div class="card"><h2>Your Instagram behaviour</h2>' +
-        '<p>' + esc(activity.summary) + '</p>';
+      html += '<div class="card section-card">' +
+        head('📱', 'Your Instagram behaviour', esc(activity.summary));
+      html += '<div class="facet-grid">';
       for (const [label, key] of [
         ['What you post', 'posting'],
         ['When you are here', 'rhythm'],
@@ -365,9 +422,10 @@
       ]) {
         const facet = activity[key];
         if (!facet) continue;
-        html += '<h3>' + label + ' · <span class="muted">' + esc(facet.headline) + '</span></h3>' +
-          '<p>' + esc(facet.detail) + '</p>';
+        html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
+          '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
       }
+      html += '</div>';
       if ((activity.implications || []).length) {
         html += '<h3>What it suggests</h3><dl class="points implications">' +
           activity.implications.map(item =>
@@ -376,56 +434,10 @@
       html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
     }
 
-    // Interests.
-    html += '<div class="card"><h2>Interests</h2>';
-    if ((report.interests || []).length) {
-      html += '<dl class="points">' + report.interests.map(item =>
-        '<dt>' + esc(item.name) + ' <span class="pill">' + esc(item.intensity) + '</span></dt>' +
-        '<dd>' + esc(item.detail) + ' <span class="muted">' + esc(item.evidence) + '</span></dd>').join('') + '</dl>';
-    } else {
-      html += '<p class="muted">Nothing stood out strongly.</p>';
-    }
-    html += '</div>';
-
-    // Values and beliefs.
-    html += '<div class="card"><h2>Values</h2>';
-    html += (report.values || []).length
-      ? '<dl class="points">' + report.values.map(item =>
-        '<dt>' + esc(item.value) + '</dt><dd>' + esc(item.detail) + ' <span class="muted">' + esc(item.evidence) + '</span></dd>').join('') + '</dl>'
-      : '<p class="muted">The export did not support any confident read here.</p>';
-    html += '</div>';
-
-    html += '<div class="card"><h2>Beliefs</h2>';
-    html += (report.beliefs || []).length
-      ? '<dl class="points">' + report.beliefs.map(item =>
-        '<dt>' + esc(item.belief) + ' <span class="pill">' + esc(item.confidence) + '</span></dt>' +
-        '<dd>' + esc(item.detail) + ' <span class="muted">' + esc(item.evidence) + '</span></dd>').join('') + '</dl>'
-      : '<p class="muted">Nothing in the export supported a confident read on beliefs — which is a perfectly ordinary result.</p>';
-    html += '</div>';
-
-    // Relationships.
-    const relationship = report.relationship;
-    html += '<div class="card"><h2>In relationships</h2>' +
-      '<h3>Strengths</h3>' + points(relationship.strengths) +
-      '<h3>Weaknesses</h3>' + points(relationship.weaknesses) +
-      '<h3>Attachment: ' + esc(relationship.attachment.style) + '</h3>' +
-      '<p>' + esc(relationship.attachment.why) + '</p>' +
-      '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p>' +
-      '<h3>How to love you</h3>' + list(relationship.howToLoveThem) +
-      '<h3>Who fits</h3><p>' + esc(relationship.idealPartner) + '</p></div>';
-
-    // Career.
-    const career = report.career;
-    html += '<div class="card"><h2>At work</h2>' +
-      '<h3>Strengths</h3>' + points(career.strengths) +
-      '<h3>Weaknesses</h3>' + points(career.weaknesses) +
-      '<h3>How you work</h3><p>' + esc(career.workStyle) + '</p>' +
-      '<h3>Where you would thrive</h3>' + list(career.environments) +
-      '<h3>What could hold you back</h3><p>' + esc(career.watchOuts) + '</p></div>';
-
     // What gets shared.
-    html += '<div class="card"><h2>What your QR code contains</h2>' +
-      '<p class="muted">Only this — the compact card the other person\'s report is built from.</p>' +
+    html += '<div class="card section-card">' +
+      head('🔗', 'What your QR code contains',
+        'Only this — the compact card the other person\'s report is built from.') +
       '<p><strong>' + esc(profile.card.headline) + '</strong></p><p>' + esc(profile.card.summary) + '</p>' +
       tags(profile.card.interests) +
       '<p class="fineprint">Plus your Big Five scores, MBTI, values, beliefs, relationship and career ' +
@@ -433,7 +445,8 @@
 
     const history = store.read(KEYS.history, []);
     if (history.length) {
-      html += '<div class="card"><h2>Your matches</h2>' + historyTable(history) + '</div>';
+      html += '<div class="card section-card">' + head('🤝', 'Your matches') +
+        historyTable(history) + '</div>';
     }
 
     html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'the model') + ' on ' +

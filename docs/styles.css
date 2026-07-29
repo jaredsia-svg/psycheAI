@@ -350,6 +350,8 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
   .grid-row { grid-template-columns: 1fr; }
   .facts { grid-template-columns: 1fr; }
   .facts dd { margin-bottom: .5rem; }
+  .split { grid-template-columns: 1fr; gap: .2rem; }
+  .tile-grid, .facet-grid { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -377,6 +379,72 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 .takeaways li { margin-bottom: .45rem; }
 
 .implications dt { font-weight: 600; color: var(--ink); }
+
+/* ---------- report sections ---------- */
+/*
+ * The profile is a dozen long cards in a row. Without a repeating header
+ * shape it reads as one undifferentiated wall, so every section opens with a
+ * glyph, a title and a line of purpose, and carries a hairline accent at the
+ * top to mark where one ends and the next begins.
+ */
+
+.section-card { position: relative; overflow: hidden; }
+.section-card::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  opacity: .8;
+}
+
+.card-head { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: 1.1rem; }
+.card-head h2 { margin: 0; }
+.card-icon {
+  flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem;
+  border-radius: 12px; background: var(--accent-soft); font-size: 1.15rem; line-height: 1;
+}
+.card-sub { margin: .25rem 0 0; color: var(--ink-soft); font-size: .9rem; }
+
+/* Strengths beside weaknesses reads faster than one above the other. */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: .4rem; }
+.split h3 { margin-top: 0; }
+.h-good { color: var(--good); }
+.h-warn { color: var(--warn); }
+
+.callout {
+  background: var(--accent-soft); border-radius: 12px;
+  padding: .9rem 1.1rem; margin: 1.2rem 0 .4rem;
+}
+.callout h3 { margin-top: 0; }
+.callout p:last-child { margin-bottom: 0; }
+
+ul.ticks { list-style: none; padding-left: 0; margin: .4rem 0 0; }
+ul.ticks li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
+ul.ticks li::before { content: "\2713"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+/* ---------- tiles ---------- */
+
+.tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .7rem; margin: .5rem 0 0; }
+.tile {
+  border: 1px solid var(--line); border-radius: 12px; padding: .8rem .9rem;
+  background: color-mix(in srgb, var(--accent-soft) 40%, transparent);
+}
+.tile h4 { margin: 0 0 .3rem; font-size: .96rem; display: flex; flex-wrap: wrap; gap: .4rem; align-items: baseline; }
+.tile p { margin: 0 0 .35rem; font-size: .9rem; }
+.tile-ev { color: var(--ink-soft); font-size: .82rem; margin-bottom: 0 !important; }
+/* A core interest should be visibly heavier than a casual one. */
+.tile-core { border-color: var(--accent); background: var(--accent-soft); }
+.pill-core { border-color: var(--accent); color: var(--accent); }
+.pill-casual { opacity: .65; }
+
+/* ---------- behaviour facets ---------- */
+
+.facet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .7rem; margin-bottom: 1.2rem; }
+.facet { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .8rem; }
+.facet-label { font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.facet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
+.facet p { margin: 0; font-size: .9rem; }
+
+.portrait { margin-top: .4rem; }
+.portrait p:first-child::first-letter { font-size: 2.4em; line-height: .9; float: left; padding: .05em .12em 0 0; color: var(--accent); font-weight: 700; }
 
 /* ---------- print / PDF export ---------- */
 /*
@@ -406,7 +474,16 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
   }
   /* The long sections legitimately run over a page; forcing them whole would
      leave half-empty pages everywhere. */
-  .card:has(.axes), .card:has(.takeaways), .card:has(.trait-row) { break-inside: auto; page-break-inside: auto; }
+  .card:has(.axes), .card:has(.facet-grid), .card:has(.trait-row), .card:has(.tile-grid) { break-inside: auto; page-break-inside: auto; }
+  .tile, .facet, .callout { break-inside: avoid; page-break-inside: avoid; }
+
+  /* Background printing is usually off, so the section rule and the icon
+     tile would silently disappear. Give both a border to fall back to. */
+  .section-card::before { display: none; }
+  .section-card { border-top: 2px solid #4a2464; }
+  .card-icon { border: 1px solid #ccc; }
+  .tile { background: none; border: 1px solid #ccc; }
+  .callout { background: none; border: 1px solid #ccc; }
 
   h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
   h2 { font-size: 1.15rem; }

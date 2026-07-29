@@ -166,10 +166,10 @@ and weaknesses — and two longer sections:
 
 **MBTI**, written to be worth reading rather than worth skimming. The type and its nickname, then
 per axis how strongly the data leans (`slight` / `moderate` / `clear`) and what that letter looks
-like in their ordinary week. Then a portrait in their own second person, how the type runs at its
-best, how it comes apart under stress, how people habitually misread them, growth edges, and three
-to five takeaways. The prompt is explicit that a takeaway true of every INFP alive must be rewritten
-or cut, and that a hedged letter beats a confident wrong one.
+like in their ordinary week — followed by a portrait in their own second person covering where the
+type serves them, where it costs them and how they get misread. The prompt is explicit that a
+sentence which would survive being pasted into a stranger's profile must be rewritten or cut, that
+the portrait should sting slightly somewhere, and that a hedged letter beats a confident wrong one.
 
 **Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
 in what mix, when they reach for the app, how their use changed month by month, whether they publish
@@ -215,14 +215,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 154 checks: synthesises a real ZIP export and runs
+npm test           # 156 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 104 checks: drives the real UI in Chromium against a
+npm run test:ui    # 113 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
