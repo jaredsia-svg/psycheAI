@@ -126,9 +126,62 @@ try {
     ['relationship strengths and weaknesses', /In relationships/],
     ['career strengths and weaknesses', /At work/],
     ['what the QR code contains', /What your QR code contains/],
+    ['the MBTI nickname', /The Protagonist/],
+    ['what each MBTI letter looks like in practice', /At your best/],
+    ['how the type comes apart', /Under stress/],
+    ['how people misread the type', /How people misread you/],
+    ['MBTI growth edges', /Growth edges/],
+    ['MBTI key takeaways', /Key takeaways/],
+    ['the Instagram behaviour section', /Your Instagram behaviour/],
+    ['what they post', /What you post/],
+    ['when they are active', /When you are here/],
+    ['how their use changed', /How it changed/],
+    ['publishing against reading', /Publishing vs reading/],
+    ['where their attention goes', /Where your attention goes/],
+    ['behavioural implications', /What it suggests/],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
+  check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
+  check('each axis shows how strongly it leans',
+    (await page.locator('.axis .pill').count()) === 4);
+  check('a slight lean is marked as such',
+    (await page.locator('.axis .pill-slight').count()) >= 1);
+  check('each behavioural implication pairs an observation with an inference',
+    (await page.locator('.implications dt').count()) ===
+    (await page.locator('.implications dd').count()) &&
+    (await page.locator('.implications dt').count()) >= 2);
+
+  // ---- PDF export ----
+  check('there is an export button at the top',
+    await page.locator('#export-pdf-top').isVisible());
+  check('there is an export button at the bottom',
+    await page.locator('#export-pdf-bottom').isVisible());
+  check('the export button says what it does',
+    (await page.locator('#export-pdf-top').innerText()).includes('PDF'));
+  check('the page explains it goes through the print dialog',
+    /Save as PDF/.test(await page.locator('#pdf-note').innerText()));
+
+  // Print CSS is the PDF, so check it against the print media type rather
+  // than trusting that the rules exist.
+  await page.emulateMedia({ media: 'print' });
+  check('navigation is dropped from the PDF', !(await page.locator('.nav').isVisible()));
+  check('the export buttons are not in the PDF', !(await page.locator('#export-pdf-top').isVisible()));
+  check('the report itself stays in the PDF', await page.locator('#profile-body').isVisible());
+  check('the QR code stays in the PDF', await page.locator('#qr-canvas').isVisible());
+  check('the QR code is sized for paper rather than for screen',
+    (await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width)) === '180px',
+    await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width));
+  check('the PDF is not printed on a dark background', await page.evaluate(() => {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    return bg === 'rgb(255, 255, 255)';
+  }));
+  check('gradient headings do not print as invisible text', await page.evaluate(() => {
+    const el = document.querySelector('.accent');
+    return getComputedStyle(el).webkitTextFillColor !== 'rgba(0, 0, 0, 0)';
+  }));
+  await shot('2b-profile-print');
+  await page.emulateMedia({ media: 'screen' });
   check('every Big Five trait is drawn', (await page.locator('.trait-row').count()) === 5);
   check('traits carry evidence chips', (await page.locator('.ev').count()) > 0);
   check('relationship and career use point lists', (await page.locator('.points').count()) >= 4);

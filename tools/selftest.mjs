@@ -139,8 +139,25 @@ for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMP
 }
 
 check('profile schema covers everything the brief asked for',
-  ['bigFive', 'mbti', 'interests', 'beliefs', 'values', 'relationship', 'career', 'card']
+  ['bigFive', 'mbti', 'interests', 'beliefs', 'values', 'relationship', 'career', 'activity', 'card']
     .every(key => key in prompts.PROFILE_SCHEMA.properties));
+
+const mbtiProps = prompts.PROFILE_SCHEMA.properties.mbti.properties;
+check('MBTI goes beyond four letters and a caveat',
+  ['portrait', 'atYourBest', 'underStress', 'misreadAs', 'growthEdges', 'keyTakeaways', 'nickname']
+    .every(k => k in mbtiProps));
+check('each MBTI letter carries strength and a practical reading',
+  ['axis', 'choice', 'strength', 'why', 'inPractice'].every(k => k in mbtiProps.letters.items.properties));
+check('a letter can be marked as a slight lean',
+  mbtiProps.letters.items.properties.strength.enum.includes('slight'));
+
+const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
+check('activity section covers behaviour, not just counts',
+  ['summary', 'posting', 'rhythm', 'trajectory', 'engagement', 'attention', 'implications', 'blindSpots']
+    .every(k => k in activityProps));
+check('activity separates an observation from its inference',
+  ['observation', 'implication'].every(k => k in activityProps.implications.items.properties));
+check('activity states what it cannot see', 'blindSpots' in activityProps);
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
 check('career section has strengths and weaknesses',
@@ -168,6 +185,11 @@ for (const [label, needle] of [
   ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
   ['says what may be taken from an image', /the setting, the activity, the company kept/],
   ['keeps images as weak evidence', /weakest evidence per item/],
+  ['demands MBTI takeaways be personal', /would be true of every INFP alive/],
+  ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
+  ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
+  ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
+  ['does not moralise about screen time', /not to moralise about screen time/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }

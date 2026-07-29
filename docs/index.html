@@ -130,6 +130,9 @@
   <header class="page-head">
     <h1 id="profile-title">Your profile</h1>
     <p id="profile-sub" class="muted"></p>
+    <div class="btn-row no-print">
+      <button class="btn" id="export-pdf-top">Export as PDF</button>
+    </div>
   </header>
 
   <div class="qr-panel card">
@@ -153,10 +156,14 @@
 
   <div id="profile-body"></div>
 
-  <div class="cta-row">
+  <div class="cta-row no-print">
+    <button class="btn" id="export-pdf-bottom">Export as PDF</button>
     <button class="btn btn-ghost" id="reanalyse">Re-run the analysis</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>
+  <p class="fineprint no-print" id="pdf-note">Opens your browser's print dialog — choose
+    <strong>Save as PDF</strong> as the destination. The whole report is included, the buttons and
+    navigation are not.</p>
 </section>
 
 <!-- ══════════════ scan ══════════════ -->
@@ -227,9 +234,17 @@
       strongest signal, Instagram's inferred topics are real but noisy, and accounts followed mix
       interest with aspiration. It is told that most people are near the middle on most traits, and
       to reserve extreme scores for extreme evidence.</p>
-    <p>It produces your Big Five with per-trait evidence, an MBTI guess with per-letter reasoning
-      and a caveat, your interests, beliefs and values, and your strengths and weaknesses from both
-      a relationship and a career perspective — plus a confidence score for the whole thing.</p>
+    <p>It produces your Big Five with per-trait evidence; a long-form MBTI reading — the type and
+      its nickname, how strongly each axis leans and what that letter looks like in your actual
+      week, a portrait written to you, how the type runs at its best and comes apart under stress,
+      how people misread you, growth edges and key takeaways; a read of your Instagram behaviour
+      itself — what you post, when you are here, how it has changed, whether you publish more than
+      you read, and where your attention goes; your interests, beliefs and values; and your
+      strengths and weaknesses from both a relationship and a career perspective — plus a
+      confidence score for the whole thing.</p>
+    <p>The finished report exports to PDF from the buttons at the top and bottom of your profile.
+      That goes through your browser's own print dialog — choose <strong>Save as PDF</strong> —
+      which keeps the text selectable and searchable rather than turning it into a picture.</p>
     <p><strong>What it is told not to do:</strong> identify or speculate about other people in your
       data, or infer sexual orientation, health, immigration status or political affiliation unless
       you have stated it outright in your own words. It does not classify anyone by appearance or

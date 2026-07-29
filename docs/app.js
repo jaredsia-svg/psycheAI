@@ -325,13 +325,56 @@
     }
     html += '</div>';
 
-    // MBTI.
+    // MBTI. The long one — this is the section people actually read out to
+    // each other, so it gets the room.
     const mbti = report.mbti;
-    html += '<div class="card"><h2>MBTI: ' + esc(mbti.type) + '</h2>' +
-      '<p class="muted">Confidence: ' + esc(mbti.confidence) + '</p>' +
-      '<dl class="points">' + (mbti.letters || []).map(letter =>
-        '<dt>' + esc(letter.axis) + ' → ' + esc(letter.choice) + '</dt><dd>' + esc(letter.why) + '</dd>').join('') +
-      '</dl><p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
+    html += '<div class="card"><h2>MBTI: ' + esc(mbti.type) +
+      (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : '') + '</h2>' +
+      '<p class="muted">Confidence: ' + esc(mbti.confidence) + '</p>';
+
+    html += '<div class="axes">' + (mbti.letters || []).map(letter =>
+      '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
+      '<div><span class="axis-name">' + esc(letter.axis) + '</span>' +
+      '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
+      '<p>' + esc(letter.why) + '</p>' +
+      (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
+      '</div></div>').join('') + '</div>';
+
+    if (mbti.portrait) html += paragraphs(mbti.portrait);
+    if (mbti.atYourBest) html += '<h3>At your best</h3><p>' + esc(mbti.atYourBest) + '</p>';
+    if (mbti.underStress) html += '<h3>Under stress</h3><p>' + esc(mbti.underStress) + '</p>';
+    if (mbti.misreadAs) html += '<h3>How people misread you</h3><p>' + esc(mbti.misreadAs) + '</p>';
+    if ((mbti.growthEdges || []).length) html += '<h3>Growth edges</h3>' + points(mbti.growthEdges);
+    if ((mbti.keyTakeaways || []).length) {
+      html += '<h3>Key takeaways</h3><ul class="takeaways">' +
+        mbti.keyTakeaways.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul>';
+    }
+    html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
+
+    // Instagram behaviour: the part of the export nobody reads themselves.
+    const activity = report.activity;
+    if (activity) {
+      html += '<div class="card"><h2>Your Instagram behaviour</h2>' +
+        '<p>' + esc(activity.summary) + '</p>';
+      for (const [label, key] of [
+        ['What you post', 'posting'],
+        ['When you are here', 'rhythm'],
+        ['How it changed', 'trajectory'],
+        ['Publishing vs reading', 'engagement'],
+        ['Where your attention goes', 'attention'],
+      ]) {
+        const facet = activity[key];
+        if (!facet) continue;
+        html += '<h3>' + label + ' · <span class="muted">' + esc(facet.headline) + '</span></h3>' +
+          '<p>' + esc(facet.detail) + '</p>';
+      }
+      if ((activity.implications || []).length) {
+        html += '<h3>What it suggests</h3><dl class="points implications">' +
+          activity.implications.map(item =>
+            '<dt>' + esc(item.observation) + '</dt><dd>' + esc(item.implication) + '</dd>').join('') + '</dl>';
+      }
+      html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
+    }
 
     // Interests.
     html += '<div class="card"><h2>Interests</h2>';
@@ -439,6 +482,27 @@
     link.href = $('#qr-canvas').toDataURL('image/png');
     link.click();
   });
+
+  // Export goes through the browser's own print-to-PDF rather than a bundled
+  // PDF library. A twelve-page text report is exactly what print CSS is for:
+  // the text stays selectable and searchable, pagination and page size are the
+  // browser's problem, and it costs nothing to ship. A canvas-rasterising
+  // library would produce a fuzzy image of the same thing and add 200KB.
+  //
+  // The temporary title is what most browsers offer as the default filename.
+  function exportPdf() {
+    const name = (state.profile && state.profile.card.name) || 'me';
+    const original = document.title;
+    document.title = 'PsycheAI — ' + name;
+    const restore = () => { document.title = original; };
+    window.addEventListener('afterprint', restore, { once: true });
+    // Safari does not always fire afterprint, so restore on a timer too.
+    setTimeout(restore, 60000);
+    window.print();
+  }
+
+  $('#export-pdf-top').addEventListener('click', exportPdf);
+  $('#export-pdf-bottom').addEventListener('click', exportPdf);
 
   $('#reanalyse').addEventListener('click', async () => {
     if (!state.digest) {

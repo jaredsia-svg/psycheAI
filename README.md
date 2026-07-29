@@ -4,8 +4,10 @@
 
 Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an evidence
 summary, and hands that to a language model — **Google Gemini** or **Anthropic Claude** — which
-writes you a detailed profile: your Big Five and MBTI with the reasoning behind each, your interests,
-beliefs and values, and your strengths and weaknesses — both in relationships and in your career.
+writes you a detailed profile: your Big Five and a long-form MBTI reading with the reasoning behind
+each, a behavioural read of how you actually use Instagram, your interests, beliefs and values, and
+your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
+PDF when you are done.
 
 That profile is tagged to a **QR code**. Scan someone else's and the model assesses how the two of
 you would work together, scoring **romantic** and **platonic** compatibility separately and writing a
@@ -157,6 +159,39 @@ own words. It does not classify anyone by appearance or by the demographics of w
 the photographs carry the further limits described above. These guardrails are asserted by the test
 suite so they survive edits to the prompt.
 
+## What the report contains
+
+Big Five with per-trait evidence; interests, beliefs and values; relationship and career strengths
+and weaknesses — and two longer sections:
+
+**MBTI**, written to be worth reading rather than worth skimming. The type and its nickname, then
+per axis how strongly the data leans (`slight` / `moderate` / `clear`) and what that letter looks
+like in their ordinary week. Then a portrait in their own second person, how the type runs at its
+best, how it comes apart under stress, how people habitually misread them, growth edges, and three
+to five takeaways. The prompt is explicit that a takeaway true of every INFP alive must be rewritten
+or cut, and that a hedged letter beats a confident wrong one.
+
+**Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
+in what mix, when they reach for the app, how their use changed month by month, whether they publish
+more than they read, and what the shape of their following and liking says about where attention
+goes. Each implication pairs one concrete observation with one hedged inference, so the reader can
+tell a fact from a guess.
+
+## Exporting to PDF
+
+Buttons at the top and bottom of the profile call `window.print()`, and `@media print` in
+`styles.css` *is* the PDF: navigation and buttons drop out, cards become page-break units, colour
+goes to black-on-white and the QR shrinks to a paper-appropriate 180px.
+
+This is deliberately not a bundled PDF library. A dozen pages of long-form text is exactly what
+print CSS is for — the text stays selectable and searchable, pagination and paper size are the
+browser's problem, and it adds nothing to the page weight. `html2canvas` and friends would rasterise
+the same report into a fuzzy image and cost 200KB. The trade is that the user picks *Save as PDF* in
+their own print dialog rather than getting an automatic download; the page says so under the button.
+
+The UI suite asserts the print rules under `emulateMedia({ media: 'print' })` rather than trusting
+that they exist.
+
 ## The QR code
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short
@@ -180,14 +215,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 143 checks: synthesises a real ZIP export and runs
+npm test           # 154 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 64 checks: drives the real UI in Chromium against a
+npm run test:ui    # 104 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

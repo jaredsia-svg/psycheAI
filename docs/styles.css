@@ -355,3 +355,75 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---------- MBTI ---------- */
+
+.type-nickname { font-weight: 500; color: var(--ink-soft); font-size: .82em; }
+
+.axes { display: grid; gap: .7rem; margin: 1rem 0 1.4rem; }
+.axis { display: grid; grid-template-columns: 2.4rem 1fr; gap: .8rem; align-items: start; }
+.axis-letter {
+  display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
+  border-radius: 12px; background: var(--accent-soft); color: var(--accent);
+  font-weight: 700; font-size: 1.1rem;
+}
+.axis-name { font-weight: 650; margin-right: .4rem; }
+.axis p { margin: .2rem 0 0; font-size: .92rem; }
+/* A slight lean should look slighter than a clear one at a glance. */
+.pill-slight { opacity: .6; }
+.pill-clear { border-color: var(--accent); color: var(--accent); }
+
+.takeaways { margin: .4rem 0 0; padding-left: 1.1rem; }
+.takeaways li { margin-bottom: .45rem; }
+
+.implications dt { font-weight: 600; color: var(--ink); }
+
+/* ---------- print / PDF export ---------- */
+/*
+ * Export is the browser's own print-to-PDF, so this stylesheet *is* the PDF.
+ * Anything interactive is dropped, cards lose their shadows and become
+ * page-break units, and the whole thing goes black-on-white to stay readable
+ * on paper and to not eat a cartridge.
+ */
+
+@media print {
+  .no-print, .nav, .footer, .btn, .btn-row, .cta-row, #server-status { display: none !important; }
+
+  :root {
+    --bg: #fff; --bg-alt: #fff; --ink: #000; --ink-soft: #333; --line: #bbb;
+    --accent: #4a2464; --accent-2: #4a2464; --accent-soft: #f0ecf3;
+    --shadow: none;
+  }
+
+  body { background: #fff; color: #000; font-size: 11pt; line-height: 1.45; }
+  .container { max-width: none; padding: 0; }
+  .view[hidden] { display: none !important; }
+
+  .card {
+    box-shadow: none; border: 1px solid #ddd; border-radius: 8px;
+    padding: .8rem 1rem; margin-bottom: .8rem;
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  /* The long sections legitimately run over a page; forcing them whole would
+     leave half-empty pages everywhere. */
+  .card:has(.axes), .card:has(.takeaways), .card:has(.trait-row) { break-inside: auto; page-break-inside: auto; }
+
+  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+  h2 { font-size: 1.15rem; }
+  p, li, dd { orphans: 3; widows: 3; }
+
+  /* Gradient text renders as nothing on some print pipelines. */
+  .accent { -webkit-text-fill-color: currentColor; color: var(--accent); background: none; }
+
+  .bar, .confidence-meter { border: 1px solid #999; }
+  .bar-fill, .confidence-fill { background: #4a2464 !important; }
+  .ev, .pill { border: 1px solid #bbb; }
+
+  .qr-panel { grid-template-columns: 1fr; break-inside: avoid; }
+  /* qrcode.js writes width/height as inline styles, so a plain rule loses. */
+  #qr-canvas { width: 180px !important; height: 180px !important; }
+
+  a[href]::after { content: ""; }
+}
+
+@page { margin: 14mm 12mm; }
