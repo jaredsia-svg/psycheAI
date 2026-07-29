@@ -142,6 +142,11 @@ check('profile schema covers everything the brief asked for',
   ['bigFive', 'mbti', 'interests', 'beliefs', 'values', 'relationship', 'career', 'activity',
     'essence', 'card'].every(key => key in prompts.PROFILE_SCHEMA.properties));
 
+// The one-line headline was removed from the profile page, and the noun now
+// does that job — so it must not linger in the schema costing output tokens.
+check('the profile asks for no unused headline', !('headline' in prompts.PROFILE_SCHEMA.properties));
+check('the shareable card still has its own headline', 'headline' in prompts.CARD_SCHEMA.properties);
+
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on one noun with an icon and a reason',
   ['noun', 'icon', 'why'].every(k => k in essenceProps));

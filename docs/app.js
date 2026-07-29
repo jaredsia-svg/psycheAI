@@ -244,8 +244,11 @@
     await runAnalysis(digest, images);
   }
 
+  // The waiting screen speaks as the product, not as whichever model the
+  // server happens to be configured with. The provenance line at the foot of
+  // the finished report still names the actual model that wrote it.
   function modelName() {
-    return state.server.model || 'The model';
+    return 'PsycheAI';
   }
 
   async function runAnalysis(digest, images) {
@@ -254,7 +257,7 @@
     $('#working-note').textContent =
       'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary' +
       (sent ? ' and ' + sent + ' of your photos were' : ' was') + ' sent for analysis. ' +
-      'This usually takes a minute or two — the model is writing a long report.';
+      'This usually takes a minute or two — a long report is being written.';
     startElapsed('Analysing');
     show('working');
 
@@ -330,7 +333,6 @@
     const report = profile.report;
 
     $('#profile-title').textContent = (profile.card.name || 'Your') + '’s profile';
-    $('#profile-sub').textContent = report.headline || '';
 
     try {
       window.QRCode.toCanvas($('#qr-canvas'), profileUrl(profile.payload), {
@@ -353,12 +355,6 @@
       (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
 
     let html = '';
-
-    // Confidence first — it frames everything under it.
-    html += '<div class="card confidence-card">' +
-      '<div class="confidence-meter"><div class="confidence-fill" style="width:' + Math.round(report.confidence.score) + '%"></div></div>' +
-      '<p><strong>Confidence: ' + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
-      esc(report.confidence.rationale) + '</p></div>';
 
     html += '<div class="card section-card">' + head('👤', 'Who you are') +
       essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
@@ -501,6 +497,15 @@
       html += '<div class="card section-card">' + head('🤝', 'Your matches') +
         historyTable(history) + '</div>';
     }
+
+    // Confidence closes the report rather than opening it: read after the
+    // whole thing, it says how much of what you just read to believe.
+    html += '<div class="card section-card confidence-card">' +
+      head('🎯', 'How much to trust this',
+        'Everything above is inferred from behavioural traces, and the model says how far it would stand behind them.') +
+      '<div class="confidence-meter"><div class="confidence-fill" style="width:' + Math.round(report.confidence.score) + '%"></div></div>' +
+      '<p><strong>Confidence: ' + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
+      esc(report.confidence.rationale) + '</p></div>';
 
     html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'the model') + ' on ' +
       esc(new Date(profile.createdAt).toLocaleString()) + '.</p>';

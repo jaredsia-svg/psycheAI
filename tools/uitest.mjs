@@ -104,6 +104,16 @@ try {
   await shot('1-welcome');
 
   // ---- upload ----
+  // The waiting screen flashes past against the mock, so record every value
+  // the title takes rather than trying to catch it mid-flight.
+  await page.evaluate(() => {
+    window.__titles = [];
+    const node = document.querySelector('#working-title');
+    window.__titles.push(node.textContent);
+    new MutationObserver(() => window.__titles.push(node.textContent))
+      .observe(node, { childList: true, characterData: true, subtree: true });
+  });
+
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
@@ -114,6 +124,25 @@ try {
     (await page.locator('#profile-title').innerText()).includes('Aleç'),
     await page.locator('#profile-title').innerText());
   await shot('2-profile');
+
+  // The waiting screen speaks as the product, not as whichever model is wired
+  // up behind it.
+  const titles = await page.evaluate(() => window.__titles || []);
+  check('the waiting screen says PsycheAI is doing the reading',
+    titles.some(t => /^PsycheAI is reading your profile$/.test(t)), titles.join(' | '));
+  check('the waiting screen never names the underlying model',
+    !titles.some(t => /gemini|claude|gpt|mock/i.test(t)), titles.join(' | '));
+
+  // The one-line summary under the title is gone.
+  check('there is no sub-headline under the profile title',
+    (await page.locator('#profile-sub').count()) === 0);
+  check('the export button is the first thing under the title', await page.evaluate(() => {
+    const head = document.querySelector('#view-profile .page-head');
+    return head.children.length === 2 && head.children[1].contains(document.querySelector('#export-pdf-top'));
+  }));
+
+  check('the share panel no longer explains the storage model',
+    !/There is no account and no database/.test(await page.locator('.qr-actions').innerText()));
 
   const profileText = await page.locator('#profile-body').innerText();
   for (const [label, needle] of [
@@ -153,6 +182,16 @@ try {
     order.join(' | '));
   check('Instagram behaviour still comes before the QR summary',
     at('Instagram behaviour') < at('QR code'));
+  // Confidence closes the report now instead of opening it.
+  check('confidence is the last section of the report',
+    at('How much to trust this') === order.length - 1, order.join(' | '));
+  check('confidence sits directly above the action buttons', await page.evaluate(() => {
+    const card = document.querySelector('.confidence-card');
+    const cta = document.querySelector('#view-profile .cta-row');
+    return Boolean(card.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  check('the confidence meter came with it',
+    await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
   // ---- the one-noun opener ----
