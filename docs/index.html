@@ -47,6 +47,22 @@
       <p>Two scores, romantic and platonic, plus specific advice for each of you about the other.</p></div>
   </div>
 
+  <details class="card help help-card">
+    <summary>How do I get my Instagram data?</summary>
+    <ol>
+      <li>In the Instagram app, open <strong>Settings</strong> → <strong>Accounts Centre</strong>.</li>
+      <li>Go to <strong>Your information and permissions</strong> → <strong>Download your information</strong>.</li>
+      <li>Choose <strong>Download or transfer information</strong>, pick your account, then
+          <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
+      <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
+          Kindred cannot read the HTML format.</li>
+      <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
+      <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
+    </ol>
+    <p class="muted">Media quality does not matter — Kindred never opens your photos or videos,
+      only the JSON files describing your activity.</p>
+  </details>
+
   <div class="card upload-card">
     <h2>Start here</h2>
     <div id="server-status" class="alert" hidden></div>
@@ -74,22 +90,6 @@
     </label>
 
     <div id="upload-error" class="alert" hidden></div>
-
-    <details class="help">
-      <summary>How do I get my Instagram data?</summary>
-      <ol>
-        <li>In the Instagram app, open <strong>Settings</strong> → <strong>Accounts Centre</strong>.</li>
-        <li>Go to <strong>Your information and permissions</strong> → <strong>Download your information</strong>.</li>
-        <li>Choose <strong>Download or transfer information</strong>, pick your account, then
-            <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
-        <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
-            Kindred cannot read the HTML format.</li>
-        <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
-        <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
-      </ol>
-      <p class="muted">Media quality does not matter — Kindred never opens your photos or videos,
-        only the JSON files describing your activity.</p>
-    </details>
   </div>
 
   <p class="fineprint">

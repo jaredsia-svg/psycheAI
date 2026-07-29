@@ -159,6 +159,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .help summary { cursor: pointer; font-weight: 600; color: var(--accent); }
 .help ol { padding-left: 1.2rem; }
 .help li { margin-bottom: .35rem; }
+/* Standing on its own above the upload card rather than tucked under it, so the
+   divider that separated it from the form above is no longer wanted. */
+.help-card { margin-top: 0; border-top: none; padding-top: clamp(1.1rem, 3vw, 1.6rem); }
+.help-card[open] summary { margin-bottom: .6rem; }
 
 /* ---------- progress ---------- */
 
