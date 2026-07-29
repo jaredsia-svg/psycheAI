@@ -155,14 +155,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 .alert li { margin-bottom: .2rem; }
 
-.help { margin-top: 1.2rem; border-top: 1px solid var(--line); padding-top: .9rem; }
-.help summary { cursor: pointer; font-weight: 600; color: var(--accent); }
-.help ol { padding-left: 1.2rem; }
+.help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
-/* Standing on its own above the upload card rather than tucked under it, so the
-   divider that separated it from the form above is no longer wanted. */
-.help-card { margin-top: 0; border-top: none; padding-top: clamp(1.1rem, 3vw, 1.6rem); }
-.help-card[open] summary { margin-bottom: .6rem; }
+.help-card h2 { margin-top: 0; }
+.help-card p:last-child { margin-bottom: 0; }
 
 /* ---------- progress ---------- */
 

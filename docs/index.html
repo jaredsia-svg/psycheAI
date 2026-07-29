@@ -47,8 +47,8 @@
       <p>Two scores, romantic and platonic, plus specific advice for each of you about the other.</p></div>
   </div>
 
-  <details class="card help help-card">
-    <summary>How do I get my Instagram data?</summary>
+  <div class="card help help-card">
+    <h2>How do I get my Instagram data?</h2>
     <ol>
       <li>In the Instagram app, open <strong>Settings</strong> → <strong>Accounts Centre</strong>.</li>
       <li>Go to <strong>Your information and permissions</strong> → <strong>Download your information</strong>.</li>
@@ -56,12 +56,15 @@
           <strong>Some of your information</strong> or <strong>All available information</strong>.</li>
       <li>Set <strong>Format</strong> to <strong>JSON</strong> — this one matters.
           Kindred cannot read the HTML format.</li>
+      <li>Set <strong>Media quality</strong> to <strong>Lower quality</strong>. Kindred never opens
+          your photos or videos, so this costs you nothing and can take the download from several
+          gigabytes to a few hundred megabytes — much faster to receive and to upload here.</li>
       <li>Set the date range to <strong>All time</strong> for the best results, then submit.</li>
       <li>Instagram emails you a download link, usually within a few hours. Come back with the .zip.</li>
     </ol>
-    <p class="muted">Media quality does not matter — Kindred never opens your photos or videos,
-      only the JSON files describing your activity.</p>
-  </details>
+    <p class="muted">Only the JSON files describing your activity are ever read — the media in the
+      archive is skipped entirely, whatever quality you picked.</p>
+  </div>
 
   <div class="card upload-card">
     <h2>Start here</h2>
