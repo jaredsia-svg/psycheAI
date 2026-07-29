@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kindred — your Instagram, read properly</title>
-<meta name="description" content="Turn your Instagram data export into a detailed personality profile, then scan a friend's QR code for romantic and platonic compatibility.">
+<title>Kindred — your Instagram, read by Claude</title>
+<meta name="description" content="Upload your Instagram data export and Claude writes you a detailed personality profile. Scan someone's QR code for romantic and platonic compatibility.">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
 </head>
@@ -24,31 +24,33 @@
 <!-- ══════════════ welcome ══════════════ -->
 <section id="view-welcome" class="view" hidden>
   <header class="hero">
-    <p class="eyebrow">Private by construction — nothing leaves this device</p>
-    <h1>Your Instagram already knows who you are.<br><span class="accent">Kindred reads it back to you.</span></h1>
+    <p class="eyebrow">Your export is read on this device — only a summary is sent for analysis</p>
+    <h1>Your Instagram already knows who you are.<br><span class="accent">Claude reads it back to you.</span></h1>
     <p class="lede">
-      Upload your Instagram data export. Kindred reads your captions, comments, activity rhythm,
-      the accounts you follow and the topics Instagram itself has tagged you with, and builds a
-      detailed profile of your personality, interests, beliefs, values and relationship
-      preferences — guided by a structured personality questionnaire you fill in afterwards.
-      You get a QR code. Scan someone else's and find out how you would work together, as
+      Upload your Instagram data export. Kindred unpacks it in your browser, distils it into an
+      evidence summary, and hands that to Claude, which writes you a detailed profile: your Big
+      Five and MBTI with the reasoning behind each, your interests, beliefs and values, and your
+      strengths and weaknesses — in relationships and in your career. You get a QR code. Scan
+      someone else's and Claude assesses how the two of you would actually work together, as
       partners and as friends.
     </p>
   </header>
 
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Upload your export</h3>
-      <p>The .zip file Instagram emails you. It is parsed inside your browser — there is no server to send it to.</p></div>
-    <div class="step-card"><span class="step-num">2</span><h3>Read your profile</h3>
-      <p>Big Five traits with the evidence behind each one, plus your themes, rhythm, values and beliefs.</p></div>
-    <div class="step-card"><span class="step-num">3</span><h3>Answer the questionnaire</h3>
-      <p>Three steps, pre-filled from your Instagram. Correct anything that is wrong — your answers win.</p></div>
-    <div class="step-card"><span class="step-num">4</span><h3>Swap QR codes</h3>
-      <p>Two scores, romantic and platonic, plus a straight assessment of how to partner each other.</p></div>
+      <p>The .zip Instagram emails you. It is unpacked in your browser — the archive itself never leaves your device.</p></div>
+    <div class="step-card"><span class="step-num">2</span><h3>Claude reads it</h3>
+      <p>A bounded summary of your activity and your own writing goes to the model, which writes the profile.</p></div>
+    <div class="step-card"><span class="step-num">3</span><h3>Get your QR code</h3>
+      <p>A compact version of your profile is encoded straight into the code — no account, no database.</p></div>
+    <div class="step-card"><span class="step-num">4</span><h3>Scan someone</h3>
+      <p>Two scores, romantic and platonic, plus specific advice for each of you about the other.</p></div>
   </div>
 
   <div class="card upload-card">
     <h2>Start here</h2>
+    <div id="server-status" class="alert" hidden></div>
+
     <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose your Instagram export zip files">
       <div class="dropzone-icon">📦</div>
       <p><strong>Drop your Instagram .zip here</strong></p>
@@ -56,13 +58,17 @@
       <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
     </div>
 
+    <label class="field">What should people call you?
+      <input type="text" id="display-name" maxlength="24" placeholder="Alex — shown on the other person's report">
+    </label>
+
     <label class="switch-row">
       <input type="checkbox" id="include-dms">
       <span>
         <strong>Include direct messages</strong>
-        <span class="muted">Off by default. When on, Kindred counts your conversations and reads only
-        your own messages, for social-energy and tone signals. Nobody else's words are kept, and
-        no message text is stored or put into your QR code.</span>
+        <span class="muted">Off by default. When on, Kindred counts your conversations and samples only
+        your own messages. Nobody else's words are sent. Turning this on means a sample of your DMs
+        goes to the model along with everything else.</span>
       </span>
     </label>
 
@@ -87,45 +93,18 @@
 
   <p class="fineprint">
     Kindred is a self-knowledge and conversation tool, not a psychometric instrument and not a
-    background check. It infers from behaviour, it is often wrong, and it tells you how confident it is.
+    background check. Claude is inferring from behaviour, it is often wrong, and it says how
+    confident it is.
   </p>
 </section>
 
-<!-- ══════════════ analysing ══════════════ -->
-<section id="view-analysing" class="view" hidden>
+<!-- ══════════════ working ══════════════ -->
+<section id="view-working" class="view" hidden>
   <div class="card centre">
-    <h2>Reading your export</h2>
+    <h2 id="working-title">Reading your export</h2>
     <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
     <p id="progress-label" class="muted">Opening the archive…</p>
-    <p class="fineprint">Large exports can take a minute. Everything is happening on this device.</p>
-  </div>
-</section>
-
-<!-- ══════════════ analysis ══════════════ -->
-<section id="view-analysis" class="view" hidden>
-  <header class="page-head">
-    <h1 id="analysis-title">What your Instagram says about you</h1>
-    <p id="analysis-sub" class="muted"></p>
-  </header>
-  <div id="analysis-body"></div>
-  <div class="cta-row">
-    <button class="btn btn-lg" data-nav="questionnaire">Continue to the questionnaire →</button>
-    <button class="btn btn-ghost" data-nav="home">Start over</button>
-  </div>
-</section>
-
-<!-- ══════════════ questionnaire ══════════════ -->
-<section id="view-questionnaire" class="view" hidden>
-  <header class="page-head">
-    <h1 id="step-title">Step 1 of 3</h1>
-    <p id="step-sub" class="muted"></p>
-    <div class="progress slim"><div id="step-progress" class="progress-bar"></div></div>
-  </header>
-  <div id="step-alert" class="alert" hidden></div>
-  <form id="step-form" autocomplete="off"></form>
-  <div class="cta-row">
-    <button class="btn btn-ghost" id="step-back">← Back</button>
-    <button class="btn btn-lg" id="step-next">Next →</button>
+    <p class="fineprint" id="working-note"></p>
   </div>
 </section>
 
@@ -138,14 +117,14 @@
 
   <div class="qr-panel card">
     <div class="qr-holder">
-      <canvas id="qr-canvas" width="280" height="280" aria-label="Your Kindred QR code"></canvas>
-      <p class="muted qr-caption">Your whole profile lives inside this code.</p>
+      <canvas id="qr-canvas" width="300" height="300" aria-label="Your Kindred QR code"></canvas>
+      <p class="muted qr-caption">Your shareable profile lives inside this code.</p>
     </div>
     <div class="qr-actions">
       <h2>Share your code</h2>
       <p class="muted">Let someone scan this, or send them the link. There is no account and no
-        database — the code itself carries everything the other person's report needs.
-        Your written answers stay on this device.</p>
+        database — the code carries a compact version of your profile, which is exactly what the
+        other person's compatibility report is based on. Your full report stays on this device.</p>
       <div class="btn-row">
         <button class="btn" id="copy-link">Copy my link</button>
         <button class="btn btn-ghost" id="download-qr">Download PNG</button>
@@ -158,7 +137,7 @@
   <div id="profile-body"></div>
 
   <div class="cta-row">
-    <button class="btn btn-ghost" id="edit-answers">Edit my answers</button>
+    <button class="btn btn-ghost" id="reanalyse">Re-run the analysis</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>
 </section>
@@ -204,82 +183,83 @@
   <header class="page-head"><h1>How Kindred works</h1></header>
 
   <div class="card">
-    <h2>Where the profile comes from</h2>
-    <p>Two sources, in this order.</p>
-    <p><strong>Your Instagram export.</strong> Kindred reads the JSON files describing your posts and
-      captions, stories and reels, comments you have written, posts you liked and saved, the accounts
-      you follow, the topics Instagram itself has inferred about you, your bio, and — only if you
-      opt in — aggregate statistics about your direct messages. It never opens your photos.</p>
-    <p><strong>The questionnaire.</strong> A three-step personality test covering background,
-      personality and relationship preferences. Every answer that overlaps with something Kindred
-      guessed overrides the guess. The Instagram analysis is a starting point, not a verdict.</p>
+    <h2>What happens to your data</h2>
+    <p>Your Instagram export is a <code>.zip</code> containing your posts, messages, contacts and
+      location history. Kindred opens it <strong>in your browser</strong> using the File API and
+      reads only the JSON files describing your activity — never your photos or videos.</p>
+    <p>It then builds an <strong>evidence digest</strong>: your counts and activity rhythm, a sample
+      of your own captions and comments, the accounts you follow, and the topics Instagram itself
+      has inferred about you. That digest — not the archive — is what gets sent to Claude for
+      analysis. Direct messages are excluded unless you opt in, and even then only your own
+      messages are sampled.</p>
+    <p>Nothing is stored on the server. Your profile and reports live in this browser's local
+      storage and are deleted when you press the delete button.</p>
   </div>
 
   <div class="card">
-    <h2>How the personality estimate is made</h2>
-    <p>Big Five traits are estimated from a weighted blend of language markers and behaviour:
-      the words you use, how varied your vocabulary is, how regularly you post, what time of day
-      you are active, how many people you engage with, and which themes dominate your activity.
-      This follows the open-vocabulary approach used in personality research — language use does
-      correlate with personality, but modestly, and only in aggregate.</p>
-    <p>So every trait shows you the evidence that moved it, and the whole profile carries a
-      confidence figure driven by how much data your export actually contained. A thin export
-      produces a hedged profile, and says so.</p>
-    <p><strong>What Kindred does not infer:</strong> your attachment style, your love languages,
-      your dealbreakers, your religion or whether you want children. Nothing in an Instagram
-      export predicts these reliably, so they come from your answers only. Kindred also does not
-      classify the people you follow by appearance or gender.</p>
+    <h2>What Claude is asked to do</h2>
+    <p>The model is given the digest and asked to weigh it honestly: a person's own words are the
+      strongest signal, Instagram's inferred topics are real but noisy, and accounts followed mix
+      interest with aspiration. It is told that most people are near the middle on most traits, and
+      to reserve extreme scores for extreme evidence.</p>
+    <p>It produces your Big Five with per-trait evidence, an MBTI guess with per-letter reasoning
+      and a caveat, your interests, beliefs and values, and your strengths and weaknesses from both
+      a relationship and a career perspective — plus a confidence score for the whole thing.</p>
+    <p><strong>What it is told not to do:</strong> identify or speculate about other people in your
+      data, or infer sexual orientation, health, immigration status or political affiliation unless
+      you have stated it outright in your own words. It does not classify anyone by appearance or
+      by the demographics of who they follow.</p>
   </div>
 
   <div class="card">
-    <h2>How compatibility is scored</h2>
-    <p>Eight dimensions, weighted differently for romance and friendship — because what makes a
-      good partner is not what makes a good friend. Shared interests carry a friendship;
-      attachment style and life direction decide a relationship.</p>
-    <div class="table-scroll">
-      <table class="weights-table">
-        <thead><tr><th>Dimension</th><th>Romantic</th><th>Platonic</th></tr></thead>
-        <tbody id="weights-body"></tbody>
-      </table>
-    </div>
-    <p class="muted">Dealbreakers are only ever checked against habits the other person has
-      declared about themselves. Anything that cannot be checked — infidelity, anger, drugs —
-      is listed as a conversation to have rather than folded into a score.</p>
+    <h2>The QR code</h2>
+    <p>Along with your full report, the model produces a compact <em>card</em> — the same profile
+      reduced to short phrases. That card is deflate-compressed and encoded directly into your QR
+      code, so there is nothing to look up and no account to create.</p>
+    <p>When someone scans you, their browser decodes your card and sends both cards to the model,
+      which writes the compatibility report. Your long-form report never leaves your device.</p>
   </div>
 
   <div class="card">
-    <h2>Privacy</h2>
-    <p>There is no server, no account and no database. The page is static; your export is read in
-      the browser with the File API, and your profile is kept in this browser's local storage.
-      Your QR code contains only structured fields — your name, background, tick-box answers,
-      trait scores and a digest of your Instagram signals. Your written explanations are never
-      encoded into it.</p>
-    <p>Deleting your profile on the profile page removes everything Kindred has stored.</p>
+    <h2>How compatibility is judged</h2>
+    <p>Romantic and platonic fit are scored separately, because they are different questions.
+      Romance turns on life direction, values, emotional safety and whether two daily rhythms can
+      coexist. Friendship turns on shared interests, compatible energy and low friction. A pair can
+      be a great friendship and a poor romance — the report says so when that is the case.</p>
+    <p>Each mode gets a score, an honest verdict, what works, what will rub, and a playbook aimed
+      at each person individually about the other.</p>
+  </div>
+
+  <div class="card">
+    <h2>Running it yourself</h2>
+    <p>Kindred needs a server because an API key cannot ship inside a web page. Set
+      <code>ANTHROPIC_API_KEY</code> and run <code>npm start</code>. Set <code>KINDRED_MOCK=1</code>
+      to click through the whole app with canned analyses and no API calls.</p>
+    <p id="about-status" class="muted"></p>
   </div>
 
   <div class="card">
     <h2>What this is not</h2>
-    <p>Kindred is not a validated psychometric instrument, not a diagnosis, and not a background
-      check. It is a mirror and a conversation starter. A low score is a list of things worth
-      talking about, not a reason to walk away — and a high score is not a promise.</p>
+    <p>Not a validated psychometric instrument, not a diagnosis, not a background check. A language
+      model reading behavioural traces is a mirror and a conversation starter. A low compatibility
+      score is a list of things worth talking about, not a reason to walk away — and a high one is
+      not a promise.</p>
   </div>
 </section>
 
 </main>
 
 <footer class="footer">
-  <p>Kindred · runs entirely in your browser · <a href="#" data-nav="about">how it works</a></p>
+  <p>Kindred · analysis by Claude · <a href="#" data-nav="about">how it works</a></p>
 </footer>
 
 <script src="vendor/qrcode.js"></script>
 <script src="vendor/jsqr.js"></script>
 <script src="zip.js"></script>
-<script src="lexicon.js"></script>
-<script src="questionnaire.js"></script>
-<script src="analysis.js"></script>
-<script src="codec.js"></script>
-<script src="compat.js"></script>
 <script src="instagram.js"></script>
+<script src="digest.js"></script>
+<script src="card.js"></script>
+<script src="llm.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
