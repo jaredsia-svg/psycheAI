@@ -419,14 +419,74 @@ try {
   check('accented names survive into the PDF', /Ale\xe7/.test(pdfText));
   check('the document is titled for the reader',
     /\/Title \(Ale\xe7.s personality analysis\)/.test(pdfText));
-  for (const heading of ['The portrait', 'The five traits', 'The type',
-    'How they use Instagram', 'Close relationships', 'Work']) {
-    check('the PDF contains the ' + JSON.stringify(heading) + ' section',
-      pdfText.includes('(' + heading + ')'));
-  }
-  check('the PDF carries the confidence score', /CONFIDENCE IN THIS READING/.test(pdfText));
   check('the PDF numbers its pages', /\(Page 2 of \d+\)/.test(pdfText));
-  check('the PDF carries the disclaimer', /not a psychometric/.test(pdfText));
+  check('the PDF carries the same provenance line the page prints',
+    /Generated \w+ \d+, \d{4}\s+·\s+from an Instagram data export\s+·\s+\d+\/100 confidence/
+      .test(pdfText.replace(/\\/g, '')),
+    (/\(Generated[^)]*\)/.exec(pdfText) || ['not found'])[0].slice(0, 90));
+
+  // The report and the page are two renderings of one document, so the test is
+  // not a hardcoded list of headings: read the sections off the page, then
+  // require the PDF to carry all of them, in the same order. This is what keeps
+  // the two from drifting — the first version of this PDF split values from
+  // beliefs, renamed half the sections and put behaviour in a different place.
+  const pageSections = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim()));
+
+  check('the page has all its sections to compare against', pageSections.length >= 10,
+    pageSections.length + ': ' + pageSections.join(' | '));
+
+  const placed = pageSections.map(title => ({
+    title,
+    at: pdfText.indexOf('(' + title.replace(/([\\()])/g, '\\$1') + ')'),
+  }));
+  const missing = placed.filter(entry => entry.at < 0).map(entry => entry.title);
+  check('every section on the page is in the PDF, worded identically',
+    missing.length === 0, missing.join(' | '));
+
+  const found = placed.filter(entry => entry.at >= 0);
+  const outOfOrder = found.filter((entry, index) => index > 0 && entry.at < found[index - 1].at);
+  check('the PDF runs those sections in the page\'s order',
+    outOfOrder.length === 0, outOfOrder.map(entry => entry.title).join(' | '));
+
+  // Sub-headings and labels the page shows inside those sections.
+  for (const label of ['In one word, you are', 'Values', 'Beliefs', 'Strengths', 'Weaknesses',
+    'How you work', 'Where you would thrive', 'What could hold you back', 'Your love languages',
+    'How you want to be loved', 'How you show love', 'Read from', 'What it means in practice',
+    'What it suggests']) {
+    check('the PDF carries the ' + JSON.stringify(label) + ' heading',
+      pdfText.includes('(' + label + ')') || pdfText.includes('(' + label.toUpperCase() + ')'));
+  }
+  check('the PDF spells out the MBTI poles as the page does',
+    pdfText.includes('(Extraversion)') && /\(over \w+\)/.test(pdfText));
+  check('the PDF uses the page\'s trait wording, not the schema\'s',
+    pdfText.includes('(Emotional sensitivity') && !/\(Neuroticism/.test(pdfText));
+  check('the PDF labels the behaviour facets as the page does',
+    pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(WHERE YOUR ATTENTION GOES)'));
+
+  // Alignment holds because there is one copy of these strings, not two that
+  // happen to agree today. Both renderers must read them from copy.js.
+  const sharing = await page.evaluate(async titles => {
+    const read = file => fetch(file).then(r => r.text());
+    const [copy, app, pdf] = await Promise.all([read('copy.js'), read('app.js'), read('pdf.js')]);
+    return {
+      inCopy: titles.filter(title => copy.includes("'" + title + "'")).length,
+      retypedInApp: titles.filter(title => app.includes("'" + title + "'")),
+      retypedInPdf: titles.filter(title => pdf.includes("'" + title + "'")),
+      appUsesCopy: /const Copy = window\.PsycheCopy/.test(app),
+      pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
+    };
+  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'In relationships', 'At work',
+    'Your Instagram behaviour', 'What your QR code contains', 'Your matches',
+    'How much to trust this']);
+
+  check('every section title is defined in copy.js', sharing.inCopy === 10, JSON.stringify(sharing));
+  check('the page does not re-type any section title',
+    sharing.retypedInApp.length === 0, sharing.retypedInApp.join(' | '));
+  check('the PDF does not re-type any section title',
+    sharing.retypedInPdf.length === 0, sharing.retypedInPdf.join(' | '));
+  check('both renderers read from the shared copy',
+    sharing.appUsesCopy && sharing.pdfUsesCopy, JSON.stringify(sharing));
 
   // Layout has to survive both a wordy model and an almost empty one. These
   // build in the page, which is also the only way to reach a long profile

@@ -8,6 +8,13 @@
   const Digest = window.PsycheDigest;
   const Card = window.PsycheCard;
   const LLM = window.PsycheLLM;
+  // The profile page and the PDF are two renderings of one document, so every
+  // string and label they share comes from here rather than being written twice.
+  const Copy = window.PsycheCopy;
+  const TEXT = Copy.TEXT;
+  const TRAIT_LABELS = Copy.TRAIT_LABELS;
+  const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
+  const axisLabel = Copy.axisLabel;
 
   const $ = sel => document.querySelector(sel);
   const KEYS = {
@@ -69,7 +76,7 @@
 
   function points(items) {
     const values = (items || []).filter(Boolean);
-    if (!values.length) return '<p class="muted">None identified.</p>';
+    if (!values.length) return '<p class="muted">' + esc(TEXT.pointsEmpty) + '</p>';
     return '<dl class="points">' + values.map(item =>
       '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>').join('') + '</dl>';
   }
@@ -94,37 +101,13 @@
   function essenceBlock(essence) {
     if (!essence || !essence.noun) return '';
     return '<div class="essence"><span class="essence-icon">' + esc(safeIcon(essence.icon)) + '</span>' +
-      '<div><p class="essence-label">In one word, you are</p>' +
+      '<div><p class="essence-label">' + esc(TEXT.essenceLabel) + '</p>' +
       '<p class="essence-noun">' + esc(essence.noun) + '</p>' +
       '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
   }
 
-  // The headline findings, pulled straight out of the sections below rather
-  // than asked of the model a second time — restating them in a second field
-  // is tokens spent on something that can then disagree with itself.
   function glanceBlock(report) {
-    const items = [];
-
-    if (report.mbti && report.mbti.type) {
-      items.push({ label: 'Type', value: report.mbti.type, note: report.mbti.nickname || '' });
-    }
-
-    const traits = Object.keys(TRAIT_LABELS)
-      .map(key => ({ key, item: report.bigFive && report.bigFive[key] }))
-      .filter(t => t.item && Number.isFinite(Number(t.item.score)))
-      .sort((a, b) => b.item.score - a.item.score);
-    if (traits.length >= 2) {
-      const top = traits[0];
-      const bottom = traits[traits.length - 1];
-      items.push({ label: 'Highest', value: TRAIT_LABELS[top.key], note: top.item.score + '/100' });
-      items.push({ label: 'Lowest', value: TRAIT_LABELS[bottom.key], note: bottom.item.score + '/100' });
-    }
-
-    const attachment = report.relationship && report.relationship.attachment;
-    if (attachment && attachment.style) {
-      items.push({ label: 'Attachment', value: attachment.style, note: 'a guess' });
-    }
-
+    const items = Copy.glanceItems(report);
     if (!items.length) return '';
     return '<div class="glance">' + items.map(item =>
       '<div class="glance-item"><span class="glance-label">' + esc(item.label) + '</span>' +
@@ -132,16 +115,6 @@
       (item.note ? '<span class="glance-note">' + esc(item.note) + '</span>' : '') +
       '</div>').join('') + '</div>';
   }
-
-  // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
-  // model — same reasoning as the MBTI poles.
-  const LOVE_LANGUAGE_ICONS = {
-    'Words of affirmation': '💬',
-    'Acts of service': '🛠️',
-    'Quality time': '⏳',
-    'Receiving gifts': '🎁',
-    'Physical touch': '🫂',
-  };
 
   function loveLanguageColumn(title, blurb, items) {
     const rows = (items || []).filter(item => item && item.language);
@@ -159,10 +132,10 @@
   function loveLanguageBlock(languages) {
     if (!languages) return '';
     const columns =
-      loveLanguageColumn('How you want to be loved', 'What lands, when it is aimed at you.', languages.receiving) +
-      loveLanguageColumn('How you show love', 'What you reach for when you care about someone.', languages.giving);
+      loveLanguageColumn(TEXT.loveReceiving, TEXT.loveReceivingBlurb, languages.receiving) +
+      loveLanguageColumn(TEXT.loveGiving, TEXT.loveGivingBlurb, languages.giving);
     if (!columns) return '';
-    return '<h3 class="love-head">Your love languages</h3><div class="split love-split">' + columns + '</div>' +
+    return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3><div class="split love-split">' + columns + '</div>' +
       (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
   }
 
@@ -372,36 +345,7 @@
 
   // ══════════════ 2. profile report ══════════════
 
-  const TRAIT_LABELS = {
-    openness: 'Openness to experience',
-    conscientiousness: 'Conscientiousness',
-    extraversion: 'Extraversion',
-    agreeableness: 'Agreeableness',
-    neuroticism: 'Emotional sensitivity',
-  };
 
-  // The four axes spelled out. A letter on its own means nothing to anyone who
-  // has not read the MBTI literature, and the pairing is fixed vocabulary, so
-  // it is resolved here rather than asked of the model — which could get it
-  // wrong, and would cost tokens to get right.
-  const MBTI_POLES = {
-    E: { name: 'Extraversion', opposite: 'I' },
-    I: { name: 'Introversion', opposite: 'E' },
-    N: { name: 'Intuition', opposite: 'S' },
-    S: { name: 'Sensing', opposite: 'N' },
-    T: { name: 'Thinking', opposite: 'F' },
-    F: { name: 'Feeling', opposite: 'T' },
-    J: { name: 'Judging', opposite: 'P' },
-    P: { name: 'Perceiving', opposite: 'J' },
-  };
-
-  /** "E" → "Extraversion over Introversion", falling back to the raw axis. */
-  function axisLabel(letter, axis) {
-    const key = String(letter || '').toUpperCase().replace(/[^EINSTFJP]/g, '').charAt(0);
-    const pole = MBTI_POLES[key];
-    if (!pole) return { name: String(axis || ''), against: '' };
-    return { name: pole.name, against: MBTI_POLES[pole.opposite].name };
-  }
 
   function profileUrl(payload) {
     return location.origin + location.pathname + '#p=' + payload;
@@ -468,12 +412,12 @@
 
     let html = '';
 
-    html += '<div class="card section-card">' + head('👤', 'Who you are') +
+    html += '<div class="card section-card">' + head('👤', esc(TEXT.whoYouAre)) +
       essenceBlock(report.essence) + glanceBlock(report) + paragraphs(report.summary) + '</div>';
 
     // Big Five.
     html += '<div class="card section-card">' +
-      head('📊', 'Big Five', '0–100, where 50 is an average person. Each score lists the evidence behind it.');
+      head('📊', esc(TEXT.bigFive), esc(TEXT.bigFiveSub));
     for (const trait of Object.keys(TRAIT_LABELS)) {
       const item = report.bigFive[trait];
       if (!item) continue;
@@ -487,15 +431,15 @@
     // MBTI.
     const mbti = report.mbti;
     html += '<div class="card section-card">' +
-      head('🧭', 'MBTI: ' + esc(mbti.type) +
+      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type) +
         (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : ''),
-        'Confidence: ' + esc(mbti.confidence));
+        esc(TEXT.mbtiConfidence) + esc(mbti.confidence));
 
     html += '<div class="axes">' + (mbti.letters || []).map(letter => {
       const pole = axisLabel(letter.choice, letter.axis);
       return '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
         '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
-        (pole.against ? '<span class="axis-against">over ' + esc(pole.against) + '</span>' : '') +
+        (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
         '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
         '<p>' + esc(letter.why) + '</p>' +
         (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
@@ -505,7 +449,7 @@
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
 
     // Interests.
-    html += '<div class="card section-card">' + head('✨', 'Interests');
+    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests));
     if ((report.interests || []).length) {
       html += '<div class="tile-grid">' + report.interests.map(item =>
         '<div class="tile tile-' + esc(item.intensity) + '">' +
@@ -513,56 +457,56 @@
         '<p>' + esc(item.detail) + '</p>' +
         '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
     } else {
-      html += '<p class="muted">Nothing stood out strongly.</p>';
+      html += '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
     }
     html += '</div>';
 
     // Values and beliefs, together — they answer the same question from two
     // directions, and splitting them left two thin cards.
     html += '<div class="card section-card">' +
-      head('🧿', 'Values &amp; Beliefs', 'What you appear to hold to, and how firmly the data actually says so.') +
-      '<h3>Values</h3>';
+      head('🧿', esc(TEXT.valuesBeliefs), esc(TEXT.valuesBeliefsSub)) +
+      '<h3>' + esc(TEXT.values) + '</h3>';
     html += (report.values || []).length
       ? '<div class="tile-grid">' + report.values.map(item =>
         '<div class="tile"><h4>' + esc(item.value) + '</h4><p>' + esc(item.detail) + '</p>' +
         '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">The export did not support any confident read here.</p>';
+      : '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
 
-    html += '<h3>Beliefs</h3>';
+    html += '<h3>' + esc(TEXT.beliefs) + '</h3>';
     html += (report.beliefs || []).length
       ? '<div class="tile-grid">' + report.beliefs.map(item =>
         '<div class="tile"><h4>' + esc(item.belief) +
-        '<span class="pill">' + esc(item.confidence) + ' confidence</span></h4>' +
+        '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span></h4>' +
         '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">Nothing in the export supported a confident read on beliefs — which is a perfectly ordinary result.</p>';
+      : '<p class="muted">' + esc(TEXT.beliefsEmpty) + '</p>';
     html += '</div>';
 
     // Relationships.
     const relationship = report.relationship;
-    html += '<div class="card section-card">' + head('💞', 'In relationships') +
-      '<div class="split"><div><h3 class="h-good">Strengths</h3>' + points(relationship.strengths) + '</div>' +
-      '<div><h3 class="h-warn">Weaknesses</h3>' + points(relationship.weaknesses) + '</div></div>' +
-      '<div class="callout"><h3>Attachment: ' + esc(relationship.attachment.style) + '</h3>' +
+    html += '<div class="card section-card">' + head('💞', esc(TEXT.relationships)) +
+      '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(relationship.strengths) + '</div>' +
+      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(relationship.weaknesses) + '</div></div>' +
+      '<div class="callout"><h3>' + esc(TEXT.attachmentPrefix) + esc(relationship.attachment.style) + '</h3>' +
       '<p>' + esc(relationship.attachment.why) + '</p>' +
       ((relationship.attachment.derivedFrom || []).length
-        ? '<p class="essence-label">Read from</p>' +
+        ? '<p class="essence-label">' + esc(TEXT.readFrom) + '</p>' +
           '<p class="trait-evidence">' + relationship.attachment.derivedFrom
             .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
         : '') +
       ((relationship.attachment.implications || []).length
-        ? '<p class="essence-label">What it means in practice</p>' + points(relationship.attachment.implications)
+        ? '<p class="essence-label">' + esc(TEXT.attachmentPractice) + '</p>' + points(relationship.attachment.implications)
         : '') +
       '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p></div>' +
       loveLanguageBlock(relationship.loveLanguages) + '</div>';
 
     // Career.
     const career = report.career;
-    html += '<div class="card section-card">' + head('💼', 'At work') +
-      '<div class="split"><div><h3 class="h-good">Strengths</h3>' + points(career.strengths) + '</div>' +
-      '<div><h3 class="h-warn">Weaknesses</h3>' + points(career.weaknesses) + '</div></div>' +
-      '<h3>How you work</h3><p>' + esc(career.workStyle) + '</p>' +
-      '<h3>Where you would thrive</h3>' + list(career.environments, 'ticks') +
-      '<h3>What could hold you back</h3><p>' + esc(career.watchOuts) + '</p></div>';
+    html += '<div class="card section-card">' + head('💼', esc(TEXT.work)) +
+      '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(career.strengths) + '</div>' +
+      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(career.weaknesses) + '</div></div>' +
+      '<h3>' + esc(TEXT.howYouWork) + '</h3><p>' + esc(career.workStyle) + '</p>' +
+      '<h3>' + esc(TEXT.thrive) + '</h3>' + list(career.environments, 'ticks') +
+      '<h3>' + esc(TEXT.holdBack) + '</h3><p>' + esc(career.watchOuts) + '</p></div>';
 
     // Instagram behaviour: the part of the export nobody reads themselves.
     // It sits after the personality sections because it is the evidence
@@ -570,15 +514,9 @@
     const activity = report.activity;
     if (activity) {
       html += '<div class="card section-card">' +
-        head('📱', 'Your Instagram behaviour', esc(activity.summary));
+        head('📱', esc(TEXT.activity), esc(activity.summary));
       html += '<div class="facet-grid">';
-      for (const [label, key] of [
-        ['What you post', 'posting'],
-        ['When you are here', 'rhythm'],
-        ['How it changed', 'trajectory'],
-        ['Publishing vs reading', 'engagement'],
-        ['Where your attention goes', 'attention'],
-      ]) {
+      for (const [label, key] of Copy.ACTIVITY_FACETS) {
         const facet = activity[key];
         if (!facet) continue;
         html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
@@ -586,7 +524,7 @@
       }
       html += '</div>';
       if ((activity.implications || []).length) {
-        html += '<h3>What it suggests</h3><dl class="points implications">' +
+        html += '<h3>' + esc(TEXT.activitySuggests) + '</h3><dl class="points implications">' +
           activity.implications.map(item =>
             '<dt>' + esc(item.observation) + '</dt><dd>' + esc(item.implication) + '</dd>').join('') + '</dl>';
       }
@@ -595,26 +533,23 @@
 
     // What gets shared.
     html += '<div class="card section-card">' +
-      head('🔗', 'What your QR code contains',
-        'Only this — the compact card the other person\'s report is built from.') +
+      head('🔗', esc(TEXT.qr), esc(TEXT.qrSub)) +
       '<p><strong>' + esc(profile.card.headline) + '</strong></p><p>' + esc(profile.card.summary) + '</p>' +
       tags(profile.card.interests) +
-      '<p class="fineprint">Plus your Big Five scores, MBTI, values, beliefs, relationship and career ' +
-      'strengths and weaknesses, attachment guess and rhythm — all as short phrases.</p></div>';
+      '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
 
     const history = store.read(KEYS.history, []);
     if (history.length) {
-      html += '<div class="card section-card">' + head('🤝', 'Your matches') +
+      html += '<div class="card section-card">' + head('🤝', esc(TEXT.matches)) +
         historyTable(history) + '</div>';
     }
 
     // Confidence closes the report rather than opening it: read after the
     // whole thing, it says how much of what you just read to believe.
     html += '<div class="card section-card confidence-card">' +
-      head('🎯', 'How much to trust this',
-        'Everything above is inferred from behavioural traces, and the model says how far it would stand behind them.') +
+      head('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
       '<div class="confidence-meter"><div class="confidence-fill" style="width:' + Math.round(report.confidence.score) + '%"></div></div>' +
-      '<p><strong>Confidence: ' + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
+      '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p></div>';
 
     html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'the model') + ' on ' +
@@ -625,7 +560,7 @@
 
   function historyTable(history) {
     return '<div class="table-scroll"><table class="match-table"><thead><tr>' +
-      '<th>With</th><th>Basis</th><th>Score</th><th>When</th><th></th></tr></thead><tbody>' +
+      '<th>' + esc(TEXT.matchWith) + '</th><th>' + esc(TEXT.matchBasis) + '</th><th>' + esc(TEXT.matchScore) + '</th><th>' + esc(TEXT.matchWhen) + '</th><th></th></tr></thead><tbody>' +
       history.map((entry, index) => {
         const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
         return '<tr><td>' + esc(entry.withName) + '</td>' +
@@ -717,6 +652,9 @@
       const blob = window.PsychePDF.build(profile.report, profile.card, {
         date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
         model: profile.model || '',
+        // The page shows a matches section when this device has any, so the
+        // report does too.
+        history: store.read(KEYS.history, []),
       });
       const name = 'psycheai-report-' +
         String(profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
@@ -1074,11 +1012,7 @@
     }
   });
 
-  const MODE_LABELS = {
-    romantic: 'Romantic',
-    platonic: 'Platonic',
-    professional: 'Professional / work',
-  };
+  const MODE_LABELS = Copy.MODE_LABELS;
   const MODE_HEADINGS = {
     romantic: 'How to partner each other',
     platonic: 'How to befriend each other',

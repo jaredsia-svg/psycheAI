@@ -109,6 +109,9 @@
   const WASH = [0.953, 0.914, 0.973];
   const PAPER = [0.980, 0.969, 0.984];
   const WHITE = [1, 1, 1];
+  // The page colours its strengths and weaknesses headings; so does this.
+  const GOOD = [0.184, 0.490, 0.357];
+  const WARN = [0.604, 0.357, 0.071];
 
   const num = n => (Math.round(n * 1000) / 1000).toString();
 
@@ -213,8 +216,27 @@
     if (line) lines.push(line);
     return lines.length ? lines : [''];
   }
-
   // ---------- report layout ----------
+  //
+  // This mirrors the profile page section for section, in the same order, with
+  // the same titles, sub-lines and empty-state wording — all of which come from
+  // copy.js so the two renderings cannot drift. The screen's cards become rules
+  // and whitespace, and its emoji section glyphs are dropped (Helvetica has no
+  // slot for them), but nothing is added and nothing is left out.
+
+  // Resolved at build time rather than at load: copy.js and this file are two
+  // separate script tags and nothing guarantees which lands first.
+  let Copy = null;
+  let TEXT = null;
+  let TRAIT_LABELS = null;
+  let MODE_LABELS = null;
+
+  function bindCopy() {
+    Copy = root.PsycheCopy;
+    TEXT = Copy.TEXT;
+    TRAIT_LABELS = Copy.TRAIT_LABELS;
+    MODE_LABELS = Copy.MODE_LABELS;
+  }
 
   function Report(doc, meta) {
     this.doc = doc;
@@ -271,6 +293,16 @@
     return this;
   };
 
+  Report.prototype.fineprint = function (text) {
+    if (!text) return this;
+    this.space(4);
+    return this.body(text, { size: 8.6, color: SOFT, leading: 12.4 });
+  };
+
+  Report.prototype.muted = function (text) {
+    return this.body(text, { size: 9.8, color: SOFT, leading: 14 });
+  };
+
   /** A small tracked-out label, the typographic workhorse of the whole thing. */
   Report.prototype.eyebrow = function (text, color) {
     this.need(16);
@@ -280,59 +312,56 @@
     return this;
   };
 
-  Report.prototype.sectionTitle = function (title, kicker) {
+  /** A section head: the page's card-head, minus the glyph. */
+  Report.prototype.sectionTitle = function (title, sub) {
     // Keep a title with at least a couple of lines of what follows.
-    this.need(96);
-    this.space(6);
-    if (kicker) this.eyebrow(kicker);
-    const style = { size: 19, bold: true, color: INK };
+    this.need(sub ? 130 : 100);
+    this.space(14);
+    const style = { size: 18, bold: true, color: INK };
     for (const line of wrap(toWinAnsi(title), COLUMN, style)) {
-      this.doc.draw(line, MARGIN, this.doc.y + 15, style);
-      this.doc.y += 24;
-    }
-    this.space(4);
-    this.doc.hairline(this.doc.y, MARGIN, MARGIN + 46, ACCENT);
-    this.doc.hairline(this.doc.y, MARGIN + 46, PAGE.width - MARGIN, LINE);
-    this.space(16);
-    return this;
-  };
-
-  Report.prototype.subheading = function (text, trailing) {
-    this.need(34);
-    this.space(4);
-    const style = { size: 11.5, bold: true, color: INK };
-    const encoded = toWinAnsi(text);
-    for (const line of wrap(encoded, COLUMN - 90, style)) {
-      this.doc.draw(line, MARGIN, this.doc.y + 9, style);
-      this.doc.y += 15;
-    }
-    if (trailing) {
-      const label = toWinAnsi(trailing);
-      // Measured with the same tracking it is drawn with, or the right edge
-      // creeps past the margin by a point per character.
-      const width = measure(label, 8, true, 0.8);
-      this.doc.draw(label, PAGE.width - MARGIN - width, this.doc.y - 6,
-        { size: 8, bold: true, color: ACCENT, tracking: 0.8 });
+      this.doc.draw(line, MARGIN, this.doc.y + 14, style);
+      this.doc.y += 23;
     }
     this.space(3);
+    this.doc.hairline(this.doc.y, MARGIN, MARGIN + 46, ACCENT);
+    this.doc.hairline(this.doc.y, MARGIN + 46, PAGE.width - MARGIN, LINE);
+    this.space(11);
+    if (sub) {
+      this.body(sub, { size: 9.4, color: SOFT, leading: 13.4 });
+      this.space(5);
+    }
     return this;
   };
 
-  Report.prototype.bullet = function (text, options) {
-    const settings = options || {};
-    const style = { size: 10, color: settings.color || INK };
-    const indent = MARGIN + 14;
-    const lines = wrap(toWinAnsi(text), COLUMN - 14, style);
+  /** A heading inside a section — the page's h3. */
+  Report.prototype.h3 = function (text, color) {
+    const style = { size: 11.5, bold: true, color: color || INK };
+    // Wrapped, because "Attachment: " carries the model's phrase for the style
+    // and that is not always short.
+    const lines = wrap(toWinAnsi(text), COLUMN, style);
+    this.need(26 + lines.length * 17);
+    this.space(9);
+    for (const line of lines) {
+      this.doc.draw(line, MARGIN, this.doc.y + 9, style);
+      this.doc.y += 17;
+    }
+    return this;
+  };
+
+  /** A ticked list item — the page's `ul.ticks`. */
+  Report.prototype.bullet = function (text) {
+    const style = { size: 10, color: INK };
+    const lines = wrap(toWinAnsi(text), COLUMN - 16, style);
     lines.forEach((line, index) => {
       this.need(15);
       if (!index) this.doc.rect(MARGIN + 3, this.doc.y + 5.5, 3.2, 3.2, ACCENT_2);
-      this.doc.draw(line, indent, this.doc.y + 8.2, style);
+      this.doc.draw(line, MARGIN + 16, this.doc.y + 8.2, style);
       this.doc.y += 15;
     });
     return this;
   };
 
-  /** Title-and-detail pair, used for every strengths/weaknesses style list. */
+  /** Title-and-detail pair: the page's definition lists. */
   Report.prototype.point = function (title, detail) {
     const style = { size: 10.5, bold: true, color: INK };
     // These titles are not always a few words: an activity observation is a
@@ -350,14 +379,22 @@
     return this;
   };
 
-  /** A 0-100 bar. The Big Five section is mostly this. */
-  Report.prototype.bar = function (label, score, band) {
+  Report.prototype.points = function (items) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return this.muted(TEXT.pointsEmpty);
+    for (const item of values) this.point(item.title, item.detail);
+    return this;
+  };
+
+  /** A 0-100 bar with its label and number, as the trait rows are on screen. */
+  Report.prototype.bar = function (label, score) {
     this.need(30);
     const value = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
+    const readout = toWinAnsi(String(value));
+    const readoutWidth = measure(readout, 9.5, true);
     this.doc.draw(toWinAnsi(label), MARGIN, this.doc.y + 8, { size: 10.5, bold: true, color: INK });
-    const readout = toWinAnsi(value + (band ? '  ·  ' + band : ''));
-    const width = measure(readout, 9, false);
-    this.doc.draw(readout, PAGE.width - MARGIN - width, this.doc.y + 8, { size: 9, color: SOFT });
+    this.doc.draw(readout, PAGE.width - MARGIN - readoutWidth, this.doc.y + 8,
+      { size: 9.5, bold: true, color: ACCENT });
     const track = this.doc.y + 14;
     this.doc.roundRect(MARGIN, track, COLUMN, 5, 2.5, LINE);
     if (value > 0) this.doc.roundRect(MARGIN, track, Math.max(5, COLUMN * value / 100), 5, 2.5, ACCENT);
@@ -365,36 +402,184 @@
     return this;
   };
 
-  /** Chips for short labels: interests, environments, love languages. */
-  Report.prototype.chips = function (items) {
+  /**
+   * The page's pill rows — trait evidence, the signals an attachment read came
+   * from, the card's interests. Short ones pack side by side; one too long for
+   * the column gets its own box with the text wrapped inside, which is what the
+   * flex row does on screen.
+   */
+  Report.prototype.tags = function (items, options) {
+    const settings = options || {};
+    const size = settings.size || 9;
+    const left = settings.x === undefined ? MARGIN : settings.x;
+    const width = settings.width === undefined ? COLUMN : settings.width;
     const list = (items || []).map(item => toWinAnsi(item)).filter(Boolean);
     if (!list.length) return this;
-    const size = 9.5;
-    let x = MARGIN;
-    this.need(24);
-    for (let item of list) {
-      // A chip is one line by construction, so an over-long label has to be
-      // cut rather than allowed to run off the page.
-      // The ellipsis is appended already-encoded: these strings are WinAnsi
-      // bytes by this point, and a raw U+2026 would not survive serialisation.
-      while (item.length > 4 && measure(item, size, false) + 18 > COLUMN) {
-        item = item.slice(0, -2) + String.fromCharCode(133);
+    let x = left;
+    let rowOpen = false;
+    for (const item of list) {
+      const chipWidth = measure(item, size, false) + 16;
+      if (chipWidth > width) {
+        // Too wide to be a chip: close the row and give it a wrapped box.
+        if (rowOpen) { this.doc.y += 20; rowOpen = false; x = left; }
+        const style = { size, color: SOFT };
+        const lines = wrap(item, width - 20, style);
+        const height = lines.length * 12.6 + 10;
+        this.need(height + 4);
+        this.doc.roundRect(left, this.doc.y, width, height, 6, WASH);
+        let inner = this.doc.y + 5;
+        for (const line of lines) {
+          this.doc.draw(line, left + 10, inner + 9, style);
+          inner += 12.6;
+        }
+        this.doc.y += height + 4;
+        continue;
       }
-      const width = measure(item, size, false) + 18;
-      if (x > MARGIN && x + width > MARGIN + COLUMN) {
-        this.doc.y += 22;
+      if (!rowOpen) { this.need(24); rowOpen = true; }
+      if (x > left && x + chipWidth > left + width) {
+        this.doc.y += 20;
         this.need(24);
-        x = MARGIN;
+        x = left;
       }
-      this.doc.roundRect(x, this.doc.y, width, 17, 8.5, WASH);
-      this.doc.draw(item, x + 9, this.doc.y + 12, { size, color: ACCENT });
-      x += width + 6;
+      this.doc.roundRect(x, this.doc.y, chipWidth, 16, 8, WASH);
+      this.doc.draw(item, x + 8, this.doc.y + 11.4, { size, color: SOFT });
+      x += chipWidth + 5;
     }
-    this.doc.y += 26;
+    if (rowOpen) this.doc.y += 20;
+    this.space(4);
     return this;
   };
 
-  /** A tinted box for caveats — the report makes a lot of honest hedges. */
+  /** One of the page's tiles: a title, an optional pill, detail, evidence. */
+  Report.prototype.tile = function (title, pill, detail, evidence) {
+    const titleStyle = { size: 10.8, bold: true, color: INK };
+    const detailStyle = { size: 9.8, color: INK };
+    const evidenceStyle = { size: 8.8, color: SOFT };
+    const label = pill ? toWinAnsi(pill) : '';
+    const labelWidth = label ? measure(label, 8, true, 0.6) + 12 : 0;
+    const titleLines = wrap(toWinAnsi(title), COLUMN - 28 - labelWidth, titleStyle);
+    const detailLines = detail ? wrap(toWinAnsi(detail), COLUMN - 28, detailStyle) : [];
+    const evidenceLines = evidence ? wrap(toWinAnsi(evidence), COLUMN - 28, evidenceStyle) : [];
+    const height = 12 + titleLines.length * 15 + detailLines.length * 14 +
+      (evidenceLines.length ? 4 + evidenceLines.length * 12.4 : 0) + 12;
+
+    this.need(height + 8);
+    this.doc.roundRect(MARGIN, this.doc.y, COLUMN, height, 10, WHITE);
+    this.doc.rect(MARGIN, this.doc.y, 2.5, height, ACCENT);
+    let inner = this.doc.y + 10;
+    if (label) {
+      this.doc.draw(label, PAGE.width - MARGIN - 14 - (labelWidth - 12), inner + 8,
+        { size: 8, bold: true, color: ACCENT, tracking: 0.6 });
+    }
+    for (const line of titleLines) {
+      this.doc.draw(line, MARGIN + 14, inner + 9, titleStyle);
+      inner += 15;
+    }
+    for (const line of detailLines) {
+      this.doc.draw(line, MARGIN + 14, inner + 9, detailStyle);
+      inner += 14;
+    }
+    if (evidenceLines.length) {
+      inner += 4;
+      for (const line of evidenceLines) {
+        this.doc.draw(line, MARGIN + 14, inner + 8, evidenceStyle);
+        inner += 12.4;
+      }
+    }
+    this.doc.y += height + 8;
+    return this;
+  };
+
+  /** The headline findings strip under the essence, ruled top and bottom. */
+  Report.prototype.glance = function (items) {
+    if (!items.length) return this;
+    const columns = Math.min(items.length, 4);
+    const cellWidth = COLUMN / columns;
+    const rows = Math.ceil(items.length / columns);
+    const rowHeight = 40;
+    this.need(rows * rowHeight + 18);
+    this.space(4);
+    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
+    this.doc.y += 9;
+    const top = this.doc.y;
+    items.forEach((item, index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      const x = MARGIN + column * cellWidth;
+      const y = top + row * rowHeight;
+      this.doc.draw(toWinAnsi(String(item.label).toUpperCase()), x, y + 7,
+        { size: 7.2, bold: true, color: SOFT, tracking: 1 });
+      const valueStyle = { size: 10.4, bold: true, color: INK };
+      let cursor = y + 21;
+      for (const line of wrap(toWinAnsi(item.value), cellWidth - 8, valueStyle).slice(0, 2)) {
+        this.doc.draw(line, x, cursor, valueStyle);
+        cursor += 12;
+      }
+      if (item.note) {
+        this.doc.draw(toWinAnsi(item.note), x, cursor + 1, { size: 8.4, color: SOFT });
+      }
+    });
+    this.doc.y = top + rows * rowHeight;
+    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
+    this.space(12);
+    return this;
+  };
+
+  /** One MBTI axis: the lettered square, the pole it beat, and the reasoning. */
+  Report.prototype.axis = function (letter, pole, strength, why, inPractice) {
+    const nameStyle = { size: 11.5, bold: true, color: INK };
+    const whyStyle = { size: 9.8, color: INK, leading: 14 };
+    this.need(76);
+    this.space(6);
+    const top = this.doc.y;
+    const glyph = toWinAnsi(String(letter || '?'));
+    this.doc.roundRect(MARGIN, top, 28, 28, 7, ACCENT);
+    const glyphWidth = measure(glyph, 14, true);
+    this.doc.draw(glyph, MARGIN + (28 - glyphWidth) / 2, top + 19, { size: 14, bold: true, color: WHITE });
+
+    const textLeft = MARGIN + 40;
+    const textWidth = COLUMN - 40;
+    if (strength) {
+      const label = toWinAnsi(strength);
+      const width = measure(label, 8, true, 0.8);
+      this.doc.draw(label, PAGE.width - MARGIN - width, top + 9,
+        { size: 8, bold: true, color: ACCENT, tracking: 0.8 });
+    }
+    this.doc.draw(toWinAnsi(pole.name), textLeft, top + 10, nameStyle);
+    let cursor = top + 14;
+    if (pole.against) {
+      this.doc.draw(toWinAnsi(TEXT.mbtiOver + pole.against), textLeft, cursor + 12,
+        { size: 9, color: SOFT });
+      cursor += 14;
+    }
+    this.doc.y = cursor + 6;
+    if (why) this.body(why, { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
+    if (inPractice) this.body(inPractice, { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
+    this.space(3);
+    return this;
+  };
+
+  /** One behaviour facet: its fixed label, the model's headline, the detail. */
+  Report.prototype.facet = function (label, headline, detail) {
+    this.need(60);
+    this.space(6);
+    this.doc.draw(toWinAnsi(String(label).toUpperCase()), MARGIN, this.doc.y + 8,
+      { size: 7.2, bold: true, color: ACCENT_2, tracking: 1.1 });
+    this.doc.y += 14;
+    if (headline) {
+      const style = { size: 11.2, bold: true, color: INK };
+      for (const line of wrap(toWinAnsi(headline), COLUMN, style)) {
+        this.need(16);
+        this.doc.draw(line, MARGIN, this.doc.y + 9, style);
+        this.doc.y += 16;
+      }
+    }
+    if (detail) this.body(detail, { size: 9.8, leading: 14 });
+    this.space(4);
+    return this;
+  };
+
+  /** A tinted box: the page's callout, and its fineprint caveats. */
   Report.prototype.note = function (text, label) {
     const encoded = toWinAnsi(text);
     const style = { size: 9.2, color: SOFT, italic: true };
@@ -417,374 +602,287 @@
     return this;
   };
 
-  Report.prototype.evidence = function (items) {
-    const list = (items || []).filter(Boolean);
-    if (!list.length) return this;
-    this.doc.draw(toWinAnsi('Evidence'), MARGIN + 10, this.doc.y + 8,
-      { size: 7.5, bold: true, color: SOFT, tracking: 1.1 });
-    this.doc.y += 13;
-    for (const item of list) {
-      this.body('— ' + item, { x: MARGIN + 10, width: COLUMN - 10, size: 9.2, color: SOFT, leading: 13 });
-    }
+  /** The match history table, minus the screen's "Open" link column. */
+  Report.prototype.matchTable = function (history) {
+    const columns = [
+      { label: TEXT.matchWith, width: COLUMN * 0.34 },
+      { label: TEXT.matchBasis, width: COLUMN * 0.3 },
+      { label: TEXT.matchScore, width: COLUMN * 0.16 },
+      { label: TEXT.matchWhen, width: COLUMN * 0.2 },
+    ];
+    this.need(48);
     this.space(4);
+    let x = MARGIN;
+    for (const column of columns) {
+      this.doc.draw(toWinAnsi(String(column.label).toUpperCase()), x, this.doc.y + 8,
+        { size: 7.2, bold: true, color: SOFT, tracking: 1 });
+      x += column.width;
+    }
+    this.doc.y += 13;
+    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
+    this.doc.y += 4;
+    for (const entry of history) {
+      this.need(22);
+      const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
+      const score = Math.round(Number(entry.report && entry.report.score) || 0);
+      const cells = [
+        { text: entry.withName || '', bold: true, color: INK },
+        { text: MODE_LABELS[mode] || mode, color: SOFT },
+        { text: String(score), bold: true, color: ACCENT },
+        { text: entry.when ? new Date(entry.when).toLocaleDateString() : '', color: SOFT },
+      ];
+      x = MARGIN;
+      cells.forEach((cell, index) => {
+        const style = { size: 9.6, bold: Boolean(cell.bold), color: cell.color };
+        const line = wrap(toWinAnsi(cell.text), columns[index].width - 8, style)[0];
+        this.doc.draw(line, x, this.doc.y + 9, style);
+        x += columns[index].width;
+      });
+      this.doc.y += 17;
+      this.doc.hairline(this.doc.y - 4, MARGIN, PAGE.width - MARGIN);
+    }
+    this.space(8);
     return this;
   };
 
-  // ---------- the cover ----------
+  // ---------- the letterhead ----------
+  //
+  // The page's own printed letterhead: the brand, whose report this is, and the
+  // line of provenance. Content starts underneath it rather than on a separate
+  // cover, exactly as the printed page flows.
 
-  function cover(doc, report, card, meta, sections) {
+  function letterhead(doc, report, card, meta) {
     doc.newPage({ bare: true, top: 0 });
     doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
-    const bandHeight = 268;
+    const bandHeight = 176;
     doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
     // A second, darker wedge so the band is not a flat slab of colour.
     doc.setFill(ACCENT_2);
     doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
       num(PAGE.width) + ' ' + num(PAGE.height - bandHeight) + ' l ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 46) + ' l 0 ' +
+      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 34) + ' l 0 ' +
       num(PAGE.height - bandHeight) + ' l f');
 
-    doc.draw(toWinAnsi('PSYCHEAI'), MARGIN, 68, { size: 10, bold: true, color: WHITE, tracking: 3 });
+    doc.draw(toWinAnsi('PSYCHEAI'), MARGIN, 56, { size: 9.5, bold: true, color: WHITE, tracking: 3 });
 
     const title = (card.name || 'Your') + '’s personality analysis';
-    const titleStyle = { size: 31, bold: true, color: WHITE };
-    let y = 116;
-    for (const line of wrap(toWinAnsi(title), COLUMN - 30, titleStyle)) {
+    const titleStyle = { size: 27, bold: true, color: WHITE };
+    let y = 96;
+    for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
       doc.draw(line, MARGIN, y, titleStyle);
-      y += 36;
+      y += 31;
     }
-
     if (card.headline) {
-      const style = { size: 12.5, italic: true, color: WHITE };
-      y += 6;
-      for (const line of wrap(toWinAnsi(card.headline), COLUMN - 40, style)) {
-        doc.draw(line, MARGIN, y, style);
-        y += 17;
+      const style = { size: 11.5, italic: true, color: WHITE };
+      for (const line of wrap(toWinAnsi(card.headline), COLUMN - 30, style).slice(0, 2)) {
+        doc.draw(line, MARGIN, y + 2, style);
+        y += 15;
       }
     }
 
-    // The essence noun is the thing they quote back at their friends, so it
-    // gets the cover card rather than being buried in the body.
-    const essence = report.essence || {};
-    let cursor = bandHeight + 34;
-    if (essence.noun) {
-      const nounStyle = { size: 24, bold: true, color: ACCENT };
-      const whyStyle = { size: 10.4, color: INK };
-      const nounLines = wrap(toWinAnsi(essence.noun), COLUMN - 56, nounStyle);
-      const whyLines = wrap(toWinAnsi(essence.why || ''), COLUMN - 56, whyStyle);
-      const height = 28 + nounLines.length * 28 + whyLines.length * 15 + 22;
-      doc.roundRect(MARGIN, cursor, COLUMN, height, 14, WHITE);
-      doc.rect(MARGIN, cursor, COLUMN, 3, ACCENT);
-      let inner = cursor + 26;
-      doc.draw(toWinAnsi('IN A WORD'), MARGIN + 28, inner, { size: 7.5, bold: true, color: ACCENT_2, tracking: 1.2 });
-      inner += 12;
-      for (const line of nounLines) {
-        doc.draw(line, MARGIN + 28, inner + 18, nounStyle);
-        inner += 28;
-      }
-      inner += 6;
-      for (const line of whyLines) {
-        doc.draw(line, MARGIN + 28, inner + 8, whyStyle);
-        inner += 15;
-      }
-      cursor += height + 26;
-    }
-
-    // Confidence, on the cover, because it frames everything after it.
+    // The same provenance line the printed page carries.
     const confidence = report.confidence || {};
-    const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
-    doc.draw(toWinAnsi('CONFIDENCE IN THIS READING'), MARGIN, cursor + 8,
-      { size: 7.5, bold: true, color: SOFT, tracking: 1.2 });
-    const readout = toWinAnsi(score + ' / 100' + (confidence.level ? '  ·  ' + confidence.level : ''));
-    const readoutWidth = measure(readout, 10, true);
-    doc.draw(readout, PAGE.width - MARGIN - readoutWidth, cursor + 8, { size: 10, bold: true, color: ACCENT });
-    cursor += 16;
-    doc.roundRect(MARGIN, cursor, COLUMN, 6, 3, LINE);
-    if (score > 0) doc.roundRect(MARGIN, cursor, Math.max(6, COLUMN * score / 100), 6, 3, ACCENT);
-    cursor += 20;
-    if (confidence.rationale) {
-      const style = { size: 9.6, color: SOFT };
-      for (const line of wrap(toWinAnsi(confidence.rationale), COLUMN, style)) {
-        doc.draw(line, MARGIN, cursor + 8, style);
-        cursor += 13.5;
-      }
-    }
-
-    // Footer block: provenance, then the disclaimer that has to travel with it.
-    const footTop = PAGE.height - MARGIN - 74;
-
-    // Contents, if the cover has room for it. Short mock profiles leave a hole
-    // in the middle of the page otherwise, and a report this long benefits from
-    // saying up front what is in it.
-    const roomLeft = footTop - cursor - 34;
-    if (sections.length && roomLeft > 116) {
-      cursor += 26;
-      doc.hairline(cursor, MARGIN, MARGIN + 46, ACCENT);
-      cursor += 16;
-      doc.draw(toWinAnsi('WHAT IS INSIDE'), MARGIN, cursor + 8,
-        { size: 7.5, bold: true, color: SOFT, tracking: 1.2 });
-      cursor += 20;
-      const half = Math.ceil(sections.length / 2);
-      sections.forEach((name, index) => {
-        const column = index < half ? 0 : 1;
-        const row = index - column * half;
-        const x = MARGIN + column * (COLUMN / 2);
-        const y = cursor + row * 15;
-        doc.draw(toWinAnsi(String(index + 1)), x, y + 8, { size: 8.5, bold: true, color: ACCENT_2 });
-        doc.draw(toWinAnsi(name), x + 16, y + 8, { size: 9.6, color: INK });
-      });
-      cursor += half * 15;
-    }
-    doc.hairline(footTop, MARGIN, PAGE.width - MARGIN);
-    const stamp = [meta.date, meta.model ? 'model ' + meta.model : ''].filter(Boolean).join('  ·  ');
-    doc.draw(toWinAnsi(stamp), MARGIN, footTop + 16, { size: 8.5, color: SOFT });
-    const disclaimer = 'PsycheAI is a self-knowledge and conversation tool, not a psychometric ' +
-      'instrument and not a background check. Everything here is inferred from one Instagram data ' +
-      'export by a language model, which says how confident it is and can be wrong.';
-    let footY = footTop + 30;
-    for (const line of wrap(toWinAnsi(disclaimer), COLUMN, { size: 8.2 })) {
-      doc.draw(line, MARGIN, footY + 7, { size: 8.2, color: SOFT });
-      footY += 11;
-    }
+    const stamp = ['Generated ' + (meta.date || ''), 'from an Instagram data export',
+      Math.round(Number(confidence.score) || 0) + '/100 confidence']
+      .filter(Boolean).join('  ·  ');
+    doc.draw(toWinAnsi(stamp), MARGIN, bandHeight + 26, { size: 8.8, color: SOFT });
+    doc.y = bandHeight + 40;
   }
 
-  // ---------- the body ----------
-
-  const TRAITS = [
-    ['openness', 'Openness'],
-    ['conscientiousness', 'Conscientiousness'],
-    ['extraversion', 'Extraversion'],
-    ['agreeableness', 'Agreeableness'],
-    ['neuroticism', 'Neuroticism'],
-  ];
-
-  const ACTIVITY_PARTS = [
-    ['posting', 'What they post'],
-    ['rhythm', 'When they post'],
-    ['trajectory', 'How it changed'],
-    ['engagement', 'Outward or inward'],
-    ['attention', 'Where attention goes'],
-  ];
+  // ---------- the report ----------
 
   function build(report, card, meta) {
+    bindCopy();
+    const source = report || {};
+    const who = card || {};
+    const stamp = meta || {};
     const doc = new Doc();
-    const out = new Report(doc, { name: card.name || 'Your profile' });
+    const out = new Report(doc, { name: who.name || 'Your profile' });
 
-    // Worked out before the cover is drawn, because the cover lists them.
-    const has = value => Boolean(value && (!Array.isArray(value) || value.length));
-    const sections = [
-      ['The portrait', has(report.summary)],
-      ['The five traits', has(report.bigFive)],
-      ['The type', has(report.mbti)],
-      ['How they use Instagram', has(report.activity)],
-      ['What holds their attention', has(report.interests)],
-      ['What they care about', has(report.values)],
-      ['What they seem to believe', has(report.beliefs)],
-      ['Close relationships', has(report.relationship)],
-      ['Work', has(report.career)],
-    ].filter(entry => entry[1]).map(entry => entry[0]);
+    letterhead(doc, source, who, stamp);
 
-    cover(doc, report, card, meta, sections);
+    // 1. Who you are — essence, the headline findings, then the summary.
+    out.sectionTitle(TEXT.whoYouAre);
+    const essence = source.essence || {};
+    if (essence.noun) {
+      out.eyebrow(TEXT.essenceLabel);
+      const nounStyle = { size: 23, bold: true, color: ACCENT };
+      for (const line of wrap(toWinAnsi(essence.noun), COLUMN, nounStyle)) {
+        out.need(30);
+        doc.draw(line, MARGIN, doc.y + 18, nounStyle);
+        doc.y += 28;
+      }
+      out.space(2);
+      if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
+      out.space(8);
+    }
+    out.glance(Copy.glanceItems(source));
+    if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
 
-    // ---- the portrait ----
-    out.page();
-    out.sectionTitle('The portrait', 'Overview');
-    out.body(report.summary, { size: 10.8, leading: 16.5 });
-
-    // ---- big five ----
-    const five = report.bigFive || {};
-    out.space(12);
-    out.sectionTitle('The five traits', 'Big Five');
-    for (const [key, label] of TRAITS) {
+    // 2. Big Five.
+    const five = source.bigFive || {};
+    out.sectionTitle(TEXT.bigFive, TEXT.bigFiveSub);
+    for (const key of Object.keys(TRAIT_LABELS)) {
       const trait = five[key];
       if (!trait) continue;
-      out.need(80);
-      out.bar(label, trait.score, trait.band);
-      if (trait.reading) out.body(trait.reading, { size: 9.9, color: INK, leading: 14.4 });
-      out.evidence(trait.evidence);
-      out.space(6);
+      out.need(84);
+      out.bar(TRAIT_LABELS[key] + ' · ' + (trait.band || ''), trait.score);
+      if (trait.reading) out.body(trait.reading, { size: 9.9, leading: 14.4 });
+      out.tags(trait.evidence);
+      out.space(4);
     }
 
-    // ---- mbti ----
-    const mbti = report.mbti;
+    // 3. MBTI.
+    const mbti = source.mbti;
     if (mbti) {
-      out.space(10);
-      out.sectionTitle('The type', 'MBTI');
-      out.need(60);
-      const type = toWinAnsi(mbti.type || 'Uncertain');
-      doc.roundRect(MARGIN, doc.y, 96, 42, 10, ACCENT);
-      const typeWidth = measure(type, 21, true);
-      doc.draw(type, MARGIN + (96 - typeWidth) / 2, doc.y + 29, { size: 21, bold: true, color: WHITE });
-      if (mbti.nickname) {
-        doc.draw(toWinAnsi(mbti.nickname), MARGIN + 112, doc.y + 20, { size: 13, bold: true, color: INK });
-      }
-      if (mbti.confidence) {
-        doc.draw(toWinAnsi(mbti.confidence + ' confidence'), MARGIN + 112, doc.y + 36,
-          { size: 9, color: SOFT });
-      }
-      doc.y += 56;
+      out.sectionTitle(TEXT.mbtiPrefix + (mbti.type || '') + (mbti.nickname ? '  ' + mbti.nickname : ''),
+        TEXT.mbtiConfidence + (mbti.confidence || ''));
       for (const letter of mbti.letters || []) {
-        out.subheading((letter.axis || '') + ':  ' + (letter.choice || ''), letter.strength);
-        if (letter.why) out.body(letter.why, { size: 9.9, leading: 14.4 });
-        if (letter.inPractice) out.body('In practice: ' + letter.inPractice, { size: 9.5, color: SOFT, leading: 13.5 });
-        out.space(5);
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
+          letter.strength, letter.why, letter.inPractice);
       }
-      if (mbti.caveat) out.note(mbti.caveat, 'Take with salt');
+      out.fineprint(mbti.caveat);
     }
 
-    // ---- activity ----
-    const activity = report.activity;
-    if (activity) {
-      out.space(10);
-      out.sectionTitle('How they use Instagram', 'Behaviour');
-      if (activity.summary) out.body(activity.summary, { size: 10.4, leading: 15.6 });
-      out.space(8);
-      for (const [key, label] of ACTIVITY_PARTS) {
-        const part = activity[key];
-        if (!part) continue;
-        out.subheading(part.headline || label, label);
-        if (part.detail) out.body(part.detail, { size: 9.9, leading: 14.4 });
-        out.space(5);
-      }
-      const implications = activity.implications || [];
-      if (implications.length) {
-        out.space(6);
-        out.eyebrow('What it suggests');
-        for (const item of implications) {
-          out.point(item.observation, item.implication);
-        }
-      }
-      if (activity.blindSpots) out.note(activity.blindSpots, 'What this cannot see');
-    }
-
-    // ---- interests ----
-    const interests = report.interests || [];
+    // 4. Interests.
+    out.sectionTitle(TEXT.interests);
+    const interests = source.interests || [];
     if (interests.length) {
-      out.space(10);
-      out.sectionTitle('What holds their attention', 'Interests');
-      out.chips(interests.map(item => item.name));
-      for (const item of interests) {
-        out.subheading(item.name, item.intensity);
-        if (item.detail) out.body(item.detail, { size: 9.9, leading: 14.4 });
-        if (item.evidence) out.evidence([item.evidence]);
-        out.space(4);
-      }
+      for (const item of interests) out.tile(item.name, item.intensity, item.detail, item.evidence);
+    } else {
+      out.muted(TEXT.interestsEmpty);
     }
 
-    // ---- values ----
-    const values = report.values || [];
+    // 5. Values and beliefs, together, as the page groups them.
+    out.sectionTitle(TEXT.valuesBeliefs, TEXT.valuesBeliefsSub);
+    out.h3(TEXT.values);
+    const values = source.values || [];
     if (values.length) {
-      out.space(10);
-      out.sectionTitle('What they care about', 'Values');
-      for (const item of values) {
-        out.subheading(item.value);
-        if (item.detail) out.body(item.detail, { size: 9.9, leading: 14.4 });
-        if (item.evidence) out.evidence([item.evidence]);
-        out.space(4);
-      }
+      for (const item of values) out.tile(item.value, '', item.detail, item.evidence);
+    } else {
+      out.muted(TEXT.valuesEmpty);
     }
-
-    // ---- beliefs ----
-    const beliefs = report.beliefs || [];
+    out.h3(TEXT.beliefs);
+    const beliefs = source.beliefs || [];
     if (beliefs.length) {
-      out.space(10);
-      out.sectionTitle('What they seem to believe', 'Beliefs');
       for (const item of beliefs) {
-        out.subheading(item.belief, item.confidence ? item.confidence + ' confidence' : '');
-        if (item.detail) out.body(item.detail, { size: 9.9, leading: 14.4 });
-        if (item.evidence) out.evidence([item.evidence]);
-        out.space(4);
+        out.tile(item.belief, item.confidence ? item.confidence + TEXT.confidenceSuffix : '',
+          item.detail, item.evidence);
       }
+    } else {
+      out.muted(TEXT.beliefsEmpty);
     }
 
-    // ---- relationship ----
-    const relationship = report.relationship;
+    // 6. In relationships.
+    const relationship = source.relationship;
     if (relationship) {
-      out.space(10);
-      out.sectionTitle('Close relationships', 'Relationship');
-      const strengths = relationship.strengths || [];
-      if (strengths.length) {
-        out.eyebrow('Strengths');
-        for (const item of strengths) out.point(item.title, item.detail);
-        out.space(6);
-      }
-      const weaknesses = relationship.weaknesses || [];
-      if (weaknesses.length) {
-        out.eyebrow('Where it gets harder');
-        for (const item of weaknesses) out.point(item.title, item.detail);
-        out.space(6);
-      }
+      out.sectionTitle(TEXT.relationships);
+      out.h3(TEXT.strengths, GOOD);
+      out.points(relationship.strengths);
+      out.h3(TEXT.weaknesses, WARN);
+      out.points(relationship.weaknesses);
 
       const attachment = relationship.attachment;
       if (attachment) {
-        out.subheading('Attachment: ' + (attachment.style || 'unclear'));
+        out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
         if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
-        if ((attachment.derivedFrom || []).length) out.evidence(attachment.derivedFrom);
-        for (const item of attachment.implications || []) out.point(item.title, item.detail);
-        if (attachment.caveat) out.note(attachment.caveat, 'Take with salt');
+        if ((attachment.derivedFrom || []).length) {
+          out.eyebrow(TEXT.readFrom, SOFT);
+          out.tags(attachment.derivedFrom);
+        }
+        if ((attachment.implications || []).length) {
+          out.eyebrow(TEXT.attachmentPractice, SOFT);
+          out.points(attachment.implications);
+        }
+        out.fineprint(attachment.caveat);
       }
 
       const love = relationship.loveLanguages;
       if (love) {
-        out.space(8);
-        out.subheading('Love languages');
-        for (const [key, label] of [['receiving', 'Wants to receive'], ['giving', 'Tends to give']]) {
-          const list = love[key] || [];
-          if (!list.length) continue;
-          out.eyebrow(label);
-          // No chip row here: every language is spelled out immediately below,
-          // so chips would just say the same words twice.
-          for (const item of list) {
-            out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.why);
-            if (item.inPractice) out.body('In practice: ' + item.inPractice,
-              { x: MARGIN + 10, width: COLUMN - 10, size: 9.5, color: SOFT, leading: 13.5 });
-            out.space(4);
+        const columns = [
+          [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
+          [TEXT.loveGiving, TEXT.loveGivingBlurb, love.giving],
+        ].filter(entry => (entry[2] || []).some(item => item && item.language));
+        if (columns.length) {
+          out.h3(TEXT.loveHead);
+          for (const [title, blurb, list] of columns) {
+            out.h3(title);
+            out.muted(blurb);
+            for (const item of list.filter(entry => entry && entry.language)) {
+              out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.inPractice);
+              if (item.why) {
+                out.body(item.why, { x: MARGIN + 10, width: COLUMN - 10, size: 9.2, color: SOFT, leading: 13.2 });
+                out.space(4);
+              }
+            }
           }
+          out.fineprint(love.caveat);
         }
-        if (love.caveat) out.note(love.caveat, 'Take with salt');
       }
     }
 
-    // ---- career ----
-    const career = report.career;
+    // 7. At work.
+    const career = source.career;
     if (career) {
-      out.space(10);
-      out.sectionTitle('Work', 'Career');
-      if (career.workStyle) out.body(career.workStyle, { size: 10.4, leading: 15.6 });
-      out.space(8);
-      const strengths = career.strengths || [];
-      if (strengths.length) {
-        out.eyebrow('Strengths');
-        for (const item of strengths) out.point(item.title, item.detail);
-        out.space(6);
-      }
-      const weaknesses = career.weaknesses || [];
-      if (weaknesses.length) {
-        out.eyebrow('Watch for');
-        for (const item of weaknesses) out.point(item.title, item.detail);
-        out.space(6);
-      }
-      if ((career.environments || []).length) {
-        out.eyebrow('Where they would do well');
-        out.chips(career.environments);
-      }
-      if (career.watchOuts) out.note(career.watchOuts, 'What could hold them back');
+      out.sectionTitle(TEXT.work);
+      out.h3(TEXT.strengths, GOOD);
+      out.points(career.strengths);
+      out.h3(TEXT.weaknesses, WARN);
+      out.points(career.weaknesses);
+      out.h3(TEXT.howYouWork);
+      if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
+      out.h3(TEXT.thrive);
+      for (const item of (career.environments || []).filter(Boolean)) out.bullet(item);
+      out.h3(TEXT.holdBack);
+      if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
     }
 
-    // ---- closing ----
-    out.space(14);
-    out.need(120);
-    out.sectionTitle('How to hold this', 'Small print');
-    out.body('This report is one language model’s reading of one Instagram data export. It is a ' +
-      'starting point for thinking and talking about yourself, not a measurement. Where it says it ' +
-      'is uncertain, it means it. Where it is wrong, the interesting question is usually which part ' +
-      'of the data misled it.', { size: 10, leading: 15 });
-    out.space(6);
-    out.body('Nothing here was uploaded anywhere permanent. Your export was read in your browser, ' +
-      'and the profile lives in this device’s local storage until you delete it.',
-      { size: 10, leading: 15 });
+    // 8. Instagram behaviour. After the personality sections, because it is the
+    // evidence underneath them rather than another verdict.
+    const activity = source.activity;
+    if (activity) {
+      out.sectionTitle(TEXT.activity, activity.summary);
+      for (const [label, key] of Copy.ACTIVITY_FACETS) {
+        const part = activity[key];
+        if (!part) continue;
+        out.facet(label, part.headline, part.detail);
+      }
+      if ((activity.implications || []).length) {
+        out.h3(TEXT.activitySuggests);
+        for (const item of activity.implications) out.point(item.observation, item.implication);
+      }
+      out.fineprint(activity.blindSpots);
+    }
 
-    return serialise(doc, meta, card);
+    // 9. What the QR code carries.
+    out.sectionTitle(TEXT.qr, TEXT.qrSub);
+    if (who.headline) out.body(who.headline, { size: 10.4, bold: true, leading: 15 });
+    if (who.summary) out.body(who.summary, { size: 10, leading: 15 });
+    out.tags(who.interests);
+    out.fineprint(TEXT.qrFineprint);
+
+    // 10. Matches, when this device has any.
+    const history = (stamp.history || []).filter(entry => entry && entry.report);
+    if (history.length) {
+      out.sectionTitle(TEXT.matches);
+      out.matchTable(history);
+    }
+
+    // 11. Confidence closes the report, as it does on the page.
+    const confidence = source.confidence || {};
+    out.sectionTitle(TEXT.trust, TEXT.trustSub);
+    const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
+    out.need(40);
+    doc.roundRect(MARGIN, doc.y, COLUMN, 7, 3.5, LINE);
+    if (score > 0) doc.roundRect(MARGIN, doc.y, Math.max(7, COLUMN * score / 100), 7, 3.5, ACCENT);
+    doc.y += 18;
+    out.body(TEXT.trustScore + score + '/100 (' + (confidence.level || '') + ').',
+      { size: 10.4, bold: true, leading: 15 });
+    if (confidence.rationale) out.body(confidence.rationale, { size: 10, leading: 15 });
+
+    out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
+
+    return serialise(doc, stamp, who);
   }
 
   // ---------- serialisation ----------

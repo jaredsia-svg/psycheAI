@@ -300,10 +300,21 @@ produces. Characters with no slot are handled rather than lost: accents fall bac
 arrows to `->`, and emoji are dropped instead of drawn as a black box — which is why the essence icon
 is not in the PDF, though its noun is.
 
-**A layout.** A cover with the name, the essence noun, the confidence bar and a contents list, then
-the whole report: the portrait, five trait bars with their evidence, the MBTI axes, the behavioural
-read, interests, values, beliefs, relationships with attachment and love languages, and career.
-Running head on every page, page numbers, and the disclaimer on the cover where it cannot be missed.
+**A layout.** The report is the profile page, section for section, in the same order: a letterhead,
+then *Who you are* (the essence noun, the headline findings strip, the summary), *Big Five*, *MBTI*,
+*Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *What
+your QR code contains*, *Your matches* when this device has any, and *How much to trust this*.
+Running head and page numbers on every page. The screen's cards become rules and whitespace, and its
+emoji section glyphs are dropped, but nothing is added and nothing is left out.
+
+Alignment is structural rather than a promise, because the first version was not aligned: it renamed
+half the sections, split values from beliefs where the page groups them, said "Neuroticism" where the
+page says "Emotional sensitivity", and ran the sections in a different order. Every string and label
+both renderings show — section titles, sub-lines, column headings, empty-state wording, the trait
+labels, the MBTI poles, the behaviour facets, the compatibility bases — now lives once in
+`docs/copy.js`, which the page and the PDF both read. Three checks hold the line: each section title
+is defined in `copy.js`, neither renderer re-types one, and the test reads the section headings off
+the live page and requires the PDF to carry all of them, worded identically and in the same order.
 
 Streams are written uncompressed. It costs about 30KB on a seven-page report and makes the output
 greppable, which is how the suite checks that a section is really in the file rather than trusting it
@@ -380,6 +391,7 @@ docs/                 the browser app — no build step
   images.js           picks ~14 photos worth looking at, downscales them
   digest.js           signals → the bounded evidence digest that gets sent
   card.js             shareable card ⇄ compressed QR payload
+  copy.js             every string the page and the PDF both show, written once
   pdf.js              writes the downloadable report — a small PDF writer, no library
   llm.js              client for the two server endpoints
   vendor/             qrcode (generation) · jsQR (scanning)
