@@ -698,6 +698,103 @@ try {
   await page.click('#paste-go');
   check('a foreign code is rejected cleanly', await page.locator('#scan-alert').isVisible());
 
+  // ---- the code has to actually be scannable ----
+  //
+  // The card is dense enough that pixels-per-module is the whole ballgame: at
+  // the old 300px backing a 640x480 camera frame saw about 1.5px per module
+  // and never decoded. Render the real code, shrink it the way a lens would,
+  // and check the decoder still reads it.
+  const scanTest = await page.evaluate(async () => {
+    const payload = JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    const url = location.origin + location.pathname + '#p=' + payload;
+
+    const source = document.createElement('canvas');
+    await new Promise((resolve, reject) => {
+      window.QRCode.toCanvas(source, url,
+        { width: 900, margin: 3, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' } },
+        error => (error ? reject(error) : resolve()));
+    });
+
+    // Modules across, measured off the rendered code rather than assumed.
+    const ctx = source.getContext('2d');
+    const row = ctx.getImageData(0, Math.floor(source.height / 2), source.width, 1).data;
+    let shortest = Infinity, run = 0, prev = null;
+    for (let x = 0; x < source.width; x++) {
+      const dark = row[x * 4] < 128;
+      if (dark === prev) run++;
+      else { if (prev !== null) shortest = Math.min(shortest, run); run = 1; }
+      prev = dark;
+    }
+    const modules = Math.round(source.width / shortest);
+
+    // Redraw at a series of widths and see where decoding gives out.
+    const readAt = width => {
+      const scaled = document.createElement('canvas');
+      scaled.width = width;
+      scaled.height = Math.round(source.height * (width / source.width));
+      const c = scaled.getContext('2d', { willReadFrequently: true });
+      c.drawImage(source, 0, 0, scaled.width, scaled.height);
+      const px = c.getImageData(0, 0, scaled.width, scaled.height);
+      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+      return Boolean(hit && hit.data === url);
+    };
+
+    // Closer to what actually happens: the code sits in the middle of a camera
+    // frame of a given resolution, filling a bit over half its height. At 480p
+    // — a common default stream — the old 300px backing did not decode.
+    const inFrame = frameHeight => {
+      const frameWidth = Math.round(frameHeight * 4 / 3);
+      const codePx = Math.round(frameHeight * 0.55);
+      const frame = document.createElement('canvas');
+      frame.width = frameWidth;
+      frame.height = frameHeight;
+      const c = frame.getContext('2d', { willReadFrequently: true });
+      c.fillStyle = '#888888';
+      c.fillRect(0, 0, frameWidth, frameHeight);
+      c.drawImage(source, (frameWidth - codePx) / 2, (frameHeight - codePx) / 2, codePx, codePx);
+      const px = c.getImageData(0, 0, frameWidth, frameHeight);
+      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+      return Boolean(hit && hit.data === url);
+    };
+
+    return {
+      modules,
+      at900: readAt(900), at450: readAt(450), at300: readAt(300),
+      frame480: inFrame(480), frame720: inFrame(720),
+    };
+  });
+
+  // Measured off the render rather than assumed, so it is approximate — the
+  // point is that the code has not silently grown a version or two.
+  check('the QR stays around ninety modules across',
+    scanTest.modules > 60 && scanTest.modules < 110, scanTest.modules + ' modules');
+  check('the code decodes at full backing size', scanTest.at900, JSON.stringify(scanTest));
+  check('the code still decodes at half size', scanTest.at450, JSON.stringify(scanTest));
+  check('the code survives being shrunk to 300px', scanTest.at300, JSON.stringify(scanTest));
+  check('the code reads inside a 480p camera frame', scanTest.frame480, JSON.stringify(scanTest));
+  check('the code reads inside a 720p camera frame', scanTest.frame720, JSON.stringify(scanTest));
+
+  // The camera has to ask for resolution rather than take the default stream.
+  check('the camera asks for a high-resolution stream', await page.evaluate(async () => {
+    const source = await fetch('app.js').then(r => r.text());
+    return /width: \{ ideal: 1920 \}/.test(source) && /getUserMedia\(\{ video: true \}\)/.test(source);
+  }));
+  check('a still is decoded at more than one size', await page.evaluate(async () => {
+    const source = await fetch('app.js').then(r => r.text());
+    return /\[1600, 1100, 2200, 800, longest\]/.test(source);
+  }));
+  // qrcode.js rounds the backing down to a whole number of module pixels, so
+  // 900 comes back as 899 — the assertion is "roughly 3x the display size".
+  check('the rendered canvas is backed well above its display size', await page.evaluate(() => {
+    const canvas = document.querySelector('#qr-canvas');
+    return canvas.width >= 850 && canvas.width >= parseFloat(getComputedStyle(canvas).width) * 2.5;
+  }), await page.evaluate(() => {
+    const canvas = document.querySelector('#qr-canvas');
+    return canvas.width + ' backing / ' + getComputedStyle(canvas).width + ' display';
+  }));
+  check('the QR generator no longer pins its own display size', await page.evaluate(() =>
+    !document.querySelector('#qr-canvas').style.width));
+
   // ---- deep link ----
   // A pasted link is the third way into the comparison, and it has to ask
   // which basis too rather than picking one on the user's behalf.

@@ -305,7 +305,9 @@ textarea { resize: vertical; }
 .qr-holder { text-align: center; }
 /* The card payload is a few hundred characters, so the code has many more
    modules than a short URL — it needs the size to stay scannable. */
-#qr-canvas { width: 288px; height: 288px; max-width: 100%; border-radius: 12px; background: #fff; padding: 10px; }
+/* Backed at 900px and displayed at this size, so module edges stay crisp on a
+   high-DPI screen — the code has to survive being photographed off a phone. */
+#qr-canvas { width: 300px; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; background: #fff; }
 .facts { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .3rem .9rem; margin: 0; }
 .facts dt { color: var(--ink-soft); font-size: .88rem; }
 .facts dd { margin: 0; }
@@ -683,9 +685,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 
   .qr-panel { grid-template-columns: auto 1fr; gap: 0 6mm; align-items: center; break-inside: avoid; }
   .qr-title { grid-column: 1 / -1; }
-  /* qrcode.js writes width/height as inline styles, so a plain rule loses.
-     max-width must go too, or the code squashes when its column is narrow. */
-  #qr-canvas { width: 150px !important; height: 150px !important; max-width: none; padding: 0; }
+  #qr-canvas { width: 150px; max-width: none; }
 }
 
 /* A4 with a generous outer margin, so the letterhead has room to breathe and

@@ -423,11 +423,20 @@
         { year: 'numeric', month: 'long', day: 'numeric' }) +
       ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
 
+    // The card is ~630 characters, so this lands around 87 modules across.
+    // Backing the canvas at 3x its display size keeps module edges crisp on a
+    // high-DPI phone, which is the difference between a camera resolving them
+    // and seeing grey mush. A wider quiet zone helps the locator too.
     try {
-      window.QRCode.toCanvas($('#qr-canvas'), profileUrl(profile.payload), {
-        width: 300, margin: 2, errorCorrectionLevel: 'L',
-        color: { dark: '#2b1b3d', light: '#ffffff' },
+      const canvas = $('#qr-canvas');
+      window.QRCode.toCanvas(canvas, profileUrl(profile.payload), {
+        width: 900, margin: 3, errorCorrectionLevel: 'L',
+        color: { dark: '#000000', light: '#ffffff' },
       });
+      // qrcode.js writes its width as an inline style; drop it so the
+      // stylesheet decides the display size, print rules included.
+      canvas.style.removeProperty('width');
+      canvas.style.removeProperty('height');
     } catch (error) { /* canvas unavailable — the link still works */ }
 
     const size = profile.payload.length;
@@ -688,9 +697,66 @@
   });
 
   // ══════════════ 3. scanning ══════════════
+  //
+  // The card is dense — roughly 87 modules across — so the whole game is
+  // pixels per module. At the display size that is about three, and jsQR wants
+  // more than that once a lens and a screen's own pixel grid are in the way.
+  // Hence: ask the camera for real resolution, and never give up after a
+  // single decode attempt.
 
   let cameraStream = null;
   let scanTimer = null;
+
+  const scratch = document.createElement('canvas');
+
+  /** One decode attempt over a source drawn at a given size, optionally cropped. */
+  function decodeAt(source, width, height, crop) {
+    if (!width || !height) return null;
+    scratch.width = width;
+    scratch.height = height;
+    const context = scratch.getContext('2d', { willReadFrequently: true });
+    if (crop) context.drawImage(source, crop.x, crop.y, crop.w, crop.h, 0, 0, width, height);
+    else context.drawImage(source, 0, 0, width, height);
+    const pixels = context.getImageData(0, 0, width, height);
+    // attemptBoth costs a second pass but catches a code photographed off an
+    // inverted display or a printed negative.
+    const found = window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
+    return found && found.data ? found.data : null;
+  }
+
+  /**
+   * Reads a still image at several sizes. jsQR locates a code best when the
+   * modules are a few pixels across: a 12-megapixel phone photo is far past
+   * that and often fails outright, while the same photo at 1600px reads first
+   * time. A centre crop is the last resort, for a code that is small in a wide
+   * frame.
+   */
+  function decodeStill(source, naturalWidth, naturalHeight) {
+    const longest = Math.max(naturalWidth, naturalHeight);
+    const tried = new Set();
+
+    for (const target of [1600, 1100, 2200, 800, longest]) {
+      const scale = Math.min(1, target / longest);
+      const width = Math.max(1, Math.round(naturalWidth * scale));
+      const height = Math.max(1, Math.round(naturalHeight * scale));
+      const key = width + 'x' + height;
+      if (tried.has(key)) continue;
+      tried.add(key);
+      const found = decodeAt(source, width, height);
+      if (found) return found;
+    }
+
+    // Middle 60%, rendered at up to 1600px — effectively a zoom.
+    const cropW = Math.round(naturalWidth * 0.6);
+    const cropH = Math.round(naturalHeight * 0.6);
+    const cropScale = Math.min(1, 1600 / Math.max(cropW, cropH));
+    return decodeAt(source, Math.round(cropW * cropScale), Math.round(cropH * cropScale), {
+      x: Math.round((naturalWidth - cropW) / 2),
+      y: Math.round((naturalHeight - cropH) / 2),
+      w: cropW,
+      h: cropH,
+    });
+  }
 
   function renderScan() {
     flash('#scan-alert', '');
@@ -718,34 +784,61 @@
       flash('#scan-alert', 'This browser will not give the page a camera. Paste their link instead.');
       return;
     }
+    // The default stream is often 640x480, which puts this code at about one
+    // and a half pixels per module — unreadable. Ask for real resolution and
+    // fall back only if the device refuses.
+    const wanted = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+    };
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      cameraStream = await navigator.mediaDevices.getUserMedia(wanted);
     } catch (error) {
-      flash('#scan-alert', 'Camera access was refused. Camera scanning also needs HTTPS or localhost. You can paste their link instead.');
-      return;
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (fallbackError) {
+        flash('#scan-alert', 'Camera access was refused. Camera scanning also needs HTTPS or localhost. You can paste their link instead.');
+        return;
+      }
     }
     const video = $('#scan-video');
     video.srcObject = cameraStream;
     video.setAttribute('playsinline', 'true');
     await video.play();
     $('#camera-holder').hidden = false;
-    $('#scan-status').textContent = 'Looking for a QR code…';
+    $('#scan-status').textContent =
+      'Looking for a code — fill as much of the frame with it as you can, and hold steady.';
     tick();
   });
 
+  let zoomPass = false;
+
   function tick() {
     const video = $('#scan-video');
-    const canvas = $('#scan-canvas');
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const image = context.getImageData(0, 0, canvas.width, canvas.height);
-      const found = window.jsQR(image.data, image.width, image.height, { inversionAttempts: 'dontInvert' });
-      if (found && found.data) {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+
+      // Full frame every tick; a zoomed middle every other tick, which is what
+      // finds a code held too far away. Alternating keeps the frame rate up.
+      let found = decodeAt(video, width, height);
+      if (!found && (zoomPass = !zoomPass)) {
+        const cropW = Math.round(width * 0.55);
+        const cropH = Math.round(height * 0.55);
+        found = decodeAt(video, cropW, cropH, {
+          x: Math.round((width - cropW) / 2),
+          y: Math.round((height - cropH) / 2),
+          w: cropW,
+          h: cropH,
+        });
+      }
+
+      if (found) {
         stopCamera();
-        runMatch(found.data).then(ok => {
+        runMatch(found).then(ok => {
           if (!ok) {
             flash('#scan-alert', 'That QR code is not a PsycheAI profile.');
             $('#scan-status').textContent = '';
@@ -758,23 +851,37 @@
   }
 
   $('#upload-qr').addEventListener('click', () => $('#qr-file').click());
-  $('#qr-file').addEventListener('change', () => {
+  $('#qr-file').addEventListener('change', async () => {
     const file = $('#qr-file').files[0];
     if (!file) return;
-    const image = new Image();
-    image.onload = async () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(image, 0, 0);
-      const data = context.getImageData(0, 0, canvas.width, canvas.height);
-      const found = window.jsQR(data.data, data.width, data.height);
-      URL.revokeObjectURL(image.src);
-      if (!found || !(await runMatch(found.data))) flash('#scan-alert', 'No PsycheAI code found in that image.');
-    };
-    image.onerror = () => flash('#scan-alert', 'Could not read that image.');
-    image.src = URL.createObjectURL(file);
+    flash('#scan-alert', '');
+    $('#scan-status').textContent = 'Reading that image…';
+
+    let source = null;
+    try {
+      // from-image honours EXIF rotation, so a portrait photo is not decoded
+      // sideways. Not every browser supports the option, hence the retry.
+      source = await createImageBitmap(file, { imageOrientation: 'from-image' })
+        .catch(() => createImageBitmap(file));
+    } catch (error) {
+      $('#scan-status').textContent = '';
+      flash('#scan-alert', 'Could not open that image. A PNG or JPEG photo of the code works best.');
+      return;
+    }
+
+    const found = decodeStill(source, source.width, source.height);
+    source.close();
+    $('#scan-status').textContent = '';
+
+    if (!found) {
+      flash('#scan-alert', 'No QR code found in that image. Crop it so the code fills most of the ' +
+        'picture, make sure the whole code including its white border is in shot, and avoid glare — ' +
+        'or just paste their link below.');
+      return;
+    }
+    if (!(await runMatch(found))) {
+      flash('#scan-alert', 'That is a QR code, but not a PsycheAI profile.');
+    }
   });
 
   $('#paste-go').addEventListener('click', async () => {

@@ -38,6 +38,23 @@ npm run mock              # http://localhost:3000, PSYCHEAI_MOCK=1
 Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
 work.
 
+### Making the code scannable
+
+A whole profile is a lot of data for a QR code — about 630 characters, which comes out around **87
+modules across**. Everything about scanning reliability follows from pixels per module, and there are
+two places to lose them.
+
+The canvas is backed at **900px and displayed at 300**, so module edges stay sharp on a high-DPI
+screen instead of being upscaled into grey mush that a lens then has to guess at. And the camera is
+asked for **1920×1080**; the default stream is often 640×480, which puts this code at about a
+pixel and a half per module and simply never decodes. A simulated 480p frame with the code filling
+55% of its height is a UI check, and it fails against the old 300px backing.
+
+Stills get a **scale ladder** — 1600px, 1100px, native, 2200px, 800px, then a centre crop — because
+jsQR locates a code best when the modules are a few pixels across, and a 12-megapixel phone photo is
+far past that. The camera loop alternates a full frame with a zoomed middle, which is what catches a
+code held too far away. Both paths try inverted as well as normal.
+
 ### Choosing a provider and model
 
 | Variable | Effect |
@@ -274,7 +291,7 @@ npm test           # 189 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 225 checks: drives the real UI in Chromium against a
+npm run test:ui    # 235 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
