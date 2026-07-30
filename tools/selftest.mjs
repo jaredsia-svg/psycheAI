@@ -163,6 +163,28 @@ check('the noun is asked for as a noun, not a personality label',
 check('the icon is asked for as a single emoji',
   /Exactly one emoji character/.test(essenceProps.icon.description));
 
+// Love languages replaced "how to love you" and "who fits".
+const relProps = prompts.PROFILE_SCHEMA.properties.relationship.properties;
+check('the relationship section asks for love languages',
+  'loveLanguages' in relProps);
+check('the sections love languages replaced are gone',
+  !('howToLoveThem' in relProps) && !('idealPartner' in relProps));
+
+const loveProps = relProps.loveLanguages.properties;
+check('love languages are split into giving and receiving',
+  ['receiving', 'giving', 'mismatch', 'caveat'].every(k => k in loveProps));
+check('each side can carry more than one language',
+  loveProps.receiving.type === 'array' && loveProps.giving.type === 'array');
+check('languages are constrained to the canonical five',
+  prompts.LOVE_LANGUAGES.length === 5 &&
+  loveProps.receiving.items.properties.language.enum.length === 5 &&
+  loveProps.giving.items.properties.language.enum === loveProps.receiving.items.properties.language.enum);
+check('each language is ranked and evidenced',
+  ['language', 'strength', 'why', 'inPractice']
+    .every(k => k in loveProps.receiving.items.properties));
+check('a language can be marked minor rather than invented',
+  loveProps.receiving.items.properties.strength.enum.includes('minor'));
+
 const attachProps = prompts.PROFILE_SCHEMA.properties.relationship.properties.attachment.properties;
 check('attachment shows its working',
   ['style', 'why', 'derivedFrom', 'implications', 'caveat'].every(k => k in attachProps));
@@ -222,6 +244,9 @@ for (const [label, needle] of [
   ['demands the per-axis writing be personal', /pasted into a stranger's profile/],
   ['wants one of the four axes to land uncomfortably', /let at least one of the four sting slightly/],
   ['forbids smuggling a summary into the last axis', /do not write one into the last axis instead/],
+  ['separates giving from receiving love', /give them separately for receiving and for giving/],
+  ['hedges the receiving side harder', /which is thinner evidence, so hedge it harder/],
+  ['warns that touch is invisible in this data', /Physical touch is close to invisible in this data/],
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],

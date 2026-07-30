@@ -133,6 +133,41 @@
       '</div>').join('') + '</div>';
   }
 
+  // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
+  // model — same reasoning as the MBTI poles.
+  const LOVE_LANGUAGE_ICONS = {
+    'Words of affirmation': '💬',
+    'Acts of service': '🛠️',
+    'Quality time': '⏳',
+    'Receiving gifts': '🎁',
+    'Physical touch': '🫂',
+  };
+
+  function loveLanguageColumn(title, blurb, items) {
+    const rows = (items || []).filter(item => item && item.language);
+    if (!rows.length) return '';
+    return '<div><h3>' + title + '</h3><p class="muted love-blurb">' + blurb + '</p>' +
+      rows.map(item =>
+        '<div class="love-row love-' + esc(item.strength || 'secondary') + '">' +
+        '<span class="love-icon">' + (LOVE_LANGUAGE_ICONS[item.language] || '💗') + '</span>' +
+        '<div><h4>' + esc(item.language) +
+        '<span class="pill pill-' + esc(item.strength || 'secondary') + '">' + esc(item.strength || '') + '</span></h4>' +
+        '<p>' + esc(item.inPractice) + '</p>' +
+        '<p class="love-why">' + esc(item.why) + '</p></div></div>').join('') + '</div>';
+  }
+
+  function loveLanguageBlock(languages) {
+    if (!languages) return '';
+    const columns =
+      loveLanguageColumn('How you want to be loved', 'What lands, when it is aimed at you.', languages.receiving) +
+      loveLanguageColumn('How you show love', 'What you reach for when you care about someone.', languages.giving);
+    if (!columns) return '';
+    return '<h3 class="love-head">Your love languages</h3><div class="split love-split">' + columns + '</div>' +
+      (languages.mismatch ? '<div class="callout"><h3>Where the two part company</h3><p>' +
+        esc(languages.mismatch) + '</p></div>' : '') +
+      (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
+  }
+
   function bar(label, value, extra) {
     const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
     return '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
@@ -485,8 +520,7 @@
         ? '<p class="essence-label">What it means in practice</p>' + points(relationship.attachment.implications)
         : '') +
       '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p></div>' +
-      '<h3>How to love you</h3>' + list(relationship.howToLoveThem, 'ticks') +
-      '<h3>Who fits</h3><p>' + esc(relationship.idealPartner) + '</p></div>';
+      loveLanguageBlock(relationship.loveLanguages) + '</div>';
 
     // Career.
     const career = report.career;

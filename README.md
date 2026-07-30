@@ -177,7 +177,17 @@ compares the strip against the trait bars to prove it cannot.
 Then Big Five with per-trait evidence; interests, beliefs and values; relationship and career
 strengths and weaknesses — the **attachment** guess shows its working, naming the behavioural traces
 it rests on, the style it rejected, and what it means in practice for them and for a partner, since
-a named style with no reasoning is worthless and slightly harmful. And two longer sections:
+a named style with no reasoning is worthless and slightly harmful.
+
+**Love languages** are given twice over, for receiving and for giving, because most people do not
+match on the two and the gap is the useful part — someone who gives acts of service but wants words
+of affirmation ends up feeling unseen while working very hard, and the report says so. Each language
+is ranked `primary` / `secondary` / `minor` and carries both its evidence and what it looks like for
+this person. Giving is read from what they visibly do; receiving is thinner evidence and the prompt
+says to hedge it harder. Physical touch is close to invisible in an Instagram export and may not be
+claimed as primary unless the person's own words make it obvious.
+
+And two longer sections:
 
 **MBTI**, which is four axes and nothing else. The type and its nickname, then per axis how strongly
 the data leans (`slight` / `moderate` / `clear`), what in their data put it there, and what that
@@ -230,14 +240,14 @@ each person individually about the other.
 ## Tests
 
 ```bash
-npm test           # 171 checks: synthesises a real ZIP export and runs
+npm test           # 181 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 186 checks: drives the real UI in Chromium against a
+npm run test:ui    # 202 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

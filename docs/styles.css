@@ -363,23 +363,6 @@ table { border-collapse: collapse; width: 100%; font-size: .92rem; }
 th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 
-/* ---------- responsive ---------- */
-
-@media (max-width: 620px) {
-  .qr-panel { grid-template-columns: 1fr; gap: .9rem; }
-  .qr-holder { justify-self: center; }
-  .qr-title { margin-bottom: 0; }
-  .trait-row { grid-template-columns: 1fr 2.5rem; grid-template-areas: "label num" "bar bar"; }
-  .trait-label { grid-area: label; }
-  .trait-num { grid-area: num; }
-  .bar { grid-area: bar; }
-  .grid-row { grid-template-columns: 1fr; }
-  .facts { grid-template-columns: 1fr; }
-  .facts dd { margin-bottom: .5rem; }
-  .split { grid-template-columns: 1fr; gap: .2rem; }
-  .tile-grid, .facet-grid { grid-template-columns: 1fr; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
@@ -497,6 +480,29 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .callout .ev { background: var(--bg-alt); }
 .callout .fineprint { margin-top: .9rem; }
 
+/* ---------- love languages ---------- */
+
+.love-head { margin-top: 1.6em; }
+.love-split { margin-top: .2rem; }
+.love-blurb { font-size: .86rem; margin-bottom: .7rem; }
+
+.love-row {
+  display: flex; gap: .7rem; align-items: flex-start;
+  border: 1px solid var(--line); border-left-width: 3px; border-radius: 12px;
+  padding: .7rem .8rem; margin-bottom: .55rem;
+}
+/* The ranking should be visible without reading the pill. */
+.love-primary { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.love-secondary { border-left-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.love-minor { border-left-color: var(--line); opacity: .8; }
+
+.love-icon { font-size: 1.5rem; line-height: 1.2; flex: none; }
+.love-row h4 { margin: 0 0 .25rem; font-size: .96rem; display: flex; flex-wrap: wrap; gap: .4rem; align-items: baseline; }
+.love-row p { margin: 0; font-size: .9rem; }
+.love-why { color: var(--ink-soft); font-size: .83rem; margin-top: .3rem !important; }
+.pill-primary { border-color: var(--accent); color: var(--accent); }
+.pill-minor { opacity: .65; }
+
 /* ---------- tiles ---------- */
 
 .tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .7rem; margin: .5rem 0 0; }
@@ -581,3 +587,20 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 
 @page { margin: 14mm 12mm; }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 620px) {
+  .qr-panel { grid-template-columns: 1fr; gap: .9rem; }
+  .qr-holder { justify-self: center; }
+  .qr-title { margin-bottom: 0; }
+  .trait-row { grid-template-columns: 1fr 2.5rem; grid-template-areas: "label num" "bar bar"; }
+  .trait-label { grid-area: label; }
+  .trait-num { grid-area: num; }
+  .bar { grid-area: bar; }
+  .grid-row { grid-template-columns: 1fr; }
+  .facts { grid-template-columns: 1fr; }
+  .facts dd { margin-bottom: .5rem; }
+  .split { grid-template-columns: 1fr; gap: .2rem; }
+  .tile-grid, .facet-grid { grid-template-columns: 1fr; }
+}

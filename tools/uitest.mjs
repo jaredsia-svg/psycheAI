@@ -189,6 +189,18 @@ try {
         hScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
     });
+    // Two-column report grids must collapse. This is easy to break by
+    // appending a rule after the media query, where it wins on source order.
+    const columns = await page.evaluate(() => {
+      const count = sel => {
+        const node = document.querySelector(sel);
+        return node ? getComputedStyle(node).gridTemplateColumns.split(' ').length : 1;
+      };
+      return { split: count('.split'), love: count('.love-split'), tiles: count('.tile-grid'), facets: count('.facet-grid') };
+    });
+    check('report grids collapse to one column at ' + width + 'px',
+      Object.values(columns).every(n => n === 1), JSON.stringify(columns));
+
     check('all three links are up at ' + width + 'px', nav.count === 3, String(nav.count));
     check('nav links stay on one row at ' + width + 'px', nav.rows === 1, nav.rows + ' rows');
     check('nav links stay legible at ' + width + 'px', nav.smallest >= 11, nav.smallest + 'px');
@@ -206,6 +218,9 @@ try {
     ['values', /Values/],
     ['beliefs', /Beliefs/],
     ['relationship strengths and weaknesses', /In relationships/],
+    ['love languages', /Your love languages/],
+    ['how they want to be loved', /How you want to be loved/],
+    ['how they show love', /How you show love/],
     ['career strengths and weaknesses', /At work/],
     ['what the QR code contains', /What your QR code contains/],
     ['the MBTI nickname', /The Protagonist/],
@@ -302,6 +317,27 @@ try {
     (await page.locator('.callout .points dt').count()) >= 2);
   check('attachment still carries its caveat', /cannot be read reliably/i.test(attachment));
 
+  // ---- love languages ----
+  const love = await page.locator('.love-split').innerText();
+  check('both directions are shown side by side',
+    (await page.locator('.love-split > div').count()) === 2);
+  check('every language is listed with an icon',
+    (await page.locator('.love-row').count()) === 4 &&
+    (await page.locator('.love-icon').count()) === 4);
+  check('the icons are pictographs, not text', await page.evaluate(() =>
+    [...document.querySelectorAll('.love-icon')].every(i => i.textContent.codePointAt(0) > 0x2000)));
+  check('the strongest language is visually distinct from a minor one',
+    (await page.locator('.love-row.love-primary').count()) === 2 &&
+    (await page.locator('.love-row.love-minor').count()) === 1);
+  check('giving and receiving are allowed to differ',
+    /Words of affirmation/.test(love) && /Acts of service/.test(love));
+  check('each language says what it looks like in practice and why',
+    (await page.locator('.love-row .love-why').count()) === 4);
+  check('the gap between giving and receiving is called out',
+    /Where the two part company/.test(await page.locator('#profile-body').innerText()));
+  check('the sections love languages replaced are gone',
+    !/How to love you/.test(profileText) && !/Who fits/.test(profileText));
+
   check('every MBTI axis is drawn', (await page.locator('.axis').count()) === 4);
   // A bare letter means nothing to anyone who has not read the literature.
   check('each MBTI letter is spelled out',
@@ -318,7 +354,7 @@ try {
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));
   check('strengths and weaknesses sit side by side',
-    (await page.locator('#profile-body .split').count()) === 2);
+    (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
   check('behaviour facets render as their own blocks',
