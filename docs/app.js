@@ -166,11 +166,14 @@
       (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
   }
 
+  // The wrapper exists for print: a trait's bar, its reading and its evidence
+  // are one thought, and a page break between them looks like a mistake.
   function bar(label, value, extra) {
     const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
-    return '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
+    return '<div class="trait-block">' +
+      '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
       '<div class="bar"><div class="bar-fill" style="width:' + width + '%"></div></div>' +
-      '<span class="trait-num">' + width + '</span></div>' + (extra || '');
+      '<span class="trait-num">' + width + '</span></div>' + (extra || '') + '</div>';
   }
 
   // ---------- routing ----------
@@ -409,7 +412,16 @@
     if (!profile) return;
     const report = profile.report;
 
-    $('#profile-title').textContent = (profile.card.name || 'Your') + '’s profile';
+    const who = profile.card.name || 'Your';
+    $('#profile-title').textContent = who + '’s profile';
+
+    // The PDF letterhead. Only ever visible in print, but filled here so the
+    // export never depends on anything happening at print time.
+    $('#letterhead-name').textContent = who;
+    $('#letterhead-meta').textContent =
+      'Generated ' + new Date(profile.createdAt).toLocaleDateString(undefined,
+        { year: 'numeric', month: 'long', day: 'numeric' }) +
+      ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
 
     try {
       window.QRCode.toCanvas($('#qr-canvas'), profileUrl(profile.payload), {

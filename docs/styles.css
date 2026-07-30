@@ -207,6 +207,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 /* ---------- trait bars ---------- */
 
+.trait-block { margin-bottom: .2rem; }
 .trait-row { display: grid; grid-template-columns: minmax(11rem, 2fr) 3fr 2.5rem; gap: .7rem; align-items: center; margin-bottom: .45rem; }
 .trait-label { font-size: .88rem; }
 .bar { height: 9px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; }
@@ -530,63 +531,124 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 /* ---------- print / PDF export ---------- */
 /*
  * Export is the browser's own print-to-PDF, so this stylesheet *is* the PDF.
- * Anything interactive is dropped, cards lose their shadows and become
- * page-break units, and the whole thing goes black-on-white to stay readable
- * on paper and to not eat a cartridge.
+ * Two things drive every rule below.
+ *
+ * Backgrounds do not print unless the reader ticks a box, so nothing may
+ * depend on a fill: every accent is a text colour or a border, both of which
+ * always print. And a section split across a page break is the thing that
+ * makes a report look thrown together, so cards are unbreakable and the
+ * typography is tightened until they fit inside one page.
  */
 
+.print-only { display: none; }
+
 @media print {
-  .no-print, .nav, .footer, .btn, .btn-row, .cta-row, #server-status { display: none !important; }
+  .no-print, .nav, .footer, .btn, .btn-row, .cta-row, #server-status,
+  .screen-only { display: none !important; }
+  .print-only { display: block; }
 
   :root {
-    --bg: #fff; --bg-alt: #fff; --ink: #000; --ink-soft: #333; --line: #bbb;
-    --accent: #4a2464; --accent-2: #4a2464; --accent-soft: #f0ecf3;
+    --bg: #fff; --bg-alt: #fff; --ink: #14101a; --ink-soft: #4a4453; --line: #cfc7d6;
+    --accent: #5b2d78; --accent-2: #5b2d78; --accent-soft: #fff;
     --shadow: none;
   }
 
-  body { background: #fff; color: #000; font-size: 11pt; line-height: 1.45; }
+  body { background: #fff; color: var(--ink); font-size: 9.6pt; line-height: 1.4; }
   .container { max-width: none; padding: 0; }
   .view[hidden] { display: none !important; }
+  a { color: inherit; text-decoration: none; }
+  a[href]::after { content: ""; }
+
+  /* ---- letterhead ---- */
+
+  .letterhead { margin: 0 0 10mm; break-after: avoid; }
+  .letterhead-brand { display: flex; align-items: center; gap: .45rem; color: var(--accent); }
+  .letterhead-mark { width: 26px; height: 26px; flex: none; }
+  .letterhead-word { font-size: 13pt; font-weight: 700; letter-spacing: -.01em; }
+  .letterhead-rule { flex: 1; height: 1px; background: var(--accent); }
+  .letterhead-kind { font-size: 8pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  .letterhead-name { font-size: 26pt; margin: 5mm 0 1mm; letter-spacing: -.02em; }
+  .letterhead-meta { font-size: 8.5pt; color: var(--ink-soft); margin: 0; }
+
+  /* ---- sections ---- */
+  /*
+   * One section, one block. break-inside is honoured only when the block can
+   * actually fit on a page, so the padding and type sizes above exist to keep
+   * every card comfortably under that ceiling — the UI suite measures them.
+   */
 
   .card {
-    box-shadow: none; border: 1px solid #ddd; border-radius: 8px;
-    padding: .8rem 1rem; margin-bottom: .8rem;
+    box-shadow: none; border: 0; border-top: 1.5pt solid var(--accent);
+    border-radius: 0; padding: 3.5mm 0 5mm; margin: 0 0 4mm;
     break-inside: avoid; page-break-inside: avoid;
   }
-  /* The long sections legitimately run over a page; forcing them whole would
-     leave half-empty pages everywhere. */
-  .card:has(.axes), .card:has(.facet-grid), .card:has(.trait-row), .card:has(.tile-grid) { break-inside: auto; page-break-inside: auto; }
-  .tile, .facet, .callout { break-inside: avoid; page-break-inside: avoid; }
-
-  /* Background printing is usually off, so the section rule and the icon
-     tile would silently disappear. Give both a border to fall back to. */
+  .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
-  .section-card { border-top: 2px solid #4a2464; }
-  .card-icon { border: 1px solid #ccc; }
-  .tile { background: none; border: 1px solid #ccc; }
-  .essence { background: none; border: 1px solid #999; break-inside: avoid; }
-  .essence-noun { -webkit-text-fill-color: currentColor; color: #4a2464; background: none; }
-  .callout { background: none; border: 1px solid #ccc; }
 
-  h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
-  h2 { font-size: 1.15rem; }
+  .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
+  .card-icon {
+    width: 1.5rem; height: 1.5rem; border: 1pt solid var(--accent);
+    border-radius: 5px; font-size: .8rem; background: none;
+  }
+  .card-head h2 { font-size: 13pt; color: var(--accent); letter-spacing: -.01em; }
+  .card-sub { font-size: 8.5pt; }
+
+  h1, h2, h3, h4, .card-head { break-after: avoid; page-break-after: avoid; }
+  h3 { font-size: 9.6pt; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-soft); margin-top: 4mm; }
+  h3.h-good, h3.h-warn { color: var(--ink-soft); }
   p, li, dd { orphans: 3; widows: 3; }
+  .fineprint { font-size: 7.8pt; }
 
-  /* Gradient text renders as nothing on some print pipelines. */
+  /* ---- components ---- */
+
+  .essence { background: none; border: 0; border-left: 2pt solid var(--accent); border-radius: 0; padding: 0 0 0 4mm; margin-bottom: 4mm; }
+  .essence-noun { -webkit-text-fill-color: currentColor; color: var(--accent); background: none; font-size: 17pt; }
   .accent { -webkit-text-fill-color: currentColor; color: var(--accent); background: none; }
 
-  .bar, .confidence-meter { border: 1px solid #999; }
-  .bar-fill, .confidence-fill { background: #4a2464 !important; }
-  .ev, .pill { border: 1px solid #bbb; }
+  .glance { border-color: var(--line); padding: 2.5mm 0; margin-bottom: 4mm; }
+  .glance-value { font-size: 10pt; }
 
-  .qr-panel { grid-template-columns: 1fr; break-inside: avoid; }
-  /* qrcode.js writes width/height as inline styles, so a plain rule loses. */
-  #qr-canvas { width: 180px !important; height: 180px !important; }
+  .bar, .confidence-meter { border: .5pt solid var(--line); background: none; height: 6px; }
+  .bar-fill, .confidence-fill { background: var(--accent) !important; }
+  .trait-row { margin-bottom: .3rem; }
 
-  a[href]::after { content: ""; }
+  .axis-letter { border: 1pt solid var(--accent); background: none; color: var(--accent); width: 2rem; height: 2rem; font-size: 1rem; }
+  .axis { grid-template-columns: 2rem 1fr; }
+
+  .ev, .pill { border: .5pt solid var(--line); background: none; }
+  .tile, .callout, .love-row {
+    background: none; border: .5pt solid var(--line);
+  }
+  .love-row { border-left-width: 2pt; border-left-color: var(--accent); }
+  .love-minor { border-left-color: var(--line); opacity: 1; }
+
+  /*
+   * A long section cannot always fit on one page — a Big Five with real
+   * evidence runs past it however tight the type is. When a break is
+   * unavoidable it has to land between whole items rather than through one,
+   * so every item that reads as a single thought is atomic here: a trait with
+   * its bar and evidence, an MBTI axis, a tile, a facet, a love language, and
+   * a term with its definition.
+   */
+  .trait-block, .axis, .tile, .facet, .callout, .love-row, .essence, .glance {
+    break-inside: avoid; page-break-inside: avoid;
+  }
+  .points dt { break-after: avoid; page-break-after: avoid; }
+  .points dd { break-before: avoid; page-break-before: avoid; }
+  .love-blurb, .card-sub { break-after: avoid; page-break-after: avoid; }
+
+  /* ---- the code ---- */
+
+  .qr-panel { grid-template-columns: auto 1fr; gap: 0 6mm; align-items: center; break-inside: avoid; }
+  .qr-title { grid-column: 1 / -1; }
+  /* qrcode.js writes width/height as inline styles, so a plain rule loses.
+     max-width must go too, or the code squashes when its column is narrow. */
+  #qr-canvas { width: 150px !important; height: 150px !important; max-width: none; padding: 0; }
 }
 
-@page { margin: 14mm 12mm; }
+/* A4 with a generous outer margin, so the letterhead has room to breathe and
+   nothing sits against the trim. */
+@page { size: A4; margin: 16mm 15mm 14mm; }
 
 /* ---------- responsive ---------- */
 

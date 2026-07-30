@@ -204,17 +204,30 @@ tell a fact from a guess.
 ## Exporting to PDF
 
 Buttons at the top and bottom of the profile call `window.print()`, and `@media print` in
-`styles.css` *is* the PDF: navigation and buttons drop out, cards become page-break units, colour
-goes to black-on-white and the QR shrinks to a paper-appropriate 180px.
+`styles.css` *is* the PDF. The document opens on a letterhead — brain mark, wordmark, PERSONALITY
+PROFILE, the subject's name, the date and the confidence score — because the nav bar that carries
+the brand on screen is dropped. Sections become rules-and-whitespace rather than boxes, the QR code
+squares off at 150px, and everything is set at 9.6pt on A4 with 15mm margins.
+
+Two constraints shape every rule:
+
+**Backgrounds do not print** unless the reader ticks a box in the dialog, so nothing may depend on a
+fill. Every accent is a text colour or a border, both of which always print. A UI check walks the
+tiles, callouts, chips and icon frames and fails if any of them has an opaque background under print
+media.
+
+**Breaks must land between items, never through one.** Cards are `break-inside: avoid`, and a UI
+check measures every section against the A4 content height (1009px) to prove that rule can actually
+be honoured rather than being decoration. Sections that genuinely outgrow a page with a verbose
+model — Big Five with full evidence is the usual one — cannot be kept whole, so every item that
+reads as a single thought is atomic in its own right: a trait with its bar and evidence, an MBTI
+axis, a tile, a facet, a love language, a term with its definition. The break falls in a gap.
 
 This is deliberately not a bundled PDF library. A dozen pages of long-form text is exactly what
 print CSS is for — the text stays selectable and searchable, pagination and paper size are the
 browser's problem, and it adds nothing to the page weight. `html2canvas` and friends would rasterise
 the same report into a fuzzy image and cost 200KB. The trade is that the user picks *Save as PDF* in
 their own print dialog rather than getting an automatic download; the page says so under the button.
-
-The UI suite asserts the print rules under `emulateMedia({ media: 'print' })` rather than trusting
-that they exist.
 
 ## The QR code
 
@@ -246,7 +259,7 @@ npm test           # 182 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 203 checks: drives the real UI in Chromium against a
+npm run test:ui    # 214 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

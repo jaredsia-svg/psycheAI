@@ -388,8 +388,12 @@ try {
   check('the report itself stays in the PDF', await page.locator('#profile-body').isVisible());
   check('the QR code stays in the PDF', await page.locator('#qr-canvas').isVisible());
   check('the QR code is sized for paper rather than for screen',
-    (await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width)) === '180px',
+    (await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width)) === '150px',
     await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width));
+  check('the QR code stays square on paper', await page.evaluate(() => {
+    const box = document.querySelector('#qr-canvas').getBoundingClientRect();
+    return Math.abs(box.width - box.height) < 2;
+  }));
   check('the PDF is not printed on a dark background', await page.evaluate(() => {
     const bg = getComputedStyle(document.body).backgroundColor;
     return bg === 'rgb(255, 255, 255)';
@@ -398,6 +402,55 @@ try {
     const el = document.querySelector('.accent');
     return getComputedStyle(el).webkitTextFillColor !== 'rgba(0, 0, 0, 0)';
   }));
+
+  // The PDF opens on a letterhead, since the nav bar is dropped.
+  check('the PDF carries the PsycheAI logo', await page.locator('.letterhead-mark').isVisible());
+  check('the letterhead names the product and the document',
+    /PsycheAI/.test(await page.locator('.letterhead').innerText()) &&
+    /Personality profile/i.test(await page.locator('.letterhead').innerText()));
+  check('the letterhead names the subject and the date',
+    (await page.locator('#letterhead-name').innerText()).includes('Aleç') &&
+    /Generated \w+ \d+, \d{4}/.test(await page.locator('#letterhead-meta').innerText()),
+    await page.locator('#letterhead-meta').innerText());
+  check('the letterhead is print-only',
+    await page.evaluate(() => getComputedStyle(document.querySelector('.letterhead')).display !== 'none'));
+  check('the screen header is dropped from the PDF',
+    !(await page.locator('#view-profile .page-head').isVisible()));
+
+  // Nothing may depend on a background fill: printing them is off by default.
+  check('no section relies on a background that will not print', await page.evaluate(() => {
+    const opaque = sel => [...document.querySelectorAll(sel)].some(n => {
+      const bg = getComputedStyle(n).backgroundColor;
+      return bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent' && bg !== 'rgb(255, 255, 255)';
+    });
+    return !opaque('.tile, .callout, .essence, .card-icon, .axis-letter, .ev, .pill');
+  }));
+
+  // A page break through the middle of one item is what makes a PDF look
+  // thrown together, so every item that reads as one thought is atomic.
+  check('every report item is unbreakable across pages', await page.evaluate(() => {
+    const selectors = ['.trait-block', '.axis', '.tile', '.facet', '.callout', '.love-row', '.essence', '.glance'];
+    return selectors.every(sel => [...document.querySelectorAll(sel)]
+      .every(n => getComputedStyle(n).breakInside === 'avoid'));
+  }));
+  check('whole sections are unbreakable too', await page.evaluate(() =>
+    [...document.querySelectorAll('#view-profile .card')]
+      .every(n => getComputedStyle(n).breakInside === 'avoid')));
+  check('a heading is never left stranded at the foot of a page', await page.evaluate(() =>
+    ['h1', 'h2', 'h3', 'h4', '.card-head', '.card-sub']
+      .every(sel => [...document.querySelectorAll('#view-profile ' + sel)]
+        .every(n => getComputedStyle(n).breakAfter === 'avoid'))));
+
+  // Sections short enough to fit a page must actually fit one, or
+  // break-inside: avoid is decoration.
+  const A4_CONTENT_PX = Math.round((297 - 30) / 25.4 * 96);
+  await page.setViewportSize({ width: Math.round((210 - 30) / 25.4 * 96), height: 1000 });
+  const tall = await page.evaluate(limit => [...document.querySelectorAll('#view-profile .card')]
+    .map(c => ({ t: (c.querySelector('h2') || {}).textContent || '?', h: Math.round(c.getBoundingClientRect().height) }))
+    .filter(c => c.h > limit), A4_CONTENT_PX);
+  check('every section fits on a single A4 page', tall.length === 0,
+    tall.map(c => c.t.slice(0, 24) + ' ' + c.h + 'px').join(', '));
+  await page.setViewportSize({ width: 1100, height: 900 });
   await shot('2b-profile-print');
   await page.emulateMedia({ media: 'screen' });
   check('every Big Five trait is drawn', (await page.locator('.trait-row').count()) === 5);
