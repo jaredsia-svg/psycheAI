@@ -940,8 +940,11 @@
 
     const mode = await askMode(other.name);
     // Backing out is not a failure to read the code — the caller must not fall
-    // through to "no code found", so this still returns true.
-    if (!mode) { renderScan(); show('scan'); return true; }
+    // through to "no code found", so this still returns true. And the scan view
+    // is shown as it stands rather than re-rendered: re-rendering clears the
+    // paste box, so cancelling would throw away the link they just pasted and
+    // make them find it again to pick a different basis.
+    if (!mode) { show('scan'); return true; }
 
     $('#working-title').textContent = modelName() + ' is comparing you';
     $('#working-note').textContent =

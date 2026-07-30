@@ -20,6 +20,7 @@ const PORT = 4173;
 let passed = 0;
 const failures = [];
 const check = (label, ok, detail) => {
+  if (process.env.TRACE) console.error('  · ' + label);
   if (ok) passed++;
   else failures.push(label + (detail === undefined ? '' : ' — ' + detail));
 };
@@ -609,12 +610,17 @@ try {
     compatBodies.length === 0, String(compatBodies.length));
   await shot('3-mode-picker');
 
-  // Backing out returns to the scanner rather than running anything.
+  // Backing out returns to the scanner rather than running anything. Wait on
+  // the dialog closing, not on the scan view being visible — it never stopped
+  // being visible, so that would race whatever the close handler does next.
   await page.click('#mode-cancel');
-  await page.waitForSelector('#view-scan:not([hidden])');
+  // state: 'hidden' matters — a closed <dialog> is display:none, so the
+  // default "wait until visible" could never be satisfied.
+  await page.waitForSelector('#mode-dialog', { state: 'hidden' });
   check('cancelling the picker runs no analysis', compatBodies.length === 0);
+  check('cancelling the picker keeps the link you pasted',
+    (await page.inputValue('#paste-input')).includes(otherPayload));
 
-  await page.fill('#paste-input', 'https://example.com/#p=' + otherPayload);
   await page.click('#paste-go');
   await page.waitForSelector('#mode-dialog[open]');
   await page.click('.mode-option[data-mode="professional"]');
