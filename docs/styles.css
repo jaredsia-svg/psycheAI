@@ -585,12 +585,17 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
 
+  /* Every section of the report opens its own page. Page one is the cover:
+     letterhead and the QR code, nothing else. */
+  #profile-body > .card { break-before: page; page-break-before: always; }
+  .qr-panel { margin-top: 4mm; }
+
   .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
-  .card-icon {
-    width: 1.5rem; height: 1.5rem; border: 1pt solid var(--accent);
-    border-radius: 5px; font-size: .8rem; background: none;
-  }
-  .card-head h2 { font-size: 13pt; color: var(--accent); letter-spacing: -.01em; }
+  /* The glyph is an emoji, which is a colour bitmap in most PDF pipelines and
+     prints as a muddy smear where a crisp document wants nothing at all. The
+     heading carries the section on paper. */
+  .card-icon { display: none; }
+  .card-head h2 { font-size: 15pt; color: var(--accent); letter-spacing: -.01em; }
   .card-sub { font-size: 8.5pt; }
 
   h1, h2, h3, h4, .card-head { break-after: avoid; page-break-after: avoid; }

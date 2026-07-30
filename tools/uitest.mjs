@@ -441,6 +441,16 @@ try {
       .every(sel => [...document.querySelectorAll('#view-profile ' + sel)]
         .every(n => getComputedStyle(n).breakAfter === 'avoid'))));
 
+  check('every report section opens its own page', await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body > .card')]
+      .every(n => getComputedStyle(n).breakBefore === 'page')));
+  check('the cover page is the letterhead and the code, nothing else',
+    await page.evaluate(() => getComputedStyle(document.querySelector('.qr-panel')).breakBefore !== 'page'));
+  // Emoji are colour bitmaps in most PDF pipelines and smear at this size.
+  check('no emoji glyph sits in the printed section headers', await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .card-icon')]
+      .every(n => getComputedStyle(n).display === 'none')));
+
   // Sections short enough to fit a page must actually fit one, or
   // break-inside: avoid is decoration.
   const A4_CONTENT_PX = Math.round((297 - 30) / 25.4 * 96);

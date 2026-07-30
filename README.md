@@ -216,12 +216,16 @@ fill. Every accent is a text colour or a border, both of which always print. A U
 tiles, callouts, chips and icon frames and fails if any of them has an opaque background under print
 media.
 
-**Breaks must land between items, never through one.** Cards are `break-inside: avoid`, and a UI
+**Every section opens its own page.** Page one is the cover — letterhead and QR code — and each
+report section takes `break-before: page` after it. Cards are also `break-inside: avoid`, and a UI
 check measures every section against the A4 content height (1009px) to prove that rule can actually
-be honoured rather than being decoration. Sections that genuinely outgrow a page with a verbose
-model — Big Five with full evidence is the usual one — cannot be kept whole, so every item that
-reads as a single thought is atomic in its own right: a trait with its bar and evidence, an MBTI
-axis, a tile, a facet, a love language, a term with its definition. The break falls in a gap.
+be honoured rather than being decoration. A section that genuinely outgrows a page with a verbose
+model — Big Five with full evidence is the usual one — will still run over, so every item that reads
+as a single thought is atomic in its own right: a trait with its bar and evidence, an MBTI axis, a
+tile, a facet, a love language, a term with its definition. The break falls in a gap.
+
+The section glyphs are dropped from the printed headers. Emoji are colour bitmaps in most PDF
+pipelines and smear at heading size; the accent-coloured title carries the section on paper.
 
 This is deliberately not a bundled PDF library. A dozen pages of long-form text is exactly what
 print CSS is for — the text stays selectable and searchable, pagination and paper size are the
@@ -259,7 +263,7 @@ npm test           # 182 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 214 checks: drives the real UI in Chromium against a
+npm run test:ui    # 217 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
