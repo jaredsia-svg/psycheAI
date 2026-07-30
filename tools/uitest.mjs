@@ -374,21 +374,146 @@ try {
     (await page.locator('.implications dd').count()) &&
     (await page.locator('.implications dt').count()) >= 2);
 
-  // ---- PDF export ----
+  // ---- the downloadable report, and what Ctrl+P still does ----
   check('there is an export button at the top',
     await page.locator('#export-pdf-top').isVisible());
   check('there is an export button at the bottom',
     await page.locator('#export-pdf-bottom').isVisible());
   check('the export button says what it does',
-    (await page.locator('#export-pdf-top').innerText()).includes('PDF'));
+    (await page.locator('#export-pdf-top').innerText()) === 'Download full report',
+    await page.locator('#export-pdf-top').innerText());
+  check('both export buttons agree',
+    (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report');
 
-  // Print CSS is the PDF, so check it against the print media type rather
-  // than trusting that the rules exist.
+  // The report is typeset by pdf.js rather than handed to the print dialog, so
+  // the thing to test is the actual file: click the button, keep what the
+  // browser saved, and read it back. Streams are written uncompressed partly so
+  // this can look for the text rather than trusting that it was drawn.
+  const pdfPath = join(shotDir, 'report.pdf');
+  const [pdfDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#export-pdf-top'),
+  ]);
+  await pdfDownload.saveAs(pdfPath);
+  const pdf = readFileSync(pdfPath);
+  const pdfText = pdf.toString('latin1');
+
+  check('the button downloads a file named for the person',
+    /^psycheai-report-[a-z-]+\.pdf$/.test(pdfDownload.suggestedFilename()),
+    pdfDownload.suggestedFilename());
+  check('it is a real PDF', pdfText.startsWith('%PDF-1.'), pdfText.slice(0, 8));
+  check('the PDF is properly terminated', pdfText.trimEnd().endsWith('%%EOF'));
+  check('the cross-reference table points inside the file', (() => {
+    const found = /startxref\s+(\d+)/.exec(pdfText);
+    return Boolean(found) && Number(found[1]) > 0 && Number(found[1]) < pdf.length;
+  })());
+  check('the whole report is there, not just a page',
+    (pdfText.match(/\/Type \/Page[^s]/g) || []).length >= 4,
+    String((pdfText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
+  check('the PDF is a sensible size', pdf.length > 8000 && pdf.length < 900000,
+    Math.round(pdf.length / 1024) + 'KB');
+
+  // Text, not a rasterised picture of text: real fonts and findable strings.
+  check('the text is text, in embeddable base-14 fonts',
+    /\/BaseFont \/Helvetica\b/.test(pdfText) && /\/BaseFont \/Helvetica-Bold/.test(pdfText));
+  check('accented names survive into the PDF', /Ale\xe7/.test(pdfText));
+  check('the document is titled for the reader',
+    /\/Title \(Ale\xe7.s personality analysis\)/.test(pdfText));
+  for (const heading of ['The portrait', 'The five traits', 'The type',
+    'How they use Instagram', 'Close relationships', 'Work']) {
+    check('the PDF contains the ' + JSON.stringify(heading) + ' section',
+      pdfText.includes('(' + heading + ')'));
+  }
+  check('the PDF carries the confidence score', /CONFIDENCE IN THIS READING/.test(pdfText));
+  check('the PDF numbers its pages', /\(Page 2 of \d+\)/.test(pdfText));
+  check('the PDF carries the disclaimer', /not a psychometric/.test(pdfText));
+
+  // Layout has to survive both a wordy model and an almost empty one. These
+  // build in the page, which is also the only way to reach a long profile
+  // without waiting on a real analysis.
+  const layout = await page.evaluate(() => {
+    const long = 'Weathered luminous lantern cartographer inherited quiet riverbed stubborn ' +
+      'harbour persistent tidal threshold unhurried considered gradual deliberate.';
+    const point = { title: long, detail: long + ' ' + long };
+    const trait = { score: 71, band: 'high', reading: long, evidence: [long, long] };
+    const wordy = {
+      confidence: { score: 71, level: 'high', rationale: long },
+      essence: { noun: 'The Cartographer of Small Hours', icon: '🧭', why: long },
+      summary: long + '\n\n' + long,
+      bigFive: {
+        openness: trait, conscientiousness: trait, extraversion: trait,
+        agreeableness: trait, neuroticism: trait,
+      },
+      mbti: {
+        type: 'INFJ', confidence: 'moderate', nickname: 'The Advocate',
+        letters: [{ axis: 'E/I', choice: 'I', strength: 'clear', why: long, inPractice: long }],
+        caveat: long,
+      },
+      activity: {
+        summary: long,
+        posting: { headline: long, detail: long },
+        rhythm: { headline: long, detail: long },
+        trajectory: { headline: long, detail: long },
+        engagement: { headline: long, detail: long },
+        attention: { headline: long, detail: long },
+        implications: [{ observation: long, implication: long }],
+        blindSpots: long,
+      },
+      interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
+      values: [{ value: long, detail: long, evidence: long }],
+      beliefs: [{ belief: long, detail: long, evidence: long, confidence: 'low' }],
+      relationship: {
+        strengths: [point], weaknesses: [point],
+        attachment: { style: long, why: long, derivedFrom: [long], implications: [point], caveat: long },
+        loveLanguages: {
+          receiving: [{ language: 'Quality time', strength: 'primary', why: long, inPractice: long }],
+          giving: [{ language: 'Acts of service', strength: 'minor', why: long, inPractice: long }],
+          caveat: long,
+        },
+      },
+      career: {
+        strengths: [point], weaknesses: [point], workStyle: long,
+        environments: [long, 'Small teams'], watchOuts: long,
+      },
+    };
+    const meta = { date: '30 July 2026', model: 'claude-opus-5' };
+    const sizeOf = blob => blob.size;
+    const out = {};
+    try {
+      out.wordy = sizeOf(window.PsychePDF.build(wordy, { name: 'Wilhelmina-Chardonnay', headline: long }, meta));
+      out.sparse = sizeOf(window.PsychePDF.build(
+        { confidence: { score: 0, level: 'very low', rationale: '' }, summary: '' }, { name: 'X' }, meta));
+      out.empty = sizeOf(window.PsychePDF.build({}, {}, {}));
+    } catch (error) {
+      out.error = String(error).slice(0, 150);
+    }
+    // Encoding corners: an arrow has no WinAnsi slot and used to vanish, an
+    // emoji has none either and must not become a black box, and an accent
+    // must survive.
+    out.arrow = window.PsychePDF.toWinAnsi('E/I → I');
+    out.emoji = window.PsychePDF.toWinAnsi('🧭');
+    out.accent = window.PsychePDF.toWinAnsi('Aleç’s');
+    return out;
+  });
+
+  check('a wordy profile still builds', !layout.error && layout.wordy > 10000,
+    JSON.stringify(layout));
+  check('a profile the model barely filled in still builds', layout.sparse > 1000, JSON.stringify(layout));
+  check('an entirely empty report does not throw', layout.empty > 1000, JSON.stringify(layout));
+  check('an arrow is substituted rather than silently dropped',
+    layout.arrow === 'E/I -> I', JSON.stringify(layout.arrow));
+  check('an emoji is dropped rather than drawn as a black box',
+    layout.emoji === '', JSON.stringify(layout.emoji));
+  check('an accented name and a curly apostrophe survive encoding',
+    layout.accent === 'Ale\xe7\x92s', JSON.stringify(layout.accent));
+
+  // The download no longer goes through print CSS, but Ctrl+P still does, so
+  // check it against the print media type rather than trusting the rules exist.
   await page.emulateMedia({ media: 'print' });
-  check('navigation is dropped from the PDF', !(await page.locator('.nav').isVisible()));
-  check('the export buttons are not in the PDF', !(await page.locator('#export-pdf-top').isVisible()));
-  check('the report itself stays in the PDF', await page.locator('#profile-body').isVisible());
-  check('the QR code stays in the PDF', await page.locator('#qr-canvas').isVisible());
+  check('navigation is dropped when printing', !(await page.locator('.nav').isVisible()));
+  check('the export buttons are not printed', !(await page.locator('#export-pdf-top').isVisible()));
+  check('the report itself is printed', await page.locator('#profile-body').isVisible());
+  check('the QR code is printed', await page.locator('#qr-canvas').isVisible());
   check('the QR code is sized for paper rather than for screen',
     (await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width)) === '150px',
     await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width));
@@ -396,7 +521,7 @@ try {
     const box = document.querySelector('#qr-canvas').getBoundingClientRect();
     return Math.abs(box.width - box.height) < 2;
   }));
-  check('the PDF is not printed on a dark background', await page.evaluate(() => {
+  check('the page is not printed on a dark background', await page.evaluate(() => {
     const bg = getComputedStyle(document.body).backgroundColor;
     return bg === 'rgb(255, 255, 255)';
   }));
@@ -405,8 +530,8 @@ try {
     return getComputedStyle(el).webkitTextFillColor !== 'rgba(0, 0, 0, 0)';
   }));
 
-  // The PDF opens on a letterhead, since the nav bar is dropped.
-  check('the PDF carries the PsycheAI logo', await page.locator('.letterhead-mark').isVisible());
+  // A printed page opens on a letterhead, since the nav bar is dropped.
+  check('the printed page carries the PsycheAI logo', await page.locator('.letterhead-mark').isVisible());
   check('the letterhead names the product and the document',
     /PsycheAI/.test(await page.locator('.letterhead').innerText()) &&
     /Personality profile/i.test(await page.locator('.letterhead').innerText()));
@@ -416,7 +541,7 @@ try {
     await page.locator('#letterhead-meta').innerText());
   check('the letterhead is print-only',
     await page.evaluate(() => getComputedStyle(document.querySelector('.letterhead')).display !== 'none'));
-  check('the screen header is dropped from the PDF',
+  check('the screen header is dropped when printing',
     !(await page.locator('#view-profile .page-head').isVisible()));
 
   // Nothing may depend on a background fill: printing them is off by default.

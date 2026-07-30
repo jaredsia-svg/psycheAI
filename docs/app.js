@@ -701,22 +701,39 @@
     }
   });
 
-  // Export goes through the browser's own print-to-PDF rather than a bundled
-  // PDF library. A twelve-page text report is exactly what print CSS is for:
-  // the text stays selectable and searchable, pagination and page size are the
-  // browser's problem, and it costs nothing to ship. A canvas-rasterising
-  // library would produce a fuzzy image of the same thing and add 200KB.
-  //
-  // The temporary title is what most browsers offer as the default filename.
-  function exportPdf() {
-    const name = (state.profile && state.profile.card.name) || 'me';
-    const original = document.title;
-    document.title = 'PsycheAI — ' + name;
-    const restore = () => { document.title = original; };
-    window.addEventListener('afterprint', restore, { once: true });
-    // Safari does not always fire afterprint, so restore on a timer too.
-    setTimeout(restore, 60000);
-    window.print();
+  // The report is typeset into a PDF here rather than handed to the browser's
+  // print dialog. Print-to-PDF gave the user no say over page size, margins or
+  // whether backgrounds were included, put the browser's own header on every
+  // page, and on mobile often offered no PDF destination at all. pdf.js writes
+  // the file directly, so the download is one click and looks the same
+  // everywhere.
+  function exportPdf(event) {
+    const button = event.currentTarget;
+    const label = button.textContent;
+    const profile = state.profile;
+    if (!profile) return;
+    try {
+      const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
+      const blob = window.PsychePDF.build(profile.report, profile.card, {
+        date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+        model: profile.model || '',
+      });
+      const name = 'psycheai-report-' +
+        String(profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+      // Same shape as the QR download: a Blob URL and an anchor that is really
+      // in the document, because Firefox ignores a click on a detached one.
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = name + '.pdf';
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    } catch (error) {
+      button.textContent = 'Could not build the PDF';
+      setTimeout(() => { button.textContent = label; }, 3000);
+    }
   }
 
   $('#export-pdf-top').addEventListener('click', exportPdf);

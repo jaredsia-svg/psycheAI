@@ -119,8 +119,8 @@
 
 <!-- ══════════════ profile ══════════════ -->
 <section id="view-profile" class="view" hidden>
-  <!-- Print only: the letterhead the PDF opens on. Hidden on screen, where
-       the nav bar already carries the brand. -->
+  <!-- Print only. The downloadable report is typeset by pdf.js and does not
+       come through here, but Ctrl+P still works and wants a letterhead. -->
   <header class="letterhead print-only">
     <div class="letterhead-brand">
       <svg class="letterhead-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -142,7 +142,7 @@
   <header class="page-head screen-only">
     <h1 id="profile-title">Your personality analysis</h1>
     <div class="btn-row no-print">
-      <button class="btn" id="export-pdf-top">Export as PDF</button>
+      <button class="btn" id="export-pdf-top">Download full report</button>
     </div>
   </header>
 
@@ -166,7 +166,7 @@
   <div id="profile-body"></div>
 
   <div class="cta-row no-print">
-    <button class="btn" id="export-pdf-bottom">Export as PDF</button>
+    <button class="btn" id="export-pdf-bottom">Download full report</button>
     <button class="btn btn-ghost" id="reanalyse">Re-run the analysis</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>
@@ -348,6 +348,7 @@
 <script src="images.js"></script>
 <script src="digest.js"></script>
 <script src="card.js"></script>
+<script src="pdf.js"></script>
 <script src="llm.js"></script>
 <script src="app.js"></script>
 </body>

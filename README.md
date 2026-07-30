@@ -276,41 +276,45 @@ more than they read, and what the shape of their following and liking says about
 goes. Each implication pairs one concrete observation with one hedged inference, so the reader can
 tell a fact from a guess.
 
-## Exporting to PDF
+## Downloading the report
 
-Buttons at the top and bottom of the profile call `window.print()`, and `@media print` in
-`styles.css` *is* the PDF. The document opens on a letterhead — brain mark, wordmark, PERSONALITY
-PROFILE, the subject's name, the date and the confidence score — because the nav bar that carries
-the brand on screen is dropped. Sections become rules-and-whitespace rather than boxes, the QR code
-squares off at 150px, and everything is set at 9.6pt on A4 with 15mm margins.
+**Download full report** at the top and bottom of the profile writes a PDF and downloads it. No
+library: `docs/pdf.js` emits the file itself, which for a text report means page objects, content
+streams, and the base-14 fonts every viewer already has. It is about 600 lines and no bytes of
+dependency — `html2canvas` and friends would rasterise the same words into a fuzzy image and cost
+200KB, and the text here stays real text that a reader can select, search and copy.
 
-Two constraints shape every rule:
+This replaced `window.print()`. Print-to-PDF was free and the print CSS was good, but the output was
+never the user's: page size, margins, whether backgrounds were included and the browser's own header
+and footer all belonged to the dialog, and on mobile there is often no *Save as PDF* destination at
+all. Typesetting it directly makes the download one click and identical everywhere.
 
-**Backgrounds do not print** unless the reader ticks a box in the dialog, so nothing may depend on a
-fill. Every accent is a text colour or a border, both of which always print. A UI check walks the
-tiles, callouts, chips and icon frames and fails if any of them has an opaque background under print
-media.
+What the writer has to provide, it provides:
 
-**Breaks land between items, never through one.** Sections flow and pack, so two short ones share a
-page rather than each claiming a sheet. What is unbreakable is the level below: a trait with its bar
-and evidence, an MBTI axis, a tile, a facet, a love language, a term with its definition. A break
-falls in a gap.
+**Metrics.** Wrapping is impossible without character widths, so Adobe's Helvetica and
+Helvetica-Bold widths are embedded. Asking canvas to measure would be wrong — the viewer renders with
+its own Helvetica, not whatever the page substituted.
 
-**One size for every word.** `#view-profile *` is set at 10pt in print, with the letterhead name,
-the wordmark, the section titles and the noun as the only deliberate exceptions — hierarchy comes
-from weight, case and colour instead. A UI check walks every text node under print media and fails
-on any that is not 10pt, because the rem-based sizes from the screen stylesheet leak in otherwise
-and the document ends up looking assembled from parts.
+**An encoding.** Strings are written in WinAnsi, which covers the accents and curly quotes the model
+produces. Characters with no slot are handled rather than lost: accents fall back to the bare letter,
+arrows to `->`, and emoji are dropped instead of drawn as a black box — which is why the essence icon
+is not in the PDF, though its noun is.
 
-The section glyphs are dropped from the printed headers. They sit on a tinted tile, and that tint
-was showing as a pale marking at the top left of every heading for anyone who prints with
-*Background graphics* ticked; the emoji itself is a colour bitmap that smears at heading size.
+**A layout.** A cover with the name, the essence noun, the confidence bar and a contents list, then
+the whole report: the portrait, five trait bars with their evidence, the MBTI axes, the behavioural
+read, interests, values, beliefs, relationships with attachment and love languages, and career.
+Running head on every page, page numbers, and the disclaimer on the cover where it cannot be missed.
 
-This is deliberately not a bundled PDF library. A dozen pages of long-form text is exactly what
-print CSS is for — the text stays selectable and searchable, pagination and paper size are the
-browser's problem, and it adds nothing to the page weight. `html2canvas` and friends would rasterise
-the same report into a fuzzy image and cost 200KB. The trade is that the user picks *Save as PDF* in
-their own print dialog rather than getting an automatic download; the page says so under the button.
+Streams are written uncompressed. It costs about 30KB on a seven-page report and makes the output
+greppable, which is how the suite checks that a section is really in the file rather than trusting it
+was drawn. The tests download the actual file, assert it is a well-formed PDF whose cross-reference
+table points inside itself, and rebuild the report from a deliberately wordy profile, an almost empty
+one and `{}` — the wordy one caught two overflows, an unwrapped point title and a right-aligned label
+measured without its letter-spacing.
+
+Ctrl+P still works, and `@media print` in `styles.css` still shapes it: a letterhead, since the nav
+bar is dropped, backgrounds nothing depends on, breaks between items rather than through them, and
+one type size throughout. Those rules keep their own UI checks.
 
 ## The QR code
 
@@ -376,6 +380,7 @@ docs/                 the browser app — no build step
   images.js           picks ~14 photos worth looking at, downscales them
   digest.js           signals → the bounded evidence digest that gets sent
   card.js             shareable card ⇄ compressed QR payload
+  pdf.js              writes the downloadable report — a small PDF writer, no library
   llm.js              client for the two server endpoints
   vendor/             qrcode (generation) · jsQR (scanning)
 lib/
