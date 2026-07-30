@@ -433,34 +433,40 @@ try {
     return selectors.every(sel => [...document.querySelectorAll(sel)]
       .every(n => getComputedStyle(n).breakInside === 'avoid'));
   }));
-  check('whole sections are unbreakable too', await page.evaluate(() =>
-    [...document.querySelectorAll('#view-profile .card')]
-      .every(n => getComputedStyle(n).breakInside === 'avoid')));
+  // Sections pack rather than each claiming a sheet: a break is allowed
+  // between them and inside them, just never through an item.
+  check('sections are allowed to share a page', await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body > .card')]
+      .every(n => getComputedStyle(n).breakInside !== 'avoid' &&
+                  getComputedStyle(n).breakBefore !== 'page')));
   check('a heading is never left stranded at the foot of a page', await page.evaluate(() =>
     ['h1', 'h2', 'h3', 'h4', '.card-head', '.card-sub']
       .every(sel => [...document.querySelectorAll('#view-profile ' + sel)]
         .every(n => getComputedStyle(n).breakAfter === 'avoid'))));
 
-  check('every report section opens its own page', await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body > .card')]
-      .every(n => getComputedStyle(n).breakBefore === 'page')));
-  check('the cover page is the letterhead and the code, nothing else',
-    await page.evaluate(() => getComputedStyle(document.querySelector('.qr-panel')).breakBefore !== 'page'));
-  // Emoji are colour bitmaps in most PDF pipelines and smear at this size.
-  check('no emoji glyph sits in the printed section headers', await page.evaluate(() =>
+  // The tinted tile behind each glyph was the pale marking that showed up at
+  // the top left of every heading when the reader printed backgrounds.
+  check('no glyph tile sits in the printed section headers', await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-icon')]
       .every(n => getComputedStyle(n).display === 'none')));
 
-  // Sections short enough to fit a page must actually fit one, or
-  // break-inside: avoid is decoration.
-  const A4_CONTENT_PX = Math.round((297 - 30) / 25.4 * 96);
-  await page.setViewportSize({ width: Math.round((210 - 30) / 25.4 * 96), height: 1000 });
-  const tall = await page.evaluate(limit => [...document.querySelectorAll('#view-profile .card')]
-    .map(c => ({ t: (c.querySelector('h2') || {}).textContent || '?', h: Math.round(c.getBoundingClientRect().height) }))
-    .filter(c => c.h > limit), A4_CONTENT_PX);
-  check('every section fits on a single A4 page', tall.length === 0,
-    tall.map(c => c.t.slice(0, 24) + ' ' + c.h + 'px').join(', '));
-  await page.setViewportSize({ width: 1100, height: 900 });
+  // One size for every word, so the document does not look assembled from
+  // parts. Headings and the two glyphs are the deliberate exceptions.
+  const sizes = await page.evaluate(() => {
+    const allowed = new Set(['letterhead-name', 'letterhead-word', 'essence-noun',
+      'axis-letter', 'essence-icon', 'love-icon', 'qr-title']);
+    const odd = {};
+    for (const node of document.querySelectorAll('#view-profile *')) {
+      if (!node.textContent.trim() || node.children.length) continue;
+      if ([...node.classList].some(c => allowed.has(c))) continue;
+      if (node.closest('.card-head') && node.tagName === 'H2') continue;
+      const size = getComputedStyle(node).fontSize;
+      if (size !== '13.3333px') odd[node.className || node.tagName] = size;
+    }
+    return odd;
+  });
+  check('every word in the report is set at one size',
+    Object.keys(sizes).length === 0, JSON.stringify(sizes).slice(0, 160));
   await shot('2b-profile-print');
   await page.emulateMedia({ media: 'screen' });
   check('every Big Five trait is drawn', (await page.locator('.trait-row').count()) === 5);

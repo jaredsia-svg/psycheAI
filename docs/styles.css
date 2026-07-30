@@ -566,9 +566,9 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .letterhead-mark { width: 26px; height: 26px; flex: none; }
   .letterhead-word { font-size: 13pt; font-weight: 700; letter-spacing: -.01em; }
   .letterhead-rule { flex: 1; height: 1px; background: var(--accent); }
-  .letterhead-kind { font-size: 8pt; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
-  .letterhead-name { font-size: 26pt; margin: 5mm 0 1mm; letter-spacing: -.02em; }
-  .letterhead-meta { font-size: 8.5pt; color: var(--ink-soft); margin: 0; }
+  .letterhead-kind { font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  .letterhead-name { margin: 5mm 0 1mm; letter-spacing: -.02em; }
+  .letterhead-meta { color: var(--ink-soft); margin: 0; }
 
   /* ---- sections ---- */
   /*
@@ -577,32 +577,43 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    * every card comfortably under that ceiling — the UI suite measures them.
    */
 
+  /*
+   * Sections flow and pack: two short ones share a page rather than each
+   * taking a sheet of its own. Only the items inside them are unbreakable
+   * (further down), so a break lands in a gap rather than through a thought.
+   */
   .card {
     box-shadow: none; border: 0; border-top: 1.5pt solid var(--accent);
     border-radius: 0; padding: 3.5mm 0 5mm; margin: 0 0 4mm;
-    break-inside: avoid; page-break-inside: avoid;
   }
   .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
-
-  /* Every section of the report opens its own page. Page one is the cover:
-     letterhead and the QR code, nothing else. */
-  #profile-body > .card { break-before: page; page-break-before: always; }
   .qr-panel { margin-top: 4mm; }
 
   .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
-  /* The glyph is an emoji, which is a colour bitmap in most PDF pipelines and
-     prints as a muddy smear where a crisp document wants nothing at all. The
-     heading carries the section on paper. */
+  /* The glyph is an emoji on a tinted tile. The tint is what showed up as a
+     pale marking at the top left of every heading whenever the reader had
+     "Background graphics" ticked, and the emoji itself is a colour bitmap
+     that smears at this size. The heading carries the section on paper. */
   .card-icon { display: none; }
-  .card-head h2 { font-size: 15pt; color: var(--accent); letter-spacing: -.01em; }
-  .card-sub { font-size: 8.5pt; }
+  .card-head h2 { color: var(--accent); letter-spacing: -.01em; }
 
   h1, h2, h3, h4, .card-head { break-after: avoid; page-break-after: avoid; }
-  h3 { font-size: 9.6pt; text-transform: uppercase; letter-spacing: .09em; color: var(--ink-soft); margin-top: 4mm; }
+  /* Hierarchy comes from weight, case and colour rather than from size, so
+     the body of the document is set at one size throughout. */
+  h3 { text-transform: uppercase; letter-spacing: .09em; color: var(--ink-soft); margin-top: 4mm; }
   h3.h-good, h3.h-warn { color: var(--ink-soft); }
   p, li, dd { orphans: 3; widows: 3; }
-  .fineprint { font-size: 7.8pt; }
+
+  #view-profile, #view-profile * { font-size: 10pt; }
+  #view-profile .letterhead-name { font-size: 24pt; }
+  #view-profile .letterhead-word { font-size: 13pt; }
+  #view-profile .card-head h2, #view-profile .qr-title { font-size: 14pt; }
+  #view-profile .essence-noun { font-size: 14pt; }
+  /* Not type — a glyph and a letter tile, sized to their boxes. */
+  #view-profile .axis-letter { font-size: 11pt; }
+  #view-profile .essence-icon { font-size: 15pt; }
+  #view-profile .love-icon { font-size: 12pt; }
 
   /* ---- components ---- */
 
@@ -611,7 +622,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .accent { -webkit-text-fill-color: currentColor; color: var(--accent); background: none; }
 
   .glance { border-color: var(--line); padding: 2.5mm 0; margin-bottom: 4mm; }
-  .glance-value { font-size: 10pt; }
 
   .bar, .confidence-meter { border: .5pt solid var(--line); background: none; height: 6px; }
   .bar-fill, .confidence-fill { background: var(--accent) !important; }
