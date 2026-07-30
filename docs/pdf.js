@@ -893,13 +893,36 @@
     // 1. Who you are — essence, the headline findings, then the summary.
     out.sectionTitle(TEXT.whoYouAre);
     const essence = source.essence || {};
-    if (essence.noun) {
+    // `noun` is the name this field had before it held a character, so a
+    // profile saved before that change still prints.
+    const essenceName = essence.character || essence.noun;
+    if (essenceName) {
       out.eyebrow(TEXT.essenceLabel);
-      const nounStyle = { size: 23, bold: true, color: ACCENT };
-      for (const line of wrap(toWinAnsi(essence.noun), COLUMN, nounStyle)) {
+      const nameStyle = { size: 23, bold: true, color: ACCENT };
+      const franchiseStyle = { size: 10, color: SOFT };
+      const franchise = essence.franchise ? toWinAnsi(essence.franchise) : '';
+      const lines = wrap(toWinAnsi(essenceName), COLUMN, nameStyle);
+
+      // The franchise trails the last line of the name, but only if it fits
+      // there. A name whose last line nearly fills the column would otherwise
+      // push it straight past the right margin — "Nick Wilde and Judy Hopps of
+      // Zootopia" runs 48pt over. When it will not fit, it takes its own line.
+      const lastWidth = measure(lines[lines.length - 1], nameStyle.size, true);
+      const franchiseWidth = franchise ? measure(franchise, franchiseStyle.size, false) : 0;
+      const franchiseFitsBeside = franchise && lastWidth + 9 + franchiseWidth <= COLUMN;
+
+      lines.forEach((line, index) => {
         out.need(30);
-        doc.draw(line, MARGIN, doc.y + 18, nounStyle);
+        doc.draw(line, MARGIN, doc.y + 18, nameStyle);
+        if (franchiseFitsBeside && index === lines.length - 1) {
+          doc.draw(franchise, MARGIN + lastWidth + 9, doc.y + 18, franchiseStyle);
+        }
         doc.y += 28;
+      });
+      if (franchise && !franchiseFitsBeside) {
+        out.need(16);
+        doc.draw(franchise, MARGIN, doc.y + 8, franchiseStyle);
+        doc.y += 15;
       }
       out.space(2);
       if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });

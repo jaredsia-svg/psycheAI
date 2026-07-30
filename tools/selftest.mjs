@@ -156,11 +156,16 @@ check('the opening summary may not contradict the sections',
   /do not contradict any section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
 
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
-check('the profile opens on one noun with an icon and a reason',
-  ['noun', 'icon', 'why'].every(k => k in essenceProps));
-check('the noun is asked for as a noun, not a personality label',
-  /Not an adjective, not a personality label/.test(essenceProps.noun.description));
-check('the icon is asked for as a single emoji',
+check('the profile opens on a character, its franchise, an icon and a reason',
+  ['character', 'franchise', 'icon', 'why'].every(k => k in essenceProps));
+check('the character must be one the whole world would recognise',
+  /globally famous/.test(essenceProps.character.description) &&
+  /recognise/.test(essenceProps.character.description));
+check('the character is matched on temperament, never on looks',
+  /never on how anyone looks/.test(essenceProps.character.description));
+check('the character may not be a flattering pick',
+  /not a compliment/.test(essenceProps.character.description));
+check('the icon is asked for as a single emoji standing for the character',
   /Exactly one emoji character/.test(essenceProps.icon.description));
 
 // Love languages replaced "how to love you" and "who fits".
@@ -268,8 +273,10 @@ for (const [label, needle] of [
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
   ['does not moralise about screen time', /not to moralise about screen time/],
-  ['wants a concrete, surprising noun', /concrete, slightly surprising/],
-  ['rejects a compliment dressed as a noun', /a compliment in a costume/],
+  ['wants a globally recognisable character', /a stranger in another country would picture them instantly/],
+  ['rejects a compliment dressed as a character', /a compliment in a costume/],
+  ['rejects a character only a fandom would know', /nobody outside a fandom could name/],
+  ['forbids matching a character on appearance', /never on how they or anyone else looks/],
   ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));

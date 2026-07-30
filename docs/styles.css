@@ -452,7 +452,15 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   background: linear-gradient(120deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 35%, transparent));
   border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
-.essence-icon { flex: none; font-size: 2.9rem; line-height: 1; }
+/* A medallion rather than a loose glyph: the emoji stands in for a character,
+   so it needs to read as a portrait slot rather than as punctuation. */
+.essence-icon {
+  flex: none; font-size: 2.4rem; line-height: 1;
+  width: 4.4rem; height: 4.4rem; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-alt);
+  border: 2px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
 .essence-label {
   margin: 0; font-size: .74rem; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; color: var(--ink-soft);
@@ -462,6 +470,11 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   letter-spacing: -.02em;
   background: linear-gradient(100deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+/* Name and franchise share a baseline, wrapping only if the name is long. */
+.essence-name { display: flex; align-items: baseline; gap: .55rem; flex-wrap: wrap; }
+.essence-franchise {
+  font-size: .8rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap;
 }
 .essence-why { margin: 0; font-size: .93rem; }
 .callout .essence-label { margin-top: .9rem; }

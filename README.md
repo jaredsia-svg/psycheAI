@@ -256,13 +256,27 @@ suite so they survive edits to the prompt.
 
 ## What the report contains
 
-It opens on **one noun** — an animal, a material, a place, a trade, with an emoji and the reasoning
-for why that one and not a neighbouring one. The prompt asks for something concrete and slightly
-surprising, and explicitly rejects a compliment in a costume ("Diamond", "Star") or a restatement of
-a hobby. Because a model told to send exactly one emoji will occasionally send a sentence, the
-client checks the glyph and substitutes a placeholder rather than printing prose where the icon goes.
+It opens on **one character** — a globally famous one from Disney, Pixar, Marvel, DC, Nintendo,
+Pokémon, Ghibli or similar — with the franchise beside the name and the reasoning for why that one
+and not a neighbouring one. The prompt's test is whether a stranger in another country would picture
+them instantly, so no deep cuts; it rejects a compliment in a costume (Superman), a restatement of a
+hobby, and anything only a fandom could name. The match is on temperament and drive, and the prompt
+forbids matching on how anyone looks, or on gender or background.
 
-Under the noun sits a **glance strip** — MBTI type, highest and lowest Big Five trait, attachment
+**There is no character artwork, and there will not be.** Mickey, Pikachu and Iron Man belong to
+Disney, Nintendo and Marvel; bundling their art, or hotlinking it, is not something this repo can
+do. The icon is an emoji standing *for* the character — the thing they carry or are known for, so a
+lightning bolt for Pikachu, a shield for Captain America — shown in a round medallion and labelled
+with `aria-label` so anyone not seeing it still gets the name. If you have licensed assets, the
+place to put them is `essenceBlock` in `docs/app.js`. Because a model told to send exactly one emoji
+will occasionally send a sentence, the client checks the glyph and substitutes a placeholder rather
+than printing prose where the icon goes.
+
+The field is still called `noun` in profiles saved before this change, and profiles live in
+localStorage indefinitely with no server copy to migrate, so both the page and the PDF fall back to
+it — covered by a check that stores an old-shape profile and renders it.
+
+Under the character sits a **glance strip** — MBTI type, highest and lowest Big Five trait, attachment
 read — then a two-or-three-paragraph summary that lands the findings from every section below, so
 someone who reads only the opening still leaves with the answers. The strip is derived in
 `docs/app.js` from the sections themselves rather than asked of the model a second time: restating
@@ -318,10 +332,13 @@ its own Helvetica, not whatever the page substituted.
 **An encoding.** Strings are written in WinAnsi, which covers the accents and curly quotes the model
 produces. Characters with no slot are handled rather than lost: accents fall back to the bare letter,
 arrows to `->`, and emoji are dropped instead of drawn as a black box — which is why the essence icon
-is not in the PDF, though its noun is.
+is not in the PDF, though the character's name and franchise are. The franchise sits beside the last
+line of the name, or on its own line when it would not fit: a name whose last line nearly fills the
+column pushed it past the right margin, measured at 48pt over for "Nick Wilde and Judy Hopps of
+Zootopia".
 
 **A layout.** The report is the profile page, section for section, in the same order: a letterhead,
-then *Who you are* (the essence noun, the headline findings strip, the summary), *Big Five*, *MBTI*,
+then *Who you are* (the character, the headline findings strip, the summary), *Big Five*, *MBTI*,
 *Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *What
 your QR code contains*, *Your matches* when this device has any, and *How much to trust this*.
 Running head and page numbers on every page — the head carries the brain mark

@@ -274,17 +274,40 @@ try {
     await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
-  // ---- the one-noun opener ----
-  check('the profile opens on a single noun', await page.locator('.essence-noun').isVisible());
-  check('the noun carries an icon',
+  // ---- the character opener ----
+  check('the profile opens on a character', await page.locator('.essence-noun').isVisible());
+  check('the character is the one the model picked',
+    (await page.locator('.essence-noun').innerText()).trim() === 'Bruce Banner',
+    await page.locator('.essence-noun').innerText());
+  check('the character names the franchise it is from',
+    (await page.locator('.essence-franchise').innerText()).trim() === 'Marvel',
+    await page.locator('.essence-franchise').innerText());
+  check('the character carries an icon',
     (await page.locator('.essence-icon').innerText()).trim().length > 0);
-  check('the noun comes before the summary prose', await page.evaluate(() => {
+  // The emoji stands in for artwork nobody here has the right to ship, so it
+  // has to be labelled with who it represents for anyone not seeing it.
+  check('the icon is labelled with the character it stands for',
+    (await page.locator('.essence-icon').getAttribute('aria-label')) === 'Bruce Banner',
+    await page.locator('.essence-icon').getAttribute('aria-label'));
+  check('the character comes before the summary prose', await page.evaluate(() => {
     const essence = document.querySelector('.essence');
     const prose = essence.parentElement.querySelector('p:not([class])');
     return Boolean(essence.compareDocumentPosition(prose) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
-  check('the noun sits inside "Who you are"', await page.evaluate(() =>
+  check('the character sits inside "Who you are"', await page.evaluate(() =>
     document.querySelector('.essence').closest('.card').innerText.includes('Who you are')));
+  // innerText reflects the stylesheet's uppercase transform, so compare on the
+  // markup's own text rather than what CSS renders.
+  check('the label introduces it as a likeness',
+    (await page.locator('.essence-label').first().textContent()).trim() === 'You are most like',
+    await page.locator('.essence-label').first().textContent());
+  // The name carries a gradient clipped to the text; anything nested inside it
+  // inherits transparent fill and vanishes.
+  check('the franchise is not swallowed by the name\'s gradient', await page.evaluate(() => {
+    const franchise = document.querySelector('.essence-franchise');
+    const fill = getComputedStyle(franchise).webkitTextFillColor;
+    return !franchise.closest('.essence-noun') && fill !== 'rgba(0, 0, 0, 0)';
+  }));
 
   // The headline findings are repeated up top, taken from the sections below
   // rather than restated by the model, so they cannot drift apart.
@@ -561,7 +584,7 @@ try {
     outOfOrder.length === 0, outOfOrder.map(entry => entry.title).join(' | '));
 
   // Sub-headings and labels the page shows inside those sections.
-  for (const label of ['In one word, you are', 'Values', 'Beliefs', 'Strengths', 'Weaknesses',
+  for (const label of ['You are most like', 'Values', 'Beliefs', 'Strengths', 'Weaknesses',
     'How you work', 'Where you would thrive', 'What could hold you back', 'Your love languages',
     'How you want to be loved', 'How you show love', 'Read from', 'What it means in practice',
     'What it suggests']) {
@@ -574,6 +597,62 @@ try {
     pdfText.includes('(Emotional sensitivity') && !/\(Neuroticism/.test(pdfText));
   check('the PDF labels the behaviour facets as the page does',
     pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(WHERE YOUR ATTENTION GOES)'));
+  check('the PDF carries the character and the franchise it is from',
+    pdfText.includes('(Bruce Banner)') && pdfText.includes('(Marvel)'));
+
+  // The franchise sits beside the last line of the character's name — but only
+  // when it fits there. A name whose last line nearly fills the column would
+  // otherwise push it past the right margin; measured, "Nick Wilde and Judy
+  // Hopps of Zootopia" leaves the franchise 48pt over. Build that exact case
+  // and read the drawn positions back out of the page stream.
+  const franchisePlacement = await page.evaluate(async () => {
+    const build = (character, franchise) => window.PsychePDF.build(
+      { essence: { character, franchise, why: 'Why.' }, summary: 'Summary.',
+        confidence: { score: 50, level: 'moderate', rationale: 'Rationale.' } },
+      { name: 'Sam' }, { date: '30 July 2026', model: 'mock' });
+    const read = async blob => new Uint8Array(await blob.arrayBuffer())
+      .reduce((text, byte) => text + String.fromCharCode(byte), '');
+    return {
+      short: await read(build('Bruce Banner', 'Marvel')),
+      // 433pt of name plus a 101pt franchise against a 487pt column.
+      long: await read(build('Nick Wilde and Judy Hopps of Zootopia', 'Walt Disney Animation')),
+    };
+  });
+
+  // Every string with the x it was drawn at, on the page holding the essence.
+  const drawnAt = (pdf, needle) => {
+    const page1 = [...pdf.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
+      .map(match => match[1]).find(content => content.includes('(' + needle + ')')) || '';
+    const found = [...page1.matchAll(/([\d.]+) ([\d.]+) Td\n\((.*?)\) Tj/g)]
+      .find(match => match[3] === needle);
+    return found ? { x: Number(found[1]), y: Number(found[2]) } : null;
+  };
+
+  const shortName = drawnAt(franchisePlacement.short, 'Bruce Banner');
+  const shortFranchise = drawnAt(franchisePlacement.short, 'Marvel');
+  check('a franchise that fits sits on the name\'s own baseline',
+    Boolean(shortName && shortFranchise) && shortFranchise.y === shortName.y &&
+      shortFranchise.x > shortName.x,
+    JSON.stringify({ shortName, shortFranchise }));
+
+  const longFranchise = drawnAt(franchisePlacement.long, 'Walt Disney Animation');
+  check('a franchise that would overrun drops to its own line instead',
+    Boolean(longFranchise) && Math.abs(longFranchise.x - 54) < 0.6 &&
+      longFranchise.y < shortName.y,
+    JSON.stringify({ longFranchise }));
+
+  // The point of the whole exercise: neither placement runs past the margin.
+  const franchiseWidths = await page.evaluate(names => names.map(name =>
+    window.PsychePDF.measure(window.PsychePDF.toWinAnsi(name), 10, false)),
+  ['Marvel', 'Walt Disney Animation']);
+  check('neither franchise is drawn past the right margin',
+    shortFranchise.x + franchiseWidths[0] <= 595.28 - 54 + 0.5 &&
+      longFranchise.x + franchiseWidths[1] <= 595.28 - 54 + 0.5,
+    JSON.stringify({
+      shortRight: Math.round(shortFranchise.x + franchiseWidths[0]),
+      longRight: Math.round(longFranchise.x + franchiseWidths[1]),
+      margin: Math.round(595.28 - 54),
+    }));
 
   // Alignment holds because there is one copy of these strings, not two that
   // happen to agree today. Both renderers must read them from copy.js.
@@ -612,7 +691,7 @@ try {
     const trait = score => ({ score, band: 'high', reading: 'Reading.', evidence: [] });
     const report = {
       confidence: { score: 70, level: 'high', rationale: 'Rationale.' },
-      essence: { noun: 'The Forum', why: 'Why.' },
+      essence: { character: 'The Forum', franchise: 'Marvel', why: 'Why.' },
       summary: 'Summary.',
       bigFive: {
         openness: trait(85), conscientiousness: trait(60), extraversion: trait(70),
@@ -718,7 +797,7 @@ try {
     const trait = { score: 71, band: 'high', reading: long, evidence: [long, long] };
     const wordy = {
       confidence: { score: 71, level: 'high', rationale: long },
-      essence: { noun: 'The Cartographer of Small Hours', icon: '🧭', why: long },
+      essence: { character: 'The Cartographer of Small Hours', franchise: 'Studio Ghibli', icon: '🧭', why: long },
       summary: long + '\n\n' + long,
       bigFive: {
         openness: trait, conscientiousness: trait, extraversion: trait,
@@ -1099,8 +1178,35 @@ try {
   const swapped = (await page.locator('.essence-icon').innerText()).trim();
   check('a wordy icon is swapped for a placeholder rather than printed',
     !/lighthouse/.test(swapped) && swapped.codePointAt(0) > 0x2000, swapped);
-  check('the noun itself is untouched by the icon guard',
-    (await page.locator('.essence-noun').innerText()).includes('Riverbed'));
+  check('the character itself is untouched by the icon guard',
+    (await page.locator('.essence-noun').innerText()).includes('Bruce Banner'));
+
+  // This field held an abstract noun before it held a character, and profiles
+  // live in localStorage indefinitely — there is no server copy to migrate.
+  // A profile saved under the old shape has to keep rendering.
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+    delete saved.report.essence.character;
+    delete saved.report.essence.franchise;
+    saved.report.essence.noun = 'The Riverbed';
+    saved.report.essence.icon = '🏞️';
+    localStorage.setItem('psycheai_profile', JSON.stringify(saved));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])');
+  check('a profile saved before characters still shows its noun',
+    (await page.locator('.essence-noun').innerText()).includes('Riverbed'),
+    await page.locator('.essence-noun').innerText());
+  check('that older profile simply has no franchise beside it',
+    (await page.locator('.essence-franchise').count()) === 0);
+  const oldShapePdf = await page.evaluate(async () => {
+    const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+    const blob = window.PsychePDF.build(saved.report, saved.card, { date: 'today', model: 'mock' });
+    return new Uint8Array(await blob.arrayBuffer())
+      .reduce((text, byte) => text + String.fromCharCode(byte), '');
+  });
+  check('and its report still prints that noun',
+    oldShapePdf.includes('(The Riverbed)'));
 
   await page.click('[data-nav="scan"]');
   await page.fill('#paste-input', 'https://example.com/#p=notarealpsycheaicode');

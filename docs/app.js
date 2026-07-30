@@ -98,11 +98,25 @@
     return glyphs.join('');
   }
 
+  // `noun` is what this field was called when it held an abstract noun rather
+  // than a character, so a profile saved before that change still renders.
+  const essenceName = essence => (essence && (essence.character || essence.noun)) || '';
+
   function essenceBlock(essence) {
-    if (!essence || !essence.noun) return '';
-    return '<div class="essence"><span class="essence-icon">' + esc(safeIcon(essence.icon)) + '</span>' +
+    const name = essenceName(essence);
+    if (!name) return '';
+    // The emoji stands in for the character rather than depicting them: the
+    // actual artwork is somebody else's, and not ours to ship.
+    return '<div class="essence">' +
+      '<span class="essence-icon" role="img" aria-label="' + esc(name) + '">' +
+      esc(safeIcon(essence.icon)) + '</span>' +
       '<div><p class="essence-label">' + esc(TEXT.essenceLabel) + '</p>' +
-      '<p class="essence-noun">' + esc(essence.noun) + '</p>' +
+      // Siblings rather than one nested in the other: the gradient clip on the
+      // name would swallow the franchise, and the print suite only measures
+      // elements that have no element children.
+      '<div class="essence-name"><p class="essence-noun">' + esc(name) + '</p>' +
+      (essence.franchise ? '<span class="essence-franchise">' + esc(essence.franchise) + '</span>' : '') +
+      '</div>' +
       '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
   }
 

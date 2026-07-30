@@ -89,7 +89,7 @@
 
   const TEXT = {
     whoYouAre: 'Who you are',
-    essenceLabel: 'In one word, you are',
+    essenceLabel: 'You are most like',
 
     bigFive: 'Big Five',
     bigFiveSub: '0–100, where 50 is an average person. Each score lists the evidence behind it.',
