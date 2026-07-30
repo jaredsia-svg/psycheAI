@@ -4,7 +4,7 @@
 //
 // Run with: node tools/uitest.mjs [--shots]
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -800,6 +800,58 @@ try {
   }));
   check('the QR generator no longer pins its own display size', await page.evaluate(() =>
     !document.querySelector('#qr-canvas').style.width));
+
+  // ---- the downloaded image ----
+  //
+  // The exported file is what someone else actually scans, so take the real
+  // download and decode it rather than trusting the encoder.
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])');
+  const download = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    page.click('#download-qr'),
+  ]).then(([event]) => event);
+
+  check('the download is offered as a .jpg', download.suggestedFilename().endsWith('.jpg'),
+    download.suggestedFilename());
+
+  const savedTo = join(shotDir, 'downloaded-code.jpg');
+  mkdirSync(shotDir, { recursive: true });
+  await download.saveAs(savedTo);
+  const saved = readFileSync(savedTo);
+  check('the saved file really is a JPEG',
+    saved[0] === 0xff && saved[1] === 0xd8 && saved[2] === 0xff,
+    saved.subarray(0, 3).toString('hex'));
+
+  const exported = await page.evaluate(async bytes => {
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const c = canvas.getContext('2d', { willReadFrequently: true });
+    c.drawImage(bitmap, 0, 0);
+
+    const url = location.origin + location.pathname + '#p=' +
+      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    const readAt = width => {
+      const scaled = document.createElement('canvas');
+      scaled.width = width;
+      scaled.height = Math.round(bitmap.height * (width / bitmap.width));
+      const ctx = scaled.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(canvas, 0, 0, scaled.width, scaled.height);
+      const px = ctx.getImageData(0, 0, scaled.width, scaled.height);
+      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+      return Boolean(hit && hit.data === url);
+    };
+    return { width: bitmap.width, native: readAt(bitmap.width), at600: readAt(600), at400: readAt(400) };
+  }, Array.from(saved));
+
+  check('the exported code is rendered larger than the on-screen one',
+    exported.width >= 1500, exported.width + 'px');
+  check('the exported code decodes at full size', exported.native, JSON.stringify(exported));
+  check('the exported code still decodes viewed at 600px', exported.at600, JSON.stringify(exported));
+  check('the exported code still decodes viewed at 400px', exported.at400, JSON.stringify(exported));
 
   // ---- deep link ----
   // A pasted link is the third way into the comparison, and it has to ask

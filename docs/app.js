@@ -645,11 +645,48 @@
     else window.prompt('Copy this link:', url);
   });
 
-  $('#download-qr').addEventListener('click', () => {
-    const link = document.createElement('a');
-    link.download = 'psycheai-' + (state.profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-') + '.png';
-    link.href = $('#qr-canvas').toDataURL('image/png');
-    link.click();
+  // A file someone else will scan needs more room than the on-screen code: it
+  // gets viewed at whatever size a photo app picks, and if that is 300px wide
+  // the modules are back down to three pixels and nothing reads it. So the
+  // export is rendered fresh at 1600px with the full four-module quiet zone
+  // rather than reusing the display canvas.
+  const EXPORT_PX = 1600;
+
+  function renderExportCanvas(url) {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      window.QRCode.toCanvas(canvas, url, {
+        width: EXPORT_PX, margin: 4, errorCorrectionLevel: 'L',
+        color: { dark: '#000000', light: '#ffffff' },
+      }, error => (error ? reject(error) : resolve(canvas)));
+    });
+  }
+
+  $('#download-qr').addEventListener('click', async () => {
+    const button = $('#download-qr');
+    const name = 'psycheai-' + (state.profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-');
+    try {
+      const canvas = await renderExportCanvas(profileUrl(state.profile.payload));
+      // 0.95 is well clear of the point where JPEG ringing touches a module —
+      // at 1600px each one is about 17 pixels across.
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+      if (!blob) throw new Error('Could not encode the image.');
+
+      // A Blob URL rather than a data URL, and the anchor in the document:
+      // Firefox ignores a click on a detached anchor, and Safari will not
+      // honour "download" on a large data: URL.
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = name + '.jpg';
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    } catch (error) {
+      button.textContent = 'Could not save — use the link';
+      setTimeout(() => { button.textContent = 'Download JPEG'; }, 3000);
+    }
   });
 
   // Export goes through the browser's own print-to-PDF rather than a bundled

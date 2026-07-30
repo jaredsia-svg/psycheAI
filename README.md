@@ -50,6 +50,14 @@ asked for **1920×1080**; the default stream is often 640×480, which puts this 
 pixel and a half per module and simply never decodes. A simulated 480p frame with the code filling
 55% of its height is a UI check, and it fails against the old 300px backing.
 
+The downloadable image is rendered fresh at **1600px with a four-module quiet zone** rather than
+reusing the display canvas, because a saved file gets viewed at whatever size a photo app picks — at
+300px wide it is back to three pixels per module and unreadable. It is written as a JPEG at quality
+0.95 through a Blob URL: a detached anchor click is ignored by Firefox, and Safari will not honour
+`download` on a large `data:` URL. Lossless would be marginally more robust in principle, but at 17
+pixels per module JPEG artefacts are nowhere near a module edge — the suite takes the real download
+and decodes it at 1600, 600 and 400px.
+
 Stills get a **scale ladder** — 1600px, 1100px, native, 2200px, 800px, then a centre crop — because
 jsQR locates a code best when the modules are a few pixels across, and a 12-megapixel phone photo is
 far past that. The camera loop alternates a full frame with a zoomed middle, which is what catches a
@@ -291,7 +299,7 @@ npm test           # 189 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 236 checks: drives the real UI in Chromium against a
+npm run test:ui    # 242 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
