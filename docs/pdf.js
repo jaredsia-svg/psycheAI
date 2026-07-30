@@ -850,7 +850,9 @@
     // The brand lockup, as the nav and the printed letterhead have it: the mark
     // with the wordmark beside it.
     doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
-    doc.draw(toWinAnsi('PSYCHEAI'), MARGIN + 26, 56, { size: 9.5, bold: true, color: WHITE, tracking: 3 });
+    // Mixed case, no tracking: the same wordmark style the nav uses, not the
+    // tracked-caps treatment print letterheads default to.
+    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
 
     const title = (card.name || 'Your') + '’s personality analysis';
     const titleStyle = { size: 27, bold: true, color: WHITE };

@@ -435,8 +435,14 @@ try {
   check('the PDF has a page stream per page', streams.length >= 4, String(streams.length));
   check('every page carries the mark', withMark.length === streams.length,
     withMark.length + ' of ' + streams.length);
-  check('the running head no longer prints the word instead',
-    !streams.some(stream => stream.includes('(PsycheAI)')));
+  // The cover is the exception: it pairs the mark with the wordmark, same as
+  // the nav. Every content page after it (streams[1] on) is the running head,
+  // which carries the mark alone.
+  check('the running head on content pages no longer prints the word instead',
+    !streams.slice(1).some(stream => stream.includes('(PsycheAI)')));
+  check('the cover pairs the mark with the wordmark, mixed case, no tracking',
+    streams[0].includes('(PsycheAI)') && !streams[0].includes('(PSYCHEAI)'),
+    streams[0].includes('(PSYCHEAI)') ? 'still has PSYCHEAI' : 'PsycheAI not found');
 
   // Pull the mark's own coordinates back out and check where it landed. All of
   // its operators take coordinate pairs, so the numbers alternate x and y.
