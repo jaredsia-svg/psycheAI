@@ -324,7 +324,8 @@
     $('#working-note').textContent =
       'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary' +
       (sent ? ' and ' + sent + ' of your photos were' : ' was') + ' sent for analysis. ' +
-      'This usually takes a minute or two — a long report is being written.';
+      'It usually takes up to three minutes for the personality analysis to be completed. ' +
+      'Please be patient.';
     startElapsed('Analysing');
     show('working');
 
