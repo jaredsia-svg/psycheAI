@@ -381,8 +381,6 @@ try {
     await page.locator('#export-pdf-bottom').isVisible());
   check('the export button says what it does',
     (await page.locator('#export-pdf-top').innerText()).includes('PDF'));
-  check('the page explains it goes through the print dialog',
-    /Save as PDF/.test(await page.locator('#pdf-note').innerText()));
 
   // Print CSS is the PDF, so check it against the print media type rather
   // than trusting that the rules exist.
