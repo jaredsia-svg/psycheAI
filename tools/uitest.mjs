@@ -420,6 +420,111 @@ try {
   check('the document is titled for the reader',
     /\/Title \(Ale\xe7.s personality analysis\)/.test(pdfText));
   check('the PDF numbers its pages', /\(Page 2 of \d+\)/.test(pdfText));
+
+  // ---- the brand mark ----
+  //
+  // The running head carries the logo rather than the word "PsycheAI". It is
+  // stroked from the same SVG path data the nav and the letterhead use, which
+  // means converting the mark's elliptical arcs to béziers — PDF has no arc
+  // operator — so these checks are about the drawing really being there, at the
+  // right size, in the right place.
+  const streams = [...pdfText.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(match => match[1]);
+  // "1 J 1 j" sets round caps and joins, and only the mark asks for those.
+  const withMark = streams.filter(stream => stream.includes('1 J 1 j'));
+
+  check('the PDF has a page stream per page', streams.length >= 4, String(streams.length));
+  check('every page carries the mark', withMark.length === streams.length,
+    withMark.length + ' of ' + streams.length);
+  check('the running head no longer prints the word instead',
+    !streams.some(stream => stream.includes('(PsycheAI)')));
+
+  // Pull the mark's own coordinates back out and check where it landed. All of
+  // its operators take coordinate pairs, so the numbers alternate x and y.
+  const markBox = stream => {
+    const from = stream.indexOf('1 J 1 j');
+    const to = stream.indexOf('\nS', from);
+    if (from < 0 || to < 0) return null;
+    const numbers = (stream.slice(from + 7, to).match(/-?\d+\.?\d*/g) || []).map(Number);
+    const xs = numbers.filter((value, index) => index % 2 === 0);
+    const ys = numbers.filter((value, index) => index % 2 === 1);
+    if (!xs.length) return null;
+    return {
+      left: Math.min(...xs), right: Math.max(...xs),
+      bottom: Math.min(...ys), top: Math.max(...ys),
+    };
+  };
+
+  // The second page is a plain content page, so its mark is the running head.
+  const head = markBox(streams[1]);
+  check('the running-head mark is drawn as real curves',
+    streams[1].split(' c').length > 15, String(streams[1].split(' c').length));
+  // The mark is asked for a 13pt box at the left margin. Its ink is smaller than
+  // the box, because the artwork occupies about x 3.6-20.4 of a 24-unit viewBox,
+  // so the test is that it lands inside the box and fills most of it.
+  const box = { left: 54, right: 54 + 13, top: 841.89 - 45, bottom: 841.89 - 58 };
+  check('the running-head mark lands inside the box it was given',
+    Boolean(head) && head.left >= box.left - 0.6 && head.right <= box.right + 0.6 &&
+      head.top <= box.top + 0.6 && head.bottom >= box.bottom - 0.6,
+    JSON.stringify({ head, box }));
+  check('the running-head mark fills that box and is square',
+    Boolean(head) && (head.right - head.left) > 8 &&
+      Math.abs((head.right - head.left) - (head.top - head.bottom)) < 1,
+    head && JSON.stringify({ w: +(head.right - head.left).toFixed(1), h: +(head.top - head.bottom).toFixed(1) }));
+  check('the running-head mark clears the rule under it',
+    Boolean(head) && head.bottom > 841.89 - 60, JSON.stringify(head));
+
+  // One shape in three places: the PDF strokes exactly what the HTML draws.
+  const brand = await page.evaluate(async () => {
+    const html = await fetch('index.html').then(r => r.text());
+    const marks = ['brand-mark', 'letterhead-mark'].map(name => {
+      const start = html.indexOf('class="' + name + '"');
+      const end = html.indexOf('</svg>', start);
+      return [...html.slice(start, end).matchAll(/<path d="([^"]+)"/g)].map(match => match[1]);
+    });
+    return {
+      shared: window.PsycheCopy.BRAND_MARK.paths,
+      nav: marks[0],
+      letterhead: marks[1],
+      viewBox: window.PsycheCopy.BRAND_MARK.viewBox,
+      strokeWidth: window.PsycheCopy.BRAND_MARK.strokeWidth,
+    };
+  });
+
+  check('the shared mark has all five of its paths', brand.shared.length === 5,
+    String(brand.shared.length));
+  check('the shared mark matches the one in the nav',
+    JSON.stringify(brand.shared) === JSON.stringify(brand.nav),
+    JSON.stringify({ shared: brand.shared.length, nav: brand.nav.length }));
+  check('the shared mark matches the one on the letterhead',
+    JSON.stringify(brand.shared) === JSON.stringify(brand.letterhead),
+    JSON.stringify({ shared: brand.shared.length, letterhead: brand.letterhead.length }));
+  check('the shared mark keeps the SVG viewBox and stroke width it was drawn for',
+    brand.viewBox === 24 && brand.strokeWidth === 1.5,
+    JSON.stringify({ viewBox: brand.viewBox, strokeWidth: brand.strokeWidth }));
+
+  // The arcs are the part that could silently come out as straight lines, so
+  // count the operators the mark is actually built from. Ten arcs across the two
+  // lobes, at least one bézier each, plus the six inner folds; and the two lobes
+  // are closed subpaths.
+  const markOps = (() => {
+    const from = streams[1].indexOf('1 J 1 j');
+    const to = streams[1].indexOf('\nS', from);
+    const body = streams[1].slice(from + 7, to);
+    return {
+      curves: (body.match(/ c$/gm) || []).length,
+      lines: (body.match(/ l$/gm) || []).length,
+      moves: (body.match(/ m$/gm) || []).length,
+      closes: (body.match(/^h$/gm) || []).length,
+      width: (/([\d.]+) w 1 J 1 j/.exec(streams[1]) || [])[1],
+    };
+  })();
+
+  check('the mark is built from béziers, so its arcs did not flatten to chords',
+    markOps.curves >= 16, JSON.stringify(markOps));
+  check('the mark closes both of its lobes', markOps.closes === 2, JSON.stringify(markOps));
+  check('the mark starts each of its nine subpaths', markOps.moves === 9, JSON.stringify(markOps));
+  check('the mark keeps the SVG stroke width, scaled',
+    Math.abs(Number(markOps.width) - 1.5 * (13 / 24)) < 0.02, String(markOps.width));
   check('the PDF carries the same provenance line the page prints',
     /Generated \w+ \d+, \d{4}\s+·\s+from an Instagram data export\s+·\s+\d+\/100 confidence/
       .test(pdfText.replace(/\\/g, '')),

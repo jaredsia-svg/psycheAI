@@ -175,6 +175,154 @@
     return this.op('f');
   };
 
+  /**
+   * Strokes SVG path data — the brand mark, which is the only artwork here.
+   *
+   * PDF has no arc operator, so the elliptical arcs in the mark are converted to
+   * cubic béziers: endpoint parameterisation to centre parameterisation, split
+   * into quarter-turns or less, then one bézier per piece. Only the subset of
+   * the path grammar the mark uses is implemented (M, L, H, V, C, A, Z, and
+   * their relative forms), because a general SVG renderer is not the job.
+   */
+  Doc.prototype.svgPaths = function (mark, options) {
+    const settings = options || {};
+    const scale = settings.size / mark.viewBox;
+    const originX = settings.x;
+    const originTop = settings.top;
+    const px = x => originX + x * scale;
+    const py = y => PAGE.height - (originTop + y * scale);
+
+    this.setStroke(settings.color || INK);
+    // Round caps and joins, as the SVG asks for; without them the open strokes
+    // end in blunt squares and the mark looks like a different drawing.
+    this.op(num(mark.strokeWidth * scale) + ' w 1 J 1 j');
+
+    for (const data of mark.paths) {
+      let cursorX = 0;
+      let cursorY = 0;
+      let startX = 0;
+      let startY = 0;
+      const commands = data.match(/[MmLlHhVvCcAaZz][^MmLlHhVvCcAaZz]*/g) || [];
+      for (const chunk of commands) {
+        const code = chunk[0];
+        const relative = code === code.toLowerCase();
+        const numbers = (chunk.slice(1).match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || []).map(Number);
+        const letter = code.toUpperCase();
+
+        if (letter === 'Z') {
+          this.op('h');
+          cursorX = startX;
+          cursorY = startY;
+          continue;
+        }
+        // Each command takes a fixed number of arguments and may repeat them.
+        const arity = { M: 2, L: 2, H: 1, V: 1, C: 6, A: 7 }[letter];
+        for (let i = 0; i + arity <= numbers.length; i += arity) {
+          const args = numbers.slice(i, i + arity);
+          if (letter === 'M' || letter === 'L') {
+            const x = relative ? cursorX + args[0] : args[0];
+            const y = relative ? cursorY + args[1] : args[1];
+            // A repeated M means a line, per the SVG spec.
+            this.op(num(px(x)) + ' ' + num(py(y)) + (letter === 'M' && i === 0 ? ' m' : ' l'));
+            if (letter === 'M' && i === 0) { startX = x; startY = y; }
+            cursorX = x;
+            cursorY = y;
+          } else if (letter === 'H' || letter === 'V') {
+            const x = letter === 'H' ? (relative ? cursorX + args[0] : args[0]) : cursorX;
+            const y = letter === 'V' ? (relative ? cursorY + args[0] : args[0]) : cursorY;
+            this.op(num(px(x)) + ' ' + num(py(y)) + ' l');
+            cursorX = x;
+            cursorY = y;
+          } else if (letter === 'C') {
+            const base = relative ? [cursorX, cursorY] : [0, 0];
+            const points = [];
+            for (let k = 0; k < 6; k += 2) {
+              points.push([base[0] + args[k], base[1] + args[k + 1]]);
+            }
+            this.op(points.map(p => num(px(p[0])) + ' ' + num(py(p[1]))).join(' ') + ' c');
+            cursorX = points[2][0];
+            cursorY = points[2][1];
+          } else if (letter === 'A') {
+            const endX = relative ? cursorX + args[5] : args[5];
+            const endY = relative ? cursorY + args[6] : args[6];
+            for (const curve of arcToBeziers(cursorX, cursorY, args[0], args[1],
+              args[2] * Math.PI / 180, args[3], args[4], endX, endY)) {
+              this.op(curve.map(p => num(px(p[0])) + ' ' + num(py(p[1]))).join(' ') + ' c');
+            }
+            cursorX = endX;
+            cursorY = endY;
+          }
+        }
+      }
+    }
+    return this.op('S');
+  };
+
+  /** One SVG elliptical arc → a list of cubic béziers, each three points. */
+  function arcToBeziers(x1, y1, rxInput, ryInput, phi, largeArc, sweep, x2, y2) {
+    let rx = Math.abs(rxInput);
+    let ry = Math.abs(ryInput);
+    if (!rx || !ry || (x1 === x2 && y1 === y2)) return [];
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+    const dx = (x1 - x2) / 2;
+    const dy = (y1 - y2) / 2;
+    const x1p = cosPhi * dx + sinPhi * dy;
+    const y1p = -sinPhi * dx + cosPhi * dy;
+
+    // Scale the radii up if they are too small to span the two endpoints.
+    const lambda = (x1p * x1p) / (rx * rx) + (y1p * y1p) / (ry * ry);
+    if (lambda > 1) {
+      const grow = Math.sqrt(lambda);
+      rx *= grow;
+      ry *= grow;
+    }
+
+    const rxs = rx * rx;
+    const rys = ry * ry;
+    const numerator = rxs * rys - rxs * y1p * y1p - rys * x1p * x1p;
+    const denominator = rxs * y1p * y1p + rys * x1p * x1p;
+    const factor = (largeArc !== sweep ? 1 : -1) * Math.sqrt(Math.max(0, numerator / denominator));
+    const cxp = factor * (rx * y1p) / ry;
+    const cyp = factor * -(ry * x1p) / rx;
+    const cx = cosPhi * cxp - sinPhi * cyp + (x1 + x2) / 2;
+    const cy = sinPhi * cxp + cosPhi * cyp + (y1 + y2) / 2;
+
+    const start = Math.atan2((y1p - cyp) / ry, (x1p - cxp) / rx);
+    let sweepAngle = Math.atan2((-y1p - cyp) / ry, (-x1p - cxp) / rx) - start;
+    if (!sweep && sweepAngle > 0) sweepAngle -= 2 * Math.PI;
+    if (sweep && sweepAngle < 0) sweepAngle += 2 * Math.PI;
+
+    // A bézier approximates at most a quarter turn well, so split accordingly.
+    const pieces = Math.max(1, Math.ceil(Math.abs(sweepAngle) / (Math.PI / 2)));
+    const step = sweepAngle / pieces;
+    const handle = (4 / 3) * Math.tan(step / 4);
+    const at = angle => [
+      cx + rx * cosPhi * Math.cos(angle) - ry * sinPhi * Math.sin(angle),
+      cy + rx * sinPhi * Math.cos(angle) + ry * cosPhi * Math.sin(angle),
+    ];
+    const slope = angle => [
+      -rx * cosPhi * Math.sin(angle) - ry * sinPhi * Math.cos(angle),
+      -rx * sinPhi * Math.sin(angle) + ry * cosPhi * Math.cos(angle),
+    ];
+
+    const curves = [];
+    for (let piece = 0; piece < pieces; piece++) {
+      const from = start + piece * step;
+      const to = from + step;
+      const p0 = at(from);
+      const p3 = at(to);
+      const d0 = slope(from);
+      const d3 = slope(to);
+      curves.push([
+        [p0[0] + handle * d0[0], p0[1] + handle * d0[1]],
+        [p3[0] - handle * d3[0], p3[1] - handle * d3[1]],
+        p3,
+      ]);
+    }
+    return curves;
+  }
+
   Doc.prototype.hairline = function (top, from, to, color) {
     this.setStroke(color || LINE);
     return this.op('0.7 w ' + num(from) + ' ' + num(PAGE.height - top) + ' m ' +
@@ -256,8 +404,9 @@
 
   Report.prototype.page = function () {
     this.doc.newPage();
-    // Running head, so a printed page found on its own still says whose it is.
-    this.doc.draw(toWinAnsi('PsycheAI'), MARGIN, MARGIN, { size: 8, bold: true, color: ACCENT, tracking: 1.1 });
+    // Running head, so a printed page found on its own still says whose it is:
+    // the mark on the left, the subject's name on the right.
+    this.doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: MARGIN - 9, size: 13, color: ACCENT });
     const who = toWinAnsi(this.meta.name);
     const width = measure(who, 8, false);
     this.doc.draw(who, PAGE.width - MARGIN - width, MARGIN, { size: 8, color: SOFT });
@@ -698,7 +847,10 @@
       num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 34) + ' l 0 ' +
       num(PAGE.height - bandHeight) + ' l f');
 
-    doc.draw(toWinAnsi('PSYCHEAI'), MARGIN, 56, { size: 9.5, bold: true, color: WHITE, tracking: 3 });
+    // The brand lockup, as the nav and the printed letterhead have it: the mark
+    // with the wordmark beside it.
+    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
+    doc.draw(toWinAnsi('PSYCHEAI'), MARGIN + 26, 56, { size: 9.5, bold: true, color: WHITE, tracking: 3 });
 
     const title = (card.name || 'Your') + '’s personality analysis';
     const titleStyle = { size: 27, bold: true, color: WHITE };

@@ -304,7 +304,10 @@ is not in the PDF, though its noun is.
 then *Who you are* (the essence noun, the headline findings strip, the summary), *Big Five*, *MBTI*,
 *Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *What
 your QR code contains*, *Your matches* when this device has any, and *How much to trust this*.
-Running head and page numbers on every page. The screen's cards become rules and whitespace, and its
+Running head and page numbers on every page — the head carries the brain mark
+rather than the word, stroked from the same path data `index.html` draws, which means converting the
+mark's elliptical arcs to béziers because PDF has no arc operator. Only the corner of the SVG path
+grammar the mark uses is implemented; a general SVG renderer is not the job. The screen's cards become rules and whitespace, and its
 emoji section glyphs are dropped, but nothing is added and nothing is left out.
 
 Alignment is structural rather than a promise, because the first version was not aligned: it renamed

@@ -64,6 +64,22 @@
     ['Where your attention goes', 'attention'],
   ];
 
+  // The brain mark, exactly as the nav and the printed letterhead draw it. The
+  // PDF strokes these same paths, so the logo is one shape in three places
+  // rather than a drawing that has to be kept in step with a picture. A UI check
+  // compares this against the `d` attributes in index.html.
+  const BRAND_MARK = {
+    viewBox: 24,
+    strokeWidth: 1.5,
+    paths: [
+      'M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z',
+      'M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z',
+      'M12 4.3v16.4',
+      'M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2',
+      'M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2',
+    ],
+  };
+
   // Compatibility bases, as the match history names them.
   const MODE_LABELS = {
     romantic: 'Romantic',
@@ -172,6 +188,6 @@
 
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, ACTIVITY_FACETS, MODE_LABELS,
-    TEXT, glanceItems,
+    BRAND_MARK, TEXT, glanceItems,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
