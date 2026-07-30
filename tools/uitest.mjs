@@ -98,8 +98,15 @@ try {
     (await page.locator('.upload-card input[type=text]').count()) === 0);
   check('the hero is down to a headline',
     (await page.locator('#view-welcome .hero .lede').count()) === 0);
-  check('step two is attributed to PsycheAI',
-    (await page.locator('.step-card h3').nth(1).innerText()) === 'PsycheAI reads it');
+  check('the four steps say what you get, not how it works',
+    (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
+    'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
+    (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
+  check('step three promises insight and states the privacy',
+    /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
+    /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
+  check('step four is about the relationship, not the scan',
+    /stronger relationships/.test(await page.locator('.step-card').nth(3).innerText()));
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
