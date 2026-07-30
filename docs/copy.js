@@ -97,6 +97,10 @@
     mbtiConfidence: 'Confidence: ',
     mbtiOver: 'over ',
 
+    // Reuses mbtiConfidence for its own "Confidence: " line — the same word,
+    // not a second one to keep in step.
+    enneagramPrefix: 'Enneagram: ',
+
     interests: 'Interests',
     interestsEmpty: 'Nothing stood out strongly.',
 

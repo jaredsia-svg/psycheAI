@@ -274,6 +274,23 @@ try {
     await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
+  // ---- Enneagram: a short second lens right after MBTI ----
+  check('Enneagram comes directly after MBTI, before Interests',
+    at('MBTI') >= 0 && at('Enneagram') === at('MBTI') + 1 && at('Enneagram') < at('Interests'),
+    order.join(' | '));
+  check('the Enneagram heading names the type, wing and nickname the mock set',
+    (await page.locator('#profile-body h2', { hasText: 'Enneagram' }).innerText()).trim() ===
+      'Enneagram: 9w1 The Peacemaker',
+    await page.locator('#profile-body h2', { hasText: 'Enneagram' }).innerText());
+  const enneagramCard = page.locator('#profile-body .section-card', { has: page.locator('h2', { hasText: 'Enneagram' }) });
+  check('it shows a confidence line the same way MBTI does',
+    /Confidence: moderate/.test(await enneagramCard.locator('.card-sub').innerText()));
+  check('it carries the model\'s reasoning and its caveat',
+    /core fear and desire/.test(await enneagramCard.innerText()) &&
+    /different lens from the MBTI/.test(await enneagramCard.innerText()));
+  check('it stays short: no per-axis breakdown the way MBTI has one',
+    (await enneagramCard.locator('.axis').count()) === 0);
+
   // ---- the character opener ----
   check('the profile opens on a character', await page.locator('.essence-noun').isVisible());
   check('the character is the one the model picked',
@@ -595,6 +612,10 @@ try {
     pdfText.includes('(Emotional sensitivity') && !/\(Neuroticism/.test(pdfText));
   check('the PDF labels the behaviour facets as the page does',
     pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(PUBLISHING VS READING)'));
+  check('the PDF carries the Enneagram type, wing and nickname the page shows',
+    pdfText.includes('(Enneagram: 9w1 The Peacemaker)'));
+  check('the PDF carries the Enneagram reasoning and its caveat',
+    /core fear and desire/.test(pdfText) && /different lens from the MBTI/.test(pdfText));
   // Trimmed from the behavioural read and moved off the profile page entirely
   // — the PDF mirrors the page, so neither belongs in the report any more.
   check('the PDF no longer carries the dropped attention facet',

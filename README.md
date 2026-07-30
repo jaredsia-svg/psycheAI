@@ -336,6 +336,15 @@ outright so the model does not smuggle one into the last axis. It also requires 
 which would survive being pasted into a stranger's profile be rewritten or cut, that one of the four
 sting slightly, and that a hedged letter beats a confident wrong one.
 
+Right after it, **Enneagram** — deliberately the shortest section in the report: one type (1-9),
+its wing when one is clear (written bare, so the client builds "9w1" rather than the model doing
+string formatting), its nickname, a confidence level, one paragraph naming the core fear and desire
+the type centres on, and a caveat. No per-facet breakdown the way MBTI has one — a second full typing
+system next to the first would be a wall, not a second look, so the schema stops it at one paragraph.
+The caveat is asked to do one specific job beyond the usual "this is popular, not validated" hedge:
+say plainly if the Enneagram read and the MBTI read seem to pull in different directions, rather than
+quietly smoothing the disagreement over.
+
 **Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
 in what mix, when they reach for the app, how their use changed month by month, and whether they
 publish more than they read. It used to run to six facets and a list of hedged behavioural
@@ -372,8 +381,8 @@ Zootopia".
 
 **A layout.** The report is the profile page, section for section, in the same order: a letterhead,
 then *Who you are* (the character, the headline findings strip, the summary), *Big Five*, *MBTI*,
-*Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *Your
-matches* when this device has any, and *How much to trust this*.
+*Enneagram*, *Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram
+behaviour*, *Your matches* when this device has any, and *How much to trust this*.
 Running head and page numbers on every page — the head carries the brain mark
 rather than the word, stroked from the same path data `index.html` draws, which means converting the
 mark's elliptical arcs to béziers because PDF has no arc operator. Only the corner of the SVG path

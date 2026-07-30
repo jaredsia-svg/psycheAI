@@ -215,6 +215,20 @@ check('each MBTI letter carries strength and a practical reading',
 check('a letter can be marked as a slight lean',
   mbtiProps.letters.items.properties.strength.enum.includes('slight'));
 
+const enneagramProps = prompts.PROFILE_SCHEMA.properties.enneagram.properties;
+check('Enneagram names a type, its wing and nickname',
+  ['type', 'wing', 'nickname', 'confidence', 'why', 'caveat'].every(k => k in enneagramProps));
+check('Enneagram type is one of the nine, or an honest Uncertain',
+  prompts.PROFILE_SCHEMA.properties.enneagram.properties.type.enum
+    .every(t => /^[1-9]$/.test(t) || t === 'Uncertain') &&
+  prompts.PROFILE_SCHEMA.properties.enneagram.properties.type.enum.length === 10);
+check('Enneagram stays short: no per-facet breakdown the way MBTI has one',
+  !('letters' in enneagramProps) && !('facets' in enneagramProps));
+check('Enneagram is asked to name the fear and desire the type centres on',
+  /core fear and desire/.test(enneagramProps.why.description));
+check('Enneagram caveat distinguishes it from MBTI rather than just hedging',
+  /different lens from MBTI/.test(enneagramProps.caveat.description));
+
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
   ['summary', 'posting', 'rhythm', 'trajectory', 'engagement', 'blindSpots']
@@ -273,6 +287,10 @@ for (const [label, needle] of [
   ['hedges the receiving side harder', /which is thinner evidence, so hedge it harder/],
   ['warns that touch is invisible in this data', /Physical touch is close to invisible in this data/],
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
+  ['asks Enneagram not to rephrase MBTI', /a short second lens beside MBTI, not a rephrasing of it/],
+  ['lets an Enneagram wing stay blank', /left blank rather than forced/],
+  ['flags disagreement between Enneagram and MBTI rather than hiding it',
+    /if the Enneagram read and the MBTI read seem to pull in different directions/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
   ['does not moralise about screen time', /not to moralise about screen time/],

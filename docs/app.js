@@ -489,6 +489,19 @@
 
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
 
+    // Enneagram: a short second lens right beside MBTI, not a wall of its own
+    // — one type, one wing, one paragraph, no per-facet breakdown.
+    const enneagram = report.enneagram;
+    if (enneagram) {
+      const badge = esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '');
+      html += '<div class="card section-card">' +
+        head('🔢', esc(TEXT.enneagramPrefix) + badge +
+          (enneagram.nickname ? ' <span class="type-nickname">' + esc(enneagram.nickname) + '</span>' : ''),
+          esc(TEXT.mbtiConfidence) + esc(enneagram.confidence)) +
+        '<p>' + esc(enneagram.why) + '</p>' +
+        '<p class="fineprint">' + esc(enneagram.caveat) + '</p></div>';
+    }
+
     // Interests.
     html += '<div class="card section-card">' + head('✨', esc(TEXT.interests));
     if ((report.interests || []).length) {

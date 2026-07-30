@@ -956,7 +956,17 @@
       out.fineprint(mbti.caveat);
     }
 
-    // 4. Interests.
+    // 4. Enneagram — a short second lens beside MBTI, not a wall of its own.
+    const enneagram = source.enneagram;
+    if (enneagram) {
+      const badge = (enneagram.type || '') + (enneagram.wing ? 'w' + enneagram.wing : '');
+      out.sectionTitle(TEXT.enneagramPrefix + badge + (enneagram.nickname ? '  ' + enneagram.nickname : ''),
+        TEXT.mbtiConfidence + (enneagram.confidence || ''));
+      if (enneagram.why) out.body(enneagram.why, { size: 10.2, leading: 15 });
+      out.fineprint(enneagram.caveat);
+    }
+
+    // 5. Interests.
     out.sectionTitle(TEXT.interests);
     const interests = source.interests || [];
     if (interests.length) {
@@ -965,7 +975,7 @@
       out.muted(TEXT.interestsEmpty);
     }
 
-    // 5. Values and beliefs, together, as the page groups them.
+    // 6. Values and beliefs, together, as the page groups them.
     out.sectionTitle(TEXT.valuesBeliefs, TEXT.valuesBeliefsSub);
     out.h3(TEXT.values);
     const values = source.values || [];
@@ -985,7 +995,7 @@
       out.muted(TEXT.beliefsEmpty);
     }
 
-    // 6. In relationships.
+    // 7. In relationships.
     const relationship = source.relationship;
     if (relationship) {
       out.sectionTitle(TEXT.relationships);
@@ -1033,7 +1043,7 @@
       }
     }
 
-    // 7. At work.
+    // 8. At work.
     const career = source.career;
     if (career) {
       out.sectionTitle(TEXT.work);
@@ -1049,7 +1059,7 @@
       if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
     }
 
-    // 8. Instagram behaviour. After the personality sections, because it is the
+    // 9. Instagram behaviour. After the personality sections, because it is the
     // evidence underneath them rather than another verdict.
     const activity = source.activity;
     if (activity) {
@@ -1062,14 +1072,14 @@
       out.fineprint(activity.blindSpots);
     }
 
-    // 9. Matches, when this device has any.
+    // 10. Matches, when this device has any.
     const history = (stamp.history || []).filter(entry => entry && entry.report);
     if (history.length) {
       out.sectionTitle(TEXT.matches);
       out.matchTable(history);
     }
 
-    // 10. Confidence closes the report, as it does on the page.
+    // 11. Confidence closes the report, as it does on the page.
     const confidence = source.confidence || {};
     out.sectionTitle(TEXT.trust, TEXT.trustSub);
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
