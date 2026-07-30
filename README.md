@@ -58,10 +58,29 @@ reusing the display canvas, because a saved file gets viewed at whatever size a 
 pixels per module JPEG artefacts are nowhere near a module edge — the suite takes the real download
 and decodes it at 1600, 600 and 400px.
 
-Stills get a **scale ladder** — 1600px, 1100px, native, 2200px, 800px, then a centre crop — because
-jsQR locates a code best when the modules are a few pixels across, and a 12-megapixel phone photo is
-far past that. The camera loop alternates a full frame with a zoomed middle, which is what catches a
-code held too far away. Both paths try inverted as well as normal.
+Stills are the hardest case, because what someone actually uploads is rarely the pristine file — it
+is a screenshot of a chat, recompressed, with the code a small off-centre part of a much bigger
+picture. So `decodeStill` works through, cheapest first:
+
+1. The whole image at 1600, 1100, 2400, 800, 600px and native size. jsQR locates a code best when
+   the modules are a few pixels across, so a 12-megapixel photo often fails at native and reads
+   instantly at 1600.
+2. Failing that, **nine overlapping tiles** — halves stepped by quarters — each blown up to 1200px.
+   This is what finds a code at 25% of a laptop screenshot. The overlap matters: a clean grid would
+   cut a code straddling a boundary in half, and a single centre crop misses anything off-centre.
+
+Every rendering is read twice, once as drawn and once through a global luminance threshold, which
+rescues JPEG-softened edges and grey screenshot backgrounds. Both paths try inverted as well as
+normal. The camera loop alternates a full frame with a zoomed middle, which catches a code held too
+far away.
+
+A blank draw is told apart from a missing code: iOS Safari silently returns an unrendered canvas once
+a page holds too much backing store, so a uniform result is reported as "this browser would not open
+an image that big" rather than "no code found". And a failure message carries the image dimensions
+and the number of renderings tried, because without those a bug report of this is unactionable.
+
+The suite puts real composites through the actual file input — a phone screenshot with the code at
+30%, a 2560×1440 laptop screenshot at 25%, a recompressed 800px copy — and asserts each reads.
 
 ### Choosing a provider and model
 
@@ -299,7 +318,7 @@ npm test           # 189 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 242 checks: drives the real UI in Chromium against a
+npm run test:ui    # 248 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

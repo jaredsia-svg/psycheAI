@@ -785,9 +785,10 @@ try {
     const source = await fetch('app.js').then(r => r.text());
     return /width: \{ ideal: 1920 \}/.test(source) && /getUserMedia\(\{ video: true \}\)/.test(source);
   }));
-  check('a still is decoded at more than one size', await page.evaluate(async () => {
+  check('a still is decoded at more than one size, then tiled', await page.evaluate(async () => {
     const source = await fetch('app.js').then(r => r.text());
-    return /\[1600, 1100, 2200, 800, longest\]/.test(source);
+    return /\[1600, 1100, 2400, 800, 600, longest\]/.test(source) &&
+      /Overlapping thirds/.test(source);
   }));
   // qrcode.js rounds the backing down to a whole number of module pixels, so
   // 900 comes back as 899 — the assertion is "roughly 3x the display size".
@@ -852,6 +853,83 @@ try {
   check('the exported code decodes at full size', exported.native, JSON.stringify(exported));
   check('the exported code still decodes viewed at 600px', exported.at600, JSON.stringify(exported));
   check('the exported code still decodes viewed at 400px', exported.at400, JSON.stringify(exported));
+
+  // ---- uploading a picture of a code ----
+  //
+  // The reported failure was a downloaded code sent to someone else and
+  // uploaded on their phone. What arrives is rarely the pristine file: it is a
+  // screenshot of a chat, recompressed, with the code a small off-centre part
+  // of a much larger image. Build those and put them through the real handler.
+  const composites = await page.evaluate(async () => {
+    const url = location.origin + location.pathname + '#p=' +
+      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    const code = await new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      window.QRCode.toCanvas(canvas, url, {
+        width: 1600, margin: 4, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' },
+      }, error => (error ? reject(error) : resolve(canvas)));
+    });
+    // label, width, height, code size as a fraction of the short edge, quality
+    const cases = [
+      ['a phone screenshot with the code at 30%', 1170, 2532, 0.30, 0.8],
+      ['a laptop screenshot with the code at 25%', 2560, 1440, 0.25, 0.8],
+      ['a recompressed 800px copy', 800, 800, 0.40, 0.6],
+    ];
+    return cases.map(([label, width, height, fraction, quality]) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const c = canvas.getContext('2d');
+      c.fillStyle = '#e9e9ee';
+      c.fillRect(0, 0, width, height);
+      c.fillStyle = '#333333';
+      c.fillRect(0, 0, width, Math.round(height * 0.08));
+      const size = Math.round(Math.min(width, height) * fraction);
+      // Off-centre on purpose: a single centre crop would miss it.
+      c.drawImage(code, Math.round(width * 0.15), Math.round(height * 0.2), size, size);
+      return { label, dataUrl: canvas.toDataURL('image/jpeg', quality) };
+    });
+  });
+
+  for (const composite of composites) {
+    const buffer = Buffer.from(composite.dataUrl.split(',')[1], 'base64');
+    await page.click('[data-nav="scan"]');
+    await page.waitForSelector('#view-scan:not([hidden])');
+    await page.setInputFiles('#qr-file', { name: 'code.jpg', mimeType: 'image/jpeg', buffer });
+    const outcome = await Promise.race([
+      page.waitForSelector('#mode-dialog[open]', { timeout: 30000 }).then(() => 'read'),
+      page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 })
+        .then(() => page.locator('#scan-alert').innerText()),
+    ]).catch(() => 'timed out');
+    check('an uploaded photo reads: ' + composite.label, outcome === 'read', String(outcome).slice(0, 90));
+    if (outcome === 'read') {
+      await page.click('#mode-cancel');
+      await page.waitForSelector('#mode-dialog', { state: 'hidden' });
+    }
+  }
+
+  // A failure has to be diagnosable, so the message carries the dimensions and
+  // how many renderings were tried.
+  await page.click('[data-nav="scan"]');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  const noise = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 600;
+    const c = canvas.getContext('2d');
+    c.fillStyle = '#cccccc';
+    c.fillRect(0, 0, 900, 600);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  });
+  await page.setInputFiles('#qr-file',
+    { name: 'nope.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(noise.split(',')[1], 'base64') });
+  await page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 });
+  const failureText = await page.locator('#scan-alert').innerText();
+  check('a failed read reports the image size', /900×600/.test(failureText), failureText.slice(0, 90));
+  check('a failed read reports how many attempts were made',
+    /\d+ attempts/.test(failureText), failureText.slice(0, 90));
+  check('a failed read points at the link box',
+    /paste their link/i.test(failureText), failureText.slice(0, 90));
 
   // ---- deep link ----
   // A pasted link is the third way into the comparison, and it has to ask

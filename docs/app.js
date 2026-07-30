@@ -746,53 +746,121 @@
 
   const scratch = document.createElement('canvas');
 
-  /** One decode attempt over a source drawn at a given size, optionally cropped. */
-  function decodeAt(source, width, height, crop) {
+  /** Draws a source into the scratch canvas and hands back its pixels. */
+  function rasterise(source, width, height, crop) {
     if (!width || !height) return null;
     scratch.width = width;
     scratch.height = height;
     const context = scratch.getContext('2d', { willReadFrequently: true });
     if (crop) context.drawImage(source, crop.x, crop.y, crop.w, crop.h, 0, 0, width, height);
     else context.drawImage(source, 0, 0, width, height);
-    const pixels = context.getImageData(0, 0, width, height);
-    // attemptBoth costs a second pass but catches a code photographed off an
-    // inverted display or a printed negative.
-    const found = window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
-    return found && found.data ? found.data : null;
+    return context.getImageData(0, 0, width, height);
+  }
+
+  // iOS Safari caps how much canvas backing store a page may hold and, past
+  // that, silently hands back a blank one instead of failing. A uniform result
+  // means the draw did not happen — worth telling apart from "no code here".
+  function looksBlank(pixels) {
+    const data = pixels.data;
+    const step = Math.max(4, Math.floor(data.length / 4 / 300) * 4);
+    const first = data[0];
+    for (let i = 0; i < data.length; i += step) {
+      if (data[i] !== first) return false;
+    }
+    return true;
+  }
+
+  // jsQR does its own binarisation, but a global threshold rescues images it
+  // gives up on: JPEG-softened edges, a grey screenshot background, a photo
+  // taken under warm light.
+  function threshold(pixels) {
+    const data = pixels.data;
+    let total = 0;
+    let count = 0;
+    const step = Math.max(4, Math.floor(data.length / 4 / 5000) * 4);
+    for (let i = 0; i < data.length; i += step) {
+      total += (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
+      count++;
+    }
+    const cut = count ? total / count : 128;
+    const copy = new Uint8ClampedArray(data);
+    for (let i = 0; i < copy.length; i += 4) {
+      const value = (copy[i] * 3 + copy[i + 1] * 6 + copy[i + 2]) / 10 > cut ? 255 : 0;
+      copy[i] = copy[i + 1] = copy[i + 2] = value;
+      copy[i + 3] = 255;
+    }
+    return { data: copy, width: pixels.width, height: pixels.height };
+  }
+
+  function readPixels(pixels) {
+    for (const candidate of [pixels, threshold(pixels)]) {
+      const found = window.jsQR(candidate.data, candidate.width, candidate.height,
+        { inversionAttempts: 'attemptBoth' });
+      if (found && found.data) return found.data;
+    }
+    return null;
+  }
+
+  /** One decode attempt: draw at a size, then read it two ways. */
+  function decodeAt(source, width, height, crop) {
+    const pixels = rasterise(source, width, height, crop);
+    if (!pixels) return null;
+    if (looksBlank(pixels)) { decodeStill.blankDraws++; return null; }
+    return readPixels(pixels);
   }
 
   /**
-   * Reads a still image at several sizes. jsQR locates a code best when the
-   * modules are a few pixels across: a 12-megapixel phone photo is far past
-   * that and often fails outright, while the same photo at 1600px reads first
-   * time. A centre crop is the last resort, for a code that is small in a wide
-   * frame.
+   * Reads a still image every way worth trying, cheapest first.
+   *
+   * Whole-image renderings at a few sizes catch the ordinary case — jsQR
+   * locates a code best when the modules are a few pixels across, so a
+   * 12-megapixel photo often fails at native size and reads instantly at
+   * 1600px. If none of those land, the code is probably a small part of a
+   * bigger picture: a screenshot of a chat, a photo of a laptop screen across
+   * the room. So the image is then walked as a grid of overlapping tiles, each
+   * rendered large, which is the same thing as zooming in on each region.
    */
-  function decodeStill(source, naturalWidth, naturalHeight) {
+  function decodeStill(source, naturalWidth, naturalHeight, onProgress) {
+    const report = onProgress || function () {};
     const longest = Math.max(naturalWidth, naturalHeight);
-    const tried = new Set();
+    decodeStill.attempts = 0;
+    decodeStill.blankDraws = 0;
 
-    for (const target of [1600, 1100, 2200, 800, longest]) {
+    const attempt = (width, height, crop) => {
+      decodeStill.attempts++;
+      report(decodeStill.attempts);
+      return decodeAt(source, width, height, crop);
+    };
+
+    const tried = new Set();
+    for (const target of [1600, 1100, 2400, 800, 600, longest]) {
       const scale = Math.min(1, target / longest);
       const width = Math.max(1, Math.round(naturalWidth * scale));
       const height = Math.max(1, Math.round(naturalHeight * scale));
       const key = width + 'x' + height;
       if (tried.has(key)) continue;
       tried.add(key);
-      const found = decodeAt(source, width, height);
+      const found = attempt(width, height);
       if (found) return found;
     }
 
-    // Middle 60%, rendered at up to 1600px — effectively a zoom.
-    const cropW = Math.round(naturalWidth * 0.6);
-    const cropH = Math.round(naturalHeight * 0.6);
-    const cropScale = Math.min(1, 1600 / Math.max(cropW, cropH));
-    return decodeAt(source, Math.round(cropW * cropScale), Math.round(cropH * cropScale), {
-      x: Math.round((naturalWidth - cropW) / 2),
-      y: Math.round((naturalHeight - cropH) / 2),
-      w: cropW,
-      h: cropH,
-    });
+    // Overlapping thirds, each blown up to 1200px. Overlap matters: a code
+    // straddling a tile boundary would be cut in half by a clean grid.
+    const tileW = Math.round(naturalWidth / 2);
+    const tileH = Math.round(naturalHeight / 2);
+    const stepX = Math.round(naturalWidth / 4);
+    const stepY = Math.round(naturalHeight / 4);
+    for (let row = 0; row <= 2; row++) {
+      for (let column = 0; column <= 2; column++) {
+        const x = Math.min(column * stepX, Math.max(0, naturalWidth - tileW));
+        const y = Math.min(row * stepY, Math.max(0, naturalHeight - tileH));
+        const scale = Math.min(2, 1200 / Math.max(tileW, tileH));
+        const found = attempt(Math.round(tileW * scale), Math.round(tileH * scale),
+          { x, y, w: tileW, h: tileH });
+        if (found) return found;
+      }
+    }
+    return null;
   }
 
   function renderScan() {
@@ -902,18 +970,39 @@
         .catch(() => createImageBitmap(file));
     } catch (error) {
       $('#scan-status').textContent = '';
-      flash('#scan-alert', 'Could not open that image. A PNG or JPEG photo of the code works best.');
+      const heic = /\.(heic|heif)$/i.test(file.name) || /hei[cf]/i.test(file.type);
+      flash('#scan-alert', heic
+        ? 'That is an Apple HEIC image, which this browser cannot open. Share it as a JPEG, take a ' +
+          'screenshot of it, or paste their link below.'
+        : 'Could not open that image (' + (file.type || 'unknown type') + '). A JPEG or PNG works ' +
+          'best — or paste their link below.');
       return;
     }
 
-    const found = decodeStill(source, source.width, source.height);
-    source.close();
-    $('#scan-status').textContent = '';
+    const dimensions = source.width + '×' + source.height;
+    // The tiling pass can take a second or two on a big photo, so say so.
+    let found = null;
+    try {
+      found = decodeStill(source, source.width, source.height, attempts => {
+        $('#scan-status').textContent = 'Reading that image… (' + attempts + ')';
+      });
+    } finally {
+      source.close();
+      $('#scan-status').textContent = '';
+    }
 
     if (!found) {
-      flash('#scan-alert', 'No QR code found in that image. Crop it so the code fills most of the ' +
-        'picture, make sure the whole code including its white border is in shot, and avoid glare — ' +
-        'or just paste their link below.');
+      // The counts are here on purpose: they are the only thing that makes a
+      // report of this actionable, and blank draws mean the browser refused to
+      // rasterise rather than the code being absent.
+      const detail = dimensions + ', ' + decodeStill.attempts + ' attempts' +
+        (decodeStill.blankDraws ? ', ' + decodeStill.blankDraws + ' blank' : '');
+      flash('#scan-alert', decodeStill.blankDraws >= decodeStill.attempts
+        ? 'This browser would not open an image that big (' + detail + '). Try a smaller copy, or ' +
+          'paste their link below.'
+        : 'No QR code found in that image (' + detail + '). The surest fix is to paste their link ' +
+          'instead — the box below takes it. If you would rather use the picture, crop it so the ' +
+          'code fills most of the frame and include the white border around it.');
       return;
     }
     if (!(await runMatch(found))) {
