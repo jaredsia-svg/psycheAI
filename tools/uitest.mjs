@@ -159,19 +159,19 @@ try {
   }));
 
   check('the share panel no longer explains the storage model',
-    !/There is no account and no database/.test(await page.locator('.qr-actions').innerText()));
+    !/There is no account and no database/.test(await page.locator('#view-profile .qr-actions').innerText()));
   check('the share heading sits above the QR code, not beside it', await page.evaluate(() => {
-    const title = document.querySelector('.qr-title');
+    const title = document.querySelector('#view-profile .qr-title');
     const code = document.querySelector('#qr-canvas');
     return title.getBoundingClientRect().bottom <= code.getBoundingClientRect().top;
   }));
   check('the caption under the QR code is gone',
     (await page.locator('.qr-caption').count()) === 0);
   check('the share panel is framed as testing compatibility',
-    (await page.locator('.qr-title').innerText()) === 'Test your compatibility',
-    await page.locator('.qr-title').innerText());
+    (await page.locator('#view-profile .qr-title').innerText()) === 'Test your compatibility',
+    await page.locator('#view-profile .qr-title').innerText());
   check('it says what scanning is for',
-    /how compatible you both are/.test(await page.locator('.qr-actions').innerText()));
+    /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
 
   check('the profile and scan links appear once there is a profile',
     (await visibleNav()).join('|') === 'My profile|Scan a code|How it works',
@@ -1251,6 +1251,129 @@ try {
   check('the exported code still decodes viewed at 600px', exported.at600, JSON.stringify(exported));
   check('the exported code still decodes viewed at 400px', exported.at400, JSON.stringify(exported));
 
+  // ---- the label under the downloaded code ----
+  //
+  // A file that gets saved or forwarded loses all context, so a caption travels
+  // with it: the brand mark, "PsycheAI", and the person's name, on a strip
+  // appended below the code. It is a rasterised JPEG, so the checks are pixel
+  // measurements against the file that was actually saved, not against markup.
+  const label = await page.evaluate(async bytes => {
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0);
+
+    // The QR itself is square, so the label strip is whatever height beyond
+    // that square was added.
+    const stripHeight = bitmap.height - bitmap.width;
+    const isDarkish = (x, y) => {
+      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+      return (r + g + b) / 3 < 235;
+    };
+    const rowHasInk = y => {
+      for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, y)) return true;
+      return false;
+    };
+    // A margin near each long edge of the strip that ought to stay blank,
+    // proving the shrink-to-fit logic kept the name off the border.
+    const marginHasInk = y => {
+      for (let x = 0; x < 30; x++) if (isDarkish(x, y)) return true;
+      for (let x = bitmap.width - 30; x < bitmap.width; x++) if (isDarkish(x, y)) return true;
+      return false;
+    };
+
+    const dividerY = Math.round(bitmap.width + stripHeight * 0.11);
+    const wordmarkY = Math.round(bitmap.width + stripHeight * 0.40);
+    const nameY = Math.round(bitmap.width + stripHeight * 0.79);
+
+    return {
+      width: bitmap.width, height: bitmap.height, stripHeight,
+      dividerHasInk: rowHasInk(dividerY),
+      wordmarkRowHasInk: rowHasInk(wordmarkY),
+      nameRowHasInk: rowHasInk(nameY),
+      nameRowMarginClear: !marginHasInk(nameY),
+      qrRowStillBlackAndWhite: (() => {
+        // Sanity check the sampling itself: a row inside the QR should be a mix
+        // of black and white, not the near-white a broken measurement would see.
+        const y = Math.round(bitmap.width * 0.5);
+        let dark = 0;
+        for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, y)) dark++;
+        return dark > 20;
+      })(),
+    };
+  }, Array.from(saved));
+
+  check('a label strip is appended below the QR, not drawn over it',
+    label.stripHeight > 150 && label.stripHeight < 350, JSON.stringify(label));
+  check('sampling the QR itself finds real modules, so the method is sound',
+    label.qrRowStillBlackAndWhite, JSON.stringify(label));
+  check('there is a divider between the code and the label',
+    label.dividerHasInk, JSON.stringify(label));
+  check('the brand mark and wordmark are drawn in the label',
+    label.wordmarkRowHasInk, JSON.stringify(label));
+  check('the person\'s name is drawn in the label',
+    label.nameRowHasInk, JSON.stringify(label));
+  check('the name stays clear of the strip\'s edges',
+    label.nameRowMarginClear, JSON.stringify(label));
+
+  // Card.shape caps a name at 24 characters, but downloadMyQr reads
+  // profile.card.name as stored, uncapped — a profile saved under an older
+  // schema, or edited by hand, could carry something longer. At the label's
+  // starting size a name this long measures past 1900px against a 1440px
+  // budget, so this is a real overflow, not a token one: confirms the label
+  // shrinks to fit rather than running off the strip. The mutation is undone
+  // afterward and the page reloaded again, so nothing later in the suite
+  // inherits this fake name.
+  const originalProfileJson = await page.evaluate(() => localStorage.getItem('psycheai_profile'));
+  await page.evaluate(() => {
+    const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
+    stored.card.name = 'Maximilian Alexander Wentworth-Blackwood the Third of Somewhere';
+    localStorage.setItem('psycheai_profile', JSON.stringify(stored));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  const [longDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    page.click('#download-qr'),
+  ]);
+  const longPath = join(shotDir, 'downloaded-code-long-name.jpg');
+  await longDownload.saveAs(longPath);
+  const longNameLabel = await page.evaluate(async raw => {
+    const blob = new Blob([new Uint8Array(raw)], { type: 'image/jpeg' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0);
+    const stripHeight = bitmap.height - bitmap.width;
+    const isDarkish = (x, y) => {
+      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
+      return (r + g + b) / 3 < 235;
+    };
+    const marginHasInk = y => {
+      for (let x = 0; x < 20; x++) if (isDarkish(x, y)) return true;
+      for (let x = bitmap.width - 20; x < bitmap.width; x++) if (isDarkish(x, y)) return true;
+      return false;
+    };
+    const nameY = Math.round(bitmap.width + stripHeight * 0.79);
+    let dark = 0;
+    for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, nameY)) dark++;
+    return { hasInk: dark > 5, marginClear: !marginHasInk(nameY) };
+  }, Array.from(readFileSync(longPath)));
+
+  check('a name at the length cap still draws inside the strip',
+    longNameLabel.hasInk, JSON.stringify(longNameLabel));
+  check('a name at the length cap still shrinks clear of the edges',
+    longNameLabel.marginClear, JSON.stringify(longNameLabel));
+
+  await page.evaluate(json => localStorage.setItem('psycheai_profile', json), originalProfileJson);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+
   // The round trip that was actually broken: download the code, then upload
   // that exact file back through the real handler. Decoding the bytes in the
   // page was not enough — it skipped the handler, where the bug lived.
@@ -1268,6 +1391,93 @@ try {
     await page.click('#mode-cancel');
     await page.waitForSelector('#mode-dialog', { state: 'hidden' });
   }
+
+  // ---- this person's own code, from the scan page ----
+  //
+  // Someone who came here to scan someone else's code is the person most
+  // likely to be asked "what's yours?" in the same conversation, so the scan
+  // page carries a second copy of the code and its two actions — the same
+  // panel the profile page uses, reused rather than rebuilt.
+  check('the scan page has its own QR panel', await page.locator('#view-scan .qr-panel').count() === 1);
+  check('it is titled for what it is',
+    (await page.locator('#view-scan .qr-title').innerText()) === 'My QR code',
+    await page.locator('#view-scan .qr-title').innerText());
+  check('the code sits on the left of its two buttons', await page.evaluate(() => {
+    const code = document.querySelector('#qr-canvas-scan').getBoundingClientRect();
+    const actions = document.querySelector('#view-scan .qr-actions').getBoundingClientRect();
+    return code.right <= actions.left;
+  }));
+  // Being left of the buttons is necessary but not sufficient: a canvas sized
+  // by its 900px backing store rather than the page's display rule still sits
+  // "on the left", just enormous, and pushes the whole card wider than the
+  // viewport. The backing/display split is the same one #qr-canvas already
+  // relies on — this is that same CSS rule reaching the second canvas.
+  check('the scan page\'s code is displayed at the same size as the profile page\'s',
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#qr-canvas-scan')).width ===
+      getComputedStyle(document.querySelector('#qr-canvas')).width),
+    await page.evaluate(() => ({
+      scan: getComputedStyle(document.querySelector('#qr-canvas-scan')).width,
+      profile: getComputedStyle(document.querySelector('#qr-canvas')).width,
+    })).then(JSON.stringify));
+  check('the scan page\'s panel does not overflow the viewport',
+    await page.evaluate(() =>
+      document.querySelector('#view-scan .qr-panel').getBoundingClientRect().right <= window.innerWidth + 1));
+
+  const scanQrMatches = await page.evaluate(async () => {
+    const canvas = document.querySelector('#qr-canvas-scan');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const px = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+    const url = location.origin + location.pathname + '#p=' +
+      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    return Boolean(hit) && hit.data === url;
+  });
+  check('the scan page draws this person\'s actual code, not a placeholder',
+    scanQrMatches);
+
+  // Copying, from the scan page's own button.
+  await page.evaluate(() => {
+    window.__copied = null;
+    navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
+  });
+  await page.click('#copy-link-scan');
+  const copiedFromScan = await page.evaluate(() => window.__copied);
+  const expectedLink = await page.evaluate(() =>
+    location.origin + location.pathname + '#p=' +
+    JSON.parse(localStorage.getItem('psycheai_profile')).payload);
+  check('"Copy my link" on the scan page copies this person\'s actual link',
+    copiedFromScan === expectedLink, JSON.stringify({ copiedFromScan, expectedLink }));
+  check('the button confirms the copy', (await page.locator('#copy-link-scan').innerText()) === 'Copied ✓',
+    await page.locator('#copy-link-scan').innerText());
+
+  // Downloading, from the scan page's own button — the same labelled export,
+  // reached a second way.
+  const [scanDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    page.click('#download-qr-scan'),
+  ]);
+  check('the scan page\'s download button offers the same kind of file',
+    scanDownload.suggestedFilename().endsWith('.jpg'), scanDownload.suggestedFilename());
+  const scanSavedTo = join(shotDir, 'downloaded-code-from-scan.jpg');
+  await scanDownload.saveAs(scanSavedTo);
+  const scanSaved = readFileSync(scanSavedTo);
+  const scanExportReads = await page.evaluate(async bytes => {
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0);
+    const px = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+    const url = location.origin + location.pathname + '#p=' +
+      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    return { taller: bitmap.height > bitmap.width, reads: Boolean(hit) && hit.data === url };
+  }, Array.from(scanSaved));
+  check('the file downloaded from the scan page is labelled and reads back',
+    scanExportReads.taller && scanExportReads.reads, JSON.stringify(scanExportReads));
 
   // The blank-draw heuristic may only label a failure, never skip a decode: a
   // false positive there is exactly what broke the round trip above.

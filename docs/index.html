@@ -200,6 +200,20 @@
     <button class="btn" id="paste-go">Get our report</button>
   </div>
   <div id="scan-history"></div>
+
+  <div class="qr-panel card">
+    <h2 class="qr-title">My QR code</h2>
+    <div class="qr-holder">
+      <canvas id="qr-canvas-scan" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
+    </div>
+    <div class="qr-actions">
+      <p class="muted">This is yours — share the link or the code so someone can scan you back.</p>
+      <div class="btn-row">
+        <button class="btn" id="copy-link-scan">Copy my link</button>
+        <button class="btn btn-ghost" id="download-qr-scan">Download QR Code</button>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ══════════════ report ══════════════ -->

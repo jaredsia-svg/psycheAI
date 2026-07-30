@@ -307,7 +307,9 @@ textarea { resize: vertical; }
    modules than a short URL — it needs the size to stay scannable. */
 /* Backed at 900px and displayed at this size, so module edges stay crisp on a
    high-DPI screen — the code has to survive being photographed off a phone. */
-#qr-canvas { width: 300px; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; background: #fff; }
+/* Any canvas in a QR panel, not just the profile page's — the scan page shows
+   this person's own code too, in a second .qr-holder. */
+.qr-holder canvas { width: 300px; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; background: #fff; }
 .facts { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .3rem .9rem; margin: 0; }
 .facts dt { color: var(--ink-soft); font-size: .88rem; }
 .facts dd { margin: 0; }

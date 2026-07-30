@@ -368,6 +368,26 @@
     return options;
   }
 
+  // Both the profile page and the scan page show this person's own QR code, so
+  // painting it is one function rather than two copies of the same try/catch.
+  // The card is ~630 characters, so this lands around 87 modules across.
+  // Backing the canvas at 3x its display size keeps module edges crisp on a
+  // high-DPI phone, which is the difference between a camera resolving them
+  // and seeing grey mush. A wider quiet zone helps the locator too.
+  function paintQrCanvas(selector) {
+    const profile = state.profile;
+    const canvas = $(selector);
+    if (!profile || !canvas) return;
+    try {
+      const url = profileUrl(profile.payload);
+      window.QRCode.toCanvas(canvas, url, qrOptions(url, 900, 3));
+      // qrcode.js writes its width as an inline style; drop it so the
+      // stylesheet decides the display size, print rules included.
+      canvas.style.removeProperty('width');
+      canvas.style.removeProperty('height');
+    } catch (error) { /* canvas unavailable — the link still works */ }
+  }
+
   function renderProfile() {
     const profile = state.profile;
     if (!profile) return;
@@ -384,18 +404,7 @@
         { year: 'numeric', month: 'long', day: 'numeric' }) +
       ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
 
-    // The card is ~630 characters, so this lands around 87 modules across.
-    // Backing the canvas at 3x its display size keeps module edges crisp on a
-    // high-DPI phone, which is the difference between a camera resolving them
-    // and seeing grey mush. A wider quiet zone helps the locator too.
-    try {
-      const canvas = $('#qr-canvas');
-      window.QRCode.toCanvas(canvas, profileUrl(profile.payload), qrOptions(profileUrl(profile.payload), 900, 3));
-      // qrcode.js writes its width as an inline style; drop it so the
-      // stylesheet decides the display size, print rules included.
-      canvas.style.removeProperty('width');
-      canvas.style.removeProperty('height');
-    } catch (error) { /* canvas unavailable — the link still works */ }
+    paintQrCanvas('#qr-canvas');
 
     const size = profile.payload.length;
     $('#payload-size').textContent = 'Shareable card: ' + size + ' characters' +
@@ -586,13 +595,17 @@
     if (entry) { renderReport(entry.report, entry.withName); show('report'); }
   });
 
-  $('#copy-link').addEventListener('click', () => {
+  // The profile page and the scan page both offer this person's own link, so
+  // one handler serves both buttons.
+  function copyMyLink(button) {
     const url = profileUrl(state.profile.payload);
-    const button = $('#copy-link');
-    const done = () => { button.textContent = 'Copied ✓'; setTimeout(() => { button.textContent = 'Copy my link'; }, 2000); };
+    const label = button.textContent;
+    const done = () => { button.textContent = 'Copied ✓'; setTimeout(() => { button.textContent = label; }, 2000); };
     if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => window.prompt('Copy this link:', url));
     else window.prompt('Copy this link:', url);
-  });
+  }
+  $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link')));
+  $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan')));
 
   // A file someone else will scan needs more room than the on-screen code: it
   // gets viewed at whatever size a photo app picks, and if that is 300px wide
@@ -609,11 +622,90 @@
     });
   }
 
-  $('#download-qr').addEventListener('click', async () => {
-    const button = $('#download-qr');
-    const name = 'psycheai-' + (state.profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-');
+  // The mark, stroked from the same SVG path data the nav and the PDF use —
+  // Path2D parses the arcs itself, so unlike the PDF writer this needs no
+  // bezier conversion of its own.
+  function drawBrandMark(context, left, top, size) {
+    const mark = Copy.BRAND_MARK;
+    context.save();
+    context.translate(left, top);
+    context.scale(size / mark.viewBox, size / mark.viewBox);
+    // In the scaled space a stroke of `strokeWidth` units comes out at
+    // strokeWidth * (size / viewBox) pixels — exactly the SVG's own ratio.
+    context.lineWidth = mark.strokeWidth;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.strokeStyle = '#7b3fa0';
+    for (const d of mark.paths) context.stroke(new Path2D(d));
+    context.restore();
+  }
+
+  const LABEL_FONT_STACK = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+  // Room for the mark, the wordmark and the name below the code. Appended
+  // below the code rather than drawn over any part of it, so the module grid
+  // the decoder depends on is untouched by any of this.
+  const LABEL_HEIGHT = 240;
+
+  /** The exported QR, with a caption strip added underneath: the brand and
+   * the person's name, so a file someone saved or forwarded still says whose
+   * it is once it is a few shares removed from this page. */
+  function renderLabelledExport(url, name) {
+    return renderExportCanvas(url).then(qr => {
+      const canvas = document.createElement('canvas');
+      canvas.width = qr.width;
+      canvas.height = qr.height + LABEL_HEIGHT;
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(qr, 0, 0);
+
+      context.strokeStyle = '#e7dfec';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(120, qr.height + 26);
+      context.lineTo(canvas.width - 120, qr.height + 26);
+      context.stroke();
+
+      const markSize = 50;
+      const wordmark = 'PSYCHEAI';
+      context.textBaseline = 'middle';
+      context.font = '700 28px ' + LABEL_FONT_STACK;
+      const wordWidth = context.measureText(wordmark).width;
+      const gap = 14;
+      const rowY = qr.height + 96;
+      const rowLeft = (canvas.width - (markSize + gap + wordWidth)) / 2;
+      drawBrandMark(context, rowLeft, rowY - markSize / 2, markSize);
+      context.fillStyle = '#7b3fa0';
+      context.textAlign = 'left';
+      context.fillText(wordmark, rowLeft + markSize + gap, rowY);
+
+      // A long name shrinks to fit rather than running off the strip — the
+      // card caps a name at 24 characters, but this also protects against
+      // whatever the model actually returned.
+      const maxNameWidth = canvas.width - 160;
+      let nameSize = 58;
+      context.textAlign = 'center';
+      while (nameSize > 30) {
+        context.font = '700 ' + nameSize + 'px ' + LABEL_FONT_STACK;
+        if (context.measureText(name).width <= maxNameWidth) break;
+        nameSize -= 2;
+      }
+      context.fillStyle = '#241a2e';
+      context.fillText(name, canvas.width / 2, qr.height + 190);
+
+      return canvas;
+    });
+  }
+
+  // The profile page and the scan page both offer this person's own download,
+  // so one handler serves both buttons.
+  async function downloadMyQr(button) {
+    const label = button.textContent;
+    const profile = state.profile;
+    const displayName = profile.card.name || 'PsycheAI user';
+    const fileName = 'psycheai-' + (profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-');
     try {
-      const canvas = await renderExportCanvas(profileUrl(state.profile.payload));
+      const canvas = await renderLabelledExport(profileUrl(profile.payload), displayName);
       // 0.95 is well clear of the point where JPEG ringing touches a module —
       // at 1600px each one is about 17 pixels across.
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
@@ -624,7 +716,7 @@
       // honour "download" on a large data: URL.
       const href = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = name + '.jpg';
+      link.download = fileName + '.jpg';
       link.href = href;
       document.body.appendChild(link);
       link.click();
@@ -632,9 +724,11 @@
       setTimeout(() => URL.revokeObjectURL(href), 10000);
     } catch (error) {
       button.textContent = 'Could not save — use the link';
-      setTimeout(() => { button.textContent = 'Download QR Code'; }, 3000);
+      setTimeout(() => { button.textContent = label; }, 3000);
     }
-  });
+  }
+  $('#download-qr').addEventListener('click', () => downloadMyQr($('#download-qr')));
+  $('#download-qr-scan').addEventListener('click', () => downloadMyQr($('#download-qr-scan')));
 
   // The report is typeset into a PDF here rather than handed to the browser's
   // print dialog. Print-to-PDF gave the user no say over page size, margins or
@@ -867,6 +961,7 @@
     const history = store.read(KEYS.history, []);
     $('#scan-history').innerHTML = history.length
       ? '<div class="card"><h2>Previous reports</h2>' + historyTable(history) + '</div>' : '';
+    paintQrCanvas('#qr-canvas-scan');
   }
 
   function stopCamera() {

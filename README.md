@@ -58,6 +58,26 @@ reusing the display canvas, because a saved file gets viewed at whatever size a 
 pixels per module JPEG artefacts are nowhere near a module edge — the suite takes the real download
 and decodes it at 1600, 600 and 400px.
 
+The download carries a label, because a saved or forwarded file loses all context otherwise: a
+strip is appended *below* the code — never over it, so the module grid is untouched — with the
+brand mark, "PSYCHEAI", and the person's name. The mark is stroked from the same SVG path data the
+nav and the PDF use, via `Path2D`, which parses the mark's arcs itself; unlike the PDF writer this
+needs no bezier conversion of its own. A name shrinks to fit rather than running off the strip —
+`Card.shape` caps a name at 24 characters, but the download reads `profile.card.name` as stored,
+uncapped, so a profile saved under an older schema could carry something longer. The suite forces a
+name that measures past 1900px against the strip's 1440px budget and checks the rendered pixels
+clear the margin, having first confirmed a version without the shrink logic does not.
+
+The profile page and the scan page both show this person's own code and offer the same two actions,
+so painting the canvas, copying the link and building the download are each one function bound to
+two buttons rather than duplicated. The CSS constraining the canvas's *display* size (independent of
+its backing store, which is what keeps it sharp) is written against `.qr-holder canvas` for the same
+reason — scoped to the single `#qr-canvas` ID, the scan page's copy rendered at its full 900px
+backing size and broke the layout. That regression shipped once during development with the checks
+in place, because the first version only asserted the code sat left of its buttons, which held even
+while the canvas was three times too large; the fix added a check that the two canvases compute to
+the same display width.
+
 Stills are the hardest case, because what someone actually uploads is rarely the pristine file — it
 is a screenshot of a chat, recompressed, with the code a small off-centre part of a much bigger
 picture. So `decodeStill` works through, cheapest first:
