@@ -490,36 +490,71 @@
     return this;
   };
 
-  /** The headline findings strip under the essence, ruled top and bottom. */
+  /**
+   * The headline findings strip under the essence, ruled top and bottom.
+   *
+   * The row height is measured, not assumed. "Openness to experience" and
+   * "Leans Anxious-Preoccupied" both wrap to two lines in a quarter-width
+   * column, and a fixed height pushed their notes through the bottom rule.
+   */
   Report.prototype.glance = function (items) {
     if (!items.length) return this;
     const columns = Math.min(items.length, 4);
+    const gutter = 12;
     const cellWidth = COLUMN / columns;
-    const rows = Math.ceil(items.length / columns);
-    const rowHeight = 40;
-    this.need(rows * rowHeight + 18);
+    const textWidth = cellWidth - gutter;
+    const valueStyle = { size: 10.4, bold: true, color: INK };
+    const valueLeading = 12.4;
+
+    // Wrap every cell first, so the tallest one sets the height of the row.
+    // Notes wrap too: the note under "Type" is the MBTI nickname, and a long
+    // one ran straight across the neighbouring column.
+    const noteStyle = { size: 8.4, color: SOFT };
+    const noteLeading = 11;
+    const cells = items.map(item => ({
+      label: toWinAnsi(String(item.label).toUpperCase()),
+      lines: wrap(toWinAnsi(item.value), textWidth, valueStyle),
+      notes: item.note ? wrap(toWinAnsi(item.note), textWidth, noteStyle).slice(0, 2) : [],
+    }));
+    const rowCount = Math.ceil(cells.length / columns);
+    const rowHeights = [];
+    const rowValueLines = [];
+    for (let row = 0; row < rowCount; row++) {
+      const inRow = cells.slice(row * columns, row * columns + columns);
+      const tallest = Math.max(...inRow.map(cell => cell.lines.length));
+      const notes = Math.max(0, ...inRow.map(cell => cell.notes.length));
+      rowValueLines.push(tallest);
+      rowHeights.push(20 + tallest * valueLeading + (notes ? notes * noteLeading + 2 : 0) + 8);
+    }
+    const total = rowHeights.reduce((sum, height) => sum + height, 0);
+
+    this.need(total + 20);
     this.space(4);
     this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
     this.doc.y += 9;
     const top = this.doc.y;
-    items.forEach((item, index) => {
+
+    cells.forEach((cell, index) => {
       const column = index % columns;
       const row = Math.floor(index / columns);
       const x = MARGIN + column * cellWidth;
-      const y = top + row * rowHeight;
-      this.doc.draw(toWinAnsi(String(item.label).toUpperCase()), x, y + 7,
-        { size: 7.2, bold: true, color: SOFT, tracking: 1 });
-      const valueStyle = { size: 10.4, bold: true, color: INK };
-      let cursor = y + 21;
-      for (const line of wrap(toWinAnsi(item.value), cellWidth - 8, valueStyle).slice(0, 2)) {
+      const y = top + rowHeights.slice(0, row).reduce((sum, height) => sum + height, 0);
+      this.doc.draw(cell.label, x, y + 7, { size: 7.2, bold: true, color: SOFT, tracking: 1 });
+      let cursor = y + 20;
+      for (const line of cell.lines) {
         this.doc.draw(line, x, cursor, valueStyle);
-        cursor += 12;
+        cursor += valueLeading;
       }
-      if (item.note) {
-        this.doc.draw(toWinAnsi(item.note), x, cursor + 1, { size: 8.4, color: SOFT });
+      // Notes start on a shared baseline per row, so they line up across
+      // columns even when one value wrapped and its neighbour did not.
+      let noteCursor = y + 20 + rowValueLines[row] * valueLeading;
+      for (const line of cell.notes) {
+        this.doc.draw(line, x, noteCursor, noteStyle);
+        noteCursor += noteLeading;
       }
     });
-    this.doc.y = top + rows * rowHeight;
+
+    this.doc.y = top + total;
     this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
     this.space(12);
     return this;

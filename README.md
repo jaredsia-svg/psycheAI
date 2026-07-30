@@ -318,7 +318,14 @@ the live page and requires the PDF to carry all of them, worded identically and 
 
 Streams are written uncompressed. It costs about 30KB on a seven-page report and makes the output
 greppable, which is how the suite checks that a section is really in the file rather than trusting it
-was drawn. The tests download the actual file, assert it is a well-formed PDF whose cross-reference
+was drawn. It also means the drawn geometry can be read back out, which is how the
+findings strip is tested: it is a grid, and its row height has to be *measured* rather than assumed —
+"Openness to experience" and "Leans Anxious-Preoccupied" both wrap in a quarter-width column, and a
+fixed row height pushed the notes beneath them straight through the strip's bottom rule. The checks
+pull the rules and the text baselines out of the page stream and assert nothing crosses a rule, no
+cell is wider than its column, and every value appears in full — because the tempting fix for a
+two-line value is to render one line of it, which loses half the finding without leaving a mark. Each
+of those three faults was reintroduced to confirm its check fails. The tests download the actual file, assert it is a well-formed PDF whose cross-reference
 table points inside itself, and rebuild the report from a deliberately wordy profile, an almost empty
 one and `{}` — the wordy one caught two overflows, an unwrapped point title and a right-aligned label
 measured without its letter-spacing.

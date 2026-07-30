@@ -4,7 +4,7 @@
 //
 // Run with: node tools/uitest.mjs [--shots]
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -487,6 +487,115 @@ try {
     sharing.retypedInPdf.length === 0, sharing.retypedInPdf.join(' | '));
   check('both renderers read from the shared copy',
     sharing.appUsesCopy && sharing.pdfUsesCopy, JSON.stringify(sharing));
+
+  // The findings strip is a grid, and its row height has to be measured rather
+  // than assumed. "Openness to experience" and "Leans Anxious-Preoccupied" both
+  // wrap in a quarter-width column, and a fixed row height pushed the notes
+  // beneath them straight through the strip's bottom rule. A long note — the
+  // note under "Type" is the MBTI nickname — also ran across its neighbour.
+  //
+  // Uncompressed streams mean the drawn geometry can be read back out, so this
+  // checks positions rather than trusting that it looked right once.
+  const stripPath = join(shotDir, 'strip.pdf');
+  writeFileSync(stripPath, Buffer.from(await page.evaluate(async () => {
+    const trait = score => ({ score, band: 'high', reading: 'Reading.', evidence: [] });
+    const report = {
+      confidence: { score: 70, level: 'high', rationale: 'Rationale.' },
+      essence: { noun: 'The Forum', why: 'Why.' },
+      summary: 'Summary.',
+      bigFive: {
+        openness: trait(85), conscientiousness: trait(60), extraversion: trait(70),
+        agreeableness: trait(42), neuroticism: trait(55),
+      },
+      mbti: {
+        type: 'ENTP', confidence: 'moderate',
+        nickname: 'The Debater and Relentless Examiner of Everything',
+        letters: [], caveat: 'Caveat.',
+      },
+      relationship: {
+        strengths: [], weaknesses: [],
+        attachment: {
+          style: 'Leans Anxious-Preoccupied with Avoidant Episodes',
+          why: 'Why.', derivedFrom: [], implications: [], caveat: 'Caveat.',
+        },
+      },
+    };
+    const blob = window.PsychePDF.build(report, { name: 'Sam', headline: 'A headline.' },
+      { date: '30 July 2026', model: 'mock' });
+    return Array.from(new Uint8Array(await blob.arrayBuffer()));
+  })));
+  const stripText = readFileSync(stripPath).toString('latin1');
+
+  // Coordinates are per page, so compare within one page: the stream that has
+  // the strip in it. Comparing across pages is meaningless and quietly wrong.
+  const stripPage = [...stripText.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
+    .map(match => match[1])
+    .find(content => content.includes('(TYPE) Tj')) || '';
+
+  // Every full-width hairline, and every string with the baseline it sits on.
+  const rules = [...stripPage.matchAll(/0\.7 w [\d.]+ ([\d.]+) m [\d.]+ [\d.]+ l S/g)]
+    .map(match => ({ y: Number(match[1]), at: match.index }));
+  // The font, size and letter-spacing each string was actually drawn with, so
+  // the widths below are measured rather than guessed at.
+  const drawn = [...stripPage.matchAll(
+    /(?:([\d.]+) Tc\n)?\/(F\d) ([\d.]+) Tf\n([\d.]+) ([\d.]+) Td\n\((.*?)\) Tj/g)]
+    .map(match => ({
+      tracking: Number(match[1] || 0),
+      bold: match[2] === 'F2',
+      size: Number(match[3]),
+      x: Number(match[4]),
+      y: Number(match[5]),
+      text: match[6],
+      at: match.index,
+    }));
+
+  check('the strip and its notes are on one page', Boolean(stripPage) && drawn.length > 4,
+    String(drawn.length));
+
+  // The strip is whatever was drawn between its two rules. Identifying it by
+  // stream position rather than by coordinate matters: a cell that has spilled
+  // past the bottom rule must still count as part of the strip, or the
+  // out-of-bounds check quietly excludes the very thing it is looking for.
+  const typeLabel = drawn.find(item => item.text === 'TYPE');
+  const topRule = typeLabel && [...rules].reverse().find(rule => rule.at < typeLabel.at);
+  const bottomRule = typeLabel && rules.find(rule => rule.at > typeLabel.at);
+  const inStrip = (topRule && bottomRule)
+    ? drawn.filter(item => item.at > topRule.at && item.at < bottomRule.at && item.text !== '')
+    : [];
+
+  check('the strip is bracketed by a rule above and below',
+    Boolean(topRule && bottomRule), JSON.stringify({ rules: rules.length }));
+  check('the strip holds all four cells and their notes', inStrip.length >= 8,
+    inStrip.length + ': ' + inStrip.map(item => item.text).join(' | '));
+
+  // PDF y counts up from the bottom, so "below the rule" means a smaller y.
+  const spilled = inStrip.filter(item => item.y <= bottomRule.y).map(item => item.text);
+  check('nothing in the strip is pushed through its bottom rule', spilled.length === 0,
+    JSON.stringify({ bottomRule: bottomRule && bottomRule.y, spilled }));
+
+  // And nothing overruns its column: four columns across the text width. This
+  // is what a long nickname broke, running clean across the column beside it.
+  const columnWidth = (595.28 - 54 * 2) / 4;
+  const widths = await page.evaluate(cells => cells.map(cell =>
+    window.PsychePDF.measure(window.PsychePDF.toWinAnsi(cell.text), cell.size, cell.bold, cell.tracking)),
+  inStrip.map(item => ({
+    text: item.text, size: item.size, bold: item.bold, tracking: item.tracking,
+  })));
+  const tooWide = inStrip
+    .map((item, index) => ({ text: item.text, over: Math.round(widths[index] - columnWidth) }))
+    .filter(item => item.over > 1);
+  check('no cell in the strip is wider than its column', tooWide.length === 0,
+    JSON.stringify(tooWide));
+
+  // Fitting must come from sizing the row, never from dropping a line: the
+  // cheap fix for a two-line value is to render one line of it, which loses
+  // half the finding without leaving a mark.
+  const stripWords = inStrip.map(item => item.text).join(' ').replace(/\s+/g, ' ');
+  for (const whole of ['Leans Anxious-Preoccupied with Avoidant Episodes',
+    'The Debater and Relentless Examiner of Everything', 'Openness to experience']) {
+    check('the strip shows ' + JSON.stringify(whole) + ' in full',
+      stripWords.includes(whole), stripWords.slice(0, 120));
+  }
 
   // Layout has to survive both a wordy model and an almost empty one. These
   // build in the page, which is also the only way to reach a long profile
