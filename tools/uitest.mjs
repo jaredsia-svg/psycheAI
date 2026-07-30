@@ -285,9 +285,16 @@ try {
   const enneagramCard = page.locator('#profile-body .section-card', { has: page.locator('h2', { hasText: 'Enneagram' }) });
   check('it shows a confidence line the same way MBTI does',
     /Confidence: moderate/.test(await enneagramCard.locator('.card-sub').innerText()));
-  check('it carries the model\'s reasoning and its caveat',
-    /core fear and desire/.test(await enneagramCard.innerText()) &&
-    /different lens from the MBTI/.test(await enneagramCard.innerText()));
+  const enneagramText = await enneagramCard.innerText();
+  check('it explains the core type itself, not just the evidence for it',
+    /type nine centres on/.test(enneagramText));
+  check('it separately explains what the wing specifically adds',
+    /one-wing specifically adds/.test(enneagramText));
+  check('the explanation runs to five or six sentences, not two or three',
+    (await enneagramCard.locator('p:not([class])').innerText()).split(/(?<=[.!?])\s+/).length >= 5,
+    await enneagramCard.locator('p:not([class])').innerText());
+  check('it carries the caveat too',
+    /different lens from the MBTI/.test(enneagramText));
   check('it stays short: no per-axis breakdown the way MBTI has one',
     (await enneagramCard.locator('.axis').count()) === 0);
 
@@ -614,8 +621,10 @@ try {
     pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(PUBLISHING VS READING)'));
   check('the PDF carries the Enneagram type, wing and nickname the page shows',
     pdfText.includes('(Enneagram: 9w1 The Peacemaker)'));
-  check('the PDF carries the Enneagram reasoning and its caveat',
-    /core fear and desire/.test(pdfText) && /different lens from the MBTI/.test(pdfText));
+  check('the PDF explains the type and the wing, not just the evidence for them',
+    /type nine centres on/.test(pdfText) && /one-wing specifically adds/.test(pdfText));
+  check('the PDF carries the Enneagram caveat',
+    /different lens from the MBTI/.test(pdfText));
   // Trimmed from the behavioural read and moved off the profile page entirely
   // — the PDF mirrors the page, so neither belongs in the report any more.
   check('the PDF no longer carries the dropped attention facet',

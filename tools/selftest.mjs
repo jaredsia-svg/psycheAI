@@ -228,6 +228,12 @@ check('Enneagram is asked to name the fear and desire the type centres on',
   /core fear and desire/.test(enneagramProps.why.description));
 check('Enneagram caveat distinguishes it from MBTI rather than just hedging',
   /different lens from MBTI/.test(enneagramProps.caveat.description));
+check('Enneagram\'s explanation is asked for at five or six sentences, not two or three',
+  /Five or six sentences, not two or three/.test(enneagramProps.why.description));
+check('Enneagram is asked to explain the type in plain language, not just cite it',
+  /as if the reader has never heard of it/.test(enneagramProps.why.description));
+check('Enneagram is asked to explain what the wing specifically adds, not just name it',
+  /what the wing specifically adds or shifts/.test(enneagramProps.why.description));
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
@@ -289,6 +295,8 @@ for (const [label, needle] of [
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
   ['asks Enneagram not to rephrase MBTI', /a short second lens beside MBTI, not a rephrasing of it/],
   ['lets an Enneagram wing stay blank', /left blank rather than forced/],
+  ['asks Enneagram for five or six sentences of real explanation',
+    /five or six sentences, because the reader should finish understanding the number and the wing/],
   ['flags disagreement between Enneagram and MBTI rather than hiding it',
     /if the Enneagram read and the MBTI read seem to pull in different directions/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
