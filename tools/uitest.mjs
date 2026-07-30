@@ -226,7 +226,6 @@ try {
     ['how they want to be loved', /How you want to be loved/],
     ['how they show love', /How you show love/],
     ['career strengths and weaknesses', /At work/],
-    ['what the QR code contains', /What your QR code contains/],
     ['the MBTI nickname', /The Protagonist/],
     ['values and beliefs as one section', /Values & Beliefs/],
     ['the Instagram behaviour section', /Your Instagram behaviour/],
@@ -234,14 +233,17 @@ try {
     ['when they are active', /When you are here/i],
     ['how their use changed', /How it changed/i],
     ['publishing against reading', /Publishing vs reading/i],
-    ['where their attention goes', /Where your attention goes/i],
-    ['behavioural implications', /What it suggests/],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
   // The MBTI prose sections were removed; nothing should reintroduce them.
   for (const gone of ['At your best', 'Under stress', 'How people misread you', 'Growth edges', 'Key takeaways']) {
     check('MBTI no longer shows "' + gone + '"', !profileText.includes(gone));
+  }
+  // Trimmed off the behaviour section, and the QR-contents section moved to
+  // the scan page entirely — none of the three should linger on the profile.
+  for (const gone of ['Where your attention goes', 'What it suggests', 'What your QR code contains']) {
+    check('profile no longer shows "' + gone + '"', !profileText.includes(gone));
   }
   check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
   check('MBTI is the axes and nothing else', await page.evaluate(() => {
@@ -260,8 +262,6 @@ try {
   const at = needle => order.findIndex(t => t.includes(needle));
   check('Instagram behaviour comes after At work', at('Instagram behaviour') > at('At work'),
     order.join(' | '));
-  check('Instagram behaviour still comes before the QR summary',
-    at('Instagram behaviour') < at('QR code'));
   // Confidence closes the report now instead of opening it.
   check('confidence is the last section of the report',
     at('How much to trust this') === order.length - 1, order.join(' | '));
@@ -387,15 +387,13 @@ try {
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
   check('behaviour facets render as their own blocks',
-    (await page.locator('#profile-body .facet').count()) === 5);
+    (await page.locator('#profile-body .facet').count()) === 4);
   check('each axis shows how strongly it leans',
     (await page.locator('.axis .pill').count()) === 4);
   check('a slight lean is marked as such',
     (await page.locator('.axis .pill-slight').count()) >= 1);
-  check('each behavioural implication pairs an observation with an inference',
-    (await page.locator('.implications dt').count()) ===
-    (await page.locator('.implications dd').count()) &&
-    (await page.locator('.implications dt').count()) >= 2);
+  check('the behavioural implications list is gone along with the field',
+    (await page.locator('.implications').count()) === 0);
 
   // ---- the downloadable report, and what Ctrl+P still does ----
   check('there is an export button at the top',
@@ -567,7 +565,8 @@ try {
   const pageSections = await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim()));
 
-  check('the page has all its sections to compare against', pageSections.length >= 10,
+  // Nine always, a tenth ("Your matches") only once this device has history.
+  check('the page has all its sections to compare against', pageSections.length >= 9,
     pageSections.length + ': ' + pageSections.join(' | '));
 
   const placed = pageSections.map(title => ({
@@ -586,8 +585,7 @@ try {
   // Sub-headings and labels the page shows inside those sections.
   for (const label of ['You are most like', 'Values', 'Beliefs', 'Strengths', 'Weaknesses',
     'How you work', 'Where you would thrive', 'What could hold you back', 'Your love languages',
-    'How you want to be loved', 'How you show love', 'Read from', 'What it means in practice',
-    'What it suggests']) {
+    'How you want to be loved', 'How you show love', 'Read from', 'What it means in practice']) {
     check('the PDF carries the ' + JSON.stringify(label) + ' heading',
       pdfText.includes('(' + label + ')') || pdfText.includes('(' + label.toUpperCase() + ')'));
   }
@@ -596,7 +594,15 @@ try {
   check('the PDF uses the page\'s trait wording, not the schema\'s',
     pdfText.includes('(Emotional sensitivity') && !/\(Neuroticism/.test(pdfText));
   check('the PDF labels the behaviour facets as the page does',
-    pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(WHERE YOUR ATTENTION GOES)'));
+    pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(PUBLISHING VS READING)'));
+  // Trimmed from the behavioural read and moved off the profile page entirely
+  // — the PDF mirrors the page, so neither belongs in the report any more.
+  check('the PDF no longer carries the dropped attention facet',
+    !pdfText.includes('(WHERE YOUR ATTENTION GOES)') && !/\(Where your attention goes\)/i.test(pdfText));
+  check('the PDF no longer carries the dropped implications heading',
+    !pdfText.includes('(What it suggests)'));
+  check('the PDF no longer carries the QR-contents section',
+    !pdfText.includes('(What your QR code contains)'));
   check('the PDF carries the character and the franchise it is from',
     pdfText.includes('(Bruce Banner)') && pdfText.includes('(Marvel)'));
 
@@ -814,8 +820,6 @@ try {
         rhythm: { headline: long, detail: long },
         trajectory: { headline: long, detail: long },
         engagement: { headline: long, detail: long },
-        attention: { headline: long, detail: long },
-        implications: [{ observation: long, implication: long }],
         blindSpots: long,
       },
       interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
@@ -1590,6 +1594,38 @@ try {
   }, Array.from(scanSaved));
   check('the file downloaded from the scan page is labelled and reads back',
     scanExportReads.taller && scanExportReads.reads, JSON.stringify(scanExportReads));
+
+  // "What your QR code contains" used to live on the profile page; it moved
+  // here, since it is about the code someone is looking at or about to send
+  // from this page, not about the report itself.
+  check('the QR-contents section is on the scan page',
+    (await page.locator('#qr-contents .card-head h2').innerText()).trim() === 'What your QR code contains',
+    await page.locator('#qr-contents .card-head h2').innerText());
+  check('it explains only the card is shared, not the full report',
+    /the compact card/i.test(await page.locator('#qr-contents .card-sub').innerText()));
+  check('it shows the card headline and summary that are actually in the code',
+    await page.evaluate(() => {
+      const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
+      const text = document.querySelector('#qr-contents').innerText;
+      return text.includes(card.headline) && text.includes(card.summary);
+    }));
+  check('it lists the card\'s interests as tags',
+    (await page.locator('#qr-contents .tag').count()) >= 1);
+  check('it sits below the QR panel, not above it', await page.evaluate(() => {
+    const panel = document.querySelector('#view-scan .qr-panel').getBoundingClientRect();
+    const contents = document.querySelector('#qr-contents').getBoundingClientRect();
+    return contents.top >= panel.bottom;
+  }));
+
+  // renderScan() overwrites #qr-contents rather than appending to it; leaving
+  // the page and coming back is the real way to prove a second render does
+  // not stack a second copy underneath the first.
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])');
+  await page.click('[data-nav="scan"]');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  check('the QR-contents section does not stack up across repeat visits',
+    (await page.locator('#qr-contents .card-head h2').count()) === 1);
 
   // The blank-draw heuristic may only label a failure, never skip a decode: a
   // false positive there is exactly what broke the round trip above.

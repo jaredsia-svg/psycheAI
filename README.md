@@ -78,6 +78,13 @@ in place, because the first version only asserted the code sat left of its butto
 while the canvas was three times too large; the fix added a check that the two canvases compute to
 the same display width.
 
+"What your QR code contains" — the card headline, summary and interest tags, plus a note on what
+else rides along as short phrases — used to sit on the profile page. It moved to the bottom of the
+scan page instead, right under the code itself: it is about the code someone is looking at or about
+to send from that page, not about the report. `qrContentsBlock()` in `docs/app.js` builds it and
+`renderScan()` repaints it on every visit, rather than appending, so leaving the page and coming
+back does not stack a second copy underneath the first.
+
 Stills are the hardest case, because what someone actually uploads is rarely the pristine file — it
 is a screenshot of a chat, recompressed, with the code a small off-centre part of a much bigger
 picture. So `decodeStill` works through, cheapest first:
@@ -330,10 +337,11 @@ which would survive being pasted into a stranger's profile be rewritten or cut, 
 sting slightly, and that a hedged letter beats a confident wrong one.
 
 **Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
-in what mix, when they reach for the app, how their use changed month by month, whether they publish
-more than they read, and what the shape of their following and liking says about where attention
-goes. Each implication pairs one concrete observation with one hedged inference, so the reader can
-tell a fact from a guess.
+in what mix, when they reach for the app, how their use changed month by month, and whether they
+publish more than they read. It used to run to six facets and a list of hedged behavioural
+implications; the shape-of-attention facet and the implications list were trimmed for being the two
+subsections that told a reader the least per word, and both were cut from `PROFILE_SCHEMA` too, not
+just from the page — asking the model for output nobody reads is tokens spent for nothing.
 
 ## Downloading the report
 
@@ -364,8 +372,8 @@ Zootopia".
 
 **A layout.** The report is the profile page, section for section, in the same order: a letterhead,
 then *Who you are* (the character, the headline findings strip, the summary), *Big Five*, *MBTI*,
-*Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *What
-your QR code contains*, *Your matches* when this device has any, and *How much to trust this*.
+*Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram behaviour*, *Your
+matches* when this device has any, and *How much to trust this*.
 Running head and page numbers on every page — the head carries the brain mark
 rather than the word, stroked from the same path data `index.html` draws, which means converting the
 mark's elliptical arcs to béziers because PDF has no arc operator. Only the corner of the SVG path

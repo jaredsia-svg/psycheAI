@@ -217,10 +217,12 @@ check('a letter can be marked as a slight lean',
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
-  ['summary', 'posting', 'rhythm', 'trajectory', 'engagement', 'attention', 'implications', 'blindSpots']
+  ['summary', 'posting', 'rhythm', 'trajectory', 'engagement', 'blindSpots']
     .every(k => k in activityProps));
-check('activity separates an observation from its inference',
-  ['observation', 'implication'].every(k => k in activityProps.implications.items.properties));
+// Dropped from the profile page, so must not linger in the schema costing
+// output tokens — the same discipline as the headline check above.
+check('activity no longer asks for attention or implications',
+  !('attention' in activityProps) && !('implications' in activityProps));
 check('activity states what it cannot see', 'blindSpots' in activityProps);
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));

@@ -1059,28 +1059,17 @@
         if (!part) continue;
         out.facet(label, part.headline, part.detail);
       }
-      if ((activity.implications || []).length) {
-        out.h3(TEXT.activitySuggests);
-        for (const item of activity.implications) out.point(item.observation, item.implication);
-      }
       out.fineprint(activity.blindSpots);
     }
 
-    // 9. What the QR code carries.
-    out.sectionTitle(TEXT.qr, TEXT.qrSub);
-    if (who.headline) out.body(who.headline, { size: 10.4, bold: true, leading: 15 });
-    if (who.summary) out.body(who.summary, { size: 10, leading: 15 });
-    out.tags(who.interests);
-    out.fineprint(TEXT.qrFineprint);
-
-    // 10. Matches, when this device has any.
+    // 9. Matches, when this device has any.
     const history = (stamp.history || []).filter(entry => entry && entry.report);
     if (history.length) {
       out.sectionTitle(TEXT.matches);
       out.matchTable(history);
     }
 
-    // 11. Confidence closes the report, as it does on the page.
+    // 10. Confidence closes the report, as it does on the page.
     const confidence = source.confidence || {};
     out.sectionTitle(TEXT.trust, TEXT.trustSub);
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));

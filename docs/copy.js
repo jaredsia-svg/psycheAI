@@ -61,7 +61,6 @@
     ['When you are here', 'rhythm'],
     ['How it changed', 'trajectory'],
     ['Publishing vs reading', 'engagement'],
-    ['Where your attention goes', 'attention'],
   ];
 
   // The brain mark, exactly as the nav and the printed letterhead draw it. The
@@ -129,7 +128,6 @@
     holdBack: 'What could hold you back',
 
     activity: 'Your Instagram behaviour',
-    activitySuggests: 'What it suggests',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',

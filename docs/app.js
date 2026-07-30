@@ -153,6 +153,29 @@
       (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
   }
 
+  // Every section opens the same way: a glyph, a title and a line saying what
+  // the section is for. It gives a long page a rhythm to scroll through
+  // instead of a wall of identical cards. Module-level because both the
+  // profile page and the scan page's QR-contents block use it.
+  function sectionHead(icon, title, sub) {
+    return '<div class="card-head"><span class="card-icon">' + icon + '</span>' +
+      '<div><h2>' + title + '</h2>' +
+      (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
+  }
+
+  // What the QR code actually carries — the compact card, not the full
+  // report. Lives on the scan page rather than the profile page: it is about
+  // the code someone is about to share or has just shared, which is the
+  // context the scan page is for.
+  function qrContentsBlock(card) {
+    if (!card) return '';
+    return '<div class="card section-card">' +
+      sectionHead('🔗', esc(TEXT.qr), esc(TEXT.qrSub)) +
+      '<p><strong>' + esc(card.headline) + '</strong></p><p>' + esc(card.summary) + '</p>' +
+      tags(card.interests) +
+      '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
+  }
+
   // The wrapper exists for print: a trait's bar, its reading and its evidence
   // are one thought, and a page break between them looks like a mistake.
   function bar(label, value, extra) {
@@ -426,13 +449,7 @@
       (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
       ' Your full report is not included.';
 
-    // Every section opens the same way: a glyph, a title and a line saying
-    // what the section is for. It gives the long report a rhythm to scroll
-    // through instead of a wall of identical cards.
-    const head = (icon, title, sub) =>
-      '<div class="card-head"><span class="card-icon">' + icon + '</span>' +
-      '<div><h2>' + title + '</h2>' +
-      (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
+    const head = sectionHead;
 
     let html = '';
 
@@ -547,20 +564,8 @@
           '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
       }
       html += '</div>';
-      if ((activity.implications || []).length) {
-        html += '<h3>' + esc(TEXT.activitySuggests) + '</h3><dl class="points implications">' +
-          activity.implications.map(item =>
-            '<dt>' + esc(item.observation) + '</dt><dd>' + esc(item.implication) + '</dd>').join('') + '</dl>';
-      }
       html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
     }
-
-    // What gets shared.
-    html += '<div class="card section-card">' +
-      head('🔗', esc(TEXT.qr), esc(TEXT.qrSub)) +
-      '<p><strong>' + esc(profile.card.headline) + '</strong></p><p>' + esc(profile.card.summary) + '</p>' +
-      tags(profile.card.interests) +
-      '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
 
     const history = store.read(KEYS.history, []);
     if (history.length) {
@@ -977,6 +982,7 @@
     $('#scan-history').innerHTML = history.length
       ? '<div class="card"><h2>Previous reports</h2>' + historyTable(history) + '</div>' : '';
     paintQrCanvas('#qr-canvas-scan');
+    $('#qr-contents').innerHTML = qrContentsBlock(state.profile && state.profile.card);
   }
 
   function stopCamera() {
