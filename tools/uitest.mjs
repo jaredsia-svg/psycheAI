@@ -939,6 +939,85 @@ try {
   check('the naive check it replaced did mistake one, so this is a real guard',
     blankCheck.naiveFalsePositives > 0, JSON.stringify(blankCheck));
 
+  // ---- the version 23 landmine ----
+  //
+  // A downloaded code kept coming back "No QR code found" on a pristine
+  // 1600x1600 file, every rendering, no blank draws. It was not density, scale,
+  // JPEG quality or the mask: jsQR's version table gave version 23's fourth
+  // alignment centre as 74 where the spec says 78, so the decoder probed 4
+  // modules off, never locked onto the sampling grid, and could not read ANY
+  // version 23 symbol. Version 23 is roughly a 1350-1470 character payload, so
+  // whether someone's code scanned came down to how long their text was.
+  //
+  // Every version spaces its centres evenly after the first gap, so that
+  // invariant catches this whole class of typo across all 40 versions at once.
+  const table = await page.evaluate(async () => {
+    const source = await fetch('vendor/jsqr.js').then(r => r.text());
+    const found = [...source.matchAll(/alignmentPatternCenters:\s*\[([^\]]*)\]/g)]
+      .map(m => m[1].split(',').map(t => Number(t.trim())).filter(n => !Number.isNaN(n)));
+    const uneven = [];
+    found.forEach((centres, index) => {
+      if (centres.length < 3) return;
+      const steps = centres.slice(2).map((n, k) => n - centres[k + 1]);
+      if (!steps.every(s => s === steps[0])) uneven.push({ version: index + 1, centres });
+    });
+    return { versions: found.length, v23: found[22], uneven };
+  });
+
+  check('the decoder knows all 40 QR versions', table.versions === 40, String(table.versions));
+  check('version 23 alignment centres match the spec',
+    String(table.v23) === '6,30,54,78,102', String(table.v23));
+  check('no version spaces its alignment centres unevenly',
+    table.uneven.length === 0, JSON.stringify(table.uneven));
+
+  // And the functional half: a payload landing on version 23 has to survive the
+  // whole trip, since that is what the user actually did.
+  const v23 = await page.evaluate(async () => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+    let payload = 'K3';
+    let x = 2;
+    while (payload.length < 1440) {
+      x = (x * 1103515245 + 12345) & 0x7fffffff;
+      payload += alphabet[x % alphabet.length];
+    }
+    const url = location.origin + location.pathname + '#p=' + payload;
+    const natural = window.QRCode.create(url, { errorCorrectionLevel: 'L' }).version;
+
+    const readAt = (canvas, size) => {
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(canvas, 0, 0, size, size);
+      const px = g.getImageData(0, 0, size, size);
+      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
+      return Boolean(hit && hit.data === url);
+    };
+
+    // As the encoder would pick it, to prove the decoder patch alone is enough.
+    const asIs = await new Promise((resolve, reject) => {
+      const el = document.createElement('canvas');
+      window.QRCode.toCanvas(el, url, {
+        width: 1600, margin: 4, errorCorrectionLevel: 'L',
+        color: { dark: '#000000', light: '#ffffff' },
+      }, e => (e ? reject(e) : resolve(el)));
+    });
+    return { natural, readsAt1600: readAt(asIs, 1600), readsAt1100: readAt(asIs, 1100) };
+  });
+
+  check('a 1440-character payload really does land on version 23', v23.natural === 23, String(v23.natural));
+  check('a version 23 code now reads at full size', v23.readsAt1600, JSON.stringify(v23));
+  check('a version 23 code now reads downscaled', v23.readsAt1100, JSON.stringify(v23));
+
+  // Belt and braces: our own codes step over version 23, because they get
+  // scanned by whatever app the other person has, bug and all.
+  check('the app never emits a version 23 code', await page.evaluate(async () => {
+    const source = await fetch('app.js').then(r => r.text());
+    if (!/\.version === 23\) options\.version = 24;/.test(source)) return false;
+    // Both the on-screen code and the download must go through that helper.
+    return (source.match(/qrOptions\(/g) || []).length >= 3;
+  }));
+
   // ---- uploading a picture of a code ----
   //
   // The reported failure was a downloaded code sent to someone else and

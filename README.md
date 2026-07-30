@@ -97,6 +97,22 @@ real code while the new one never does.
 The suite puts real composites through the actual file input — a phone screenshot with the code at
 30%, a 2560×1440 laptop screenshot at 25%, a recompressed 800px copy — and asserts each reads.
 
+Underneath all of that sat a bug none of it could fix: **jsQR cannot read a version 23 QR code.** Its
+version table gives version 23's fourth alignment centre as 74, where ISO/IEC 18004 says 78 — almost
+certainly a copy of version 22's row above, which legitimately contains 74. Every version spaces its
+centres evenly, and 54 → 74 → 102 does not. Four modules off is enough that the decoder never locks
+onto the sampling grid, so such a code is unreadable at *any* size, scale, mask or quality. Version 23
+is roughly a 1350–1470 character payload, which is squarely in range for a real profile, so whether
+someone's code scanned at all came down to how long their text happened to be — a pristine
+1600×1600 download failing every rendering with no blank draws.
+
+`vendor/jsqr.js` is patched, which also rescues codes generated before the fix. On top of that the app
+steps over version 23 when encoding: our codes get scanned by whatever app the other person has, and
+anything built on unpatched jsQR carries the same bug, so it is worth four extra modules to avoid the
+version. The guard against a repeat is the invariant rather than the single number — a check asserts
+no version in the table spaces its centres unevenly, which would have caught this typo, and would
+catch its siblings across all 40 versions.
+
 ### Choosing a provider and model
 
 | Variable | Effect |

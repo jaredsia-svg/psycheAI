@@ -407,6 +407,23 @@
     return location.origin + location.pathname + '#p=' + payload;
   }
 
+  // Version 23 is a landmine. jsQR's own version table has the wrong alignment
+  // centre for it (see the note in vendor/jsqr.js), so a version 23 code is
+  // unreadable by every scanner carrying that upstream bug — which, until this
+  // repo patched its copy, included us. Our decoder is fixed, but codes get
+  // scanned by whatever app the other person happens to have, so it is worth
+  // four extra modules to step over the version entirely.
+  function qrOptions(url, width, margin) {
+    const options = {
+      width, margin, errorCorrectionLevel: 'L',
+      color: { dark: '#000000', light: '#ffffff' },
+    };
+    try {
+      if (window.QRCode.create(url, { errorCorrectionLevel: 'L' }).version === 23) options.version = 24;
+    } catch (error) { /* fall back to whatever the encoder picks */ }
+    return options;
+  }
+
   function renderProfile() {
     const profile = state.profile;
     if (!profile) return;
@@ -429,10 +446,7 @@
     // and seeing grey mush. A wider quiet zone helps the locator too.
     try {
       const canvas = $('#qr-canvas');
-      window.QRCode.toCanvas(canvas, profileUrl(profile.payload), {
-        width: 900, margin: 3, errorCorrectionLevel: 'L',
-        color: { dark: '#000000', light: '#ffffff' },
-      });
+      window.QRCode.toCanvas(canvas, profileUrl(profile.payload), qrOptions(profileUrl(profile.payload), 900, 3));
       // qrcode.js writes its width as an inline style; drop it so the
       // stylesheet decides the display size, print rules included.
       canvas.style.removeProperty('width');
@@ -655,10 +669,8 @@
   function renderExportCanvas(url) {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
-      window.QRCode.toCanvas(canvas, url, {
-        width: EXPORT_PX, margin: 4, errorCorrectionLevel: 'L',
-        color: { dark: '#000000', light: '#ffffff' },
-      }, error => (error ? reject(error) : resolve(canvas)));
+      window.QRCode.toCanvas(canvas, url, qrOptions(url, EXPORT_PX, 4),
+        error => (error ? reject(error) : resolve(canvas)));
     });
   }
 
