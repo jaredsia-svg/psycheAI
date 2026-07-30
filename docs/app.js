@@ -697,7 +697,7 @@
       setTimeout(() => URL.revokeObjectURL(href), 10000);
     } catch (error) {
       button.textContent = 'Could not save — use the link';
-      setTimeout(() => { button.textContent = 'Download JPEG'; }, 3000);
+      setTimeout(() => { button.textContent = 'Download QR Code'; }, 3000);
     }
   });
 
