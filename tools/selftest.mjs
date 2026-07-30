@@ -172,7 +172,9 @@ check('the sections love languages replaced are gone',
 
 const loveProps = relProps.loveLanguages.properties;
 check('love languages are split into giving and receiving',
-  ['receiving', 'giving', 'mismatch', 'caveat'].every(k => k in loveProps));
+  ['receiving', 'giving', 'caveat'].every(k => k in loveProps));
+check('love languages ask for no commentary the report does not show',
+  !('mismatch' in loveProps));
 check('each side can carry more than one language',
   loveProps.receiving.type === 'array' && loveProps.giving.type === 'array');
 check('languages are constrained to the canonical five',

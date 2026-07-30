@@ -333,8 +333,10 @@ try {
     /Words of affirmation/.test(love) && /Acts of service/.test(love));
   check('each language says what it looks like in practice and why',
     (await page.locator('.love-row .love-why').count()) === 4);
-  check('the gap between giving and receiving is called out',
-    /Where the two part company/.test(await page.locator('#profile-body').innerText()));
+  check('there is no commentary block on the gap between the two',
+    !/Where the two part company/.test(await page.locator('#profile-body').innerText()));
+  check('the love-language caveat survives',
+    /popular framework rather than a validated one/.test(await page.locator('#profile-body').innerText()));
   check('the sections love languages replaced are gone',
     !/How to love you/.test(profileText) && !/Who fits/.test(profileText));
 

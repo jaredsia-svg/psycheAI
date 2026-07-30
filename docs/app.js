@@ -163,8 +163,6 @@
       loveLanguageColumn('How you show love', 'What you reach for when you care about someone.', languages.giving);
     if (!columns) return '';
     return '<h3 class="love-head">Your love languages</h3><div class="split love-split">' + columns + '</div>' +
-      (languages.mismatch ? '<div class="callout"><h3>Where the two part company</h3><p>' +
-        esc(languages.mismatch) + '</p></div>' : '') +
       (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
   }
 
