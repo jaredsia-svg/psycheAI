@@ -159,6 +159,31 @@ Both providers share the same prompts and the same output schemas (`lib/prompts.
 `responseJsonSchema` accepts real JSON Schema, so nothing is translated between them. The server
 picks a provider at startup and the rest of the app never knows which one ran.
 
+### When the model is overloaded
+
+Both APIs occasionally answer "too much load right now" rather than an actual response — Gemini as
+an `UNAVAILABLE`/503, Anthropic as a 529 `overloaded_error`. It is a capacity blip on the provider's
+side, not a problem with the key, the request, or this app, and it usually clears within seconds. So
+`lib/gemini.js` and `lib/claude.js` each retry automatically — three attempts with growing gaps
+(2s, 5s, 12s) — before giving up and surfacing a message that says so, rather than failing on the
+first hit the way a straight pass-through would.
+
+`tools/fixtures/retry-behaviour.cjs` tests this against fake SDKs standing in for `@google/genai` and
+`@anthropic-ai/sdk`, stubbed into the require cache before `lib/gemini.js`/`lib/claude.js` ever import
+the real packages — the fakes have to be there first, so this runs in its own process rather than
+inside `tools/selftest.mjs` directly, which has already loaded the real modules by the time it gets
+here. It scripts an overload that clears after a couple of attempts (recovers), one that never clears
+(gives up at exactly four attempts and reports it), and a non-retryable error (fails on the first
+attempt, no delay). `tools/selftest.mjs` spawns it and folds each line of its output into its own
+tally, so a break here fails `npm test` rather than needing a separate command.
+
+Writing that fixture found a second, unrelated bug in the Claude error path: `describeError`'s
+catch-all checked `error instanceof Anthropic.APIStatusError`, and that class does not exist on this
+SDK version — the real base class is `Anthropic.APIError`. `instanceof` an undefined value throws,
+so any Anthropic error not already special-cased above it (a 400, a 404, a fresh status code) would
+have crashed the error handler instead of returning a message. Fixed alongside the retry logic, with
+its own regression check.
+
 ## What is sent where
 
 This is the part worth reading carefully.

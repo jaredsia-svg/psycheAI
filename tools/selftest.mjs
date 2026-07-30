@@ -4,6 +4,7 @@
 // unzip → parse → digest → (mock) analysis → card → QR payload → decode,
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -570,6 +571,32 @@ check('compatibility names both people',
   compat.verdict.includes(decoded.name) && compat.verdict.includes('Jordan'));
 check('compatibility gives each person their own advice',
   compat.howToPartner.forA.length > 0 && compat.howToPartner.forB.length > 0);
+
+// ---------- provider retry behaviour ----------
+//
+// Runs in its own process against fake SDKs (tools/fixtures/retry-behaviour.cjs),
+// because the real @google/genai and @anthropic-ai/sdk modules are already
+// loaded and cached by this point — the fakes have to be in place before
+// lib/gemini.js and lib/claude.js first require them, which means a fresh
+// module registry. Each line of its output is one check folded into this
+// file's own tally, so a break there fails `npm test` rather than needing a
+// separate command anyone has to remember to run.
+{
+  const fixture = join(root, 'tools', 'fixtures', 'retry-behaviour.cjs');
+  let output = '';
+  try {
+    output = execFileSync(process.execPath, [fixture], { encoding: 'utf8', timeout: 15000 });
+  } catch (error) {
+    // A non-zero exit still carries its check lines on stdout; only a crash
+    // before it could print anything leaves nothing to parse.
+    output = (error.stdout && error.stdout.toString()) || '';
+    if (!output) check('provider retry behaviour fixture ran', false, error.message);
+  }
+  for (const line of output.split('\n').filter(Boolean)) {
+    const result = JSON.parse(line);
+    check(result.label, result.ok, result.detail === null ? undefined : result.detail);
+  }
+}
 
 // ---------- results ----------
 
