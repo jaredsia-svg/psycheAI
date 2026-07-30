@@ -52,7 +52,7 @@
   }
 
   const analyseProfile = (digest, images) => post('/api/analyse', { digest, images: images || [] });
-  const analyseCompatibility = (a, b) => post('/api/compatibility', { a, b });
+  const analyseCompatibility = (a, b, mode) => post('/api/compatibility', { a, b, mode });
 
   root.PsycheLLM = { status, analyseProfile, analyseCompatibility };
 })(typeof window !== 'undefined' ? window : globalThis);

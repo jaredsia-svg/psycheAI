@@ -602,13 +602,15 @@
 
   function historyTable(history) {
     return '<div class="table-scroll"><table class="match-table"><thead><tr>' +
-      '<th>With</th><th>Romantic</th><th>Platonic</th><th>When</th><th></th></tr></thead><tbody>' +
-      history.map((entry, index) =>
-        '<tr><td>' + esc(entry.withName) + '</td>' +
-        '<td>' + scorePill(entry.report.romantic.score) + '</td>' +
-        '<td>' + scorePill(entry.report.platonic.score) + '</td>' +
-        '<td class="muted">' + esc(new Date(entry.when).toLocaleDateString()) + '</td>' +
-        '<td><a href="#" data-report="' + index + '">Open →</a></td></tr>').join('') +
+      '<th>With</th><th>Basis</th><th>Score</th><th>When</th><th></th></tr></thead><tbody>' +
+      history.map((entry, index) => {
+        const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
+        return '<tr><td>' + esc(entry.withName) + '</td>' +
+          '<td class="muted">' + esc(MODE_LABELS[mode] || mode) + '</td>' +
+          '<td>' + scorePill(entry.report.score) + '</td>' +
+          '<td class="muted">' + esc(new Date(entry.when).toLocaleDateString()) + '</td>' +
+          '<td><a href="#" data-report="' + index + '">Open →</a></td></tr>';
+      }).join('') +
       '</tbody></table></div>';
   }
 
@@ -781,23 +783,73 @@
     }
   });
 
+  const MODE_LABELS = {
+    romantic: 'Romantic',
+    platonic: 'Platonic',
+    professional: 'Professional / work',
+  };
+  const MODE_HEADINGS = {
+    romantic: 'How to partner each other',
+    platonic: 'How to befriend each other',
+    professional: 'How to work with each other',
+  };
+
+  // Ask which question to answer before spending a model call on it. Resolves
+  // to a mode key, or null if they backed out.
+  function askMode(otherName) {
+    const dialog = $('#mode-dialog');
+    $('#mode-dialog-sub').textContent =
+      'You and ' + otherName + ' can be compared on any of these. Pick one.';
+
+    return new Promise(resolve => {
+      let answer = null;
+      const choose = event => {
+        answer = event.currentTarget.dataset.mode;
+        dialog.close();
+      };
+      const buttons = dialog.querySelectorAll('.mode-option');
+      for (const button of buttons) button.addEventListener('click', choose);
+
+      const cancel = () => dialog.close();
+      $('#mode-cancel').addEventListener('click', cancel);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) button.removeEventListener('click', choose);
+        $('#mode-cancel').removeEventListener('click', cancel);
+        resolve(answer);
+      }, { once: true });
+
+      // showModal traps focus and handles Escape; the fallback keeps the flow
+      // alive on anything that does not support <dialog>.
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
+    });
+  }
+
   async function runMatch(rawText) {
     if (!state.profile) return false;
     const other = await Card.decodeCard(Card.extractPayload(rawText));
     if (!other) return false;
 
+    const mode = await askMode(other.name);
+    // Backing out is not a failure to read the code — the caller must not fall
+    // through to "no code found", so this still returns true.
+    if (!mode) { renderScan(); show('scan'); return true; }
+
     $('#working-title').textContent = modelName() + ' is comparing you';
-    $('#working-note').textContent = 'Two profile cards were sent — nothing else.';
+    $('#working-note').textContent =
+      MODE_LABELS[mode] + ' compatibility. Two profile cards were sent — nothing else.';
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
     try {
-      const result = await LLM.analyseCompatibility(state.profile.card, other);
+      const result = await LLM.analyseCompatibility(state.profile.card, other, mode);
       stopElapsed();
+      const report = { ...result.data, mode: result.data.mode || mode };
       const history = store.read(KEYS.history, []);
-      history.unshift({ when: new Date().toISOString(), withName: other.name, report: result.data });
+      history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, report });
       store.write(KEYS.history, history.slice(0, 25));
-      renderReport(result.data, other.name);
+      renderReport(report, other.name);
       show('report');
     } catch (error) {
       stopElapsed();
@@ -812,15 +864,13 @@
 
   function renderReport(report, otherName) {
     const myName = state.profile ? state.profile.card.name : 'You';
+    const mode = MODE_LABELS[report.mode] ? report.mode : 'romantic';
 
     let html = '<header class="page-head"><h1>' + esc(myName) + ' &amp; ' + esc(otherName) + '</h1>' +
-      '<p class="muted">Two readings of the same pair. They are scored separately because the things ' +
-      'that make a good partner are not the things that make a good friend.</p></header>';
+      '<p class="muted"><span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span> ' +
+      'This report answers one question. Scan again to compare on a different basis.</p></header>';
 
-    html += '<div class="score-pair">' +
-      scoreCard('Romantic', report.romantic) +
-      scoreCard('Platonic', report.platonic) +
-      '</div>';
+    html += scoreCard(MODE_LABELS[mode], report);
 
     html += '<div class="card"><h2>The short version</h2>' +
       '<h3>Biggest upside</h3><p>' + esc(report.biggestUpside) + '</p>' +
@@ -829,12 +879,12 @@
         ? '<h3>Common ground</h3>' + tags(report.sharedGround) : '') +
       '</div>';
 
-    html += '<div class="tabs" role="tablist">' +
-      '<button class="tab is-active" data-tab="romantic" role="tab">💞 Romantic</button>' +
-      '<button class="tab" data-tab="platonic" role="tab">🤝 Platonic</button></div>';
-
-    html += '<div id="tab-romantic" class="tab-panel">' + modeSection(report.romantic, myName, otherName, 'partner') + '</div>';
-    html += '<div id="tab-platonic" class="tab-panel" hidden>' + modeSection(report.platonic, myName, otherName, 'befriend') + '</div>';
+    html += '<div class="card good"><h2>What works</h2>' + points(report.strengths) + '</div>' +
+      '<div class="card warn"><h2>What will rub</h2>' + points(report.frictions) + '</div>' +
+      '<div class="card"><h2>' + esc(MODE_HEADINGS[mode]) + '</h2><div class="playbook">' +
+      '<div><h3>For ' + esc(myName) + '</h3>' + list(report.howToPartner.forA, 'ticks') + '</div>' +
+      '<div><h3>For ' + esc(otherName) + '</h3>' + list(report.howToPartner.forB, 'ticks') + '</div>' +
+      '</div><h3>Both of you</h3>' + list(report.howToPartner.together, 'ticks') + '</div>';
 
     if ((report.conversationStarters || []).length) {
       html += '<div class="card"><h2>Things to actually talk about</h2>' + list(report.conversationStarters) + '</div>';
@@ -843,34 +893,16 @@
     html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
     $('#report-body').innerHTML = html;
-
-    for (const tab of $('#report-body').querySelectorAll('.tab')) {
-      tab.addEventListener('click', () => {
-        for (const other of $('#report-body').querySelectorAll('.tab')) other.classList.remove('is-active');
-        tab.classList.add('is-active');
-        $('#tab-romantic').hidden = tab.dataset.tab !== 'romantic';
-        $('#tab-platonic').hidden = tab.dataset.tab !== 'platonic';
-      });
-    }
   }
 
-  function scoreCard(label, mode) {
-    const value = Math.round(Number(mode.score) || 0);
+  function scoreCard(label, report) {
+    const value = Math.round(Number(report.score) || 0);
     const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
-    return '<div class="card score-card tier-' + tier + '">' +
+    return '<div class="card score-card score-single tier-' + tier + '">' +
       '<div class="ring" style="--pct:' + value + '"><span>' + value + '</span></div>' +
-      '<h2>' + esc(label) + '</h2>' +
-      '<p class="band">' + esc(mode.band) + '</p>' +
-      '<p>' + esc(mode.verdict) + '</p></div>';
-  }
-
-  function modeSection(mode, myName, otherName, verb) {
-    return '<div class="card good"><h2>What works</h2>' + points(mode.strengths) + '</div>' +
-      '<div class="card warn"><h2>What will rub</h2>' + points(mode.frictions) + '</div>' +
-      '<div class="card"><h2>How to ' + verb + ' each other</h2><div class="playbook">' +
-      '<div><h3>For ' + esc(myName) + '</h3>' + list(mode.howToPartner.forA) + '</div>' +
-      '<div><h3>For ' + esc(otherName) + '</h3>' + list(mode.howToPartner.forB) + '</div>' +
-      '</div><h3>Both of you</h3>' + list(mode.howToPartner.together) + '</div>';
+      '<div><h2>' + esc(label) + ' compatibility</h2>' +
+      '<p class="band">' + esc(report.band) + '</p>' +
+      '<p>' + esc(report.verdict) + '</p></div></div>';
   }
 
   // ══════════════ 5. server status & boot ══════════════

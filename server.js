@@ -130,7 +130,9 @@ async function handleCompatibility(request, response) {
   }
   const engine = requireEngine(response);
   if (!engine) return;
-  sendJson(response, 200, await engine.analyseCompatibility(a, b));
+  // An unknown mode falls back to romantic rather than 400ing — the basis is
+  // a presentation choice, not something worth failing a paid call over.
+  sendJson(response, 200, await engine.analyseCompatibility(a, b, prompts.resolveMode(body.mode)));
 }
 
 function serveStatic(requestedPath, response) {

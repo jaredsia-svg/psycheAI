@@ -320,6 +320,11 @@ textarea { resize: vertical; }
 .score-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
 .score-card { text-align: center; margin-bottom: 0; }
 .score-card h2 { margin: .8rem 0 .1rem; }
+/* One basis per report, so the score sits beside its verdict rather than
+   stacked in a column beside a sibling. */
+.score-single { display: flex; gap: 1.3rem; align-items: center; text-align: left; margin-bottom: 1.2rem; }
+.score-single h2 { margin: 0 0 .1rem; }
+.score-single .ring { flex: none; }
 .band { font-weight: 700; color: var(--accent); margin-bottom: .6rem; }
 .score-card p:last-child { font-size: .92rem; color: var(--ink-soft); margin: 0; }
 .ring {
@@ -335,14 +340,6 @@ textarea { resize: vertical; }
 }
 .tier-a .ring { --ring: var(--good); }
 .tier-d .band { color: var(--warn); }
-
-.tabs { display: flex; gap: .4rem; margin-bottom: 1rem; }
-.tab {
-  appearance: none; cursor: pointer; font: inherit; font-weight: 600; font-size: .95rem;
-  border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink-soft);
-  border-radius: 999px; padding: .45rem 1.1rem;
-}
-.tab.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 .playbook { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
 .playbook h3 { margin-top: 0; }
@@ -527,6 +524,36 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .facet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
 .facet p { margin: 0; font-size: .9rem; }
 
+
+
+/* ---------- basis picker ---------- */
+
+.mode-dialog {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg-alt); color: var(--ink);
+  box-shadow: var(--shadow); padding: clamp(1.1rem, 3vw, 1.6rem);
+  width: min(30rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem);
+}
+.mode-dialog::backdrop { background: rgba(20, 14, 26, .55); backdrop-filter: blur(2px); }
+.mode-dialog h2 { margin-bottom: .2rem; }
+.mode-dialog > .muted { font-size: .92rem; margin-bottom: 1rem; }
+.mode-dialog .fineprint { margin: .2rem 0 0; }
+.mode-dialog .btn-row { margin-bottom: .4rem; }
+
+.mode-options { display: grid; gap: .55rem; margin-bottom: 1rem; }
+.mode-option {
+  display: flex; gap: .8rem; align-items: flex-start; text-align: left;
+  width: 100%; font: inherit; color: inherit; cursor: pointer;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  padding: .8rem .9rem;
+  transition: border-color .12s ease, background .12s ease;
+}
+.mode-option:hover, .mode-option:focus-visible {
+  border-color: var(--accent); background: var(--accent-soft); outline: none;
+}
+.mode-option strong { display: block; margin-bottom: .1rem; }
+.mode-option .muted { font-size: .85rem; line-height: 1.4; }
+.mode-icon { font-size: 1.4rem; line-height: 1.2; flex: none; }
 
 /* ---------- print / PDF export ---------- */
 /*

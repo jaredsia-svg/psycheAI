@@ -40,10 +40,11 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
 // What actually goes over the wire is the only honest test of the privacy
 // claims, so keep every analyse request body and assert against it.
 const analyseBodies = [];
+const compatBodies = [];
 page.on('request', request => {
-  if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) {
-    analyseBodies.push(request.postData());
-  }
+  if (request.method() !== 'POST') return;
+  if (request.url().endsWith('/api/analyse')) analyseBodies.push(request.postData());
+  if (request.url().endsWith('/api/compatibility')) compatBodies.push(request.postData());
 });
 
 const consoleErrors = [];
@@ -106,7 +107,9 @@ try {
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
   check('step four is about the relationship, not the scan',
-    /stronger relationships/.test(await page.locator('.step-card').nth(3).innerText()));
+    /stronger relationship/.test(await page.locator('.step-card').nth(3).innerText()));
+  check('step four says the basis is a choice',
+    /pick which basis/.test(await page.locator('.step-card').nth(3).innerText()));
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
@@ -590,23 +593,49 @@ try {
   await page.fill('#paste-input', 'https://example.com/#p=' + otherPayload);
   await page.click('#paste-go');
 
+  // ---- the basis picker ----
+  //
+  // Reading a code must not spend a model call until the user has said which
+  // question they want answered.
+  await page.waitForSelector('#mode-dialog[open]', { timeout: 15000 });
+  check('reading a code asks which basis to compare on',
+    await page.locator('#mode-dialog').isVisible());
+  check('the picker names the other person',
+    /Jordan/.test(await page.locator('#mode-dialog-sub').innerText()));
+  check('all three bases are offered',
+    (await page.locator('.mode-option').allInnerTexts()).join(' | ').replace(/\n/g, ' ')
+      .match(/Romantic|Platonic|Professional/g).length >= 3);
+  check('nothing is sent before a basis is chosen',
+    compatBodies.length === 0, String(compatBodies.length));
+  await shot('3-mode-picker');
+
+  // Backing out returns to the scanner rather than running anything.
+  await page.click('#mode-cancel');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  check('cancelling the picker runs no analysis', compatBodies.length === 0);
+
+  await page.fill('#paste-input', 'https://example.com/#p=' + otherPayload);
+  await page.click('#paste-go');
+  await page.waitForSelector('#mode-dialog[open]');
+  await page.click('.mode-option[data-mode="professional"]');
+
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   const reportText = await page.locator('#report-body').innerText();
+  check('the chosen basis was sent to the server',
+    JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'professional',
+    compatBodies[compatBodies.length - 1]);
   check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
-  check('report shows two scores', (await page.locator('.ring').count()) === 2);
-  check('report separates romantic and platonic', /Romantic/.test(reportText) && /Platonic/.test(reportText));
-  check('report has a how-to-partner playbook', /How to partner each other/i.test(reportText));
+  check('report shows one score, for one basis', (await page.locator('.ring').count()) === 1);
+  check('report is labelled with the basis chosen', /Professional \/ work/.test(reportText));
+  check('report does not cover the bases that were not asked for',
+    !/Romantic/.test(reportText) && !/Platonic/.test(reportText), reportText.slice(0, 200));
+  check('the playbook matches the basis', /How to work with each other/i.test(reportText));
   check('report gives each person their own advice',
-    (await page.locator('#tab-romantic .playbook > div').count()) === 2);
+    (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
   check('no raw undefined in the report', !/\bundefined\b/.test(reportText));
-  await shot('3-report-romantic');
-
-  await page.click('.tab[data-tab="platonic"]');
-  await page.waitForSelector('#tab-platonic:not([hidden])');
-  check('platonic tab has friendship-specific advice',
-    /How to befriend each other/i.test(await page.locator('#tab-platonic').innerText()));
-  await shot('4-report-platonic');
+  check('the old two-tab report is gone', (await page.locator('#report-body .tab').count()) === 0);
+  await shot('4-report');
 
   // ---- how it works ----
   await page.click('[data-nav="about"]');
@@ -626,7 +655,8 @@ try {
   check('what you get back is a grid, not a paragraph',
     (await page.locator('#view-about .tile').count()) === 8);
   check('the QR and matching are one section now',
-    /Your code, and matching/.test(about) && /romantic/i.test(about) && /platonic/i.test(about));
+    /Your code, and matching/.test(about) && /romantic/i.test(about) &&
+    /platonic/i.test(about) && /professional/i.test(about));
   check('the limits are still stated', /not a diagnosis, not a background check/.test(about));
   check('the guardrails are still listed',
     (await page.locator('#view-about .nots li').count()) === 4);
@@ -669,10 +699,18 @@ try {
   check('a foreign code is rejected cleanly', await page.locator('#scan-alert').isVisible());
 
   // ---- deep link ----
+  // A pasted link is the third way into the comparison, and it has to ask
+  // which basis too rather than picking one on the user's behalf.
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
+  await page.waitForSelector('#mode-dialog[open]', { timeout: 30000 });
+  check('a shared link asks for the basis as well', await page.locator('#mode-dialog').isVisible());
+  await page.click('.mode-option[data-mode="platonic"]');
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   check('a shared link runs the comparison straight away',
     (await page.locator('#report-body').innerText()).includes('Jordan'));
+  check('the basis chosen for a link is the one reported',
+    JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
+    /Platonic/.test(await page.locator('#report-body').innerText()));
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });

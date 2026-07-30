@@ -220,11 +220,26 @@ check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
 check('career section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.career.properties));
-check('compatibility schema scores both modes',
-  'romantic' in prompts.COMPATIBILITY_SCHEMA.properties && 'platonic' in prompts.COMPATIBILITY_SCHEMA.properties);
-check('each mode carries directional advice',
+// The basis is chosen by the user before the call, so the report answers one
+// question rather than covering three at once.
+check('compatibility offers three bases',
+  ['romantic', 'platonic', 'professional'].every(k => k in prompts.COMPATIBILITY_MODES));
+check('compatibility scores one basis, not several',
+  ['mode', 'score', 'band', 'verdict'].every(k => k in prompts.COMPATIBILITY_SCHEMA.properties) &&
+  !('romantic' in prompts.COMPATIBILITY_SCHEMA.properties) &&
+  !('platonic' in prompts.COMPATIBILITY_SCHEMA.properties));
+check('the answer echoes back which basis it used',
+  prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'romantic,platonic,professional');
+check('the report carries directional advice',
   ['forA', 'forB', 'together'].every(k =>
-    k in prompts.COMPATIBILITY_SCHEMA.properties.romantic.properties.howToPartner.properties));
+    k in prompts.COMPATIBILITY_SCHEMA.properties.howToPartner.properties));
+check('an unknown basis falls back rather than throwing',
+  prompts.resolveMode('nonsense') === 'romantic' && prompts.resolveMode('PROFESSIONAL') === 'professional');
+check('each basis is briefed differently',
+  new Set(Object.values(prompts.COMPATIBILITY_MODES).map(m => m.brief)).size === 3);
+check('the chosen basis reaches the model',
+  /\*\*Professional \/ work\*\* basis, and on that basis only/.test(
+    prompts.compatibilityBlocks({}, {}, 'professional')[0].text));
 check('MBTI is constrained to real types', prompts.MBTI_TYPES.length === 17 && prompts.MBTI_TYPES.includes('Uncertain'));
 
 // The prompt is the actual product here, so assert the guardrails survive edits.
@@ -260,7 +275,9 @@ for (const [label, needle] of [
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
 for (const [label, needle] of [
-  ['scores the two modes separately', /Romance turns on|Friendship turns on/],
+  ['answers only the basis it was given', /Assess \*\*only\*\* that basis/],
+  ['refuses to hedge across all three', /do not hedge by covering all three/],
+  ['briefs the professional basis distinctly', /reliability, candour and dividing work well/],
   ['tells the model not to inflate', /Do not inflate/],
   ['respects the confidence figure', /respect it/],
 ]) {
@@ -536,16 +553,16 @@ check('a trimmed card still fits a QR code', bloatedPayload.length <= Card.COMFO
 // ---------- mock compatibility ----------
 
 const other = { ...decoded, name: 'Jordan', interests: ['Running', 'Nightlife'] };
-const compat = (await mock.analyseCompatibility(decoded, other)).data;
+const compat = (await mock.analyseCompatibility(decoded, other, 'professional')).data;
 
 check('compatibility fills every section',
   Object.keys(prompts.COMPATIBILITY_SCHEMA.properties).every(key => key in compat));
-check('compatibility scores both modes',
-  Number.isInteger(compat.romantic.score) && Number.isInteger(compat.platonic.score));
+check('compatibility scores the chosen basis',
+  Number.isInteger(compat.score) && compat.mode === 'professional');
 check('compatibility names both people',
-  compat.romantic.verdict.includes(decoded.name) && compat.romantic.verdict.includes('Jordan'));
+  compat.verdict.includes(decoded.name) && compat.verdict.includes('Jordan'));
 check('compatibility gives each person their own advice',
-  compat.romantic.howToPartner.forA.length > 0 && compat.romantic.howToPartner.forB.length > 0);
+  compat.howToPartner.forA.length > 0 && compat.howToPartner.forB.length > 0);
 
 // ---------- results ----------
 

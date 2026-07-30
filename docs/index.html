@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PsycheAI — the personality analysis you didn't know you needed</title>
-<meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code for romantic and platonic compatibility.">
+<meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code to compare on a romantic, platonic or professional basis.">
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b3fa0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z'/><path d='M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z'/><path d='M12 4.3v16.4'/><path d='M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2'/><path d='M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2'/></svg>">
 </head>
@@ -46,7 +46,7 @@
     <div class="step-card"><span class="step-num">3</span><h3>Learn about yourself</h3>
       <p>Learn insights about yourself for your personal life, relationships, and career. Your full profile is private and only your device can see it.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Test compatibility</h3>
-      <p>Get insights on how you and your partner / friends can develop stronger relationships based on your profile.</p></div>
+      <p>Get insights on how you and your partner, friends or colleagues can build a stronger relationship — pick which basis to compare on.</p></div>
   </div>
 
   <div class="card help help-card">
@@ -273,11 +273,12 @@
     </div></div>
     <p>Your profile is squeezed down to a handful of short phrases and packed <em>inside</em> the QR
       code itself. That is the whole thing — the code is not a link to a profile, it is the profile.</p>
-    <p>When someone scans you, their phone reads your card, sends it along with theirs, and gets back
-      two scores: <strong>romantic</strong> and <strong>platonic</strong>, kept separate because they
-      are genuinely different questions. You can be a great friendship and a poor romance, and the
-      report will say so. Each comes with what works, what will rub, and specific advice for each of
-      you about the other.</p>
+    <p>When someone scans you, they first choose what they are asking:
+      <strong>romantic</strong>, <strong>platonic</strong>, or <strong>professional</strong>. Those
+      are genuinely different questions — you can be a great colleague and a poor housemate — so the
+      report answers the one that was picked, in full, rather than three at once. It comes back with
+      a score, an honest verdict, what works, what will rub, and specific advice for each of you
+      about the other. Scan again to ask a different question.</p>
   </div>
 
   <div class="card section-card">
@@ -303,6 +304,39 @@
 </section>
 
 </main>
+
+<!-- ══════════════ basis picker ══════════════ -->
+<!-- Opens once a code has been read, before the model call, because the
+     report answers whichever question is chosen here and only that one. -->
+<dialog id="mode-dialog" class="mode-dialog" aria-labelledby="mode-dialog-title">
+  <h2 id="mode-dialog-title">How should we compare you?</h2>
+  <p class="muted" id="mode-dialog-sub"></p>
+  <div class="mode-options">
+    <button class="mode-option" data-mode="romantic" type="button">
+      <span class="mode-icon">💞</span>
+      <span><strong>Romantic</strong>
+        <span class="muted">Life direction, values, emotional safety, and whether your days can coexist.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-mode="platonic" type="button">
+      <span class="mode-icon">🤝</span>
+      <span><strong>Platonic</strong>
+        <span class="muted">Shared interests, matching energy, and whether you'd enjoy a Saturday together.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-mode="professional" type="button">
+      <span class="mode-icon">💼</span>
+      <span><strong>Professional / work</strong>
+        <span class="muted">Complementary strengths, standards, deadlines, and who ends up carrying whom.</span>
+      </span>
+    </button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="mode-cancel" type="button">Cancel</button>
+  </div>
+  <p class="fineprint">One basis per run — the report covers the one you pick, in full, rather than
+    three at once. Scan again to compare on another.</p>
+</dialog>
 
 <footer class="footer">
   <p>PsycheAI · <a href="#" data-nav="about">how it works</a></p>

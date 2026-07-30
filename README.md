@@ -9,9 +9,9 @@ each, a behavioural read of how you actually use Instagram, your interests, beli
 your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
 PDF when you are done.
 
-That profile is tagged to a **QR code**. Scan someone else's and the model assesses how the two of
-you would work together, scoring **romantic** and **platonic** compatibility separately and writing a
-playbook aimed at each of you about the other.
+That profile is tagged to a **QR code**. Scan someone else's, choose whether you are asking as
+**partners**, **friends** or **colleagues**, and the model assesses how the two of you would work
+together on that basis, with a playbook aimed at each of you about the other.
 
 ## Running it
 
@@ -249,25 +249,32 @@ the other person's report — and your long-form report never leaves your device
 
 ## Compatibility
 
-Romantic and platonic fit are scored separately because they are different questions. Romance turns
-on life direction, values, emotional safety and whether two daily rhythms can coexist; friendship
-turns on shared interests, compatible energy and low friction. A pair can be a great friendship and a
-poor romance, and the report says so when that is the case.
+Reading someone's code opens a picker before anything is sent: **Romantic**, **Platonic**, or
+**Professional / work**. The report answers that question and only that one.
 
-Each mode gets a score, an honest verdict, what works, what will rub, and a playbook addressed to
-each person individually about the other.
+This is a deliberate change from scoring several at once. A reader who picked "professional" does not
+want to be told about their romantic prospects, the prompt is explicit about not hedging across all
+three, and one basis done properly beats three done shallowly for the same output budget. Each basis
+carries its own brief: romance turns on life direction, values, emotional safety and whether two
+daily rhythms can coexist; friendship on shared interests, matching energy and low friction; work on
+complementary strengths, standards, how each handles a deadline, and whether one will quietly end up
+carrying the other.
+
+The result is a score, an honest verdict, what works, what will rub, and a playbook addressed to each
+person individually about the other. Scan again to compare on a different basis — the picker appears
+on every read, whether it came from the camera, a photo of a code, a pasted link or a shared URL.
 
 ## Tests
 
 ```bash
-npm test           # 182 checks: synthesises a real ZIP export and runs
+npm test           # 189 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 215 checks: drives the real UI in Chromium against a
+npm run test:ui    # 225 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
