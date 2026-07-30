@@ -308,10 +308,10 @@ The field is still called `noun` in profiles saved before this change, and profi
 localStorage indefinitely with no server copy to migrate, so both the page and the PDF fall back to
 it — covered by a check that stores an old-shape profile and renders it.
 
-Under the character sits a **glance strip** — MBTI type, highest and lowest Big Five trait, attachment
-read — then a two-or-three-paragraph summary that lands the findings from every section below, so
-someone who reads only the opening still leaves with the answers. The strip is derived in
-`docs/app.js` from the sections themselves rather than asked of the model a second time: restating
+Under the character sits a **glance strip** — MBTI type, highest and lowest Big Five trait, Enneagram
+type and wing — then a two-or-three-paragraph summary that lands the findings from every section
+below, so someone who reads only the opening still leaves with the answers. The strip is derived in
+`docs/copy.js` from the sections themselves rather than asked of the model a second time: restating
 them in another field costs tokens and creates something that can disagree with itself. A UI check
 compares the strip against the trait bars to prove it cannot.
 

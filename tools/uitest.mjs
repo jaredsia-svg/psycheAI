@@ -348,8 +348,9 @@ try {
     const scores = [...document.querySelectorAll('.trait-num')].map(n => Number(n.textContent));
     return high.includes(String(Math.max(...scores))) && low.includes(String(Math.min(...scores)));
   }));
-  check('the glance carries the attachment guess, labelled as one',
-    /Attachment/i.test(glance) && /a guess/i.test(glance));
+  check('the glance carries the Enneagram type, wing and nickname',
+    /Enneagram/i.test(glance) && /9w1/.test(glance) && /The Peacemaker/.test(glance),
+    glance.replace(/\n/g, ' / '));
   check('the glance sits above the summary prose', await page.evaluate(() => {
     const g = document.querySelector('.glance');
     const p = g.parentElement.querySelector('p:not([class])');
@@ -738,6 +739,13 @@ try {
         nickname: 'The Debater and Relentless Examiner of Everything',
         letters: [], caveat: 'Caveat.',
       },
+      // The glance strip's fourth column used to be attachment; it is
+      // Enneagram now, and needs a long enough nickname to keep this a real
+      // stress test of the strip rather than three easy columns.
+      enneagram: {
+        type: '9', wing: '1', nickname: 'The Peacemaker Who Avoids All Conflict',
+        confidence: 'moderate', why: 'Why.', caveat: 'Caveat.',
+      },
       relationship: {
         strengths: [], weaknesses: [],
         attachment: {
@@ -817,7 +825,7 @@ try {
   // cheap fix for a two-line value is to render one line of it, which loses
   // half the finding without leaving a mark.
   const stripWords = inStrip.map(item => item.text).join(' ').replace(/\s+/g, ' ');
-  for (const whole of ['Leans Anxious-Preoccupied with Avoidant Episodes',
+  for (const whole of ['The Peacemaker Who Avoids All Conflict',
     'The Debater and Relentless Examiner of Everything', 'Openness to experience']) {
     check('the strip shows ' + JSON.stringify(whole) + ' in full',
       stripWords.includes(whole), stripWords.slice(0, 120));

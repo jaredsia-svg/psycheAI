@@ -152,8 +152,7 @@
     glanceType: 'Type',
     glanceHighest: 'Highest',
     glanceLowest: 'Lowest',
-    glanceAttachment: 'Attachment',
-    glanceGuess: 'a guess',
+    glanceEnneagram: 'Enneagram',
   };
 
   /**
@@ -180,9 +179,9 @@
       items.push({ label: TEXT.glanceLowest, value: TRAIT_LABELS[bottom.key], note: bottom.item.score + '/100' });
     }
 
-    const attachment = source.relationship && source.relationship.attachment;
-    if (attachment && attachment.style) {
-      items.push({ label: TEXT.glanceAttachment, value: attachment.style, note: TEXT.glanceGuess });
+    if (source.enneagram && source.enneagram.type) {
+      const badge = source.enneagram.type + (source.enneagram.wing ? 'w' + source.enneagram.wing : '');
+      items.push({ label: TEXT.glanceEnneagram, value: badge, note: source.enneagram.nickname || '' });
     }
 
     return items;
