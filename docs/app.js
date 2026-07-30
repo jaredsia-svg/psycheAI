@@ -757,17 +757,44 @@
     return context.getImageData(0, 0, width, height);
   }
 
-  // iOS Safari caps how much canvas backing store a page may hold and, past
-  // that, silently hands back a blank one instead of failing. A uniform result
-  // means the draw did not happen — worth telling apart from "no code here".
+  // Some browsers cap how much canvas backing store a page may hold and, past
+  // that, silently hand back a blank one instead of failing. Telling that apart
+  // from "no code here" makes the difference between a useful error and a
+  // baffling one.
+  //
+  // This is a heuristic, so it may only ever *label* a failure — never decide
+  // whether to attempt one. An earlier version returned before calling jsQR
+  // when it thought a draw was blank, and a false positive then skipped the
+  // only renderings that could have read the code.
+  //
+  // Sampling is spread over many more pixels than before, on a stride coprime
+  // with the row width so it cannot line up with the module grid, and it
+  // compares a luminance range rather than exact equality.
   function looksBlank(pixels) {
     const data = pixels.data;
-    const step = Math.max(4, Math.floor(data.length / 4 / 300) * 4);
-    const first = data[0];
-    for (let i = 0; i < data.length; i += step) {
-      if (data[i] !== first) return false;
+    const total = data.length / 4;
+    if (!total) return true;
+    const wanted = Math.min(total, 4000);
+    let stride = Math.max(1, Math.floor(total / wanted));
+    // Nudge to an odd stride that shares no factor with the row width, so the
+    // samples walk across columns instead of marching down one.
+    while (stride > 1 && gcd(stride, pixels.width) !== 1) stride++;
+
+    let low = 255;
+    let high = 0;
+    for (let p = 0; p < total; p += stride) {
+      const i = p * 4;
+      const luma = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
+      if (luma < low) low = luma;
+      if (luma > high) high = luma;
+      if (high - low > 12) return false;
     }
     return true;
+  }
+
+  function gcd(a, b) {
+    while (b) { const t = a % b; a = b; b = t; }
+    return a;
   }
 
   // jsQR does its own binarisation, but a global threshold rescues images it
@@ -805,8 +832,10 @@
   function decodeAt(source, width, height, crop) {
     const pixels = rasterise(source, width, height, crop);
     if (!pixels) return null;
-    if (looksBlank(pixels)) { decodeStill.blankDraws++; return null; }
-    return readPixels(pixels);
+    // Always attempt the read. The blank check only annotates a failure.
+    const found = readPixels(pixels);
+    if (!found && looksBlank(pixels)) decodeStill.blankDraws++;
+    return found;
   }
 
   /**

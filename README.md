@@ -79,6 +79,21 @@ a page holds too much backing store, so a uniform result is reported as "this br
 an image that big" rather than "no code found". And a failure message carries the image dimensions
 and the number of renderings tried, because without those a bug report of this is unactionable.
 
+That failure message is what caught a real bug: a laptop-downloaded JPEG, re-uploaded on the same
+machine, reported "1600×1600, 13 attempts, 4 blank" — every one of the four whole-image attempts
+(the only renderings capable of decoding a full-frame code; each of the nine tiles holds only a
+quarter of it) had been written off as blank and never even reached jsQR. The blank check sampled a
+fixed stride of roughly 300 pixels, and on a plain, tightly-cropped QR code that stride could land
+exactly on the repeating module grid — walking straight down a column of white (or black) modules and
+seeing no variation at all. It was also gating the read: a `looksBlank() === true` result returned
+before `jsQR` was ever called, on the very attempts most likely to succeed. The fix samples up to
+4000 pixels on a stride forced coprime with the canvas width (so it cannot alias onto the grid), checks
+a luminance *range* rather than exact equality, and — the part that actually mattered — the blank
+check no longer gates anything. `jsQR` always runs first; `looksBlank` is consulted only afterward,
+to label an already-failed attempt. The suite now downloads the real exported file and re-uploads it
+through the actual file input, and separately proves the old stride did produce a false "blank" on the
+real code while the new one never does.
+
 The suite puts real composites through the actual file input — a phone screenshot with the code at
 30%, a 2560×1440 laptop screenshot at 25%, a recompressed 800px copy — and asserts each reads.
 

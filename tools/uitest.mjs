@@ -854,6 +854,91 @@ try {
   check('the exported code still decodes viewed at 600px', exported.at600, JSON.stringify(exported));
   check('the exported code still decodes viewed at 400px', exported.at400, JSON.stringify(exported));
 
+  // The round trip that was actually broken: download the code, then upload
+  // that exact file back through the real handler. Decoding the bytes in the
+  // page was not enough — it skipped the handler, where the bug lived.
+  await page.click('[data-nav="scan"]');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  await page.setInputFiles('#qr-file', { name: 'psycheai.jpg', mimeType: 'image/jpeg', buffer: saved });
+  const roundTrip = await Promise.race([
+    page.waitForSelector('#mode-dialog[open]', { timeout: 30000 }).then(() => 'read'),
+    page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 })
+      .then(() => page.locator('#scan-alert').innerText()),
+  ]).catch(() => 'timed out');
+  check('the downloaded file uploads and reads straight back',
+    roundTrip === 'read', String(roundTrip).slice(0, 110));
+  if (roundTrip === 'read') {
+    await page.click('#mode-cancel');
+    await page.waitForSelector('#mode-dialog', { state: 'hidden' });
+  }
+
+  // The blank-draw heuristic may only label a failure, never skip a decode: a
+  // false positive there is exactly what broke the round trip above.
+  check('a full-frame code is never written off as a blank draw', await page.evaluate(async () => {
+    const source = await fetch('app.js').then(r => r.text());
+    return /Always attempt the read/.test(source) &&
+      /if \(!found && looksBlank\(pixels\)\) decodeStill\.blankDraws\+\+;/.test(source);
+  }));
+
+  // The heuristic itself has to stop mistaking a QR for an empty canvas. The
+  // original sampled ~300 pixels on a stride that could line up with the module
+  // grid and see nothing but white — it called this very code blank at 600px.
+  const blankCheck = await page.evaluate(async () => {
+    const url = location.origin + location.pathname + '#p=' +
+      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
+    const code = await new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      window.QRCode.toCanvas(canvas, url, {
+        width: 1600, margin: 4, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' },
+      }, error => (error ? reject(error) : resolve(canvas)));
+    });
+    const bitmap = await createImageBitmap(await new Promise(r => code.toBlob(r, 'image/jpeg', 0.95)));
+
+    const naive = data => {
+      const step = Math.max(4, Math.floor(data.length / 4 / 300) * 4);
+      for (let i = 0; i < data.length; i += step) if (data[i] !== data[0]) return false;
+      return true;
+    };
+    const gcd = (a, b) => { while (b) { const t = a % b; a = b; b = t; } return a; };
+    const robust = pixels => {
+      const data = pixels.data;
+      const total = data.length / 4;
+      let stride = Math.max(1, Math.floor(total / Math.min(total, 4000)));
+      while (stride > 1 && gcd(stride, pixels.width) !== 1) stride++;
+      let low = 255, high = 0;
+      for (let q = 0; q < total; q += stride) {
+        const i = q * 4;
+        const luma = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
+        if (luma < low) low = luma;
+        if (luma > high) high = luma;
+        if (high - low > 12) return false;
+      }
+      return true;
+    };
+
+    const out = { naiveFalsePositives: 0, robustFalsePositives: 0, reads: 0, sizes: [] };
+    for (const size of [1600, 1100, 800, 600]) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const c = canvas.getContext('2d', { willReadFrequently: true });
+      c.drawImage(bitmap, 0, 0, size, size);
+      const pixels = c.getImageData(0, 0, size, size);
+      const hit = window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
+      const readable = Boolean(hit && hit.data === url);
+      if (readable) out.reads++;
+      if (readable && naive(pixels.data)) { out.naiveFalsePositives++; out.sizes.push(size); }
+      if (readable && robust(pixels)) out.robustFalsePositives++;
+    }
+    return out;
+  });
+
+  check('every ladder size of the real code is readable', blankCheck.reads === 4, JSON.stringify(blankCheck));
+  check('the blank check no longer mistakes a QR for an empty canvas',
+    blankCheck.robustFalsePositives === 0, JSON.stringify(blankCheck));
+  check('the naive check it replaced did mistake one, so this is a real guard',
+    blankCheck.naiveFalsePositives > 0, JSON.stringify(blankCheck));
+
   // ---- uploading a picture of a code ----
   //
   // The reported failure was a downloaded code sent to someone else and
