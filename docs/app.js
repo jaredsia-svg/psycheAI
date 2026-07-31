@@ -74,11 +74,22 @@
     return '<ul class="' + (className || '') + '">' + values.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
   }
 
+  // The chips under a Big Five bar, reused wherever a claim has to show what
+  // put it there. Compatibility claims carry these; profile points do not, so
+  // this returns nothing rather than an empty row when there is no evidence.
+  function evidence(items) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<p class="trait-evidence">' +
+      values.map(e => '<span class="ev">' + esc(e) + '</span>').join('') + '</p>';
+  }
+
   function points(items) {
     const values = (items || []).filter(Boolean);
     if (!values.length) return '<p class="muted">' + esc(TEXT.pointsEmpty) + '</p>';
     return '<dl class="points">' + values.map(item =>
-      '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>').join('') + '</dl>';
+      '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) +
+      evidence(item.evidence) + '</dd>').join('') + '</dl>';
   }
 
   function tags(items) {
@@ -408,7 +419,7 @@
 
   // Both the profile page and the scan page show this person's own QR code, so
   // painting it is one function rather than two copies of the same try/catch.
-  // The card is ~630 characters, so this lands around 87 modules across.
+  // The card is ~680 characters, so this lands around 89 modules across.
   // Backing the canvas at 3x its display size keeps module edges crisp on a
   // high-DPI phone, which is the difference between a camera resolving them
   // and seeing grey mush. A wider quiet zone helps the locator too.
@@ -1228,6 +1239,7 @@
       'This report answers one question. Scan again to compare on a different basis.</p></header>';
 
     html += scoreCard(MODE_LABELS[mode], report);
+    html += dimensionsCard(report);
 
     html += '<div class="card"><h2>The short version</h2>' +
       '<h3>Biggest upside</h3><p>' + esc(report.biggestUpside) + '</p>' +
@@ -1250,6 +1262,22 @@
     html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
     $('#report-body').innerHTML = html;
+  }
+
+  // One number for a whole pairing hides where the fit actually is, and a
+  // reader cannot argue with it. These are the same bars the Big Five uses,
+  // for the same reason: a score with its reasoning attached is checkable, and
+  // a pair that is strong on values and poor on rhythms should look like it.
+  function dimensionsCard(report) {
+    const items = (report.dimensions || []).filter(d => d && d.name);
+    if (!items.length) return '';
+    return '<div class="card section-card"><h2>Where it holds and where it does not</h2>' +
+      '<p class="card-sub">Each scored on its own, on the same scale as the number above: 50 is ' +
+      'two people picked at random.</p>' +
+      items.map(item => bar(item.name, item.score,
+        (item.reading ? '<p class="trait-reading">' + esc(item.reading) + '</p>' : '') +
+        evidence(item.evidence))).join('') +
+      '</div>';
   }
 
   function scoreCard(label, report) {

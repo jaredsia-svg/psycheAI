@@ -422,12 +422,51 @@ one type size throughout. Those rules keep their own UI checks.
 ## The QR code
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short
-labelled phrases. `docs/card.js` trims it to hard limits, deflate-compresses it and base64url-encodes
-it, which gets a rich profile down to **roughly 600–900 characters**: dense, but scannable off a
-phone screen. There is nothing to look up and no account to create.
+labelled phrases. `docs/card.js` trims it to hard limits, packs it, deflate-compresses it and
+base64url-encodes it, which gets a rich profile down to **roughly 680 characters**: dense, but
+scannable off a phone screen. There is nothing to look up and no account to create.
 
 The card is also exactly what the compatibility call receives, so whatever is trimmed is invisible to
 the other person's report — and your long-form report never leaves your device.
+
+### What the card carries, and what that cost
+
+The card used to hold about a tenth of the report, and specifically the wrong tenth. The
+compatibility prompt is told that attachment and love languages decide a romantic read, that contact
+appetite decides a platonic one, and that standards and follow-through decide a professional one —
+and the card carried none of those. Love languages were absent entirely; attachment was the string
+`"leans secure (tentative)"` with all of its reasoning discarded. Meanwhile interests, the thing the
+same prompt says matters least, had eight slots. The model was being asked to weigh evidence it had
+never been given, so it fell back on hobbies and filled the rest with something plausible.
+
+**K4** carries the reasoning under the attachment guess, both love-language sides, an `energy` line
+for contact appetite, a `workStyle` line, and the Enneagram type — the five things the mode briefs
+actually name.
+
+There was no spare room for any of it. The `COMFORTABLE_PAYLOAD` constant claimed 1800 characters and
+that number was fiction: measured against the scan ladder in `tools/uitest.mjs` — redraw at 450px and
+300px, then sit the code in a 480p and a 720p camera frame — 656 characters passes everything, 721
+still does, and **761 starts dropping frames**. Past that it is erratic rather than progressively
+worse: 838 passed where 924 failed, because survival depends on the individual bit pattern. The old
+card already sat at 633, so the real headroom was a few per cent, not four fifths. The constant is now
+730, which also means the "dense, use the link instead" warning can fire at all — at 1800 it never
+could, since that is roughly QR version 33 and no phone reads one off a screen.
+
+The room was therefore bought, three ways. **Packing the wire format** was the largest single win:
+nothing inside the compressed blob is ever read by a human, and spelled-out keys like
+`relationshipWeaknesses` and `conscientiousness` came to roughly 420 characters that deflate could
+not win back, because each occurs only once or twice. `pack()` maps them to one or two characters and
+makes the Big Five positional; `unpack()` restores the canonical shape, so nothing downstream knows.
+Then **cutting what the prompt does not weigh**: interests went from eight slots to four, career
+detail collapsed into the single `workStyle` line, and the per-trait commentary went entirely — the
+derived-facts block below now hands the model both Big Five scores and the gap between them, which
+was the part it could not work out for itself. The result carries markedly more of what decides a
+comparison, inside a QR code slightly *smaller* than the one before it.
+
+Codes made before this still scan. `K3` payloads spell their keys out and lack the new fields, so
+`decodeCard` reads the old format when it sees the old prefix and fills the additions as empties —
+someone may have a code saved as a JPEG or printed on something, and refusing to read it would be a
+worse failure than a slightly thinner comparison.
 
 On the profile page, **"Test your compatibility"** — the QR code, the copy-link and download-QR
 buttons, and the link to the scan page — sits last, after the full report and after the
@@ -448,6 +487,38 @@ daily rhythms can coexist; friendship on shared interests, matching energy and l
 complementary strengths, standards, how each handles a deadline, and whether one will quietly end up
 carrying the other.
 
+### One number, then five
+
+A single score for a whole pairing is unfalsifiable: it cannot show where the fit is strong and where
+it is thin, and a reader has no way to argue with it. The profile side broke the Big Five into five
+scored traits with evidence apiece for exactly this reason, and the compatibility side did not follow
+until now.
+
+The report scores **five dimensions** chosen for the basis that was picked — romance on values and
+life direction, emotional safety, daily rhythms, how each gives care, and energy match; work on
+complementary strengths, standards and follow-through, working rhythms, handling disagreement, and
+load balance. Each carries its own score, a reading, and its evidence, drawn as the same bars the
+trait scores use. The overall number is asked to be recognisably their weighted middle rather than a
+separate impression formed first and justified afterwards.
+
+Every strength and friction now carries an `evidence` field too. The profile schema has demanded
+evidence per trait since it was written; this side had none anywhere, so a claim could be asserted
+with nothing behind it. The prompt asks for the actual number or phrase — "her 77 agreeableness
+against his 51", not "both are quite agreeable" — and says outright that a claim nothing supports
+does not belong in the report.
+
+### Arithmetic the model should not be doing
+
+Set intersection and subtraction are things a model does slowly, expensively and sometimes wrongly: it
+will miss an exact match, or offer a near-match as shared ground because the two words rhyme. So
+`derivedFacts()` in `lib/prompts.js` computes them and hands them over as settled fact — exact
+interest and value overlap (case- and punctuation-insensitive, so `coffee!` matches `Coffee`),
+both Big Five scores side by side with the gap and whether it is close or wide, MBTI axis agreement,
+and both confidence figures. The prompt says to reason from that block and not recompute it, which is
+also what stops a report inventing a shared interest neither person has. `docs/copy.js` already
+refuses to ask the model twice for anything derivable, on the grounds that a second answer can
+disagree with the first; this is the same rule applied to the second call.
+
 The result is a score, an honest verdict, what works, what will rub, and a playbook addressed to each
 person individually about the other. Scan again to compare on a different basis — the picker appears
 on every read, whether it came from the camera, a photo of a code, a pasted link or a shared URL.
@@ -455,18 +526,22 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 189 checks: synthesises a real ZIP export and runs
+npm test           # 254 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 248 checks: drives the real UI in Chromium against a
+npm run test:ui    # 383 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
-                   # JPEGs, are not the originals, and vanish on opt-out
+                   # JPEGs, are not the originals, and vanish on opt-out.
+                   # Includes the scan ladder the card's size budget is set
+                   # against: the code is redrawn at 450px and 300px and sat
+                   # inside 480p and 720p camera frames, and has to decode in
+                   # every one
 npm run test:live  # 15 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```

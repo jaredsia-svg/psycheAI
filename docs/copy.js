@@ -135,8 +135,10 @@
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',
-    qrFineprint: 'Plus your Big Five scores, MBTI, values, beliefs, relationship and career ' +
-      'strengths and weaknesses, attachment guess and rhythm — all as short phrases.',
+    qrFineprint: 'Plus your Big Five scores and what each one means for you, MBTI and Enneagram, ' +
+      'values, beliefs, relationship and career strengths and weaknesses with a line on each, ' +
+      'your attachment guess and the reasoning under it, your love languages, and your rhythm and ' +
+      'energy — all as short phrases.',
 
     matches: 'Your matches',
     matchWith: 'With',

@@ -554,7 +554,7 @@ check('analysis fills every top-level section',
 const cardPayload = await Card.encodeCard(report.card);
 const decoded = await Card.decodeCard(cardPayload);
 
-check('card payload is prefixed and compact', cardPayload.startsWith('K3') && cardPayload.length < 1200, cardPayload.length + ' chars');
+check('card payload is prefixed and compact', cardPayload.startsWith(Card.VERSION) && cardPayload.length < 1600, cardPayload.length + ' chars');
 check('card payload is comfortably scannable', cardPayload.length <= Card.COMFORTABLE_PAYLOAD, cardPayload.length + ' chars');
 check('card round-trips', !!decoded);
 check('card round-trips the name', decoded.name === report.card.name);
@@ -565,6 +565,89 @@ check('card round-trips career strengths',
   JSON.stringify(decoded.careerStrengths) === JSON.stringify(report.card.careerStrengths));
 check('card excludes the long-form report',
   !JSON.stringify(decoded).includes('Mock summary paragraph'));
+
+// The card used to carry a tenth of the report, and specifically not the parts
+// the compatibility prompt says decide the answer. Each of these was absent
+// before K4, so each one is a thing the second model call could not see.
+// Read defensively: if a field stops being emitted at all, this has to report
+// which one rather than dying on an undefined and printing a stack trace.
+const carries = (key, min) => typeof decoded[key] === 'string'
+  ? decoded[key].length > min
+  : Array.isArray(decoded[key]) && decoded[key].length > min;
+for (const [label, present] of [
+  ['love languages, which decide the romantic read', carries('loveReceiving', 0) && carries('loveGiving', 0)],
+  ['the reasoning under the attachment guess', carries('attachmentWhy', 40)],
+  ['contact appetite, which decides the platonic read', carries('energy', 10)],
+  ['work style, which decides the professional read', carries('workStyle', 10)],
+  ['the Enneagram type', carries('enneagram', 0)],
+]) {
+  check('the card carries ' + label, Boolean(present));
+}
+
+// A code someone saved as a JPEG months ago still has to read. K4 both renamed
+// the keys on the wire and added fields, so a real K3 payload has to be built
+// the old way — full-length keys, no packing — rather than re-prefixing a K4
+// one, which would only prove the prefix check and not the format fallback.
+const legacyCard = {
+  name: 'Alex', headline: 'Old headline', summary: 'Old summary.', mbti: 'INFP',
+  bigFive: { openness: 60, conscientiousness: 50, extraversion: 40, agreeableness: 70, neuroticism: 30 },
+  interests: ['Running'], values: ['Family'], beliefs: [],
+  relationshipStrengths: ['Shows up consistently', 'Warm in writing'],
+  relationshipWeaknesses: ['Slow to raise problems'],
+  careerStrengths: ['Follows through'], careerWeaknesses: ['Under-advocates'],
+  attachment: 'leans secure (tentative)', rhythm: 'early riser', confidence: 64,
+};
+const legacyPayload = await (async () => {
+  const bytes = new TextEncoder().encode(JSON.stringify(legacyCard));
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const packed = new Uint8Array(await new Response(stream).arrayBuffer());
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let out = '';
+  for (let i = 0; i < packed.length; i += 3) {
+    const [b0, b1, b2] = [packed[i], packed[i + 1], packed[i + 2]];
+    out += B64[b0 >> 2] + B64[((b0 & 3) << 4) | ((b1 || 0) >> 4)];
+    if (b1 === undefined) break;
+    out += B64[((b1 & 15) << 2) | ((b2 || 0) >> 6)];
+    if (b2 === undefined) break;
+    out += B64[b2 & 63];
+  }
+  return 'K3' + out;
+})();
+const legacyDecoded = await Card.decodeCard(legacyPayload);
+check('a genuine K3 code still decodes', !!legacyDecoded);
+check('a K3 code keeps the data it carried',
+  legacyDecoded && legacyDecoded.name === 'Alex' && legacyDecoded.bigFive.agreeableness === 70 &&
+  legacyDecoded.relationshipStrengths[0] === 'Shows up consistently');
+check('a K3 code gains the fields it never had, as empties',
+  Boolean(legacyDecoded) && ['enneagram', 'attachmentWhy', 'energy', 'workStyle'].every(k => legacyDecoded[k] === '') &&
+  Array.isArray(legacyDecoded.loveGiving) && legacyDecoded.loveGiving.length === 0);
+check('a payload with no known prefix is still rejected',
+  (await Card.decodeCard('K9' + cardPayload.slice(2))) === null);
+check('a K4 payload is genuinely packed, not just renamed',
+  !JSON.stringify(Card.pack(Card.shape(report.card))).includes('relationshipStrengths'));
+check('packing round-trips every field it carries',
+  JSON.stringify(Card.shape(Card.unpack(Card.pack(Card.shape(report.card))))) ===
+  JSON.stringify(Card.shape(report.card)));
+
+// The other half: what a pre-K4 card looks like once inflated.
+const legacyShape = Card.shape({
+  name: 'Alex', headline: 'Old headline', summary: 'Old summary.', mbti: 'INFP',
+  bigFive: { openness: 60, conscientiousness: 50, extraversion: 40, agreeableness: 70, neuroticism: 30 },
+  interests: ['Running'], values: ['Family'], beliefs: [],
+  relationshipStrengths: ['Shows up consistently', 'Warm in writing'],
+  relationshipWeaknesses: ['Slow to raise problems'],
+  careerStrengths: ['Follows through'], careerWeaknesses: ['Under-advocates'],
+  attachment: 'leans secure (tentative)', rhythm: 'early riser', confidence: 64,
+});
+check('a pre-K4 card keeps its relationship phrases',
+  legacyShape.relationshipStrengths[0] === 'Shows up consistently');
+check('a pre-K4 card gains the new fields as empties, never undefined',
+  ['enneagram', 'attachmentWhy', 'energy', 'workStyle'].every(key => legacyShape[key] === '') &&
+  Array.isArray(legacyShape.loveGiving) && legacyShape.loveGiving.length === 0 &&
+  Array.isArray(legacyShape.loveReceiving) && legacyShape.loveReceiving.length === 0);
+check('a pre-K4 card keeps the data it did carry',
+  legacyShape.name === 'Alex' && legacyShape.bigFive.agreeableness === 70 &&
+  legacyShape.attachment === 'leans secure (tentative)');
 
 check('a foreign code is rejected', (await Card.decodeCard('https://example.com/not-psycheai')) === null);
 check('a corrupted payload is rejected', (await Card.decodeCard(cardPayload.slice(0, -8) + 'AAAAAAAA')) === null);
@@ -586,6 +669,43 @@ check('card caps phrase length', bloated.interests.every(p => p.length <= Card.C
 const bloatedPayload = await Card.encodeCard(bloated);
 check('a trimmed card still fits a QR code', bloatedPayload.length <= Card.COMFORTABLE_PAYLOAD, bloatedPayload.length + ' chars');
 
+// The caps only mean anything if the worst card they permit still scans. K4
+// widened nearly every field, so this fills all of them to the brim with
+// non-repeating words — the least compressible thing a real card could be —
+// and checks the QR payload is still inside the comfortable budget. Without
+// it the caps are a guess; a maximally-stuffed card overshot by 241 characters
+// on the first sizing and the numbers were pulled back until it fit.
+let noiseSeed = 7;
+const WORDLIST = ('quiet loud steady sharp warm distant careful reckless plans drifts commits avoids conflict ' +
+  'tension repair silence weekend morning evening trail summit kitchen camera studio office deadline standard ' +
+  'rhythm cadence energy attention care effort trust candour friction upside risk boundary pattern signal ' +
+  'evidence hedge confidence value belief interest strength weakness partner colleague project season ' +
+  'reply latency burst message caption follower archive story reel carousel comment').split(/\s+/);
+function noise(length) {
+  let out = '';
+  while (out.length < length) {
+    noiseSeed = (noiseSeed * 1103515245 + 12345) & 0x7fffffff;
+    out += WORDLIST[noiseSeed % WORDLIST.length] + ' ';
+  }
+  return out.slice(0, length);
+}
+const CAPS = Card.CAPS;
+const stuffed = {
+  name: noise(CAPS.name), headline: noise(CAPS.headline), summary: noise(CAPS.summary),
+  mbti: 'ENFJ', enneagram: noise(CAPS.enneagram),
+  bigFive: { openness: 62, conscientiousness: 71, extraversion: 48, agreeableness: 77, neuroticism: 35 },
+  attachment: noise(CAPS.attachment), attachmentWhy: noise(CAPS.attachmentWhy),
+  rhythm: noise(CAPS.rhythm), energy: noise(CAPS.energy),
+  workStyle: noise(CAPS.workStyle), confidence: 88,
+};
+for (const [key, count] of Object.entries(CAPS.lists)) {
+  stuffed[key] = Array.from({ length: count }, () => noise(CAPS.phrase));
+}
+const stuffedPayload = await Card.encodeCard(stuffed);
+check('a card filled to every cap still fits a QR code',
+  stuffedPayload.length <= Card.COMFORTABLE_PAYLOAD,
+  stuffedPayload.length + ' of ' + Card.COMFORTABLE_PAYLOAD + ' chars');
+
 // ---------- mock compatibility ----------
 
 const other = { ...decoded, name: 'Jordan', interests: ['Running', 'Nightlife'] };
@@ -599,6 +719,81 @@ check('compatibility names both people',
   compat.verdict.includes(decoded.name) && compat.verdict.includes('Jordan'));
 check('compatibility gives each person their own advice',
   compat.howToPartner.forA.length > 0 && compat.howToPartner.forB.length > 0);
+
+// One number for a whole pairing cannot show where the fit is thin, so the
+// report breaks it into the five dimensions that matter for the chosen basis.
+check('compatibility scores five separate dimensions', compat.dimensions.length === 5);
+check('every dimension carries a score, a reading and its evidence',
+  compat.dimensions.every(d => Number.isInteger(d.score) && d.reading && d.evidence.length));
+check('the dimensions are the ones named for this basis',
+  JSON.stringify(compat.dimensions.map(d => d.name)) ===
+  JSON.stringify(prompts.COMPATIBILITY_MODES.professional.dimensions));
+{
+  const named = Object.values(prompts.COMPATIBILITY_MODES).flatMap(m => m.dimensions);
+  const repeated = [...new Set(named.filter((d, i) => named.indexOf(d) !== i))];
+  check('each basis is scored on dimensions chosen for it',
+    named.length === 15 && repeated.length === 1 && repeated[0] === 'Energy match',
+    'only "Energy match" is asked of more than one basis');
+}
+check('every basis scores the same number of dimensions',
+  Object.values(prompts.COMPATIBILITY_MODES).every(m => m.dimensions.length === 5));
+
+// Claims used to be assertable with nothing behind them. Now every strength
+// and friction has to name what in the two profiles put it there.
+check('strengths cite their evidence', compat.strengths.every(s => s.evidence && s.evidence.length));
+check('frictions cite their evidence', compat.frictions.every(f => f.evidence && f.evidence.length));
+check('the schema requires evidence on strengths and frictions',
+  ['title', 'detail', 'evidence'].every(key =>
+    key in prompts.COMPATIBILITY_SCHEMA.properties.strengths.items.properties &&
+    key in prompts.COMPATIBILITY_SCHEMA.properties.frictions.items.properties));
+
+// ---------- derived facts ----------
+//
+// Set intersection and subtraction handed to the model as settled arithmetic
+// rather than asked of it. A model comparing two lists in prose will offer a
+// near-match as a shared interest, or miss an exact one.
+{
+  const left = {
+    name: 'Sam', interests: ['Trail running', 'Coffee', 'Design'], values: ['Family'],
+    mbti: 'ENFJ', bigFive: { openness: 62, conscientiousness: 71, extraversion: 48, agreeableness: 77, neuroticism: 35 },
+    confidence: 70,
+  };
+  const right = {
+    name: 'Jordan', interests: ['coffee!', 'Nightlife', 'design'], values: ['Independence'],
+    mbti: 'INTJ', bigFive: { openness: 80, conscientiousness: 40, extraversion: 30, agreeableness: 55, neuroticism: 60 },
+    confidence: 45,
+  };
+  const facts = prompts.derivedFacts(left, right);
+
+  check('derived facts match interests across case and punctuation',
+    /Interests in common[^\n]*Coffee/.test(facts) && /Interests in common[^\n]*Design/.test(facts));
+  check('derived facts do not invent an overlap',
+    !/Trail running/.test(facts.split('\n')[0]) && !/Nightlife/.test(facts));
+  check('derived facts report no overlap plainly',
+    /Values in common: none/.test(facts));
+  check('derived facts state both scores and the gap for every trait',
+    /openness: Sam 62, Jordan 80 \(moderate gap, 18 points\)/.test(facts) &&
+    /conscientiousness: Sam 71, Jordan 40 \(wide gap, 31 points\)/.test(facts) &&
+    /agreeableness: Sam 77, Jordan 55 \(moderate gap, 22 points\)/.test(facts));
+  check('derived facts count MBTI axis agreement',
+    /MBTI ENFJ vs INTJ — shares 2 of 4 axes/.test(facts) &&
+    /Same: N\/S \(N vs N\), J\/P \(J vs J\)/.test(facts) &&
+    /Differs: E\/I \(E vs I\), T\/F \(F vs T\)/.test(facts));
+  check('derived facts surface the weaker confidence',
+    /Sam 70\/100, Jordan 45\/100/.test(facts));
+
+  // A card that predates a field, or a model that returned a partial one, must
+  // not take the comparison down with it.
+  check('derived facts survive empty cards', typeof prompts.derivedFacts({}, {}) === 'string');
+  check('derived facts skip MBTI when a type is Uncertain',
+    !/MBTI/.test(prompts.derivedFacts({ ...left, mbti: 'Uncertain' }, right)));
+
+  const blocks = prompts.compatibilityBlocks(left, right, 'platonic');
+  check('the compatibility turn carries the derived facts',
+    blocks[0].text.includes('<derived_facts>') && blocks[0].text.includes('shares 2 of 4 axes'));
+  check('the compatibility turn names the dimensions to score',
+    prompts.COMPATIBILITY_MODES.platonic.dimensions.every(d => blocks[0].text.includes(d)));
+}
 
 // ---------- provider retry behaviour ----------
 //

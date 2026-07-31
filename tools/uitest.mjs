@@ -1182,6 +1182,32 @@ try {
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
   check('no raw undefined in the report', !/\bundefined\b/.test(reportText));
   check('the old two-tab report is gone', (await page.locator('#report-body .tab').count()) === 0);
+
+  // A single score for a whole pairing cannot show where the fit is thin, so
+  // the report breaks it into the five dimensions that matter for the basis
+  // that was actually chosen — and each one shows its working the way the Big
+  // Five bars do, rather than asserting a number.
+  const dimensionBars = page.locator('#report-body .section-card .trait-block');
+  check('the report scores five separate dimensions', (await dimensionBars.count()) === 5);
+  check('the dimensions are the ones for the basis chosen',
+    /Standards and follow-through/.test(reportText) && /Load balance/.test(reportText),
+    reportText.slice(0, 300));
+  check('the dimensions belong to this basis and not another',
+    !/Emotional safety/.test(reportText) && !/Appetite for contact/.test(reportText));
+  check('every dimension draws a filled bar',
+    (await page.locator('#report-body .section-card .bar-fill').count()) === 5);
+  check('every dimension shows its reasoning',
+    (await page.locator('#report-body .section-card .trait-reading').count()) === 5);
+  check('every dimension cites what put it there',
+    (await page.locator('#report-body .section-card .trait-evidence').count()) === 5);
+
+  // Strengths and frictions used to be assertable with nothing behind them.
+  check('strengths and frictions cite their evidence too',
+    (await page.locator('#report-body .points .ev').count()) >= 6,
+    String(await page.locator('#report-body .points .ev').count()) + ' evidence chips');
+  check('the dimension scores are readable numbers, not empty',
+    (await page.locator('#report-body .section-card .trait-num').allInnerTexts())
+      .every(t => /^\d+$/.test(t.trim())));
   await shot('4-report');
 
   // ---- how it works ----
