@@ -429,6 +429,12 @@ phone screen. There is nothing to look up and no account to create.
 The card is also exactly what the compatibility call receives, so whatever is trimmed is invisible to
 the other person's report — and your long-form report never leaves your device.
 
+On the profile page, **"Test your compatibility"** — the QR code, the copy-link and download-QR
+buttons, and the link to the scan page — sits last, after the full report and after the
+download/re-run/delete buttons, rather than first. It used to open the page, ahead of anything the
+report actually said. Reading the report before being invited to hand out your code is the right
+order: someone should see what they are sharing before they share it.
+
 ## Compatibility
 
 Reading someone's code opens a picker before anything is sent: **Romantic**, **Platonic**, or

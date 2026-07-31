@@ -274,6 +274,23 @@ try {
     await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
+  // "Test your compatibility" used to open the page; it is the last thing on
+  // it now, after the action buttons — someone reads the report first and
+  // shares their code once they have actually seen what is in it.
+  check('the compatibility QR panel is the last thing on the page', await page.evaluate(() => {
+    const view = document.querySelector('#view-profile');
+    const panel = document.querySelector('#view-profile .qr-panel');
+    const cta = document.querySelector('#view-profile .cta-row');
+    const last = view.children[view.children.length - 1];
+    return panel === last && Boolean(cta.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  check('the compatibility panel sits below the action buttons, not above them',
+    await page.evaluate(() => {
+      const cta = document.querySelector('#view-profile .cta-row').getBoundingClientRect();
+      const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
+      return panel.top >= cta.bottom;
+    }));
+
   // ---- Enneagram: a short second lens right after MBTI ----
   check('Enneagram comes directly after MBTI, before Interests',
     at('MBTI') >= 0 && at('Enneagram') === at('MBTI') + 1 && at('Enneagram') < at('Interests'),
