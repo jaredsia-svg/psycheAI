@@ -216,12 +216,60 @@ topics. **Sampled** — the text:
 | Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
 | Accounts you like / save most | 240 / 120 |
 | Your own DMs | 280 — included by default, untick the box before uploading to exclude them |
+| Searches | last 160 |
+
+(Those are the Standard caps; see below for Comprehensive.)
 
 A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
 inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
 carries a `coverage.sampling` field saying what fraction of each source the model is seeing, and the
 prompt tells it to factor that into its confidence score rather than treating the sample as the
 whole picture.
+
+### Standard and Comprehensive
+
+Those caps are the **Standard** depth. Once the archive is open — but before anything is sent, and
+before the images are decoded, which is the slowest step here — a picker asks which depth to run.
+It quotes the export's real numbers, because someone with 80 captions is choosing between two nearly
+identical runs and someone with 4,000 is choosing whether to send seven times as much.
+
+**Comprehensive** lifts every per-source cap far past what any real export reaches, so that the
+thing bounding the digest is a **price**, in one place, rather than ten caps that each have to be
+reasoned about separately. It also sends 20 photographs instead of 14.
+
+The budget is derived rather than picked, in `charBudget()`:
+
+```
+worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
+left for input      $0.50 − $0.2458           = $0.2542
+                    ÷ $1.50/M                 = 169,493 tokens
+less system prompt + response schema          −   8,600
+less 20 images × 258                          −   5,160
+                    × 3.5 chars/token         = 545,066 characters
+```
+
+It budgets for the **worst** case, not the likely one. `thinkingLevel` is HIGH and thinking bills at
+the output rate, so the only number that can be relied on is the generation cap — reserving all of it
+means the ceiling holds even when the model thinks for as long as it is allowed to, instead of
+holding on average and quietly breaking on exactly the accounts that give it the most to chew on.
+
+For most accounts comprehensive sends **everything**, and `coverage.sampling` then reports shown
+equal to available. For a very heavy account it does not: 4,000 captions at ~150 characters is
+600,000 on its own, past the budget, so the digest is trimmed back to fit and reports the fraction
+honestly. The feature is "as much as $0.50 buys", which is usually all of it and sometimes is not —
+on the self-test's heavy fixture that is 1,265 captions against standard's 560.
+
+Trimming is what actually enforces the ceiling, so it repeatedly shrinks whichever sample list is
+currently costing the most. It used to touch captions and comments only, which was safe while every
+other cap was in the low hundreds and stopped being safe the moment comprehensive lifted them: an
+account with a very long follow list would have sailed past the budget with nothing the loop was
+willing to touch. The self-test pins this down with a 120,000-follow export — against the old loop
+it produced a **2.3-million-character** digest, four times the budget and about $1.35 a run, while
+gutting captions to 20 to spare a list of account names.
+
+The `samplingNote` is written from what the coverage numbers say rather than from the setting that
+was chosen, so a comprehensive run that did send everything does not tell the model it is reading a
+subset and hedge a confidence figure it has no reason to hedge.
 
 ### The photographs
 
@@ -526,14 +574,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 254 checks: synthesises a real ZIP export and runs
+npm test           # 276 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 383 checks: drives the real UI in Chromium against a
+npm run test:ui    # 399 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

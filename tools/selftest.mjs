@@ -412,7 +412,9 @@ check('digest samples follows across the whole list',
   digest.following.length === Digest.LIMITS.following || digest.following.length === signals.following.length);
 check('digest passes through Instagram\'s own topics', digest.instagramTopics.includes('Running'));
 check('digest ranks most-liked accounts', digest.mostLikedAccounts.length > 0 && digest.mostLikedAccounts[0].count > 0);
-check('digest flags that its text is sampled', /text samples below are/.test(digest.coverage.samplingNote));
+check('digest tells the model how to read its own coverage numbers',
+  /where shown equals available you are reading\s+everything/.test(digest.coverage.samplingNote));
+check('digest records which depth produced it', digest.coverage.depth === 'standard');
 check('digest omits DMs when the user opts out', digest.directMessages === undefined);
 check('the opt-out is recorded for the model to see', digest.coverage.directMessagesIncluded === false);
 check('digest stays inside its size budget',
@@ -531,6 +533,110 @@ check('sampling coverage is reported for follows too',
 check('sampling counts stay honest on a small account',
   digest.coverage.sampling.captions.shown === digest.samples.captions.length &&
   digest.coverage.sampling.captions.available === signals.captions.length);
+
+// ---------- comprehensive depth ----------
+//
+// The point of the second depth is that the price, not a row of per-source
+// caps, is what bounds it. So the checks are: it really does send everything
+// a normal account has, and it really does stop at the budget when an account
+// is large enough to blow through it.
+
+const deep = Digest.build(heavySignals(), { includeMessages: false, depth: 'comprehensive' });
+const DEEP = Digest.DEPTHS.comprehensive.limits;
+
+check('comprehensive records its own depth', deep.coverage.depth === 'comprehensive');
+check('comprehensive sends far more than standard',
+  deep.coverage.digestChars > heavy.coverage.digestChars * 2,
+  deep.coverage.digestChars + ' vs ' + heavy.coverage.digestChars + ' chars');
+// This synthetic account is deliberately past what the cap can hold — 4,000
+// captions of ~150 characters is 600,000 on its own, against a 545,000 budget
+// — so comprehensive is bound by the price here rather than sending everything.
+// That is the honest shape of the feature: "as much as $0.50 buys", which for
+// most accounts is all of it and for the very heaviest is not.
+check('comprehensive sends far more captions than standard',
+  deep.samples.captions.length > Digest.LIMITS.captions * 2,
+  deep.samples.captions.length + ' vs ' + heavy.samples.captions.length);
+check('comprehensive sends the whole follow list where it fits',
+  deep.following.length === 4000, deep.following.length + ' of 4000');
+check('comprehensive stays inside its own budget on an oversized account',
+  deep.coverage.digestChars <= DEEP.totalChars,
+  deep.coverage.digestChars + ' of ' + DEEP.totalChars);
+check('comprehensive reports the fraction honestly when it cannot send it all',
+  deep.coverage.sampling.captions.shown === deep.samples.captions.length &&
+  deep.coverage.sampling.captions.available === 4000);
+
+// An account of ordinary size is the case the feature is really for, and there
+// it should send literally everything and say so.
+{
+  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+  const ordinary = Digest.build({
+    ...heavySignals(),
+    captions: many(700, i => 'Caption number ' + i + '. A sentence about the day.'),
+    comments: many(600, i => 'Comment number ' + i + ', a reply to somebody.'),
+    following: many(900, i => ({ name: 'account_number_' + i, ts: 0 })),
+  }, { includeMessages: false, depth: 'comprehensive' });
+
+  check('an ordinary account gets every caption under comprehensive',
+    ordinary.samples.captions.length === 700, ordinary.samples.captions.length + ' of 700');
+  check('an ordinary account gets every comment and follow',
+    ordinary.samples.comments.length === 600 && ordinary.following.length === 900);
+  check('and comprehensive then reports full coverage, not a fraction',
+    ordinary.coverage.sampling.captions.shown === ordinary.coverage.sampling.captions.available &&
+    ordinary.coverage.sampling.following.shown === ordinary.coverage.sampling.following.available);
+  check('the same account under standard would have been sampled instead',
+    Digest.build({ ...heavySignals(),
+      captions: many(700, i => 'Caption number ' + i + '. A sentence about the day.'),
+    }, { includeMessages: false }).samples.captions.length === Digest.LIMITS.captions);
+}
+
+// The budget is the cost ceiling expressed in characters, so the arithmetic
+// that produces it is worth pinning down rather than trusting.
+{
+  const CHARS_PER_TOKEN = 3.5;
+  const images = Digest.DEPTHS.comprehensive.images;
+  const worstCost = ((DEEP.totalChars / CHARS_PER_TOKEN) + 8600 + images * 258) * (1.50 / 1e6) +
+    32768 * (7.50 / 1e6);
+  check('a full comprehensive digest plus maximum output stays under the cap',
+    worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
+  check('the budget is not needlessly conservative either',
+    worstCost > Digest.COST_CAP - 0.01, '$' + worstCost.toFixed(4));
+  check('a tighter cap buys a smaller digest', Digest.charBudget(0.25, 20) < Digest.charBudget(0.50, 20));
+  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10, 20) === 0);
+  check('images are charged against the same budget',
+    Digest.charBudget(0.50, 0) > Digest.charBudget(0.50, 20));
+}
+
+// An export big enough to blow the budget has to be trimmed back to it, and
+// the trimming has to be able to reach whichever list is actually large. The
+// loop used to touch captions and comments only, which was safe while every
+// other cap was in the low hundreds and is not safe now that they are not:
+// this account's follow list alone would overrun the budget.
+{
+  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+  const monstrous = Digest.build({
+    ...heavySignals(),
+    captions: many(200, i => 'Short caption ' + i),
+    comments: many(200, i => 'Short comment ' + i),
+    following: many(120000, i => ({ name: 'an_account_with_a_fairly_long_handle_' + i, ts: 0 })),
+  }, { includeMessages: false, depth: 'comprehensive' });
+
+  check('an export that overruns the budget is trimmed back inside it',
+    monstrous.coverage.digestChars <= DEEP.totalChars,
+    monstrous.coverage.digestChars + ' of ' + DEEP.totalChars);
+  check('the trimming reaches the list that is actually oversized',
+    monstrous.following.length < 120000, monstrous.following.length + ' follows kept');
+  check('trimming does not gut the short lists to spare the long one',
+    monstrous.samples.captions.length === 200 && monstrous.samples.comments.length === 200,
+    monstrous.samples.captions.length + ' captions, ' + monstrous.samples.comments.length + ' comments');
+  check('coverage numbers are restated after trimming, not left stale',
+    monstrous.coverage.sampling.following.shown === monstrous.following.length &&
+    monstrous.coverage.sampling.captions.shown === monstrous.samples.captions.length);
+}
+
+check('an unknown depth falls back to standard rather than throwing',
+  Digest.build(signals, { includeMessages: false, depth: 'nonsense' }).coverage.depth === 'standard');
+check('standard still sends 14 images and comprehensive 20',
+  Digest.DEPTHS.standard.images === 14 && Digest.DEPTHS.comprehensive.images === 20);
 check('the prompt tells the model to use the sampling coverage',
   /coverage\.sampling/.test(prompts.PROFILE_SYSTEM));
 

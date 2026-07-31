@@ -286,6 +286,55 @@
     $('#progress-bar').classList.remove('indeterminate');
   }
 
+  // Asked once the archive is open, so the choice can be put in terms of what
+  // this person's export actually holds rather than in the abstract. Someone
+  // with 80 captions is choosing between two nearly identical runs; someone
+  // with 4,000 is choosing whether to send seven times as much.
+  function askDepth(signals) {
+    const dialog = $('#depth-dialog');
+    const captions = (signals.captions || []).length;
+    const comments = (signals.comments || []).length;
+    const standard = Digest.DEPTHS.standard.limits;
+    const budget = Digest.DEPTHS.comprehensive.limits.totalChars;
+    const fits = captions <= standard.captions && comments <= standard.comments;
+
+    $('#depth-dialog-sub').textContent = fits
+      ? 'Your export has ' + captions.toLocaleString() + ' captions and ' + comments.toLocaleString() +
+        ' comments — few enough that both options send all of them. Comprehensive still adds the ' +
+        'full follow list and six more photographs.'
+      : 'Your export has ' + captions.toLocaleString() + ' captions and ' + comments.toLocaleString() +
+        ' comments. Standard sends ' + Math.min(captions, standard.captions) + ' and ' +
+        Math.min(comments, standard.comments) + ' of them; comprehensive sends every one it can fit.';
+
+    $('#depth-fineprint').textContent =
+      'Comprehensive is bounded by cost, not by a row of caps: it fills a ' +
+      Math.round(budget / 1000) + ',000-character budget sized so a single analysis stays under $' +
+      Digest.COST_CAP.toFixed(2) + ' even if the model spends its entire thinking allowance. ' +
+      'Standard costs roughly $0.20 on a heavy account.';
+
+    return new Promise(resolve => {
+      let answer = null;
+      const choose = event => {
+        answer = event.currentTarget.dataset.depth;
+        dialog.close();
+      };
+      const buttons = dialog.querySelectorAll('.mode-option');
+      for (const button of buttons) button.addEventListener('click', choose);
+
+      const cancel = () => dialog.close();
+      $('#depth-cancel').addEventListener('click', cancel);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) button.removeEventListener('click', choose);
+        $('#depth-cancel').removeEventListener('click', cancel);
+        resolve(answer);
+      }, { once: true });
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
+    });
+  }
+
   async function handleFiles(files) {
     const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
     flash('#upload-error', '');
@@ -307,6 +356,7 @@
     show('working');
 
     let digest;
+    let depth;
     let images = [];
     try {
       const signals = await IG.readExports(chosen, {
@@ -315,8 +365,19 @@
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 80), p.label),
       });
 
+      // The archive is open, so the depth question can be asked against real
+      // numbers. It comes before the images because the two depths want
+      // different numbers of them, and image extraction is the slowest step
+      // here by a wide margin — no sense doing it twice or doing it for a run
+      // the reader then backs out of.
+      depth = await askDepth(signals);
+      if (!depth) {
+        show('welcome');
+        return;
+      }
+
       if (includeImages) {
-        const chosenImages = Images.select(signals);
+        const chosenImages = Images.select(signals, { count: Digest.DEPTHS[depth].images });
         // Decoding and re-encoding is the slowest client-side step by a wide
         // margin, so it gets its own slice of the bar rather than appearing
         // as a stall at the end.
@@ -328,7 +389,7 @@
 
       setProgress(95, 'Building your evidence summary…');
       await new Promise(resolve => setTimeout(resolve, 30));
-      digest = Digest.build(signals, { includeMessages, includeImages, imageCount: images.length });
+      digest = Digest.build(signals, { includeMessages, includeImages, imageCount: images.length, depth });
     } catch (error) {
       show('welcome');
       flash('#upload-error', (error && error.message) || 'Could not read that archive.');

@@ -25,6 +25,13 @@ const check = (label, ok, detail) => {
   else failures.push(label + (detail === undefined ? '' : ' — ' + detail));
 };
 
+// Every upload now stops at the depth picker, so the suite has to answer it
+// the way a reader would before anything else can proceed.
+async function chooseDepth(page, depth) {
+  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+  await page.click('#depth-dialog .mode-option[data-depth="' + depth + '"]');
+}
+
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1' },
@@ -134,9 +141,32 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
+  // ---- the depth picker ----
+  // It has to interrupt: nothing should reach the model before the reader has
+  // said how much of their export to send.
+  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+  check('the depth picker opens once the archive is read',
+    await page.locator('#depth-dialog').isVisible());
+  check('nothing was sent to the model before the choice was made',
+    analyseBodies.length === 0, analyseBodies.length + ' requests');
+  check('the profile is not showing behind the picker',
+    !(await page.locator('#view-profile').isVisible()));
+  check('the picker offers exactly two depths',
+    (await page.locator('#depth-dialog .mode-option').count()) === 2);
+  const depthText = await page.locator('#depth-dialog').innerText();
+  check('the picker names both depths', /Standard/.test(depthText) && /Comprehensive/.test(depthText));
+  check('the picker quotes this export\'s real numbers rather than talking in the abstract',
+    /\d+ captions and \d+ comments/.test(depthText), depthText.slice(0, 200));
+  check('the picker states the cost ceiling it is working to',
+    /\$0\.50/.test(depthText), depthText);
+  await shot('1b-depth-picker');
+
+  await page.click('#depth-dialog .mode-option[data-depth="standard"]');
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
+  check('choosing standard records standard in the digest',
+    (await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')).coverage.depth)) === 'standard');
   check('profile is titled with the name from the export',
     (await page.locator('#profile-title').innerText()).includes('Aleç'),
     await page.locator('#profile-title').innerText());
@@ -1097,6 +1127,45 @@ try {
   check('the carried-over profile still renders',
     await page.locator('#view-profile').isVisible());
 
+  // ---- comprehensive depth, and backing out of the picker ----
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+
+  // Cancelling is a real answer: it must cost nothing and go back, not push on.
+  const beforeCancel = analyseBodies.length;
+  await page.click('#depth-cancel');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+  check('backing out of the picker returns to the upload page',
+    await page.locator('#view-welcome').isVisible());
+  check('backing out sends nothing to the model', analyseBodies.length === beforeCancel);
+  check('backing out leaves no half-built profile behind',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page, 'comprehensive');
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+
+  const deepDigest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
+  const deepBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  check('choosing comprehensive records comprehensive in the digest',
+    deepDigest.coverage.depth === 'comprehensive');
+  check('comprehensive sends every caption of an ordinary export',
+    deepDigest.coverage.sampling.captions.shown === deepDigest.coverage.sampling.captions.available,
+    JSON.stringify(deepDigest.coverage.sampling.captions));
+  check('comprehensive asks for more photographs than standard',
+    deepDigest.coverage.images.attached > 14 || deepDigest.coverage.images.availableStills <= 14,
+    deepDigest.coverage.images.attached + ' attached of ' + deepDigest.coverage.images.availableStills);
+  check('the comprehensive digest really is what got sent',
+    deepBody.digest.coverage.depth === 'comprehensive');
+  check('the fixture is too small to hit the budget, so nothing was trimmed',
+    deepDigest.coverage.digestChars < 545066, deepDigest.coverage.digestChars + ' chars');
+
   // ---- the opt-out actually opts out ----
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
@@ -1105,6 +1174,7 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
+  await chooseDepth(page, 'standard');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);

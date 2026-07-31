@@ -29,6 +29,85 @@
     totalChars: 600000,
   };
 
+  // ---------- how much to send ----------
+  //
+  // Standard is the sampling above: the counts and histograms complete, the
+  // text a subset. On a heavy account it sends about 156,000 characters, which
+  // is 560 captions out of 4,000 — the recent half and the longest half, on
+  // the reasoning that a random sample of captions is mostly one-word ones.
+  //
+  // Comprehensive raises every per-source cap far past what any real account
+  // reaches, so the binding constraint becomes the character budget below
+  // rather than the caps. Its `totalChars` is not a guess: it is derived from
+  // a price ceiling, and the derivation is written out so it can be re-run
+  // when a price or a model changes.
+  const PRICING = {
+    // gemini-3.6-flash, the default model. Thinking is billed as output.
+    inputPerToken: 1.50 / 1e6,
+    outputPerToken: 7.50 / 1e6,
+  };
+
+  // Measured, not assumed. JSON with this much punctuation and this many
+  // numbers runs denser than prose: the heavy digest is 156,346 characters
+  // against roughly 44,700 tokens.
+  const CHARS_PER_TOKEN = 3.5;
+
+  // The system prompt (10,434 chars) plus the response schema (19,639), which
+  // is sent on every structured-output call and is charged as input.
+  const FIXED_INPUT_TOKENS = 8600;
+
+  // One 768px image is one 768x768 tile.
+  const IMAGE_TOKENS = 258;
+
+  // lib/gemini.js caps generation here, so this is the most output — visible
+  // report plus thinking — that a single call can possibly bill for.
+  const MAX_OUTPUT_TOKENS = 32768;
+
+  /**
+   * The largest digest that keeps one analysis under `costCap`.
+   *
+   * Deliberately budgets for the *worst* case rather than the likely one:
+   * `thinkingLevel` is HIGH and thinking bills at the output rate, so the only
+   * number that can be relied on is the hard generation cap. Reserving all of
+   * it means the ceiling holds even when the model thinks as long as it is
+   * allowed to, rather than holding on average and quietly breaking on the
+   * accounts that give it the most to chew on.
+   */
+  function charBudget(costCap, imageCount) {
+    const worstOutputCost = MAX_OUTPUT_TOKENS * PRICING.outputPerToken;
+    const inputTokens = (costCap - worstOutputCost) / PRICING.inputPerToken;
+    const forDigest = inputTokens - FIXED_INPUT_TOKENS - (imageCount || 0) * IMAGE_TOKENS;
+    return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
+  }
+
+  const COST_CAP = 0.50;
+  const COMPREHENSIVE_IMAGES = 20;
+
+  const DEPTHS = {
+    standard: { images: 14, limits: LIMITS },
+    comprehensive: {
+      images: COMPREHENSIVE_IMAGES,
+      limits: {
+        // Set past the largest real export rather than to a round number, so
+        // that what actually bounds the digest is the price, in one place,
+        // instead of ten caps that each have to be reasoned about separately.
+        captions: 100000,
+        comments: 100000,
+        messages: 100000,
+        following: 50000,
+        likedAuthors: 20000,
+        savedAuthors: 20000,
+        searches: 20000,
+        topics: 5000,
+        adInterests: 5000,
+        textChars: 1200,
+        totalChars: charBudget(COST_CAP, COMPREHENSIVE_IMAGES),
+      },
+    },
+  };
+
+  const depthOf = name => DEPTHS[name] || DEPTHS.standard;
+
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
   function trim(text, max) {
@@ -148,6 +227,10 @@
   function build(signals, options) {
     const opts = options || {};
     const messages = signals.messages || {};
+    // Which set of caps this run uses. Standard keeps the sampling; the
+    // comprehensive set is bounded by a price rather than by per-source caps.
+    const depth = depthOf(opts.depth);
+    const LIMITS = depth.limits;
 
     const digest = {
       schema: 'psycheai-digest/1',
@@ -208,9 +291,16 @@
           note: 'Attached images are a spread across the whole account history, not the latest few. ' +
             'They are downscaled stills; videos are never sent.',
         },
-        samplingNote: 'The counts and histograms above are complete. The text samples below are ' +
-          'a subset — "sampling" says how much of each source you are seeing, so weight your ' +
-          'confidence accordingly.',
+        depth: opts.depth === 'comprehensive' ? 'comprehensive' : 'standard',
+        // The standard note tells the model it is reading a subset. On a
+        // comprehensive run that is usually untrue, and leaving it in place
+        // would have the model hedge a confidence figure it has no reason to
+        // hedge — so the note is written from what the numbers below actually
+        // say rather than from the setting that was chosen.
+        samplingNote: 'The counts and histograms above are complete. "sampling" says how much of ' +
+          'each text source you are seeing: where shown equals available you are reading ' +
+          'everything that source had, and where it is lower you are reading a subset and should ' +
+          'weight your confidence accordingly.',
         sampling: {
           captions: { shown: 0, available: signals.captions.length },
           comments: { shown: 0, available: signals.comments.length },
@@ -240,20 +330,55 @@
       };
     }
 
-    // Final belt-and-braces bound. If a pathological export still produces an
-    // oversized digest, drop samples before anything factual.
+    // The bound that actually holds the cost ceiling, so it has to survive a
+    // pathological export rather than a typical one.
+    //
+    // It used to shrink captions and comments only, which was enough while
+    // every other list had a cap in the low hundreds. Comprehensive lifts those
+    // caps deliberately — the price is meant to be the one constraint — and
+    // that turned the old loop into a hole: an account with a very long follow
+    // or search list could sail past the budget with nothing the loop was
+    // willing to touch. So it now trims whichever sample list is currently
+    // costing the most, repeatedly, which also keeps the trimming proportional
+    // instead of gutting captions to spare a list of account names.
+    const trimmable = [
+      ['captions', () => digest.samples.captions, v => { digest.samples.captions = v; }],
+      ['comments', () => digest.samples.comments, v => { digest.samples.comments = v; }],
+      ['searches', () => digest.samples.searches, v => { digest.samples.searches = v; }],
+      ['following', () => digest.following, v => { digest.following = v; }],
+      ['mostLikedAccounts', () => digest.mostLikedAccounts, v => { digest.mostLikedAccounts = v; }],
+      ['mostSavedAccounts', () => digest.mostSavedAccounts, v => { digest.mostSavedAccounts = v; }],
+      ['instagramTopics', () => digest.instagramTopics, v => { digest.instagramTopics = v; }],
+      ['instagramAdInterests', () => digest.instagramAdInterests, v => { digest.instagramAdInterests = v; }],
+    ];
+    const FLOOR = 20;
+
     let encoded = JSON.stringify(digest);
-    while (encoded.length > LIMITS.totalChars && digest.samples.captions.length > 20) {
-      digest.samples.captions = digest.samples.captions.slice(0, Math.floor(digest.samples.captions.length * 0.75));
-      digest.samples.comments = digest.samples.comments.slice(0, Math.floor(digest.samples.comments.length * 0.75));
-      digest.coverage.sampling.captions.shown = digest.samples.captions.length;
-      digest.coverage.sampling.comments.shown = digest.samples.comments.length;
+    while (encoded.length > LIMITS.totalChars) {
+      let worst = null;
+      let worstCost = 0;
+      for (const entry of trimmable) {
+        const list = entry[1]();
+        if (!Array.isArray(list) || list.length <= FLOOR) continue;
+        const cost = JSON.stringify(list).length;
+        if (cost > worstCost) { worstCost = cost; worst = entry; }
+      }
+      // Everything is at its floor; a digest this size is as small as this
+      // export reduces to, and refusing to send it would be worse than
+      // spending slightly over.
+      if (!worst) break;
+      const list = worst[1]();
+      worst[2](list.slice(0, Math.max(FLOOR, Math.floor(list.length * 0.75))));
       encoded = JSON.stringify(digest);
     }
+
+    digest.coverage.sampling.captions.shown = digest.samples.captions.length;
+    digest.coverage.sampling.comments.shown = digest.samples.comments.length;
+    digest.coverage.sampling.following.shown = digest.following.length;
     digest.coverage.digestChars = encoded.length;
 
     return digest;
   }
 
-  root.PsycheDigest = { build, LIMITS };
+  root.PsycheDigest = { build, LIMITS, DEPTHS, charBudget, COST_CAP };
 })(typeof window !== 'undefined' ? window : globalThis);

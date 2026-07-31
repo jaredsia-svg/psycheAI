@@ -322,6 +322,32 @@
 <!-- ══════════════ basis picker ══════════════ -->
 <!-- Opens once a code has been read, before the model call, because the
      report answers whichever question is chosen here and only that one. -->
+<dialog id="depth-dialog" class="mode-dialog" aria-labelledby="depth-dialog-title">
+  <h2 id="depth-dialog-title">How deep should the analysis go?</h2>
+  <p class="muted" id="depth-dialog-sub">Your archive is unpacked. Choose how much of it to send.</p>
+  <div class="mode-options">
+    <button class="mode-option" data-depth="standard" type="button">
+      <span class="mode-icon">⚡</span>
+      <span><strong>Standard</strong>
+        <span class="muted">A sample of your writing — the most recent and the longest — plus every
+          count and histogram in full, and 14 photographs. Fast, and enough for a solid read.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-depth="comprehensive" type="button">
+      <span class="mode-icon">🔬</span>
+      <span><strong>Comprehensive</strong>
+        <span class="muted">As much of your writing as one analysis can hold — for most accounts
+          that is every caption, comment and search, plus the whole follow list and 20
+          photographs. Slower to prepare and more expensive to run.</span>
+      </span>
+    </button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="depth-cancel" type="button">Cancel</button>
+  </div>
+  <p class="fineprint" id="depth-fineprint"></p>
+</dialog>
+
 <dialog id="mode-dialog" class="mode-dialog" aria-labelledby="mode-dialog-title">
   <h2 id="mode-dialog-title">How should we compare you?</h2>
   <p class="muted" id="mode-dialog-sub"></p>
