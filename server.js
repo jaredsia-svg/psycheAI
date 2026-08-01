@@ -130,9 +130,12 @@ async function handleCompatibility(request, response) {
   }
   const engine = requireEngine(response);
   if (!engine) return;
-  // An unknown mode falls back to romantic rather than 400ing — the basis is
-  // a presentation choice, not something worth failing a paid call over.
-  sendJson(response, 200, await engine.analyseCompatibility(a, b, prompts.resolveMode(body.mode)));
+  // An unknown mode or stance falls back rather than 400ing — the basis is a
+  // presentation choice, not something worth failing a paid call over. The
+  // stance only means anything for a professional run; the resolver defaults
+  // it either way, so the engines never see an unexpected value.
+  sendJson(response, 200, await engine.analyseCompatibility(
+    a, b, prompts.resolveMode(body.mode), prompts.resolveStance(body.stance)));
 }
 
 function serveStatic(requestedPath, response) {

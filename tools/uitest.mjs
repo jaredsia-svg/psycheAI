@@ -1229,8 +1229,10 @@ try {
   check('the picker names the other person',
     /Jordan/.test(await page.locator('#mode-dialog-sub').innerText()));
   check('all three bases are offered',
-    (await page.locator('.mode-option').allInnerTexts()).join(' | ').replace(/\n/g, ' ')
-      .match(/Romantic|Platonic|Professional/g).length >= 3);
+    (await page.locator('#mode-dialog .mode-option').allInnerTexts()).join(' | ').replace(/\n/g, ' ')
+      .match(/Romantic|Family \/ Friends|Professional/g).length >= 3);
+  check('the friendship basis covers family too, not just friends',
+    /Family \/ Friends/.test(await page.locator('#mode-dialog').innerText()));
   check('nothing is sent before a basis is chosen',
     compatBodies.length === 0, String(compatBodies.length));
   await shot('3-mode-picker');
@@ -1248,7 +1250,26 @@ try {
 
   await page.click('#paste-go');
   await page.waitForSelector('#mode-dialog[open]');
-  await page.click('.mode-option[data-mode="professional"]');
+  const beforeModes = compatBodies.length;
+  await page.click('#mode-dialog .mode-option[data-mode="professional"]');
+
+  // ---- the working-relationship picker ----
+  // Managing someone and reporting to them are different questions, so the
+  // basis alone is not enough to run on.
+  await page.waitForSelector('#stance-dialog[open]', { timeout: 30000 });
+  check('picking work asks who reports to whom before running',
+    await page.locator('#stance-dialog').isVisible());
+  check('nothing is sent until the working relationship is known',
+    compatBodies.length === beforeModes, String(compatBodies.length));
+  const stanceText = await page.locator('#stance-dialog').innerText();
+  check('the stance options name the other person, not "them"',
+    /I am the superior of Jordan/.test(stanceText) &&
+    /I am a subordinate of Jordan/.test(stanceText), stanceText);
+  check('sitting alongside them is an option too', /We are colleagues/.test(stanceText));
+  check('the stance picker offers exactly three',
+    (await page.locator('#stance-dialog .mode-option').count()) === 3);
+  await shot('3b-stance-picker');
+  await page.click('#stance-dialog .mode-option[data-stance="superior"]');
 
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   const reportText = await page.locator('#report-body').innerText();
@@ -1260,7 +1281,13 @@ try {
   check('report is labelled with the basis chosen', /Professional \/ work/.test(reportText));
   check('report does not cover the bases that were not asked for',
     !/Romantic/.test(reportText) && !/Platonic/.test(reportText), reportText.slice(0, 200));
-  check('the playbook matches the basis', /How to work with each other/i.test(reportText));
+  // The heading belongs to the stance, not the basis: "How to work with each
+  // other" is wrong for somebody who manages the other person.
+  check('the playbook heading matches the stance, not just the basis',
+    /How to manage Jordan/i.test(reportText) && !/How to work with each other/i.test(reportText),
+    reportText.slice(0, 200));
+  check('the report says which side of the relationship it answered',
+    /I am the superior of Jordan/.test(reportText), reportText.slice(0, 200));
   check('report gives each person their own advice',
     (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
@@ -1273,11 +1300,16 @@ try {
   // Five bars do, rather than asserting a number.
   const dimensionBars = page.locator('#report-body .section-card .trait-block');
   check('the report scores five separate dimensions', (await dimensionBars.count()) === 5);
-  check('the dimensions are the ones for the basis chosen',
-    /Standards and follow-through/.test(reportText) && /Load balance/.test(reportText),
+  check('the dimensions are the ones for the stance chosen',
+    /Briefing and direction/.test(reportText) && /Whether problems reach you/.test(reportText),
     reportText.slice(0, 300));
-  check('the dimensions belong to this basis and not another',
+  check('a manager is not given the peer dimensions',
+    !/Load balance/.test(reportText) && !/Complementary strengths/.test(reportText));
+  check('nor the dimensions of another basis entirely',
     !/Emotional safety/.test(reportText) && !/Appetite for contact/.test(reportText));
+  check('the stance reached the server, not just the basis',
+    JSON.parse(compatBodies[compatBodies.length - 1]).stance === 'superior',
+    compatBodies[compatBodies.length - 1]);
   check('every dimension draws a filled bar',
     (await page.locator('#report-body .section-card .bar-fill').count()) === 5);
   check('every dimension shows its reasoning',
@@ -1313,7 +1345,9 @@ try {
     (await page.locator('#view-about .tile').count()) === 8);
   check('the QR and matching are one section now',
     /Your code, and matching/.test(about) && /romantic/i.test(about) &&
-    /platonic/i.test(about) && /professional/i.test(about));
+    /family \/ friends/i.test(about) && /professional/i.test(about));
+  check('how-it-works explains the work sub-question',
+    /manage/i.test(about) && /report to/i.test(about), about.slice(0, 400));
   check('the limits are still stated', /not a diagnosis, not a background check/.test(about));
   check('the guardrails are still listed',
     (await page.locator('#view-about .nots li').count()) === 4);
@@ -2021,13 +2055,16 @@ try {
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
   await page.waitForSelector('#mode-dialog[open]', { timeout: 30000 });
   check('a shared link asks for the basis as well', await page.locator('#mode-dialog').isVisible());
-  await page.click('.mode-option[data-mode="platonic"]');
+  await page.click('#mode-dialog .mode-option[data-mode="platonic"]');
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   check('a shared link runs the comparison straight away',
     (await page.locator('#report-body').innerText()).includes('Jordan'));
   check('the basis chosen for a link is the one reported',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
-    /Platonic/.test(await page.locator('#report-body').innerText()));
+    /Family \/ Friends/.test(await page.locator('#report-body').innerText()));
+  check('a non-work basis is not asked who reports to whom',
+    JSON.parse(compatBodies[compatBodies.length - 1]).stance === null,
+    compatBodies[compatBodies.length - 1]);
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });

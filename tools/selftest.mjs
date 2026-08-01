@@ -25,7 +25,9 @@ const check = (label, ok, detail) => {
 
 // ---------- load the browser modules ----------
 
-for (const file of ['zip.js', 'instagram.js', 'images.js', 'digest.js', 'card.js']) {
+// copy.js is here so the suite can hold the client's vocabulary against the
+// server's — the working-relationship list exists in both and must not drift.
+for (const file of ['zip.js', 'instagram.js', 'images.js', 'digest.js', 'card.js', 'copy.js']) {
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
@@ -258,6 +260,135 @@ check('compatibility scores one basis, not several',
   !('platonic' in prompts.COMPATIBILITY_SCHEMA.properties));
 check('the answer echoes back which basis it used',
   prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'romantic,platonic,professional');
+
+// ---------- who reports to whom ----------
+//
+// "Professional" was one question asked of three different situations. A
+// manager needs to know how to get someone's best work without losing them; a
+// report needs to know how to work for someone and keep their footing; peers
+// need neither. Answering all three the same way gave two thirds of readers a
+// report about the wrong thing.
+check('a work run splits three ways',
+  ['colleagues', 'superior', 'subordinate'].every(k => k in prompts.WORK_STANCES));
+check('an unknown stance falls back to peers rather than throwing',
+  prompts.resolveStance('nonsense') === 'colleagues' && prompts.resolveStance() === 'colleagues');
+check('each stance asks its own five questions',
+  Object.values(prompts.WORK_STANCES).every(s => s.dimensions.length === 5));
+{
+  const named = Object.values(prompts.WORK_STANCES).flatMap(s => s.dimensions);
+  check('no two stances score the same thing',
+    new Set(named).size === named.length, named.length + ' dimensions, ' + new Set(named).size + ' distinct');
+}
+check('a manager and a report are asked opposite questions',
+  prompts.WORK_STANCES.superior.dimensions.includes('Whether problems reach you') &&
+  prompts.WORK_STANCES.subordinate.dimensions.includes('Raising a problem safely'));
+check('the peer stance keeps what professional always asked',
+  prompts.WORK_STANCES.colleagues.dimensions.includes('Load balance'));
+
+// briefFor is what actually swaps the question, so pin its behaviour rather
+// than the shape of the table behind it.
+check('a work run takes its dimensions from the stance, not the basis',
+  JSON.stringify(prompts.briefFor('professional', 'superior').dimensions) ===
+  JSON.stringify(prompts.WORK_STANCES.superior.dimensions));
+check('the other two bases ignore the stance entirely',
+  JSON.stringify(prompts.briefFor('romantic', 'superior').dimensions) ===
+  JSON.stringify(prompts.COMPATIBILITY_MODES.romantic.dimensions) &&
+  JSON.stringify(prompts.briefFor('platonic', 'subordinate').dimensions) ===
+  JSON.stringify(prompts.COMPATIBILITY_MODES.platonic.dimensions));
+check('a work run with no stance still answers as peers',
+  JSON.stringify(prompts.briefFor('professional').dimensions) ===
+  JSON.stringify(prompts.WORK_STANCES.colleagues.dimensions));
+check('the heading follows the stance too',
+  prompts.briefFor('professional', 'superior').heading === 'How to manage them' &&
+  prompts.briefFor('professional', 'subordinate').heading === 'How to work for them');
+
+// The direction is not symmetrical and person A is always the scanner, so a
+// prompt that does not say which way round it runs is worse than useless.
+{
+  const a = { name: 'Sam' };
+  const b = { name: 'Jordan' };
+  const asBoss = prompts.compatibilityBlocks(a, b, 'professional', 'superior')[0].text;
+  const asReport = prompts.compatibilityBlocks(a, b, 'professional', 'subordinate')[0].text;
+  check('the manager turn says A manages B', /Person A manages person B/.test(asBoss));
+  check('the report turn says A reports to B', /Person A reports to person B/.test(asReport));
+  check('the two work turns are genuinely different briefs', asBoss !== asReport);
+  check('the manager turn asks for the manager dimensions',
+    prompts.WORK_STANCES.superior.dimensions.every(d => asBoss.includes(d)));
+  check('the manager turn does not smuggle in the peer dimensions',
+    !asBoss.includes('Load balance'));
+  check('a work turn still carries the derived facts',
+    asBoss.includes('<derived_facts>'));
+}
+
+// The stance has to survive the whole way down: client -> server -> provider
+// -> prompt. Everything above tests the prompt end, and the UI suite tests the
+// client end, but both providers sat in between building the user turn
+// themselves — and dropping the fourth argument there is silent, because a
+// peer brief is a perfectly valid brief. So patch the prompt builder, call
+// each real provider, and read back what it actually passed.
+{
+  const realBlocks = prompts.compatibilityBlocks;
+  const seen = [];
+  prompts.compatibilityBlocks = (...args) => {
+    seen.push(args);
+    throw new Error('__stop_before_the_network__');
+  };
+  for (const engine of [gemini, claude]) {
+    try {
+      engine.analyseCompatibility({ name: 'A' }, { name: 'B' }, 'professional', 'subordinate');
+    } catch (error) {
+      if (!/__stop_before_the_network__/.test(error.message)) throw error;
+    }
+  }
+  prompts.compatibilityBlocks = realBlocks;
+  check('every provider forwards the stance, not just the basis',
+    seen.length === 2 && seen.every(args => args[2] === 'professional' && args[3] === 'subordinate'),
+    JSON.stringify(seen.map(args => args.slice(2))));
+}
+
+// A power difference is exactly where a report like this could do harm, so the
+// prompt has to say so rather than leaving it to taste.
+check('the prompt stays even-handed across a power gap',
+  /only audits whoever has less power/.test(prompts.COMPATIBILITY_SYSTEM));
+check('the prompt refuses to supply tactics for pushing somebody out',
+  /a method for pushing somebody out/.test(prompts.COMPATIBILITY_SYSTEM));
+check('the prompt warns that the direction is not symmetrical',
+  /Person A is always the one who scanned/.test(prompts.COMPATIBILITY_SYSTEM));
+
+// The client draws the picker from its own copy of the stance list, so the two
+// have to name the same three things or the UI offers one the server drops.
+{
+  const clientStances = Object.keys(globalThis.PsycheCopy.WORK_STANCES);
+  check('client and server name the same working relationships',
+    JSON.stringify(clientStances.slice().sort()) ===
+    JSON.stringify(Object.keys(prompts.WORK_STANCES).slice().sort()),
+    clientStances.join(','));
+  // Read defensively: if a stance is renamed on one side only, this has to say
+  // which one is missing rather than dying on an undefined.
+  const clientOption = key => {
+    const entry = globalThis.PsycheCopy.WORK_STANCES[key];
+    return entry && typeof entry.option === 'string' ? entry.option : '';
+  };
+  check('every stance option leaves a slot for the other person\'s name',
+    ['superior', 'subordinate'].every(k => clientOption(k).includes('{name}')),
+    ['superior', 'subordinate'].filter(k => !clientOption(k).includes('{name}')).join(',') || 'none');
+  check('the peer option needs no name and has none',
+    clientOption('colleagues').length > 0 && !clientOption('colleagues').includes('{name}'));
+  check('the name actually gets filled in',
+    globalThis.PsycheCopy.stanceText('I am the superior of {name}', 'Jordan') ===
+    'I am the superior of Jordan');
+  check('a missing name degrades to something readable',
+    globalThis.PsycheCopy.stanceText('How to manage {name}', '') === 'How to manage them');
+}
+
+// The basis was renamed to cover relatives, so the brief has to actually say
+// something about family rather than the label alone changing.
+check('the friendship basis is labelled for family too',
+  prompts.COMPATIBILITY_MODES.platonic.label === 'Family / Friends');
+check('and its brief tells the model family is in scope',
+  /relatives as well as friends/.test(prompts.COMPATIBILITY_MODES.platonic.brief));
+check('the system prompt knows family did not choose each other',
+  /people do not pick their family/.test(prompts.COMPATIBILITY_SYSTEM));
 check('the report carries directional advice',
   ['forA', 'forB', 'together'].every(k =>
     k in prompts.COMPATIBILITY_SCHEMA.properties.howToPartner.properties));

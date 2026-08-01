@@ -10,8 +10,9 @@ your strengths and weaknesses — both in relationships and in your career. Expo
 PDF when you are done.
 
 That profile is tagged to a **QR code**. Scan someone else's, choose whether you are asking as
-**partners**, **friends** or **colleagues**, and the model assesses how the two of you would work
-together on that basis, with a playbook aimed at each of you about the other.
+**partners**, **family or friends**, or **colleagues** — and if colleagues, who reports to whom —
+and the model assesses how the two of you would work together on that basis, with a playbook aimed
+at each of you about the other.
 
 ## Running it
 
@@ -529,16 +530,57 @@ the PDF, which has no QR panel or buttons after its own confidence section for i
 
 ## Compatibility
 
-Reading someone's code opens a picker before anything is sent: **Romantic**, **Platonic**, or
-**Professional / work**. The report answers that question and only that one.
+Reading someone's code opens a picker before anything is sent: **Romantic**, **Family / Friends**,
+or **Professional / work**. The report answers that question and only that one.
 
 This is a deliberate change from scoring several at once. A reader who picked "professional" does not
 want to be told about their romantic prospects, the prompt is explicit about not hedging across all
 three, and one basis done properly beats three done shallowly for the same output budget. Each basis
 carries its own brief: romance turns on life direction, values, emotional safety and whether two
-daily rhythms can coexist; friendship on shared interests, matching energy and low friction; work on
-complementary strengths, standards, how each handles a deadline, and whether one will quietly end up
-carrying the other.
+daily rhythms can coexist; family and friendship on shared interests, matching energy and low
+friction; work on complementary strengths, standards, how each handles a deadline, and whether one
+will quietly end up carrying the other.
+
+The second basis covers **relatives as well as chosen friends**, and the brief says so rather than
+the label alone changing: people do not pick their family, so where a pairing is one, the question is
+not whether the two of them suit each other but how to get on well given they are already in each
+other's lives.
+
+### Three questions hiding inside "professional"
+
+Picking work asks one more thing before running: are you **colleagues**, do you **manage** them, or
+do you **report to** them?
+
+They are not the same question. A manager wants to know how to get someone's best work without
+losing them. Someone's report wants to know how to work for them and keep their footing. Peers want
+neither. Answering all three with "complementary strengths and load balance" handed two thirds of
+readers a report about the wrong thing — advice about delegation is useless to somebody with nobody
+to delegate to.
+
+So the stance, not the basis, picks the brief and the five scored dimensions:
+
+| Stance | Dimensions |
+|---|---|
+| Colleagues | Complementary strengths · Standards and follow-through · Working rhythms · Handling disagreement · Load balance |
+| You manage them | Briefing and direction · How they take feedback · Autonomy against oversight · Whether problems reach you · Keeping them |
+| You report to them | Reading what they want · Getting a decision · Raising a problem safely · Visibility of your work · Room to grow |
+
+Direction is asymmetric and easy to get backwards, so it is stated from the reader's side in the UI
+("I am the superior of Jordan") and spelled out for the model as person A and person B — A is always
+whoever scanned. The prompt says outright that getting it the wrong way round produces a report
+confidently about the wrong person.
+
+Because a power difference is exactly where a report like this could do harm, the prompt carries two
+explicit constraints: stay even-handed — name what the junior person should do differently *and*
+what the senior one is getting wrong, since a report that only audits whoever has less power is both
+unfair and useless — and never write anything that reads as a method for pushing somebody out,
+keeping them dependent, or getting round them. If a pairing looks bad the honest answer is to say so,
+not to supply tactics.
+
+The stance travels client → server → provider → prompt, and dropping it anywhere in that chain is
+silent, because a peer brief is a perfectly valid brief. Both providers built the user turn
+themselves and originally ignored the argument; a self-test now patches the prompt builder, calls
+each real provider, and reads back what it actually passed.
 
 ### One number, then five
 
@@ -579,14 +621,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 276 checks: synthesises a real ZIP export and runs
+npm test           # 304 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 402 checks: drives the real UI in Chromium against a
+npm run test:ui    # 413 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

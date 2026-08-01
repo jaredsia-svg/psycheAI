@@ -1220,9 +1220,18 @@
   const MODE_LABELS = Copy.MODE_LABELS;
   const MODE_HEADINGS = {
     romantic: 'How to partner each other',
-    platonic: 'How to befriend each other',
+    platonic: 'How to be close to each other',
     professional: 'How to work with each other',
   };
+
+  // A professional run carries a stance as well as a basis, and the stance
+  // owns the heading — "How to work with each other" is wrong for someone who
+  // manages the other person. Reports saved before stances existed have no
+  // stance, so the mode heading stays the fallback.
+  function playbookHeading(mode, stance, otherName) {
+    const chosen = mode === 'professional' && Copy.WORK_STANCES[stance];
+    return chosen ? Copy.stanceText(chosen.heading, otherName) : MODE_HEADINGS[mode];
+  }
 
   // Ask which question to answer before spending a model call on it. Resolves
   // to a mode key, or null if they backed out.
@@ -1256,6 +1265,44 @@
     });
   }
 
+  // The second question, asked only when the first answer was "professional".
+  // Managing someone, reporting to them and sitting beside them are three
+  // different questions, and the model cannot infer which one from two cards.
+  function askWorkStance(otherName) {
+    const dialog = $('#stance-dialog');
+    $('#stance-dialog-sub').textContent =
+      'You picked work. How do you and ' + otherName + ' actually sit?';
+
+    for (const button of dialog.querySelectorAll('.mode-option')) {
+      const stance = Copy.WORK_STANCES[button.dataset.stance];
+      if (!stance) continue;
+      button.querySelector('.stance-option').textContent = Copy.stanceText(stance.option, otherName);
+      button.querySelector('.stance-blurb').textContent = stance.blurb;
+    }
+
+    return new Promise(resolve => {
+      let answer = null;
+      const choose = event => {
+        answer = event.currentTarget.dataset.stance;
+        dialog.close();
+      };
+      const buttons = dialog.querySelectorAll('.mode-option');
+      for (const button of buttons) button.addEventListener('click', choose);
+
+      const cancel = () => dialog.close();
+      $('#stance-cancel').addEventListener('click', cancel);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) button.removeEventListener('click', choose);
+        $('#stance-cancel').removeEventListener('click', cancel);
+        resolve(answer);
+      }, { once: true });
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
+    });
+  }
+
   async function runMatch(rawText) {
     if (!state.profile) return false;
     const other = await Card.decodeCard(Card.extractPayload(rawText));
@@ -1269,6 +1316,15 @@
     // make them find it again to pick a different basis.
     if (!mode) { show('scan'); return true; }
 
+    // Backing out of the second question returns to the scan page the same way
+    // backing out of the first does, rather than quietly assuming "colleagues"
+    // — a wrong guess here produces a report aimed at the wrong person.
+    let stance = null;
+    if (mode === 'professional') {
+      stance = await askWorkStance(other.name);
+      if (!stance) { show('scan'); return true; }
+    }
+
     $('#working-title').textContent = modelName() + ' is comparing you';
     $('#working-note').textContent =
       MODE_LABELS[mode] + ' compatibility. Two profile cards were sent — nothing else.';
@@ -1276,11 +1332,11 @@
     show('working');
 
     try {
-      const result = await LLM.analyseCompatibility(state.profile.card, other, mode);
+      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance);
       stopElapsed();
-      const report = { ...result.data, mode: result.data.mode || mode };
+      const report = { ...result.data, mode: result.data.mode || mode, stance };
       const history = store.read(KEYS.history, []);
-      history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, report });
+      history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });
       store.write(KEYS.history, history.slice(0, 25));
       renderReport(report, other.name);
       show('report');
@@ -1298,9 +1354,16 @@
   function renderReport(report, otherName) {
     const myName = state.profile ? state.profile.card.name : 'You';
     const mode = MODE_LABELS[report.mode] ? report.mode : 'romantic';
+    const stance = report.stance;
+    // The pill says which question was answered, and for a work run the basis
+    // alone does not: "Professional / work" reads the same whether the reader
+    // manages this person or reports to them.
+    const stanceLabel = mode === 'professional' && Copy.WORK_STANCES[stance]
+      ? Copy.stanceText(Copy.WORK_STANCES[stance].option, otherName) : '';
 
     let html = '<header class="page-head"><h1>' + esc(myName) + ' &amp; ' + esc(otherName) + '</h1>' +
       '<p class="muted"><span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span> ' +
+      (stanceLabel ? '<span class="pill pill-clear">' + esc(stanceLabel) + '</span> ' : '') +
       'This report answers one question. Scan again to compare on a different basis.</p></header>';
 
     html += scoreCard(MODE_LABELS[mode], report);
@@ -1315,7 +1378,7 @@
 
     html += '<div class="card good"><h2>What works</h2>' + points(report.strengths) + '</div>' +
       '<div class="card warn"><h2>What will rub</h2>' + points(report.frictions) + '</div>' +
-      '<div class="card"><h2>' + esc(MODE_HEADINGS[mode]) + '</h2><div class="playbook">' +
+      '<div class="card"><h2>' + esc(playbookHeading(mode, stance, otherName)) + '</h2><div class="playbook">' +
       '<div><h3>For ' + esc(myName) + '</h3>' + list(report.howToPartner.forA, 'ticks') + '</div>' +
       '<div><h3>For ' + esc(otherName) + '</h3>' + list(report.howToPartner.forB, 'ticks') + '</div>' +
       '</div><h3>Both of you</h3>' + list(report.howToPartner.together, 'ticks') + '</div>';

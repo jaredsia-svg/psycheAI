@@ -82,9 +82,38 @@
   // Compatibility bases, as the match history names them.
   const MODE_LABELS = {
     romantic: 'Romantic',
-    platonic: 'Platonic',
+    platonic: 'Family / Friends',
     professional: 'Professional / work',
   };
+
+  // A professional run also asks who reports to whom, because two peers, a
+  // manager and a report are three different questions rather than one.
+  // `{name}` is filled with the other person's name — the direction is stated
+  // from the reader's side, since "superior" on its own is ambiguous about
+  // which way round it runs. The keys match WORK_STANCES in lib/prompts.js,
+  // and a test holds the two lists together.
+  const WORK_STANCES = {
+    colleagues: {
+      option: 'We are colleagues',
+      blurb: 'Neither of you answers to the other.',
+      heading: 'How to work with each other',
+    },
+    superior: {
+      option: 'I am the superior of {name}',
+      blurb: 'You manage them. The report is about getting their best work without losing them.',
+      heading: 'How to manage {name}',
+    },
+    subordinate: {
+      option: 'I am a subordinate of {name}',
+      blurb: 'You report to them. The report is about working for them and keeping your footing.',
+      heading: 'How to work for {name}',
+    },
+  };
+
+  /** Fills the `{name}` slot in a stance label. */
+  function stanceText(template, name) {
+    return String(template || '').replace('{name}', String(name || 'them'));
+  }
 
   const TEXT = {
     whoYouAre: 'Who you are',
@@ -191,6 +220,6 @@
 
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, ACTIVITY_FACETS, MODE_LABELS,
-    BRAND_MARK, TEXT, glanceItems,
+    WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
