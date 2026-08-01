@@ -304,21 +304,29 @@ try {
     await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
-  // "Test your compatibility" used to open the page; it is the last thing on
-  // it now, after the action buttons — someone reads the report first and
-  // shares their code once they have actually seen what is in it.
-  check('the compatibility QR panel is the last thing on the page', await page.evaluate(() => {
+  // The page ends: report, then the code to share, then the three actions.
+  // "Test your compatibility" opened the page once, which asked someone to
+  // hand out their code before reading a word of it. The action buttons then
+  // sat between the report and the code, which put a delete button in the
+  // middle of the page; they are housekeeping, so they close it.
+  check('the action buttons are the last thing on the page', await page.evaluate(() => {
     const view = document.querySelector('#view-profile');
     const panel = document.querySelector('#view-profile .qr-panel');
     const cta = document.querySelector('#view-profile .cta-row');
     const last = view.children[view.children.length - 1];
-    return panel === last && Boolean(cta.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return cta === last && Boolean(panel.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
-  check('the compatibility panel sits below the action buttons, not above them',
+  check('the action buttons sit below the compatibility panel, not above it',
     await page.evaluate(() => {
       const cta = document.querySelector('#view-profile .cta-row').getBoundingClientRect();
       const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
-      return panel.top >= cta.bottom;
+      return cta.top >= panel.bottom;
+    }));
+  check('the compatibility panel still comes after the whole report',
+    await page.evaluate(() => {
+      const body = document.querySelector('#profile-body').getBoundingClientRect();
+      const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
+      return panel.top >= body.bottom;
     }));
 
   // ---- Enneagram: a short second lens right after MBTI ----

@@ -516,11 +516,12 @@ Codes made before this still scan. `K3` payloads spell their keys out and lack t
 someone may have a code saved as a JPEG or printed on something, and refusing to read it would be a
 worse failure than a slightly thinner comparison.
 
-On the profile page, **"Test your compatibility"** — the QR code, the copy-link and download-QR
-buttons, and the link to the scan page — sits last, after the full report and after the
-download/re-run/delete buttons, rather than first. It used to open the page, ahead of anything the
-report actually said. Reading the report before being invited to hand out your code is the right
-order: someone should see what they are sharing before they share it.
+The profile page ends in three parts, in this order: the report, then **"Test your compatibility"**
+— the QR code, the copy-link and download-QR buttons, and the link to the scan page — then the
+download/re-run/delete row. The compatibility panel used to open the page, which asked someone to
+hand out their code before reading a word of what was in it. The action buttons then sat between the
+report and the code, which put a delete button in the middle of the page; they are housekeeping
+rather than part of the document, so they close it instead.
 
 ## Compatibility
 
@@ -581,7 +582,7 @@ npm test           # 276 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 399 checks: drives the real UI in Chromium against a
+npm run test:ui    # 400 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
