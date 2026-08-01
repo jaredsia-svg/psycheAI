@@ -69,6 +69,13 @@ uncapped, so a profile saved under an older schema could carry something longer.
 name that measures past 1900px against the strip's 1440px budget and checks the rendered pixels
 clear the margin, having first confirmed a version without the shrink logic does not.
 
+The nav has been re-measured twice as its labels changed. "My Personality" and "My Compatibility"
+overflowed by 14px at 375 and 32px at 320, and shrinking the links to absorb it would have put them
+under the 11px minimum, so the wordmark came off every phone. Shortening "How it works" to "FAQ"
+gave back more than that cost — re-measured at 412 / 390 / 375 / 360 / 320px the nav sits on one row
+with no horizontal scroll and nothing under 11.5px — so the wordmark is back, and only a folded
+phone under 320px still loses it.
+
 The profile page and the scan page both show this person's own code and offer the same two actions,
 so painting the canvas, copying the link and building the download are each one function bound to
 two buttons rather than duplicated. The CSS constraining the canvas's *display* size (independent of
@@ -545,6 +552,14 @@ the PDF, which has no QR panel or buttons after its own confidence section for i
 
 ## Compatibility
 
+**My Compatibility** is titled for whoever the device belongs to, and opens by saying in plain terms
+what a comparison is for: scan someone's code and you both get a read on how you actually fit, as a
+couple, as family or friends, or as colleagues — and what comes back is a score with the five things
+behind it, what works, what will grate, and what each of you could do differently about the other.
+
+Past results sit *above* the box that makes new ones. Someone returning to that page is far more
+often looking for a report they already ran than starting another.
+
 Reading someone's code opens a picker before anything is sent: **Romantic**, **Family / Friends**,
 or **Professional / work**. The report answers that question and only that one.
 
@@ -643,7 +658,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 432 checks: drives the real UI in Chromium against a
+npm run test:ui    # 440 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

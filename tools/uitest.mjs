@@ -122,8 +122,8 @@ try {
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
   const visibleNav = () => page.locator('.nav-links a:not([hidden])').allInnerTexts();
-  check('a first-time visitor sees only "How it works"',
-    (await visibleNav()).join('|') === 'How it works', (await visibleNav()).join('|'));
+  check('a first-time visitor sees only the FAQ link',
+    (await visibleNav()).join('|') === 'FAQ', (await visibleNav()).join('|'));
 
   await shot('1-welcome');
 
@@ -204,7 +204,7 @@ try {
     /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
 
   check('the personality and compatibility links appear once there is a profile',
-    (await visibleNav()).join('|') === 'My Personality|My Compatibility|How it works',
+    (await visibleNav()).join('|') === 'My Personality|My Compatibility|FAQ',
     (await visibleNav()).join('|'));
 
   // ---- the nav on a phone ----
@@ -1768,6 +1768,44 @@ try {
     await page.waitForSelector('#mode-dialog', { state: 'hidden' });
   }
 
+  // ---- the compatibility page reads as its own page ----
+  const scanText = await page.locator('#view-scan').innerText();
+  check('the compatibility page is titled for whoever this device belongs to',
+    (await page.locator('#scan-title').innerText()) === 'Ale\u00e7\u2019s Compatibility',
+    await page.locator('#scan-title').innerText());
+  check('the intro names all three things a code can be compared on',
+    /couple/i.test(scanText) && /family or friends/i.test(scanText) && /colleagues/i.test(scanText),
+    scanText.slice(0, 300));
+  check('the intro says what a reader actually gets back',
+    /score/i.test(scanText) && /what will grate/i.test(scanText), scanText.slice(0, 500));
+  check('the scanning box says what it is for', await page.evaluate(() => {
+    const box = [...document.querySelectorAll('#view-scan .card')]
+      .find(card => card.querySelector('#paste-go'));
+    const heading = box && box.querySelector('h2');
+    return Boolean(heading) && heading.textContent.trim() === 'Test your compatibility';
+  }));
+  check('the analyse button says what it does',
+    (await page.locator('#paste-go').innerText()) === 'Analyze',
+    await page.locator('#paste-go').innerText());
+
+  // Past results come before the box that makes new ones: someone returning to
+  // this page is far more often looking for a report they already ran.
+  check('past results sit above the scanning box', await page.evaluate(() => {
+    const history = document.querySelector('#scan-history');
+    const box = [...document.querySelectorAll('#view-scan .card')]
+      .find(card => card.querySelector('#paste-go'));
+    if (!history || !box) return false;
+    return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  check('and are rendered, not just positioned',
+    /Your compatibility results/.test(scanText), scanText.slice(0, 400));
+  check('past results still sit above the scanning box on screen', await page.evaluate(() => {
+    const history = document.querySelector('#scan-history').getBoundingClientRect();
+    const box = [...document.querySelectorAll('#view-scan .card')]
+      .find(card => card.querySelector('#paste-go')).getBoundingClientRect();
+    return history.bottom <= box.top + 1;
+  }));
+
   // ---- this person's own code, from the scan page ----
   //
   // Someone who came here to scan someone else's code is the person most
@@ -2143,10 +2181,10 @@ try {
   check('deleting the profile returns you to the upload page',
     await page.locator('#view-welcome').isVisible());
   check('deleting the profile hides the links again',
-    (await visibleNav()).join('|') === 'How it works', (await visibleNav()).join('|'));
+    (await visibleNav()).join('|') === 'FAQ', (await visibleNav()).join('|'));
   check('the links are still hidden after a reload', await (async () => {
     await page.reload({ waitUntil: 'load' });
-    return (await visibleNav()).join('|') === 'How it works';
+    return (await visibleNav()).join('|') === 'FAQ';
   })());
 
   check('no console errors anywhere in the flow', consoleErrors.length === 0, consoleErrors.join(' | '));

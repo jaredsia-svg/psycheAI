@@ -25,7 +25,7 @@
   <div class="nav-links">
     <a href="#" data-nav="profile" id="nav-profile" hidden>My Personality</a>
     <a href="#" data-nav="scan" id="nav-scan" hidden>My Compatibility</a>
-    <a href="#" data-nav="about">How it works</a>
+    <a href="#" data-nav="about">FAQ</a>
   </div>
 </nav>
 
@@ -178,13 +178,25 @@
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
   <header class="page-head">
-    <h1>Test your compatibility</h1>
+    <h1 id="scan-title">Your compatibility</h1>
+    <p class="muted">Scan someone's PsycheAI code and you both get a read on how you actually fit —
+      as a <strong>couple</strong>, as <strong>family or friends</strong>, or as
+      <strong>colleagues</strong>. You pick which one, because they are different questions: what
+      makes someone easy to live with is not what makes them easy to work with.</p>
+    <p class="muted">You get a score with the five things behind it — so you can see where you fit
+      well and where you do not, rather than just a number — what works between you, what will
+      grate, and a short list of what each of you could do differently about the other. Pick work
+      and it asks one more thing: whether you are colleagues, manage them, or report to them.</p>
+  </header>
+  <div id="scan-alert" class="alert" hidden></div>
+
+  <div id="scan-history"></div>
+
+  <div class="card">
+    <h2>Test your compatibility</h2>
     <p class="muted">Point your camera at their QR code, upload a photo of it, or paste their link.
       The code packs a whole profile, so it is a dense one — fill the frame with it, and pasting the
       link is always the sure thing.</p>
-  </header>
-  <div id="scan-alert" class="alert" hidden></div>
-  <div class="card">
     <div class="btn-row">
       <button class="btn" id="start-camera">Use my camera</button>
       <button class="btn btn-ghost" id="upload-qr">Upload a photo of a code</button>
@@ -199,9 +211,8 @@
     <label class="field">Or paste their link or code
       <input type="text" id="paste-input" placeholder="https://…/#p=… or the raw code">
     </label>
-    <button class="btn" id="paste-go">Get our report</button>
+    <button class="btn" id="paste-go">Analyze</button>
   </div>
-  <div id="scan-history"></div>
 
   <div class="qr-panel card">
     <h2 class="qr-title">My QR code</h2>

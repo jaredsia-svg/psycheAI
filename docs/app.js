@@ -1104,6 +1104,11 @@
 
   function renderScan() {
     flash('#scan-alert', '');
+    // Named for whoever this device belongs to, the way the profile page is.
+    // There may be no profile yet on a device that was sent a link, so the
+    // generic title in the markup stays the fallback.
+    const who = state.profile && state.profile.card && state.profile.card.name;
+    $('#scan-title').textContent = who ? who + '\u2019s Compatibility' : 'Your compatibility';
     $('#paste-input').value = '';
     $('#scan-status').textContent = '';
     $('#camera-holder').hidden = true;
