@@ -23,8 +23,8 @@
     <span>PsycheAI</span>
   </a>
   <div class="nav-links">
-    <a href="#" data-nav="profile" id="nav-profile" hidden>My profile</a>
-    <a href="#" data-nav="scan" id="nav-scan" hidden>Scan a code</a>
+    <a href="#" data-nav="profile" id="nav-profile" hidden>My Personality</a>
+    <a href="#" data-nav="scan" id="nav-scan" hidden>My Compatibility</a>
     <a href="#" data-nav="about">How it works</a>
   </div>
 </nav>
@@ -178,7 +178,7 @@
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
   <header class="page-head">
-    <h1>Scan a PsycheAI code</h1>
+    <h1>Test your compatibility</h1>
     <p class="muted">Point your camera at their QR code, upload a photo of it, or paste their link.
       The code packs a whole profile, so it is a dense one — fill the frame with it, and pasting the
       link is always the sure thing.</p>
@@ -221,8 +221,18 @@
 
 <!-- ══════════════ report ══════════════ -->
 <section id="view-report" class="view" hidden>
+  <header class="page-head screen-only">
+    <h1 id="report-title">Your compatibility report</h1>
+    <div class="btn-row no-print">
+      <button class="btn" id="export-compat-top">Download report</button>
+    </div>
+  </header>
+  <p class="muted" id="report-sub"></p>
+
   <div id="report-body"></div>
+
   <div class="cta-row">
+    <button class="btn" id="export-compat-bottom">Download report</button>
     <button class="btn btn-ghost" data-nav="scan">Scan someone else</button>
     <button class="btn btn-ghost" data-nav="profile">Back to my profile</button>
   </div>

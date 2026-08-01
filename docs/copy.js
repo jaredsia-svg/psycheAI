@@ -184,6 +184,29 @@
     glanceHighest: 'Highest',
     glanceLowest: 'Lowest',
     glanceEnneagram: 'Enneagram',
+
+    // The compatibility report. It is two renderings of one document for the
+    // same reason the profile is — the page and the downloadable PDF — so its
+    // headings live here too rather than being typed once in each.
+    compatDimensions: 'Where it holds and where it does not',
+    compatDimensionsSub: 'Each scored on its own, on the same scale as the number above: 50 is ' +
+      'two people picked at random.',
+    compatShort: 'The short version',
+    compatUpside: 'Biggest upside',
+    compatRisk: 'Biggest risk',
+    compatCommon: 'Common ground',
+    compatWorks: 'What works',
+    compatRubs: 'What will rub',
+    compatBoth: 'Both of you',
+    compatTalk: 'Things to actually talk about',
+    compatFor: 'For ',
+    compatSuffix: ' compatibility',
+    compatOneQuestion: 'This report answers one question. Scan again to compare on a different basis.',
+
+    // The scan page, which is where a comparison starts and where past ones
+    // are listed.
+    scanTitle: 'Test your compatibility',
+    scanHistory: 'Your compatibility results',
   };
 
   /**

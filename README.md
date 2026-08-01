@@ -406,11 +406,26 @@ just from the page — asking the model for output nobody reads is tokens spent 
 
 ## Downloading the report
 
-**Download full report** at the top and bottom of the profile writes a PDF and downloads it. No
-library: `docs/pdf.js` emits the file itself, which for a text report means page objects, content
-streams, and the base-14 fonts every viewer already has. It is about 600 lines and no bytes of
+**Download full report** at the top and bottom of the profile writes a PDF and downloads it, and
+**Download report** does the same for a comparison. No library: `docs/pdf.js` emits the file itself,
+which for a text report means page objects, content streams, and the base-14 fonts every viewer
+already has. It is about 600 lines and no bytes of
 dependency — `html2canvas` and friends would rasterise the same words into a fuzzy image and cost
 200KB, and the text here stays real text that a reader can select, search and copy.
+
+`build()` and `buildCompatibility()` are two documents over one writer. They share the page
+furniture — the coloured cover band, the brand lockup, the running head, the bars, the bulleted
+lists, the evidence chips, the page numbering — and differ only in what they lay out and what the
+cover says: a person and a confidence figure for one, a pair and a score for the other. The
+comparison runs section for section with the report page and in the same order, and its headings
+come from `docs/copy.js` for exactly the reason the profile's do — two renderings of one document
+drift the moment the strings are typed twice, and a UI check fails if either renderer re-types one.
+On a work run the playbook heading and the cover subtitle both carry the stance, so a manager's
+download does not arrive titled "How to work with each other".
+
+The suite clicks the real button, keeps the file the browser saved, and greps the drawn text out of
+it — streams are uncompressed partly so it can. That is what proves the document exists rather than
+that a function returned a Blob.
 
 This replaced `window.print()`. Print-to-PDF was free and the print CSS was good, but the output was
 never the user's: page size, margins, whether backgrounds were included and the browser's own header
@@ -628,7 +643,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 413 checks: drives the real UI in Chromium against a
+npm run test:ui    # 432 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

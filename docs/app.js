@@ -701,7 +701,7 @@
     if (!link) return;
     event.preventDefault();
     const entry = store.read(KEYS.history, [])[Number(link.dataset.report)];
-    if (entry) { renderReport(entry.report, entry.withName); show('report'); }
+    if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
   });
 
   // The profile page and the scan page both offer this person's own link, so
@@ -879,6 +879,46 @@
 
   $('#export-pdf-top').addEventListener('click', exportPdf);
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
+
+  /**
+   * The same download for a comparison. Built from `state.lastReport`, which
+   * renderReport fills — the report on screen is the one that gets written,
+   * whether it arrived from a fresh scan or from the history table.
+   */
+  function exportCompatPdf(event) {
+    const button = event.currentTarget;
+    const label = button.textContent;
+    const last = state.lastReport;
+    if (!last) return;
+    try {
+      const when = last.when ? new Date(last.when) : new Date();
+      const blob = window.PsychePDF.buildCompatibility(last.report, {
+        a: last.myName,
+        b: last.otherName,
+        modeLabel: MODE_LABELS[last.mode] || '',
+        stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
+          ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
+        heading: playbookHeading(last.mode, last.stance, last.otherName),
+        date: when.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+        model: (state.profile && state.profile.model) || '',
+      });
+      const slug = value => String(value || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = 'psycheai-compatibility-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf';
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    } catch (error) {
+      button.textContent = 'Could not build the PDF';
+      setTimeout(() => { button.textContent = label; }, 3000);
+    }
+  }
+
+  $('#export-compat-top').addEventListener('click', exportCompatPdf);
+  $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
 
   $('#reanalyse').addEventListener('click', async () => {
     if (!state.digest) {
@@ -1069,7 +1109,7 @@
     $('#camera-holder').hidden = true;
     const history = store.read(KEYS.history, []);
     $('#scan-history').innerHTML = history.length
-      ? '<div class="card"><h2>Previous reports</h2>' + historyTable(history) + '</div>' : '';
+      ? '<div class="card"><h2>' + esc(TEXT.scanHistory) + '</h2>' + historyTable(history) + '</div>' : '';
     paintQrCanvas('#qr-canvas-scan');
     $('#qr-contents').innerHTML = qrContentsBlock(state.profile && state.profile.card);
   }
@@ -1351,7 +1391,7 @@
 
   // ══════════════ 4. compatibility report ══════════════
 
-  function renderReport(report, otherName) {
+  function renderReport(report, otherName, when) {
     const myName = state.profile ? state.profile.card.name : 'You';
     const mode = MODE_LABELS[report.mode] ? report.mode : 'romantic';
     const stance = report.stance;
@@ -1361,30 +1401,36 @@
     const stanceLabel = mode === 'professional' && Copy.WORK_STANCES[stance]
       ? Copy.stanceText(Copy.WORK_STANCES[stance].option, otherName) : '';
 
-    let html = '<header class="page-head"><h1>' + esc(myName) + ' &amp; ' + esc(otherName) + '</h1>' +
-      '<p class="muted"><span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span> ' +
+    // The title and the basis pills live in the static header rather than in
+    // the rendered body, so the Download button can sit beside them the way it
+    // does on the profile page.
+    $('#report-title').textContent = myName + ' & ' + otherName;
+    $('#report-sub').innerHTML =
+      '<span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span> ' +
       (stanceLabel ? '<span class="pill pill-clear">' + esc(stanceLabel) + '</span> ' : '') +
-      'This report answers one question. Scan again to compare on a different basis.</p></header>';
+      esc(TEXT.compatOneQuestion);
+    // Kept for the PDF, which is built from whatever was last rendered.
+    state.lastReport = { report, otherName, myName, mode, stance, when };
 
-    html += scoreCard(MODE_LABELS[mode], report);
+    let html = scoreCard(MODE_LABELS[mode], report);
     html += dimensionsCard(report);
 
-    html += '<div class="card"><h2>The short version</h2>' +
-      '<h3>Biggest upside</h3><p>' + esc(report.biggestUpside) + '</p>' +
-      '<h3>Biggest risk</h3><p>' + esc(report.biggestRisk) + '</p>' +
+    html += '<div class="card"><h2>' + esc(TEXT.compatShort) + '</h2>' +
+      '<h3>' + esc(TEXT.compatUpside) + '</h3><p>' + esc(report.biggestUpside) + '</p>' +
+      '<h3>' + esc(TEXT.compatRisk) + '</h3><p>' + esc(report.biggestRisk) + '</p>' +
       (report.sharedGround && report.sharedGround.length
-        ? '<h3>Common ground</h3>' + tags(report.sharedGround) : '') +
+        ? '<h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(report.sharedGround) : '') +
       '</div>';
 
-    html += '<div class="card good"><h2>What works</h2>' + points(report.strengths) + '</div>' +
-      '<div class="card warn"><h2>What will rub</h2>' + points(report.frictions) + '</div>' +
+    html += '<div class="card good"><h2>' + esc(TEXT.compatWorks) + '</h2>' + points(report.strengths) + '</div>' +
+      '<div class="card warn"><h2>' + esc(TEXT.compatRubs) + '</h2>' + points(report.frictions) + '</div>' +
       '<div class="card"><h2>' + esc(playbookHeading(mode, stance, otherName)) + '</h2><div class="playbook">' +
-      '<div><h3>For ' + esc(myName) + '</h3>' + list(report.howToPartner.forA, 'ticks') + '</div>' +
-      '<div><h3>For ' + esc(otherName) + '</h3>' + list(report.howToPartner.forB, 'ticks') + '</div>' +
-      '</div><h3>Both of you</h3>' + list(report.howToPartner.together, 'ticks') + '</div>';
+      '<div><h3>' + esc(TEXT.compatFor + myName) + '</h3>' + list(report.howToPartner.forA, 'ticks') + '</div>' +
+      '<div><h3>' + esc(TEXT.compatFor + otherName) + '</h3>' + list(report.howToPartner.forB, 'ticks') + '</div>' +
+      '</div><h3>' + esc(TEXT.compatBoth) + '</h3>' + list(report.howToPartner.together, 'ticks') + '</div>';
 
     if ((report.conversationStarters || []).length) {
-      html += '<div class="card"><h2>Things to actually talk about</h2>' + list(report.conversationStarters) + '</div>';
+      html += '<div class="card"><h2>' + esc(TEXT.compatTalk) + '</h2>' + list(report.conversationStarters) + '</div>';
     }
 
     html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
@@ -1399,9 +1445,8 @@
   function dimensionsCard(report) {
     const items = (report.dimensions || []).filter(d => d && d.name);
     if (!items.length) return '';
-    return '<div class="card section-card"><h2>Where it holds and where it does not</h2>' +
-      '<p class="card-sub">Each scored on its own, on the same scale as the number above: 50 is ' +
-      'two people picked at random.</p>' +
+    return '<div class="card section-card"><h2>' + esc(TEXT.compatDimensions) + '</h2>' +
+      '<p class="card-sub">' + esc(TEXT.compatDimensionsSub) + '</p>' +
       items.map(item => bar(item.name, item.score,
         (item.reading ? '<p class="trait-reading">' + esc(item.reading) + '</p>' : '') +
         evidence(item.evidence))).join('') +
@@ -1413,7 +1458,7 @@
     const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
     return '<div class="card score-card score-single tier-' + tier + '">' +
       '<div class="ring" style="--pct:' + value + '"><span>' + value + '</span></div>' +
-      '<div><h2>' + esc(label) + ' compatibility</h2>' +
+      '<div><h2>' + esc(label + TEXT.compatSuffix) + '</h2>' +
       '<p class="band">' + esc(report.band) + '</p>' +
       '<p>' + esc(report.verdict) + '</p></div></div>';
   }

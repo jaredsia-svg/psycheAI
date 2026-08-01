@@ -1093,12 +1093,148 @@
 
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
 
-    return serialise(doc, stamp, who);
+    return serialise(doc, (who.name || 'Your') + '\u2019s personality analysis',
+      'Personality analysis from an Instagram data export');
   }
 
   // ---------- serialisation ----------
 
-  function serialise(doc, meta, card) {
+  // ---------- the compatibility report ----------
+
+  /**
+   * The cover for a comparison. Same band and lockup as the profile's, but the
+   * subject is a pair rather than a person, and the number that belongs in the
+   * band is the score rather than a confidence figure.
+   */
+  function compatCover(doc, report, meta) {
+    doc.newPage({ bare: true, top: 0 });
+    doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
+    const bandHeight = 176;
+    doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
+    doc.setFill(ACCENT_2);
+    doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
+      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight) + ' l ' +
+      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 34) + ' l 0 ' +
+      num(PAGE.height - bandHeight) + ' l f');
+
+    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
+    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
+
+    const title = meta.a + ' & ' + meta.b;
+    const titleStyle = { size: 27, bold: true, color: WHITE };
+    let y = 96;
+    for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
+      doc.draw(line, MARGIN, y, titleStyle);
+      y += 31;
+    }
+    // The basis, and for a work run the side of it, because "Professional /
+    // work" alone does not say whether the reader manages this person.
+    const basis = [meta.modeLabel, meta.stanceLabel].filter(Boolean).join('  ·  ');
+    if (basis) {
+      const style = { size: 11.5, italic: true, color: WHITE };
+      for (const line of wrap(toWinAnsi(basis), COLUMN - 30, style).slice(0, 2)) {
+        doc.draw(line, MARGIN, y + 2, style);
+        y += 15;
+      }
+    }
+
+    const score = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
+    const stamp = ['Generated ' + (meta.date || ''), report.band, score + '/100']
+      .filter(Boolean).join('  ·  ');
+    doc.draw(toWinAnsi(stamp), MARGIN, bandHeight + 26, { size: 8.8, color: SOFT });
+    doc.y = bandHeight + 40;
+  }
+
+  /**
+   * A comparison as a PDF, section for section with what the report page shows
+   * and in the same order. Every heading comes from copy.js for the same
+   * reason the profile's do: two renderings of one document that drift the
+   * moment the strings are written twice.
+   */
+  function buildCompatibility(report, meta) {
+    bindCopy();
+    const source = report || {};
+    const stamp = meta || {};
+    const a = stamp.a || 'You';
+    const b = stamp.b || 'Them';
+    const doc = new Doc();
+    const out = new Report(doc, { name: a + ' & ' + b });
+
+    compatCover(doc, source, stamp);
+
+    // 1. The verdict, under the score the cover already carries.
+    out.sectionTitle((stamp.modeLabel || '') + TEXT.compatSuffix, source.band);
+    if (source.verdict) out.body(source.verdict);
+
+    // 2. Where it holds and where it does not — the same bars the Big Five
+    // uses on the profile side, for the same reason.
+    const dimensions = (source.dimensions || []).filter(d => d && d.name);
+    if (dimensions.length) {
+      out.sectionTitle(TEXT.compatDimensions, TEXT.compatDimensionsSub);
+      for (const item of dimensions) {
+        out.bar(item.name, item.score);
+        if (item.reading) out.body(item.reading, { size: 9.8, color: SOFT, leading: 14 });
+        out.tags(item.evidence);
+      }
+    }
+
+    // 3. The short version.
+    out.sectionTitle(TEXT.compatShort);
+    if (source.biggestUpside) { out.h3(TEXT.compatUpside, GOOD); out.body(source.biggestUpside); }
+    if (source.biggestRisk) { out.h3(TEXT.compatRisk, WARN); out.body(source.biggestRisk); }
+    if ((source.sharedGround || []).length) {
+      out.h3(TEXT.compatCommon);
+      out.tags(source.sharedGround);
+    }
+
+    // 4 and 5. What works, what will rub — each claim with its evidence, which
+    // is the whole point of the citation field.
+    for (const [title, items, colour] of [
+      [TEXT.compatWorks, source.strengths, GOOD],
+      [TEXT.compatRubs, source.frictions, WARN],
+    ]) {
+      out.sectionTitle(title);
+      const list = (items || []).filter(Boolean);
+      if (!list.length) { out.muted(TEXT.pointsEmpty); continue; }
+      for (const item of list) {
+        out.point(item.title, item.detail);
+        out.tags(item.evidence, { x: MARGIN + 10, width: COLUMN - 10, size: 8.5 });
+      }
+      // Referenced so the colour is not an unused binding if the loop changes.
+      void colour;
+    }
+
+    // 6. The playbook, whose heading belongs to the stance rather than the
+    // basis on a work run.
+    const play = source.howToPartner || {};
+    out.sectionTitle(stamp.heading || '');
+    if ((play.forA || []).length) {
+      out.h3(TEXT.compatFor + a);
+      for (const line of play.forA) out.bullet(line);
+    }
+    if ((play.forB || []).length) {
+      out.h3(TEXT.compatFor + b);
+      for (const line of play.forB) out.bullet(line);
+    }
+    if ((play.together || []).length) {
+      out.h3(TEXT.compatBoth);
+      for (const line of play.together) out.bullet(line);
+    }
+
+    // 7. Conversation starters.
+    if ((source.conversationStarters || []).length) {
+      out.sectionTitle(TEXT.compatTalk);
+      for (const line of source.conversationStarters) out.bullet(line);
+    }
+
+    if (source.caveats) out.fineprint(source.caveats);
+    out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
+
+    return serialise(doc, a + ' & ' + b + ' — compatibility report',
+      'Compatibility report from two PsycheAI profiles');
+  }
+
+  function serialise(doc, docTitle, subject) {
     // Page numbers go on last, because now the total is known. The cover is
     // deliberately left clean.
     doc.pages.forEach((page, index) => {
@@ -1138,9 +1274,9 @@
     objects[1] = '<< /Type /Pages /Kids [' + pageIds.map(id => id + ' 0 R').join(' ') +
       '] /Count ' + pageIds.length + ' >>';
 
-    const title = (card.name || 'Your') + '’s personality analysis';
-    const info = add('<< /Title (' + toWinAnsi(title).replace(/([\\()])/g, '\\$1') +
-      ') /Author (PsycheAI) /Creator (PsycheAI) /Subject (Personality analysis from an Instagram data export) >>');
+    const info = add('<< /Title (' + toWinAnsi(docTitle).replace(/([\\()])/g, '\\$1') +
+      ') /Author (PsycheAI) /Creator (PsycheAI) /Subject (' +
+      toWinAnsi(subject).replace(/([\\()])/g, '\\$1') + ') >>');
 
     let file = '%PDF-1.4\n';
     const offsets = [];
@@ -1162,5 +1298,5 @@
     return new Blob([bytes], { type: 'application/pdf' });
   }
 
-  root.PsychePDF = { build, toWinAnsi, measure };
+  root.PsychePDF = { build, buildCompatibility, toWinAnsi, measure };
 })(typeof window !== 'undefined' ? window : globalThis);

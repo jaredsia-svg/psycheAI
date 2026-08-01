@@ -203,8 +203,8 @@ try {
   check('it says what scanning is for',
     /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
 
-  check('the profile and scan links appear once there is a profile',
-    (await visibleNav()).join('|') === 'My profile|Scan a code|How it works',
+  check('the personality and compatibility links appear once there is a profile',
+    (await visibleNav()).join('|') === 'My Personality|My Compatibility|How it works',
     (await visibleNav()).join('|'));
 
   // ---- the nav on a phone ----
@@ -766,9 +766,13 @@ try {
     };
   }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'In relationships', 'At work',
     'Your Instagram behaviour', 'What your QR code contains', 'Your matches',
-    'How much to trust this']);
+    'How much to trust this',
+    // The compatibility report is two renderings of one document too, now that
+    // it has a PDF, so its headings are held to the same rule.
+    'Where it holds and where it does not', 'The short version', 'What works', 'What will rub',
+    'Things to actually talk about', 'Your compatibility results']);
 
-  check('every section title is defined in copy.js', sharing.inCopy === 10, JSON.stringify(sharing));
+  check('every section title is defined in copy.js', sharing.inCopy === 16, JSON.stringify(sharing));
   check('the page does not re-type any section title',
     sharing.retypedInApp.length === 0, sharing.retypedInApp.join(' | '));
   check('the PDF does not re-type any section title',
@@ -1287,7 +1291,8 @@ try {
     /How to manage Jordan/i.test(reportText) && !/How to work with each other/i.test(reportText),
     reportText.slice(0, 200));
   check('the report says which side of the relationship it answered',
-    /I am the superior of Jordan/.test(reportText), reportText.slice(0, 200));
+    /I am the superior of Jordan/.test(await page.locator('#report-sub').innerText()),
+    await page.locator('#report-sub').innerText());
   check('report gives each person their own advice',
     (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
@@ -1318,6 +1323,62 @@ try {
     (await page.locator('#report-body .section-card .trait-evidence').count()) === 5);
 
   // Strengths and frictions used to be assertable with nothing behind them.
+  // ---- the compatibility PDF ----
+  //
+  // Same discipline as the profile's: click the real button, keep the file the
+  // browser saved, and read the text back out of it rather than trusting that
+  // it was drawn. Streams are uncompressed, so the words are greppable.
+  check('a comparison offers a download at the top and the bottom',
+    await page.locator('#export-compat-top').isVisible() &&
+    await page.locator('#export-compat-bottom').isVisible());
+
+  const compatPdfPath = join(shotDir, 'compatibility.pdf');
+  const [compatDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#export-compat-top'),
+  ]);
+  await compatDownload.saveAs(compatPdfPath);
+  const compatText = readFileSync(compatPdfPath).toString('latin1');
+
+  check('the compatibility button downloads a file named for both people',
+    /^psycheai-compatibility-[a-z-]+-[a-z-]+\.pdf$/.test(compatDownload.suggestedFilename()),
+    compatDownload.suggestedFilename());
+  check('the comparison is a real PDF', compatText.startsWith('%PDF-1.') &&
+    compatText.trimEnd().endsWith('%%EOF'));
+  check('the comparison runs to more than one page',
+    (compatText.match(/\/Type \/Page[^s]/g) || []).length >= 2,
+    String((compatText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
+  check('the comparison PDF is titled for the pair, not for one person',
+    /\/Title \(Ale\xe7 & Jordan/.test(compatText), (/\/Title \(([^)]*)/.exec(compatText) || [])[1]);
+  check('and carries its own subject rather than the profile one',
+    /\/Subject \(Compatibility report/.test(compatText));
+
+  // The document has to say the same things the page does. These are read from
+  // the drawn text, so a section that renders on screen and is missing here
+  // fails rather than passing quietly.
+  const compatDrawn = [...compatText.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
+    .map(m => m[1]).join('\n').replace(/\\/g, '');
+  for (const [label, needle] of [
+    ['both names on the cover', 'Ale\xe7 & Jordan'],
+    ['the basis it answered', 'Professional / work'],
+    ['which side of it', 'I am the superior of Jordan'],
+    ['the dimensions section', 'Where it holds and where it does not'],
+    ['a dimension chosen for the stance', 'Briefing and direction'],
+    ['the short version', 'The short version'],
+    ['what works', 'What works'],
+    ['what will rub', 'What will rub'],
+    ['the playbook heading for the stance', 'How to manage Jordan'],
+    ['advice addressed to each person', 'For Ale\xe7'],
+    ['the conversation starters', 'Things to actually talk about'],
+  ]) {
+    check('the comparison PDF carries ' + label, compatDrawn.includes(needle),
+      needle.slice(0, 40));
+  }
+  check('the comparison PDF does not print the peer dimensions for a manager',
+    !compatDrawn.includes('Load balance'));
+  check('the comparison PDF stamps which model ran it',
+    /Analysed by mock on/.test(compatDrawn));
+
   check('strengths and frictions cite their evidence too',
     (await page.locator('#report-body .points .ev').count()) >= 6,
     String(await page.locator('#report-body .points .ev').count()) + ' evidence chips');
