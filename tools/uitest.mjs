@@ -304,17 +304,19 @@ try {
     await page.locator('.confidence-card .confidence-fill').isVisible());
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
-  // The page ends: report, then the code to share, then the three actions.
-  // "Test your compatibility" opened the page once, which asked someone to
-  // hand out their code before reading a word of it. The action buttons then
-  // sat between the report and the code, which put a delete button in the
-  // middle of the page; they are housekeeping, so they close it.
-  check('the action buttons are the last thing on the page', await page.evaluate(() => {
+  // The page ends: report, then the code to share, then the three actions,
+  // then the "analysed by" line. "Test your compatibility" opened the page
+  // once, which asked someone to hand out their code before reading a word
+  // of it. The action buttons then sat between the report and the code,
+  // which put a delete button in the middle of the page; they are
+  // housekeeping, so they close it. "Analysed by" is a record of the run
+  // rather than a finding, so it closes the page after even the buttons.
+  check('the "analysed by" line is the last thing on the page', await page.evaluate(() => {
     const view = document.querySelector('#view-profile');
-    const panel = document.querySelector('#view-profile .qr-panel');
     const cta = document.querySelector('#view-profile .cta-row');
+    const stamp = document.querySelector('#analysed-by');
     const last = view.children[view.children.length - 1];
-    return cta === last && Boolean(panel.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return stamp === last && Boolean(cta.compareDocumentPosition(stamp) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('the action buttons sit below the compatibility panel, not above it',
     await page.evaluate(() => {
@@ -328,6 +330,10 @@ try {
       const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
       return panel.top >= body.bottom;
     }));
+  check('the "analysed by" line names the model and is not left empty',
+    /Analysed by mock on/.test(await page.locator('#analysed-by').innerText()));
+  check('the "analysed by" line is no longer inside the report body',
+    !/Analysed by/.test(await page.locator('#profile-body').innerText()));
 
   // ---- Enneagram: a short second lens right after MBTI ----
   check('Enneagram comes directly after MBTI, before Interests',

@@ -666,10 +666,14 @@
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p></div>';
 
-    html += '<p class="fineprint">Analysed by ' + esc(profile.model || 'the model') + ' on ' +
-      esc(new Date(profile.createdAt).toLocaleString()) + '.</p>';
-
     $('#profile-body').innerHTML = html;
+
+    // Sits after the action buttons rather than inside the report: it is a
+    // record of the run, not a finding, and closing the page with it means
+    // it stays true no matter what gets added between the report and the
+    // buttons above it.
+    $('#analysed-by').textContent = 'Analysed by ' + (profile.model || 'the model') + ' on ' +
+      new Date(profile.createdAt).toLocaleString() + '.';
   }
 
   function historyTable(history) {
