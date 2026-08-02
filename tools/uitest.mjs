@@ -651,7 +651,9 @@ try {
   const pageSections = await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim()));
 
-  // Nine always, a tenth ("Your matches") only once this device has history.
+  // "Your matches" used to be a tenth section, shown only once this device had
+  // history. It was removed from the profile page — past comparisons live on
+  // the compatibility page now — so this is a fixed nine regardless of history.
   check('the page has all its sections to compare against', pageSections.length >= 9,
     pageSections.length + ': ' + pageSections.join(' | '));
 
@@ -1428,7 +1430,19 @@ try {
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
   check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Aleç'));
-  check('match history is kept', (await page.locator('#profile-body').innerText()).includes('Jordan'));
+  // "Your matches" was removed from the profile page — past comparisons live
+  // only on the compatibility page now, under "Your compatibility results" —
+  // so history has to be checked there, and confirmed absent from the profile.
+  check('the profile page no longer lists past comparisons',
+    !(await page.locator('#profile-body').innerText()).includes('Jordan'));
+  check('the "Your matches" heading itself is gone from the profile page',
+    (await page.locator('#profile-body .card-head h2', { hasText: 'Your matches' }).count()) === 0);
+  await page.click('[data-nav="scan"]');
+  await page.waitForSelector('#view-scan:not([hidden])');
+  check('match history is kept, on the compatibility page',
+    (await page.locator('#scan-history').innerText()).includes('Jordan'));
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])');
 
   // A model told to send exactly one emoji will occasionally send a sentence.
   // Drive the real render path with a bad one rather than trusting the guard.
@@ -1787,6 +1801,16 @@ try {
   check('the analyse button says what it does',
     (await page.locator('#paste-go').innerText()) === 'Analyze',
     await page.locator('#paste-go').innerText());
+  check('the camera and upload buttons are short, not instructions',
+    (await page.locator('#start-camera').innerText()) === 'Use camera' &&
+    (await page.locator('#upload-qr').innerText()) === 'Upload QR code',
+    (await page.locator('#start-camera').innerText()) + ' | ' + (await page.locator('#upload-qr').innerText()));
+  check('the how-to sentence under the scanning box is gone',
+    !/fill the frame with it/.test(scanText) && !/pasting the\s+link is always the sure thing/.test(scanText),
+    scanText.slice(0, 500));
+  check('the top intro is the short version, not the old two-paragraph one',
+    !/what makes someone easy to live with/i.test(scanText) &&
+    !/Pick work\s+and it asks one more thing/.test(scanText), scanText.slice(0, 500));
 
   // Past results come before the box that makes new ones: someone returning to
   // this page is far more often looking for a report they already ran.

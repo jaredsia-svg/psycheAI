@@ -552,13 +552,27 @@ the PDF, which has no QR panel or buttons after its own confidence section for i
 
 ## Compatibility
 
-**My Compatibility** is titled for whoever the device belongs to, and opens by saying in plain terms
-what a comparison is for: scan someone's code and you both get a read on how you actually fit, as a
-couple, as family or friends, or as colleagues — and what comes back is a score with the five things
-behind it, what works, what will grate, and what each of you could do differently about the other.
+**My Compatibility** is titled for whoever the device belongs to, and opens with one short sentence
+on what a comparison is for: scan someone's code and get a score, the five things behind it, what
+works, what will grate, and what each of you could do differently — as a couple, as family or
+friends, or as colleagues. It was two paragraphs; the second one restated the picker that appears
+moments later, so it was cut rather than trimmed.
+
+The scanning box itself carries no instructions any more, just its heading and the three ways in:
+camera, upload, paste. **Use my camera** and **Upload a photo of a code** became **Use camera** and
+**Upload QR code** — short enough to read as labels rather than sentences — and the "fill the frame
+with it" paragraph under them is gone, since the box's own controls say what it does. The button
+that starts a comparison reads **Analyze**.
 
 Past results sit *above* the box that makes new ones. Someone returning to that page is far more
 often looking for a report they already ran than starting another.
+
+**"Your matches"** — the history table that used to close the personality report — was removed from
+that page; past comparisons live only on the compatibility page now, under "Your compatibility
+results". It stays in the downloadable PDF, which still lists history when the device has any: the
+request was to change the live page, and match history is a record of what this device has done
+rather than part of the model's read on the person, so the two are free to differ here without
+breaking the rule that the page and the PDF have to agree on what the *report* says.
 
 Reading someone's code opens a picker before anything is sent: **Romantic**, **Family / Friends**,
 or **Professional / work**. The report answers that question and only that one.
@@ -658,7 +672,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 440 checks: drives the real UI in Chromium against a
+npm run test:ui    # 445 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

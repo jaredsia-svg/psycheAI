@@ -652,12 +652,6 @@
       html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
     }
 
-    const history = store.read(KEYS.history, []);
-    if (history.length) {
-      html += '<div class="card section-card">' + head('🤝', esc(TEXT.matches)) +
-        historyTable(history) + '</div>';
-    }
-
     // Confidence closes the report rather than opening it: read after the
     // whole thing, it says how much of what you just read to believe.
     html += '<div class="card section-card confidence-card">' +
