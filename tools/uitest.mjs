@@ -1411,12 +1411,13 @@ try {
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
 
   check('the page explains that the file is reduced before anything is sent',
-    /writes a short summary of it/i.test(about) && /Only that summary is sent/i.test(about));
+    /reduces it to a short summary/i.test(about) && /Only that summary is sent/i.test(about));
+  // The page no longer explains *why* the relay exists — that sentence was cut
+  // as clutter. It still has to say *that* it relays, which is the part a
+  // reader could otherwise be misled about, so these two carry it alone now.
   check('the page is honest that the server relays rather than bypassing it',
-    /goes to PsycheAI first/i.test(about) && /passes it straight on/i.test(about),
+    /The summary goes to PsycheAI/i.test(about) && /passes it straight on/i.test(about),
     about.slice(0, 1400));
-  check('and says why the relay has to exist at all',
-    /needs a secret password/i.test(about) && /cannot be hidden inside a\s+website/i.test(about));
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   check('the claim that nothing is written to disk holds in server.js',
@@ -1425,23 +1426,20 @@ try {
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account or stored pile of data to breach',
-    /no sign-up, no password/i.test(about) && /does not have one/i.test(about) &&
-    /no pile of data sitting around/i.test(about));
+    /no sign-up, no password to create/i.test(about) && /does not have one/i.test(about) &&
+    /no\s+accumulated data for anyone to take/i.test(about));
 
-  // A page that only reassures is not trustworthy. These are the two things
-  // outside the app's control, and they have to stay named.
+  // A page that only reassures is not trustworthy. The device-readability and
+  // self-hosting notes were cut as clutter; the one that remains is the one a
+  // reader cannot check for themselves, so it has to stay named.
   check('the page names the model provider as the party that reads the summary',
     /Google or Anthropic/.test(about));
   check('the page admits their terms govern that, not this app',
-    /their rules cover it rather\s+than ours/i.test(about));
-  check('the page admits an unlocked device is readable',
-    /unlocked phone/i.test(about));
-  check('the page offers self-hosting as the way to hold the whole chain',
-    /run their own copy on their own computer/i.test(about));
+    /their\s+terms apply rather than ours/i.test(about));
 
-  // The whole point of this rewrite was that a reader should not need to know
-  // what a .zip or an API key is to follow it. Jargon creeping back in is the
-  // regression, so the two sections are held to plain words.
+  // These two sections are written for an adult with no technical background:
+  // no jargon, and no explaining-to-a-child similes either. Jargon creeping
+  // back in is the regression worth guarding, so the terms are held out.
   const plainSections = await page.evaluate(() => {
     const cards = [...document.querySelectorAll('#view-about .card')];
     return cards.slice(0, 2).map(card => card.innerText).join('\n');

@@ -225,13 +225,19 @@ code has to keep:
   `localStorage` and is never uploaded; the QR card is self-contained, so there is no record behind
   it to look up.
 
-Both privacy sections are written for someone who does not know what a `.zip` or an API key is:
-"the big file Instagram gave you", "a short summary of it — a bit like a school report card", "we
-have to be the one to pass it along, because talking to that AI needs a secret password, and a
-password cannot be hidden inside a website". Simplifying is where accuracy usually slips, so the
-suite guards both ends — nine terms (`bounded summary`, `archive`, `.zip`, `API key`, `localStorage`,
-`proxy`, `endpoint`, `payload`, `end-to-end`) are asserted absent from those two sections, and the
-honesty checks below were re-pointed at the plain wording rather than dropped.
+Both privacy sections are written for an adult with no technical background: no jargon, and no
+explaining-to-a-child similes either. "The file Instagram sends you contains everything: every post,
+every message, every search. Your device opens it and reduces it to a short summary." Simplifying is
+where accuracy usually slips, so the suite guards both ends — nine terms (`bounded summary`,
+`archive`, `.zip`, `API key`, `localStorage`, `proxy`, `endpoint`, `payload`, `end-to-end`) are
+asserted absent from those two sections, and the honesty checks below are re-pointed at whatever the
+current wording is rather than dropped whenever the copy is rewritten.
+
+The page used to explain *why* the relay exists and to note two further caveats — that an unlocked
+device is readable, and that the code can be self-hosted. All three were cut as clutter. Cutting a
+caveat is a product call rather than an accuracy one, so the checks for them went too; what could
+not go is the statement that the summary reaches the PsycheAI server at all, and the disclosure that
+Google or Anthropic read it under their own terms. Those two are what the remaining guards hold.
 
 A tempting fourth claim — that the summary never reaches the PsycheAI server at all — would be
 false, and the suite fails if it ever appears. Checks read the claims off the rendered page *and*
@@ -702,7 +708,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 468 checks: drives the real UI in Chromium against a
+npm run test:ui    # 465 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
