@@ -1394,13 +1394,56 @@ try {
   await page.waitForSelector('#view-about:not([hidden])');
   const about = await page.locator('#view-about').innerText();
 
-  check('the about page is four sections, not six',
-    (await page.locator('#view-about .card').count()) === 4,
+  check('the about page is five sections',
+    (await page.locator('#view-about .card').count()) === 5,
     String(await page.locator('#view-about .card').count()));
   check('every about section has a glyph and a one-line purpose',
-    (await page.locator('#view-about .card-icon').count()) === 4 &&
-    (await page.locator('#view-about .card-sub').count()) === 4);
+    (await page.locator('#view-about .card-icon').count()) === 5 &&
+    (await page.locator('#view-about .card-sub').count()) === 5);
   check('it opens on where the data goes', /Your data stays with you/.test(about));
+
+  // ---- the privacy claims have to match the code that implements them ----
+  //
+  // This page exists to get somebody comfortable uploading their DMs and their
+  // search history, so every promise on it is one the server has to actually
+  // keep. These read the claim off the page and the behaviour out of
+  // server.js, and fail if the two ever part company.
+  const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+
+  check('the page explains that the archive is reduced before anything is sent',
+    /unzipped and boiled down to that summary/i.test(about) && /on your machine/i.test(about));
+  check('the page is honest that the server relays rather than bypassing it',
+    /posted to the PsycheAI\s+server/i.test(about) && /relays/i.test(about),
+    about.slice(0, 1200));
+  check('and says why the relay has to exist at all',
+    /API key cannot be shipped inside a web page/i.test(about));
+  check('the server really is only a relay, with no store behind it',
+    !/writeFile|appendFile|createWriteStream/.test(serverSource));
+  check('the claim that nothing is written to disk holds in server.js',
+    (serverSource.match(/fs\.\w+/g) || []).every(call => call === 'fs.readFile'),
+    (serverSource.match(/fs\.\w+/g) || []).join(', '));
+  check('the claim that responses are not cached holds too',
+    /'Cache-Control': 'no-store'/.test(serverSource));
+  check('the page says there is no account or database to breach',
+    /no sign-up, no password/i.test(about) && /does not have one/i.test(about));
+
+  // A page that only reassures is not trustworthy. These are the two things
+  // outside the app's control, and they have to stay named.
+  check('the page names the model provider as the party that reads the summary',
+    /Google or Anthropic/.test(about));
+  check('the page admits their terms govern that, not this app',
+    /their API terms/i.test(about));
+  check('the page admits an unlocked device is readable',
+    /unlocked phone/i.test(about));
+  check('the page offers self-hosting as the way to hold the whole chain',
+    /open source and runs\s+on your own machine/i.test(about));
+
+  // The two claims most likely to be quietly overstated later.
+  check('the page does not claim the summary skips the PsycheAI server',
+    !/never (?:sent|goes|reaches)[^.]{0,40}PsycheAI server/i.test(about) &&
+    !/directly to (?:the model|Google|Anthropic)/i.test(about), about.slice(0, 1600));
+  check('the page does not promise encryption it does not implement',
+    !/end-to-end/i.test(about) && !/zero-knowledge/i.test(about));
   check('stays-here and gets-sent are shown side by side',
     (await page.locator('#view-about .split .ticks li').count()) >= 3 &&
     (await page.locator('#view-about .split .sends li').count()) >= 3);

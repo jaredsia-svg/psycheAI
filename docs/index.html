@@ -249,31 +249,71 @@
   <div class="card section-card">
     <div class="card-head"><span class="card-icon">🔒</span><div>
       <h2>Your data stays with you</h2>
-      <p class="card-sub">The .zip is opened here, in this browser. It is never uploaded anywhere.</p>
+      <p class="card-sub">Your .zip is opened and read inside this browser tab. The archive itself is
+        never uploaded — not to us, not to anyone.</p>
     </div></div>
 
     <div class="split">
       <div>
-        <h3 class="h-good">Never leaves your device</h3>
+        <h3 class="h-good">Never leaves this device</h3>
         <ul class="ticks">
-          <li>The .zip itself</li>
-          <li>Every video in it</li>
-          <li>Your full written report</li>
-          <li>The other person's side of every DM</li>
+          <li>The .zip file, and everything in it that the summary does not name</li>
+          <li>Every video, and every photo beyond the handful you agree to send</li>
+          <li>The other side of every DM — counted, then thrown away unread</li>
+          <li>Your full written report, which is saved only in this browser</li>
         </ul>
       </div>
       <div>
-        <h3 class="h-warn">Sent off to be read</h3>
+        <h3 class="h-warn">Sent to be read</h3>
         <ul class="sends">
-          <li>A summary: your counts, your timings, a sample of your own words</li>
-          <li>About 14 of your own photos, shrunk down — switch it off to send none</li>
-          <li>A short version of your profile, when someone scans your code</li>
+          <li>A bounded summary: your counts, your timings, and a sample of your own words</li>
+          <li>Up to 14 of your own photos, shrunk small — one switch sends none at all</li>
+          <li>A short version of your profile, when you hand someone your code</li>
         </ul>
       </div>
     </div>
 
-    <p class="fineprint">Nothing is kept on the server. Your profile lives in this browser until you
-      press delete.</p>
+    <h3>Where it actually goes</h3>
+    <p>Your archive is unzipped and boiled down to that summary <strong>here, on your machine</strong>,
+      before anything is sent. The summary — never the archive — is then posted to the PsycheAI
+      server, which does exactly one thing with it: hands it to the language model that writes your
+      profile (Google Gemini or Anthropic Claude), and passes the answer back to you.</p>
+    <p>The server has to sit in the middle because an API key cannot be shipped inside a web page —
+      anyone who opened the page could read the key and spend it. So it relays, and that is all it
+      does. Your summary exists there only for the seconds your request is in flight. It is never
+      written to disk, never put in a database, and never logged.</p>
+  </div>
+
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">🛡️</span><div>
+      <h2>Could anyone else get at it?</h2>
+      <p class="card-sub">There is no account, no database, and no stored copy of your data to steal.</p>
+    </div></div>
+
+    <p><strong>There is nothing to breach.</strong> Almost every leak you have read about is a
+      database being copied. PsycheAI does not have one. There is no sign-up, no password, no email
+      address, no user table, no uploads folder. The server writes nothing to disk and keeps nothing
+      once a request finishes, so there is no pile of anyone's data sitting somewhere waiting to be
+      taken — including yours.</p>
+
+    <p><strong>Your report is yours alone.</strong> It is saved in this browser's own storage, on
+      this device, locked to this site. No other website can read it. The server never receives it —
+      it is assembled here from the model's answer and stays here. It remains until you press
+      <strong>Delete everything</strong> or clear your browser data.</p>
+
+    <p><strong>Your QR code is not a lookup.</strong> It does not point at a record on a server: the
+      short version of your profile is packed <em>inside</em> the code itself. There is no account
+      behind it, and nothing to look up — so there is nothing there to hack either.</p>
+
+    <h3>What this page will not promise you</h3>
+    <p>Two things sit outside this app, and it would be dishonest to leave them out. The summary is
+      read by <strong>Google or Anthropic</strong>, whichever model this server is set up with, and
+      what they do with it is covered by their API terms rather than by anything here. And your
+      report is only as private as the device it is on — anyone holding your unlocked phone can read
+      it, exactly as they could read any site you are signed into.</p>
+    <p>If you would rather hold the whole chain yourself, you can: PsycheAI is open source and runs
+      on your own machine with your own API key, in which case the "server" in all of the above is
+      simply your own computer.</p>
   </div>
 
   <div class="card section-card">
@@ -283,13 +323,13 @@
     </div></div>
 
     <div class="tile-grid">
-      <div class="tile"><h4>You in one word</h4><p>A noun — an animal, a material, a place — and why that one.</p></div>
+      <div class="tile"><h4>Who you are most like</h4><p>A character anyone would recognise, and why that one and not a neighbouring one.</p></div>
       <div class="tile"><h4>Big Five</h4><p>Five scores out of 100, each with what in your data put it there.</p></div>
-      <div class="tile"><h4>MBTI</h4><p>Your type, how strongly each letter leans, and what it looks like in your week.</p></div>
+      <div class="tile"><h4>MBTI &amp; Enneagram</h4><p>Your type and how strongly each letter leans, plus a second lens on what drives you.</p></div>
       <div class="tile"><h4>Values &amp; beliefs</h4><p>What you seem to hold to — and how firmly the data actually says so.</p></div>
       <div class="tile"><h4>In relationships</h4><p>How you'd be to be close to, your attachment style, and your love languages — giving and receiving.</p></div>
       <div class="tile"><h4>At work</h4><p>Where you'd thrive, how you work, and what tends to hold you back.</p></div>
-      <div class="tile"><h4>Your Instagram habits</h4><p>When you post, how that changed, and where your attention goes.</p></div>
+      <div class="tile"><h4>Your Instagram habits</h4><p>When you post, how that changed over the years, and whether you publish more than you read.</p></div>
       <div class="tile"><h4>A confidence score</h4><p>How much of the above to believe, and why.</p></div>
     </div>
 
@@ -302,7 +342,8 @@
       <p class="card-sub">No account, no database, nothing to look up.</p>
     </div></div>
     <p>Your profile is squeezed down to a handful of short phrases and packed <em>inside</em> the QR
-      code itself. That is the whole thing — the code is not a link to a profile, it is the profile.</p>
+      code itself. That is the whole thing — the code is not a link to a profile, it is the profile.
+      Your long report is not in there and never travels with it.</p>
     <p>When someone scans you, they first choose what they are asking:
       <strong>romantic</strong>, <strong>family / friends</strong>, or
       <strong>professional</strong>. Those are genuinely different questions — you can be a great
@@ -314,6 +355,8 @@
       comes back with a score, five scored dimensions chosen for what you asked, an honest verdict,
       what works, what will rub, and specific advice for each of you about the other. Scan again to
       ask a different question.</p>
+    <p class="fineprint">Sharing your code is a choice you make one person at a time. Anyone you give
+      it to keeps what is in it, so treat it the way you would a photo of yourself.</p>
   </div>
 
   <div class="card section-card">
