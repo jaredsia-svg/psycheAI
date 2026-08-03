@@ -249,71 +249,72 @@
   <div class="card section-card">
     <div class="card-head"><span class="card-icon">🔒</span><div>
       <h2>Your data stays with you</h2>
-      <p class="card-sub">Your .zip is opened and read inside this browser tab. The archive itself is
-        never uploaded — not to us, not to anyone.</p>
+      <p class="card-sub">The file Instagram gives you is opened right here, on your own phone or
+        computer. It is never sent anywhere.</p>
     </div></div>
 
     <div class="split">
       <div>
         <h3 class="h-good">Never leaves this device</h3>
         <ul class="ticks">
-          <li>The .zip file, and everything in it that the summary does not name</li>
-          <li>Every video, and every photo beyond the handful you agree to send</li>
-          <li>The other side of every DM — counted, then thrown away unread</li>
-          <li>Your full written report, which is saved only in this browser</li>
+          <li>The big file Instagram gave you</li>
+          <li>All of your videos</li>
+          <li>Every photo except the few you agree to send</li>
+          <li>What other people said to you in messages — counted, then thrown away unread</li>
+          <li>Your finished report</li>
         </ul>
       </div>
       <div>
         <h3 class="h-warn">Sent to be read</h3>
         <ul class="sends">
-          <li>A bounded summary: your counts, your timings, and a sample of your own words</li>
-          <li>Up to 14 of your own photos, shrunk small — one switch sends none at all</li>
-          <li>A short version of your profile, when you hand someone your code</li>
+          <li>A short summary: how often you post, when you post, and some of your own words</li>
+          <li>Up to 14 of your own photos, made small — or none at all, if you switch it off</li>
+          <li>A short version of your profile, when you give someone your code</li>
         </ul>
       </div>
     </div>
 
     <h3>Where it actually goes</h3>
-    <p>Your archive is unzipped and boiled down to that summary <strong>here, on your machine</strong>,
-      before anything is sent. The summary — never the archive — is then posted to the PsycheAI
-      server, which does exactly one thing with it: hands it to the language model that writes your
-      profile (Google Gemini or Anthropic Claude), and passes the answer back to you.</p>
-    <p>The server has to sit in the middle because an API key cannot be shipped inside a web page —
-      anyone who opened the page could read the key and spend it. So it relays, and that is all it
-      does. Your summary exists there only for the seconds your request is in flight. It is never
-      written to disk, never put in a database, and never logged.</p>
+    <p>Instagram gives you one big file with everything in it. Your phone opens that file
+      <strong>here, by itself</strong>, and writes a short summary of it — a bit like a school
+      report card. Only that summary is sent. The big file stays with you.</p>
+    <p>The summary goes to PsycheAI first, and PsycheAI passes it straight on to the AI that writes
+      your profile, which is made by Google or Anthropic. We have to be the one to pass it along,
+      because talking to that AI needs a secret password, and a password cannot be hidden inside a
+      website — anyone visiting the page could find it and use it.</p>
+    <p>We do not keep the summary. It is with us only for the few seconds it takes to hand it over.
+      It is never saved, never stored, and never written down.</p>
   </div>
 
   <div class="card section-card">
     <div class="card-head"><span class="card-icon">🛡️</span><div>
-      <h2>Could anyone else get at it?</h2>
-      <p class="card-sub">There is no account, no database, and no stored copy of your data to steal.</p>
+      <h2>Can anyone else access my data?</h2>
+      <p class="card-sub">There is no account and no list of users, so there is nothing for anyone to
+        steal.</p>
     </div></div>
 
-    <p><strong>There is nothing to breach.</strong> Almost every leak you have read about is a
-      database being copied. PsycheAI does not have one. There is no sign-up, no password, no email
-      address, no user table, no uploads folder. The server writes nothing to disk and keeps nothing
-      once a request finishes, so there is no pile of anyone's data sitting somewhere waiting to be
-      taken — including yours.</p>
+    <p><strong>There is nothing to steal.</strong> When you hear that a company has been hacked, it
+      is almost always someone copying its big list of users. PsycheAI does not have one. There is
+      no sign-up, no password for you to make, no email address, and no folder of people's files.
+      Nothing you send is saved anywhere, so there is no pile of data sitting around waiting to be
+      taken.</p>
 
-    <p><strong>Your report is yours alone.</strong> It is saved in this browser's own storage, on
-      this device, locked to this site. No other website can read it. The server never receives it —
-      it is assembled here from the model's answer and stays here. It remains until you press
-      <strong>Delete everything</strong> or clear your browser data.</p>
+    <p><strong>Your report belongs to you.</strong> It is kept inside your own web browser, on your
+      own device — like a note you wrote and put in your own pocket. Other websites cannot read it.
+      We cannot read it either. It stays there until you press <strong>Delete everything</strong>,
+      or until you clear your browser.</p>
 
-    <p><strong>Your QR code is not a lookup.</strong> It does not point at a record on a server: the
-      short version of your profile is packed <em>inside</em> the code itself. There is no account
-      behind it, and nothing to look up — so there is nothing there to hack either.</p>
+    <p><strong>Your QR code is not a link to anything.</strong> The short version of your profile is
+      stored inside the pattern of the code itself. It does not point at a file sitting on a
+      computer somewhere. There is nothing behind it, so there is nothing to break into.</p>
 
     <h3>What this page will not promise you</h3>
-    <p>Two things sit outside this app, and it would be dishonest to leave them out. The summary is
-      read by <strong>Google or Anthropic</strong>, whichever model this server is set up with, and
-      what they do with it is covered by their API terms rather than by anything here. And your
-      report is only as private as the device it is on — anyone holding your unlocked phone can read
-      it, exactly as they could read any site you are signed into.</p>
-    <p>If you would rather hold the whole chain yourself, you can: PsycheAI is open source and runs
-      on your own machine with your own API key, in which case the "server" in all of the above is
-      simply your own computer.</p>
+    <p>Two things are worth being straight about. Your summary is read by an AI made by
+      <strong>Google or Anthropic</strong>, and once it reaches them, their rules cover it rather
+      than ours. And anything on your device can be seen by someone holding your unlocked phone —
+      the same as your photos or your email.</p>
+    <p>If you would rather be in charge of every step yourself, you can. Anyone is free to look at
+      exactly how PsycheAI works and run their own copy on their own computer.</p>
   </div>
 
   <div class="card section-card">

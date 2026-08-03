@@ -1410,13 +1410,13 @@ try {
   // server.js, and fail if the two ever part company.
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
 
-  check('the page explains that the archive is reduced before anything is sent',
-    /unzipped and boiled down to that summary/i.test(about) && /on your machine/i.test(about));
+  check('the page explains that the file is reduced before anything is sent',
+    /writes a short summary of it/i.test(about) && /Only that summary is sent/i.test(about));
   check('the page is honest that the server relays rather than bypassing it',
-    /posted to the PsycheAI\s+server/i.test(about) && /relays/i.test(about),
-    about.slice(0, 1200));
+    /goes to PsycheAI first/i.test(about) && /passes it straight on/i.test(about),
+    about.slice(0, 1400));
   check('and says why the relay has to exist at all',
-    /API key cannot be shipped inside a web page/i.test(about));
+    /needs a secret password/i.test(about) && /cannot be hidden inside a\s+website/i.test(about));
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   check('the claim that nothing is written to disk holds in server.js',
@@ -1424,19 +1424,35 @@ try {
     (serverSource.match(/fs\.\w+/g) || []).join(', '));
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
-  check('the page says there is no account or database to breach',
-    /no sign-up, no password/i.test(about) && /does not have one/i.test(about));
+  check('the page says there is no account or stored pile of data to breach',
+    /no sign-up, no password/i.test(about) && /does not have one/i.test(about) &&
+    /no pile of data sitting around/i.test(about));
 
   // A page that only reassures is not trustworthy. These are the two things
   // outside the app's control, and they have to stay named.
   check('the page names the model provider as the party that reads the summary',
     /Google or Anthropic/.test(about));
   check('the page admits their terms govern that, not this app',
-    /their API terms/i.test(about));
+    /their rules cover it rather\s+than ours/i.test(about));
   check('the page admits an unlocked device is readable',
     /unlocked phone/i.test(about));
   check('the page offers self-hosting as the way to hold the whole chain',
-    /open source and runs\s+on your own machine/i.test(about));
+    /run their own copy on their own computer/i.test(about));
+
+  // The whole point of this rewrite was that a reader should not need to know
+  // what a .zip or an API key is to follow it. Jargon creeping back in is the
+  // regression, so the two sections are held to plain words.
+  const plainSections = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#view-about .card')];
+    return cards.slice(0, 2).map(card => card.innerText).join('\n');
+  });
+  for (const term of ['bounded summary', 'archive', '.zip', 'API key', 'localStorage',
+    'end-to-end', 'payload', 'endpoint', 'proxy']) {
+    check('the privacy sections avoid the word ' + JSON.stringify(term),
+      !new RegExp(term.replace(/[.]/g, '\\.'), 'i').test(plainSections), term);
+  }
+  check('the second privacy section is asked as a question a reader would ask',
+    /Can anyone else access my data\?/.test(about));
 
   // The two claims most likely to be quietly overstated later.
   check('the page does not claim the summary skips the PsycheAI server',

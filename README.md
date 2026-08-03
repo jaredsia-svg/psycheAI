@@ -225,6 +225,14 @@ code has to keep:
   `localStorage` and is never uploaded; the QR card is self-contained, so there is no record behind
   it to look up.
 
+Both privacy sections are written for someone who does not know what a `.zip` or an API key is:
+"the big file Instagram gave you", "a short summary of it — a bit like a school report card", "we
+have to be the one to pass it along, because talking to that AI needs a secret password, and a
+password cannot be hidden inside a website". Simplifying is where accuracy usually slips, so the
+suite guards both ends — nine terms (`bounded summary`, `archive`, `.zip`, `API key`, `localStorage`,
+`proxy`, `endpoint`, `payload`, `end-to-end`) are asserted absent from those two sections, and the
+honesty checks below were re-pointed at the plain wording rather than dropped.
+
 A tempting fourth claim — that the summary never reaches the PsycheAI server at all — would be
 false, and the suite fails if it ever appears. Checks read the claims off the rendered page *and*
 the behaviour out of `server.js`, so the page cannot drift into overstatement and the server cannot
@@ -694,7 +702,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 458 checks: drives the real UI in Chromium against a
+npm run test:ui    # 468 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
