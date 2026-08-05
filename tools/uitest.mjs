@@ -1401,6 +1401,29 @@ try {
     (await page.locator('#view-about .card-icon').count()) === 5 &&
     (await page.locator('#view-about .card-sub').count()) === 5);
   check('it opens on where the data goes', /Your data stays with you/.test(about));
+  check('the first section is asked as the question a reader would ask',
+    (await page.locator('#view-about .card-head h2').first().innerText()) === 'Where does my data go?',
+    await page.locator('#view-about .card-head h2').first().innerText());
+
+  // The explanation comes before the two lists: a reader wants the answer in
+  // prose first, and the lists are the detail underneath it.
+  check('the explanation is the first thing under that heading', await page.evaluate(() => {
+    const card = document.querySelector('#view-about .card');
+    const heading = [...card.querySelectorAll('h3')].find(h => h.textContent.trim() === 'Your data stays with you');
+    const split = card.querySelector('.split');
+    if (!heading || !split) return false;
+    return Boolean(heading.compareDocumentPosition(split) & Node.DOCUMENT_POSITION_FOLLOWING);
+  }));
+  // Read defensively: if the heading is renamed away this has to report that,
+  // not die on an undefined and take the rest of the run down with it.
+  check('and the two lists sit below it on screen', await page.evaluate(() => {
+    const card = document.querySelector('#view-about .card');
+    const heading = [...card.querySelectorAll('h3')].find(h => h.textContent.trim() === 'Your data stays with you');
+    const split = card.querySelector('.split');
+    if (!heading || !split) return false;
+    return heading.getBoundingClientRect().bottom <= split.getBoundingClientRect().top + 1;
+  }));
+  check('the old subsection heading is gone', !/Where it actually goes/.test(about));
 
   // ---- the privacy claims have to match the code that implements them ----
   //
