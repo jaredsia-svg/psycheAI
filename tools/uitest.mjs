@@ -1487,8 +1487,27 @@ try {
   check('what you get back is a grid, not a paragraph',
     (await page.locator('#view-about .tile').count()) === 8);
   check('the QR and matching are one section now',
-    /Your code, and matching/.test(about) && /romantic/i.test(about) &&
+    /How does compatibility testing work\?/.test(about) && /romantic/i.test(about) &&
     /family \/ friends/i.test(about) && /professional/i.test(about));
+
+  // Every section is titled as a question a reader would actually ask, in the
+  // order they would ask them. Nothing else pins these, so a rename that only
+  // half-lands would otherwise go unnoticed.
+  check('every FAQ section is titled as a reader\'s question', await page.evaluate(() =>
+    [...document.querySelectorAll('#view-about .card-head h2')].map(h => h.textContent.trim())
+  ).then(titles => JSON.stringify(titles) === JSON.stringify([
+    'Where does my data go?',
+    'Can anyone else access my data?',
+    'What you can expect?',
+    'How does compatibility testing work?',
+    'What else should I know?',
+  ])), JSON.stringify(await page.evaluate(() =>
+    [...document.querySelectorAll('#view-about .card-head h2')].map(h => h.textContent.trim()))));
+  check('the compatibility section says up front what you do',
+    /Scan the QR code of your partner, family \/ friends, or colleagues/.test(about));
+  check('the old headings are all gone',
+    !/What you get back/.test(about) && !/Your code, and matching/.test(about) &&
+    !/The honest bit/.test(about) && !/No account, no database/.test(about));
   check('how-it-works explains the work sub-question',
     /manage/i.test(about) && /report to/i.test(about), about.slice(0, 400));
   check('the limits are still stated', /not a diagnosis, not a background check/.test(about));
