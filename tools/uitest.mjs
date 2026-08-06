@@ -544,11 +544,22 @@ try {
   check('the PDF has a page stream per page', streams.length >= 4, String(streams.length));
   check('every page carries the mark', withMark.length === streams.length,
     withMark.length + ' of ' + streams.length);
-  // The cover is the exception: it pairs the mark with the wordmark, same as
-  // the nav. Every content page after it (streams[1] on) is the running head,
-  // which carries the mark alone.
-  check('the running head on content pages no longer prints the word instead',
-    !streams.slice(1).some(stream => stream.includes('(PsycheAI)')));
+  // Cover and content pages both pair the mark with the wordmark, as the nav
+  // does. The running head used to carry the mark alone, which left a reader
+  // holding page 4 on its own with a logo and no name for it.
+  check('every content page pairs the mark with the wordmark',
+    streams.slice(1).every(stream => stream.includes('(PsycheAI)')),
+    streams.slice(1).filter(stream => !stream.includes('(PsycheAI)')).length + ' pages without it');
+  check('the running head spells it mixed case, not tracked caps',
+    !streams.slice(1).some(stream => stream.includes('(PSYCHEAI)')));
+  // Left of the name, right of the mark: the mark starts at the margin, so the
+  // wordmark has to be further right than that and further left than the name.
+  check('the wordmark sits between the mark and the name', (() => {
+    const head = streams[1];
+    const at = /1 0 0 1 ([\d.]+) [\d.]+ Tm\n?[^\n]*\n?\(PsycheAI\)/.exec(head);
+    const x = at ? Number(at[1]) : Number((/([\d.]+) [\d.]+ Td[\s\S]{0,80}?\(PsycheAI\)/.exec(head) || [])[1]);
+    return Number.isFinite(x) && x > 54 && x < 200;
+  })(), 'wordmark x offset');
   check('the cover pairs the mark with the wordmark, mixed case, no tracking',
     streams[0].includes('(PsycheAI)') && !streams[0].includes('(PSYCHEAI)'),
     streams[0].includes('(PSYCHEAI)') ? 'still has PSYCHEAI' : 'PsycheAI not found');

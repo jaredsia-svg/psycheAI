@@ -422,9 +422,13 @@
 
   Report.prototype.page = function () {
     this.doc.newPage();
-    // Running head, so a printed page found on its own still says whose it is:
-    // the mark on the left, the subject's name on the right.
+    // Running head, so a printed page found on its own still says whose it is
+    // and where it came from: the lockup on the left, the subject's name on the
+    // right. The mark and wordmark keep the cover's proportions — the cover
+    // offsets its wordmark by 26 against a 19pt mark, so a 13pt mark here takes
+    // 18 — and the wordmark sits on the same baseline as the name opposite it.
     this.doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: MARGIN - 9, size: 13, color: ACCENT });
+    this.doc.draw(toWinAnsi('PsycheAI'), MARGIN + 18, MARGIN, { size: 9, bold: true, color: ACCENT });
     const who = toWinAnsi(this.meta.name);
     const width = measure(who, 8, false);
     this.doc.draw(who, PAGE.width - MARGIN - width, MARGIN, { size: 8, color: SOFT });

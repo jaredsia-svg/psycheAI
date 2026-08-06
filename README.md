@@ -512,8 +512,10 @@ Zootopia".
 then *Who you are* (the character, the headline findings strip, the summary), *Big Five*, *MBTI*,
 *Enneagram*, *Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram
 behaviour*, *Your matches* when this device has any, and *How much to trust this*.
-Running head and page numbers on every page — the head carries the brain mark
-rather than the word, stroked from the same path data `index.html` draws, which means converting the
+Running head and page numbers on every page — the head carries the orbit mark and the word
+*PsycheAI* beside it, the same lockup the nav and the cover use, because a page pulled out of the
+stapled set on its own showed a logo and no name for it. The mark is stroked from the same path data
+`index.html` draws, which means converting the
 mark's elliptical arcs to béziers because PDF has no arc operator. Only the corner of the SVG path
 grammar the mark uses is implemented; a general SVG renderer is not the job. The screen's cards become rules and whitespace, and its
 emoji section glyphs are dropped, but nothing is added and nothing is left out.
