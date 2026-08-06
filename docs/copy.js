@@ -63,20 +63,31 @@
     ['Publishing vs reading', 'engagement'],
   ];
 
-  // The brain mark, exactly as the nav and the printed letterhead draw it. The
-  // PDF strokes these same paths, so the logo is one shape in three places
-  // rather than a drawing that has to be kept in step with a picture. A UI check
-  // compares this against the `d` attributes in index.html.
+  // The orbit mark, exactly as the nav and the printed letterhead draw it. The
+  // PDF strokes these same paths and the QR label's canvas parses them with
+  // Path2D, so the logo is one shape in four places rather than a drawing that
+  // has to be kept in step with a picture. A UI check compares this against the
+  // `d` attributes in index.html.
+  //
+  // The supplied artwork is three <ellipse> elements — one of them rotated 60
+  // degrees — plus a filled <circle>. Ellipses are written out here as four
+  // cubic Beziers apiece, pre-rotated, because every renderer downstream
+  // already emits and parses C commands natively; going through arc commands
+  // instead would mean trusting three separate arc implementations to agree.
+  // The conversion was checked by rendering both versions and diffing the
+  // pixels: the only differences are antialiasing along the curve edges.
+  //
+  // `dot` is separate from `paths` because it is filled rather than stroked,
+  // and all three renderers stroke everything in `paths` with one pen.
   const BRAND_MARK = {
-    viewBox: 24,
-    strokeWidth: 1.5,
+    viewBox: 140,
+    strokeWidth: 3,
     paths: [
-      'M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z',
-      'M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z',
-      'M12 4.3v16.4',
-      'M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2',
-      'M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2',
+      'M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z',
+      'M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z',
+      'M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z',
     ],
+    dot: { cx: 70, cy: 70, r: 11 },
   };
 
   // Compatibility bases, as the match history names them.

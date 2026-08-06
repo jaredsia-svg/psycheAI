@@ -62,12 +62,31 @@ and decodes it at 1600, 600 and 400px.
 The download carries a label, because a saved or forwarded file loses all context otherwise: a
 strip is appended *below* the code — never over it, so the module grid is untouched — with the
 brand mark, "PSYCHEAI", and the person's name. The mark is stroked from the same SVG path data the
-nav and the PDF use, via `Path2D`, which parses the mark's arcs itself; unlike the PDF writer this
-needs no bezier conversion of its own. A name shrinks to fit rather than running off the strip —
+nav and the PDF use, via `Path2D`. A name shrinks to fit rather than running off the strip —
 `Card.shape` caps a name at 24 characters, but the download reads `profile.card.name` as stored,
 uncapped, so a profile saved under an older schema could carry something longer. The suite forces a
 name that measures past 1900px against the strip's 1440px budget and checks the rendered pixels
 clear the margin, having first confirmed a version without the shrink logic does not.
+
+### The mark
+
+`BRAND_MARK` in `docs/copy.js` is the logo, and it is drawn in **four** places from that one
+definition: the nav's inline SVG, the print letterhead's, the PDF's vector operators, and the QR
+download's label strip via `Path2D`. A UI check compares the shared paths against the `d` attributes
+in `index.html`, so an inline copy cannot drift.
+
+The supplied artwork is three `<ellipse>` elements — one rotated 60° — plus a filled `<circle>`.
+Each ellipse is written out here as four cubic Béziers, pre-rotated, rather than as arc commands:
+every renderer downstream already emits and parses `C` natively, so Béziers mean one geometry instead
+of three arc implementations that have to agree. The conversion was checked by rendering both
+versions and diffing the pixels — 1% of the inked area differs, all of it antialiasing on curve
+edges. The original files are kept in `brand/`.
+
+The centre dot travels separately, as `dot` rather than inside `paths`, because it is **filled** and
+everything in `paths` goes through one stroke. That makes it the easiest part of the mark to lose, so
+each renderer draws it explicitly and two checks cover it. The first version of the PDF check passed
+with the dot removed entirely — it searched to the end of the page, where any rounded rectangle's
+fill satisfied it. It is now scoped to the mark's own operators.
 
 The nav has been re-measured twice as its labels changed. "My Personality" and "My Compatibility"
 overflowed by 14px at 375 and 32px at 320, and shrinking the links to absorb it would have put them
@@ -708,7 +727,7 @@ npm test           # 304 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 472 checks: drives the real UI in Chromium against a
+npm run test:ui    # 475 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

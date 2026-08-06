@@ -69,7 +69,9 @@ try {
   // ---- identity ----
   check('the app is called PsycheAI', (await page.locator('.brand span').innerText()).trim() === 'PsycheAI');
   check('nothing still calls it Kindred', !/kindred/i.test(await page.content()));
-  check('the brand carries a brain mark', await page.locator('.brand .brand-mark path').count() >= 4);
+  check('the brand carries the orbit mark',
+    (await page.locator('.brand .brand-mark path').count()) === 3 &&
+    (await page.locator('.brand .brand-mark circle').count()) === 1);
   check('the mark follows the theme rather than a fixed colour',
     await page.evaluate(() => {
       const svg = document.querySelector('.brand-mark');
@@ -600,10 +602,13 @@ try {
       letterhead: marks[1],
       viewBox: window.PsycheCopy.BRAND_MARK.viewBox,
       strokeWidth: window.PsycheCopy.BRAND_MARK.strokeWidth,
+      dot: window.PsycheCopy.BRAND_MARK.dot,
+      navCircles: document.querySelectorAll('.brand-mark circle').length,
+      letterheadCircles: document.querySelectorAll('.letterhead-mark circle').length,
     };
   });
 
-  check('the shared mark has all five of its paths', brand.shared.length === 5,
+  check('the shared mark has all three of its orbits', brand.shared.length === 3,
     String(brand.shared.length));
   check('the shared mark matches the one in the nav',
     JSON.stringify(brand.shared) === JSON.stringify(brand.nav),
@@ -612,13 +617,21 @@ try {
     JSON.stringify(brand.shared) === JSON.stringify(brand.letterhead),
     JSON.stringify({ shared: brand.shared.length, letterhead: brand.letterhead.length }));
   check('the shared mark keeps the SVG viewBox and stroke width it was drawn for',
-    brand.viewBox === 24 && brand.strokeWidth === 1.5,
+    brand.viewBox === 140 && brand.strokeWidth === 3,
     JSON.stringify({ viewBox: brand.viewBox, strokeWidth: brand.strokeWidth }));
+  // The dot is filled, so it travels outside `paths` and every renderer has to
+  // draw it separately. Easiest thing in the mark to lose.
+  check('the shared mark carries its filled centre dot',
+    brand.dot && brand.dot.r === 11 && brand.dot.cx === 70 && brand.dot.cy === 70,
+    JSON.stringify(brand.dot));
+  check('both inline copies draw that dot too',
+    brand.navCircles === 1 && brand.letterheadCircles === 1,
+    JSON.stringify({ nav: brand.navCircles, letterhead: brand.letterheadCircles }));
 
-  // The arcs are the part that could silently come out as straight lines, so
-  // count the operators the mark is actually built from. Ten arcs across the two
-  // lobes, at least one bézier each, plus the six inner folds; and the two lobes
-  // are closed subpaths.
+  // The curves are the part that could silently come out as straight lines, so
+  // count the operators the mark is actually built from. Three ellipses, four
+  // béziers apiece, each a closed subpath — plus the filled dot, which is four
+  // more béziers and is emitted after the stroke rather than inside it.
   const markOps = (() => {
     const from = streams[1].indexOf('1 J 1 j');
     const to = streams[1].indexOf('\nS', from);
@@ -632,12 +645,25 @@ try {
     };
   })();
 
-  check('the mark is built from béziers, so its arcs did not flatten to chords',
-    markOps.curves >= 16, JSON.stringify(markOps));
-  check('the mark closes both of its lobes', markOps.closes === 2, JSON.stringify(markOps));
-  check('the mark starts each of its nine subpaths', markOps.moves === 9, JSON.stringify(markOps));
+  check('the mark is built from béziers, so its curves did not flatten to chords',
+    markOps.curves === 12 && markOps.lines === 0, JSON.stringify(markOps));
+  check('the mark closes each of its three orbits', markOps.closes === 3, JSON.stringify(markOps));
+  check('the mark starts each of its three subpaths', markOps.moves === 3, JSON.stringify(markOps));
   check('the mark keeps the SVG stroke width, scaled',
-    Math.abs(Number(markOps.width) - 1.5 * (13 / 24)) < 0.02, String(markOps.width));
+    Math.abs(Number(markOps.width) - 3 * (13 / 140)) < 0.02, String(markOps.width));
+  // Filled, and emitted after the stroke, so it falls outside the slice above.
+  // Scoped to the mark's own region — from the pen setup to where the running
+  // head's text begins — because a slice running to the end of the page is
+  // satisfied by any later rounded rectangle's fill, and passes with the dot
+  // removed entirely.
+  const markRegion = (() => {
+    const from = streams[1].indexOf('1 J 1 j');
+    return streams[1].slice(from, streams[1].indexOf('BT', from));
+  })();
+  check('the PDF fills the centre dot as well as stroking the orbits',
+    /^S$/m.test(markRegion) && /^f$/m.test(markRegion),
+    JSON.stringify({ strokes: (markRegion.match(/^S$/gm) || []).length,
+      fills: (markRegion.match(/^f$/gm) || []).length }));
   check('the PDF carries the same provenance line the page prints',
     /Generated \w+ \d+, \d{4}\s+·\s+from an Instagram data export\s+·\s+\d+\/100 confidence/
       .test(pdfText.replace(/\\/g, '')),

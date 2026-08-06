@@ -6,19 +6,18 @@
 <title>PsycheAI — the personality analysis you didn't know you needed</title>
 <meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code to compare on a romantic, family/friends or professional basis.">
 <link rel="stylesheet" href="styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b3fa0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z'/><path d='M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z'/><path d='M12 4.3v16.4'/><path d='M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2'/><path d='M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
 </head>
 <body>
 
 <nav class="nav">
   <a class="brand" href="#" data-nav="home">
-    <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+    <svg class="brand-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z"/>
-      <path d="M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z"/>
-      <path d="M12 4.3v16.4"/>
-      <path d="M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2"/>
-      <path d="M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2"/>
+      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+      <circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/>
     </svg>
     <span>PsycheAI</span>
   </a>
@@ -123,13 +122,12 @@
        come through here, but Ctrl+P still works and wants a letterhead. -->
   <header class="letterhead print-only">
     <div class="letterhead-brand">
-      <svg class="letterhead-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+      <svg class="letterhead-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 4.3a3.1 3.1 0 0 0-5.4 1.9 2.7 2.7 0 0 0-2.1 3.4A2.9 2.9 0 0 0 3.6 13a2.8 2.8 0 0 0 2.3 3.2A3 3 0 0 0 12 18.4z"/>
-        <path d="M12 4.3a3.1 3.1 0 0 1 5.4 1.9 2.7 2.7 0 0 1 2.1 3.4A2.9 2.9 0 0 1 20.4 13a2.8 2.8 0 0 1-2.3 3.2A3 3 0 0 1 12 18.4z"/>
-        <path d="M12 4.3v16.4"/>
-        <path d="M6.6 6.2c1.9.3 2.9 1.4 3 3.3M4.5 9.6c1.6.2 2.5 1 2.7 2.4M5.9 16.2c1.6-.5 2.4-1.6 2.5-3.2"/>
-        <path d="M17.4 6.2c-1.9.3-2.9 1.4-3 3.3M19.5 9.6c-1.6.2-2.5 1-2.7 2.4M18.1 16.2c-1.6-.5-2.4-1.6-2.5-3.2"/>
+        <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+        <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+        <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+        <circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/>
       </svg>
       <span class="letterhead-word">PsycheAI</span>
       <span class="letterhead-rule"></span>

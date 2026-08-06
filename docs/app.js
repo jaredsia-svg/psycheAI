@@ -740,6 +740,14 @@
     context.lineJoin = 'round';
     context.strokeStyle = '#7b3fa0';
     for (const d of mark.paths) context.stroke(new Path2D(d));
+    // Filled, so it is drawn here rather than living in `paths` with the
+    // stroked orbits.
+    if (mark.dot) {
+      context.fillStyle = '#7b3fa0';
+      context.beginPath();
+      context.arc(mark.dot.cx, mark.dot.cy, mark.dot.r, 0, Math.PI * 2);
+      context.fill();
+    }
     context.restore();
   }
 

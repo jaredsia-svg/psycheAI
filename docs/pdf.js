@@ -255,7 +255,25 @@
         }
       }
     }
-    return this.op('S');
+    this.op('S');
+
+    // The centre dot is filled rather than stroked, so it cannot ride along in
+    // `paths` — everything there goes through one pen and one stroke. Drawn as
+    // four beziers because the PDF operator set has no circle primitive.
+    if (mark.dot) {
+      const k = 0.5522847498307936;
+      const cx = px(mark.dot.cx);
+      const cy = py(mark.dot.cy);
+      const r = mark.dot.r * scale;
+      this.setFill(settings.color || INK);
+      this.op(num(cx - r) + ' ' + num(cy) + ' m');
+      this.op(num(cx - r) + ' ' + num(cy + r * k) + ' ' + num(cx - r * k) + ' ' + num(cy + r) + ' ' + num(cx) + ' ' + num(cy + r) + ' c');
+      this.op(num(cx + r * k) + ' ' + num(cy + r) + ' ' + num(cx + r) + ' ' + num(cy + r * k) + ' ' + num(cx + r) + ' ' + num(cy) + ' c');
+      this.op(num(cx + r) + ' ' + num(cy - r * k) + ' ' + num(cx + r * k) + ' ' + num(cy - r) + ' ' + num(cx) + ' ' + num(cy - r) + ' c');
+      this.op(num(cx - r * k) + ' ' + num(cy - r) + ' ' + num(cx - r) + ' ' + num(cy - r * k) + ' ' + num(cx - r) + ' ' + num(cy) + ' c');
+      this.op('f');
+    }
+    return this;
   };
 
   /** One SVG elliptical arc → a list of cubic béziers, each three points. */
