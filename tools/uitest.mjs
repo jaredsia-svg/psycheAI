@@ -157,10 +157,8 @@ try {
     (await page.locator('#depth-dialog .mode-option').count()) === 2);
   const depthText = await page.locator('#depth-dialog').innerText();
   check('the picker names both depths', /Standard/.test(depthText) && /Comprehensive/.test(depthText));
-  check('the picker quotes this export\'s real numbers rather than talking in the abstract',
-    /\d+ captions and \d+ comments/.test(depthText), depthText.slice(0, 200));
-  check('the picker states the cost ceiling it is working to',
-    /\$0\.50/.test(depthText), depthText);
+  check('the picker no longer quotes this export\'s counts or a cost figure',
+    !/\d+ captions and \d+ comments/.test(depthText) && !/\$0\.\d\d/.test(depthText), depthText);
   await shot('1b-depth-picker');
 
   await page.click('#depth-dialog .mode-option[data-depth="standard"]');

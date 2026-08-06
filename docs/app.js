@@ -286,31 +286,11 @@
     $('#progress-bar').classList.remove('indeterminate');
   }
 
-  // Asked once the archive is open, so the choice can be put in terms of what
-  // this person's export actually holds rather than in the abstract. Someone
-  // with 80 captions is choosing between two nearly identical runs; someone
-  // with 4,000 is choosing whether to send seven times as much.
-  function askDepth(signals) {
+  // Asked once the archive is open, so a real choice is made before anything
+  // is sent. The dialog's own markup carries the two options' descriptions;
+  // this just runs it.
+  function askDepth() {
     const dialog = $('#depth-dialog');
-    const captions = (signals.captions || []).length;
-    const comments = (signals.comments || []).length;
-    const standard = Digest.DEPTHS.standard.limits;
-    const budget = Digest.DEPTHS.comprehensive.limits.totalChars;
-    const fits = captions <= standard.captions && comments <= standard.comments;
-
-    $('#depth-dialog-sub').textContent = fits
-      ? 'Your export has ' + captions.toLocaleString() + ' captions and ' + comments.toLocaleString() +
-        ' comments — few enough that both options send all of them. Comprehensive still adds the ' +
-        'full follow list and six more photographs.'
-      : 'Your export has ' + captions.toLocaleString() + ' captions and ' + comments.toLocaleString() +
-        ' comments. Standard sends ' + Math.min(captions, standard.captions) + ' and ' +
-        Math.min(comments, standard.comments) + ' of them; comprehensive sends every one it can fit.';
-
-    $('#depth-fineprint').textContent =
-      'Comprehensive is bounded by cost, not by a row of caps: it fills a ' +
-      Math.round(budget / 1000) + ',000-character budget sized so a single analysis stays under $' +
-      Digest.COST_CAP.toFixed(2) + ' even if the model spends its entire thinking allowance. ' +
-      'Standard costs roughly $0.20 on a heavy account.';
 
     return new Promise(resolve => {
       let answer = null;
@@ -365,12 +345,11 @@
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 80), p.label),
       });
 
-      // The archive is open, so the depth question can be asked against real
-      // numbers. It comes before the images because the two depths want
-      // different numbers of them, and image extraction is the slowest step
-      // here by a wide margin — no sense doing it twice or doing it for a run
-      // the reader then backs out of.
-      depth = await askDepth(signals);
+      // Comes before the images because the two depths want different numbers
+      // of them, and image extraction is the slowest step here by a wide
+      // margin — no sense doing it twice or doing it for a run the reader
+      // then backs out of.
+      depth = await askDepth();
       if (!depth) {
         show('welcome');
         return;
