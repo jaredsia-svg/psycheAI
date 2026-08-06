@@ -169,6 +169,10 @@ try {
     await page.locator('#depth-dialog .mode-option[data-depth="standard"]').isEnabled());
   check('the picker names comprehensive\'s price and that it is not here yet',
     /USD 2\.99 per analysis/.test(depthText) && /Coming soon/i.test(depthText), depthText);
+  // Both prices are stated, so both have to stay true together: the day
+  // standard stops being free this line has to change with it.
+  check('the picker says standard is the free one',
+    /Standard is free/i.test(depthText), depthText);
   // The browser will not deliver a real click to a disabled button, so the
   // thing worth proving is the case it does deliver: dispatchEvent goes
   // straight to the listener, skipping every check a user click passes.
