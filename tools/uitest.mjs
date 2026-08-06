@@ -532,11 +532,11 @@ try {
 
   // ---- the brand mark ----
   //
-  // The running head carries the logo rather than the word "PsycheAI". It is
-  // stroked from the same SVG path data the nav and the letterhead use, which
-  // means converting the mark's elliptical arcs to béziers — PDF has no arc
-  // operator — so these checks are about the drawing really being there, at the
-  // right size, in the right place.
+  // Cover and running head both carry the lockup: the logo, then the word
+  // "PsycheAI". The mark is stroked from the same SVG path data the nav and the
+  // letterhead use, which means converting its elliptical arcs to béziers — PDF
+  // has no arc operator — so these checks are about the drawing really being
+  // there, at the right size, in the right place.
   const streams = [...pdfText.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(match => match[1]);
   // "1 J 1 j" sets round caps and joins, and only the mark asks for those.
   const withMark = streams.filter(stream => stream.includes('1 J 1 j'));
@@ -563,6 +563,23 @@ try {
   check('the cover pairs the mark with the wordmark, mixed case, no tracking',
     streams[0].includes('(PsycheAI)') && !streams[0].includes('(PSYCHEAI)'),
     streams[0].includes('(PSYCHEAI)') ? 'still has PSYCHEAI' : 'PsycheAI not found');
+
+  // Under the cover title, nothing. The card's one-line headline used to print
+  // there in italics — a verdict on the person stated before any of the
+  // evidence for it. The title itself still has to be drawn, or "no headline"
+  // would also pass with the whole block deleted.
+  check('the cover still prints the title',
+    /\(Ale\xe7.s personality analysis\)/.test(streams[0]),
+    (/\(.{0,30}personality analysis\)/.exec(streams[0]) || ['not drawn'])[0]);
+  // Read the headline off the card this run actually produced rather than
+  // naming a string here, so the check cannot drift away from the fixture.
+  const storedHeadline = await page.evaluate(() =>
+    (JSON.parse(localStorage.getItem('psycheai_profile') || '{}').card || {}).headline || '');
+  check('the run has a headline to leave off in the first place', Boolean(storedHeadline),
+    JSON.stringify(storedHeadline));
+  check('the cover prints no headline under the title',
+    Boolean(storedHeadline) && !pdfText.includes('(' + storedHeadline + ')'),
+    'headline: ' + storedHeadline);
 
   // Pull the mark's own coordinates back out and check where it landed. All of
   // its operators take coordinate pairs, so the numbers alternate x and y.

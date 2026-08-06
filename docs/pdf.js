@@ -876,19 +876,19 @@
     // tracked-caps treatment print letterheads default to.
     doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
 
+    // The title, and nothing under it. The card's one-line headline used to sit
+    // here in italics, and it read as a claim the cover was making about the
+    // person before they had read a word of the evidence — "High-energy tech
+    // investor, macro thinker, and social catalyst" under their own name. The
+    // band keeps its height, so the space below simply stays empty; the
+    // provenance line and the first section are positioned off `bandHeight`
+    // rather than off this block, and do not move up to fill it.
     const title = (card.name || 'Your') + '’s personality analysis';
     const titleStyle = { size: 27, bold: true, color: WHITE };
     let y = 96;
     for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
       doc.draw(line, MARGIN, y, titleStyle);
       y += 31;
-    }
-    if (card.headline) {
-      const style = { size: 11.5, italic: true, color: WHITE };
-      for (const line of wrap(toWinAnsi(card.headline), COLUMN - 30, style).slice(0, 2)) {
-        doc.draw(line, MARGIN, y + 2, style);
-        y += 15;
-      }
     }
 
     // The same provenance line the printed page carries.

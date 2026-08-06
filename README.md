@@ -485,6 +485,15 @@ drift the moment the strings are typed twice, and a UI check fails if either ren
 On a work run the playbook heading and the cover subtitle both carry the stance, so a manager's
 download does not arrive titled "How to work with each other".
 
+The subtitle slot under the cover title is used on a comparison and deliberately left empty on a
+profile. The comparison's says what basis was chosen, which the reader picked themselves and needs
+to see. The profile's used to print the card's one-line headline, and that read as a verdict handed
+down before any of the evidence for it — "High-energy tech investor, macro thinker, and social
+catalyst" set in italics under someone's own name. The band keeps its height either way, so the
+space is blank rather than closed up; a check fails if a headline reappears there, and another
+fails if the title itself goes missing, since "no headline" would otherwise also pass with the whole
+block deleted.
+
 The suite clicks the real button, keeps the file the browser saved, and greps the drawn text out of
 it — streams are uncompressed partly so it can. That is what proves the document exists rather than
 that a function returned a Blob.
