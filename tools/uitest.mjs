@@ -157,8 +157,26 @@ try {
     (await page.locator('#depth-dialog .mode-option').count()) === 2);
   const depthText = await page.locator('#depth-dialog').innerText();
   check('the picker names both depths', /Standard/.test(depthText) && /Comprehensive/.test(depthText));
-  check('the picker no longer quotes this export\'s counts or a cost figure',
+  check('the picker no longer quotes this export\'s counts or the run-cost budget',
     !/\d+ captions and \d+ comments/.test(depthText) && !/\$0\.\d\d/.test(depthText), depthText);
+
+  // Comprehensive is built but not on sale. It stays on the picker so the
+  // reader knows it is coming and what it will cost, and it must not be
+  // choosable while that is true.
+  const comprehensiveOption = page.locator('#depth-dialog .mode-option[data-depth="comprehensive"]');
+  check('comprehensive is disabled while it is off sale', await comprehensiveOption.isDisabled());
+  check('standard is still selectable',
+    await page.locator('#depth-dialog .mode-option[data-depth="standard"]').isEnabled());
+  check('the picker names comprehensive\'s price and that it is not here yet',
+    /USD 2\.99 per analysis/.test(depthText) && /Coming soon/i.test(depthText), depthText);
+  // The browser will not deliver a real click to a disabled button, so the
+  // thing worth proving is the case it does deliver: dispatchEvent goes
+  // straight to the listener, skipping every check a user click passes.
+  const beforeSynthetic = analyseBodies.length;
+  await comprehensiveOption.dispatchEvent('click');
+  check('a synthetic click on comprehensive chooses nothing and sends nothing',
+    (await page.locator('#depth-dialog').isVisible()) && analyseBodies.length === beforeSynthetic,
+    analyseBodies.length + ' requests');
   await shot('1b-depth-picker');
 
   await page.click('#depth-dialog .mode-option[data-depth="standard"]');
@@ -1220,7 +1238,16 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await chooseDepth(page, 'comprehensive');
+  // The digest machinery behind comprehensive is still here and still has to
+  // work on the day it goes on sale, so the coverage below stays and the test
+  // opens the gate deliberately rather than deleting it. That the shipped
+  // markup keeps the gate shut is asserted on a fresh load further up; the
+  // reload at the end of this block puts it back.
+  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+  await page.evaluate(() => {
+    document.querySelector('#depth-dialog .mode-option[data-depth="comprehensive"]').disabled = false;
+  });
+  await page.click('#depth-dialog .mode-option[data-depth="comprehensive"]');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
   const deepDigest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));

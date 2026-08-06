@@ -390,12 +390,17 @@
           count and histogram in full, and 14 photographs. Fast, and enough for a solid read.</span>
       </span>
     </button>
-    <button class="mode-option" data-depth="comprehensive" type="button">
+    <!-- Off sale for now. Shown rather than hidden: a disabled row that names
+         the price reads as "later", where a missing row reads as "never
+         existed". `disabled` is what stops it being chosen — see askDepth. -->
+    <button class="mode-option" data-depth="comprehensive" type="button" disabled>
       <span class="mode-icon">🔬</span>
-      <span><strong>Comprehensive</strong>
+      <span>
+        <span class="mode-title"><strong>Comprehensive</strong><span class="mode-badge">Coming soon</span></span>
         <span class="muted">As much of your writing as one analysis can hold — for most accounts
           that is every caption, comment and search, plus the whole follow list and 20
           photographs. Slower to prepare and more expensive to run.</span>
+        <span class="mode-price">USD 2.99 per analysis</span>
       </span>
     </button>
   </div>

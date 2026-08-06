@@ -293,12 +293,25 @@ whole picture.
 
 Those caps are the **Standard** depth. Once the archive is open — but before anything is sent, and
 before the images are decoded, which is the slowest step here — a picker asks which depth to run.
-It quotes the export's real numbers, because someone with 80 captions is choosing between two nearly
-identical runs and someone with 4,000 is choosing whether to send seven times as much.
 
 **Comprehensive** lifts every per-source cap far past what any real export reaches, so that the
 thing bounding the digest is a **price**, in one place, rather than ten caps that each have to be
 reasoned about separately. It also sends 20 photographs instead of 14.
+
+**Comprehensive is not on sale yet.** Its row in the picker is `disabled`, dimmed, and labelled
+*Coming soon* at USD 2.99 per analysis. It is shown rather than hidden because a disabled row that
+names a price reads as "later" where a missing row reads as "never existed". Two things enforce it:
+the attribute, which is what stops a real click and keeps the row out of the tab order entirely, and
+one line in `askDepth` that returns early when the clicked button is disabled — which covers the
+only route past the attribute, a synthetic `dispatchEvent('click')` that goes straight to the
+listener. A check fires a synthetic click and fails if anything is chosen; deleting that one line
+fails it while the attribute is still in place. Neither is a security boundary — the digest is built
+on the client, so anyone editing `app.js` sends whatever they like — it is a product gate, and the
+level of effort matches that.
+
+Everything behind the gate is built and still under test. The suite re-enables the row deliberately
+and runs the whole comprehensive path, rather than dropping the coverage until it ships; the shipped
+markup is asserted shut on a fresh load first, so the re-enabling cannot mask a regression.
 
 The budget is derived rather than picked, in `charBudget()`:
 

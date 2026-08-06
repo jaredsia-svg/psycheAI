@@ -580,6 +580,29 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-option .muted { font-size: .85rem; line-height: 1.4; }
 .mode-icon { font-size: 1.4rem; line-height: 1.2; flex: none; }
 
+/* An option that is shown but not yet on sale. The dimming is applied to the
+   icon, name and description rather than to the whole button, because the two
+   things such a row exists to say — the price and "Coming soon" — are the
+   parts that must stay readable. Fading the button as a whole would take them
+   down with it: opacity composites the element and its children together, so a
+   child cannot be less transparent than its parent. */
+.mode-option:disabled { cursor: not-allowed; background: var(--bg-alt); }
+.mode-option:disabled:hover, .mode-option:disabled:focus-visible {
+  border-color: var(--line); background: var(--bg-alt);
+}
+.mode-option:disabled .mode-icon,
+.mode-option:disabled .mode-title strong,
+.mode-option:disabled .muted { opacity: .45; }
+
+.mode-title { display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; }
+.mode-title strong { margin-bottom: 0; }
+.mode-badge {
+  font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft);
+  border: 1px solid var(--line); border-radius: 999px; padding: .1rem .45rem;
+}
+.mode-price { display: block; margin-top: .35rem; font-size: .85rem; font-weight: 600; }
+
 /* ---------- print / PDF export ---------- */
 /*
  * Export is the browser's own print-to-PDF, so this stylesheet *is* the PDF.

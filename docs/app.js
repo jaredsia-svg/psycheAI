@@ -295,6 +295,12 @@
     return new Promise(resolve => {
       let answer = null;
       const choose = event => {
+        // The browser already refuses real clicks on a disabled button, so this
+        // covers the one route that gets past it: a synthetic click, which
+        // dispatches straight to the listener without any of the checks a user
+        // click goes through. The attribute in index.html stays the single
+        // statement of what is on sale — this reads it rather than repeating it.
+        if (event.currentTarget.disabled) return;
         answer = event.currentTarget.dataset.depth;
         dialog.close();
       };
