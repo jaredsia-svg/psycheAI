@@ -192,10 +192,7 @@ try {
     ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
       'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
     (await page.locator('.help-card .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
-  // Exactly one of the seven is a shortcut into Meta's Accounts Centre. It has
-  // to look tappable and the other six have to not, or the underline stops
-  // meaning "the words on your screen" and starts meaning nothing.
-  check('only the one label that is a link is coloured like one',
+  check('the underline is not the one links use, since none of these are links',
     await page.evaluate(() => {
       const probe = document.createElement('a');
       probe.href = '#';
@@ -203,27 +200,9 @@ try {
       const linkColour = getComputedStyle(probe).color;
       probe.remove();
       const labels = [...document.querySelectorAll('.help-card .ui-label')];
-      const linked = labels.filter(l => l.tagName === 'A');
-      const plain = labels.filter(l => l.tagName !== 'A');
       return labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
-        linked.length === 1 &&
-        linked.every(l => getComputedStyle(l).color === linkColour) &&
-        plain.every(l => getComputedStyle(l).color !== linkColour);
-    }));
-  check('the shortcut points at Accounts Centre and opens away from this page',
-    await page.evaluate(() => {
-      const link = document.querySelector('.help-card a.ui-label');
-      if (!link) return false;
-      const rel = (link.getAttribute('rel') || '').split(/\s+/);
-      return /^https:\/\/accountscenter\.instagram\.com\//.test(link.href) &&
-        link.target === '_blank' &&
-        // Without noopener the opened tab can reach back through window.opener
-        // and navigate this one, which is a page people are mid-upload on.
-        rel.includes('noopener') && rel.includes('noreferrer');
-    }),
-    await page.evaluate(() => {
-      const link = document.querySelector('.help-card a.ui-label');
-      return link ? link.href + ' target=' + link.target + ' rel=' + link.getAttribute('rel') : 'no link';
+        labels.every(l => getComputedStyle(l).color !== linkColour) &&
+        document.querySelectorAll('.help-card a').length === 0;
     }));
   check('every branch is named for a section the report actually has',
     await page.evaluate(() => {

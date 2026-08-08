@@ -289,12 +289,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   font-weight: 600; color: var(--ink);
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
 }
-/* One of these labels is also a link. .ui-label would otherwise win on
-   specificity and paint it ink, leaving the only tappable thing in the card
-   looking exactly like the six that are not. */
-a.ui-label { color: var(--accent); }
-.help-aside { display: block; font-size: .82rem; color: var(--ink-soft); }
-
 .help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
 .help-card h2 { margin-top: 0; }
