@@ -98,10 +98,18 @@ try {
 
   // So are images, and the switch has to be honest about what leaves the device.
   check('a photo sample is included by default', await page.locator('#include-images').isChecked());
-  check('the image switch says how many photos are sent',
-    /14 of your own pictures/i.test(await page.locator('#include-images ~ span').innerText()));
+  // The number is read out of the depth config rather than typed here, so the
+  // switch cannot go on promising 14 after the config sends a different count.
+  // That drift is the reason to state a real figure rather than a vague range.
+  check('the image switch states the number the code actually sends',
+    await page.evaluate(() => {
+      const said = document.querySelector('#include-images ~ span').innerText;
+      const sends = window.PsycheDigest.DEPTHS.standard.images;
+      return new RegExp('up to ' + sends + ' images', 'i').test(said);
+    }),
+    await page.locator('#include-images ~ span').innerText());
   check('the image switch says video is never sent',
-    /never video/i.test(await page.locator('#include-images ~ span').innerText()));
+    /videos are all excluded/i.test(await page.locator('#include-images ~ span').innerText()));
 
   // Nothing is asked for before the upload — the export carries the name.
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
