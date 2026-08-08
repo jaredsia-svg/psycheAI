@@ -136,6 +136,20 @@ try {
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
+  // Step one points the reader downwards for the how-to. A directional
+  // reference is a claim about the page, so it is checked as one: the card it
+  // points at has to be below it in document order, not merely present.
+  check('step one sends the reader to instructions that are actually below it',
+    /instructions below/i.test(await page.locator('.step-card').nth(0).innerText()) &&
+    await page.evaluate(() => {
+      const step = document.querySelector('#view-welcome .step-card');
+      const help = document.querySelector('#view-welcome .help-card');
+      if (!step || !help) return false;
+      return Boolean(step.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }),
+    // Collapsed: the card's own text starts "1\nLoad your IG data\n\n…", and a
+    // detail that breaks across lines gets cut off wherever it is read back.
+    (await page.locator('.step-card').nth(0).innerText()).replace(/\s+/g, ' ').trim());
   check('step three promises insight and states the privacy',
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
