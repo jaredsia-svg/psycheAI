@@ -112,8 +112,16 @@
     <h2>How do I get my Instagram data?</h2>
     <ol>
       <li>In the Instagram app, open Settings → <span class="ui-label">Accounts Centre</span>.</li>
-      <li>Go to <span class="ui-label">Your information and permissions</span> →
-          <span class="ui-label">Export / Download your information</span>.</li>
+      <!-- Meta's Accounts Centre is one host for Instagram, Facebook and
+           WhatsApp, and this path is the same page step 2 describes. It opens
+           in a new tab so the reader still has this page to come back and
+           upload to, and the written step stays put: on a phone this leaves
+           the app for a browser, and a browser that is not signed in lands on
+           a login wall, so the link is a shortcut rather than the route. -->
+      <li>Go to <a class="ui-label" href="https://accountscenter.instagram.com/info_and_permissions/"
+                   target="_blank" rel="noopener noreferrer">Your information and permissions</a> →
+          <span class="ui-label">Export / Download your information</span>.
+          <span class="help-aside">(that link opens Instagram in a new tab — you may need to sign in)</span></li>
       <li>Choose <span class="ui-label">Create Export</span> → Choose your Instagram account.</li>
       <li>Set Date Range to <span class="ui-label">All time</span> for the best results.</li>
       <li>Set Format to <span class="ui-label">JSON</span>. PsycheAI cannot read the HTML format.</li>
