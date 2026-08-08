@@ -140,7 +140,8 @@ try {
   // reference is a claim about the page, so it is checked as one: the card it
   // points at has to be below it in document order, not merely present.
   check('step one sends the reader to instructions that are actually below it',
-    /instructions below/i.test(await page.locator('.step-card').nth(0).innerText()) &&
+    /below\b.{0,20}\binstructions|instructions\b.{0,20}\bbelow/i.test(
+      await page.locator('.step-card').nth(0).innerText()) &&
     await page.evaluate(() => {
       const step = document.querySelector('#view-welcome .step-card');
       const help = document.querySelector('#view-welcome .help-card');
