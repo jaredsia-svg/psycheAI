@@ -124,6 +124,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--accent-soft); color: var(--accent);
   border-radius: 999px; font-size: .78rem; font-weight: 600; letter-spacing: .02em;
 }
+/* That bottom margin is for when something follows the badge inside the hero.
+   Nothing does any more — it is the last thing in there — so it was stacking
+   on the hero's own 2rem and opening a blank row under the headline. */
+.hero .eyebrow:last-child { margin-bottom: 0; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
 /* ---------- cards ---------- */
@@ -159,7 +163,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    text in document order, so the diagram losing its lines costs the reader
    nothing but the picture.
 */
-.insight-lede { margin: -.4rem 0 1.2rem; font-size: .92rem; }
+.insight-map { margin-top: 1.1rem; }
 
 /* Text is --bg rather than white: --accent is a deep purple in the light theme
    and a pale one in the dark, so white holds on one and washes out on the
@@ -180,9 +184,16 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
   padding: .9rem 1rem;
 }
+/* Icon beside the title while the branches are stacked, above it once they are
+   side by side. Narrow means tall: a phone reading four branches down the page
+   gets four fewer lines this way, and the icon has the width to spare there
+   that it does not have in a quarter-width column. */
+.insight-head { display: flex; align-items: center; gap: .55rem; }
 .insight-icon { font-size: 1.3rem; line-height: 1; }
-.insight-branch h3 { margin: .4rem 0 .5rem; font-size: .95rem; line-height: 1.35; }
-.insight-branch ul { margin: 0; padding-left: 1.05rem; }
+/* The head owns no bottom spacing and the list owns its top, so the gap under
+   the title is one number at every width rather than two that have to agree. */
+.insight-branch h3 { margin: 0; font-size: .95rem; line-height: 1.35; }
+.insight-branch ul { margin: .6rem 0 0; padding-left: 1.05rem; }
 .insight-branch li {
   font-size: .86rem; color: var(--ink-soft); line-height: 1.5; margin-bottom: .15rem;
 }
@@ -227,6 +238,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
     content: ''; position: absolute; top: -17px; left: 50%;
     width: 1px; height: 17px; background: var(--line);
   }
+  /* Icon back above the title: a quarter-width column has no room to spend on
+     an icon beside two lines of heading. */
+  .insight-head { display: block; }
+  .insight-head h3 { margin-top: .4rem; }
   /* "Your Instagram behaviour" is the only title that needs two lines, and one
      branch stepping its list down while three start level reads as a mistake.
      Two lines at the stated line-height is 2.7em, so all four reserve it. */

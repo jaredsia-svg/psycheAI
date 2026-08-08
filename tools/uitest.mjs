@@ -131,6 +131,24 @@ try {
       const beforeSteps = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
       return Boolean(afterHeadline && beforeSteps);
     }));
+  // Being last in the hero, the badge has nothing to space itself away from,
+  // so its own bottom margin only stacked on the hero's and opened a blank row
+  // under the headline. The gap below it should be the hero's margin and
+  // nothing more.
+  check('the badge adds no gap of its own below the hero',
+    await page.evaluate(() => {
+      const pill = document.querySelector('#view-welcome .hero .eyebrow');
+      const hero = document.querySelector('#view-welcome .hero');
+      const steps = document.querySelector('#view-welcome .steps-row');
+      const gap = steps.getBoundingClientRect().top - pill.getBoundingClientRect().bottom;
+      return Math.abs(gap - parseFloat(getComputedStyle(hero).marginBottom)) < 1;
+    }),
+    await page.evaluate(() => {
+      const pill = document.querySelector('#view-welcome .hero .eyebrow').getBoundingClientRect();
+      const steps = document.querySelector('#view-welcome .steps-row').getBoundingClientRect();
+      const hero = getComputedStyle(document.querySelector('#view-welcome .hero')).marginBottom;
+      return Math.round(steps.top - pill.bottom) + 'px gap against a ' + hero + ' hero margin';
+    }));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
@@ -185,8 +203,29 @@ try {
   // ship. At every width it must either be hidden with the branches wrapped,
   // or shown reaching the centre of the outermost branch on each side.
   const railAtWidths = {};
+  const iconsAtWidths = {};
   for (const width of [1100, 900, 700, 375]) {
     await page.setViewportSize({ width, height: 900 });
+    // Stacked branches put the icon on the title's line — four branches down a
+    // phone is four lines saved, and the width is there to spend. Side by side
+    // it goes back above, where a quarter-width column has none to spare.
+    // Measured off the rendered boxes, since "same line" is a fact about
+    // layout that a display rule alone does not establish.
+    iconsAtWidths[width] = await page.evaluate(() => {
+      const heads = [...document.querySelectorAll('.insight-head')];
+      const inline = heads.map(head => {
+        const icon = head.querySelector('.insight-icon').getBoundingClientRect();
+        const title = head.querySelector('h3').getBoundingClientRect();
+        const centred = Math.abs((icon.top + icon.height / 2) - (title.top + title.height / 2)) < 4;
+        return centred && icon.right <= title.left + 1;
+      });
+      const stacked = new Set(
+        [...document.querySelectorAll('.insight-branch')].map(b => Math.round(b.getBoundingClientRect().top)),
+      ).size > 1;
+      if (inline.every(Boolean)) return stacked ? 'beside the title' : 'beside, but branches are in a row';
+      if (inline.every(v => !v)) return stacked ? 'above, but branches are stacked' : 'above the title';
+      return 'inconsistent across branches';
+    });
     railAtWidths[width] = await page.evaluate(() => {
       const rail = document.querySelector('.insight-rail');
       const boxes = [...document.querySelectorAll('.insight-branch')].map(b => b.getBoundingClientRect());
@@ -205,6 +244,9 @@ try {
   check('the connector rail is drawn only where it points at something',
     Object.values(railAtWidths).every(v => v === 'aligned' || v === 'hidden while wrapped'),
     JSON.stringify(railAtWidths));
+  check('the branch icon sits beside the title exactly while the branches stack',
+    Object.values(iconsAtWidths).every(v => v === 'beside the title' || v === 'above the title'),
+    JSON.stringify(iconsAtWidths));
   // ---- the dark theme is a theme, not a hope ----
   //
   // Nothing here ever rendered in dark mode before, which is how a filled
