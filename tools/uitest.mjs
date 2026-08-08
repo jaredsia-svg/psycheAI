@@ -108,7 +108,22 @@ try {
   check('the upload box is the only thing to do',
     (await page.locator('.upload-card input[type=text]').count()) === 0);
   check('the hero is down to a headline',
-    (await page.locator('#view-welcome .hero .lede').count()) === 0);
+    (await page.locator('#view-welcome .hero .lede').count()) === 0 &&
+    (await page.locator('#view-welcome .hero .eyebrow').count()) === 0);
+  // The privacy badge sits where the page starts asking for something rather
+  // than under the headline, so the promise is next to the request. Checked by
+  // document order — a rule that moved it visually while leaving it up top
+  // would read the same to a screen reader as it did before.
+  check('the privacy badge sits between the steps and the how-to card',
+    await page.evaluate(() => {
+      const pill = document.querySelector('#view-welcome .eyebrow');
+      const steps = document.querySelector('#view-welcome .steps-row');
+      const help = document.querySelector('#view-welcome .help-card');
+      if (!pill || !steps || !help) return false;
+      const after = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const before = help.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
+      return Boolean(after && before);
+    }));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
