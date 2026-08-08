@@ -153,10 +153,25 @@ try {
   check('step three promises insight and states the privacy',
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
-  check('step four is about the relationship, not the scan',
-    /stronger relationship/.test(await page.locator('.step-card').nth(3).innerText()));
-  check('step four says the basis is a choice',
-    /pick which basis/.test(await page.locator('.step-card').nth(3).innerText()));
+  const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
+    .replace(/\s+/g, ' ').trim();
+  check('step four leads with the relationship, not the mechanism',
+    /^build better relationships/i.test(stepFour), stepFour);
+  check('step four says how a comparison starts', /scanning their QR code/i.test(stepFour), stepFour);
+  // The card sells relationships rather than reciting the mode labels, but it
+  // still has to cover every basis the picker will offer. Binding it to
+  // MODE_LABELS means adding a fourth basis fails here — the word for it is
+  // missing from the map below — rather than quietly leaving this card selling
+  // three of four.
+  check('step four names an everyday word for every basis on offer',
+    await page.evaluate(() => {
+      const said = document.querySelectorAll('.step-card')[3].innerText.toLowerCase();
+      const perBasis = {
+        romantic: ['partner'], platonic: ['family', 'friends'], professional: ['colleagues'],
+      };
+      return Object.keys(window.PsycheCopy.MODE_LABELS).every(mode =>
+        (perBasis[mode] || []).length > 0 && perBasis[mode].every(word => said.includes(word)));
+    }), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
@@ -1580,8 +1595,8 @@ try {
   check('the page admits their terms govern that, not this app',
     /their\s+terms apply rather than ours/i.test(about));
 
-  // The badge above the headline is the first privacy claim anyone reads, and
-  // it is read by people deciding whether to upload their DMs. It has to
+  // The badge above the how-to card is the welcome page's own privacy claim,
+  // read by people deciding whether to upload their DMs. It has to
   // survive being held next to the FAQ two clicks away, which names Google or
   // Anthropic as the party that reads the summary. So it is held to the two
   // things the code above proves: nothing is stored here, and the report is
@@ -1596,6 +1611,21 @@ try {
   check('the hero does not promise that nobody else reads the summary',
     !/(no|nobody)\s*one?\s*else|not shared with anyone|only you can see your data/i.test(heroClaim),
     heroClaim);
+
+  // Step two names the two model providers outright and repeats the no-storage
+  // promise. The storage half is what the server.js checks above prove. The
+  // naming half is held against the loader, so dropping or swapping a provider
+  // fails here rather than leaving this card telling the reader about a model
+  // the app can no longer reach.
+  const stepTwoClaim = (await page.evaluate(
+    () => document.querySelectorAll('#view-welcome .step-card')[1].textContent))
+    .replace(/\s+/g, ' ').trim();
+  const providerSource = readFileSync(join(root, 'lib', 'provider.js'), 'utf8');
+  check('step two names both providers the loader can actually reach',
+    /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) &&
+    /'\.\/gemini'/.test(providerSource) && /'\.\/claude'/.test(providerSource), stepTwoClaim);
+  check('step two repeats that nothing is stored here',
+    /No data is stored by PsycheAI/i.test(stepTwoClaim), stepTwoClaim);
 
   // These two sections are written for an adult with no technical background:
   // no jargon, and no explaining-to-a-child similes either. Jargon creeping
