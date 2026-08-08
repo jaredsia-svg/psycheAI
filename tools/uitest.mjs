@@ -150,6 +150,97 @@ try {
     // Collapsed: the card's own text starts "1\nLoad your IG data\n\n…", and a
     // detail that breaks across lines gets cut off wherever it is read back.
     (await page.locator('.step-card').nth(0).innerText()).replace(/\s+/g, ' ').trim());
+  // ---- the "what insights will I get?" diagram ----
+  //
+  // It advertises the report, so its branches are held to the report's own
+  // section names in copy.js. A section renamed there without this being
+  // touched leaves the landing page promising something the report no longer
+  // calls that.
+  check('the insight diagram sits above the how-to card',
+    await page.evaluate(() => {
+      const insight = document.querySelector('#view-welcome .insight-card');
+      const help = document.querySelector('#view-welcome .help-card');
+      if (!insight || !help) return false;
+      return Boolean(insight.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  check('every branch is named for a section the report actually has',
+    await page.evaluate(() => {
+      const T = window.PsycheCopy.TEXT;
+      const want = [T.whoYouAre, T.relationships, T.work, T.activity];
+      const got = [...document.querySelectorAll('.insight-branch h3')].map(h => h.textContent.trim());
+      return want.length === got.length && want.every((title, i) => title === got[i]);
+    }),
+    (await page.locator('.insight-branch h3').allInnerTexts()).join(' | '));
+  check('confidence is the base of the diagram, not a fifth branch',
+    await page.evaluate(() => {
+      const base = document.querySelector('.insight-base');
+      return Boolean(base) && base.textContent.includes(window.PsycheCopy.TEXT.trust);
+    }),
+    (await page.locator('.insight-base').innerText()).replace(/\s+/g, ' ').trim());
+  // Connectors are decoration and must not carry meaning on their own, but a
+  // rail drawn while the branches have wrapped points at nothing. Measured at
+  // several widths rather than at the suite's own: checking only the default
+  // 1100px passes a rail that is switched on unconditionally, since at that
+  // width it is legitimately correct — which is exactly the bug that would
+  // ship. At every width it must either be hidden with the branches wrapped,
+  // or shown reaching the centre of the outermost branch on each side.
+  const railAtWidths = {};
+  for (const width of [1100, 900, 700, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    railAtWidths[width] = await page.evaluate(() => {
+      const rail = document.querySelector('.insight-rail');
+      const boxes = [...document.querySelectorAll('.insight-branch')].map(b => b.getBoundingClientRect());
+      const rows = new Set(boxes.map(b => Math.round(b.top))).size;
+      const shown = getComputedStyle(rail).display !== 'none';
+      if (!shown) return rows > 1 ? 'hidden while wrapped' : 'hidden in one row';
+      const r = rail.getBoundingClientRect();
+      const first = boxes[0].left + boxes[0].width / 2;
+      const last = boxes[boxes.length - 1].left + boxes[boxes.length - 1].width / 2;
+      if (rows > 1) return 'DRAWN WHILE WRAPPED';
+      return Math.abs(r.left - first) < 1.5 && Math.abs(r.right - last) < 1.5
+        ? 'aligned' : 'shown but off by ' + Math.round(r.left - first) + '/' + Math.round(r.right - last);
+    });
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('the connector rail is drawn only where it points at something',
+    Object.values(railAtWidths).every(v => v === 'aligned' || v === 'hidden while wrapped'),
+    JSON.stringify(railAtWidths));
+  // ---- the dark theme is a theme, not a hope ----
+  //
+  // Nothing here ever rendered in dark mode before, which is how a filled
+  // circle carrying the step number sat at 2.25:1 against its own background
+  // without anyone noticing: --accent is a deep purple in the light theme and
+  // a pale one in the dark, so white text holds on one and vanishes on the
+  // other. Anything painted on the accent is measured in both.
+  const contrastOn = async scheme => {
+    await page.emulateMedia({ colorScheme: scheme });
+    return page.evaluate(selectors => {
+      const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      const lum = r => 0.2126 * lin(r[0]) + 0.7152 * lin(r[1]) + 0.0722 * lin(r[2]);
+      const parse = s => (s.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number);
+      const out = {};
+      for (const sel of selectors) {
+        const node = document.querySelector(sel);
+        if (!node) { out[sel] = null; continue; }
+        const style = getComputedStyle(node);
+        const [hi, lo] = [lum(parse(style.color)), lum(parse(style.backgroundColor))]
+          .sort((a, b) => b - a);
+        out[sel] = Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+      }
+      return out;
+    }, selectors);
+  };
+  const accentFilled = ['.insight-hub', '.step-num'];
+  const selectors = accentFilled;
+  const darkContrast = await contrastOn('dark');
+  const lightContrast = await contrastOn('light');
+  for (const sel of accentFilled) {
+    check('"' + sel + '" is readable in the dark theme',
+      darkContrast[sel] !== null && darkContrast[sel] >= 4.5, darkContrast[sel] + ':1');
+    check('"' + sel + '" is readable in the light theme',
+      lightContrast[sel] !== null && lightContrast[sel] >= 4.5, lightContrast[sel] + ':1');
+  }
+
   check('step three promises insight and states the privacy',
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
