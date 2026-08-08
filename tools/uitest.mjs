@@ -233,6 +233,20 @@ try {
       return want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('.insight-branch h3').allInnerTexts()).join(' | '));
+  // The bullets under each branch are not read from copy.js the way the
+  // titles are — they are a shorter, page-only restatement — so they need
+  // their own pin or a rewording here would drift silently forever. One trait
+  // score used to get its own line each for Big Five, MBTI and Enneagram;
+  // they are one line now, so this also stands as the record of that being
+  // deliberate rather than a bullet quietly lost in an edit.
+  check('the trait bullet covers all three frameworks in one line',
+    (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts())
+      .join(' | ') === 'Big Five, MBTI and Enneagram | Values and beliefs | The character you are most like',
+    (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts()).join(' | '));
+  check('the behaviour branch uses the shorter bullet wording',
+    (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | ') ===
+      'Posting activity | App usage | How it changed over time',
+    (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | '));
   // The diagram is the hub and its branches, nothing else. It used to carry a
   // confidence footnote across the bottom; that came out, and the check that
   // held it in place came out with it rather than being loosened into one that
@@ -332,7 +346,7 @@ try {
 
   check('step three promises insight and states the privacy',
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
-    /only your device can see it/.test(await page.locator('.step-card').nth(2).innerText()));
+    /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
   check('step four leads with the relationship, not the mechanism',
