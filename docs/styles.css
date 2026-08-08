@@ -132,7 +132,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .hero-top { margin-bottom: .9rem; }
 .hero-top h1 { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
 .hero-mark {
-  flex: none; width: clamp(72px, 13vw, 156px); height: auto;
+  flex: none; width: clamp(36px, 6.5vw, 78px); height: auto;
   color: var(--accent);
   stroke: url(#hero-mark-gradient) currentColor;
 }
