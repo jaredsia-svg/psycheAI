@@ -115,22 +115,21 @@ try {
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
   check('the upload box is the only thing to do',
     (await page.locator('.upload-card input[type=text]').count()) === 0);
-  check('the hero is down to a headline',
-    (await page.locator('#view-welcome .hero .lede').count()) === 0 &&
-    (await page.locator('#view-welcome .hero .eyebrow').count()) === 0);
-  // The privacy badge sits where the page starts asking for something rather
-  // than under the headline, so the promise is next to the request. Checked by
-  // document order — a rule that moved it visually while leaving it up top
+  check('the hero has no separate lede paragraph',
+    (await page.locator('#view-welcome .hero .lede').count()) === 0);
+  // The privacy badge sits right under the headline, so it is the first thing
+  // read after the reader learns what the page is. Checked by document order —
+  // a rule that moved it visually while leaving it elsewhere in the markup
   // would read the same to a screen reader as it did before.
-  check('the privacy badge sits between the steps and the how-to card',
+  check('the privacy badge sits inside the hero, right after the headline',
     await page.evaluate(() => {
-      const pill = document.querySelector('#view-welcome .eyebrow');
+      const pill = document.querySelector('#view-welcome .hero .eyebrow');
+      const h1 = document.querySelector('#view-welcome .hero h1');
       const steps = document.querySelector('#view-welcome .steps-row');
-      const help = document.querySelector('#view-welcome .help-card');
-      if (!pill || !steps || !help) return false;
-      const after = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
-      const before = help.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
-      return Boolean(after && before);
+      if (!pill || !h1 || !steps) return false;
+      const afterHeadline = h1.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const beforeSteps = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
+      return Boolean(afterHeadline && beforeSteps);
     }));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
@@ -1634,7 +1633,7 @@ try {
   check('the page admits their terms govern that, not this app',
     /their\s+terms apply rather than ours/i.test(about));
 
-  // The badge above the how-to card is the welcome page's own privacy claim,
+  // The badge under the headline is the welcome page's own privacy claim,
   // read by people deciding whether to upload their DMs. It has to
   // survive being held next to the FAQ two clicks away, which names Google or
   // Anthropic as the party that reads the summary. So it is held to the two
