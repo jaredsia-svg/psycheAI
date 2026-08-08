@@ -131,6 +131,42 @@ try {
       const beforeSteps = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
       return Boolean(afterHeadline && beforeSteps);
     }));
+  // The mark beside the headline. Swept rather than checked at one width,
+  // because every way this composition can go wrong is width-dependent: the
+  // mark squashing out of square, colliding with the headline, or growing
+  // enough to push the page sideways. The badge is deliberately outside the
+  // row — inside it, the narrowed column wrapped it onto three lines — so its
+  // width is checked against the hero's, not the headline's.
+  const heroMarkAtWidths = {};
+  for (const width of [1440, 1100, 700, 375, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    heroMarkAtWidths[width] = await page.evaluate(() => {
+      const svg = document.querySelector('#view-welcome .hero-mark');
+      if (!svg) return 'missing';
+      const mark = svg.getBoundingClientRect();
+      const h1 = document.querySelector('#view-welcome .hero h1').getBoundingClientRect();
+      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
+      const pill = document.querySelector('#view-welcome .eyebrow').getBoundingClientRect();
+      if (mark.width < 1) return 'not rendered';
+      if (Math.abs(mark.width - mark.height) > 1) return 'out of square';
+      if (mark.left < h1.right - 1) return 'overlapping the headline';
+      if (mark.right > hero.right + 1) return 'past the hero edge';
+      // Squeezed back into the headline's row, the badge would stop at the
+      // mark rather than running the full width beneath it.
+      if (pill.right > mark.left && pill.top < mark.bottom) return 'badge back inside the row';
+      return Math.round(mark.width) + 'px, clear';
+    });
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('the hero mark stays square, clear of the headline and inside the page',
+    Object.values(heroMarkAtWidths).every(v => /px, clear$/.test(v)),
+    JSON.stringify(heroMarkAtWidths));
+  check('the hero mark carries no wordmark of its own',
+    (await page.locator('#view-welcome .hero-mark text').count()) === 0 &&
+    (await page.locator('#view-welcome .hero').innerText()).indexOf('PsycheAI') ===
+      (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
+    (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
+
   // Being last in the hero, the badge has nothing to space itself away from,
   // so its own bottom margin only stacked on the hero's and opened a blank row
   // under the headline. The gap below it should be the hero's margin and
@@ -872,10 +908,10 @@ try {
   check('the running-head mark clears the rule under it',
     Boolean(head) && head.bottom > 841.89 - 60, JSON.stringify(head));
 
-  // One shape in three places: the PDF strokes exactly what the HTML draws.
+  // One shape in four places: the PDF strokes exactly what the HTML draws.
   const brand = await page.evaluate(async () => {
     const html = await fetch('index.html').then(r => r.text());
-    const marks = ['brand-mark', 'letterhead-mark'].map(name => {
+    const marks = ['brand-mark', 'letterhead-mark', 'hero-mark'].map(name => {
       const start = html.indexOf('class="' + name + '"');
       const end = html.indexOf('</svg>', start);
       return [...html.slice(start, end).matchAll(/<path d="([^"]+)"/g)].map(match => match[1]);
@@ -884,11 +920,13 @@ try {
       shared: window.PsycheCopy.BRAND_MARK.paths,
       nav: marks[0],
       letterhead: marks[1],
+      hero: marks[2],
       viewBox: window.PsycheCopy.BRAND_MARK.viewBox,
       strokeWidth: window.PsycheCopy.BRAND_MARK.strokeWidth,
       dot: window.PsycheCopy.BRAND_MARK.dot,
       navCircles: document.querySelectorAll('.brand-mark circle').length,
       letterheadCircles: document.querySelectorAll('.letterhead-mark circle').length,
+      heroCircles: document.querySelectorAll('.hero-mark circle').length,
     };
   });
 
@@ -900,6 +938,9 @@ try {
   check('the shared mark matches the one on the letterhead',
     JSON.stringify(brand.shared) === JSON.stringify(brand.letterhead),
     JSON.stringify({ shared: brand.shared.length, letterhead: brand.letterhead.length }));
+  check('the shared mark matches the big one beside the headline',
+    JSON.stringify(brand.shared) === JSON.stringify(brand.hero),
+    JSON.stringify({ shared: brand.shared.length, hero: brand.hero.length }));
   check('the shared mark keeps the SVG viewBox and stroke width it was drawn for',
     brand.viewBox === 140 && brand.strokeWidth === 3,
     JSON.stringify({ viewBox: brand.viewBox, strokeWidth: brand.strokeWidth }));
@@ -908,9 +949,10 @@ try {
   check('the shared mark carries its filled centre dot',
     brand.dot && brand.dot.r === 11 && brand.dot.cx === 70 && brand.dot.cy === 70,
     JSON.stringify(brand.dot));
-  check('both inline copies draw that dot too',
-    brand.navCircles === 1 && brand.letterheadCircles === 1,
-    JSON.stringify({ nav: brand.navCircles, letterhead: brand.letterheadCircles }));
+  check('all three inline copies draw that dot too',
+    brand.navCircles === 1 && brand.letterheadCircles === 1 && brand.heroCircles === 1,
+    JSON.stringify({ nav: brand.navCircles, letterhead: brand.letterheadCircles,
+      hero: brand.heroCircles }));
 
   // The curves are the part that could silently come out as straight lines, so
   // count the operators the mark is actually built from. Three ellipses, four

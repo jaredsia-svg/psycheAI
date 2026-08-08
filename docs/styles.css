@@ -119,6 +119,28 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 .page-head { margin-bottom: 1.5rem; }
 .hero { margin-bottom: 2rem; }
+
+/* Headline and mark share a row; the badge below spans the full width, which
+   is why only the headline is in here — inside the row it was being squeezed
+   into a column narrow enough to wrap it onto three lines.
+   min-width: 0 on the headline defeats flex's min-content floor, which would
+   otherwise refuse to wrap it and push the mark out of the row. */
+.hero-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: clamp(.9rem, 4vw, 3rem);
+}
+.hero-top { margin-bottom: .9rem; }
+.hero-top h1 { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.hero-mark {
+  flex: none; width: clamp(72px, 13vw, 156px); height: auto;
+  color: var(--accent);
+  stroke: url(#hero-mark-gradient) currentColor;
+}
+.hero-mark circle { fill: url(#hero-mark-gradient) currentColor; }
+/* Stops set from CSS rather than as SVG attributes so they follow the theme:
+   both ends are the same pair the headline's own gradient uses. */
+.hero-mark-from { stop-color: var(--accent); }
+.hero-mark-to { stop-color: var(--accent-2); }
 .eyebrow {
   display: inline-block; margin: 0 0 1rem; padding: .25rem .7rem;
   background: var(--accent-soft); color: var(--accent);
