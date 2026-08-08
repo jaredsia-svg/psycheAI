@@ -1543,6 +1543,23 @@ try {
   check('the page admits their terms govern that, not this app',
     /their\s+terms apply rather than ours/i.test(about));
 
+  // The badge above the headline is the first privacy claim anyone reads, and
+  // it is read by people deciding whether to upload their DMs. It has to
+  // survive being held next to the FAQ two clicks away, which names Google or
+  // Anthropic as the party that reads the summary. So it is held to the two
+  // things the code above proves: nothing is stored here, and the report is
+  // assembled on the device and never sent back. textContent rather than
+  // innerText because the welcome view is hidden while the FAQ is open.
+  const heroClaim = (await page.evaluate(
+    () => document.querySelector('#view-welcome .eyebrow').textContent)).replace(/\s+/g, ' ').trim();
+  check('the hero claims only what server.js can keep',
+    /kept on your device/i.test(heroClaim) && /never stored by PsycheAI/i.test(heroClaim), heroClaim);
+  // The summary does go to a model provider to be read. A hero that says
+  // otherwise would contradict the section above it on the same site.
+  check('the hero does not promise that nobody else reads the summary',
+    !/(no|nobody)\s*one?\s*else|not shared with anyone|only you can see your data/i.test(heroClaim),
+    heroClaim);
+
   // These two sections are written for an adult with no technical background:
   // no jargon, and no explaining-to-a-child similes either. Jargon creeping
   // back in is the regression worth guarding, so the terms are held out.
