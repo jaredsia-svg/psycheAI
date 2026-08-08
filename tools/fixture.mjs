@@ -302,3 +302,80 @@ function buildExport() {
 export function buildExportZip() {
   return buildExport();
 }
+
+/**
+ * A Facebook download, shaped the way Meta actually writes one.
+ *
+ * This is the archive the recognition guard exists for. It is full of JSON, so
+ * the "no JSON here" check waves it through, and three of its filenames
+ * collide with Instagram's — comments.json, following.json, followers_1.json —
+ * so those route and run. What comes out is nothing worth analysing: the
+ * follow lists use flat `{name, timestamp}` records rather than Instagram's
+ * `string_list_data`, so every row is skipped, and the comments have no
+ * `string_map_data`, so the handler falls back to `title` and files Facebook's
+ * own "X commented on Y's post" boilerplate as if it were the user's writing.
+ *
+ * Messages are included because Messenger and Instagram DMs share a format
+ * exactly, which is precisely why the guard must not count them.
+ */
+export function buildForeignExportZip() {
+  const at = (day, hour) => Math.floor(Date.UTC(2025, 0, 1 + day, hour) / 1000);
+
+  const files = [
+    // Routes, and extracts the wrong thing.
+    {
+      name: 'your_facebook_activity/comments_and_reactions/comments.json',
+      content: JSON.stringify({
+        comments_v2: Array.from({ length: 25 }, (_, i) => ({
+          timestamp: at(i, 11),
+          title: 'Alec commented on Sarah\'s post.',
+          data: [{ comment: { timestamp: at(i, 11), comment: 'Real comment text ' + i, author: 'Alec' } }],
+        })),
+      }),
+    },
+    // Both route, and both extract nothing at all.
+    {
+      name: 'connections/friends_and_followers/following.json',
+      content: JSON.stringify({
+        following_v3: Array.from({ length: 60 }, (_, i) => ({ name: 'Page ' + i, timestamp: at(i, 9) })),
+      }),
+    },
+    {
+      name: 'connections/friends_and_followers/followers_1.json',
+      content: JSON.stringify({
+        followers_v3: Array.from({ length: 90 }, (_, i) => ({ name: 'Person ' + i, timestamp: at(i, 8) })),
+      }),
+    },
+    // Same format as an Instagram DM, so this one works perfectly.
+    {
+      name: 'your_facebook_activity/messages/inbox/sarah_jones_9f2/message_1.json',
+      content: JSON.stringify({
+        participants: [{ name: 'Alec' }, { name: 'Sarah Jones' }],
+        messages: Array.from({ length: 30 }, (_, i) => ({
+          sender_name: i % 2 ? 'Sarah Jones' : 'Alec',
+          timestamp_ms: at(i, 20) * 1000,
+          content: 'A message from a Facebook thread, number ' + i + '.',
+        })),
+      }),
+    },
+    // Real files under names no route matches — the bulk of a Facebook export.
+    {
+      name: 'personal_information/profile_information/profile_information.json',
+      content: JSON.stringify({ profile_v2: { name: { full_name: 'Alec' }, emails: {} } }),
+    },
+    {
+      name: 'your_facebook_activity/posts/your_posts__check_ins__photos_and_videos_1.json',
+      content: JSON.stringify(Array.from({ length: 40 }, (_, i) => ({
+        timestamp: at(i, 13),
+        data: [{ post: 'A Facebook status update, number ' + i + '.' }],
+      }))),
+    },
+    {
+      name: 'logged_information/search/your_search_history.json',
+      content: JSON.stringify({ searches_v2: [{ data: [{ text: 'a search' }] }] }),
+    },
+    { name: 'start_here.html', content: '<html>Facebook index page</html>' },
+  ];
+
+  return makeZip(files);
+}

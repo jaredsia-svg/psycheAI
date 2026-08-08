@@ -265,6 +265,36 @@ quietly stop honouring it: `fs` is asserted to be read-only, `Cache-Control: no-
 set, and the copy to keep naming both things outside the app's control — the model provider's terms,
 and an unlocked device.
 
+### Recognising the archive at all
+
+Before any of that, `readExports` decides whether the thing it just unpacked is an Instagram export.
+Two checks, and the second is the one that earns its keep. The first refuses an archive with no JSON
+in it, and names the HTML-format mistake specifically because that is the one people actually make.
+
+The second counts **kinds of activity**, and requires at least four. That exists because "contains
+JSON" is a low bar that a Facebook download clears easily — and Facebook shares three filenames with
+Instagram (`comments.json`, `following.json`, `followers_1.json`), so those route, run, and extract
+close to nothing. The follow lists use flat `{name, timestamp}` records rather than Instagram's
+`string_list_data`, so every row is skipped; the comments have no `string_map_data`, so the handler
+falls through to `title` and files Facebook's own *"X commented on Y's post"* boilerplate as if it
+were the user's writing. None of that fails loudly. Without the floor the archive reaches the model
+and comes back as a personality, and a profile written off three sources reads exactly like one
+written off twenty — the confidence figure is the only thing that differs, and by then the reader has
+already been told who they are.
+
+Breadth rather than volume, because a real export ships the whole file skeleton whether the account
+has three posts or thirty thousand. A quiet account is thin, not unrecognisable, and belongs in the
+report with a low confidence rather than turned away at the door. Messages are excluded from the
+count for two reasons: they are an opt-out, so counting them would let the threshold move with a
+switch on the upload page, and they are the one route a Facebook export gets perfectly right, being
+the same Messenger format — so they are the last thing that should count towards recognising
+Instagram.
+
+`tools/fixture.mjs` builds a Facebook download shaped the way Meta writes one, and both suites run it
+through: the unit suite asserts the refusal and its wording, the browser suite asserts it reaches
+`#upload-error` and that nothing was sent. Deleting the floor, lowering it to three, or counting
+messages towards it each let that archive through, and each is caught.
+
 ### What is complete and what is sampled
 
 The distinction matters more than the digest's size. **Complete** — every count, the full

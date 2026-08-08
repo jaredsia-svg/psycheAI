@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-import { buildExportZip } from './fixture.mjs';
+import { buildExportZip, buildForeignExportZip } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -1273,6 +1273,44 @@ try {
   check('the old key is not left behind', migrated.cleared);
   check('the carried-over profile still renders',
     await page.locator('#view-profile').isVisible());
+
+  // ---- the wrong archive is turned away, not quietly analysed ----
+  //
+  // A Facebook download is full of JSON and shares three filenames with
+  // Instagram, so it gets far enough to route files and parse them. What it
+  // must not do is reach the model: a profile written off three sources is
+  // indistinguishable from a real one to the person reading it.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  const beforeForeign = analyseBodies.length;
+  await page.setInputFiles('#file-input', {
+    name: 'facebook-export.zip', mimeType: 'application/zip', buffer: buildForeignExportZip(),
+  });
+  // Raced rather than waited on: if the guard ever stops firing, this archive
+  // opens the depth picker instead, and a bare waitForSelector would report
+  // that as a 30-second timeout and take the rest of the suite down with it.
+  // Racing the two outcomes names which one happened and leaves the run alive.
+  const outcome = await Promise.race([
+    page.waitForSelector('#upload-error:not([hidden])', { timeout: 30000 }).then(() => 'refused'),
+    page.waitForSelector('#depth-dialog[open]', { timeout: 30000 }).then(() => 'accepted for analysis'),
+  ]).catch(() => 'neither refused nor accepted');
+  if (outcome !== 'refused') await page.evaluate(() => document.querySelector('#depth-dialog').close());
+  const foreignError = (await page.locator('#upload-error').innerText()).replace(/\s+/g, ' ').trim();
+  check('a Facebook download is refused at the upload step',
+    outcome === 'refused' && /Only 3 kinds of Instagram activity/.test(foreignError),
+    outcome + (foreignError ? ' — ' + foreignError : ''));
+  check('the refusal tells the reader what to try instead',
+    /several \.zip parts/i.test(foreignError) && /Facebook or WhatsApp/i.test(foreignError),
+    foreignError);
+  check('the reader is left on the upload page, not stranded on the spinner',
+    (await page.locator('#view-welcome').isVisible()) &&
+    !(await page.locator('#view-working').isVisible()));
+  check('the depth picker never opened for an archive that cannot be read',
+    !(await page.locator('#depth-dialog').isVisible()));
+  check('nothing from the wrong archive reached the model',
+    analyseBodies.length === beforeForeign, analyseBodies.length - beforeForeign + ' requests');
+  check('no half-built profile is left behind by the refusal',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
   // ---- comprehensive depth, and backing out of the picker ----
   await page.evaluate(() => localStorage.clear());

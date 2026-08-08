@@ -130,6 +130,11 @@
     return null;
   }
 
+  // How many distinct kinds of activity an archive has to yield before it is
+  // treated as an Instagram export at all. Enforced at the end of readExports,
+  // where the reasoning is written out.
+  const RECOGNISED_MINIMUM = 4;
+
   // Guard rails so a huge archive can't lock up the tab. corpusChars sits
   // above what the digest will ever sample, so the ceiling that decides how
   // much text the model sees is the digest's, not this one.
@@ -519,6 +524,35 @@
         // One malformed file should never sink the whole import.
         if (root.console && root.console.warn) root.console.warn('Skipped ' + job.entry.name, e);
       }
+    }
+
+    // An archive can be full of JSON and still be the wrong archive. The guard
+    // above only proves that *some* JSON was present, which a Facebook or
+    // WhatsApp download satisfies just as well — and Facebook in particular
+    // shares enough filenames with Instagram (comments.json, following.json,
+    // followers_1.json) that a few files route, extract almost nothing, and
+    // sail through to the model. The output of that is the problem: a profile
+    // written from three sources reads exactly like one written from twenty,
+    // and by the time the confidence figure says otherwise the reader has
+    // already been handed a personality.
+    //
+    // Breadth is the test rather than volume. A real export ships the whole
+    // file skeleton whether the account has three posts or thirty thousand, so
+    // counting kinds of activity separates the wrong archive from the quiet
+    // account — and a quiet account belongs in the report with a low
+    // confidence, not turned away at the door.
+    //
+    // Messages are left out of the count deliberately. They are an opt-out, so
+    // including them would let the threshold move with a switch on the upload
+    // page; they are also the one route a Facebook export gets completely
+    // right, being the same Messenger format, so they are the last thing that
+    // should count towards recognising Instagram.
+    const sources = Object.keys(signals.files.byRoute).filter(route => route !== 'messages');
+    if (sources.length < RECOGNISED_MINIMUM) {
+      throw new Error('Only ' + sources.length + ' kind' + (sources.length === 1 ? '' : 's') +
+        ' of Instagram activity could be read from this archive. If your export arrived as ' +
+        'several .zip parts, choose all of them together. Otherwise this may not be an Instagram ' +
+        'export — a Facebook or WhatsApp download cannot be read here.');
     }
 
     signals.events.sort((a, b) => a.ts - b.ts);

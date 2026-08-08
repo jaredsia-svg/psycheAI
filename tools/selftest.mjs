@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInThisContext } from 'node:vm';
 
-import { buildExportZip } from './fixture.mjs';
+import { buildExportZip, buildForeignExportZip } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -465,6 +465,36 @@ check('reads followers', signals.counts.followers === 320);
 check('reads curated topics', signals.topics.length === 6);
 check('repairs mojibake in names', signals.profile.name === 'Aleç', JSON.stringify(signals.profile.name));
 check('ignores non-JSON media', !signals.files.byRoute.media);
+
+// ---------- recognising the archive ----------
+//
+// A real export clears the recognition floor by a wide margin, which is the
+// point: the floor is there to catch the wrong archive, not a quiet account.
+// If this margin ever narrows, Instagram has renamed files and the routes need
+// looking at before the floor starts turning real users away.
+const realSources = Object.keys(signals.files.byRoute).filter(route => route !== 'messages');
+check('a real export clears the recognition floor with room to spare',
+  realSources.length >= 8, realSources.length + ' kinds: ' + realSources.join(', '));
+
+// The archive the floor exists for: a Facebook download, which is full of JSON
+// and shares three filenames with Instagram.
+const foreign = new File([buildForeignExportZip()], 'facebook-export.zip', { type: 'application/zip' });
+let foreignError = null;
+try {
+  await IG.readExports([foreign], { includeMessages: true });
+} catch (error) {
+  foreignError = error;
+}
+check('a Facebook download is refused rather than analysed', Boolean(foreignError),
+  foreignError ? '' : 'it parsed without complaint');
+check('the refusal says how little was read and what to try',
+  Boolean(foreignError) && /Only 3 kinds of Instagram activity/.test(foreignError.message) &&
+  /several \.zip parts/.test(foreignError.message),
+  foreignError && foreignError.message);
+// Messages are the one route Facebook gets exactly right, so if they counted,
+// this archive would be three sources away from passing instead of one.
+check('the refusal holds even though its messages parsed perfectly',
+  Boolean(foreignError) && /Facebook or WhatsApp/.test(foreignError.message));
 
 // ---------- image selection ----------
 //
