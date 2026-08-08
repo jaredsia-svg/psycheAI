@@ -189,12 +189,15 @@ try {
       return want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('.insight-branch h3').allInnerTexts()).join(' | '));
-  check('confidence is the base of the diagram, not a fifth branch',
-    await page.evaluate(() => {
-      const base = document.querySelector('.insight-base');
-      return Boolean(base) && base.textContent.includes(window.PsycheCopy.TEXT.trust);
-    }),
-    (await page.locator('.insight-base').innerText()).replace(/\s+/g, ' ').trim());
+  // The diagram is the hub and its branches, nothing else. It used to carry a
+  // confidence footnote across the bottom; that came out, and the check that
+  // held it in place came out with it rather than being loosened into one that
+  // would pass on anything.
+  check('the diagram is the branches and nothing after them',
+    (await page.locator('.insight-map > *').count()) === 3 &&
+    (await page.locator('.insight-map .insight-branches').count()) === 1,
+    (await page.locator('.insight-map > *').evaluateAll(
+      nodes => nodes.map(n => n.className || n.tagName))).join(' | '));
   // Connectors are decoration and must not carry meaning on their own, but a
   // rail drawn while the branches have wrapped points at nothing. Measured at
   // several widths rather than at the suite's own: checking only the default

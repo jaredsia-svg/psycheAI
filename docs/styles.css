@@ -199,14 +199,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .insight-branch li::marker { color: var(--accent); }
 
-.insight-base {
-  margin: 1rem 0 0; padding: .7rem .9rem;
-  border: 1px dashed var(--line); border-radius: 12px;
-  background: var(--accent-soft);
-  font-size: .86rem; color: var(--ink-soft); text-align: center;
-}
-.insight-base strong { color: var(--ink); }
-
 @media (min-width: 560px) {
   .insight-branches { grid-template-columns: repeat(2, 1fr); }
 }
