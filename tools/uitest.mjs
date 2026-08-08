@@ -181,6 +181,29 @@ try {
       if (!insight || !help) return false;
       return Boolean(insight.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
+
+  // The underlined phrases in the how-to are the words to hunt for in
+  // Instagram's own menus, so they are the part a reader's eye should land on
+  // and the part that goes stale when Meta relabels something. Held as an
+  // exact list, in order, because a marked-up phrase that no longer matches
+  // what the app says is worse than one that was never marked at all.
+  check('the how-to underlines every label the reader has to find, and only those',
+    (await page.locator('.help-card .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
+    ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
+      'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
+    (await page.locator('.help-card .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
+  check('the underline is not the one links use, since none of these are links',
+    await page.evaluate(() => {
+      const probe = document.createElement('a');
+      probe.href = '#';
+      document.querySelector('.help-card').appendChild(probe);
+      const linkColour = getComputedStyle(probe).color;
+      probe.remove();
+      const label = getComputedStyle(document.querySelector('.help-card .ui-label'));
+      return label.textDecorationLine === 'underline' &&
+        label.color !== linkColour &&
+        document.querySelectorAll('.help-card a').length === 0;
+    }));
   check('every branch is named for a section the report actually has',
     await page.evaluate(() => {
       const T = window.PsycheCopy.TEXT;

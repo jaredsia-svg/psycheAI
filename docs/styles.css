@@ -281,6 +281,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 .alert li { margin-bottom: .2rem; }
 
+/* The words to look for in Instagram's own interface. Underlined in the text's
+   own colour rather than the accent, because links on this site are accent
+   text and these are not links — a reader who tries to tap one should not have
+   been invited to. */
+.ui-label {
+  font-weight: 600; color: var(--ink);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+
 .help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
 .help-card h2 { margin-top: 0; }
