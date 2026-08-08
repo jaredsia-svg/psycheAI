@@ -234,9 +234,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
      an icon beside two lines of heading. */
   .insight-head { display: block; }
   .insight-head h3 { margin-top: .4rem; }
-  /* "Your Instagram behaviour" is the only title that needs two lines, and one
-     branch stepping its list down while three start level reads as a mistake.
-     Two lines at the stated line-height is 2.7em, so all four reserve it. */
+  /* None of the four titles currently wraps at this width, but if a future
+     edit lengthens one, one branch stepping its list down while three start
+     level would read as a mistake. Two lines at the stated line-height is
+     2.7em, so all four reserve it whether they need it or not. */
   .insight-branch h3 { min-height: 2.7em; }
 }
 

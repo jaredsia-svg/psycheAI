@@ -204,14 +204,25 @@ try {
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
         document.querySelectorAll('.help-card a').length === 0;
     }));
-  check('every branch is named for a section the report actually has',
+  // The first three titles are the report's own section names, read from
+  // copy.js, so a rename there fails this rather than leaving the landing
+  // page advertising a section the report no longer calls that. The fourth
+  // is a deliberate exception: the report's own heading is "Your Instagram
+  // behaviour", four words wide in a quarter-width column, and "IG behaviour"
+  // is a page-only abbreviation of it rather than that string itself — so it
+  // is pinned literally, the same way the bullets below are.
+  check('the first three branches are named for a section the report actually has',
     await page.evaluate(() => {
       const T = window.PsycheCopy.TEXT;
-      const want = [T.whoYouAre, T.relationships, T.work, T.activity];
-      const got = [...document.querySelectorAll('.insight-branch h3')].map(h => h.textContent.trim());
+      const want = [T.whoYouAre, T.relationships, T.work];
+      const got = [...document.querySelectorAll('.insight-branch h3')].slice(0, 3)
+        .map(h => h.textContent.trim());
       return want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('.insight-branch h3').allInnerTexts()).join(' | '));
+  check('the fourth branch uses the shortened "IG behaviour"',
+    (await page.locator('.insight-branch h3').nth(3).innerText()).trim() === 'IG behaviour',
+    (await page.locator('.insight-branch h3').nth(3).innerText()).trim());
   // The bullets under each branch are not read from copy.js the way the
   // titles are — they are a shorter, page-only restatement — so they need
   // their own pin or a rewording here would drift silently forever. One trait
