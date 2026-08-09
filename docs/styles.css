@@ -190,10 +190,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--accent-soft); color: var(--accent);
   border-radius: 999px; font-size: .78rem; font-weight: 600; letter-spacing: .02em;
 }
-/* Under "Start here" the badge is spacing the dropzone away from the heading,
-   so it keeps its bottom margin — but the heading above it has its own, and
-   the two together left the badge floating between the two rather than
-   attached to either. Pulled up under the heading it belongs to. */
+/* Sits under the photos switch now, which has its own bottom margin — pulled
+   up slightly so the badge reads as attached to the switch above it rather
+   than floating in the gap before the card's own edge. */
 .upload-card .eyebrow { margin-top: -.25rem; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 

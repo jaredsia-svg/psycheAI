@@ -145,21 +145,21 @@ try {
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
       : 'no lede');
-  // The privacy badge moved out of the hero and down to the upload card, so it
-  // now sits at the moment of the ask rather than the moment of arrival: the
-  // reader meets it while deciding whether to hand over their Instagram
-  // history, not while reading a headline. Checked by document order — a rule
-  // that moved it visually while leaving it up in the hero would read to a
-  // screen reader exactly as it did before.
-  check('the privacy badge sits under "Start here", above the dropzone',
+  // The privacy badge moved out of the hero and down to the upload card, then
+  // further down to sit under the last of the two switches — the reader meets
+  // it right after choosing what to include, on the way to the button that
+  // sends it, rather than at arrival or mid-way through the choices. Checked
+  // by document order — a rule that moved it visually while leaving it
+  // earlier in the DOM would read to a screen reader exactly as it did before.
+  check('the privacy badge sits under the photos switch, above any error state',
     await page.evaluate(() => {
       const pill = document.querySelector('#view-welcome .upload-card .eyebrow');
-      const heading = document.querySelector('#view-welcome .upload-card h2');
-      const dropzone = document.querySelector('#dropzone');
-      if (!pill || !heading || !dropzone) return false;
-      const afterHeading = heading.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
-      const beforeDrop = dropzone.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
-      return Boolean(afterHeading && beforeDrop);
+      const images = document.querySelector('#view-welcome .upload-card #include-images');
+      const error = document.querySelector('#upload-error');
+      if (!pill || !images || !error) return false;
+      const afterImages = images.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const beforeError = error.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
+      return Boolean(afterImages && beforeError);
     }));
   check('the hero no longer carries the badge',
     (await page.locator('#view-welcome .hero .eyebrow').count()) === 0 &&
@@ -205,23 +205,24 @@ try {
       (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
     (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
 
-  // The badge used to be last inside the hero, where its own bottom margin
-  // only stacked on the hero's. It now spaces the dropzone away from the
-  // heading, so it keeps that margin — what matters instead is that it reads
-  // as attached to "Start here" rather than floating between the two.
-  check('the badge sits closer to its heading than to the dropzone',
+  // The badge now sits right under the last switch, pulled up with a small
+  // negative margin so it reads as attached to that switch rather than
+  // floating in the space before the card's own edge below it.
+  check('the badge sits closer to the photos switch than to the card edge below it',
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const heading = document.querySelector('.upload-card h2').getBoundingClientRect();
-      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
-      return (pill.top - heading.bottom) < (dropzone.top - pill.bottom);
+      const images = document.querySelector('#include-images').closest('.switch-row').getBoundingClientRect();
+      const card = document.querySelector('.upload-card').getBoundingClientRect();
+      const gapAbove = pill.top - images.bottom;
+      // Must actually be below the switch, not just nearer to it by sign.
+      return gapAbove >= 0 && gapAbove < (card.bottom - pill.bottom);
     }),
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const heading = document.querySelector('.upload-card h2').getBoundingClientRect();
-      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
-      return Math.round(pill.top - heading.bottom) + 'px above, ' +
-        Math.round(dropzone.top - pill.bottom) + 'px below';
+      const images = document.querySelector('#include-images').closest('.switch-row').getBoundingClientRect();
+      const card = document.querySelector('.upload-card').getBoundingClientRect();
+      return Math.round(pill.top - images.bottom) + 'px above, ' +
+        Math.round(card.bottom - pill.bottom) + 'px below';
     }));
   // The hero's warm band closes under the buttons, which are the last thing in
   // it. The badge used to sit in the space beneath them; with it gone the
