@@ -331,10 +331,6 @@
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#sample-close').addEventListener('click', closeSample);
-  // Closing first, then scrolling: the dialog's own close handler pops the
-  // history entry, and doing that after a view change would land the reader
-  // back where they came from instead of at the upload box.
-  $('#sample-start').addEventListener('click', () => { closeSample(); toUpload(); });
 
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', event => {

@@ -248,9 +248,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .insight-branch li::marker { color: var(--accent); }
 .insight-actions { margin: 1.1rem 0 0; }
 
-/* The sample dialog. Head and foot are pinned and only the report scrolls, so
-   the way out is on screen the whole way down — a reader four sections deep
-   should never have to scroll back up to leave. */
+/* The sample dialog. The head is pinned and only the report scrolls, so the
+   cross is on screen the whole way down — a reader four sections deep should
+   never have to scroll back up to leave. */
 .sample-dialog {
   width: min(46rem, calc(100vw - 1.5rem)); max-width: none;
   max-height: min(88vh, 60rem);
@@ -266,14 +266,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .sample-dialog::backdrop { background: rgba(20, 14, 26, .58); backdrop-filter: blur(2px); }
 
 .sample-dialog-head {
-  display: flex; align-items: flex-start; gap: 1rem; flex: none;
-  padding: 1.1rem clamp(1rem, 3vw, 1.5rem) .9rem;
+  display: flex; align-items: center; gap: 1rem; flex: none;
+  padding: .9rem clamp(1rem, 3vw, 1.5rem);
   border-bottom: 1px solid var(--line);
   background: var(--bg-alt);
 }
-.sample-dialog-head > div { flex: 1 1 auto; min-width: 0; }
-.sample-dialog-head h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
-.sample-dialog-head .muted { margin: 0; font-size: .86rem; max-width: 48ch; }
+.sample-dialog-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 1.15rem; }
 
 .sample-close {
   flex: none; display: grid; place-items: center;
@@ -295,11 +293,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    card treatment would be a box in a box. */
 .sample-dialog-body .section-card {
   box-shadow: none; border-radius: 12px; padding: 1rem clamp(.9rem, 2vw, 1.2rem);
-}
-
-.sample-dialog-foot {
-  flex: none; padding: .9rem clamp(1rem, 3vw, 1.5rem);
-  border-top: 1px solid var(--line); background: var(--bg-alt);
 }
 
 @media (min-width: 560px) {

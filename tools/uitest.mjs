@@ -545,13 +545,21 @@ try {
 
   await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
-  await page.click('#sample-start');
+  const fromSecond = await page.evaluate(() =>
+    document.querySelector('#sample-body').innerText.length);
+  check('the button under the diagram opens the same sample', fromSecond > 2500,
+    fromSecond + ' chars');
+  // The cross is the only way out that is always on screen, so it carries the
+  // whole burden now that the dialog has no footer action of its own.
+  check('the cross is the one control the dialog offers',
+    (await page.locator('#sample-dialog button').count()) === 1 &&
+    (await page.locator('#sample-close').isVisible()),
+    (await page.locator('#sample-dialog button').allInnerTexts()).join('|'));
+  await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.
   await page.waitForFunction(() => !document.querySelector('#sample-dialog').open,
     { timeout: 20000 });
-  check('the second button opens the same sample, and its call to action leaves it',
-    await page.locator('#view-welcome').isVisible());
   check('looking at the sample leaves no profile behind',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 

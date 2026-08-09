@@ -233,7 +233,8 @@ flattering — two relationship weaknesses, two career weaknesses, a 68/100 conf
 actually returns, and the reader finds that out at the worst possible moment.
 
 It opens as a dialog over the page rather than as a view of its own — something to look into and
-step back out of. Nothing it does touches `state.profile` or storage, so the nav does not change
+step back out of. A title, a cross, and the report: the cross is the only control it offers, which
+is why the head is pinned while the report scrolls under it. Nothing it does touches `state.profile` or storage, so the nav does not change
 underneath it and there is no state to hand back.
 
 **Back closes it.** On a phone, back is what people reach for to dismiss something covering the
