@@ -363,10 +363,31 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .btn:hover { filter: brightness(1.06); }
 .btn:active { transform: translateY(1px); }
+/* --accent is a deep purple in the light theme and a pale one in the dark, so
+   white holds on one and washes out on the other: measured, filled buttons ran
+   at 2.25:1 against their own background in dark mode. --bg flips with the
+   theme and stays at the far end of it. Scoped to dark rather than applied to
+   both, because in the light theme white is the better of the two — it is the
+   pink end of the gradient that is tightest there, and --bg would narrow it. */
+@media (prefers-color-scheme: dark) {
+  .btn { color: var(--bg); }
+}
 .btn-lg { padding: .78rem 1.5rem; font-size: 1.02rem; }
 .btn-ghost { background: transparent; color: var(--accent); border-color: var(--line); }
 .btn-ghost:hover { background: var(--accent-soft); }
 .btn-ghost.danger { color: var(--danger); }
+
+/* Outlined in the accent rather than the hairline .btn-ghost uses, and at 2px
+   so it holds its own beside a filled button. The padding gives back the pixel
+   the thicker border takes, so the button occupies the same box as a filled
+   one. Its neighbour in the row would otherwise be stretched to match it and
+   the whole row would grow — 47px to 49 — for a border nobody asked to be
+   taller. */
+.btn-outline {
+  background: transparent; color: var(--accent);
+  border: 2px solid var(--accent); padding: calc(.62rem - 1px) calc(1.1rem - 1px);
+}
+.btn-outline:hover { background: var(--accent-soft); }
 .btn-row { display: flex; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
 .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 1.4rem; }
 

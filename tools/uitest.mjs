@@ -421,6 +421,43 @@ try {
       lightContrast[sel] !== null && lightContrast[sel] >= 4.5, lightContrast[sel] + ':1');
   }
 
+  // The filled button is a gradient, so its computed backgroundColor is
+  // transparent and the sweep above cannot see it — it has to be measured
+  // against both ends of the gradient by name. This is the most prominent
+  // control on the page, and it ran at 2.25:1 in the dark theme until the
+  // text colour was made to flip with it.
+  const buttonContrast = async scheme => {
+    await page.emulateMedia({ colorScheme: scheme });
+    return page.evaluate(() => {
+      const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      const lum = r => 0.2126 * lin(r[0]) + 0.7152 * lin(r[1]) + 0.0722 * lin(r[2]);
+      const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+      const parse = s => (s.trim().startsWith('#') ? hex(s.trim())
+        : (s.match(/\d+/g) || [0, 0, 0]).slice(0, 3).map(Number));
+      const ratio = (a, b) => {
+        const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+        return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
+      };
+      const root = getComputedStyle(document.documentElement);
+      const text = parse(getComputedStyle(document.querySelector('#hero-sample')).color);
+      return {
+        start: ratio(text, parse(root.getPropertyValue('--accent'))),
+        end: ratio(text, parse(root.getPropertyValue('--accent-2'))),
+      };
+    });
+  };
+  const buttonDark = await buttonContrast('dark');
+  const buttonLight = await buttonContrast('light');
+  await page.emulateMedia({ colorScheme: 'light' });
+  check('the filled button is readable at both ends of its gradient, in the dark theme',
+    buttonDark.start >= 4.5 && buttonDark.end >= 4.5, JSON.stringify(buttonDark));
+  // The light theme's pink end sits at 4.29 and has done since before this
+  // gradient carried the primary action. Held at its current value rather than
+  // at 4.5 so it cannot quietly get worse, and named here rather than passed
+  // over in silence.
+  check('the filled button does not get darker at the pink end in the light theme',
+    buttonLight.start >= 4.5 && buttonLight.end >= 4.25, JSON.stringify(buttonLight));
+
   check('step three promises insight and states the privacy',
     /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
@@ -475,6 +512,49 @@ try {
   await page.setViewportSize({ width: 1100, height: 900 });
   check('the two hero buttons share one row at every phone width',
     Object.values(heroRowAtWidths).every(v => v === 'one row'), JSON.stringify(heroRowAtWidths));
+
+  // The two actions are told apart by treatment, not position: the sample is
+  // filled, the primary is an outline heavy enough to hold its own next to it.
+  // A hairline border would leave the pair looking like one button and one
+  // afterthought, so the weight is asserted rather than assumed.
+  check('the sample button is the filled one and the primary is a thick outline',
+    await page.evaluate(() => {
+      const outline = getComputedStyle(document.querySelector('#hero-start'));
+      const filled = getComputedStyle(document.querySelector('#hero-sample'));
+      const transparent = /rgba\(0, 0, 0, 0\)|transparent/.test(outline.backgroundColor) &&
+        outline.backgroundImage === 'none';
+      return filled.backgroundImage.includes('gradient') &&
+        transparent && parseFloat(outline.borderTopWidth) >= 2;
+    }),
+    await page.evaluate(() => {
+      const outline = getComputedStyle(document.querySelector('#hero-start'));
+      return 'outline border ' + outline.borderTopWidth + ', bg ' + outline.backgroundColor;
+    }));
+  // The thicker border has to be paid for out of the padding. Asserting the
+  // two buttons render the same height would prove nothing — the row is a flex
+  // container, so a taller button simply stretches its neighbour to match and
+  // they agree either way, at 49px instead of 47. What is checked is the box
+  // each one asks for: padding plus border, which is where the difference
+  // actually lives.
+  check('the outlined button asks for the same box as the filled one',
+    await page.evaluate(() => {
+      const box = node => {
+        const s = getComputedStyle(node);
+        return parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
+          parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
+      };
+      return Math.abs(box(document.querySelector('#hero-start')) -
+        box(document.querySelector('#hero-sample'))) < 0.5;
+    }),
+    await page.evaluate(() => {
+      const box = node => {
+        const s = getComputedStyle(node);
+        return Math.round((parseFloat(s.paddingTop) + parseFloat(s.paddingBottom) +
+          parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth)) * 100) / 100;
+      };
+      return box(document.querySelector('#hero-start')) + ' vs ' +
+        box(document.querySelector('#hero-sample'));
+    }));
 
   // The reader pressing this on a first visit has no export yet — the file is
   // an email from Instagram that takes hours — so it lands on the how-to, not
