@@ -326,9 +326,18 @@
   // would need is an email from Instagram that takes hours to arrive — so the
   // useful next step is the instructions for requesting one. The upload box is
   // directly beneath them when they come back.
+  // The stylesheet's reduced-motion block only reaches `transition` and
+  // `animation`; scrollIntoView is a JS API and sails straight past it, so a
+  // reader who asked for less motion would still get a full-page glide. Read at
+  // click time rather than at load, so changing the OS setting takes effect
+  // without a reload.
+  const scrollBehaviour = () =>
+    (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'auto' : 'smooth');
+
   $('#hero-start').addEventListener('click', () => {
     show('welcome');
-    $('.help-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));

@@ -238,6 +238,25 @@ try {
       const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
       return Math.round(hero.bottom - actions.bottom) + 'px of band below the buttons';
     }));
+  // ---- the heading outline ----
+  //
+  // Somebody navigating by heading meets these in order and nothing else. A
+  // jump of two levels leaves them looking for the section the deeper heading
+  // belongs to, and there isn't one — which is exactly what the four step
+  // cards did when they hung <h3> straight off the hero's <h1>.
+  const outline = await page.evaluate(() =>
+    [...document.querySelectorAll('#view-welcome :is(h1, h2, h3, h4, h5, h6)')]
+      .map(h => ({ level: Number(h.tagName[1]), text: h.innerText.replace(/\s+/g, ' ').trim().slice(0, 30) })));
+  const headingSkips = outline.filter((h, i) => i > 0 && h.level - outline[i - 1].level > 1);
+  check('the heading outline never skips a level',
+    outline.length > 5 && headingSkips.length === 0,
+    headingSkips.length
+      ? headingSkips.map(h => 'h' + h.level + ' "' + h.text + '"').join(', ') + ' after h' +
+        outline[outline.indexOf(headingSkips[0]) - 1].level
+      : outline.map(h => 'h' + h.level).join(' '));
+  check('the steps row is the section the new level names',
+    outline.length > 1 && outline[1].level === 2 && /how it works/i.test(outline[1].text),
+    JSON.stringify(outline[1] || null));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
@@ -257,6 +276,36 @@ try {
     // Collapsed: the card's own text starts "1\nLoad your IG data\n\n…", and a
     // detail that breaks across lines gets cut off wherever it is read back.
     (await page.locator('.step-card').nth(0).innerText()).replace(/\s+/g, ' ').trim());
+  // ---- the footer ----
+  const footer = await page.evaluate(() => {
+    const nav = document.querySelector('.nav-links a[data-nav="about"]');
+    const foot = document.querySelector('.footer a[data-nav="about"]');
+    const src = document.querySelector('.footer a[href*="github.com"]');
+    return {
+      navName: nav && nav.textContent.replace(/\s+/g, ' ').trim(),
+      footName: foot && foot.textContent.replace(/\s+/g, ' ').trim(),
+      href: src && src.getAttribute('href'),
+      rel: src && (src.getAttribute('rel') || ''),
+      target: src && src.getAttribute('target'),
+      text: src && src.textContent.replace(/\s+/g, ' ').trim(),
+    };
+  });
+  // Two names for one destination reads as two destinations.
+  check('the footer calls the about page what the nav calls it',
+    Boolean(footer.navName) && footer.navName === footer.footName,
+    footer.navName + ' vs ' + footer.footName);
+  // The page asks for somebody's entire Instagram history and answers the
+  // privacy question with assertions. A link to the source is the one thing
+  // that makes those assertions checkable instead of taken on faith, so it is
+  // held here rather than left to survive the next edit by luck.
+  check('the footer links to the source, so the privacy claims can be checked',
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(footer.href || '') &&
+    /source|code/i.test(footer.text || ''),
+    footer.href + ' — ' + footer.text);
+  check('the source link opens away without handing the new tab this one',
+    footer.target === '_blank' && /\bnoopener\b/.test(footer.rel || ''),
+    footer.target + ' rel="' + footer.rel + '"');
+
   // ---- the "what insights will I get?" diagram ----
   //
   // It advertises the report, so its branches are held to the report's own
@@ -586,6 +635,36 @@ try {
     await page.evaluate(() =>
       'help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top)));
   await page.evaluate(() => window.scrollTo(0, 0));
+
+  // A page-length glide is the motion "reduce motion" exists to suppress, and
+  // the stylesheet cannot suppress it: scrollIntoView is a JS API, so the
+  // reduced-motion media block never sees it. Checked by recording the options
+  // the handler actually passes, in two contexts that differ only in the OS
+  // setting — a check on either one alone would pass against the bug.
+  const scrollArgs = {};
+  for (const setting of ['no-preference', 'reduce']) {
+    const motionPage = await browser.newPage({
+      viewport: { width: 1100, height: 900 }, reducedMotion: setting,
+    });
+    await motionPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+    await motionPage.evaluate(() => {
+      window.__scrolls = [];
+      const real = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = function (opts) {
+        window.__scrolls.push(opts && opts.behavior);
+        return real.call(this, opts);
+      };
+    });
+    await motionPage.click('#hero-start');
+    scrollArgs[setting] = await motionPage.evaluate(() => window.__scrolls);
+    await motionPage.close();
+  }
+  check('the reader who asked for less motion is not given a page-long glide',
+    scrollArgs['reduce'].length === 1 && scrollArgs['reduce'][0] === 'auto',
+    JSON.stringify(scrollArgs['reduce']));
+  check('everybody else still gets the smooth scroll that explains the jump',
+    scrollArgs['no-preference'].length === 1 && scrollArgs['no-preference'][0] === 'smooth',
+    JSON.stringify(scrollArgs['no-preference']));
 
   await shot('1-welcome');
 
@@ -2132,6 +2211,26 @@ try {
     (await page.locator('#view-about .card-icon').count()) === 5 &&
     (await page.locator('#view-about .card-sub').count()) === 5);
   check('it opens on where the data goes', /Your data stays with you/.test(about));
+  // The privacy answer is a list of promises. It has to say where to go and
+  // verify them, in the same card, pointing at the same repository the footer
+  // does — two links that disagree about where the source lives is worse than
+  // one, since a reader who notices stops believing either.
+  check('the privacy answer says the promises can be verified, and where',
+    await page.evaluate(() => {
+      const card = document.querySelector('#view-about .card');
+      const link = card.querySelector('a[href*="github.com"]');
+      const foot = document.querySelector('.footer a[href*="github.com"]');
+      if (!link || !foot) return false;
+      return link.getAttribute('href') === foot.getAttribute('href') &&
+        /\bnoopener\b/.test(link.getAttribute('rel') || '') &&
+        /open source|source|code/i.test(card.innerText);
+    }),
+    // Both sides, since the check fails if either is missing or they disagree.
+    await page.evaluate(() => {
+      const href = s => { const a = document.querySelector(s); return a ? a.getAttribute('href') : 'none'; };
+      return 'privacy card: ' + href('#view-about .card a[href*="github.com"]') +
+        ' | footer: ' + href('.footer a[href*="github.com"]');
+    }));
   check('the first section is asked as the question a reader would ask',
     (await page.locator('#view-about .card-head h2').first().innerText()) === 'Where does my data go?',
     await page.locator('#view-about .card-head h2').first().innerText());

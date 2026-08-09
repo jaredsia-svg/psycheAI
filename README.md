@@ -93,7 +93,29 @@ overflowed by 14px at 375 and 32px at 320, and shrinking the links to absorb it 
 under the 11px minimum, so the wordmark came off every phone. Shortening "How it works" to "FAQ"
 gave back more than that cost — re-measured at 412 / 390 / 375 / 360 / 320px the nav sits on one row
 with no horizontal scroll and nothing under 11.5px — so the wordmark is back, and only a folded
-phone under 320px still loses it.
+phone under 320px still loses it. The footer kept saying "how it works" for several turns after
+that rename, which made one destination look like two; a check now reads both labels and requires
+them to match, so the next rename fails rather than half-lands.
+
+### The landing page's outline, and its motion
+
+Two things a sighted reader scrolling past would never notice, and the suite now holds:
+
+The **heading outline** goes `h1 → h2 → h3` with no gaps. It did not: the steps row was the only
+block on the page with no heading of its own, so its four `<h3>` cards hung straight off the hero's
+`<h1>`, and anyone navigating by heading met level 3 with nothing above it to belong to. Giving the
+row a real `<h2>` ("How it works") fixes the outline and labels the section in the same stroke. The
+check walks every heading in the welcome view and fails on any jump of more than one level, so it
+covers headings nobody has written yet.
+
+**`prefers-reduced-motion` reaches the scroll.** The stylesheet has a reduced-motion block, but it
+can only turn off `transition` and `animation`; the hero's primary action moves the page with
+`scrollIntoView({ behavior: 'smooth' })`, which is a JS API and never sees the media query. A
+page-length glide is precisely the motion that setting exists to suppress. `app.js` now reads the
+query at click time — not at load, so changing the OS setting takes effect without a reload — and
+passes `'auto'` when it is set. It is checked in two browser contexts that differ only in that
+setting, recording the options the handler actually passes: a check on either context alone would
+have passed against the bug.
 
 The profile page and the scan page both show this person's own code and offer the same two actions,
 so painting the canvas, copying the link and building the download are each one function bound to
@@ -293,6 +315,14 @@ where accuracy usually slips, so the suite guards both ends — nine terms (`bou
 `archive`, `.zip`, `API key`, `localStorage`, `proxy`, `endpoint`, `payload`, `end-to-end`) are
 asserted absent from those two sections, and the honesty checks below are re-pointed at whatever the
 current wording is rather than dropped whenever the copy is rewritten.
+
+One of those cut caveats came back in a smaller form. Everything above is an *assertion*: the page
+asks for somebody's whole Instagram history, including their messages, and answers the obvious
+question with promises. The repository is public, so the promises are checkable, and the privacy
+card now says so and links to it — as does the footer. Both links are held to the same URL by a
+check, since two links disagreeing about where the source lives is worse than one, and a reader who
+notices the disagreement stops believing either. What did not come back is the self-hosting
+explainer; a link is a pointer, and that was a paragraph.
 
 The page used to explain *why* the relay exists and to note two further caveats — that an unlocked
 device is readable, and that the code can be self-hosted. All three were cut as clutter. Cutting a
@@ -816,14 +846,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 304 checks: synthesises a real ZIP export and runs
+npm test           # 311 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 475 checks: drives the real UI in Chromium against a
+npm run test:ui    # 553 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -66,6 +66,11 @@
     </div>
   </header>
 
+  <!-- The steps row was the one block on this page with no heading of its own,
+       which left four <h3> cards hanging directly off the hero's <h1> — a
+       screen reader navigating by heading met level 3 with no level 2 above it.
+       The heading fixes the outline and names the section at the same time. -->
+  <h2 class="row-head">How it works</h2>
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
       <p>Download your data from the Instagram app. See below for instructions. Be patient as it may take a while.</p></div>
@@ -356,6 +361,10 @@
       made by Google or Anthropic, and returns the result to you. We do not keep it. It is held only
       for the few seconds the request takes, and is never saved, stored or logged.</p>
 
+    <p><strong>You do not have to take our word for any of this.</strong> The whole thing is open
+      source: <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">read
+      the code on GitHub</a> and check what it sends for yourself.</p>
+
     <div class="split">
       <div>
         <h3 class="h-good">Never leaves this device</h3>
@@ -586,7 +595,11 @@
 </dialog>
 
 <footer class="footer">
-  <p>PsycheAI · <a href="#" data-nav="about">how it works</a></p>
+  <!-- Named the same as the nav link that goes to the same place. It read "how
+       it works" until now, which made one destination look like two. -->
+  <p>PsycheAI · <a href="#" data-nav="about">FAQ</a> ·
+    <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">Source
+      code on GitHub</a></p>
 </footer>
 
 <script src="vendor/qrcode.js"></script>
