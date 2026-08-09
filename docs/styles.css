@@ -138,7 +138,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .hero {
   position: relative; isolation: isolate; overflow: clip;
   margin: calc(-1 * clamp(1.2rem, 4vw, 2.5rem)) calc(-1 * clamp(1rem, 4vw, 2rem)) 2rem;
-  padding: clamp(1.8rem, 5vw, 3rem) clamp(1rem, 4vw, 2rem) clamp(1.4rem, 3vw, 2.2rem);
+  padding: clamp(1.8rem, 5vw, 3rem) clamp(1rem, 4vw, 2rem) clamp(1.1rem, 2.2vw, 1.6rem);
   border-radius: 0 0 28px 28px;
   background:
     radial-gradient(66% 130% at 84% 34%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 70%),
@@ -166,7 +166,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .hero-mark-to { stop-color: var(--accent-2); }
 
 .hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
-.hero-actions { margin-bottom: 1.1rem; }
+/* Nothing follows the buttons in the hero any more — the privacy badge that
+   used to sit under them moved down to "Start here" — so their bottom margin
+   was left holding open a row with nothing in it. Scoped through .hero to beat
+   .btn-row's own `margin: .8rem 0`, which is defined further down this file at
+   the same specificity and would otherwise win on order alone. */
+.hero .hero-actions { margin-bottom: 0; }
 
 /* The two hero actions stay on one row on a phone. Left to wrap they stack,
    which pushes the privacy badge and everything under it a button's height

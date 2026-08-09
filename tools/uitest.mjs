@@ -223,13 +223,15 @@ try {
       return Math.round(pill.top - heading.bottom) + 'px above, ' +
         Math.round(dropzone.top - pill.bottom) + 'px below';
     }));
-  // The hero's warm band now closes under the buttons, which are the last
-  // thing in it. A band running on past its content reads as a broken layout.
+  // The hero's warm band closes under the buttons, which are the last thing in
+  // it. The badge used to sit in the space beneath them; with it gone the
+  // buttons' own bottom margin was holding open an empty row, so the threshold
+  // is tight enough to catch that coming back — it was 48px, it is 26 now.
   check('the warm band closes just under the hero actions, not a screen later',
     await page.evaluate(() => {
       const actions = document.querySelector('.hero-actions').getBoundingClientRect();
       const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      return hero.bottom - actions.bottom < 70;
+      return hero.bottom - actions.bottom < 34;
     }),
     await page.evaluate(() => {
       const actions = document.querySelector('.hero-actions').getBoundingClientRect();
@@ -512,6 +514,18 @@ try {
   await page.setViewportSize({ width: 1100, height: 900 });
   check('the two hero buttons share one row at every phone width',
     Object.values(heroRowAtWidths).every(v => v === 'one row'), JSON.stringify(heroRowAtWidths));
+
+  // The sample leads. Checked in both document order and rendered position —
+  // a flex `order` or `row-reverse` would move it visually while leaving it
+  // second to a screen reader and to anything tabbing through.
+  check('the sample button comes first, in the markup and on the screen',
+    await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll('.hero-actions button')].map(b => b.id);
+      const sample = document.querySelector('#hero-sample').getBoundingClientRect();
+      const start = document.querySelector('#hero-start').getBoundingClientRect();
+      return buttons.join() === 'hero-sample,hero-start' && sample.left < start.left;
+    }),
+    (await page.locator('.hero-actions button').allInnerTexts()).join(' → '));
 
   // The two actions are told apart by treatment, not position: the sample is
   // filled, the primary is an outline heavy enough to hold its own next to it.
