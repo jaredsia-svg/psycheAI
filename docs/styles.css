@@ -248,18 +248,59 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .insight-branch li::marker { color: var(--accent); }
 .insight-actions { margin: 1.1rem 0 0; }
 
-/* Unmissable on purpose. The sample is convincing precisely because it uses
-   the real report layout, which is also exactly how somebody comes to think
-   it is theirs. */
-.sample-banner {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem;
-  justify-content: space-between;
-  margin-bottom: 1.2rem; padding: .8rem 1rem;
-  border: 1px solid var(--accent); border-radius: var(--radius);
-  background: var(--accent-soft); color: var(--ink);
-  font-size: .9rem;
+/* The sample dialog. Head and foot are pinned and only the report scrolls, so
+   the way out is on screen the whole way down — a reader four sections deep
+   should never have to scroll back up to leave. */
+.sample-dialog {
+  width: min(46rem, calc(100vw - 1.5rem)); max-width: none;
+  max-height: min(88vh, 60rem);
+  padding: 0; overflow: hidden;
+  flex-direction: column;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg); color: var(--ink); box-shadow: var(--shadow);
 }
-.sample-banner .btn { flex: none; }
+/* Scoped to [open], not set on the element: a bare `display: flex` beats the
+   user agent's `dialog:not([open]) { display: none }`, which leaves the closed
+   dialog laid out over the page swallowing every click on it. */
+.sample-dialog[open] { display: flex; }
+.sample-dialog::backdrop { background: rgba(20, 14, 26, .58); backdrop-filter: blur(2px); }
+
+.sample-dialog-head {
+  display: flex; align-items: flex-start; gap: 1rem; flex: none;
+  padding: 1.1rem clamp(1rem, 3vw, 1.5rem) .9rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-alt);
+}
+.sample-dialog-head > div { flex: 1 1 auto; min-width: 0; }
+.sample-dialog-head h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
+.sample-dialog-head .muted { margin: 0; font-size: .86rem; max-width: 48ch; }
+
+.sample-close {
+  flex: none; display: grid; place-items: center;
+  width: 38px; height: 38px; margin: -.2rem -.3rem 0 0;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg); color: var(--ink-soft); cursor: pointer;
+  transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+.sample-close svg { width: 20px; height: 20px; }
+.sample-close:hover, .sample-close:focus-visible {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-soft); outline: none;
+}
+
+.sample-dialog-body {
+  flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
+  padding: 1rem clamp(1rem, 3vw, 1.5rem) 1.2rem;
+}
+/* Inside the dialog the sections are already on a panel, so the page-level
+   card treatment would be a box in a box. */
+.sample-dialog-body .section-card {
+  box-shadow: none; border-radius: 12px; padding: 1rem clamp(.9rem, 2vw, 1.2rem);
+}
+
+.sample-dialog-foot {
+  flex: none; padding: .9rem clamp(1rem, 3vw, 1.5rem);
+  border-top: 1px solid var(--line); background: var(--bg-alt);
+}
 
 @media (min-width: 560px) {
   .insight-branches { grid-template-columns: repeat(2, 1fr); }

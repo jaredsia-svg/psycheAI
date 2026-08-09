@@ -231,17 +231,6 @@
     <p class="letterhead-meta" id="letterhead-meta"></p>
   </header>
 
-  <!-- Only shown while the sample is on screen. It has to be unmissable: the
-       whole point of the sample is that it looks exactly like a real report,
-       which is also exactly how someone comes to believe it is theirs. -->
-  <div class="sample-banner no-print" id="sample-banner" hidden>
-    <span>
-      <strong>This is a sample report.</strong> Written for a made-up account so you can see the
-      shape of one. Yours will be about you.
-    </span>
-    <button class="btn" id="sample-exit" type="button">Analyse my Instagram</button>
-  </div>
-
   <header class="page-head screen-only">
     <h1 id="profile-title">Your personality analysis</h1>
     <div class="btn-row no-print">
@@ -484,6 +473,32 @@
 <!-- ══════════════ basis picker ══════════════ -->
 <!-- Opens once a code has been read, before the model call, because the
      report answers whichever question is chosen here and only that one. -->
+<!-- The sample report. A dialog rather than a view: it is something to look
+     into and step back out of, not somewhere to be, and it must never leave
+     the reader wondering whether the report they are reading is theirs. The
+     body is filled with the same section HTML a real report renders — the
+     download, re-run, delete and QR panels live outside that, so they are
+     absent here by construction rather than by hiding them one by one. -->
+<dialog id="sample-dialog" class="sample-dialog" aria-labelledby="sample-dialog-title">
+  <header class="sample-dialog-head">
+    <div>
+      <h2 id="sample-dialog-title">A sample report</h2>
+      <p class="muted">Written for a made-up account, so you can see the shape of one before you
+        go and fetch your export. Yours will be about you.</p>
+    </div>
+    <button class="sample-close" id="sample-close" type="button" aria-label="Close the sample">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </header>
+  <div class="sample-dialog-body" id="sample-body"></div>
+  <div class="sample-dialog-foot">
+    <button class="btn" id="sample-start" type="button">Analyse my Instagram</button>
+  </div>
+</dialog>
+
 <dialog id="depth-dialog" class="mode-dialog" aria-labelledby="depth-dialog-title">
   <h2 id="depth-dialog-title">How deep should the analysis go?</h2>
   <p class="muted" id="depth-dialog-sub">Choose Standard or Comprehensive analysis. Standard is free.</p>

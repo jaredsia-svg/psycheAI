@@ -205,11 +205,7 @@
   // until a profile exists, so until then they are noise. They start hidden in
   // the markup and appear the moment there is something to point at.
   function syncNav() {
-    // The sample borrows state.profile to render, but it is not a profile the
-    // reader has. Asking the sample-holder rather than state.profile keeps the
-    // nav honest: a first-time visitor looking at the sample should not be
-    // offered "My Compatibility" for a person who does not exist.
-    const ready = Boolean(inSample() ? heldProfile !== 'none' : state.profile);
+    const ready = Boolean(state.profile);
     $('#nav-profile').hidden = !ready;
     $('#nav-scan').hidden = !ready;
   }
@@ -223,61 +219,72 @@
 
   // ---- the sample report ----
   //
-  // Rendered from docs/sample.json through the same renderProfile a real
-  // report goes through, because anything less than the real layout is a
-  // mockup and a mockup is what people discount. It is never written to
-  // storage: while it is on screen the reader's own profile is held here and
-  // put straight back the moment they navigate anywhere.
+  // A dialog over the page rather than a view of its own. It renders the same
+  // section HTML a real report renders, because anything less than the real
+  // layout is a mockup and a mockup is what people discount — but it is
+  // something to look into and step back out of, so nothing here touches
+  // state.profile or storage, and the nav does not change underneath it.
   //
-  // Today nobody with a profile can reach the sample — boot() and go('home')
-  // both send them to their report, and the buttons only exist on the welcome
-  // page. The hand-back is here anyway because it costs six lines, and the day
-  // somebody adds a route back to the landing page the alternative is a button
-  // labelled "see a sample" quietly replacing a reader's own report with a
-  // stranger's until they think to reload.
-  let heldProfile = null;
-  const inSample = () => heldProfile !== null;
-
-  function leaveSample() {
-    if (!inSample()) return;
-    state.profile = heldProfile === 'none' ? null : heldProfile;
-    heldProfile = null;
-    $('#sample-banner').hidden = true;
-  }
+  // Back closes it. On a phone, back is what people reach for to dismiss
+  // something covering the page, and without an entry to pop they leave the
+  // site instead. The entry is pushed on open and popped on close; the flag
+  // stops the two paths chasing each other — a close triggered by popstate
+  // must not call history.back() a second time.
+  let sampleHistoryEntry = false;
+  let closingFromHistory = false;
+  const sampleDialog = () => $('#sample-dialog');
 
   async function showSample(button) {
-    if (inSample()) return;
+    const dialog = sampleDialog();
+    if (dialog.open) return;
     const label = button && button.textContent;
     if (button) { button.disabled = true; button.textContent = 'Loading…'; }
     try {
-      const report = await fetch('sample.json').then(r => {
-        if (!r.ok) throw new Error('The sample could not be loaded.');
-        return r.json();
+      const report = await fetch('sample.json').then(response => {
+        if (!response.ok) throw new Error('The sample could not be loaded.');
+        return response.json();
       });
-      const card = Card.shape(report.card);
-      heldProfile = state.profile || 'none';
-      state.profile = {
-        report,
-        card,
-        payload: await Card.encodeCard(report.card),
-        model: 'sample',
-        createdAt: new Date().toISOString(),
-      };
-      renderProfile();
-      $('#sample-banner').hidden = false;
-      show('profile');
+      $('#sample-body').innerHTML = reportSectionsHtml(report);
+      $('#sample-body').scrollTop = 0;
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+      history.pushState({ psycheaiSample: true }, '');
+      sampleHistoryEntry = true;
     } catch (error) {
-      leaveSample();
       flash('#upload-error', (error && error.message) || 'The sample could not be loaded.');
     } finally {
       if (button) { button.disabled = false; button.textContent = label; }
     }
   }
 
+  function closeSample() {
+    const dialog = sampleDialog();
+    if (dialog.open) dialog.close();
+    else if (dialog.hasAttribute('open')) dialog.removeAttribute('open');
+  }
+
+  sampleDialog().addEventListener('close', () => {
+    // Esc and the cross both land here. Drop the entry we pushed so the
+    // reader's next Back goes where it would have gone before they looked.
+    if (sampleHistoryEntry && !closingFromHistory) history.back();
+    sampleHistoryEntry = false;
+    // Emptied rather than left in place. A closed dialog is still in the
+    // document, so a whole second report's worth of markup would sit there
+    // shadowing the real one's selectors — and the sections it builds are the
+    // same ones the reader's own report uses.
+    $('#sample-body').innerHTML = '';
+  });
+
+  window.addEventListener('popstate', () => {
+    if (!sampleDialog().open && !sampleDialog().hasAttribute('open')) return;
+    closingFromHistory = true;
+    sampleHistoryEntry = false;
+    closeSample();
+    closingFromHistory = false;
+  });
+
   function go(target) {
-    // Every route out of the sample runs through here, so this is the one
-    // place the reader's own profile has to be restored.
-    leaveSample();
+    closeSample();
     if (target === 'home') { return state.profile ? go('profile') : show('welcome'); }
     if (target === 'profile') {
       if (!state.profile) return show('welcome');
@@ -314,19 +321,20 @@
   // the file picker: an OS dialog opening on a page the reader has not seen
   // the bottom of yet is startling, and the switches above the dropzone are
   // choices they should get to look at first.
-  $('#hero-start').addEventListener('click', () => {
-    leaveSample();
+  function toUpload() {
     show('welcome');
     $('.upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     dropzone.focus({ preventScroll: true });
-  });
+  }
+
+  $('#hero-start').addEventListener('click', toUpload);
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
-  $('#sample-exit').addEventListener('click', () => {
-    leaveSample();
-    show('welcome');
-    $('.upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
+  $('#sample-close').addEventListener('click', closeSample);
+  // Closing first, then scrolling: the dialog's own close handler pops the
+  // history entry, and doing that after a view change would land the reader
+  // back where they came from instead of at the upload box.
+  $('#sample-start').addEventListener('click', () => { closeSample(); toUpload(); });
 
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', event => {
@@ -561,29 +569,16 @@
     } catch (error) { /* canvas unavailable — the link still works */ }
   }
 
-  function renderProfile() {
-    const profile = state.profile;
-    if (!profile) return;
-    const report = profile.report;
-
-    const who = profile.card.name || 'Your';
-    $('#profile-title').textContent = who + '’s personality analysis';
-
-    // The PDF letterhead. Only ever visible in print, but filled here so the
-    // export never depends on anything happening at print time.
-    $('#letterhead-name').textContent = who;
-    $('#letterhead-meta').textContent =
-      'Generated ' + new Date(profile.createdAt).toLocaleDateString(undefined,
-        { year: 'numeric', month: 'long', day: 'numeric' }) +
-      ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
-
-    paintQrCanvas('#qr-canvas');
-
-    const size = profile.payload.length;
-    $('#payload-size').textContent = 'Shareable card: ' + size + ' characters' +
-      (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
-      ' Your full report is not included.';
-
+  /**
+   * The report's sections as HTML, from the report alone.
+   *
+   * Split out of renderProfile so the sample can render the same sections
+   * into a dialog. Everything the sample must not offer — the download
+   * buttons, re-run, delete, the QR panel — lives outside #profile-body in
+   * index.html, so building only this excludes them by construction rather
+   * than by a list of things to hide that someone has to remember to update.
+   */
+  function reportSectionsHtml(report) {
     const head = sectionHead;
 
     let html = '';
@@ -723,7 +718,33 @@
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p></div>';
 
-    $('#profile-body').innerHTML = html;
+    return html;
+  }
+
+  function renderProfile() {
+    const profile = state.profile;
+    if (!profile) return;
+    const report = profile.report;
+
+    const who = profile.card.name || 'Your';
+    $('#profile-title').textContent = who + '’s personality analysis';
+
+    // The PDF letterhead. Only ever visible in print, but filled here so the
+    // export never depends on anything happening at print time.
+    $('#letterhead-name').textContent = who;
+    $('#letterhead-meta').textContent =
+      'Generated ' + new Date(profile.createdAt).toLocaleDateString(undefined,
+        { year: 'numeric', month: 'long', day: 'numeric' }) +
+      ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
+
+    paintQrCanvas('#qr-canvas');
+
+    const size = profile.payload.length;
+    $('#payload-size').textContent = 'Shareable card: ' + size + ' characters' +
+      (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
+      ' Your full report is not included.';
+
+    $('#profile-body').innerHTML = reportSectionsHtml(report);
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means

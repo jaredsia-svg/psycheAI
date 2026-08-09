@@ -25,6 +25,20 @@ const check = (label, ok, detail) => {
   else failures.push(label + (detail === undefined ? '' : ' — ' + detail));
 };
 
+// The nav is sticky, so an element scrolled flush to the top of the viewport
+// sits underneath it and Playwright's click retries forever against it. Centre
+// the target first; this is a fact about the page, not about the test. Only
+// for things on the page — a button inside an open modal needs no scrolling,
+// and scrolling the page under one just moves the coordinates off it.
+async function clickClear(page, selector) {
+  await page.locator(selector).scrollIntoViewIfNeeded();
+  await page.evaluate(sel => {
+    const box = document.querySelector(sel).getBoundingClientRect();
+    window.scrollBy(0, box.top - window.innerHeight / 2);
+  }, selector);
+  await page.click(selector);
+}
+
 // Every upload now stops at the depth picker, so the suite has to answer it
 // the way a reader would before anything else can proceed.
 async function chooseDepth(page, depth) {
@@ -425,50 +439,120 @@ try {
   //
   // Its whole value is that it is the real report layout rather than a mockup,
   // which is also the danger: a reader must never be able to mistake it for
-  // theirs, and someone who already has a report must never lose it by
-  // pressing a button labelled "see a sample".
+  // theirs, and must never be handed the controls that belong to a real one.
   check('the hero offers a way in and a way to look first',
     (await page.locator('#hero-start').isVisible()) &&
     (await page.locator('#hero-sample').isVisible()) &&
     (await page.locator('#insight-sample').isVisible()));
 
   const beforeSample = analyseBodies.length;
-  await page.click('#hero-sample');
-  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
-  const sample = await page.evaluate(() => ({
-    banner: document.querySelector('#sample-banner').hidden
-      ? '' : document.querySelector('#sample-banner').innerText.replace(/\s+/g, ' ').trim(),
-    title: document.querySelector('#profile-title').textContent,
-    body: document.querySelector('#profile-body').innerText,
-    stored: localStorage.getItem('psycheai_profile'),
-    navLinks: [...document.querySelectorAll('.nav-links a:not([hidden])')].map(a => a.textContent).join('|'),
-  }));
-  check('the sample renders the real report, not a picture of one',
-    sample.body.length > 4000 && /Big Five/.test(sample.body) && /Elastigirl/.test(sample.body),
+  await clickClear(page, '#hero-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  const sample = await page.evaluate(() => {
+    const dialog = document.querySelector('#sample-dialog');
+    return {
+      text: dialog.innerText,
+      body: document.querySelector('#sample-body').innerText,
+      stored: localStorage.getItem('psycheai_profile'),
+      navLinks: [...document.querySelectorAll('.nav-links a:not([hidden])')]
+        .map(a => a.textContent).join('|'),
+      // The report view must not have been navigated to underneath it.
+      profileViewHidden: document.querySelector('#view-profile').hidden,
+      // Only the report scrolls; head and foot stay put, so the way out is on
+      // screen however far down the reader gets.
+      bodyScrolls: document.querySelector('#sample-body').scrollHeight >
+        document.querySelector('#sample-body').clientHeight,
+    };
+  });
+  check('the sample opens over the page rather than navigating to it',
+    sample.profileViewHidden && (await page.locator('#view-welcome').isVisible()));
+  check('the sample renders the real report sections',
+    sample.body.length > 2500 && /Big Five/.test(sample.body) && /Elastigirl/.test(sample.body),
     sample.body.length + ' chars');
-  check('the sample says plainly that it is one', /This is a sample report/.test(sample.banner),
-    sample.banner);
-  check('the sample offers the way out of itself', /Analyse my Instagram/.test(sample.banner));
-  // The reason it is safe to render a sample into state.profile at all.
-  // Reported as a length rather than a value: the thing that lands here on
-  // failure is a whole serialised profile, and a detail that long buries every
-  // other line in the run.
+  check('the sample says plainly that it is one', /sample report/i.test(sample.text));
+  check('the report scrolls inside the dialog, so the way out stays visible',
+    sample.bodyScrolls);
+  // Everything below belongs to a report somebody owns. Offering any of it on
+  // a stranger's sample is at best confusing and at worst destructive — the
+  // delete button clears the reader's own stored profile.
+  for (const [what, selector] of [
+    ['a download button', '#sample-dialog #export-pdf-top, #sample-dialog #export-pdf-bottom'],
+    ['a re-run button', '#sample-dialog #reanalyse'],
+    ['a delete button', '#sample-dialog #delete-profile'],
+    ['the QR compatibility panel', '#sample-dialog .qr-panel'],
+  ]) {
+    check('the sample does not offer ' + what,
+      (await page.locator(selector).count()) === 0);
+  }
   check('the sample writes nothing to storage', sample.stored === null,
     sample.stored === null ? '' : 'wrote ' + sample.stored.length + ' chars');
   check('the sample sends nothing to the model', analyseBodies.length === beforeSample);
-  // state.profile is borrowed while the sample is up, and the nav reads that
-  // field. Without care a first-time visitor is offered a compatibility scan
-  // against a person who does not exist.
   check('the sample does not pretend the visitor has a profile',
     sample.navLinks === 'FAQ', sample.navLinks);
 
-  // Leaving puts the page back exactly as it was.
-  await page.click('#sample-exit');
-  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
-  check('leaving the sample returns to the upload page',
-    (await page.locator('#view-welcome').isVisible()) &&
-    (await page.locator('#sample-banner').isHidden()));
-  check('leaving the sample leaves no profile behind',
+  // Back is what people reach for on a phone to dismiss something covering the
+  // page. Without an entry to pop it leaves the site instead, so opening
+  // pushes one — and closing any other way has to pop it again, or the next
+  // Back press does nothing and looks broken.
+  const historyBefore = await page.evaluate(() => history.length);
+  await page.goBack();
+  await page.waitForLoadState('domcontentloaded');
+  // Asked this way round because the failure mode is leaving the site: with no
+  // entry pushed, Back navigates away and there is no dialog left to query.
+  const afterBack = await page.evaluate(() => {
+    const dialog = document.querySelector('#sample-dialog');
+    return dialog ? (dialog.open ? 'still open' : 'closed') : 'left the site';
+  });
+  check('pressing back closes the sample instead of leaving the site',
+    afterBack === 'closed' && (await page.locator('#view-welcome').isVisible()),
+    afterBack + ' — ' + page.url());
+
+  // A closed <dialog> is still in the document. Styling it `display: flex`
+  // unconditionally beats the user agent's `dialog:not([open]) { display:none }`
+  // and leaves it laid out over the page, swallowing every click — invisible,
+  // and total. Asked as "what is actually under the pointer".
+  check('the closed sample is not still covering the page',
+    await page.evaluate(() => {
+      const button = document.querySelector('#hero-sample').getBoundingClientRect();
+      const hit = document.elementFromPoint(button.left + button.width / 2,
+        button.top + button.height / 2);
+      return Boolean(hit && hit.closest('#hero-sample'));
+    }),
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#sample-dialog')).display));
+
+  await clickClear(page, '#hero-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await page.click('#sample-close');
+  // Waited on the property, not the selector: a closed dialog is display:none,
+  // so waitForSelector's default visible state can never be satisfied by it.
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open,
+    { timeout: 20000 });
+  check('the cross closes it too', await page.locator('#view-welcome').isVisible());
+  check('closing by cross leaves no history entry stranded behind it',
+    (await page.evaluate(() => history.length)) === historyBefore,
+    'was ' + historyBefore + ', now ' + (await page.evaluate(() => history.length)));
+
+  await clickClear(page, '#hero-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await page.keyboard.press('Escape');
+  // Waited on the property, not the selector: a closed dialog is display:none,
+  // so waitForSelector's default visible state can never be satisfied by it.
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open,
+    { timeout: 20000 });
+  check('escape closes it as a dialog should',
+    await page.locator('#view-welcome').isVisible());
+
+  await clickClear(page, '#insight-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await page.click('#sample-start');
+  // Waited on the property, not the selector: a closed dialog is display:none,
+  // so waitForSelector's default visible state can never be satisfied by it.
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open,
+    { timeout: 20000 });
+  check('the second button opens the same sample, and its call to action leaves it',
+    await page.locator('#view-welcome').isVisible());
+  check('looking at the sample leaves no profile behind',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
   // ---- upload ----

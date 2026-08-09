@@ -232,17 +232,28 @@ flattering — two relationship weaknesses, two career weaknesses, a 68/100 conf
 `(tentative)` attachment read — because a sample that only praises misrepresents what the model
 actually returns, and the reader finds that out at the worst possible moment.
 
-Nothing about it touches storage. The sample borrows `state.profile` to render and hands it back the
-moment the reader navigates anywhere, which `go()` does in one place for every route out. Today that
-hand-back guards a state the UI cannot reach — `boot()` and `go('home')` both send a reader who has
-a profile straight to their report, so the welcome page and its buttons are invisible to them — and
-it is there anyway, because the day somebody adds a route back to the landing page the alternative
-is a button labelled *see a sample* replacing a reader's own report with a stranger's. The suite
-asserts the unreachability rather than pretending to test through it.
+It opens as a dialog over the page rather than as a view of its own — something to look into and
+step back out of. Nothing it does touches `state.profile` or storage, so the nav does not change
+underneath it and there is no state to hand back.
 
-The nav is asked the same question separately. It reads `state.profile` to decide whether to show
-**My Personality** and **My Compatibility**, and the sample borrows that field — so without care a
-first-time visitor gets offered a compatibility scan against a person who does not exist.
+**Back closes it.** On a phone, back is what people reach for to dismiss something covering the
+page, and with no history entry to pop they leave the site instead. Opening pushes one; closing by
+any other route pops it again, or the reader's next Back press does nothing and looks broken. A flag
+keeps the two paths from chasing each other, since a close triggered by `popstate` must not call
+`history.back()` a second time.
+
+What it deliberately does not carry: the download buttons, **Re-run the analysis**, **Delete
+everything**, and the QR compatibility panel. Those all live outside `#profile-body` in
+`index.html`, so building only the report sections excludes them by construction rather than by a
+list of things to hide that someone has to remember to update. Two of them are worse than clutter on
+a stranger's report — delete would clear the reader's own stored profile.
+
+Two bugs came out of building it, both invisible until measured. Styling the dialog `display: flex`
+beats the user agent's `dialog:not([open]) { display: none }`, so the closed dialog stayed laid out
+over the page and swallowed every click on it; the rule is scoped to `[open]` now, and a check asks
+what is actually under the pointer after closing. And a closed dialog is still in the document, so
+leaving the sample's markup in place left a second report's worth of sections shadowing the real
+one's selectors — the body is emptied on close.
 
 A self-test walks `sample.json` against `PROFILE_SCHEMA` field by field. A sample missing a field is
 a field the renderer reads as `undefined` in the one report most visitors will ever see; deleting
