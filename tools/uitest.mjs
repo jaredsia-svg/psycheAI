@@ -620,9 +620,13 @@ try {
   });
   check('the sample opens over the page rather than navigating to it',
     sample.profileViewHidden && (await page.locator('#view-welcome').isVisible()));
+  // Named from the fixture rather than typed here, so renaming the character in
+  // the sample cannot leave this check quietly asserting against a stale name.
+  const sampleFixture = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
   check('the sample renders the real report sections',
-    sample.body.length > 2500 && /Big Five/.test(sample.body) && /Elastigirl/.test(sample.body),
-    sample.body.length + ' chars');
+    sample.body.length > 2500 && /Big Five/.test(sample.body) &&
+    sample.body.includes(sampleFixture.essence.character),
+    sample.body.length + ' chars, essence ' + sampleFixture.essence.character);
   check('the sample says plainly that it is one', /sample report/i.test(sample.text));
   check('the report scrolls inside the dialog, so the way out stays visible',
     sample.bodyScrolls);
