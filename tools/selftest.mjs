@@ -171,6 +171,60 @@ check('the character may not be a flattering pick',
 check('the icon is asked for as a single emoji standing for the character',
   /Exactly one emoji character/.test(essenceProps.icon.description));
 
+// ---------- the sample report ----------
+//
+// docs/sample.json is what "See a sample report" renders, and it goes through
+// the same renderProfile a real report does. So it has to satisfy the schema
+// the model is held to, exactly: a field the sample is missing is a field the
+// renderer reads as undefined in the one report every visitor sees. Written by
+// hand rather than taken from lib/mock.js — the mock says "Mock reading for
+// agreeableness" on purpose, which is right for a fixture and useless as a
+// shop window.
+const sample = JSON.parse(readFileSync(new URL('../docs/sample.json', import.meta.url), 'utf8'));
+
+function schemaFaults(node, value, path) {
+  const faults = [];
+  if (node.type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return [path + ': not an object'];
+    for (const key of node.required || []) {
+      const at = path ? path + '.' + key : key;
+      if (!(key in value)) faults.push(at + ': missing');
+      else faults.push(...schemaFaults(node.properties[key], value[key], at));
+    }
+    for (const key of Object.keys(value)) {
+      // A leading underscore marks a note to whoever edits the file, not data.
+      if (key.startsWith('_') || node.properties[key]) continue;
+      faults.push((path ? path + '.' : '') + key + ': not in the schema');
+    }
+  } else if (node.type === 'array') {
+    if (!Array.isArray(value)) return [path + ': not an array'];
+    value.forEach((item, i) => faults.push(...schemaFaults(node.items, item, path + '[' + i + ']')));
+  } else if (node.enum) {
+    if (!node.enum.includes(value)) faults.push(path + ': ' + JSON.stringify(value) + ' not in enum');
+  } else if (node.type === 'integer' && !Number.isInteger(value)) {
+    faults.push(path + ': not an integer');
+  } else if (node.type === 'string' && typeof value !== 'string') {
+    faults.push(path + ': not a string');
+  }
+  return faults;
+}
+
+const sampleFaults = schemaFaults(prompts.PROFILE_SCHEMA, sample, '');
+check('the sample report satisfies the profile schema exactly', sampleFaults.length === 0,
+  sampleFaults.slice(0, 6).join(' | '));
+// It is the only report most visitors will ever read, and a sample that only
+// flatters would misrepresent what the model actually returns.
+check('the sample report is honest about weaknesses, not an advert',
+  sample.relationship.weaknesses.length >= 2 && sample.career.weaknesses.length >= 2 &&
+  sample.confidence.score < 100 && /tentative/i.test(sample.relationship.attachment.style),
+  JSON.stringify({
+    relationship: sample.relationship.weaknesses.length,
+    career: sample.career.weaknesses.length,
+    confidence: sample.confidence.score,
+  }));
+check('the sample report is named as a sample rather than as a person',
+  sample.card.name === 'Sample', sample.card.name);
+
 // Love languages replaced "how to love you" and "who fits".
 const relProps = prompts.PROFILE_SCHEMA.properties.relationship.properties;
 check('the relationship section asks for love languages',

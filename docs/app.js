@@ -205,7 +205,11 @@
   // until a profile exists, so until then they are noise. They start hidden in
   // the markup and appear the moment there is something to point at.
   function syncNav() {
-    const ready = Boolean(state.profile);
+    // The sample borrows state.profile to render, but it is not a profile the
+    // reader has. Asking the sample-holder rather than state.profile keeps the
+    // nav honest: a first-time visitor looking at the sample should not be
+    // offered "My Compatibility" for a person who does not exist.
+    const ready = Boolean(inSample() ? heldProfile !== 'none' : state.profile);
     $('#nav-profile').hidden = !ready;
     $('#nav-scan').hidden = !ready;
   }
@@ -217,7 +221,63 @@
     window.scrollTo(0, 0);
   }
 
+  // ---- the sample report ----
+  //
+  // Rendered from docs/sample.json through the same renderProfile a real
+  // report goes through, because anything less than the real layout is a
+  // mockup and a mockup is what people discount. It is never written to
+  // storage: while it is on screen the reader's own profile is held here and
+  // put straight back the moment they navigate anywhere.
+  //
+  // Today nobody with a profile can reach the sample — boot() and go('home')
+  // both send them to their report, and the buttons only exist on the welcome
+  // page. The hand-back is here anyway because it costs six lines, and the day
+  // somebody adds a route back to the landing page the alternative is a button
+  // labelled "see a sample" quietly replacing a reader's own report with a
+  // stranger's until they think to reload.
+  let heldProfile = null;
+  const inSample = () => heldProfile !== null;
+
+  function leaveSample() {
+    if (!inSample()) return;
+    state.profile = heldProfile === 'none' ? null : heldProfile;
+    heldProfile = null;
+    $('#sample-banner').hidden = true;
+  }
+
+  async function showSample(button) {
+    if (inSample()) return;
+    const label = button && button.textContent;
+    if (button) { button.disabled = true; button.textContent = 'Loading…'; }
+    try {
+      const report = await fetch('sample.json').then(r => {
+        if (!r.ok) throw new Error('The sample could not be loaded.');
+        return r.json();
+      });
+      const card = Card.shape(report.card);
+      heldProfile = state.profile || 'none';
+      state.profile = {
+        report,
+        card,
+        payload: await Card.encodeCard(report.card),
+        model: 'sample',
+        createdAt: new Date().toISOString(),
+      };
+      renderProfile();
+      $('#sample-banner').hidden = false;
+      show('profile');
+    } catch (error) {
+      leaveSample();
+      flash('#upload-error', (error && error.message) || 'The sample could not be loaded.');
+    } finally {
+      if (button) { button.disabled = false; button.textContent = label; }
+    }
+  }
+
   function go(target) {
+    // Every route out of the sample runs through here, so this is the one
+    // place the reader's own profile has to be restored.
+    leaveSample();
     if (target === 'home') { return state.profile ? go('profile') : show('welcome'); }
     if (target === 'profile') {
       if (!state.profile) return show('welcome');
@@ -249,6 +309,24 @@
 
   const dropzone = $('#dropzone');
   const fileInput = $('#file-input');
+
+  // The hero's primary action. It scrolls rather than jumping straight into
+  // the file picker: an OS dialog opening on a page the reader has not seen
+  // the bottom of yet is startling, and the switches above the dropzone are
+  // choices they should get to look at first.
+  $('#hero-start').addEventListener('click', () => {
+    leaveSample();
+    show('welcome');
+    $('.upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    dropzone.focus({ preventScroll: true });
+  });
+  $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
+  $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
+  $('#sample-exit').addEventListener('click', () => {
+    leaveSample();
+    show('welcome');
+    $('.upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', event => {

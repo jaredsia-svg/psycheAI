@@ -1,0 +1,230 @@
+{
+  "_comment": "The report shown by 'See a sample report'. Hand-written for a fictional account, not generated: lib/mock.js exists for tests and says 'Mock reading for agreeableness' on purpose, which is right for a fixture and wrong for a shop window. Shaped to PROFILE_SCHEMA in lib/prompts.js, and a check holds it there. Deliberately not a flattering read — a sample that only praises would misrepresent what the model actually returns.",
+  "confidence": {
+    "score": 68,
+    "level": "moderate",
+    "rationale": "Four years of steady posting and 1,900 of your own captions and comments give a solid read on how you spend time and how you talk to people. Beliefs and attachment are thinner: you write warmly but rarely about yourself directly, so those sections lean on indirect evidence and are hedged accordingly."
+  },
+  "essence": {
+    "character": "Elastigirl",
+    "franchise": "Pixar",
+    "icon": "🧬",
+    "why": "You are the one holding several things together at once and making it look manageable — the group trip, the 6am run club, the friend who needed collecting from the airport. The comparison is not about capability so much as reach: your account shows someone stretched across a lot of commitments, all of them real, none of them dropped. What it does not show is anyone doing the same for you."
+  },
+  "summary": "You come across as an organiser with a warm centre — an ENFJ read, high on conscientiousness and agreeableness, moderate on extraversion in a way that surprises people who assume you are an extrovert because you are always at the thing. You post in tight clusters around events you arranged, then go quiet for a fortnight. The pattern is not inconsistency; it is recovery.\n\nWhat you value shows up more in what you do than what you say. Four years of captions and there is barely a sentence about yourself that is not attached to somebody else's news. You are generous with attention and sparing with disclosure, which reads as modesty and functions as a wall. Your Enneagram Two-wing-One fits: helpful by instinct, quietly exacting about standards, and inclined to resent it later rather than say so at the time.\n\nAt work the same shape holds. You are the person who notices what has not been assigned and does it. That makes you indispensable and, on the evidence here, slightly under-credited — you narrate the team's wins and rarely your own. The thing most likely to cost you is not capability but the reluctance to say what you want out loud."
+  ,
+  "bigFive": {
+    "openness": {
+      "score": 61,
+      "band": "moderate",
+      "reading": "You are curious inside familiar territory rather than restless for new territory. The same three trailheads recur for four years, but the books, the recipes and the routes within them keep changing. You like depth in a known place more than novelty for its own sake.",
+      "evidence": [
+        "Captions reference 14 distinct book titles across 2022–2025, none repeated",
+        "Location tags cluster on three parks, 78% of all tagged posts",
+        "No travel posts outside two countries in four years"
+      ]
+    },
+    "conscientiousness": {
+      "score": 84,
+      "band": "very high",
+      "reading": "The strongest signal in the export. You post about plans before they happen and follow-through after them, and the gap between the two is small. Training blocks run their full length; the December reset posts appear in December.",
+      "evidence": [
+        "47 posts naming a specific date or deadline, 41 followed by a completion post",
+        "Weekly posting variance is low — a steady 2–3 per week for 30 of 48 months",
+        "Recurring 'week 1 of 12' style captions across three separate training blocks"
+      ]
+    },
+    "extraversion": {
+      "score": 52,
+      "band": "moderate",
+      "reading": "You are social in bursts and solitary in between, which is not the same as being an extrovert. Group photos spike around events you organised, then your account goes quiet for ten to fourteen days. You appear to enjoy people and to need recovering from them.",
+      "evidence": [
+        "Group posts cluster into 9 bursts of 3–5 days, each followed by a 10+ day gap",
+        "You publish far less than you consume: 312 posts against 8,400 likes",
+        "Comments are frequent but short — median 9 words"
+      ]
+    },
+    "agreeableness": {
+      "score": 79,
+      "band": "high",
+      "reading": "Almost every comment you write is directed at somebody else's news rather than your own. Congratulation, encouragement, logistics. You disagree rarely in public and, when you do, you soften it first.",
+      "evidence": [
+        "84% of your comments appear on other people's posts, not replies on your own",
+        "Recurring openers: 'so proud of', 'this is so you', 'let me know if'",
+        "No comment in four years reads as an argument"
+      ]
+    },
+    "neuroticism": {
+      "score": 44,
+      "band": "moderate",
+      "reading": "Steadier than most, with a visible tell. Your posting rate drops sharply for a week or two after periods of unusually high activity, and the captions in those quiet stretches are shorter and more practical. Nothing here suggests distress; it suggests a battery you deplete and refill on a schedule.",
+      "evidence": [
+        "Caption length drops ~40% during the quiet stretches after event clusters",
+        "Two multi-week gaps follow the account's two busiest months",
+        "Tone stays consistent — no negative sentiment spike anywhere in the corpus"
+      ]
+    }
+  },
+  "mbti": {
+    "type": "ENFJ",
+    "confidence": "moderate",
+    "nickname": "The Protagonist",
+    "letters": [
+      {
+        "axis": "E/I",
+        "choice": "E",
+        "strength": "slight",
+        "why": "You organise and attend a great deal, but you also recover alone for a fortnight afterwards. The extraversion is real and it is not the loud kind.",
+        "inPractice": "You will happily host the thing and be the first to leave it."
+      },
+      {
+        "axis": "N/S",
+        "choice": "N",
+        "strength": "moderate",
+        "why": "Your captions reach for what an event meant more often than what happened at it — the pattern rather than the detail.",
+        "inPractice": "You are quick to see where something is going, and occasionally ahead of the evidence."
+      },
+      {
+        "axis": "T/F",
+        "choice": "F",
+        "strength": "clear",
+        "why": "Decisions in your captions are justified by their effect on people almost without exception, even the logistical ones.",
+        "inPractice": "You will pick the option that keeps everyone comfortable over the one that is simply correct."
+      },
+      {
+        "axis": "J/P",
+        "choice": "J",
+        "strength": "clear",
+        "why": "Plans are announced in advance and closed out afterwards. Very little in this account is spontaneous.",
+        "inPractice": "Uncertainty costs you more energy than work does."
+      }
+    ],
+    "caveat": "MBTI is popular rather than validated, and this one is inferred indirectly from behaviour rather than from any questionnaire. Treat the E as the softest of the four."
+  },
+  "enneagram": {
+    "type": "2",
+    "wing": "1",
+    "nickname": "The Helper",
+    "confidence": "moderate",
+    "why": "Type Two organises around being needed, and the evidence for that here is unusually direct: your own news is consistently attached to somebody else's. The One wing shows in the standards — you are not indiscriminately helpful, you are helpful to a particular quality, and your captions are quietly exacting about how things should be done.",
+    "caveat": "The Enneagram is a lens rather than a measurement, and a different one from the MBTI above. It is included because the two disagree usefully: the type says what drives you, the MBTI says how it comes out."
+  },
+  "activity": {
+    "summary": "Four years, 312 posts, and a rhythm you could set a calendar by. This account is run by someone with a routine and an early alarm.",
+    "posting": {
+      "headline": "Steady, planned, event-shaped",
+      "detail": "Two to three posts a week for most of four years, arranged into clusters around things you organised. Carousels outnumber single images two to one, which fits: you post the whole occasion rather than the best frame from it."
+    },
+    "rhythm": {
+      "headline": "Early mornings, weekend-weighted",
+      "detail": "61% of your posts go up between 5am and 8am, and Saturday is your busiest day by a distance. Almost nothing appears after 9pm. This is one of the strongest signals in the export and it has not shifted in four years."
+    },
+    "trajectory": {
+      "headline": "Tapering, and deliberately",
+      "detail": "Posting peaked in 2023 and has fallen about 35% since, while your commenting has stayed flat. You have not lost interest in the people; you have lost interest in broadcasting. That is a common and generally healthy direction of travel."
+    },
+    "engagement": {
+      "headline": "Reads far more than posts",
+      "detail": "8,400 likes against 312 posts — roughly 27 to 1. You are a participant rather than a broadcaster, and the accounts you engage with most are the same twelve people all four years."
+    },
+    "blindSpots": "This reads your public posting and your own writing only. It cannot see what you read without liking, anything you drafted and deleted, or the conversations that matter most and happen off the app entirely."
+  },
+  "interests": [
+    { "name": "Distance running", "intensity": "core", "detail": "Not a phase — four consecutive years of training blocks with the same structure, and the vocabulary of someone who has read about it as well as done it.", "evidence": "63 posts tagged at three trailheads, recurring 'week n of 12' captions" },
+    { "name": "Cooking for people", "intensity": "core", "detail": "Almost always for others and almost never a photograph of the finished plate alone — the table is in shot.", "evidence": "41 posts, 38 of which include other people or multiple place settings" },
+    { "name": "Reading", "intensity": "strong", "detail": "Wide rather than deep, and skewed towards non-fiction about how things work.", "evidence": "14 distinct titles named in captions, none repeated" },
+    { "name": "Live music", "intensity": "strong", "detail": "Concentrated in summer and almost entirely with the same group.", "evidence": "19 posts, 17 of them June–August" }
+  ],
+  "beliefs": [
+    {
+      "belief": "Showing up is the whole of friendship",
+      "detail": "Not stated anywhere, but it is the most consistent theme in four years of captions: presence is what you praise in others and what you record in yourself.",
+      "evidence": "Recurring language of turning up, collecting people, being there",
+      "confidence": "moderate"
+    }
+  ],
+  "values": [
+    { "value": "Reliability", "detail": "You treat a commitment as binding in a way most accounts do not show. The follow-through rate on things you announce is the clearest number in this report.", "evidence": "41 of 47 announced plans have a matching completion post" },
+    { "value": "Craft", "detail": "You care how a thing is done, not only that it got done — visible in the way you describe other people's work as much as your own.", "evidence": "Comments frequently name a specific detail rather than praising generally" },
+    { "value": "Belonging", "detail": "Nearly everything you publish is about a group rather than an individual, yours included.", "evidence": "71% of posts contain more than one person" }
+  ],
+  "relationship": {
+    "strengths": [
+      { "title": "You remember", "detail": "Dates, follow-ups, the thing someone was nervous about last month. Your comments return to other people's earlier posts with a specificity that is hard to fake and rare to find." },
+      { "title": "Low-drama by default", "detail": "Four years without a single public disagreement is not avoidance on this evidence — it reads as someone who handles friction privately and promptly." }
+    ],
+    "weaknesses": [
+      { "title": "You do not ask", "detail": "There is almost no example here of you requesting anything for yourself. In a close relationship that becomes a problem for the other person, who is left guessing and eventually gets it wrong." },
+      { "title": "Score-keeping in silence", "detail": "The Two-with-a-One-wing pattern: generous in the moment, quietly tallying, and inclined to feel unmet without ever having stated the need. Nothing here shows it blowing up, but the ingredients are visible." }
+    ],
+    "attachment": {
+      "style": "Leans secure with anxious edges (tentative)",
+      "why": "The stability points to secure: consistent contact with the same twelve people for four years, no withdrawal after conflict, no pattern of dropping people. The anxious edge is in the asymmetry — you initiate and maintain far more than you appear to receive, and the quiet fortnights read as self-soothing rather than distance.",
+      "derivedFrom": [
+        "Same core group engaged with across all four years, no drop-offs",
+        "You initiate 3x more comment threads than you receive",
+        "Recovery gaps follow social peaks rather than conflicts"
+      ],
+      "implications": [
+        { "title": "You are easy to be close to", "detail": "Consistency is the thing most people want and rarely get. You supply it without being asked." },
+        { "title": "You are hard to reciprocate with", "detail": "A partner who wants to give as much as they get will struggle to find the opening, because you rarely leave one." }
+      ],
+      "caveat": "Attachment style cannot be measured from social media and this is a guess, offered with its reasoning so you can disagree with it. The anxious read rests on one pattern; the secure read rests on four years."
+    },
+    "loveLanguages": {
+      "receiving": [
+        { "language": "Quality time", "strength": "primary", "why": "The posts you write most warmly about are unhurried and undivided — a long walk, a slow dinner, nowhere to be afterwards.", "inPractice": "An evening cleared for you lands harder than anything bought for you." },
+        { "language": "Words of affirmation", "strength": "secondary", "why": "The rare posts where you quote something someone said about you are kept and repeated.", "inPractice": "Specific beats effusive — name the thing you noticed." }
+      ],
+      "giving": [
+        { "language": "Acts of service", "strength": "primary", "why": "Your account is a four-year record of doing things for people: the lifts, the bookings, the collecting, the cooking.", "inPractice": "You show love by removing a problem, often before it is mentioned." }
+      ],
+      "caveat": "Love languages are a popular framework rather than a validated instrument. Read these as a decent guess at what you reach for, not a diagnosis."
+    }
+  },
+  "career": {
+    "strengths": [
+      { "title": "Finishes things", "detail": "The follow-through rate visible in this account is the trait most organisations are shortest of. You close what you open." },
+      { "title": "Holds the group together", "detail": "You reliably do the unassigned work that keeps a team functioning — the scheduling, the chasing, the remembering." }
+    ],
+    "weaknesses": [
+      { "title": "Under-claims", "detail": "You narrate collective wins and almost never individual ones. On this evidence you are more likely to be under-credited than over-credited, and unlikely to correct it." },
+      { "title": "Absorbs the overflow", "detail": "Work that has no owner appears to become yours by default. That is why you are valuable and why you are probably tired." }
+    ],
+    "workStyle": "Plans in blocks, announces the plan, and delivers to it. High standards applied quietly rather than argued for. Prefers a known scope done properly to an open brief done fast.",
+    "environments": [
+      "Teams small enough that reliability is visible",
+      "Roles with a clear finish line rather than open-ended remits",
+      "Managers who ask what you want rather than waiting to be told"
+    ],
+    "watchOuts": "Somewhere with no natural end to the work, or a culture where credit goes to whoever claims it loudest. You would do the job well and be overlooked for it."
+  },
+  "card": {
+    "name": "Sample",
+    "headline": "Organiser with a warm centre and a quiet battery",
+    "summary": "Reliable, generous and hard to reciprocate with. Plans in blocks, recovers alone.",
+    "mbti": "ENFJ",
+    "enneagram": "2w1",
+    "bigFive": {
+      "openness": 61,
+      "conscientiousness": 84,
+      "extraversion": 52,
+      "agreeableness": 79,
+      "neuroticism": 44
+    },
+    "interests": ["Distance running", "Cooking for people", "Reading", "Live music"],
+    "values": ["Reliability", "Craft", "Belonging"],
+    "beliefs": ["Showing up is friendship"],
+    "relationshipStrengths": ["Remembers the detail", "Handles friction privately"],
+    "relationshipWeaknesses": ["Never asks for anything", "Tallies quietly"],
+    "careerStrengths": ["Closes what they open", "Does the unassigned work"],
+    "attachment": "Leans secure, anxious edges (tentative)",
+    "attachmentWhy": "Four steady years with one group; initiates 3x more than receives; recovers after peaks",
+    "loveReceiving": ["Quality time (primary)", "Words of affirmation (secondary)"],
+    "loveGiving": ["Acts of service (primary)"],
+    "rhythm": "Early mornings, weekend-weighted, social in bursts",
+    "energy": "Participant not broadcaster; wide circle, twelve people who matter",
+    "workStyle": "Plans in blocks, high quiet standards, finishes what starts",
+    "confidence": 68
+  }
+}

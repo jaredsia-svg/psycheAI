@@ -33,30 +33,39 @@
 <!-- ══════════════ welcome ══════════════ -->
 <section id="view-welcome" class="view" hidden>
   <header class="hero">
+    <!-- Backdrop rather than an object in the layout: the mark alone, no
+         wordmark, blown up and bled off the right edge behind the text. The
+         nav carries the lockup a few centimetres above, so repeating the name
+         here would say it twice. Decorative, so it is hidden from assistive
+         tech and cannot be reached — the page is named in the nav and title.
+         Stroked with the same gradient the second line of the headline is
+         filled with. The solid fallback after the url() keeps it drawn if the
+         gradient ever fails to resolve, where a bare url() paints nothing. -->
+    <svg class="hero-mark" viewBox="0 0 140 140" fill="none" stroke-width="3"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="hero-mark-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop class="hero-mark-from" offset="0"/>
+          <stop class="hero-mark-to" offset="1"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+      <circle cx="70" cy="70" r="11" stroke="none"/>
+    </svg>
+
     <div class="hero-top">
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
-      <!-- The mark alone, no wordmark: the nav already carries the lockup a few
-           centimetres above this, and repeating the name would say it twice.
-           Decorative, so it is hidden from assistive tech — the page is named in
-           the nav and the title. Stroked with the same gradient the second line
-           of the headline is filled with, so the two read as one object. The
-           solid fallback after the url() keeps it drawn if the gradient ever
-           fails to resolve, where a bare url() would render nothing at all. -->
-      <svg class="hero-mark" viewBox="0 0 140 140" fill="none" stroke-width="3"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-        <defs>
-          <linearGradient id="hero-mark-gradient" x1="0" y1="0" x2="1" y2="1">
-            <stop class="hero-mark-from" offset="0"/>
-            <stop class="hero-mark-to" offset="1"/>
-          </linearGradient>
-        </defs>
-        <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
-        <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
-        <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
-        <circle cx="70" cy="70" r="11" stroke="none"/>
-      </svg>
+      <p class="lede">Big Five, MBTI, Enneagram, attachment style and love languages — read from
+        your own posts, with the evidence for every finding. Free, and about a minute once your
+        export arrives.</p>
+      <div class="btn-row hero-actions">
+        <button class="btn" id="hero-start" type="button">Analyse my Instagram</button>
+        <button class="btn btn-ghost" id="hero-sample" type="button">See a sample report</button>
+      </div>
+      <p class="eyebrow">Your data is kept on your device and is never stored by PsycheAI. Your results stay with you</p>
     </div>
-    <p class="eyebrow">Your data is kept on your device and is never stored by PsycheAI. Your results stay with you</p>
   </header>
 
   <div class="steps-row">
@@ -126,6 +135,12 @@
           </ul>
         </div>
       </div>
+    </div>
+
+    <!-- The diagram describes the report; this shows it. Anyone still reading
+         this far down is asking what it actually looks like. -->
+    <div class="btn-row insight-actions">
+      <button class="btn btn-ghost" id="insight-sample" type="button">See a sample report</button>
     </div>
   </div>
 
@@ -215,6 +230,17 @@
     <h1 class="letterhead-name" id="letterhead-name"></h1>
     <p class="letterhead-meta" id="letterhead-meta"></p>
   </header>
+
+  <!-- Only shown while the sample is on screen. It has to be unmissable: the
+       whole point of the sample is that it looks exactly like a real report,
+       which is also exactly how someone comes to believe it is theirs. -->
+  <div class="sample-banner no-print" id="sample-banner" hidden>
+    <span>
+      <strong>This is a sample report.</strong> Written for a made-up account so you can see the
+      shape of one. Yours will be about you.
+    </span>
+    <button class="btn" id="sample-exit" type="button">Analyse my Instagram</button>
+  </div>
 
   <header class="page-head screen-only">
     <h1 id="profile-title">Your personality analysis</h1>

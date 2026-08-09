@@ -218,6 +218,36 @@ so any Anthropic error not already special-cased above it (a 400, a 404, a fresh
 have crashed the error handler instead of returning a message. Fixed alongside the retry logic, with
 its own regression check.
 
+## The sample report
+
+The welcome page asks for a 400MB download from Instagram and an email that takes hours to arrive,
+in exchange for something the reader has never seen. **See a sample report** — in the hero and again
+under the diagram — closes that gap: it renders `docs/sample.json` through the same `renderProfile`
+a real report goes through, so what appears is the actual layout rather than a picture of one.
+
+It is hand-written rather than taken from `lib/mock.js`. The mock says *"Mock reading for
+agreeableness. In a real run this is several sentences grounded in the actual export"* on purpose,
+which is exactly right for a fixture and useless as a shop window. It is also deliberately not
+flattering — two relationship weaknesses, two career weaknesses, a 68/100 confidence and a
+`(tentative)` attachment read — because a sample that only praises misrepresents what the model
+actually returns, and the reader finds that out at the worst possible moment.
+
+Nothing about it touches storage. The sample borrows `state.profile` to render and hands it back the
+moment the reader navigates anywhere, which `go()` does in one place for every route out. Today that
+hand-back guards a state the UI cannot reach — `boot()` and `go('home')` both send a reader who has
+a profile straight to their report, so the welcome page and its buttons are invisible to them — and
+it is there anyway, because the day somebody adds a route back to the landing page the alternative
+is a button labelled *see a sample* replacing a reader's own report with a stranger's. The suite
+asserts the unreachability rather than pretending to test through it.
+
+The nav is asked the same question separately. It reads `state.profile` to decide whether to show
+**My Personality** and **My Compatibility**, and the sample borrows that field — so without care a
+first-time visitor gets offered a compatibility scan against a person who does not exist.
+
+A self-test walks `sample.json` against `PROFILE_SCHEMA` field by field. A sample missing a field is
+a field the renderer reads as `undefined` in the one report most visitors will ever see; deleting
+`career.watchOuts` fails it by name.
+
 ## What is sent where
 
 This is the part worth reading carefully.

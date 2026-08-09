@@ -115,8 +115,21 @@ try {
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
   check('the upload box is the only thing to do',
     (await page.locator('.upload-card input[type=text]').count()) === 0);
-  check('the hero has no separate lede paragraph',
-    (await page.locator('#view-welcome .hero .lede').count()) === 0);
+  // The hero carried no lede for a long time, on the grounds that the headline
+  // said enough. It did not say what arrives, what it costs or how long it
+  // takes — all of which are true and were only discoverable by scrolling or
+  // by uploading. The lede is back, and it has to keep naming those.
+  check('the hero lede says what arrives, what it costs and how long',
+    await page.evaluate(() => {
+      const lede = document.querySelector('#view-welcome .hero .lede');
+      if (!lede) return false;
+      const said = lede.textContent;
+      return /Big Five/.test(said) && /MBTI/.test(said) && /Enneagram/.test(said) &&
+        /evidence/i.test(said) && /free/i.test(said) && /minute/i.test(said);
+    }),
+    (await page.locator('#view-welcome .hero .lede').count())
+      ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
+      : 'no lede');
   // The privacy badge sits right under the headline, so it is the first thing
   // read after the reader learns what the page is. Checked by document order —
   // a rule that moved it visually while leaving it elsewhere in the markup
@@ -131,35 +144,39 @@ try {
       const beforeSteps = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
       return Boolean(afterHeadline && beforeSteps);
     }));
-  // The mark beside the headline. Swept rather than checked at one width,
-  // because every way this composition can go wrong is width-dependent: the
-  // mark squashing out of square, colliding with the headline, or growing
-  // enough to push the page sideways. The badge is deliberately outside the
-  // row — inside it, the narrowed column wrapped it onto three lines — so its
-  // width is checked against the hero's, not the headline's.
+  // The mark is a backdrop now rather than an object in the row, so "clear of
+  // the headline" is no longer the thing to want — it is deliberately behind
+  // it. What matters instead: it stays square, it stays behind the text and
+  // out of the way of the buttons it now sits under, and it does not push the
+  // page sideways. That last one is not hypothetical: bleeding it off the
+  // right edge escaped the container by 24px and took the whole document with
+  // it, which is why the hero clips. Swept, because all of it is
+  // width-dependent.
   const heroMarkAtWidths = {};
   for (const width of [1440, 1100, 700, 375, 320]) {
     await page.setViewportSize({ width, height: 800 });
     heroMarkAtWidths[width] = await page.evaluate(() => {
       const svg = document.querySelector('#view-welcome .hero-mark');
       if (!svg) return 'missing';
+      const style = getComputedStyle(svg);
       const mark = svg.getBoundingClientRect();
-      const h1 = document.querySelector('#view-welcome .hero h1').getBoundingClientRect();
-      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      const pill = document.querySelector('#view-welcome .eyebrow').getBoundingClientRect();
       if (mark.width < 1) return 'not rendered';
       if (Math.abs(mark.width - mark.height) > 1) return 'out of square';
-      if (mark.left < h1.right - 1) return 'overlapping the headline';
-      if (mark.right > hero.right + 1) return 'past the hero edge';
-      // Squeezed back into the headline's row, the badge would stop at the
-      // mark rather than running the full width beneath it.
-      if (pill.right > mark.left && pill.top < mark.bottom) return 'badge back inside the row';
-      return Math.round(mark.width) + 'px, clear';
+      if (Number(style.zIndex) >= 0) return 'not behind the text';
+      if (style.pointerEvents !== 'none') return 'still catching clicks';
+      const slip = document.documentElement.scrollWidth - document.documentElement.clientWidth;
+      if (slip > 0) return 'page slipped ' + slip + 'px sideways';
+      // The primary action sits over the mark. Whatever is on top at its
+      // centre must be the button, not the artwork.
+      const cta = document.querySelector('#hero-start').getBoundingClientRect();
+      const onTop = document.elementFromPoint(cta.left + cta.width / 2, cta.top + cta.height / 2);
+      if (!onTop || !onTop.closest('#hero-start')) return 'artwork over the button';
+      return Math.round(mark.width) + 'px, behind';
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('the hero mark stays square, clear of the headline and inside the page',
-    Object.values(heroMarkAtWidths).every(v => /px, clear$/.test(v)),
+  check('the hero mark stays square, behind the text and off the page edge',
+    Object.values(heroMarkAtWidths).every(v => /px, behind$/.test(v)),
     JSON.stringify(heroMarkAtWidths));
   check('the hero mark carries no wordmark of its own',
     (await page.locator('#view-welcome .hero-mark text').count()) === 0 &&
@@ -167,23 +184,26 @@ try {
       (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
     (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
 
-  // Being last in the hero, the badge has nothing to space itself away from,
-  // so its own bottom margin only stacked on the hero's and opened a blank row
-  // under the headline. The gap below it should be the hero's margin and
-  // nothing more.
-  check('the badge adds no gap of its own below the hero',
+  // The badge is last in its column, so it has nothing to space itself away
+  // from and its own bottom margin only ever stacked on the hero's. The gap
+  // below it now belongs to the hero's padding and margin — the band has to
+  // close around the badge rather than leaving a blank strip under it.
+  check('the badge adds no bottom margin of its own',
+    await page.evaluate(() =>
+      parseFloat(getComputedStyle(document.querySelector('#view-welcome .hero .eyebrow'))
+        .marginBottom) === 0),
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#view-welcome .hero .eyebrow')).marginBottom));
+  check('the warm band closes just under the badge, not a screen later',
     await page.evaluate(() => {
-      const pill = document.querySelector('#view-welcome .hero .eyebrow');
-      const hero = document.querySelector('#view-welcome .hero');
-      const steps = document.querySelector('#view-welcome .steps-row');
-      const gap = steps.getBoundingClientRect().top - pill.getBoundingClientRect().bottom;
-      return Math.abs(gap - parseFloat(getComputedStyle(hero).marginBottom)) < 1;
+      const pill = document.querySelector('#view-welcome .hero .eyebrow').getBoundingClientRect();
+      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
+      return hero.bottom - pill.bottom < 60;
     }),
     await page.evaluate(() => {
       const pill = document.querySelector('#view-welcome .hero .eyebrow').getBoundingClientRect();
-      const steps = document.querySelector('#view-welcome .steps-row').getBoundingClientRect();
-      const hero = getComputedStyle(document.querySelector('#view-welcome .hero')).marginBottom;
-      return Math.round(steps.top - pill.bottom) + 'px gap against a ' + hero + ' hero margin';
+      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
+      return Math.round(hero.bottom - pill.bottom) + 'px of band below the badge';
     }));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
@@ -400,6 +420,56 @@ try {
     (await visibleNav()).join('|') === 'FAQ', (await visibleNav()).join('|'));
 
   await shot('1-welcome');
+
+  // ---- the sample report ----
+  //
+  // Its whole value is that it is the real report layout rather than a mockup,
+  // which is also the danger: a reader must never be able to mistake it for
+  // theirs, and someone who already has a report must never lose it by
+  // pressing a button labelled "see a sample".
+  check('the hero offers a way in and a way to look first',
+    (await page.locator('#hero-start').isVisible()) &&
+    (await page.locator('#hero-sample').isVisible()) &&
+    (await page.locator('#insight-sample').isVisible()));
+
+  const beforeSample = analyseBodies.length;
+  await page.click('#hero-sample');
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  const sample = await page.evaluate(() => ({
+    banner: document.querySelector('#sample-banner').hidden
+      ? '' : document.querySelector('#sample-banner').innerText.replace(/\s+/g, ' ').trim(),
+    title: document.querySelector('#profile-title').textContent,
+    body: document.querySelector('#profile-body').innerText,
+    stored: localStorage.getItem('psycheai_profile'),
+    navLinks: [...document.querySelectorAll('.nav-links a:not([hidden])')].map(a => a.textContent).join('|'),
+  }));
+  check('the sample renders the real report, not a picture of one',
+    sample.body.length > 4000 && /Big Five/.test(sample.body) && /Elastigirl/.test(sample.body),
+    sample.body.length + ' chars');
+  check('the sample says plainly that it is one', /This is a sample report/.test(sample.banner),
+    sample.banner);
+  check('the sample offers the way out of itself', /Analyse my Instagram/.test(sample.banner));
+  // The reason it is safe to render a sample into state.profile at all.
+  // Reported as a length rather than a value: the thing that lands here on
+  // failure is a whole serialised profile, and a detail that long buries every
+  // other line in the run.
+  check('the sample writes nothing to storage', sample.stored === null,
+    sample.stored === null ? '' : 'wrote ' + sample.stored.length + ' chars');
+  check('the sample sends nothing to the model', analyseBodies.length === beforeSample);
+  // state.profile is borrowed while the sample is up, and the nav reads that
+  // field. Without care a first-time visitor is offered a compatibility scan
+  // against a person who does not exist.
+  check('the sample does not pretend the visitor has a profile',
+    sample.navLinks === 'FAQ', sample.navLinks);
+
+  // Leaving puts the page back exactly as it was.
+  await page.click('#sample-exit');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+  check('leaving the sample returns to the upload page',
+    (await page.locator('#view-welcome').isVisible()) &&
+    (await page.locator('#sample-banner').isHidden()));
+  check('leaving the sample leaves no profile behind',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
   // ---- upload ----
   // The waiting screen flashes past against the mock, so record every value
@@ -1498,6 +1568,18 @@ try {
   check('the old key is not left behind', migrated.cleared);
   check('the carried-over profile still renders',
     await page.locator('#view-profile').isVisible());
+
+  // The sample's buttons live on the welcome page, and a reader who already
+  // has a profile never sees that page: boot() and go('home') both send them
+  // straight to their report. So "sample overwrites a real profile" is not a
+  // state the UI can reach, and driving it from script would be testing a
+  // route no reader has. What is asserted instead is the fact that makes it
+  // impossible — the sample writes nothing — plus this, so that the day
+  // somebody adds a way back to the landing page, the gap is visible.
+  check('a reader with a profile cannot reach the sample buttons',
+    (await page.locator('#view-welcome').isHidden()) &&
+    (await page.locator('#hero-sample').isHidden()),
+    'welcome hidden: ' + (await page.locator('#view-welcome').isHidden()));
 
   // ---- the wrong archive is turned away, not quietly analysed ----
   //

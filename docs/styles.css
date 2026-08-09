@@ -118,21 +118,44 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align: center; color: var(--ink-soft); font-size: .85rem; }
 
 .page-head { margin-bottom: 1.5rem; }
-.hero { margin-bottom: 2rem; }
-
-/* Headline and mark share a row; the badge below spans the full width, which
-   is why only the headline is in here — inside the row it was being squeezed
-   into a column narrow enough to wrap it onto three lines.
-   min-width: 0 on the headline defeats flex's min-content floor, which would
-   otherwise refuse to wrap it and push the mark out of the row. */
-.hero-top {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: clamp(.9rem, 4vw, 3rem);
+/* The hero sits on its own warmth rather than the page's flat --bg: two soft
+   accent washes, one under the mark and one behind the headline. They are
+   painted on a pseudo-element that bleeds past the container's own padding, so
+   the colour reaches the edges of the screen while the text stays in column.
+   Sized in percentages so the shape holds at any width. */
+/* The hero sits on its own warmth rather than the page's flat --bg: two soft
+   accent washes, one behind the headline and one under the mark.
+   The negative margins pull it out to the container's padding edges and up to
+   meet the nav, so it reads as a band rather than a floating card — and
+   because they move the box rather than spilling content out of it, they add
+   no width to the page.
+   `overflow: clip` is what lets the mark bleed off the right without doing
+   that either: it was escaping by 24px at phone widths and taking the whole
+   document sideways with it. Clip rather than hidden so no scroll container is
+   created; the wash is painted here rather than on a bleeding pseudo-element
+   because a pseudo-element would be clipped by this same rule. Sized off the
+   container rather than 100vw throughout — vw counts the scrollbar. */
+.hero {
+  position: relative; isolation: isolate; overflow: clip;
+  margin: calc(-1 * clamp(1.2rem, 4vw, 2.5rem)) calc(-1 * clamp(1rem, 4vw, 2rem)) 2rem;
+  padding: clamp(1.8rem, 5vw, 3rem) clamp(1rem, 4vw, 2rem) clamp(1.4rem, 3vw, 2.2rem);
+  border-radius: 0 0 28px 28px;
+  background:
+    radial-gradient(66% 130% at 84% 34%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 70%),
+    radial-gradient(66% 120% at 10% 18%, color-mix(in srgb, var(--accent) 17%, transparent), transparent 68%);
 }
-.hero-top { margin-bottom: .9rem; }
-.hero-top h1 { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+
+.hero-top { margin-bottom: 0; }
+.hero-top h1 { margin-bottom: .6rem; }
+
+/* Backdrop, not an object in the layout: large, faint, bled off the right so
+   it reads as texture behind the words rather than a logo sitting beside them.
+   pointer-events off because it now covers the buttons underneath it. */
 .hero-mark {
-  flex: none; width: clamp(36px, 6.5vw, 78px); height: auto;
+  position: absolute; z-index: -1; pointer-events: none;
+  top: 50%; right: clamp(-5rem, -4vw, -1.5rem); transform: translateY(-50%);
+  width: clamp(230px, 34vw, 420px); height: auto;
+  opacity: .14;
   color: var(--accent);
   stroke: url(#hero-mark-gradient) currentColor;
 }
@@ -141,6 +164,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    both ends are the same pair the headline's own gradient uses. */
 .hero-mark-from { stop-color: var(--accent); }
 .hero-mark-to { stop-color: var(--accent-2); }
+
+.hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
+.hero-actions { margin-bottom: 1.1rem; }
 .eyebrow {
   display: inline-block; margin: 0 0 1rem; padding: .25rem .7rem;
   background: var(--accent-soft); color: var(--accent);
@@ -220,6 +246,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   font-size: .86rem; color: var(--ink-soft); line-height: 1.5; margin-bottom: .15rem;
 }
 .insight-branch li::marker { color: var(--accent); }
+.insight-actions { margin: 1.1rem 0 0; }
+
+/* Unmissable on purpose. The sample is convincing precisely because it uses
+   the real report layout, which is also exactly how somebody comes to think
+   it is theirs. */
+.sample-banner {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem;
+  justify-content: space-between;
+  margin-bottom: 1.2rem; padding: .8rem 1rem;
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--ink);
+  font-size: .9rem;
+}
+.sample-banner .btn { flex: none; }
 
 @media (min-width: 560px) {
   .insight-branches { grid-template-columns: repeat(2, 1fr); }
