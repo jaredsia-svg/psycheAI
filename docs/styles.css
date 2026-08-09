@@ -211,9 +211,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .card.warn { border-left: 3px solid var(--warn); }
 .alert-card { border-left: 3px solid var(--danger); background: var(--warn-soft); }
 
-/* Sits above the steps row outside any card, so it takes the section-label
-   treatment rather than the full 1.28rem a card heading gets. */
-.row-head { margin: 0 0 .55rem; font-size: 1.05rem; color: var(--ink-soft); }
+/* Sits above the steps row outside any card, so it takes a smaller size than
+   the 1.28rem a card heading gets — but full-strength ink, not the muted grey:
+   it is a heading, and it should read as one. --ink rather than a literal
+   black, which would be invisible against the dark theme. */
+.row-head { margin: 0 0 .55rem; font-size: 1.05rem; color: var(--ink); }
 .steps-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(163px, 1fr)); gap: .8rem; margin-bottom: 1.6rem; }
 .step-card { background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; }
 .step-card h3 { margin-top: .6rem; font-size: .98rem; }

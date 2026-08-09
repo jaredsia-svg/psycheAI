@@ -581,7 +581,7 @@
    *
    * Split out of renderProfile so the sample can render the same sections
    * into a dialog. Everything the sample must not offer — the download
-   * buttons, re-run, delete, the QR panel — lives outside #profile-body in
+   * buttons, delete, the QR panel — lives outside #profile-body in
    * index.html, so building only this excludes them by construction rather
    * than by a list of things to hide that someone has to remember to update.
    */
@@ -1012,20 +1012,6 @@
 
   $('#export-compat-top').addEventListener('click', exportCompatPdf);
   $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
-
-  $('#reanalyse').addEventListener('click', async () => {
-    if (!state.digest) {
-      flash('#upload-error', 'The evidence summary is gone from this browser — upload your export again.');
-      return show('welcome');
-    }
-    const warning = state.digest.coverage.images && state.digest.coverage.images.attached && !state.images.length
-      ? 'Run the analysis again on the same export? This makes a fresh model call. Your photos are not ' +
-        'kept between page loads, so this run will use the written evidence only — re-upload the .zip to ' +
-        'include them again.'
-      : 'Run the analysis again on the same export? This makes a fresh model call.';
-    if (!window.confirm(warning)) return;
-    await runAnalysis(state.digest, state.images);
-  });
 
   $('#delete-profile').addEventListener('click', () => {
     if (!window.confirm('Delete your profile, your evidence summary and all saved match reports from this browser?')) return;

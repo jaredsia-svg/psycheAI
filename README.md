@@ -265,11 +265,16 @@ any other route pops it again, or the reader's next Back press does nothing and 
 keeps the two paths from chasing each other, since a close triggered by `popstate` must not call
 `history.back()` a second time.
 
-What it deliberately does not carry: the download buttons, **Re-run the analysis**, **Delete
-everything**, and the QR compatibility panel. Those all live outside `#profile-body` in
-`index.html`, so building only the report sections excludes them by construction rather than by a
-list of things to hide that someone has to remember to update. Two of them are worse than clutter on
-a stranger's report — delete would clear the reader's own stored profile.
+What it deliberately does not carry: the download buttons, **Delete everything**, and the QR
+compatibility panel. Those all live outside `#profile-body` in `index.html`, so building only the
+report sections excludes them by construction rather than by a list of things to hide that someone
+has to remember to update. One of them is worse than clutter on a stranger's report — delete would
+clear the reader's own stored profile.
+
+The guard for each one now asserts the control **exists on the real report** before asserting it is
+absent from the sample. Without that half, removing a control turns its guard into a check that
+nothing is nothing — which is exactly what happened when **Re-run the analysis** was taken off the
+profile page: its sample guard kept passing while guarding nothing at all.
 
 Two bugs came out of building it, both invisible until measured. Styling the dialog `display: flex`
 beats the user agent's `dialog:not([open]) { display: none }`, so the closed dialog stayed laid out
@@ -722,11 +727,22 @@ worse failure than a slightly thinner comparison.
 
 The profile page ends in four parts, in this order: the report, then **"Test your compatibility"**
 — the QR code, the copy-link and download-QR buttons, and the link to the scan page — then the
-download/re-run/delete row, then a line of fineprint naming the model and the time it ran. The
+download/delete row, then a line of fineprint naming the model and the time it ran. The
 compatibility panel used to open the page, which asked someone to hand out their code before reading
 a word of what was in it. The action buttons then sat between the report and the code, which put a
 delete button in the middle of the page; they are housekeeping rather than part of the document, so
-they close it instead. The "analysed by" line used to sit inside the report body, right after
+they close it instead. The row held a third button, **Re-run the analysis**, which spent a second
+model call on the same export and replaced the report with a differently-worded one; it has been
+removed, and the row is now pinned as an exact list of two so nothing creeps back into it. Its
+handler went with it rather than staying bound to an id that no longer exists.
+
+That leaves one loose end worth naming: `psycheai_digest` in `localStorage` existed only so the
+re-run button had something to re-send, and nothing reads it now. It is still written, and **Delete
+everything** still clears it. It is not a leak — it never leaves the device, and it is the reduced
+summary rather than the archive — but it is a copy of somebody's evidence digest kept for no
+purpose, and it should come out. It has not been removed here because four UI checks read it as
+their observation point for what was actually sent (the chosen depth, the image coverage, the
+opt-out), so removing it is a test change as much as a code one. The "analysed by" line used to sit inside the report body, right after
 confidence — it now has its own fixed element after the buttons, since it is a record of the run
 rather than a finding and stays true regardless of what else gets added above it. It is unchanged in
 the PDF, which has no QR panel or buttons after its own confidence section for it to be pushed past.

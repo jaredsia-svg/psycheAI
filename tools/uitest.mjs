@@ -257,6 +257,19 @@ try {
   check('the steps row is the section the new level names',
     outline.length > 1 && outline[1].level === 2 && /how it works/i.test(outline[1].text),
     JSON.stringify(outline[1] || null));
+  // It reads as a heading, not as a caption: the page's own ink, the same as
+  // the headings inside the cards below it. Compared against a card heading
+  // rather than against a hex value, so it stays right in both themes — the
+  // dark theme's ink is nearly white, and a literal black would vanish.
+  check('the section label is the page ink, not the muted grey',
+    await page.evaluate(() => {
+      const label = getComputedStyle(document.querySelector('.row-head')).color;
+      const heading = getComputedStyle(document.querySelector('.step-card h3')).color;
+      const muted = getComputedStyle(document.querySelector('.step-card p')).color;
+      return label === heading && label !== muted;
+    }),
+    await page.evaluate(() => getComputedStyle(document.querySelector('.row-head')).color +
+      ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
     'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
@@ -711,15 +724,22 @@ try {
     sample.bodyScrolls);
   // Everything below belongs to a report somebody owns. Offering any of it on
   // a stranger's sample is at best confusing and at worst destructive — the
-  // delete button clears the reader's own stored profile.
+  // delete button clears the reader's own stored profile. Each control is
+  // asserted to exist on the real report first, so an id that gets renamed or
+  // a control that gets removed fails here rather than turning the guard into
+  // a check that nothing is nothing.
   for (const [what, selector] of [
-    ['a download button', '#sample-dialog #export-pdf-top, #sample-dialog #export-pdf-bottom'],
-    ['a re-run button', '#sample-dialog #reanalyse'],
-    ['a delete button', '#sample-dialog #delete-profile'],
-    ['the QR compatibility panel', '#sample-dialog .qr-panel'],
+    ['a download button', '#export-pdf-top, #export-pdf-bottom'],
+    ['a delete button', '#delete-profile'],
+    ['the QR compatibility panel', '.qr-panel'],
   ]) {
     check('the sample does not offer ' + what,
-      (await page.locator(selector).count()) === 0);
+      (await page.locator('#view-profile ' + selector.split(', ').join(', #view-profile ')).count()) > 0 &&
+      (await page.locator('#sample-dialog ' + selector.split(', ').join(', #sample-dialog ')).count()) === 0,
+      'on the report: ' +
+        (await page.locator('#view-profile ' + selector.split(', ').join(', #view-profile ')).count()) +
+        ', in the sample: ' +
+        (await page.locator('#sample-dialog ' + selector.split(', ').join(', #sample-dialog ')).count()));
   }
   check('the sample writes nothing to storage', sample.stored === null,
     sample.stored === null ? '' : 'wrote ' + sample.stored.length + ' chars');
@@ -995,9 +1015,19 @@ try {
   }));
   check('the confidence meter came with it',
     await page.locator('.confidence-card .confidence-fill').isVisible());
+  // Held as an exact list rather than as "contains", so a control cannot
+  // reappear here unnoticed. "Re-run the analysis" was one of three and is
+  // gone: nothing in the app offers a second model call on the same export
+  // any more, so the handler and the button went together rather than
+  // leaving a dead listener bound to an id that no longer exists.
+  check('the report closes on exactly the two housekeeping actions',
+    (await page.locator('#view-profile .cta-row button').allInnerTexts())
+      .map(t => t.trim()).join(' | ') === 'Download full report | Delete everything' &&
+    (await page.locator('#reanalyse').count()) === 0,
+    (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
-  // The page ends: report, then the code to share, then the three actions,
+  // The page ends: report, then the code to share, then the two actions,
   // then the "analysed by" line. "Test your compatibility" opened the page
   // once, which asked someone to hand out their code before reading a word
   // of it. The action buttons then sat between the report and the code,
