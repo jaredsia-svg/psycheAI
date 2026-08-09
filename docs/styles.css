@@ -185,10 +185,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--accent-soft); color: var(--accent);
   border-radius: 999px; font-size: .78rem; font-weight: 600; letter-spacing: .02em;
 }
-/* That bottom margin is for when something follows the badge inside the hero.
-   Nothing does any more — it is the last thing in there — so it was stacking
-   on the hero's own 2rem and opening a blank row under the headline. */
-.hero .eyebrow:last-child { margin-bottom: 0; }
+/* Under "Start here" the badge is spacing the dropzone away from the heading,
+   so it keeps its bottom margin — but the heading above it has its own, and
+   the two together left the badge floating between the two rather than
+   attached to either. Pulled up under the heading it belongs to. */
+.upload-card .eyebrow { margin-top: -.25rem; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
 /* ---------- cards ---------- */

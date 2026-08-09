@@ -145,20 +145,26 @@ try {
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
       : 'no lede');
-  // The privacy badge sits right under the headline, so it is the first thing
-  // read after the reader learns what the page is. Checked by document order —
-  // a rule that moved it visually while leaving it elsewhere in the markup
-  // would read the same to a screen reader as it did before.
-  check('the privacy badge sits inside the hero, right after the headline',
+  // The privacy badge moved out of the hero and down to the upload card, so it
+  // now sits at the moment of the ask rather than the moment of arrival: the
+  // reader meets it while deciding whether to hand over their Instagram
+  // history, not while reading a headline. Checked by document order — a rule
+  // that moved it visually while leaving it up in the hero would read to a
+  // screen reader exactly as it did before.
+  check('the privacy badge sits under "Start here", above the dropzone',
     await page.evaluate(() => {
-      const pill = document.querySelector('#view-welcome .hero .eyebrow');
-      const h1 = document.querySelector('#view-welcome .hero h1');
-      const steps = document.querySelector('#view-welcome .steps-row');
-      if (!pill || !h1 || !steps) return false;
-      const afterHeadline = h1.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
-      const beforeSteps = steps.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
-      return Boolean(afterHeadline && beforeSteps);
+      const pill = document.querySelector('#view-welcome .upload-card .eyebrow');
+      const heading = document.querySelector('#view-welcome .upload-card h2');
+      const dropzone = document.querySelector('#dropzone');
+      if (!pill || !heading || !dropzone) return false;
+      const afterHeading = heading.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const beforeDrop = dropzone.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
+      return Boolean(afterHeading && beforeDrop);
     }));
+  check('the hero no longer carries the badge',
+    (await page.locator('#view-welcome .hero .eyebrow').count()) === 0 &&
+    (await page.locator('#view-welcome .eyebrow').count()) === 1,
+    (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
   // The mark is a backdrop now rather than an object in the row, so "clear of
   // the headline" is no longer the thing to want — it is deliberately behind
   // it. What matters instead: it stays square, it stays behind the text and
@@ -199,26 +205,36 @@ try {
       (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
     (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
 
-  // The badge is last in its column, so it has nothing to space itself away
-  // from and its own bottom margin only ever stacked on the hero's. The gap
-  // below it now belongs to the hero's padding and margin — the band has to
-  // close around the badge rather than leaving a blank strip under it.
-  check('the badge adds no bottom margin of its own',
-    await page.evaluate(() =>
-      parseFloat(getComputedStyle(document.querySelector('#view-welcome .hero .eyebrow'))
-        .marginBottom) === 0),
-    await page.evaluate(() =>
-      getComputedStyle(document.querySelector('#view-welcome .hero .eyebrow')).marginBottom));
-  check('the warm band closes just under the badge, not a screen later',
+  // The badge used to be last inside the hero, where its own bottom margin
+  // only stacked on the hero's. It now spaces the dropzone away from the
+  // heading, so it keeps that margin — what matters instead is that it reads
+  // as attached to "Start here" rather than floating between the two.
+  check('the badge sits closer to its heading than to the dropzone',
     await page.evaluate(() => {
-      const pill = document.querySelector('#view-welcome .hero .eyebrow').getBoundingClientRect();
-      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      return hero.bottom - pill.bottom < 60;
+      const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
+      const heading = document.querySelector('.upload-card h2').getBoundingClientRect();
+      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
+      return (pill.top - heading.bottom) < (dropzone.top - pill.bottom);
     }),
     await page.evaluate(() => {
-      const pill = document.querySelector('#view-welcome .hero .eyebrow').getBoundingClientRect();
+      const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
+      const heading = document.querySelector('.upload-card h2').getBoundingClientRect();
+      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
+      return Math.round(pill.top - heading.bottom) + 'px above, ' +
+        Math.round(dropzone.top - pill.bottom) + 'px below';
+    }));
+  // The hero's warm band now closes under the buttons, which are the last
+  // thing in it. A band running on past its content reads as a broken layout.
+  check('the warm band closes just under the hero actions, not a screen later',
+    await page.evaluate(() => {
+      const actions = document.querySelector('.hero-actions').getBoundingClientRect();
       const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      return Math.round(hero.bottom - pill.bottom) + 'px of band below the badge';
+      return hero.bottom - actions.bottom < 70;
+    }),
+    await page.evaluate(() => {
+      const actions = document.querySelector('.hero-actions').getBoundingClientRect();
+      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
+      return Math.round(hero.bottom - actions.bottom) + 'px of band below the buttons';
     }));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
@@ -2077,8 +2093,8 @@ try {
   check('the page admits their terms govern that, not this app',
     /their\s+terms apply rather than ours/i.test(about));
 
-  // The badge under the headline is the welcome page's own privacy claim,
-  // read by people deciding whether to upload their DMs. It has to
+  // The badge above the dropzone is the welcome page's own privacy claim, read
+  // at the moment somebody decides whether to upload their DMs. It has to
   // survive being held next to the FAQ two clicks away, which names Google or
   // Anthropic as the party that reads the summary. So it is held to the two
   // things the code above proves: nothing is stored here, and the report is
