@@ -221,7 +221,7 @@ its own regression check.
 ## The sample report
 
 The welcome page asks for a 400MB download from Instagram and an email that takes hours to arrive,
-in exchange for something the reader has never seen. **See a sample report** — in the hero and again
+in exchange for something the reader has never seen. **See sample report** — in the hero and again
 under the diagram — closes that gap: it renders `docs/sample.json` through the same `renderProfile`
 a real report goes through, so what appears is the actual layout rather than a picture of one.
 

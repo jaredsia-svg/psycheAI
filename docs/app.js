@@ -321,13 +321,15 @@
   // the file picker: an OS dialog opening on a page the reader has not seen
   // the bottom of yet is startling, and the switches above the dropzone are
   // choices they should get to look at first.
-  function toUpload() {
+  // The hero's primary action lands on the how-to rather than the dropzone.
+  // Somebody pressing it on a first visit has no export yet — the file they
+  // would need is an email from Instagram that takes hours to arrive — so the
+  // useful next step is the instructions for requesting one. The upload box is
+  // directly beneath them when they come back.
+  $('#hero-start').addEventListener('click', () => {
     show('welcome');
-    $('.upload-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    dropzone.focus({ preventScroll: true });
-  }
-
-  $('#hero-start').addEventListener('click', toUpload);
+    $('.help-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#sample-close').addEventListener('click', closeSample);

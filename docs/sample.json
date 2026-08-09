@@ -1,5 +1,5 @@
 {
-  "_comment": "The report shown by 'See a sample report'. Hand-written for a fictional account, not generated: lib/mock.js exists for tests and says 'Mock reading for agreeableness' on purpose, which is right for a fixture and wrong for a shop window. Shaped to PROFILE_SCHEMA in lib/prompts.js, and a check holds it there. Deliberately not a flattering read — a sample that only praises would misrepresent what the model actually returns.",
+  "_comment": "The report shown by 'See sample report'. Hand-written for a fictional account, not generated: lib/mock.js exists for tests and says 'Mock reading for agreeableness' on purpose, which is right for a fixture and wrong for a shop window. Shaped to PROFILE_SCHEMA in lib/prompts.js, and a check holds it there. Deliberately not a flattering read — a sample that only praises would misrepresent what the model actually returns.",
   "confidence": {
     "score": 68,
     "level": "moderate",

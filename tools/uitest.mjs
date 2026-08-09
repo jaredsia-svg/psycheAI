@@ -130,16 +130,17 @@ try {
   check('the upload box is the only thing to do',
     (await page.locator('.upload-card input[type=text]').count()) === 0);
   // The hero carried no lede for a long time, on the grounds that the headline
-  // said enough. It did not say what arrives, what it costs or how long it
-  // takes — all of which are true and were only discoverable by scrolling or
-  // by uploading. The lede is back, and it has to keep naming those.
-  check('the hero lede says what arrives, what it costs and how long',
+  // said enough. It did not say what arrives, which was only discoverable by
+  // scrolling or by uploading. The lede is back and has to keep naming the
+  // frameworks — the price and the running time were in it briefly and came
+  // out again, so they are not asserted here.
+  check('the hero lede names what actually comes back',
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       if (!lede) return false;
       const said = lede.textContent;
       return /Big Five/.test(said) && /MBTI/.test(said) && /Enneagram/.test(said) &&
-        /evidence/i.test(said) && /free/i.test(said) && /minute/i.test(said);
+        /attachment/i.test(said) && /love languages/i.test(said);
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
@@ -432,6 +433,49 @@ try {
   const visibleNav = () => page.locator('.nav-links a:not([hidden])').allInnerTexts();
   check('a first-time visitor sees only the FAQ link',
     (await visibleNav()).join('|') === 'FAQ', (await visibleNav()).join('|'));
+
+  // The two hero actions share one row on a phone. Left to wrap they stack,
+  // and everything below them — the privacy badge included — drops a button's
+  // height further down the first screen. Swept, and the labels are checked
+  // for overflow too: they are `nowrap`, so a button too narrow for its text
+  // spills it rather than wrapping, and only scrollWidth shows that.
+  const heroRowAtWidths = {};
+  for (const width of [460, 412, 390, 375, 360, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    heroRowAtWidths[width] = await page.evaluate(() => {
+      const start = document.querySelector('#hero-start');
+      const sample = document.querySelector('#hero-sample');
+      const a = start.getBoundingClientRect();
+      const b = sample.getBoundingClientRect();
+      if (Math.abs(a.top - b.top) > 2) return 'stacked';
+      if (start.scrollWidth > start.clientWidth + 1) return 'first label clipped';
+      if (sample.scrollWidth > sample.clientWidth + 1) return 'second label clipped';
+      if (document.documentElement.scrollWidth > document.documentElement.clientWidth) {
+        return 'page slipped sideways';
+      }
+      return 'one row';
+    });
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('the two hero buttons share one row at every phone width',
+    Object.values(heroRowAtWidths).every(v => v === 'one row'), JSON.stringify(heroRowAtWidths));
+
+  // The reader pressing this on a first visit has no export yet — the file is
+  // an email from Instagram that takes hours — so it lands on the how-to, not
+  // on a dropzone they cannot use.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.click('#hero-start');
+  await page.waitForTimeout(600);
+  check('the primary action lands on the instructions for getting the export',
+    await page.evaluate(() => {
+      const help = document.querySelector('#view-welcome .help-card').getBoundingClientRect();
+      const nav = document.querySelector('.nav').getBoundingClientRect();
+      // Its heading should be at the top of what is left of the viewport.
+      return help.top >= nav.bottom - 4 && help.top < window.innerHeight / 2;
+    }),
+    await page.evaluate(() =>
+      'help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top)));
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   await shot('1-welcome');
 

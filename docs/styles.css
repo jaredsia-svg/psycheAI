@@ -167,6 +167,19 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 .hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
 .hero-actions { margin-bottom: 1.1rem; }
+
+/* The two hero actions stay on one row on a phone. Left to wrap they stack,
+   which pushes the privacy badge and everything under it a button's height
+   further down the first screen. They share the row equally and shrink into
+   it — nowrap on the labels so a narrowed button breaks the row rather than
+   silently splitting "See sample report" over two lines. */
+@media (max-width: 460px) {
+  .hero-actions { flex-wrap: nowrap; gap: .45rem; }
+  .hero-actions .btn {
+    flex: 1 1 0; min-width: 0; white-space: nowrap;
+    padding: .6rem .45rem; font-size: .86rem;
+  }
+}
 .eyebrow {
   display: inline-block; margin: 0 0 1rem; padding: .25rem .7rem;
   background: var(--accent-soft); color: var(--accent);
@@ -386,6 +399,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   font-weight: 600; color: var(--ink);
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
 }
+/* The hero's primary action scrolls here. Without a scroll margin the card
+   lands flush at viewport top, which is underneath the sticky nav — so the
+   reader arrives at the instructions with the heading hidden. */
+.help-card { scroll-margin-top: 4.5rem; }
+
 .help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
 .help-card h2 { margin-top: 0; }
