@@ -1557,13 +1557,13 @@ try {
   // require the PDF to carry all of them, in the same order. This is what keeps
   // the two from drifting — the first version of this PDF split values from
   // beliefs, renamed half the sections and put behaviour in a different place.
-  // The bonus section is the one deliberate exception to page/PDF parity: on
+  // The bonus roast is the one deliberate exception to page/PDF parity: on
   // screen it is behind a cover somebody has to open, and a PDF has no cover,
   // so printing it would hand the harshest writing in the report to whoever
   // the file reaches. Excluded here and asserted absent below.
   const pageSections = (await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim())))
-    .filter(title => title !== 'The bonus section');
+    .filter(title => title !== 'The bonus roast');
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
@@ -1607,12 +1607,12 @@ try {
   // heading, both subheadings, and a phrase from the writing itself, since a
   // renderer could drop the headings and still lay down the prose.
   check('the PDF leaves the bonus section out entirely',
-    !pdfText.includes('(The bonus section)') &&
+    !pdfText.includes('(The bonus roast)') &&
     !pdfText.includes('(The least charitable reading)') &&
     !pdfText.includes('(What a friend would actually say)') &&
     !/not an assessment, not a diagnosis/i.test(pdfText) &&
     !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
-    String(pdfText.match(/\((?:The bonus section|The least charitable reading|What a friend would actually say)\)/g)));
+    String(pdfText.match(/\((?:The bonus roast|The least charitable reading|What a friend would actually say)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

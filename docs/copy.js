@@ -199,9 +199,9 @@
     // The unsparing section. Everything the reader is told before they open it
     // is here, because a cover that undersells what is behind it is not
     // consent — they should be able to decide not to look.
-    bonus: 'The bonus section',
+    bonus: 'The bonus roast',
     bonusSub: 'The rest of this report was written to be fair to you. This part was not.',
-    bonusCoverTitle: 'This one is deliberately unkind',
+    bonusCoverTitle: 'This roast is deliberately unkind',
     bonusCoverBody: 'Two readings written without the softening: the least generous view of you the ' +
       'evidence supports, and the advice a friend would give if they had stopped managing your ' +
       'feelings. Some of it will be wrong. Some of it will be wrong in a way that still stings.',

@@ -631,13 +631,21 @@ it:
   since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
   hand to somebody else drags in a person who never agreed to any of this.
 
-### The bonus section
+### The bonus roast
 
-Everything above it is written to be fair. This one is written to be accurate without being kind:
-the least charitable reading the evidence still supports, and the advice a friend gives when they
-have stopped managing your feelings. It sits below the behaviour read and above confidence, so the
-reader meets every fair section first and the confidence caveat still gets the last word over all
-of it.
+Everything above it is written to be fair. This one is a roast — accurate without being kind: the
+least charitable reading the evidence still supports, and the advice a friend gives when they have
+stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
+meets every fair section first and the confidence caveat still gets the last word over all of it.
+
+The register is stated in the prompt rather than left for the model to infer from "unkind", because
+the page calls it a roast on the cover and the two would otherwise drift apart. What the prompt is
+careful about is the half that makes a roast work: **it is a licence to drop the softening, not a
+licence to make things up.** The form depends on the target recognising themselves, so the funniest
+line available is nearly always the specific one — the count, the caption written four times, the
+gap between what somebody announces and what they do. Generic insults are not roasting; they read
+as a machine that did not actually look, and two checks hold that reasoning in the prompt rather
+than trusting it to survive the next edit.
 
 A third reading, **Where this ends up** — the five-year behavioural forecast — was cut along with
 the behaviour section's subsections. The no-diagnosis rule did not go with it: `harsh` and `advice`
@@ -946,14 +954,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 330 checks: synthesises a real ZIP export and runs
+npm test           # 332 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 573 checks: drives the real UI in Chromium against a
+npm run test:ui    # 574 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

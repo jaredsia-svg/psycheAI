@@ -360,6 +360,19 @@ check('the bonus section carries both readings',
 // a section must not quietly cut a guardrail with it.
 check('the five-year forecast is gone from the schema rather than left unrendered',
   !('trajectory' in bonusProps));
+// The register is now stated outright rather than left implied by "accurate
+// without being kind" — the page calls it a roast, so the prompt has to ask
+// for one or the two drift apart.
+check('the section is asked for as a roast, not just as an unkind read',
+  /This section is a roast/.test(prompts.PROFILE_SYSTEM) &&
+  /Roast them/.test(bonusProps.harsh.description));
+// The load-bearing half of that instruction. A roast that stops being
+// evidence-bound is abuse from a stranger who read somebody's captions, and
+// the licence to be funny is exactly where that would slip.
+check('the roast is still held to the evidence, and told why that matters',
+  /a licence to drop the softening, not a licence to make things up/.test(prompts.PROFILE_SYSTEM) &&
+  /the target recognising themselves/.test(prompts.PROFILE_SYSTEM) &&
+  /Generic insults are not roasting/.test(prompts.PROFILE_SYSTEM));
 check('the harsh read stays inside what the evidence supports',
   /the least charitable reading of this person that the evidence still fully supports/i
     .test(bonusProps.harsh.description) &&
