@@ -816,20 +816,15 @@ try {
     (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
     (await page.locator('#sample-dialog button:not(#sample-body button)').allInnerTexts()).join('|'));
-  // The sample is the shop window for this interaction as much as for the
-  // writing, so the gate has to hold here too — and here it matters more,
-  // since this is a stranger's first sight of the app.
-  const sampleBonus = await page.evaluate(() => {
-    const card = document.querySelector('#sample-body .bonus-card');
-    return card ? { html: card.innerHTML, text: card.innerText } : null;
-  });
-  check('the sample carries the bonus section, still covered',
-    Boolean(sampleBonus) && /deliberately unkind/i.test(sampleBonus.text) &&
-    !/least charitable reading/i.test(sampleBonus.html));
-  await page.click('#sample-body .bonus-reveal');
-  check('the sample reveals its own bonus writing rather than the reader\'s',
-    /a strategy/i.test(await page.locator('#sample-body .bonus-card').innerText()),
-    (await page.locator('#sample-body .bonus-card').innerText()).slice(0, 120));
+  // Written about a made-up account for a stranger who has not asked to see
+  // it, a roast reads as just an insult rather than the thing it is on a real
+  // report — so it is left out of the sample rather than shown covered. No
+  // profile exists yet at this point in the suite to compare against (the
+  // real report's own .bonus-card is asserted further down, once one does),
+  // so this only checks the negative — that the sample never renders it.
+  check('the sample does not offer the bonus roast at all',
+    (await page.locator('#sample-body .bonus-card').count()) === 0 &&
+    !/deliberately unkind/i.test(await page.locator('#sample-body').innerText()));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.

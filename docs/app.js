@@ -278,7 +278,6 @@
   // must not call history.back() a second time.
   let sampleHistoryEntry = false;
   let closingFromHistory = false;
-  let sampleReport = null;
   const sampleDialog = () => $('#sample-dialog');
 
   async function showSample(button) {
@@ -291,10 +290,7 @@
         if (!response.ok) throw new Error('The sample could not be loaded.');
         return response.json();
       });
-      // Kept so the bonus section can be revealed on demand. Its text is
-      // deliberately not written into the markup until the reader asks for it.
-      sampleReport = report;
-      $('#sample-body').innerHTML = reportSectionsHtml(report);
+      $('#sample-body').innerHTML = reportSectionsHtml(report, { bonus: false });
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -394,16 +390,14 @@
   $('#sample-close').addEventListener('click', closeSample);
 
   // Delegated, because the covers are written by innerHTML in two places — the
-  // real report and the sample dialog — and both need the same behaviour. The
-  // writing itself is looked up from whichever report the clicked cover
-  // belongs to rather than read out of the page, since the whole point is that
-  // it was never put in the page.
+  // real report — the sample never renders this section at all, so a
+  // `.bonus-reveal` can only belong to the reader's own report. The writing is
+  // looked up from state rather than read out of the page, since the whole
+  // point is that it was never put in the page.
   document.addEventListener('click', event => {
     const reveal = event.target.closest('.bonus-reveal');
     if (reveal) {
-      const source = event.target.closest('#sample-body')
-        ? sampleReport
-        : state.profile && state.profile.report;
+      const source = state.profile && state.profile.report;
       if (!source || !source.bonus) return;
       reveal.setAttribute('aria-expanded', 'true');
       revealBonus(reveal.closest('.bonus-cover'), source.bonus);
@@ -654,8 +648,14 @@
    * buttons, delete, the QR panel — lives outside #profile-body in
    * index.html, so building only this excludes them by construction rather
    * than by a list of things to hide that someone has to remember to update.
+   *
+   * The roast is the one exception, since it is part of #profile-body rather
+   * than sitting outside it: `{ bonus: false }` leaves it out of the string
+   * entirely, the same "excluded by construction" reasoning as the controls
+   * above, rather than a real report's writing merely being hidden from view.
    */
-  function reportSectionsHtml(report) {
+  function reportSectionsHtml(report, options) {
+    const includeBonus = !options || options.bonus !== false;
     const head = sectionHead;
 
     let html = '';
@@ -790,8 +790,11 @@
 
     // Below the behaviour section and above confidence, so the reader meets
     // every fair reading before the unkind one, and the confidence caveat
-    // still gets the last word over all of it.
-    html += bonusBlock(report.bonus);
+    // still gets the last word over all of it. Written about a made-up
+    // account for a stranger who has not asked to see it, a roast reads as
+    // just an insult rather than the thing it is on a real report, so the
+    // sample leaves it out rather than showing it dressed as an example.
+    if (includeBonus) html += bonusBlock(report.bonus);
 
     // Confidence closes the report rather than opening it: read after the
     // whole thing, it says how much of what you just read to believe.
