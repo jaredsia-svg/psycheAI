@@ -580,11 +580,19 @@ beyond the usual "this is popular, not validated" hedge: say plainly if the Enne
 MBTI read seem to pull in different directions, rather than quietly smoothing the disagreement over.
 
 **Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
-in what mix, when they reach for the app, and how their use changed month by month. It used to run
-to six facets and a list of hedged behavioural implications; the shape-of-attention facet and the
-implications list were trimmed for being the two subsections that told a reader the least per word,
-and both were cut from `PROFILE_SCHEMA` too, not just from the page — asking the model for output
-nobody reads is tokens spent for nothing.
+in what mix, when they reach for the app, how their use changed month by month, and what they take
+in. It used to run to six facets and a list of hedged behavioural implications; the shape-of-attention
+facet and the implications list were trimmed for being the two subsections that told a reader the
+least per word, and both were cut from `PROFILE_SCHEMA` too, not just from the page — asking the
+model for output nobody reads is tokens spent for nothing.
+
+It is now **four facets and nothing else** — no sub-line under the heading, no caveat closing it.
+The summary restated in prose what the facets say with the evidence attached, and the blind-spots
+line duplicated the confidence section that closes the whole report. `align-items: start` on the
+grid keeps each facet only as tall as its own text: stretched to the row height instead, the accent
+rule on a short facet ran a couple of hundred pixels past the end of its paragraph, which reads as a
+rendering fault rather than a divider. That only became visible once the fourth facet arrived with a
+paragraph much longer than the other three.
 
 ### What you take in
 
@@ -600,13 +608,15 @@ This replaced **Publishing vs reading**, which asked the same counts and answere
 The publish-against-read ratio is now one sentence of this read rather than a facet beside it —
 keeping both meant two facets reaching for the same numbers and saying the same thing twice.
 
-It is one paragraph. It briefly carried four more subsections — a ranked list of the accounts taking
-the most attention, a read of Instagram's own inferred topics, and a **Worth changing** /
-**Leave alone** pair of recommendation lists closing the section — and all four were cut together
-for length. The behaviour section had grown to about a screen and a half and was outweighing
-findings that say considerably more about a person than their feed does. All four came out of
-`PROFILE_SCHEMA` as well as the page, on the same reasoning as the facets before them: output
-nobody reads is tokens spent for nothing.
+It is one paragraph, and one of the four facets. It briefly carried four more subsections — a ranked
+list of the accounts taking the most attention, a read of Instagram's own inferred topics, and a
+**Worth changing** / **Leave alone** pair of recommendation lists closing the section — and all four
+were cut together for length. The behaviour section had grown to about a screen and a half and was
+outweighing findings that say considerably more about a person than their feed does. All four came
+out of `PROFILE_SCHEMA` as well as the page, on the same reasoning as the facets before them: output
+nobody reads is tokens spent for nothing. Losing the list and the second reading left it the same
+shape as the other three, which is why it went back into the grid rather than running full width
+beneath it.
 
 **Two rules outlived the list that introduced them**, because the surviving paragraph still reads
 the same counts, and cutting a section must not quietly cut a guardrail with it. A selftest check
@@ -652,9 +662,13 @@ than out of the page. Covering it back up empties the container again, so the ga
 once. A UI check asserts the mock's own bonus wording is absent from the card's `innerHTML` before
 the click; it fails against a version that writes the text in and blurs it.
 
-There is no clicking in a PDF, so the cover cannot travel. The caveat goes *above* the writing
-there rather than after it, because a reader reopening that file in six months meets it cold, and a
-check pins that ordering by string offset.
+**The PDF leaves it out entirely**, and it is the one place the PDF is not a faithful rendering of
+the page. A PDF has no cover to open, so the consent gate cannot travel into one — printing it would
+put the harshest writing in the report into a file that gets reopened cold and forwarded, including
+by a reader who never pressed the button. The page/PDF parity check exempts this one section by
+name, and a second check asserts every part of it absent: the heading, both subheadings, the caveat,
+and a phrase from the writing itself, since a renderer could drop the headings and still lay down
+the prose.
 
 ## Downloading the report
 

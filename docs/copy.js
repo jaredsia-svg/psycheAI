@@ -57,14 +57,18 @@
   // Label, then the key it reads from the activity object. The order is the
   // order the reader meets them in.
   // "Publishing vs reading" used to close this list. It asked the same counts
-  // the consumption read below now asks, and answered them more thinly, so the
-  // two facets said the same thing twice. What you take in is not a facet in
-  // this grid — it carries a list of accounts and a second reading of its own,
-  // so it runs full width underneath.
+  // the consumption read now asks, and answered them more thinly, so the two
+  // said the same thing twice.
+  //
+  // "What you take in" ran full width below this grid while it carried a list
+  // of accounts and a second reading. Those were cut, which left it the same
+  // shape as the other three — one headline, one paragraph — so it is a facet
+  // again, and four of them make an even two-by-two on a laptop.
   const ACTIVITY_FACETS = [
     ['What you post', 'posting'],
     ['When you are here', 'rhythm'],
     ['How it changed', 'trajectory'],
+    ['What you take in', 'diet'],
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
@@ -176,7 +180,6 @@
     holdBack: 'What could hold you back',
 
     activity: 'Your Instagram behaviour',
-    diet: 'What you take in',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',
@@ -201,17 +204,17 @@
       'evidence supports, and the advice a friend would give if they had stopped managing your ' +
       'feelings. Some of it will be wrong. Some of it will be wrong in a way that still stings.',
     bonusReveal: 'Show me anyway',
-    bonusHide: 'Cover it back up',
+    bonusHide: 'Hide',
     bonusHarsh: 'The least charitable reading',
     bonusAdvice: 'What a friend would actually say',
     // Stays on screen after the reveal rather than only appearing on the cover:
     // this is the part a reader most needs while they are reading it, and the
     // part they are least likely to scroll back up for.
-    bonusCaveat: 'This is a language model being deliberately harsh about behavioural traces from ' +
-      'one Instagram export. It is not an assessment, not a diagnosis and not a professional opinion ' +
-      'of any kind. It cannot see your circumstances, your history or your reasons. Treat it as a ' +
-      'provocation to argue with, not a verdict — and if any of it lands somewhere heavier than that, ' +
-      'the person to talk to about it is a person.',
+    bonusCaveat: 'This is an AI model being deliberately harsh about behavioural traces from your ' +
+      'IG data. It is not an assessment, not a diagnosis and not a professional opinion of any kind. ' +
+      'It cannot see your circumstances, your history or your reasons. Treat it as a provocation to ' +
+      'argue with, not a verdict — and if any of it lands somewhere heavier than that, the person to ' +
+      'talk to about it is a person.',
 
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +

@@ -310,8 +310,15 @@ check('Enneagram is asked to explain what the wing specifically adds, not just n
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
-  ['summary', 'posting', 'rhythm', 'trajectory', 'diet', 'blindSpots']
-    .every(k => k in activityProps));
+  ['posting', 'rhythm', 'trajectory', 'diet'].every(k => k in activityProps));
+// Four facets and nothing around them. The summary restated in prose what the
+// facets say with evidence attached, and the blind-spots line duplicated the
+// confidence section that closes the whole report — both out of the schema as
+// well as the renderers.
+check('the section is four facets, with no prose wrapped around them',
+  Object.keys(activityProps).length === 4 &&
+  !('summary' in activityProps) && !('blindSpots' in activityProps),
+  Object.keys(activityProps).join(', '));
 // `engagement` asked for the publish-against-read ratio as a facet of its own.
 // That ratio is one sentence of the consumption read rather than a section
 // beside it, and keeping both had two facets reaching for the same counts.
@@ -340,7 +347,6 @@ check('the timing-data ban survived the account list being cut',
   /The export contains no timing data whatsoever/.test(prompts.PROFILE_SYSTEM));
 check('the ban on naming private individuals survived it too',
   /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
-check('activity states what it cannot see', 'blindSpots' in activityProps);
 // The unsparing section. Its licence is to drop the softening, not to drop the
 // evidence, and above all not to invent a diagnosis — so each limit is pinned
 // separately rather than trusted to one loose match.

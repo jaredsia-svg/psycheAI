@@ -788,18 +788,24 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 
 /* ---------- behaviour facets ---------- */
 
-.facet-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: .7rem; margin-bottom: 1.2rem; }
+/* `align-items: start` so each facet is only as tall as its own text. Stretched
+   to the row height instead, the left rule on a short facet ran on for a couple
+   of hundred pixels past the end of its paragraph — which reads as a rendering
+   fault rather than a divider. It only became visible with the fourth facet,
+   whose paragraph is much longer than the other three. */
+.facet-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  align-items: start; gap: .7rem; margin-bottom: 1.2rem;
+}
 .facet { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .8rem; }
 .facet-label { font-size: .76rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
 .facet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
 .facet p { margin: 0; font-size: .9rem; }
 
-/* What you take in: the same left rule as a facet, but full width under the
-   grid rather than a cell inside it, since it runs longer than the three
-   above it. */
-.diet { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem; }
-.diet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
-.diet p { margin: 0; }
+/* "What you take in" had its own full-width block while it carried a list of
+   accounts and a second reading. Those were cut, leaving it the same shape as
+   the three beside it, so it is an ordinary .facet now and needs no rules of
+   its own. */
 
 /* The bonus section's cover. Greyed and inert-looking on purpose: it should
    read as something switched off rather than as another card to scroll past.

@@ -1051,7 +1051,8 @@ try {
   check('the bonus section sits below the behaviour read and above confidence',
     await page.evaluate(() => {
       const bonus = document.querySelector('#profile-body .bonus-card');
-      const behaviour = document.querySelector('#profile-body .diet').closest('.section-card');
+      const grid = document.querySelector('#profile-body .facet-grid');
+      const behaviour = grid && grid.closest('.section-card');
       const confidence = document.querySelector('#profile-body .confidence-card');
       if (!bonus || !behaviour || !confidence) return false;
       return Boolean(behaviour.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING) &&
@@ -1286,22 +1287,35 @@ try {
     (await page.locator('#profile-body .section-card').count()));
   check('strengths and weaknesses sit side by side',
     (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
-  // The behaviour section carried a two-column advice block until it was cut
-  // for length. Held as an absence, so it cannot creep back unnoticed and so
-  // the split count above stays a statement about strengths and weaknesses.
-  check('the behaviour section no longer closes on advice',
+  // The behaviour section carried a two-column advice block and a full-width
+  // consumption block until both were cut. Held as absences, so neither can
+  // creep back unnoticed and so the split count above stays a statement about
+  // strengths and weaknesses.
+  check('the behaviour section no longer closes on advice or a block of its own',
     (await page.locator('#profile-body .advice-split').count()) === 0 &&
-    (await page.locator('#profile-body .diet h3').count()) === 0,
-    (await page.locator('#profile-body .diet h3').allInnerTexts()).join(' | '));
+    (await page.locator('#profile-body .diet').count()) === 0);
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
-  check('behaviour facets render as their own blocks',
-    (await page.locator('#profile-body .facet').count()) === 3);
-  check('the consumption read runs full width under them, as one paragraph',
-    (await page.locator('#profile-body .diet').count()) === 1 &&
-    (await page.locator('#profile-body .diet p').count()) === 1 &&
-    (await page.locator('#profile-body .diet-accounts').count()) === 0,
-    (await page.locator('#profile-body .diet').innerText()).replace(/\s+/g, ' ').slice(0, 90));
+  // Four now, not three: "What you take in" lost the list and the second
+  // reading that kept it out of the grid, so it is an ordinary facet and the
+  // four of them sit two-by-two on a laptop.
+  // textContent rather than innerText: the labels are uppercased in CSS, and
+  // innerText returns the rendered casing, which would compare the stylesheet
+  // rather than the strings copy.js actually supplies.
+  const facetLabels = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .facet-label')].map(el => el.textContent.trim()));
+  check('the behaviour section is four facets, the consumption read among them',
+    (await page.locator('#profile-body .facet').count()) === 4 &&
+    facetLabels.join(' | ') === 'What you post | When you are here | How it changed | What you take in',
+    facetLabels.join(' | '));
+  // The prose that wrapped the grid is gone: no sub-line under the heading,
+  // and no blind-spots caveat closing it. The confidence section already
+  // closes the whole report with the same warning.
+  check('the behaviour section is the grid and nothing else',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .facet-grid').closest('.section-card');
+      return !card.querySelector('.card-sub') && !card.querySelector('.fineprint');
+    }));
   check('each axis shows how strongly it leans',
     (await page.locator('.axis .pill').count()) === 4);
   check('a slight lean is marked as such',
@@ -1534,8 +1548,13 @@ try {
   // require the PDF to carry all of them, in the same order. This is what keeps
   // the two from drifting — the first version of this PDF split values from
   // beliefs, renamed half the sections and put behaviour in a different place.
-  const pageSections = await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim()));
+  // The bonus section is the one deliberate exception to page/PDF parity: on
+  // screen it is behind a cover somebody has to open, and a PDF has no cover,
+  // so printing it would hand the harshest writing in the report to whoever
+  // the file reaches. Excluded here and asserted absent below.
+  const pageSections = (await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim())))
+    .filter(title => title !== 'The bonus section');
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
@@ -1572,16 +1591,19 @@ try {
     !pdfText.includes('(PUBLISHING VS READING)'));
   // The PDF is the copy people keep and hand around, so the consumption read
   // and its advice have to survive into it rather than being screen-only.
-  // There is no clicking in a PDF, so the cover cannot travel — which makes
-  // the caveat the only thing standing between a reader who reopens this file
-  // in six months and the harshest writing in it. It has to be there, and it
-  // has to come before the writing rather than after it.
-  check('the PDF carries the bonus section with its caveat ahead of the writing',
-    pdfText.includes('(The bonus section)') &&
-    /not an assessment, not a diagnosis/i.test(pdfText) &&
-    pdfText.indexOf('not an assessment') < pdfText.indexOf('(The least charitable reading)'),
-    'caveat at ' + pdfText.indexOf('not an assessment') +
-      ', first heading at ' + pdfText.indexOf('(The least charitable reading)'));
+  // A PDF has no cover to open, so the consent gate cannot travel into one.
+  // Printing the section would put the harshest writing in the report into a
+  // file that gets reopened cold and forwarded — including by a reader who
+  // never pressed the button. Every part of it is asserted absent: the
+  // heading, both subheadings, and a phrase from the writing itself, since a
+  // renderer could drop the headings and still lay down the prose.
+  check('the PDF leaves the bonus section out entirely',
+    !pdfText.includes('(The bonus section)') &&
+    !pdfText.includes('(The least charitable reading)') &&
+    !pdfText.includes('(What a friend would actually say)') &&
+    !/not an assessment, not a diagnosis/i.test(pdfText) &&
+    !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
+    String(pdfText.match(/\((?:The bonus section|The least charitable reading|What a friend would actually say)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

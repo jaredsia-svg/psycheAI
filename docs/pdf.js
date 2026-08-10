@@ -1085,32 +1085,20 @@
     // evidence underneath them rather than another verdict.
     const activity = source.activity;
     if (activity) {
-      out.sectionTitle(TEXT.activity, activity.summary);
+      out.sectionTitle(TEXT.activity);
       for (const [label, key] of Copy.ACTIVITY_FACETS) {
         const part = activity[key];
         if (!part) continue;
         out.facet(label, part.headline, part.detail);
       }
-      // What they take in is not one of the facets above: it carries a list of
-      // accounts and a second reading, so it runs on its own underneath, the
-      // same shape it takes on screen.
-      if (activity.diet) out.facet(TEXT.diet, activity.diet.headline, activity.diet.detail);
-      out.fineprint(activity.blindSpots);
     }
 
-    // The bonus section, which the page keeps behind a cover. There is no
-    // clicking in a PDF, so the caveat carries the warning on its own and goes
-    // above the writing rather than after it — this is a file people keep and
-    // reopen, and a reader landing on it cold should meet the caveat first.
-    const bonus = source.bonus;
-    if (bonus) {
-      out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
-      out.note(TEXT.bonusCaveat);
-      out.h3(TEXT.bonusHarsh);
-      out.body(bonus.harsh);
-      out.h3(TEXT.bonusAdvice);
-      out.body(bonus.advice);
-    }
+    // The bonus section is deliberately absent here, and this is the one place
+    // the PDF is not a faithful rendering of the page. On screen it sits behind
+    // a cover somebody has to open, which is what makes it consented to; a PDF
+    // has no cover to open, so printing it would hand the harshest writing in
+    // the report to whoever the file reaches — including the reader who never
+    // pressed the button, and anyone they send it to. A check holds it out.
 
     // 10. Matches, when this device has any.
     const history = (stamp.history || []).filter(entry => entry && entry.report);

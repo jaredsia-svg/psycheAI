@@ -187,16 +187,6 @@
       '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
   }
 
-  // What they consume, run full width under the facet grid rather than inside
-  // it. It once carried a list of accounts, a read of Instagram's own inferred
-  // topics, and a pair of recommendation lists; all were cut for length, and
-  // what is left is one paragraph that reads better without them.
-  function dietBlock(diet) {
-    if (!diet) return '';
-    return '<div class="diet"><span class="facet-label">' + esc(TEXT.diet) + '</span>' +
-      '<h4>' + esc(diet.headline) + '</h4><p>' + esc(diet.detail) + '</p></div>';
-  }
-
   // The unsparing section, behind a cover the reader has to open.
   //
   // The text is NOT written into the markup here. Blurring it with CSS would
@@ -784,8 +774,10 @@
     // underneath them rather than another verdict.
     const activity = report.activity;
     if (activity) {
-      html += '<div class="card section-card">' +
-        head('📱', esc(TEXT.activity), esc(activity.summary));
+      // No sub-line and no closing caveat: the summary said in prose what the
+      // four facets say with evidence attached, and the blind-spots note
+      // duplicated the confidence section that closes the whole report.
+      html += '<div class="card section-card">' + head('📱', esc(TEXT.activity));
       html += '<div class="facet-grid">';
       for (const [label, key] of Copy.ACTIVITY_FACETS) {
         const facet = activity[key];
@@ -793,9 +785,7 @@
         html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
           '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
       }
-      html += '</div>';
-      html += dietBlock(activity.diet);
-      html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
+      html += '</div></div>';
     }
 
     // Below the behaviour section and above confidence, so the reader meets
