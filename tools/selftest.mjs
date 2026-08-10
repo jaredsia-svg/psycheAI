@@ -784,6 +784,39 @@ check('the user\'s own messages do reach the digest', dmJson.includes('Own messa
 check('raw message text is dropped after summarising',
   withDmSignals.messageTexts.length === 0 && withDmSignals.messageEvents.length === 0);
 
+// ---------- redacting a built digest, after the fact ----------
+//
+// Messages are now parsed and counted unconditionally, so the pre-send
+// review dialog can show a real count before the reader decides. This is
+// what removes them again if that review ends in "no" — the one function in
+// this app whose whole job is deleting something that is already there, so
+// it gets its own block rather than riding along with the building checks
+// above.
+const redacted = Digest.omitMessages(Digest.build(withDmSignals, { includeMessages: true }));
+check('omitMessages removes the direct-message block entirely',
+  redacted.directMessages === undefined);
+check('omitMessages removes the DM sampling coverage that named it',
+  redacted.coverage.sampling.ownMessages === undefined);
+check('omitMessages records the opt-out for the model',
+  redacted.coverage.directMessagesIncluded === false);
+check('no message text survives redaction, own or otherwise',
+  !JSON.stringify(redacted).includes('Own message') && !JSON.stringify(redacted).includes('Their reply'));
+// Redaction has one job. Everything that was not a message field has to
+// come through untouched, or "review, then remove just this" quietly
+// became "review, then remove more than was asked".
+check('omitMessages touches nothing outside the message fields',
+  redacted.samples.captions.length === withDms.samples.captions.length &&
+  redacted.following.length === withDms.following.length &&
+  redacted.coverage.images.attached === withDms.coverage.images.attached);
+// Calling it on a digest that was never given messages in the first place —
+// a future caller passing one straight through, say — must be a no-op, not
+// a crash reaching for a directMessages that was never there. A fresh digest
+// rather than reusing one from elsewhere in this file, so this check cannot
+// be broken by an unrelated edit to a shared variable's later assertions.
+const noMessages = Digest.build(withDmSignals, { includeMessages: false });
+check('omitMessages is safe to call on a digest with no messages to begin with',
+  (() => { Digest.omitMessages(noMessages); return noMessages.coverage.directMessagesIncluded === false; })());
+
 // ---------- how images reach the model ----------
 
 const withPhotos = Digest.build(withImages, {

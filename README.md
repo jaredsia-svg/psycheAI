@@ -296,7 +296,7 @@ This is the part worth reading carefully.
 | The `.zip` archive itself | An **evidence digest**: activity counts, hour-of-day and day-of-week histograms, posting regularity, a sample of your own captions and comments, accounts you follow, and the topics Instagram itself inferred about you |
 | Every video — never opened | By default: about **14 of your own photographs**, downscaled, spread across your whole account history |
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
-| Direct messages, if you untick the box | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
+| Direct messages, if you untick them in the pre-send review | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
 
 ### The FAQ says exactly this, and is held to it
 
@@ -388,10 +388,11 @@ already been told who they are.
 Breadth rather than volume, because a real export ships the whole file skeleton whether the account
 has three posts or thirty thousand. A quiet account is thin, not unrecognisable, and belongs in the
 report with a low confidence rather than turned away at the door. Messages are excluded from the
-count for two reasons: they are an opt-out, so counting them would let the threshold move with a
-switch on the upload page, and they are the one route a Facebook export gets perfectly right, being
-the same Messenger format — so they are the last thing that should count towards recognising
-Instagram.
+count for two reasons: they can end up withheld from the model by a choice made after the archive is
+already open — see the pre-send review below — so counting them would let the threshold move with a
+decision that has nothing to do with what kind of archive this is, and they are the one route a
+Facebook export gets perfectly right, being the same Messenger format — so they are the last thing
+that should count towards recognising Instagram.
 
 `tools/fixture.mjs` builds a Facebook download shaped the way Meta writes one, and both suites run it
 through: the unit suite asserts the refusal and its wording, the browser suite asserts it reaches
@@ -411,7 +412,7 @@ topics. **Sampled** — the text:
 | Comments you wrote | 360 |
 | Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
 | Accounts you like / save most | 240 / 120 |
-| Your own DMs | 280 — included by default, untick the box before uploading to exclude them |
+| Your own DMs | 280 — parsed and counted unconditionally now; excluded from what is sent only if you untick them in the pre-send review, after you have seen the real count |
 | Searches | last 160 |
 
 (Those are the Standard caps; see below for Comprehensive.)
@@ -479,6 +480,39 @@ gutting captions to 20 to spare a list of account names.
 The `samplingNote` is written from what the coverage numbers say rather than from the setting that
 was chosen, so a comprehensive run that did send everything does not tell the model it is reading a
 subset and hedge a confidence figure it has no reason to hedge.
+
+### Reviewing what actually gets sent
+
+Once depth is chosen, and before anything reaches the model, a second dialog shows the reader the
+real digest that was just built — real counts, not a description of what the app generally does —
+with two switches: direct messages, and photos. Both used to be checkboxes on the upload page,
+ticked before the archive had even been opened; they moved here because a choice made before you can
+see what it actually contains is not an informed one, and because "download this app's data
+practices in the abstract" and "here are your own 18 messages, sampled from 36, decide" are different
+levels of consent.
+
+That move inverted how messages and images are handled upstream. `IG.readExports` used to take
+`includeMessages`/`includeImages` and skip parsing the relevant files outright when either was off —
+cheap, but it meant the old checkboxes were a blind guess, since there was nothing yet to show a
+count of. Both are now parsed unconditionally, and the review dialog is what removes anything the
+reader declines, **after** it already exists: `Digest.omitMessages()` deletes `directMessages` and
+its coverage entries from an already-built digest, and photo extraction is deferred until after the
+review closes, so declining photos skips the decode-and-downscale step outright rather than doing the
+work and throwing the result away. `tools/uitest.mjs` checks the second half of that directly, not
+just its outcome — it records every `#progress-label` value during a decline and asserts
+`"Preparing image"` never appears in it, which a version that extracted first and discarded second
+would still pass on "no images were sent" alone.
+
+Declining is proven rather than trusted. The suite drives a real upload, unticks both switches in the
+review dialog, and checks the actual request body: no `directMessages` key, no message text anywhere
+in the digest — not just the user's own, the whole block — and an empty `images` array with not one
+base64 byte in the payload. Both `omitMessages()` and the deferred-extraction guard were fault-injected
+while this shipped: skipping the redaction call, and running extraction regardless of the reader's
+answer. Each broke a different, specific set of checks with a diagnostic naming what leaked.
+
+A row with nothing in it says so rather than pretending to be a live switch: an export with no direct
+messages shows "Direct messages — none found" with the checkbox disabled, instead of an untickable
+promise about content that was never there.
 
 ### The photographs
 
@@ -980,18 +1014,20 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 335 checks: synthesises a real ZIP export and runs
+npm test           # 341 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 579 checks: drives the real UI in Chromium against a
+npm run test:ui    # 589 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
-                   # JPEGs, are not the originals, and vanish on opt-out.
+                   # JPEGs, are not the originals, and vanish on opt-out — an
+                   # opt-out now made in the pre-send review dialog, checked
+                   # against the real request body rather than UI state alone.
                    # Includes the scan ladder the card's size budget is set
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in

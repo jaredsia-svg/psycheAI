@@ -46,6 +46,18 @@ async function chooseDepth(page, depth) {
   await page.click('#depth-dialog .mode-option[data-depth="' + depth + '"]');
 }
 
+// Every upload now also stops at the pre-send review, after the depth
+// picker. `options.untickMessages` / `options.untickImages` let a caller
+// exercise the opt-out from here; both default to leaving the pre-checked
+// boxes alone, which is the ordinary path most flows want.
+async function answerReview(page, options) {
+  const opts = options || {};
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  if (opts.untickMessages) await page.uncheck('#review-dms');
+  if (opts.untickImages) await page.uncheck('#review-images');
+  await page.click('#review-send');
+}
+
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1' },
@@ -105,25 +117,20 @@ try {
     (await page.content()).toLowerCase().includes('questionnaire') === false ||
     (await page.locator('#step-form').count()) === 0);
 
-  // Direct messages are on by default; the switch is the opt-out.
-  check('direct messages are included by default', await page.locator('#include-dms').isChecked());
-  check('the switch says only the user\'s own messages are sent',
-    /only your own messages/i.test(await page.locator('#include-dms ~ span').innerText()));
-
-  // So are images, and the switch has to be honest about what leaves the device.
-  check('a photo sample is included by default', await page.locator('#include-images').isChecked());
-  // The number is read out of the depth config rather than typed here, so the
-  // switch cannot go on promising 14 after the config sends a different count.
-  // That drift is the reason to state a real figure rather than a vague range.
-  check('the image switch states the number the code actually sends',
-    await page.evaluate(() => {
-      const said = document.querySelector('#include-images ~ span').innerText;
-      const sends = window.PsycheDigest.DEPTHS.standard.images;
-      return new RegExp('up to ' + sends + ' images', 'i').test(said);
-    }),
-    await page.locator('#include-images ~ span').innerText());
-  check('the image switch says video is never sent',
-    /videos are all excluded/i.test(await page.locator('#include-images ~ span').innerText()));
+  // The two switches that used to sit here — direct messages, a sample of
+  // your photos — moved into the pre-send review dialog, so what the main
+  // page owes the reader now is not "here is the default" but "here is what
+  // happens before anything is sent". That promise is checked against a real
+  // upload further down this file, where the review dialog actually opens;
+  // what belongs here is only that the page states the promise at all, and
+  // that neither switch was simply deleted without a trace.
+  check('there is no switch left promising DMs or photos on this page without review',
+    (await page.locator('#include-dms').count()) === 0 &&
+    (await page.locator('#include-images').count()) === 0);
+  check('the upload card explains that a review comes before anything is sent',
+    /review/i.test(await page.locator('.upload-card .card-sub').innerText()) &&
+    /before anything is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
+    await page.locator('.upload-card .card-sub').innerText().catch(() => 'missing'));
 
   // Nothing is asked for before the upload — the export carries the name.
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
@@ -146,20 +153,20 @@ try {
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
       : 'no lede');
   // The privacy badge moved out of the hero and down to the upload card, then
-  // further down to sit under the last of the two switches — the reader meets
-  // it right after choosing what to include, on the way to the button that
-  // sends it, rather than at arrival or mid-way through the choices. Checked
-  // by document order — a rule that moved it visually while leaving it
-  // earlier in the DOM would read to a screen reader exactly as it did before.
-  check('the privacy badge sits under the photos switch, above any error state',
+  // further down to sit under the dropzone — once the two switches that used
+  // to sit between them moved into the review dialog, the dropzone became the
+  // last thing before it. Checked by document order — a rule that moved it
+  // visually while leaving it earlier in the DOM would read to a screen
+  // reader exactly as it did before.
+  check('the privacy badge sits under the dropzone, above any error state',
     await page.evaluate(() => {
       const pill = document.querySelector('#view-welcome .upload-card .eyebrow');
-      const images = document.querySelector('#view-welcome .upload-card #include-images');
+      const dropzone = document.querySelector('#view-welcome .upload-card #dropzone');
       const error = document.querySelector('#upload-error');
-      if (!pill || !images || !error) return false;
-      const afterImages = images.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      if (!pill || !dropzone || !error) return false;
+      const afterDropzone = dropzone.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
       const beforeError = error.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
-      return Boolean(afterImages && beforeError);
+      return Boolean(afterDropzone && beforeError);
     }));
   // Two badges now rather than one: the storage promise and the no-tracking
   // promise are different facts, answering different worries, so they render
@@ -212,23 +219,23 @@ try {
       (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
     (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
 
-  // The badge now sits right under the last switch, pulled up with a small
-  // negative margin so it reads as attached to that switch rather than
+  // The badge now sits right under the dropzone, pulled up with a small
+  // negative margin so it reads as attached to the dropzone rather than
   // floating in the space before the card's own edge below it.
-  check('the badge sits closer to the photos switch than to the card edge below it',
+  check('the badge sits closer to the dropzone than to the card edge below it',
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const images = document.querySelector('#include-images').closest('.switch-row').getBoundingClientRect();
+      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
       const card = document.querySelector('.upload-card').getBoundingClientRect();
-      const gapAbove = pill.top - images.bottom;
-      // Must actually be below the switch, not just nearer to it by sign.
+      const gapAbove = pill.top - dropzone.bottom;
+      // Must actually be below the dropzone, not just nearer to it by sign.
       return gapAbove >= 0 && gapAbove < (card.bottom - pill.bottom);
     }),
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const images = document.querySelector('#include-images').closest('.switch-row').getBoundingClientRect();
+      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
       const card = document.querySelector('.upload-card').getBoundingClientRect();
-      return Math.round(pill.top - images.bottom) + 'px above, ' +
+      return Math.round(pill.top - dropzone.bottom) + 'px above, ' +
         Math.round(card.bottom - pill.bottom) + 'px below';
     }));
   // The hero's warm band closes under the buttons, which are the last thing in
@@ -904,8 +911,50 @@ try {
 
   await page.click('#depth-dialog .mode-option[data-depth="standard"]');
 
+  // ---- the pre-send review ----
+  // The one dialog in this app whose entire content is generated fresh on
+  // every run rather than reused static markup, so it gets the most
+  // thorough look — everywhere else this suite meets it, the flow just
+  // answers it and moves on.
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('the review dialog opens before the depth dialog\'s pick reaches the model',
+    analyseBodies.length === 0, analyseBodies.length + ' requests');
+  check('the profile is not showing behind the review dialog',
+    !(await page.locator('#view-profile').isVisible()));
+  const reviewText = await page.locator('#review-dialog').innerText();
+  // Every count in here is read off the digest that was just built, not
+  // typed as a description of what the app generally does — so the numbers
+  // must actually be numbers, not a placeholder left over from a template.
+  check('the review names your own captions and comments, with real counts',
+    /\d+ captions?, \d+ comments?/.test(reviewText), reviewText.slice(0, 400));
+  check('the review names the accounts you follow, with a real count',
+    /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
+  check('the review says nothing is sent until Send is pressed',
+    /Nothing reaches Gemini or Claude until you press Send/i.test(reviewText));
+  check('direct messages and photos are offered as switches, both on by default',
+    await page.locator('#review-dms').isChecked() && await page.locator('#review-images').isChecked());
+  check('the messages switch states a real sampled count out of a real total',
+    /\d+ of your own messages sampled out of \d+ total/.test(
+      await page.locator('#review-dms ~ span').innerText()),
+    await page.locator('#review-dms ~ span').innerText());
+  check('the photos switch states the real number selected for standard depth',
+    await page.evaluate(() => {
+      const said = document.querySelector('#review-images ~ span .muted').textContent;
+      const sends = window.PsycheDigest.DEPTHS.standard.images;
+      return new RegExp('^' + sends + ' of your own photos').test(said);
+    }),
+    await page.locator('#review-images ~ span .muted').innerText());
+  await shot('1c-review');
+
+  await page.click('#review-send');
+
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
+  check('sending from the review includes DMs and photos, since neither was unticked',
+    (await page.evaluate(() => {
+      const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+      return Boolean(digest.directMessages) && digest.coverage.images.included && digest.coverage.images.attached > 0;
+    })));
   check('choosing standard records standard in the digest',
     (await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')).coverage.depth)) === 'standard');
   check('profile is titled with the name from the export',
@@ -2167,6 +2216,25 @@ try {
   check('backing out leaves no half-built profile behind',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
+  // ---- backing out of the review, one step later ----
+  // Cancelling here has to be exactly as free as cancelling the depth picker
+  // — the archive was already read and the digest already built by this
+  // point, so "cost nothing" is the thing actually worth proving.
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page, 'standard');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  const beforeReviewCancel = analyseBodies.length;
+  await page.click('#review-cancel');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+  check('backing out of the review returns to the upload page',
+    await page.locator('#view-welcome').isVisible());
+  check('backing out of the review sends nothing to the model',
+    analyseBodies.length === beforeReviewCancel);
+  check('backing out of the review leaves no half-built profile behind',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
@@ -2180,6 +2248,7 @@ try {
     document.querySelector('#depth-dialog .mode-option[data-depth="comprehensive"]').disabled = false;
   });
   await page.click('#depth-dialog .mode-option[data-depth="comprehensive"]');
+  await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
   const deepDigest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
@@ -2198,14 +2267,27 @@ try {
     deepDigest.coverage.digestChars < 545066, deepDigest.coverage.digestChars + ' chars');
 
   // ---- the opt-out actually opts out ----
+  // The two switches moved from the main page into the review dialog, so the
+  // export is now read and the digest now built with both DMs and photos
+  // included unconditionally — the opt-out has to work by stripping them back
+  // out afterwards rather than by never reading them in. This is the check
+  // that proves the stripping is real: not a UI state, but genuinely absent
+  // from what reaches the model.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
-  await page.uncheck('#include-dms');
-  await page.uncheck('#include-images');
+  // Scoped to this one upload, so an unrelated "Preparing image" label from
+  // an earlier cycle in this same run cannot be mistaken for one from here.
+  await page.evaluate(() => {
+    window.__progressLabels = [];
+    const node = document.querySelector('#progress-label');
+    new MutationObserver(() => window.__progressLabels.push(node.textContent))
+      .observe(node, { childList: true, characterData: true, subtree: true });
+  });
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
   await chooseDepth(page, 'standard');
+  await answerReview(page, { untickMessages: true, untickImages: true });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
@@ -2217,6 +2299,13 @@ try {
   check('the image opt-out is recorded for the model', optedOut.coverage.images.included === false &&
     optedOut.coverage.images.attached === 0);
   check('not one pixel leaves after the image opt-out', !optedOutBody.includes('/9j/'));
+  // Declining photos in review must skip the decode-and-downscale step
+  // entirely, not just withhold the result of it — see handleFiles. If that
+  // regressed to "extract anyway, then discard", nothing about what actually
+  // reaches the model would change, so this checks the work itself rather
+  // than its outcome: no time was spent on it.
+  check('declining photos in the review skips extracting them, not just sending them',
+    !/Preparing image \d+ of \d+/.test(await page.evaluate(() => (window.__progressLabels || []).join('|'))));
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {

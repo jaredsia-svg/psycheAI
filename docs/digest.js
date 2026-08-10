@@ -380,5 +380,26 @@
     return digest;
   }
 
-  root.PsycheDigest = { build, LIMITS, DEPTHS, charBudget, COST_CAP };
+  // ---------- post-build redaction ----------
+  //
+  // Messages are parsed and counted unconditionally now, because the reader
+  // reviews the real digest — including the real message count — before
+  // anything is sent, and a review that shows a guess is not a review. This
+  // is what removes them again if that review ends in "no": called from the
+  // pre-send dialog, after the reader has unticked direct messages and before
+  // `images`/`digest` ever reach `runAnalysis`.
+  //
+  // Mutates in place rather than returning a filtered copy, matching `build`
+  // itself, which also hands back the same object it built. The only
+  // consumer is a UI flow that discards its reference to the un-redacted
+  // digest in the same breath as calling this, so there is nothing for a
+  // second reference to accidentally still point at.
+  function omitMessages(digest) {
+    delete digest.directMessages;
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.ownMessages;
+    if (digest.coverage) digest.coverage.directMessagesIncluded = false;
+    return digest;
+  }
+
+  root.PsycheDigest = { build, LIMITS, DEPTHS, charBudget, COST_CAP, omitMessages };
 })(typeof window !== 'undefined' ? window : globalThis);

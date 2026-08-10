@@ -477,6 +477,83 @@
     });
   }
 
+  /** One line of the review list: what a category is, with its real count. Not a control. */
+  function reviewRow(icon, title, detail) {
+    return '<div class="review-row"><span class="review-row-icon" aria-hidden="true">' + icon + '</span>' +
+      '<div><strong>' + esc(title) + '</strong><span class="muted">' + esc(detail) + '</span></div></div>';
+  }
+
+  /** One togglable row: the exact markup and behaviour the main page used to show. */
+  function reviewSwitch(id, count, onLabel, offLabel, detail) {
+    const has = count > 0;
+    return '<label class="switch-row"><input type="checkbox" id="' + id + '"' +
+      (has ? ' checked' : ' disabled') + '>' +
+      '<span><strong>' + esc(has ? onLabel : offLabel) + '</strong>' +
+      '<span class="muted">' + esc(detail) + '</span></span></label>';
+  }
+
+  // The last stop before anything leaves the device, and the one dialog here
+  // that is rebuilt from scratch on every run rather than reused static
+  // markup — everything in it is a real count read off the digest that was
+  // just built, not a description of what the app generally does. Cancelling
+  // discards the digest along with the archive; there is nowhere it is held
+  // that a second attempt could reuse, by design — see handleFiles.
+  function askReview(digest, imageCount) {
+    const dialog = $('#review-dialog');
+    const list = $('#review-list');
+
+    const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
+    const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
+    const engagedCount = digest.mostLikedAccounts.length + digest.mostSavedAccounts.length +
+      digest.mostEngagedWith.length;
+
+    list.innerHTML =
+      reviewRow('✍️', 'Your captions & comments',
+        digest.samples.captions.length + ' captions, ' + digest.samples.comments.length +
+        ' comments — a sample of your own words. Needed for any read at all.') +
+      reviewRow('📊', 'Activity & timing',
+        'Post counts, likes, saves and when you tend to be active. Numbers only, no text.') +
+      reviewRow('🔗', 'Accounts you follow and engage with',
+        digest.following.length + ' followed accounts, plus ' + engagedCount +
+        ' names among who you like, save and comment on most.') +
+      reviewRow('🏷️', 'Instagram’s own inferred topics',
+        digest.instagramTopics.length + ' topics and ' + digest.instagramAdInterests.length +
+        ' ad interests Instagram has already guessed about you.') +
+      reviewRow('🔍', 'Searches', digest.samples.searches.length + ' recent searches.') +
+      reviewSwitch('review-dms', dmCount,
+        'Direct messages — on', 'Direct messages — none found',
+        dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +
+          'your side of any conversation is ever included.' :
+          'This export did not include any direct messages to sample.') +
+      reviewSwitch('review-images', imageCount,
+        'Photos — on', 'Photos — none selected',
+        imageCount ? imageCount + ' of your own photos, resized. Videos are never included.' :
+          'No photos were selected from this export.');
+
+    return new Promise(resolve => {
+      let answer = null;
+      const send = () => {
+        answer = {
+          includeMessages: dmCount > 0 && $('#review-dms').checked,
+          includeImages: imageCount > 0 && $('#review-images').checked,
+        };
+        dialog.close();
+      };
+      const cancel = () => dialog.close();
+      $('#review-send').addEventListener('click', send);
+      $('#review-cancel').addEventListener('click', cancel);
+
+      dialog.addEventListener('close', () => {
+        $('#review-send').removeEventListener('click', send);
+        $('#review-cancel').removeEventListener('click', cancel);
+        resolve(answer);
+      }, { once: true });
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+
   async function handleFiles(files) {
     const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
     flash('#upload-error', '');
@@ -489,9 +566,6 @@
       return;
     }
 
-    const includeMessages = $('#include-dms').checked;
-    const includeImages = $('#include-images').checked;
-
     $('#working-title').textContent = 'Reading your export';
     // True for the whole of this phase and nowhere else: runAnalysis overwrites
     // this note the moment a request is actually about to go out, so the claim
@@ -502,12 +576,18 @@
 
     let digest;
     let depth;
-    let images = [];
+    let signals;
+    let chosenImages = [];
     try {
-      const signals = await IG.readExports(chosen, {
-        includeMessages,
-        includeImages,
-        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 80), p.label),
+      // Read everything the export has, unconditionally. The choice of what
+      // to send used to gate this step, before the reader had seen any of
+      // it; it now gates nothing here, because the choice moved to the
+      // review dialog below, where it can be made against real content
+      // rather than in advance of it.
+      signals = await IG.readExports(chosen, {
+        includeMessages: true,
+        includeImages: true,
+        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
 
       // Comes before the images because the two depths want different numbers
@@ -520,24 +600,59 @@
         return;
       }
 
-      if (includeImages) {
-        const chosenImages = Images.select(signals, { count: Digest.DEPTHS[depth].images });
-        // Decoding and re-encoding is the slowest client-side step by a wide
-        // margin, so it gets its own slice of the bar rather than appearing
-        // as a stall at the end.
-        images = await Images.extract(signals, chosenImages, (done, total) => {
-          setProgress(80 + Math.round((done / Math.max(1, total)) * 14),
-            'Preparing image ' + done + ' of ' + total + '…');
-        });
-      }
+      // Only the selection, not the extraction: picking which stills to use
+      // is cheap, and the reader has not yet said photos may be sent at all.
+      // The slow part — decoding and downscaling — waits for that answer, a
+      // few lines down, so declining costs nothing beyond this pick.
+      chosenImages = Images.select(signals, { count: Digest.DEPTHS[depth].images });
 
-      setProgress(95, 'Building your evidence summary…');
+      setProgress(80, 'Building your evidence summary…');
       await new Promise(resolve => setTimeout(resolve, 30));
-      digest = Digest.build(signals, { includeMessages, includeImages, imageCount: images.length, depth });
+      digest = Digest.build(signals, {
+        includeMessages: true, includeImages: true,
+        imageCount: chosenImages.length, depth,
+      });
     } catch (error) {
       show('welcome');
       flash('#upload-error', (error && error.message) || 'Could not read that archive.');
       return;
+    }
+
+    const decision = await askReview(digest, chosenImages.length);
+    if (!decision) {
+      show('welcome');
+      return;
+    }
+
+    if (!decision.includeMessages) Digest.omitMessages(digest);
+
+    let images = [];
+    if (decision.includeImages && chosenImages.length) {
+      try {
+        // Decoding and re-encoding is the slowest client-side step by a wide
+        // margin, so it gets its own slice of the bar rather than appearing
+        // as a stall at the end. Only reached once the reader has agreed to
+        // send photos at all, so declining them upstream skips this outright
+        // rather than doing the work and then discarding it.
+        images = await Images.extract(signals, chosenImages, (done, total) => {
+          setProgress(80 + Math.round((done / Math.max(1, total)) * 15),
+            'Preparing image ' + done + ' of ' + total + '…');
+        });
+        // extract() can return fewer than it was given — a candidate that
+        // fails to decode is skipped, not substituted. digest.coverage.images
+        // was written from the pre-extraction count because the review had
+        // to show a number before extraction had run; correct it now to the
+        // count that is actually about to be sent, or the digest overstates
+        // its own attachment to the model.
+        digest.coverage.images.attached = images.length;
+      } catch (error) {
+        show('welcome');
+        flash('#upload-error', (error && error.message) || 'Could not prepare your photos.');
+        return;
+      }
+    } else {
+      digest.coverage.images.included = false;
+      digest.coverage.images.attached = 0;
     }
 
     state.digest = digest;
