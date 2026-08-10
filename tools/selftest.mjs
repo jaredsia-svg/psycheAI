@@ -225,6 +225,23 @@ check('the sample report is honest about weaknesses, not an advert',
 check('the sample report is named as a sample rather than as a person',
   sample.card.name === 'Sample', sample.card.name);
 
+// The sample is the shop window for the bonus section too, so it has to
+// demonstrate the rule rather than only be governed by it: genuinely
+// unsparing, and naming no condition anywhere. The word list is the vocabulary
+// a model reaches for first when it starts drifting from behaviour towards
+// diagnosis, so finding any of it here means the exemplar is teaching the
+// wrong thing.
+const bonusText = [sample.bonus.harsh, sample.bonus.advice, sample.bonus.trajectory].join('\n');
+check('the sample bonus section is actually unsparing rather than a soft version',
+  bonusText.length > 1500 && sample.bonus.harsh.length > 500,
+  bonusText.length + ' chars, harsh ' + sample.bonus.harsh.length);
+const clinicalWords = ['depression', 'depressed', 'anxiety disorder', 'bipolar', 'ADHD', 'autism',
+  'personality disorder', 'PTSD', 'OCD', 'diagnos', 'mental illness', 'clinically', 'disorder',
+  'burnout syndrome', 'at risk of developing'];
+const clinicalHits = clinicalWords.filter(word => new RegExp(word, 'i').test(bonusText));
+check('the sample bonus names no condition, since it is a behavioural read',
+  clinicalHits.length === 0, clinicalHits.join(', '));
+
 // Love languages replaced "how to love you" and "who fits".
 const relProps = prompts.PROFILE_SCHEMA.properties.relationship.properties;
 check('the relationship section asks for love languages',
@@ -325,6 +342,38 @@ check('the anti-recommendations must name the advice they contradict',
 check('activity no longer asks for attention or implications',
   !('attention' in activityProps) && !('implications' in activityProps));
 check('activity states what it cannot see', 'blindSpots' in activityProps);
+// The unsparing section. Its licence is to drop the softening, not to drop the
+// evidence, and above all not to invent a diagnosis — so each limit is pinned
+// separately rather than trusted to one loose match.
+const bonusProps = prompts.PROFILE_SCHEMA.properties.bonus.properties;
+check('the bonus section carries all three readings',
+  ['harsh', 'advice', 'trajectory'].every(k => k in bonusProps));
+check('the harsh read stays inside what the evidence supports',
+  /the least charitable reading of this person that the evidence still fully supports/i
+    .test(bonusProps.harsh.description) &&
+  /an invented insult is worse than a short section/.test(bonusProps.harsh.description));
+check('the harsh read goes after patterns rather than the person',
+  /nothing about their appearance, body, intelligence, worth or anything they cannot change/
+    .test(bonusProps.harsh.description));
+check('the bonus advice does not restate the behaviour recommendations',
+  /do not repeat those recommendations here/.test(bonusProps.advice.description));
+// The one the whole section turns on: a model naming a condition from posting
+// patterns is a confident falsehood about somebody's health, in a document
+// they keep. Held in the field description and again in the hard limits.
+check('the forecast is behavioural and may not name a condition',
+  /You must NOT name, imply or hint at any mental or physical health condition/
+    .test(bonusProps.trajectory.description));
+check('the forecast may not use clinical language either',
+  /no depression, no anxiety disorder/.test(bonusProps.trajectory.description));
+check('the hard limits extend the health-condition ban into the bonus section',
+  /This holds in the bonus section too, and holds hardest there/.test(prompts.PROFILE_SYSTEM) &&
+  /no mental or physical health condition may be named, predicted or hinted at/
+    .test(prompts.PROFILE_SYSTEM));
+// A reader can ask for a diagnosis in the framing of the feature; the prompt
+// has to refuse that rather than treat it as permission.
+check('the ban survives the reader having asked for a diagnosis',
+  /however the reader has framed what they want/.test(prompts.PROFILE_SYSTEM));
+
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
 check('career section has strengths and weaknesses',

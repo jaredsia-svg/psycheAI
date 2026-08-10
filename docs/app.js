@@ -224,6 +224,53 @@
       '</div></div>';
   }
 
+  // The unsparing section, behind a cover the reader has to open.
+  //
+  // The text is NOT written into the markup here. Blurring it with CSS would
+  // look the same and protect nothing: select-all copies it, a screen reader
+  // reads it out, and view-source hands it over. Somebody who has decided not
+  // to read this should not have it on their page at all, so the cover ships
+  // alone and `revealBonus` injects the writing on the click.
+  function bonusBlock(bonus) {
+    if (!bonus) return '';
+    return '<div class="card section-card bonus-card">' +
+      sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub)) +
+      '<div class="bonus-cover">' +
+      '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
+      '<p>' + esc(TEXT.bonusCoverBody) + '</p>' +
+      '<p class="fineprint">' + esc(TEXT.bonusCaveat) + '</p>' +
+      '<button class="btn bonus-reveal" type="button" aria-expanded="false">' +
+      esc(TEXT.bonusReveal) + '</button></div>' +
+      '<div class="bonus-body" hidden></div></div>';
+  }
+
+  /** Fills a cover's sibling body with the writing it was hiding. */
+  function revealBonus(cover, bonus) {
+    const card = cover.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    body.innerHTML =
+      '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
+      '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(bonus.harsh) +
+      '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(bonus.advice) +
+      '<h3>' + esc(TEXT.bonusTrajectory) + '</h3>' + paragraphs(bonus.trajectory) +
+      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>';
+    body.hidden = false;
+    cover.hidden = true;
+  }
+
+  /** Puts the cover back, and takes the writing out of the page with it. */
+  function hideBonus(button) {
+    const card = button.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    const cover = card.querySelector('.bonus-cover');
+    body.innerHTML = '';
+    body.hidden = true;
+    cover.hidden = false;
+    const reveal = cover.querySelector('.bonus-reveal');
+    reveal.setAttribute('aria-expanded', 'false');
+    reveal.focus();
+  }
+
   // The wrapper exists for print: a trait's bar, its reading and its evidence
   // are one thought, and a page break between them looks like a mistake.
   function bar(label, value, extra) {
@@ -269,6 +316,7 @@
   // must not call history.back() a second time.
   let sampleHistoryEntry = false;
   let closingFromHistory = false;
+  let sampleReport = null;
   const sampleDialog = () => $('#sample-dialog');
 
   async function showSample(button) {
@@ -281,6 +329,9 @@
         if (!response.ok) throw new Error('The sample could not be loaded.');
         return response.json();
       });
+      // Kept so the bonus section can be revealed on demand. Its text is
+      // deliberately not written into the markup until the reader asks for it.
+      sampleReport = report;
       $('#sample-body').innerHTML = reportSectionsHtml(report);
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -379,6 +430,26 @@
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#sample-close').addEventListener('click', closeSample);
+
+  // Delegated, because the covers are written by innerHTML in two places — the
+  // real report and the sample dialog — and both need the same behaviour. The
+  // writing itself is looked up from whichever report the clicked cover
+  // belongs to rather than read out of the page, since the whole point is that
+  // it was never put in the page.
+  document.addEventListener('click', event => {
+    const reveal = event.target.closest('.bonus-reveal');
+    if (reveal) {
+      const source = event.target.closest('#sample-body')
+        ? sampleReport
+        : state.profile && state.profile.report;
+      if (!source || !source.bonus) return;
+      reveal.setAttribute('aria-expanded', 'true');
+      revealBonus(reveal.closest('.bonus-cover'), source.bonus);
+      return;
+    }
+    const hide = event.target.closest('.bonus-hide');
+    if (hide) hideBonus(hide);
+  });
 
   dropzone.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('keydown', event => {
@@ -759,6 +830,11 @@
       html += adviceBlock(activity);
       html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
     }
+
+    // Below the behaviour section and above confidence, so the reader meets
+    // every fair reading before the unkind one, and the confidence caveat
+    // still gets the last word over all of it.
+    html += bonusBlock(report.bonus);
 
     // Confidence closes the report rather than opening it: read after the
     // whole thing, it says how much of what you just read to believe.

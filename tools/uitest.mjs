@@ -808,11 +808,28 @@ try {
   check('the button under the diagram opens the same sample', fromSecond > 2500,
     fromSecond + ' chars');
   // The cross is the only way out that is always on screen, so it carries the
-  // whole burden now that the dialog has no footer action of its own.
-  check('the cross is the one control the dialog offers',
-    (await page.locator('#sample-dialog button').count()) === 1 &&
+  // whole burden now that the dialog has no footer action of its own. Scoped
+  // to the dialog's own chrome: buttons inside #sample-body belong to the
+  // report being displayed, not to the dialog, and the bonus section's cover
+  // puts one there.
+  check('the cross is the one control the dialog itself offers',
+    (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
-    (await page.locator('#sample-dialog button').allInnerTexts()).join('|'));
+    (await page.locator('#sample-dialog button:not(#sample-body button)').allInnerTexts()).join('|'));
+  // The sample is the shop window for this interaction as much as for the
+  // writing, so the gate has to hold here too — and here it matters more,
+  // since this is a stranger's first sight of the app.
+  const sampleBonus = await page.evaluate(() => {
+    const card = document.querySelector('#sample-body .bonus-card');
+    return card ? { html: card.innerHTML, text: card.innerText } : null;
+  });
+  check('the sample carries the bonus section, still covered',
+    Boolean(sampleBonus) && /deliberately unkind/i.test(sampleBonus.text) &&
+    !/least charitable reading/i.test(sampleBonus.html));
+  await page.click('#sample-body .bonus-reveal');
+  check('the sample reveals its own bonus writing rather than the reader\'s',
+    /a strategy/i.test(await page.locator('#sample-body .bonus-card').innerText()),
+    (await page.locator('#sample-body .bonus-card').innerText()).slice(0, 120));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.
@@ -1022,6 +1039,62 @@ try {
   }));
   check('the confidence meter came with it',
     await page.locator('.confidence-card .confidence-fill').isVisible());
+
+  // ---- the bonus section ----
+  //
+  // The cover is the consent gate, so what matters is that it really gates.
+  // A CSS blur would look identical and protect nothing — select-all copies
+  // it, a screen reader announces it, view-source hands it over — so the
+  // writing must genuinely not be in the document until the button is pressed.
+  // This checks the DOM, not the pixels.
+  check('the bonus section sits below the behaviour read and above confidence',
+    await page.evaluate(() => {
+      const bonus = document.querySelector('#profile-body .bonus-card');
+      const behaviour = document.querySelector('#profile-body .diet').closest('.section-card');
+      const confidence = document.querySelector('#profile-body .confidence-card');
+      if (!bonus || !behaviour || !confidence) return false;
+      return Boolean(behaviour.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(bonus.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  const covered = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .bonus-card');
+    return { html: card.innerHTML, text: card.innerText };
+  });
+  check('the covered section warns what is behind it before it is opened',
+    /deliberately unkind/i.test(covered.text) && /not a diagnosis/i.test(covered.text));
+  // Against the mock's own bonus wording, so this fails if the writing is
+  // present in any form — rendered, hidden, or sitting in an attribute.
+  check('the writing is absent from the page until the reader asks for it',
+    !/uncharitable reading/i.test(covered.html) && !/behavioural forecast/i.test(covered.html),
+    covered.html.slice(0, 200));
+  await clickClear(page, '#profile-body .bonus-reveal');
+  const opened = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .bonus-card');
+    return {
+      text: card.innerText,
+      coverHidden: card.querySelector('.bonus-cover').hidden,
+      expanded: card.querySelector('.bonus-reveal').getAttribute('aria-expanded'),
+    };
+  });
+  check('opening it shows all three readings',
+    /least charitable reading/i.test(opened.text) && /friend would actually say/i.test(opened.text) &&
+    /Where this ends up/i.test(opened.text) && opened.coverHidden);
+  // The caveat travels with the writing rather than staying on the cover the
+  // reader has already dismissed — it is most needed while they are reading.
+  check('the caveat stays on screen beside the writing',
+    /not an assessment, not a diagnosis/i.test(opened.text) &&
+    (await page.locator('#profile-body .bonus-caveat').isVisible()));
+  check('the reveal button reports its state to assistive tech',
+    opened.expanded === 'true', String(opened.expanded));
+  await clickClear(page, '#profile-body .bonus-hide');
+  const reclosed = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .bonus-card');
+    return { html: card.innerHTML, expanded: card.querySelector('.bonus-reveal').getAttribute('aria-expanded') };
+  });
+  // Covering it back up has to remove the writing, not merely hide it, or the
+  // gate only works once per page load.
+  check('covering it again takes the writing back out of the page',
+    !/uncharitable reading/i.test(reclosed.html) && reclosed.expanded === 'false');
   // Held as an exact list rather than as "contains", so a control cannot
   // reappear here unnoticed. "Re-run the analysis" was one of three and is
   // gone: nothing in the app offers a second model call on the same export
@@ -1504,6 +1577,16 @@ try {
     !pdfText.includes('(PUBLISHING VS READING)'));
   // The PDF is the copy people keep and hand around, so the consumption read
   // and its advice have to survive into it rather than being screen-only.
+  // There is no clicking in a PDF, so the cover cannot travel — which makes
+  // the caveat the only thing standing between a reader who reopens this file
+  // in six months and the harshest writing in it. It has to be there, and it
+  // has to come before the writing rather than after it.
+  check('the PDF carries the bonus section with its caveat ahead of the writing',
+    pdfText.includes('(The bonus section)') &&
+    /not an assessment, not a diagnosis/i.test(pdfText) &&
+    pdfText.indexOf('not an assessment') < pdfText.indexOf('(The least charitable reading)'),
+    'caveat at ' + pdfText.indexOf('not an assessment') +
+      ', first heading at ' + pdfText.indexOf('(The least charitable reading)'));
   check('the PDF carries the accounts and both halves of the advice',
     pdfText.includes('(Who you actually read)') &&
     pdfText.includes('(Worth changing)') && pdfText.includes('(Leave alone)'),
@@ -1758,6 +1841,7 @@ try {
         recommendations: [point],
         antiRecommendations: [point],
       },
+      bonus: { harsh: long, advice: long, trajectory: long },
       interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
       values: [{ value: long, detail: long, evidence: long }],
       beliefs: [{ belief: long, detail: long, evidence: long, confidence: 'low' }],

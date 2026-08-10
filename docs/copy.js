@@ -204,6 +204,30 @@
     matchScore: 'Score',
     matchWhen: 'When',
 
+    // The unsparing section. Everything the reader is told before they open it
+    // is here, because a cover that undersells what is behind it is not
+    // consent — they should be able to decide not to look.
+    bonus: 'The bonus section',
+    bonusSub: 'The rest of this report was written to be fair to you. This part was not.',
+    bonusCoverTitle: 'This one is deliberately unkind',
+    bonusCoverBody: 'Three readings written without the softening: the least generous view of you the ' +
+      'evidence supports, the advice a friend would give if they had stopped managing your feelings, ' +
+      'and where your patterns end up if nothing changes. Some of it will be wrong. Some of it will ' +
+      'be wrong in a way that still stings.',
+    bonusReveal: 'Show me anyway',
+    bonusHide: 'Cover it back up',
+    bonusHarsh: 'The least charitable reading',
+    bonusAdvice: 'What a friend would actually say',
+    bonusTrajectory: 'Where this ends up',
+    // Stays on screen after the reveal rather than only appearing on the cover:
+    // this is the part a reader most needs while they are reading it, and the
+    // part they are least likely to scroll back up for.
+    bonusCaveat: 'This is a language model being deliberately harsh about behavioural traces from ' +
+      'one Instagram export. It is not an assessment, not a diagnosis and not a professional opinion ' +
+      'of any kind. It cannot see your circumstances, your history or your reasons. Treat it as a ' +
+      'provocation to argue with, not a verdict — and if any of it lands somewhere heavier than that, ' +
+      'the person to talk to about it is a person.',
+
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',

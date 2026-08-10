@@ -638,6 +638,37 @@ say why to ignore it. In the sample that is *"do not broaden the feed"* — a di
 ten-twelfths people you actually know is the healthy part, and the usual advice to diversify would
 trade the thing that works for the thing everyone else has.
 
+### The bonus section
+
+Everything above it is written to be fair. This one is written to be accurate without being kind:
+the least charitable reading the evidence still supports, the advice a friend gives when they have
+stopped managing your feelings, and where the patterns end up in five years. It sits below the
+behaviour read and above confidence, so the reader meets every fair section first and the
+confidence caveat still gets the last word over all of it.
+
+**It is not a diagnosis, and cannot become one.** The obvious third question — *what is wrong with
+me* — is the one thing this section may not answer. A model naming a condition from posting
+patterns is inventing a clinical claim it has no standing to make, in a document people export to
+PDF and show to other people, and the landing page says in as many words that this is not a
+clinical or diagnostic tool. `trajectory` is the honest version of that question: where the
+behaviour goes, what breaks first, and what would change it. The ban is stated in the field's own
+description, restated in the prompt's hard limits with the note that it holds *however the reader
+has framed what they want*, and asserted by four checks in `tools/selftest.mjs` — including one
+that scans `docs/sample.json` for the vocabulary a model reaches for when it starts drifting from
+behaviour towards diagnosis, so the exemplar cannot teach the wrong thing.
+
+**The cover is a real gate, not a blur.** The writing is not in the document until the reader
+presses the button. Blurring it in CSS would look identical and protect nothing — select-all copies
+it, a screen reader announces it, view-source hands it over — so `bonusBlock()` ships the cover
+alone and `revealBonus()` injects the text on the click, reading it from the report object rather
+than out of the page. Covering it back up empties the container again, so the gate works more than
+once. A UI check asserts the mock's own bonus wording is absent from the card's `innerHTML` before
+the click; it fails against a version that writes the text in and blurs it.
+
+There is no clicking in a PDF, so the cover cannot travel. The caveat goes *above* the writing
+there rather than after it, because a reader reopening that file in six months meets it cold, and a
+check pins that ordering by string offset.
+
 ## Downloading the report
 
 **Download full report** at the top and bottom of the profile writes a PDF and downloads it, and
@@ -914,14 +945,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 326 checks: synthesises a real ZIP export and runs
+npm test           # 336 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 563 checks: drives the real UI in Chromium against a
+npm run test:ui    # 573 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

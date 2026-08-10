@@ -1120,6 +1120,22 @@
       out.fineprint(activity.blindSpots);
     }
 
+    // The bonus section, which the page keeps behind a cover. There is no
+    // clicking in a PDF, so the caveat carries the warning on its own and goes
+    // above the writing rather than after it — this is a file people keep and
+    // reopen, and a reader landing on it cold should meet the caveat first.
+    const bonus = source.bonus;
+    if (bonus) {
+      out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
+      out.note(TEXT.bonusCaveat);
+      out.h3(TEXT.bonusHarsh);
+      out.body(bonus.harsh);
+      out.h3(TEXT.bonusAdvice);
+      out.body(bonus.advice);
+      out.h3(TEXT.bonusTrajectory);
+      out.body(bonus.trajectory);
+    }
+
     // 10. Matches, when this device has any.
     const history = (stamp.history || []).filter(entry => entry && entry.report);
     if (history.length) {

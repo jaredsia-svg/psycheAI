@@ -819,6 +819,30 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .advice-split { margin-top: 1.2rem; }
 .advice-split .card-sub { margin: -.2rem 0 .5rem; }
 
+/* The bonus section's cover. Greyed and inert-looking on purpose: it should
+   read as something switched off rather than as another card to scroll past.
+   The blur here is on the cover's own decoration, never on the writing — the
+   writing is not in the document until the button is pressed, because a CSS
+   blur hides nothing from select-all, a screen reader or view-source. */
+.bonus-cover {
+  position: relative; overflow: hidden;
+  border: 1px dashed var(--line); border-radius: var(--radius);
+  background: repeating-linear-gradient(
+    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
+  padding: 1.4rem clamp(1rem, 4vw, 1.8rem); text-align: center;
+}
+.bonus-cover h3 { margin-top: 0; color: var(--ink-soft); }
+.bonus-cover p { max-width: 54ch; margin-inline: auto; }
+.bonus-cover .fineprint { margin-bottom: 1rem; }
+.bonus-reveal { margin: 0; }
+/* Sits above the writing, and stays there — it is most needed while the
+   section is being read, not on the cover the reader has already dismissed. */
+.bonus-caveat {
+  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem;
+}
+.bonus-body h3:first-of-type { margin-top: 0; }
+.bonus-hide { margin-top: .6rem; }
+
 
 
 /* ---------- basis picker ---------- */
