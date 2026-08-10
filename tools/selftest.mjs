@@ -319,35 +319,41 @@ check('the publish-vs-read facet is gone rather than duplicated by the diet read
   !('engagement' in activityProps) &&
   /publish-against-read ratio/.test(activityProps.diet.properties.detail.description));
 const dietProps = activityProps.diet.properties;
-check('the consumption read asks for named accounts and a share for each',
-  ['headline', 'detail', 'topAccounts', 'algorithmRead'].every(k => k in dietProps) &&
-  ['account', 'kind', 'share', 'why'].every(k => k in dietProps.topAccounts.items.properties));
-// The export has no watch time, no session length, nothing timed at all. A
-// share of attention phrased in minutes would be invented, so the ban is
-// stated in the field that carries it and asserted here.
-check('the attention share is forbidden from claiming time it cannot know',
-  /no timing data/.test(dietProps.topAccounts.items.properties.share.description) &&
-  /never write minutes/i.test(dietProps.topAccounts.items.properties.share.description));
-// Naming a friend's handle in a report the reader may hand to someone else
-// drags in a person who never agreed to any of this. Outlets and brands are
-// fair game; individuals are described instead.
-check('personal accounts are described rather than named',
-  /do NOT write the handle/.test(dietProps.topAccounts.items.properties.account.description));
-check('the section carries advice, and the anti-advice that keeps it honest',
-  ['recommendations', 'antiRecommendations'].every(k => k in activityProps));
-check('the anti-recommendations must name the advice they contradict',
-  /Name the advice you are contradicting/.test(activityProps.antiRecommendations.description));
+check('the consumption read is one paragraph, headline and detail',
+  ['headline', 'detail'].every(k => k in dietProps) && Object.keys(dietProps).length === 2,
+  Object.keys(dietProps).join(', '));
 // Dropped from the profile page, so must not linger in the schema costing
-// output tokens — the same discipline as the headline check above.
+// output tokens — the same discipline as the headline check above. The four
+// below went in one pass, for length: the behaviour section had grown past a
+// screen and a half and was outweighing findings that say more about a person.
 check('activity no longer asks for attention or implications',
   !('attention' in activityProps) && !('implications' in activityProps));
+check('the cut subsections are gone from the schema, not just from the page',
+  !('topAccounts' in dietProps) && !('algorithmRead' in dietProps) &&
+  !('recommendations' in activityProps) && !('antiRecommendations' in activityProps),
+  Object.keys(dietProps).concat(Object.keys(activityProps)).join(', '));
+// The named-accounts list is what carried the two rules against inventing
+// screen time and against naming somebody's friends. The list is gone, but the
+// paragraph that replaced it reads the same counts, so the prompt still has to
+// say both — this is the one cut that could quietly remove a guardrail.
+check('the timing-data ban survived the account list being cut',
+  /The export contains no timing data whatsoever/.test(prompts.PROFILE_SYSTEM));
+check('the ban on naming private individuals survived it too',
+  /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
 check('activity states what it cannot see', 'blindSpots' in activityProps);
 // The unsparing section. Its licence is to drop the softening, not to drop the
 // evidence, and above all not to invent a diagnosis — so each limit is pinned
 // separately rather than trusted to one loose match.
 const bonusProps = prompts.PROFILE_SCHEMA.properties.bonus.properties;
-check('the bonus section carries all three readings',
-  ['harsh', 'advice', 'trajectory'].every(k => k in bonusProps));
+check('the bonus section carries both readings',
+  ['harsh', 'advice'].every(k => k in bonusProps) && Object.keys(bonusProps).length === 2,
+  Object.keys(bonusProps).join(', '));
+// The five-year forecast was cut with the behaviour section's subsections. It
+// was also the field carrying the longest statement of the no-diagnosis rule,
+// so the checks below now read that rule off the hard limits instead — cutting
+// a section must not quietly cut a guardrail with it.
+check('the five-year forecast is gone from the schema rather than left unrendered',
+  !('trajectory' in bonusProps));
 check('the harsh read stays inside what the evidence supports',
   /the least charitable reading of this person that the evidence still fully supports/i
     .test(bonusProps.harsh.description) &&
@@ -355,16 +361,15 @@ check('the harsh read stays inside what the evidence supports',
 check('the harsh read goes after patterns rather than the person',
   /nothing about their appearance, body, intelligence, worth or anything they cannot change/
     .test(bonusProps.harsh.description));
-check('the bonus advice does not restate the behaviour recommendations',
-  /do not repeat those recommendations here/.test(bonusProps.advice.description));
 // The one the whole section turns on: a model naming a condition from posting
 // patterns is a confident falsehood about somebody's health, in a document
-// they keep. Held in the field description and again in the hard limits.
-check('the forecast is behavioural and may not name a condition',
-  /You must NOT name, imply or hint at any mental or physical health condition/
-    .test(bonusProps.trajectory.description));
-check('the forecast may not use clinical language either',
-  /no depression, no anxiety disorder/.test(bonusProps.trajectory.description));
+// they keep. Stated twice over, because a licence to be harsh is exactly where
+// it would erode.
+check('being unkind is explicitly not a licence to diagnose',
+  /Neither of them is a diagnosis, and being unkind is not a licence to become one/
+    .test(prompts.PROFILE_SYSTEM));
+check('the clinical vocabulary is named and banned rather than left to judgement',
+  /not depression, not anxiety, not burnout as a condition/.test(prompts.PROFILE_SYSTEM));
 check('the hard limits extend the health-condition ban into the bonus section',
   /This holds in the bonus section too, and holds hardest there/.test(prompts.PROFILE_SYSTEM) &&
   /no mental or physical health condition may be named, predicted or hinted at/
@@ -572,12 +577,7 @@ for (const [label, needle] of [
   ['reads the four appetites as separate things', /what they subscribed to.*what actually catches them/],
   ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
   ['refuses to invent time it cannot measure', /The export contains no timing data whatsoever/],
-  ['will not name a private individual', /a friend or a relative described rather than named/],
-  ['advises on composition rather than volume', /never on the volume/],
-  ['bans the advice that would fit anybody', /digital detoxes, screen-time limits/],
-  ['will not tell them to unfollow a specific person', /never advise them to follow, unfollow, mute or block any specific person/],
-  ['requires the advice to trace back to a finding', /must trace back to something you actually wrote above it/],
-  ['wants the anti-advice to contradict the usual advice', /find the thing that looks like a problem and is not/],
+  ['will not name a private individual', /a friend or a relative is described rather than named/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }

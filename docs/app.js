@@ -188,40 +188,13 @@
   }
 
   // What they consume, run full width under the facet grid rather than inside
-  // it: it carries a list of accounts and a second reading, which is more than
-  // a quarter-width facet cell holds.
+  // it. It once carried a list of accounts, a read of Instagram's own inferred
+  // topics, and a pair of recommendation lists; all were cut for length, and
+  // what is left is one paragraph that reads better without them.
   function dietBlock(diet) {
     if (!diet) return '';
-    let html = '<div class="diet"><span class="facet-label">' + esc(TEXT.diet) + '</span>' +
-      '<h4>' + esc(diet.headline) + '</h4><p>' + esc(diet.detail) + '</p>';
-    const accounts = (diet.topAccounts || []).filter(Boolean);
-    if (accounts.length) {
-      html += '<h3>' + esc(TEXT.dietAccounts) + '</h3>' +
-        '<p class="card-sub">' + esc(TEXT.dietAccountsSub) + '</p>' +
-        '<ul class="diet-accounts">' + accounts.map(item =>
-          '<li><span class="diet-account">' + esc(item.account) + '</span>' +
-          (item.kind ? '<span class="pill">' + esc(item.kind) + '</span>' : '') +
-          '<span class="diet-share">' + esc(item.share) + '</span>' +
-          '<span class="diet-why">' + esc(item.why) + '</span></li>').join('') + '</ul>';
-    }
-    if (diet.algorithmRead) {
-      html += '<h3>' + esc(TEXT.dietAlgorithm) + '</h3><p>' + esc(diet.algorithmRead) + '</p>';
-    }
-    return html + '</div>';
-  }
-
-  // The only advice in the report. Two columns rather than one list, because
-  // "leave alone" is not a weaker recommendation — it is the opposite kind of
-  // claim, and running them together would read as five things to fix.
-  function adviceBlock(activity) {
-    const recs = (activity.recommendations || []).filter(Boolean);
-    const antis = (activity.antiRecommendations || []).filter(Boolean);
-    if (!recs.length && !antis.length) return '';
-    return '<div class="split advice-split">' +
-      '<div><h3 class="h-good">' + esc(TEXT.recommendations) + '</h3>' + points(recs) + '</div>' +
-      '<div><h3 class="h-warn">' + esc(TEXT.antiRecommendations) + '</h3>' +
-      '<p class="card-sub">' + esc(TEXT.antiRecommendationsSub) + '</p>' + points(antis) +
-      '</div></div>';
+    return '<div class="diet"><span class="facet-label">' + esc(TEXT.diet) + '</span>' +
+      '<h4>' + esc(diet.headline) + '</h4><p>' + esc(diet.detail) + '</p></div>';
   }
 
   // The unsparing section, behind a cover the reader has to open.
@@ -252,7 +225,6 @@
       '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
       '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(bonus.harsh) +
       '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(bonus.advice) +
-      '<h3>' + esc(TEXT.bonusTrajectory) + '</h3>' + paragraphs(bonus.trajectory) +
       '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>';
     body.hidden = false;
     cover.hidden = true;
@@ -823,11 +795,6 @@
       }
       html += '</div>';
       html += dietBlock(activity.diet);
-      // Advice sits at the foot of this section and nowhere else in the
-      // report, because this is the only section whose findings are about
-      // something the reader can change tomorrow. It comes after every facet
-      // so it can draw on all of them rather than only the one above it.
-      html += adviceBlock(activity);
       html += '<p class="fineprint">' + esc(activity.blindSpots) + '</p></div>';
     }
 

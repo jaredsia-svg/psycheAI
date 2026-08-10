@@ -994,9 +994,6 @@ try {
     ['when they are active', /When you are here/i],
     ['how their use changed', /How it changed/i],
     ['what they take in', /What you take in/i],
-    ['the accounts that take the most of it', /Who you actually read/i],
-    ['what the platform thinks they are', /What Instagram thinks you are/i],
-    ['advice, and the advice not to take', /Worth changing/i],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
@@ -1008,8 +1005,12 @@ try {
   // the scan page entirely — none of the three should linger on the profile.
   // "Publishing vs reading" joined them: the consumption read below asks the
   // same counts, so keeping the facet meant saying it twice.
+  // The last four went in one pass, for length: the behaviour section had
+  // grown past a screen and a half and was outweighing findings that say more
+  // about a person than their feed does.
   for (const gone of ['Where your attention goes', 'What it suggests', 'What your QR code contains',
-    'Publishing vs reading']) {
+    'Publishing vs reading', 'Who you actually read', 'What Instagram thinks you are',
+    'Worth changing', 'Leave alone']) {
     check('profile no longer shows "' + gone + '"', !profileText.includes(gone));
   }
   check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
@@ -1065,7 +1066,11 @@ try {
   // Against the mock's own bonus wording, so this fails if the writing is
   // present in any form — rendered, hidden, or sitting in an attribute.
   check('the writing is absent from the page until the reader asks for it',
-    !/uncharitable reading/i.test(covered.html) && !/behavioural forecast/i.test(covered.html),
+    // Both surviving fields, matched against the mock's own wording. The
+    // forecast's phrase used to be the second half of this and stopped meaning
+    // anything the moment that field was cut — a regex for a string the
+    // fixture can no longer contain passes whatever the code does.
+    !/uncharitable reading/i.test(covered.html) && !/unsoftened advice/i.test(covered.html),
     covered.html.slice(0, 200));
   await clickClear(page, '#profile-body .bonus-reveal');
   const opened = await page.evaluate(() => {
@@ -1076,9 +1081,17 @@ try {
       expanded: card.querySelector('.bonus-reveal').getAttribute('aria-expanded'),
     };
   });
-  check('opening it shows all three readings',
+  check('opening it shows both readings',
     /least charitable reading/i.test(opened.text) && /friend would actually say/i.test(opened.text) &&
-    /Where this ends up/i.test(opened.text) && opened.coverHidden);
+    opened.coverHidden);
+  // The five-year forecast was cut with the behaviour section's subsections.
+  // The cover promised three readings and now promises two, so both halves of
+  // that are held: the heading gone, and the promise matching what is behind
+  // it — a cover that oversells what it hides is not a consent gate.
+  check('the five-year forecast is gone, and the cover no longer promises it',
+    !/Where this ends up/i.test(opened.text) &&
+    /Two readings/.test(covered.text) && !/Three readings/.test(covered.text),
+    covered.text.replace(/\s+/g, ' ').slice(0, 90));
   // The caveat travels with the writing rather than staying on the cover the
   // reader has already dismissed — it is most needed while they are reading.
   check('the caveat stays on screen beside the writing',
@@ -1272,41 +1285,23 @@ try {
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));
   check('strengths and weaknesses sit side by side',
-    (await page.locator('#profile-body .split:not(.love-split):not(.advice-split)').count()) === 2);
-  // "Leave alone" is not a weaker recommendation, it is the opposite kind of
-  // claim, so the two run as columns rather than one list of five things to
-  // fix. Both columns have to be populated: an advice block with an empty
-  // anti-column is the chore list the split exists to prevent.
-  check('the advice and the anti-advice sit side by side, both filled',
-    (await page.locator('#profile-body .advice-split').count()) === 1 &&
-    (await page.locator('#profile-body .advice-split .h-good + .points dt').count()) >= 1 &&
-    (await page.locator('#profile-body .advice-split .h-warn ~ .points dt').count()) >= 1,
-    (await page.locator('#profile-body .advice-split .points dt').allInnerTexts()).join(' | '));
-  // The one place the report tells the reader what to do. It has to sit under
-  // the behaviour section — the only section about something changeable — and
-  // after every facet, so it can draw on all of them rather than the last one.
-  check('the advice closes the behaviour section rather than opening it',
-    await page.evaluate(() => {
-      const section = document.querySelector('#profile-body .diet').closest('.section-card');
-      const advice = section.querySelector('.advice-split');
-      const facets = section.querySelector('.facet-grid');
-      if (!advice || !facets) return false;
-      return Boolean(facets.compareDocumentPosition(advice) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }));
-  // Attention is counted in likes, saves and comments. An Instagram export has
-  // no watch time in it at all, so a share phrased in minutes would be a
-  // number the app invented — the sub-line says so, and this holds it there.
-  check('the attention measure says plainly it is not a measure of time',
-    /no timing data/.test(await page.locator('#profile-body .diet .card-sub').first().innerText()),
-    await page.locator('#profile-body .diet .card-sub').first().innerText());
+    (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
+  // The behaviour section carried a two-column advice block until it was cut
+  // for length. Held as an absence, so it cannot creep back unnoticed and so
+  // the split count above stays a statement about strengths and weaknesses.
+  check('the behaviour section no longer closes on advice',
+    (await page.locator('#profile-body .advice-split').count()) === 0 &&
+    (await page.locator('#profile-body .diet h3').count()) === 0,
+    (await page.locator('#profile-body .diet h3').allInnerTexts()).join(' | '));
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
   check('behaviour facets render as their own blocks',
     (await page.locator('#profile-body .facet').count()) === 3);
-  check('the consumption read runs full width under them, with its accounts named',
+  check('the consumption read runs full width under them, as one paragraph',
     (await page.locator('#profile-body .diet').count()) === 1 &&
-    (await page.locator('#profile-body .diet-accounts li').count()) >= 3,
-    (await page.locator('#profile-body .diet-account').allInnerTexts()).join(' | '));
+    (await page.locator('#profile-body .diet p').count()) === 1 &&
+    (await page.locator('#profile-body .diet-accounts').count()) === 0,
+    (await page.locator('#profile-body .diet').innerText()).replace(/\s+/g, ' ').slice(0, 90));
   check('each axis shows how strongly it leans',
     (await page.locator('.axis .pill').count()) === 4);
   check('a slight lean is marked as such',
@@ -1587,10 +1582,14 @@ try {
     pdfText.indexOf('not an assessment') < pdfText.indexOf('(The least charitable reading)'),
     'caveat at ' + pdfText.indexOf('not an assessment') +
       ', first heading at ' + pdfText.indexOf('(The least charitable reading)'));
-  check('the PDF carries the accounts and both halves of the advice',
-    pdfText.includes('(Who you actually read)') &&
-    pdfText.includes('(Worth changing)') && pdfText.includes('(Leave alone)'),
-    pdfText.match(/\((?:Who you actually read|Worth changing|Leave alone)\)/g));
+  // The page and the PDF are two renderings of one document, so a subsection
+  // cut from one has to be gone from the other. These four went together.
+  check('the PDF dropped the same subsections the page did',
+    !pdfText.includes('(Who you actually read)') &&
+    !pdfText.includes('(What Instagram thinks you are)') &&
+    !pdfText.includes('(Worth changing)') && !pdfText.includes('(Leave alone)') &&
+    !pdfText.includes('(Where this ends up)'),
+    String(pdfText.match(/\((?:Who you actually read|What Instagram thinks you are|Worth changing|Leave alone|Where this ends up)\)/g)));
   check('the PDF carries the Enneagram type, wing and nickname the page shows',
     pdfText.includes('(Enneagram: 9w1 The Peacemaker)'));
   check('the PDF explains the type and the wing, not just the evidence for them',
@@ -1832,16 +1831,10 @@ try {
         posting: { headline: long, detail: long },
         rhythm: { headline: long, detail: long },
         trajectory: { headline: long, detail: long },
-        diet: {
-          headline: long, detail: long,
-          topAccounts: [{ account: long, kind: 'media', share: long, why: long }],
-          algorithmRead: long,
-        },
+        diet: { headline: long, detail: long },
         blindSpots: long,
-        recommendations: [point],
-        antiRecommendations: [point],
       },
-      bonus: { harsh: long, advice: long, trajectory: long },
+      bonus: { harsh: long, advice: long },
       interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
       values: [{ value: long, detail: long, evidence: long }],
       beliefs: [{ belief: long, detail: long, evidence: long, confidence: 'low' }],

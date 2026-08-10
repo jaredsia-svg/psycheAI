@@ -596,65 +596,52 @@ agree, so the prompt asks for the **gaps** — six hundred follows against forty
 subscription someone stopped reading, and a wall of saved training plans against the same twelve-week
 block every year is an ambition that is not converting.
 
-It names the accounts, because "twelve accounts" is not worth reading and `@trailrunnermag` is. Two
-limits on that, both asserted by the suite rather than left to the prompt's good manners:
-
-- **Attention is counted in likes, saves and comments.** An Instagram export contains no watch time,
-  no session length, no screen time of any kind. A share phrased in minutes would be a number the app
-  invented, so the schema forbids it in the field that carries it and the sub-line on the page tells
-  the reader what the measure actually is.
-- **Private individuals are described, never named.** Outlets, brands, shops and public creators get
-  their handle. A friend or a relative gets "a friend you have run with since 2021". The reader knows
-  who their friends are, and a handle written into a PDF they may hand to somebody else drags in a
-  person who never agreed to any of this.
-
 This replaced **Publishing vs reading**, which asked the same counts and answered them more thinly.
 The publish-against-read ratio is now one sentence of this read rather than a facet beside it —
 keeping both meant two facets reaching for the same numbers and saying the same thing twice.
 
-A third subsection reads Instagram's own inferred topics and ad interests back to the reader, which
-is the platform's commercial model of them rather than a finding about them, and is worth seeing
-precisely because it is often wrong.
+It is one paragraph. It briefly carried four more subsections — a ranked list of the accounts taking
+the most attention, a read of Instagram's own inferred topics, and a **Worth changing** /
+**Leave alone** pair of recommendation lists closing the section — and all four were cut together
+for length. The behaviour section had grown to about a screen and a half and was outweighing
+findings that say considerably more about a person than their feed does. All four came out of
+`PROFILE_SCHEMA` as well as the page, on the same reasoning as the facets before them: output
+nobody reads is tokens spent for nothing.
 
-### The only advice in the report
+**Two rules outlived the list that introduced them**, because the surviving paragraph still reads
+the same counts, and cutting a section must not quietly cut a guardrail with it. A selftest check
+holds each one against `PROFILE_SYSTEM` directly rather than against the field that used to carry
+it:
 
-**Worth changing** and **Leave alone** close the behaviour section, and there is deliberately nothing
-like them anywhere else: this is the only section whose findings are about something the reader can
-change tomorrow. Telling somebody what to do about their attachment style would be the app
-pretending to be the clinical tool its own disclaimer says it is not.
-
-The failure mode is obvious, so the prompt is written against it. Advice is on **composition, never
-volume** — "the six hundred accounts you never open are what the ranking model learns from" is a
-finding; "you are on your phone too much" is a lecture, and nothing in this data says how long
-anybody spent anywhere. The whole genre that would fit any reader is banned by name: digital
-detoxes, screen-time limits, "curate your feed", "be present". Every item has to trace back to
-something the model actually wrote above it, and it may never tell the reader to follow, unfollow,
-mute or block a specific person.
-
-**Leave alone** is required rather than optional, and it is the half that keeps the other half
-honest. One list of things to fix is a chore list; the anti-recommendations force the model to find
-something that looks like a problem and is not, name the standard advice it is contradicting, and
-say why to ignore it. In the sample that is *"do not broaden the feed"* — a diet that is
-ten-twelfths people you actually know is the healthy part, and the usual advice to diversify would
-trade the thing that works for the thing everyone else has.
+- **Attention is counted in likes, saves and comments.** An Instagram export contains no watch time,
+  no session length, no screen time of any kind, so anything phrased in minutes would be a number
+  the app invented.
+- **Private individuals are described, never named.** Outlets, brands and public creators can be
+  named where one is genuinely the point. A friend or a relative gets "a friend you have run with
+  since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
+  hand to somebody else drags in a person who never agreed to any of this.
 
 ### The bonus section
 
 Everything above it is written to be fair. This one is written to be accurate without being kind:
-the least charitable reading the evidence still supports, the advice a friend gives when they have
-stopped managing your feelings, and where the patterns end up in five years. It sits below the
-behaviour read and above confidence, so the reader meets every fair section first and the
-confidence caveat still gets the last word over all of it.
+the least charitable reading the evidence still supports, and the advice a friend gives when they
+have stopped managing your feelings. It sits below the behaviour read and above confidence, so the
+reader meets every fair section first and the confidence caveat still gets the last word over all
+of it.
 
-**It is not a diagnosis, and cannot become one.** The obvious third question — *what is wrong with
-me* — is the one thing this section may not answer. A model naming a condition from posting
-patterns is inventing a clinical claim it has no standing to make, in a document people export to
-PDF and show to other people, and the landing page says in as many words that this is not a
-clinical or diagnostic tool. `trajectory` is the honest version of that question: where the
-behaviour goes, what breaks first, and what would change it. The ban is stated in the field's own
-description, restated in the prompt's hard limits with the note that it holds *however the reader
-has framed what they want*, and asserted by four checks in `tools/selftest.mjs` — including one
-that scans `docs/sample.json` for the vocabulary a model reaches for when it starts drifting from
+A third reading, **Where this ends up** — the five-year behavioural forecast — was cut along with
+the behaviour section's subsections. The no-diagnosis rule did not go with it: `harsh` and `advice`
+can drift into a clinical claim just as easily, and the forecast happened to be the field carrying
+the longest statement of the ban, so the checks now read it off the hard limits instead.
+
+**It is not a diagnosis, and cannot become one.** The obvious question — *what is wrong with me* —
+is the one thing this section may not answer. A model naming a condition from posting patterns is
+inventing a clinical claim it has no standing to make, in a document people export to PDF and show
+to other people, and the landing page says in as many words that this is not a clinical or
+diagnostic tool. The ban is stated twice in `PROFILE_SYSTEM` — once as *being unkind is not a
+licence to become one*, once in the hard limits with the note that it holds *however the reader has
+framed what they want* — and asserted by five checks in `tools/selftest.mjs`, including one that
+scans `docs/sample.json` for the vocabulary a model reaches for when it starts drifting from
 behaviour towards diagnosis, so the exemplar cannot teach the wrong thing.
 
 **The cover is a real gate, not a blur.** The writing is not in the document until the reader
@@ -945,7 +932,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 336 checks: synthesises a real ZIP export and runs
+npm test           # 330 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

@@ -177,19 +177,6 @@
 
     activity: 'Your Instagram behaviour',
     diet: 'What you take in',
-    // Not "Where your attention goes": a facet by that name was cut from this
-    // section once already, and a check guards its return. Reusing the string
-    // would hollow that guard out to catch nothing.
-    dietAccounts: 'Who you actually read',
-    // The export has no watch time, no session length, no screen time at all.
-    // Attention here is counted in likes, saves and comments, and the reader is
-    // told so rather than left to assume the app knows how long they looked.
-    dietAccountsSub: 'Counted in likes, saves and comments — an Instagram export carries no timing ' +
-      'data, so nothing here is a measure of time spent.',
-    dietAlgorithm: 'What Instagram thinks you are',
-    recommendations: 'Worth changing',
-    antiRecommendations: 'Leave alone',
-    antiRecommendationsSub: 'Things that look like a problem and are not.',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',
@@ -210,15 +197,13 @@
     bonus: 'The bonus section',
     bonusSub: 'The rest of this report was written to be fair to you. This part was not.',
     bonusCoverTitle: 'This one is deliberately unkind',
-    bonusCoverBody: 'Three readings written without the softening: the least generous view of you the ' +
-      'evidence supports, the advice a friend would give if they had stopped managing your feelings, ' +
-      'and where your patterns end up if nothing changes. Some of it will be wrong. Some of it will ' +
-      'be wrong in a way that still stings.',
+    bonusCoverBody: 'Two readings written without the softening: the least generous view of you the ' +
+      'evidence supports, and the advice a friend would give if they had stopped managing your ' +
+      'feelings. Some of it will be wrong. Some of it will be wrong in a way that still stings.',
     bonusReveal: 'Show me anyway',
     bonusHide: 'Cover it back up',
     bonusHarsh: 'The least charitable reading',
     bonusAdvice: 'What a friend would actually say',
-    bonusTrajectory: 'Where this ends up',
     // Stays on screen after the reveal rather than only appearing on the cover:
     // this is the part a reader most needs while they are reading it, and the
     // part they are least likely to scroll back up for.

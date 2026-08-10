@@ -795,29 +795,11 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .facet p { margin: 0; font-size: .9rem; }
 
 /* What you take in: the same left rule as a facet, but full width under the
-   grid, because it carries a list and a second reading rather than one
-   paragraph. */
+   grid rather than a cell inside it, since it runs longer than the three
+   above it. */
 .diet { border-left: 3px solid var(--accent); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem; }
 .diet h4 { margin: .1rem 0 .3rem; font-size: 1rem; color: var(--accent); }
-.diet h3 { margin: 1.1rem 0 .2rem; }
-.diet .card-sub { margin: 0 0 .5rem; }
-.diet-accounts { list-style: none; margin: 0; padding: 0; }
-/* Name, then its share, then the read — the name and the share are the two
-   things somebody scanning wants, so they share the first line. */
-.diet-accounts li {
-  display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: .3rem .5rem;
-  padding: .5rem 0; border-bottom: 1px solid var(--line);
-}
-.diet-accounts li:last-child { border-bottom: 0; }
-.diet-account { font-weight: 650; overflow-wrap: anywhere; }
-.diet-share { color: var(--ink-soft); font-size: .86rem; }
-.diet-why { grid-column: 1 / -1; font-size: .9rem; }
-@media (max-width: 30rem) {
-  .diet-accounts li { grid-template-columns: 1fr auto; }
-  .diet-share { grid-column: 1 / -1; }
-}
-.advice-split { margin-top: 1.2rem; }
-.advice-split .card-sub { margin: -.2rem 0 .5rem; }
+.diet p { margin: 0; }
 
 /* The bonus section's cover. Greyed and inert-looking on purpose: it should
    read as something switched off rather than as another card to scroll past.

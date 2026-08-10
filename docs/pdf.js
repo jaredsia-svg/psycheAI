@@ -1094,29 +1094,7 @@
       // What they take in is not one of the facets above: it carries a list of
       // accounts and a second reading, so it runs on its own underneath, the
       // same shape it takes on screen.
-      const diet = activity.diet;
-      if (diet) {
-        out.facet(TEXT.diet, diet.headline, diet.detail);
-        const accounts = (diet.topAccounts || []).filter(Boolean);
-        if (accounts.length) {
-          out.h3(TEXT.dietAccounts);
-          out.muted(TEXT.dietAccountsSub);
-          for (const item of accounts) out.tile(item.account, item.kind, item.share, item.why);
-        }
-        if (diet.algorithmRead) {
-          out.h3(TEXT.dietAlgorithm);
-          out.body(diet.algorithmRead);
-        }
-      }
-      const recommendations = (activity.recommendations || []).filter(Boolean);
-      const antiRecommendations = (activity.antiRecommendations || []).filter(Boolean);
-      if (recommendations.length || antiRecommendations.length) {
-        out.h3(TEXT.recommendations, GOOD);
-        out.points(recommendations);
-        out.h3(TEXT.antiRecommendations, WARN);
-        out.muted(TEXT.antiRecommendationsSub);
-        out.points(antiRecommendations);
-      }
+      if (activity.diet) out.facet(TEXT.diet, activity.diet.headline, activity.diet.detail);
       out.fineprint(activity.blindSpots);
     }
 
@@ -1132,8 +1110,6 @@
       out.body(bonus.harsh);
       out.h3(TEXT.bonusAdvice);
       out.body(bonus.advice);
-      out.h3(TEXT.bonusTrajectory);
-      out.body(bonus.trajectory);
     }
 
     // 10. Matches, when this device has any.
