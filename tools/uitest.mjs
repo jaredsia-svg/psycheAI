@@ -117,6 +117,15 @@ try {
     (await page.content()).toLowerCase().includes('questionnaire') === false ||
     (await page.locator('#step-form').count()) === 0);
 
+  // A closed <dialog> is still in the document. Styling it `display: flex`
+  // unconditionally — rather than scoped to `[open]` — beats the user agent's
+  // `dialog:not([open]) { display: none }` and leaves it laid out at the foot
+  // of the page on every load, nothing having ever opened it. Checked on cold
+  // load, before the review dialog has ever been shown once this run.
+  check('the review dialog is not visible on a cold load, before it has ever been opened',
+    !(await page.locator('#review-dialog').isVisible()),
+    await page.evaluate(() => getComputedStyle(document.querySelector('#review-dialog')).display));
+
   // The two switches that used to sit here — direct messages, a sample of
   // your photos — moved into the pre-send review dialog, so what the main
   // page owes the reader now is not "here is the default" but "here is what
@@ -2271,6 +2280,18 @@ try {
     analyseBodies.length === beforeReviewCancel);
   check('backing out of the review leaves no half-built profile behind',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+  // Same class of bug the sample dialog was checked against above: a closed
+  // <dialog> is still in the document, and an unscoped `display: flex` beats
+  // the user agent's `dialog:not([open]) { display: none }`, leaving it laid
+  // out over the page and swallowing clicks even though nothing looks open.
+  await page.locator('#dropzone').scrollIntoViewIfNeeded();
+  check('the closed review dialog is not still covering the page',
+    await page.evaluate(() => {
+      const box = document.querySelector('#dropzone').getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return Boolean(hit && hit.closest('#dropzone'));
+    }),
+    await page.evaluate(() => getComputedStyle(document.querySelector('#review-dialog')).display));
 
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),

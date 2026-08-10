@@ -900,7 +900,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    inside it, that produced two nested scrollbars competing for the same
    gesture. Flex column, so the title, subtitle and buttons keep their
    natural size and the list absorbs whatever height is left over. */
-.review-dialog { display: flex; flex-direction: column; max-height: min(30rem, calc(100vh - 2rem)); overflow: hidden; }
+.review-dialog[open] { display: flex; flex-direction: column; max-height: min(30rem, calc(100vh - 2rem)); overflow: hidden; }
 /* `min-height: 0` is the part that actually makes the list shrink: a flex
    child defaults to never sizing below its content's natural height no
    matter what its parent allows, which is exactly the outer-scrollbar bug
