@@ -354,14 +354,14 @@ upload card only has to read one bar to get the whole promise, so they were merg
 
 The **paid-API-access** paragraph is the one place this page states something about a third party's
 policy rather than only its own, so it is hedged as carefully as the "their terms apply rather than
-ours" sentence beside it: "typically," attributed to their terms rather than asserted as this app's
-own guarantee, with an explicit "read it in their own terms" rather than a promise PsycheAI is not
-in a position to make on Google's or Anthropic's behalf. The claim itself is narrow and true —
-Gemini and Claude are reached through paid API access rather than the free consumer chat apps, and
-paid API terms from both providers exclude customer inputs from training, as of when this was
-written. That last clause is exactly why it is phrased as pointing at their terms instead of
-restating them as fact: it is the one claim on this page that could become false without this app
-changing anything at all.
+ours" sentence beside it: attributed to their terms — "that is their policy to keep, not ours to
+guarantee" — rather than asserted as this app's own guarantee, with an explicit "read it in their
+own terms" rather than a promise PsycheAI is not in a position to make on Google's or Anthropic's
+behalf. The claim itself is narrow and true — Gemini and Claude are reached through paid API access
+rather than the free consumer chat apps, and paid API terms from both providers exclude customer
+inputs from training, as of when this was written. That last clause is exactly why it is phrased as
+pointing at their terms instead of restating them as fact: it is the one claim on this page that
+could become false without this app changing anything at all.
 
 The unpacking screen picked up a matching line — "Reading your data on this device… (nothing has
 been sent yet)" — set once, at the point where it is true, and overwritten the moment it stops
