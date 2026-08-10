@@ -1304,10 +1304,19 @@ try {
   // rather than the strings copy.js actually supplies.
   const facetLabels = await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .facet-label')].map(el => el.textContent.trim()));
-  check('the behaviour section is four facets, the consumption read among them',
+  // What you take in leads rather than closes: the grid is two columns wide,
+  // so the first entry lands top-left on a laptop.
+  check('the behaviour section is four facets, consumption leading them',
     (await page.locator('#profile-body .facet').count()) === 4 &&
-    facetLabels.join(' | ') === 'What you post | When you are here | How it changed | What you take in',
+    facetLabels.join(' | ') === 'What you take in | What you post | When you are here | How it changed',
     facetLabels.join(' | '));
+  check('the consumption facet sits top-left of the grid on a laptop', await page.evaluate(() => {
+    const facets = [...document.querySelectorAll('#profile-body .facet')];
+    const first = facets[0].getBoundingClientRect();
+    const grid = document.querySelector('#profile-body .facet-grid').getBoundingClientRect();
+    return facets[0].querySelector('.facet-label').textContent.trim() === 'What you take in' &&
+      Math.abs(first.left - grid.left) < 2 && Math.abs(first.top - grid.top) < 2;
+  }));
   // The prose that wrapped the grid is gone: no sub-line under the heading,
   // and no blind-spots caveat closing it. The confidence section already
   // closes the whole report with the same warning.

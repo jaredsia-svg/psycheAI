@@ -63,12 +63,14 @@
   // "What you take in" ran full width below this grid while it carried a list
   // of accounts and a second reading. Those were cut, which left it the same
   // shape as the other three — one headline, one paragraph — so it is a facet
-  // again, and four of them make an even two-by-two on a laptop.
+  // again, and four of them make an even two-by-two on a laptop. It leads the
+  // list rather than closing it: the grid is two columns wide, so the first
+  // entry is what lands top-left on a laptop and first of all on a phone.
   const ACTIVITY_FACETS = [
+    ['What you take in', 'diet'],
     ['What you post', 'posting'],
     ['When you are here', 'rhythm'],
     ['How it changed', 'trajectory'],
-    ['What you take in', 'diet'],
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
