@@ -342,6 +342,32 @@ quietly stop honouring it: `fs` is asserted to be read-only, `Cache-Control: no-
 set, and the copy to keep naming both things outside the app's control — the model provider's terms,
 and an unlocked device.
 
+Two more additions answer specific fears rather than the general one. **"No analytics, no trackers,
+no cookies"** is checkable the same way the source link is: nothing in `docs/` calls out to a
+tracking domain, sets a cookie, or loads an analytics script, and it stays true because there is
+nothing here that would need one — no accounts, no funnels, nothing to measure. It appears twice,
+worded identically both times: as a second badge beside the storage promise at the moment of the
+ask, and again with more detail in the FAQ, because the two are answering different worries — what
+happens to the data once PsycheAI has it, against whether PsycheAI can see the reader at all.
+
+The **paid-API-access** paragraph is the one place this page states something about a third party's
+policy rather than only its own, so it is hedged as carefully as the "their terms apply rather than
+ours" sentence beside it: "typically," attributed to their terms rather than asserted as this app's
+own guarantee, with an explicit "read it in their own terms" rather than a promise PsycheAI is not
+in a position to make on Google's or Anthropic's behalf. The claim itself is narrow and true —
+Gemini and Claude are reached through paid API access rather than the free consumer chat apps, and
+paid API terms from both providers exclude customer inputs from training, as of when this was
+written. That last clause is exactly why it is phrased as pointing at their terms instead of
+restating them as fact: it is the one claim on this page that could become false without this app
+changing anything at all.
+
+The unpacking screen picked up a matching line — "Reading your data on this device… (nothing has
+been sent yet)" — set once, at the point where it is true, and overwritten the moment it stops
+being true. `runAnalysis` replaces it with the actual send-in-progress copy the instant a request is
+about to go out, so the claim is never left on screen past the point where it would become a lie. A
+check catches it mid-flow, after the archive is unpacked but before the depth is chosen — the one
+moment where "nothing has been sent yet" and "the reader can still see it" are both true at once.
+
 ### Recognising the archive at all
 
 Before any of that, `readExports` decides whether the thing it just unpacked is an Instagram export.
@@ -961,7 +987,7 @@ npm test           # 335 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 574 checks: drives the real UI in Chromium against a
+npm run test:ui    # 579 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

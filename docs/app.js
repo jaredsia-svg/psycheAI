@@ -493,7 +493,10 @@
     const includeImages = $('#include-images').checked;
 
     $('#working-title').textContent = 'Reading your export';
-    $('#working-note').textContent = 'The archive is being unpacked on this device.';
+    // True for the whole of this phase and nowhere else: runAnalysis overwrites
+    // this note the moment a request is actually about to go out, so the claim
+    // never survives past the point where it would stop being true.
+    $('#working-note').textContent = 'Reading your data on this device… (nothing has been sent yet)';
     setProgress(0, 'Opening the archive…');
     show('working');
 

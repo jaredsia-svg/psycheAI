@@ -161,10 +161,17 @@ try {
       const beforeError = error.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
       return Boolean(afterImages && beforeError);
     }));
-  check('the hero no longer carries the badge',
+  // Two badges now rather than one: the storage promise and the no-tracking
+  // promise are different facts, answering different worries, so they render
+  // as a pair rather than one line trying to carry both.
+  check('the hero no longer carries either badge',
     (await page.locator('#view-welcome .hero .eyebrow').count()) === 0 &&
-    (await page.locator('#view-welcome .eyebrow').count()) === 1,
+    (await page.locator('#view-welcome .eyebrow').count()) === 2,
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
+  check('the second badge states the no-tracking claim next to the storage one',
+    (await page.locator('#view-welcome .upload-card .eyebrow').nth(1).innerText())
+      .includes('No analytics, no trackers, no cookies'),
+    await page.locator('#view-welcome .upload-card .eyebrow').nth(1).innerText());
   // The mark is a backdrop now rather than an object in the row, so "clear of
   // the headline" is no longer the thing to want — it is deliberately behind
   // it. What matters instead: it stays square, it stays behind the text and
@@ -855,6 +862,14 @@ try {
     await page.locator('#depth-dialog').isVisible());
   check('nothing was sent to the model before the choice was made',
     analyseBodies.length === 0, analyseBodies.length + ' requests');
+  // The note under the progress bar makes the same claim the check above
+  // proves: at this point in the flow — archive unpacked, depth not yet
+  // chosen — nothing has left the device. runAnalysis only overwrites this
+  // note once a request is actually about to go out, so catching it here,
+  // before that happens, is what proves the claim was still true when made.
+  check('the working screen says plainly that nothing has been sent yet',
+    (await page.locator('#working-note').innerText()).includes('nothing has been sent yet'),
+    await page.locator('#working-note').innerText());
   check('the profile is not showing behind the picker',
     !(await page.locator('#view-profile').isVisible()));
   check('the picker offers exactly two depths',
@@ -2475,6 +2490,21 @@ try {
     /Google or Anthropic/.test(about));
   check('the page admits their terms govern that, not this app',
     /their\s+terms apply rather than ours/i.test(about));
+  // The paid-API/no-training claim sits right after the hedge above, and has
+  // to carry its own hedge too — "typically" and "read it in their own terms"
+  // rather than a guarantee this app cannot actually make on Google's or
+  // Anthropic's behalf.
+  check('the page explains paid API access differs from the free consumer apps',
+    /paid API access/i.test(about) && /free consumer chat apps/i.test(about));
+  check('the training-data claim is attributed to their terms, not asserted as fact',
+    /excluded from model training/i.test(about) &&
+    /not ours to guarantee/i.test(about) && /read it in their own terms/i.test(about));
+  // No analytics claim: has to appear on both the moment-of-the-ask badge and
+  // in the FAQ's fuller explanation, worded the same way in both so a reader
+  // who checks the claim against the detail finds them saying the same thing.
+  check('the FAQ repeats the no-tracking claim from the badge, with more detail',
+    /No analytics, no trackers, no cookies/.test(about) &&
+    /session recording/i.test(about));
 
   // The badge above the dropzone is the welcome page's own privacy claim, read
   // at the moment somebody decides whether to upload their DMs. It has to
