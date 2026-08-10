@@ -2634,18 +2634,17 @@ try {
   // self-hosting notes were cut as clutter; the one that remains is the one a
   // reader cannot check for themselves, so it has to stay named.
   check('the page names the model provider as the party that reads the summary',
-    /Google or Anthropic/.test(about));
-  check('the page admits their terms govern that, not this app',
-    /their\s+terms apply rather than ours/i.test(about));
-  // The paid-API/no-training claim sits right after the hedge above, and has
-  // to carry its own hedge too — "typically" and "read it in their own terms"
-  // rather than a guarantee this app cannot actually make on Google's or
-  // Anthropic's behalf.
-  check('the page explains paid API access differs from the free consumer apps',
-    /paid API access/i.test(about) && /free consumer chat apps/i.test(about));
+    /Gemini or Claude/.test(about));
+  check('the page admits their terms govern that, once it reaches them',
+    /their\s+terms apply/i.test(about));
+  // The paid-API/no-training claim carries its own hedge — "not ours to
+  // guarantee" — rather than a guarantee this app cannot actually make on
+  // Google's or Anthropic's behalf.
+  check('the page names paid API access as how the summary reaches the model',
+    /paid API access/i.test(about));
   check('the training-data claim is attributed to their terms, not asserted as fact',
     /excluded from model training/i.test(about) &&
-    /not ours to guarantee/i.test(about) && /read it in their own terms/i.test(about));
+    /not ours to guarantee/i.test(about));
   // No analytics claim: has to appear on both the moment-of-the-ask badge and
   // in the FAQ's fuller explanation, worded the same way in both so a reader
   // who checks the claim against the detail finds them saying the same thing.
@@ -2655,8 +2654,8 @@ try {
 
   // The badge above the dropzone is the welcome page's own privacy claim, read
   // at the moment somebody decides whether to upload their DMs. It has to
-  // survive being held next to the FAQ two clicks away, which names Google or
-  // Anthropic as the party that reads the summary. So it is held to the two
+  // survive being held next to the FAQ two clicks away, which names Gemini or
+  // Claude as the party that reads the summary. So it is held to the two
   // things the code above proves: nothing is stored here, and the report is
   // assembled on the device and never sent back. textContent rather than
   // innerText because the welcome view is hidden while the FAQ is open.

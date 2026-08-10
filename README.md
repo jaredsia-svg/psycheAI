@@ -333,7 +333,7 @@ The page used to explain *why* the relay exists and to note two further caveats 
 device is readable, and that the code can be self-hosted. All three were cut as clutter. Cutting a
 caveat is a product call rather than an accuracy one, so the checks for them went too; what could
 not go is the statement that the summary reaches the PsycheAI server at all, and the disclosure that
-Google or Anthropic read it under their own terms. Those two are what the remaining guards hold.
+Gemini or Claude read it under their own terms. Those two are what the remaining guards hold.
 
 A tempting fourth claim — that the summary never reaches the PsycheAI server at all — would be
 false, and the suite fails if it ever appears. Checks read the claims off the rendered page *and*
@@ -353,15 +353,16 @@ PsycheAI has it, against whether PsycheAI can see the reader at all — but a re
 upload card only has to read one bar to get the whole promise, so they were merged back into one.
 
 The **paid-API-access** paragraph is the one place this page states something about a third party's
-policy rather than only its own, so it is hedged as carefully as the "their terms apply rather than
-ours" sentence beside it: attributed to their terms — "that is their policy to keep, not ours to
-guarantee" — rather than asserted as this app's own guarantee, with an explicit "read it in their
-own terms" rather than a promise PsycheAI is not in a position to make on Google's or Anthropic's
-behalf. The claim itself is narrow and true — Gemini and Claude are reached through paid API access
-rather than the free consumer chat apps, and paid API terms from both providers exclude customer
-inputs from training, as of when this was written. That last clause is exactly why it is phrased as
-pointing at their terms instead of restating them as fact: it is the one claim on this page that
-could become false without this app changing anything at all.
+policy rather than only its own, so it stays hedged even after being trimmed to one sentence: "that
+is their policy to keep, not ours to guarantee," rather than asserted as this app's own promise —
+not a claim PsycheAI is in a position to make on Google's or Anthropic's behalf. The claim itself is
+narrow and true — Gemini and Claude are reached through paid API access, and paid API terms from
+both providers exclude customer inputs from training, as of when this was written. That second half
+is exactly why it stays phrased as their policy rather than restated as fact: it is the one claim on
+this page that could become false without this app changing anything at all. An earlier version also
+named the free consumer chat apps as the contrast and pointed readers at the providers' own terms to
+verify it; both were cut as the paragraph was tightened to what a reader actually needs on first
+read, not as a change to what is being claimed.
 
 The unpacking screen picked up a matching line — "Reading your data on this device… (nothing has
 been sent yet)" — set once, at the point where it is true, and overwritten the moment it stops
