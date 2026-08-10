@@ -203,12 +203,12 @@
     // The cover ran a paragraph explaining what was behind it as well. It was
     // cut: the title and the caveat under it already say the same thing, and
     // three stacked blocks of warning made a joke look like a legal notice.
-    bonusSub: 'Your data went in. Your dignity did not come out. Salt liberally before serving.',
+    bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
     bonusReveal: 'Show me anyway',
     bonusHide: 'Hide',
-    bonusHarsh: 'The least charitable reading',
-    bonusAdvice: 'What a friend would actually say',
+    bonusHarsh: 'The least charitable assessment of you',
+    bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen after the reveal rather than only appearing on the cover:
     // this is the part a reader most needs while they are reading it, and the
     // part they are least likely to scroll back up for.

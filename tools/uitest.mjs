@@ -1078,7 +1078,7 @@ try {
     };
   });
   check('opening it shows both readings',
-    /least charitable reading/i.test(opened.text) && /friend would actually say/i.test(opened.text) &&
+    /least charitable assessment/i.test(opened.text) && /honest friend would tell you/i.test(opened.text) &&
     opened.coverHidden);
   check('the five-year forecast is gone from the writing behind the cover',
     !/Where this ends up/i.test(opened.text),
@@ -1606,11 +1606,11 @@ try {
   // renderer could drop the headings and still lay down the prose.
   check('the PDF leaves the bonus section out entirely',
     !pdfText.includes('(The bonus roast)') &&
-    !pdfText.includes('(The least charitable reading)') &&
-    !pdfText.includes('(What a friend would actually say)') &&
+    !pdfText.includes('(The least charitable assessment of you)') &&
+    !pdfText.includes('(What an honest friend would tell you)') &&
     !/not an assessment, not a diagnosis/i.test(pdfText) &&
     !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
-    String(pdfText.match(/\((?:The bonus roast|The least charitable reading|What a friend would actually say)\)/g)));
+    String(pdfText.match(/\((?:The bonus roast|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',
