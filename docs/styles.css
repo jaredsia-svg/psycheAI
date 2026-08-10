@@ -190,10 +190,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--accent-soft); color: var(--accent);
   border-radius: 999px; font-size: .78rem; font-weight: 600; letter-spacing: .02em;
 }
-/* Sits under the photos switch now, which has its own bottom margin — pulled
-   up slightly so the badge reads as attached to the switch above it rather
-   than floating in the gap before the card's own edge. */
-.upload-card .eyebrow { margin-top: -.25rem; }
+/* Sits right under the dropzone with a small gap, so it reads as attached to
+   the dropzone rather than floating in the space before the card's own edge
+   below it. A negative margin here does not do what it looks like it should:
+   with a single inline-block badge as the only content of the anonymous
+   block box that wraps it, the browser applies the full margin rather than
+   partially absorbing it the way it does when two such badges sit stacked,
+   so a value tuned for two badges overlaps the dropzone once there is one. */
+.upload-card .eyebrow { margin-top: .2rem; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
 /* ---------- cards ---------- */

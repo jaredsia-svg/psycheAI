@@ -129,7 +129,7 @@ try {
     (await page.locator('#include-images').count()) === 0);
   check('the upload card explains that a review comes before anything is sent',
     /review/i.test(await page.locator('.upload-card .card-sub').innerText()) &&
-    /before anything is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
+    /before any data is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
     await page.locator('.upload-card .card-sub').innerText().catch(() => 'missing'));
 
   // Nothing is asked for before the upload — the export carries the name.
@@ -168,17 +168,18 @@ try {
       const beforeError = error.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
       return Boolean(afterDropzone && beforeError);
     }));
-  // Two badges now rather than one: the storage promise and the no-tracking
-  // promise are different facts, answering different worries, so they render
-  // as a pair rather than one line trying to carry both.
-  check('the hero no longer carries either badge',
+  // Started as two badges (storage promise, no-tracking promise) and was
+  // merged back into one bar: both facts answer the same moment-of-the-ask
+  // worry, and a reader scanning quickly should not have to read two pills
+  // to get the whole promise.
+  check('the hero no longer carries the badge',
     (await page.locator('#view-welcome .hero .eyebrow').count()) === 0 &&
-    (await page.locator('#view-welcome .eyebrow').count()) === 2,
+    (await page.locator('#view-welcome .eyebrow').count()) === 1,
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
-  check('the second badge states the no-tracking claim next to the storage one',
-    (await page.locator('#view-welcome .upload-card .eyebrow').nth(1).innerText())
-      .includes('No analytics, no trackers, no cookies'),
-    await page.locator('#view-welcome .upload-card .eyebrow').nth(1).innerText());
+  check('the single badge carries both the storage claim and the no-tracking claim',
+    (await page.locator('#view-welcome .upload-card .eyebrow').innerText())
+      .includes('no analytics, no trackers, no cookies'),
+    await page.locator('#view-welcome .upload-card .eyebrow').innerText());
   // The mark is a backdrop now rather than an object in the row, so "clear of
   // the headline" is no longer the thing to want — it is deliberately behind
   // it. What matters instead: it stays square, it stays behind the text and

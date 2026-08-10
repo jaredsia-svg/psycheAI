@@ -345,10 +345,12 @@ and an unlocked device.
 Two more additions answer specific fears rather than the general one. **"No analytics, no trackers,
 no cookies"** is checkable the same way the source link is: nothing in `docs/` calls out to a
 tracking domain, sets a cookie, or loads an analytics script, and it stays true because there is
-nothing here that would need one — no accounts, no funnels, nothing to measure. It appears twice,
-worded identically both times: as a second badge beside the storage promise at the moment of the
-ask, and again with more detail in the FAQ, because the two are answering different worries — what
-happens to the data once PsycheAI has it, against whether PsycheAI can see the reader at all.
+nothing here that would need one — no accounts, no funnels, nothing to measure. It appears twice:
+folded into the single badge at the moment of the ask, alongside the storage promise rather than as
+a separate pill beside it, and again with more detail in the FAQ. The two were split into two
+badges at first, on the reasoning that they answer different worries — what happens to the data once
+PsycheAI has it, against whether PsycheAI can see the reader at all — but a reader scanning the
+upload card only has to read one bar to get the whole promise, so they were merged back into one.
 
 The **paid-API-access** paragraph is the one place this page states something about a third party's
 policy rather than only its own, so it is hedged as carefully as the "their terms apply rather than
