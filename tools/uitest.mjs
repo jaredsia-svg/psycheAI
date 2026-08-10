@@ -976,7 +976,10 @@ try {
     ['what they post', /What you post/i],
     ['when they are active', /When you are here/i],
     ['how their use changed', /How it changed/i],
-    ['publishing against reading', /Publishing vs reading/i],
+    ['what they take in', /What you take in/i],
+    ['the accounts that take the most of it', /Who you actually read/i],
+    ['what the platform thinks they are', /What Instagram thinks you are/i],
+    ['advice, and the advice not to take', /Worth changing/i],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
@@ -986,7 +989,10 @@ try {
   }
   // Trimmed off the behaviour section, and the QR-contents section moved to
   // the scan page entirely — none of the three should linger on the profile.
-  for (const gone of ['Where your attention goes', 'What it suggests', 'What your QR code contains']) {
+  // "Publishing vs reading" joined them: the consumption read below asks the
+  // same counts, so keeping the facet meant saying it twice.
+  for (const gone of ['Where your attention goes', 'What it suggests', 'What your QR code contains',
+    'Publishing vs reading']) {
     check('profile no longer shows "' + gone + '"', !profileText.includes(gone));
   }
   check('MBTI has no closing write-up', (await page.locator('.portrait').count()) === 0);
@@ -1193,11 +1199,41 @@ try {
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));
   check('strengths and weaknesses sit side by side',
-    (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
+    (await page.locator('#profile-body .split:not(.love-split):not(.advice-split)').count()) === 2);
+  // "Leave alone" is not a weaker recommendation, it is the opposite kind of
+  // claim, so the two run as columns rather than one list of five things to
+  // fix. Both columns have to be populated: an advice block with an empty
+  // anti-column is the chore list the split exists to prevent.
+  check('the advice and the anti-advice sit side by side, both filled',
+    (await page.locator('#profile-body .advice-split').count()) === 1 &&
+    (await page.locator('#profile-body .advice-split .h-good + .points dt').count()) >= 1 &&
+    (await page.locator('#profile-body .advice-split .h-warn ~ .points dt').count()) >= 1,
+    (await page.locator('#profile-body .advice-split .points dt').allInnerTexts()).join(' | '));
+  // The one place the report tells the reader what to do. It has to sit under
+  // the behaviour section — the only section about something changeable — and
+  // after every facet, so it can draw on all of them rather than the last one.
+  check('the advice closes the behaviour section rather than opening it',
+    await page.evaluate(() => {
+      const section = document.querySelector('#profile-body .diet').closest('.section-card');
+      const advice = section.querySelector('.advice-split');
+      const facets = section.querySelector('.facet-grid');
+      if (!advice || !facets) return false;
+      return Boolean(facets.compareDocumentPosition(advice) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  // Attention is counted in likes, saves and comments. An Instagram export has
+  // no watch time in it at all, so a share phrased in minutes would be a
+  // number the app invented — the sub-line says so, and this holds it there.
+  check('the attention measure says plainly it is not a measure of time',
+    /no timing data/.test(await page.locator('#profile-body .diet .card-sub').first().innerText()),
+    await page.locator('#profile-body .diet .card-sub').first().innerText());
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
   check('behaviour facets render as their own blocks',
-    (await page.locator('#profile-body .facet').count()) === 4);
+    (await page.locator('#profile-body .facet').count()) === 3);
+  check('the consumption read runs full width under them, with its accounts named',
+    (await page.locator('#profile-body .diet').count()) === 1 &&
+    (await page.locator('#profile-body .diet-accounts li').count()) >= 3,
+    (await page.locator('#profile-body .diet-account').allInnerTexts()).join(' | '));
   check('each axis shows how strongly it leans',
     (await page.locator('.axis .pill').count()) === 4);
   check('a slight lean is marked as such',
@@ -1464,7 +1500,14 @@ try {
   check('the PDF uses the page\'s trait wording, not the schema\'s',
     pdfText.includes('(Emotional sensitivity') && !/\(Neuroticism/.test(pdfText));
   check('the PDF labels the behaviour facets as the page does',
-    pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(PUBLISHING VS READING)'));
+    pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(WHAT YOU TAKE IN)') &&
+    !pdfText.includes('(PUBLISHING VS READING)'));
+  // The PDF is the copy people keep and hand around, so the consumption read
+  // and its advice have to survive into it rather than being screen-only.
+  check('the PDF carries the accounts and both halves of the advice',
+    pdfText.includes('(Who you actually read)') &&
+    pdfText.includes('(Worth changing)') && pdfText.includes('(Leave alone)'),
+    pdfText.match(/\((?:Who you actually read|Worth changing|Leave alone)\)/g));
   check('the PDF carries the Enneagram type, wing and nickname the page shows',
     pdfText.includes('(Enneagram: 9w1 The Peacemaker)'));
   check('the PDF explains the type and the wing, not just the evidence for them',
@@ -1706,8 +1749,14 @@ try {
         posting: { headline: long, detail: long },
         rhythm: { headline: long, detail: long },
         trajectory: { headline: long, detail: long },
-        engagement: { headline: long, detail: long },
+        diet: {
+          headline: long, detail: long,
+          topAccounts: [{ account: long, kind: 'media', share: long, why: long }],
+          algorithmRead: long,
+        },
         blindSpots: long,
+        recommendations: [point],
+        antiRecommendations: [point],
       },
       interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
       values: [{ value: long, detail: long, evidence: long }],

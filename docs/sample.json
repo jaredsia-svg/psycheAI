@@ -117,11 +117,58 @@
       "headline": "Tapering, and deliberately",
       "detail": "Posting peaked in 2023 and has fallen about 35% since, while commenting stayed flat. You have not lost interest in the people, only in broadcasting."
     },
-    "engagement": {
-      "headline": "Reads far more than posts",
-      "detail": "8,400 likes against 312 posts. A participant rather than a broadcaster, and the same twelve accounts all four years."
+    "diet": {
+      "headline": "Narrow, warm, mostly people you already know",
+      "detail": "8,400 likes against 312 posts — you read about twenty-seven times more than you publish. The concentration is the finding: roughly half those likes land on twelve accounts, and ten of the twelve are people you know personally. You follow 634 accounts and have engaged with 41 of them in the past year, so the other 593 are a subscription you are still paying for and no longer reading. Set against that, 190 saved posts — about 140 of them recipes and training plans — while your captions show the same three trailheads and the same twelve-week block four years running.",
+      "topAccounts": [
+        {
+          "account": "a friend you have run with since 2021",
+          "kind": "personal",
+          "share": "418 likes and 96 comments, more than any other account",
+          "why": "Your most-read account is a person rather than a publisher, which is unusual and says more about what you use the app for than any of your own posts do."
+        },
+        {
+          "account": "@trailrunnermag",
+          "kind": "media",
+          "share": "about 1 saved post in 6",
+          "why": "You save the training articles and run the same twelve-week block you already knew — this is where the reading and the doing part company."
+        },
+        {
+          "account": "@bonappetit",
+          "kind": "media",
+          "share": "63 saves, second only to the running titles",
+          "why": "Almost all of it is food for a table of six or more, which matches the cooking in your own posts rather than sitting beside it as a fantasy."
+        },
+        {
+          "account": "a relative",
+          "kind": "personal",
+          "share": "every post commented on, four years without a gap",
+          "why": "The only account you have never once let slide, which is a kind of consistency that does not show up anywhere else in your data."
+        }
+      ],
+      "algorithmRead": "Instagram's own ad-interest list reads wedding planning, home renovation, meal delivery and event supplies. It has watched you organise things for other people and sold that on as a demographic. What it has not noticed is the running, which is the thing you do most and talk about least — it is under-monetised rather than absent, and that gap is the most flattering thing on the list."
     },
-    "blindSpots": "This reads your public posts and your own writing only. Not what you read without liking, and not the conversations that happen off the app."
+    "blindSpots": "This reads your public posts and your own writing only. Not what you read without liking, and not the conversations that happen off the app.",
+    "recommendations": [
+      {
+        "title": "Cut the 593 you never open",
+        "detail": "They cost you nothing directly — you already scroll past them — but they are what the ranking model learns from, and a feed trained on accounts you ignore gets worse at surfacing the twelve you do not. This is about signal, not willpower."
+      },
+      {
+        "title": "Move one saved thing into the calendar",
+        "detail": "Not all 140. One. The gap between what you save and what you do is the only place in this whole report where you are being generous to a future version of yourself and then not turning up for them."
+      }
+    ],
+    "antiRecommendations": [
+      {
+        "title": "Do not broaden the feed",
+        "detail": "The usual advice is to diversify, discover, follow more widely. A diet that is ten-twelfths people you actually know is unusual and it is the healthy part of this — broadening it would trade the thing that works for the thing everyone else has."
+      },
+      {
+        "title": "You do not need a detox",
+        "detail": "Nothing here looks compulsive. Your activity sits between 5am and 8am and stops almost entirely after 9pm, and the reading is aimed at a dozen people rather than an infinite feed. Screen-time rules would solve a problem you do not have."
+      }
+    ]
   },
   "interests": [
     {

@@ -56,11 +56,15 @@
 
   // Label, then the key it reads from the activity object. The order is the
   // order the reader meets them in.
+  // "Publishing vs reading" used to close this list. It asked the same counts
+  // the consumption read below now asks, and answered them more thinly, so the
+  // two facets said the same thing twice. What you take in is not a facet in
+  // this grid — it carries a list of accounts and a second reading of its own,
+  // so it runs full width underneath.
   const ACTIVITY_FACETS = [
     ['What you post', 'posting'],
     ['When you are here', 'rhythm'],
     ['How it changed', 'trajectory'],
-    ['Publishing vs reading', 'engagement'],
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
@@ -172,6 +176,20 @@
     holdBack: 'What could hold you back',
 
     activity: 'Your Instagram behaviour',
+    diet: 'What you take in',
+    // Not "Where your attention goes": a facet by that name was cut from this
+    // section once already, and a check guards its return. Reusing the string
+    // would hollow that guard out to catch nothing.
+    dietAccounts: 'Who you actually read',
+    // The export has no watch time, no session length, no screen time at all.
+    // Attention here is counted in likes, saves and comments, and the reader is
+    // told so rather than left to assume the app knows how long they looked.
+    dietAccountsSub: 'Counted in likes, saves and comments — an Instagram export carries no timing ' +
+      'data, so nothing here is a measure of time spent.',
+    dietAlgorithm: 'What Instagram thinks you are',
+    recommendations: 'Worth changing',
+    antiRecommendations: 'Leave alone',
+    antiRecommendationsSub: 'Things that look like a problem and are not.',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',

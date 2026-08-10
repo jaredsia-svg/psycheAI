@@ -293,8 +293,33 @@ check('Enneagram is asked to explain what the wing specifically adds, not just n
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
-  ['summary', 'posting', 'rhythm', 'trajectory', 'engagement', 'blindSpots']
+  ['summary', 'posting', 'rhythm', 'trajectory', 'diet', 'blindSpots']
     .every(k => k in activityProps));
+// `engagement` asked for the publish-against-read ratio as a facet of its own.
+// That ratio is one sentence of the consumption read rather than a section
+// beside it, and keeping both had two facets reaching for the same counts.
+check('the publish-vs-read facet is gone rather than duplicated by the diet read',
+  !('engagement' in activityProps) &&
+  /publish-against-read ratio/.test(activityProps.diet.properties.detail.description));
+const dietProps = activityProps.diet.properties;
+check('the consumption read asks for named accounts and a share for each',
+  ['headline', 'detail', 'topAccounts', 'algorithmRead'].every(k => k in dietProps) &&
+  ['account', 'kind', 'share', 'why'].every(k => k in dietProps.topAccounts.items.properties));
+// The export has no watch time, no session length, nothing timed at all. A
+// share of attention phrased in minutes would be invented, so the ban is
+// stated in the field that carries it and asserted here.
+check('the attention share is forbidden from claiming time it cannot know',
+  /no timing data/.test(dietProps.topAccounts.items.properties.share.description) &&
+  /never write minutes/i.test(dietProps.topAccounts.items.properties.share.description));
+// Naming a friend's handle in a report the reader may hand to someone else
+// drags in a person who never agreed to any of this. Outlets and brands are
+// fair game; individuals are described instead.
+check('personal accounts are described rather than named',
+  /do NOT write the handle/.test(dietProps.topAccounts.items.properties.account.description));
+check('the section carries advice, and the anti-advice that keeps it honest',
+  ['recommendations', 'antiRecommendations'].every(k => k in activityProps));
+check('the anti-recommendations must name the advice they contradict',
+  /Name the advice you are contradicting/.test(activityProps.antiRecommendations.description));
 // Dropped from the profile page, so must not linger in the schema costing
 // output tokens — the same discipline as the headline check above.
 check('activity no longer asks for attention or implications',
@@ -492,6 +517,18 @@ for (const [label, needle] of [
   ['rejects a character only a fandom would know', /nobody outside a fandom could name/],
   ['forbids matching a character on appearance', /never on how they or anyone else looks/],
   ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
+  // The consumption read is the one section that names third-party accounts
+  // and the one that gives advice, so both of its ways of going wrong are
+  // pinned rather than trusted to the schema alone.
+  ['reads the four appetites as separate things', /what they subscribed to.*what actually catches them/],
+  ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
+  ['refuses to invent time it cannot measure', /The export contains no timing data whatsoever/],
+  ['will not name a private individual', /a friend or a relative described rather than named/],
+  ['advises on composition rather than volume', /never on the volume/],
+  ['bans the advice that would fit anybody', /digital detoxes, screen-time limits/],
+  ['will not tell them to unfollow a specific person', /never advise them to follow, unfollow, mute or block any specific person/],
+  ['requires the advice to trace back to a finding', /must trace back to something you actually wrote above it/],
+  ['wants the anti-advice to contradict the usual advice', /find the thing that looks like a problem and is not/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
