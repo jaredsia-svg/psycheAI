@@ -189,6 +189,20 @@ try {
     (await page.locator('#view-welcome .upload-card .eyebrow').innerText())
       .includes('no analytics, no trackers, no cookies'),
     await page.locator('#view-welcome .upload-card .eyebrow').innerText());
+  // A pill (border-radius: 999px) reads fine for a short single-line label,
+  // which is what this started as. Sized to a three-sentence paragraph it
+  // just rounds the corners of a block, which looks like a badge that grew
+  // too big for its shape rather than a banner. Checked directly rather than
+  // assumed, so a future rewording that lengthens the text again cannot
+  // silently bring the pill shape back with it.
+  check('the badge is a bordered card, not a pill stretched to fit a paragraph',
+    await page.evaluate(() => {
+      const el = document.querySelector('#view-welcome .upload-card .eyebrow');
+      const radius = parseFloat(getComputedStyle(el).borderRadius);
+      return radius > 0 && radius <= 16 && el.scrollWidth <= el.clientWidth + 1;
+    }),
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#view-welcome .upload-card .eyebrow')).borderRadius));
   // The mark is a backdrop now rather than an object in the row, so "clear of
   // the headline" is no longer the thing to want — it is deliberately behind
   // it. What matters instead: it stays square, it stays behind the text and

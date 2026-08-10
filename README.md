@@ -347,10 +347,18 @@ no cookies"** is checkable the same way the source link is: nothing in `docs/` c
 tracking domain, sets a cookie, or loads an analytics script, and it stays true because there is
 nothing here that would need one — no accounts, no funnels, nothing to measure. It appears twice:
 folded into the single badge at the moment of the ask, alongside the storage promise rather than as
-a separate pill beside it, and again with more detail in the FAQ. The two were split into two
-badges at first, on the reasoning that they answer different worries — what happens to the data once
+a separate one beside it, and again with more detail in the FAQ. The two were split into two badges
+at first, on the reasoning that they answer different worries — what happens to the data once
 PsycheAI has it, against whether PsycheAI can see the reader at all — but a reader scanning the
 upload card only has to read one bar to get the whole promise, so they were merged back into one.
+
+That merge is also why the badge is no longer a pill. `border-radius: 999px` reads fine for a short
+single-line label, which is what it started as; sized to a three-sentence paragraph it just rounds
+the corners of a block, which looks like a badge that outgrew its shape rather than a banner. It is
+styled like `.alert` instead — a plain bordered card, left-aligned, with the storage sentence in
+`<strong>` for hierarchy, the same bold-lead-in pattern the FAQ card bullets already use. A UI check
+holds the border radius to a small, rectangular-reading value and confirms the text never overflows
+its box, so a future rewording that lengthens the claim again cannot silently bring the pill back.
 
 The **paid-API-access** paragraph is the one place this page states something about a third party's
 policy rather than only its own, so it stays hedged even after being trimmed to one sentence: "that
@@ -1044,7 +1052,7 @@ npm test           # 341 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 592 checks: drives the real UI in Chromium against a
+npm run test:ui    # 595 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

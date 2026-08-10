@@ -185,18 +185,23 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
     padding: .6rem .45rem; font-size: .86rem;
   }
 }
+/* A pill (border-radius: 999px) reads fine for a short single-line label, which
+   is what this started as. It stopped being that once the storage and
+   no-tracking claims merged into one three-sentence line: a pill sized to a
+   paragraph just rounds the corners of a block, which looks like a badge that
+   grew too big for its shape rather than a banner. Styled like .alert instead
+   — a plain bordered card, left-aligned, sized for reading rather than for
+   glancing at. */
 .eyebrow {
-  display: inline-block; margin: 0 0 1rem; padding: .25rem .7rem;
+  display: block; margin: 0 0 1rem; padding: .7rem .9rem;
   background: var(--accent-soft); color: var(--accent);
-  border-radius: 999px; font-size: .78rem; font-weight: 600; letter-spacing: .02em;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 10px; font-size: .82rem; font-weight: 500; line-height: 1.5;
 }
+.eyebrow strong { font-weight: 700; }
 /* Sits right under the dropzone with a small gap, so it reads as attached to
    the dropzone rather than floating in the space before the card's own edge
-   below it. A negative margin here does not do what it looks like it should:
-   with a single inline-block badge as the only content of the anonymous
-   block box that wraps it, the browser applies the full margin rather than
-   partially absorbing it the way it does when two such badges sit stacked,
-   so a value tuned for two badges overlaps the dropzone once there is one. */
+   below it. */
 .upload-card .eyebrow { margin-top: .2rem; }
 .lede { font-size: 1.06rem; color: var(--ink-soft); max-width: 62ch; }
 
