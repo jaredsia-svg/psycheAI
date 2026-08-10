@@ -200,12 +200,11 @@
     // is here, because a cover that undersells what is behind it is not
     // consent — they should be able to decide not to look.
     bonus: 'The bonus roast',
-    bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
+    // The cover ran a paragraph explaining what was behind it as well. It was
+    // cut: the title and the caveat under it already say the same thing, and
+    // three stacked blocks of warning made a joke look like a legal notice.
+    bonusSub: 'Your data went in. Your dignity did not come out. Salt liberally before serving.',
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusCoverBody: 'Two readings with the manners removed: the least flattering version of you the ' +
-      'evidence allows, and the advice a friend would give once they had stopped being polite about ' +
-      'it. Season generously with salt — a machine read your captions and formed opinions. Some of ' +
-      'it will be wrong, and some of it will be wrong in a way that still stings.',
     bonusReveal: 'Show me anyway',
     bonusHide: 'Hide',
     bonusHarsh: 'The least charitable reading',

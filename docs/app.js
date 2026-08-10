@@ -200,7 +200,6 @@
       sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub)) +
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
-      '<p>' + esc(TEXT.bonusCoverBody) + '</p>' +
       '<p class="fineprint">' + esc(TEXT.bonusCaveat) + '</p>' +
       '<button class="btn bonus-reveal" type="button" aria-expanded="false">' +
       esc(TEXT.bonusReveal) + '</button></div>' +

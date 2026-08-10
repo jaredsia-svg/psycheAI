@@ -1080,14 +1080,17 @@ try {
   check('opening it shows both readings',
     /least charitable reading/i.test(opened.text) && /friend would actually say/i.test(opened.text) &&
     opened.coverHidden);
-  // The five-year forecast was cut with the behaviour section's subsections.
-  // The cover promised three readings and now promises two, so both halves of
-  // that are held: the heading gone, and the promise matching what is behind
-  // it — a cover that oversells what it hides is not a consent gate.
-  check('the five-year forecast is gone, and the cover no longer promises it',
-    !/Where this ends up/i.test(opened.text) &&
-    /Two readings/.test(covered.text) && !/Three readings/.test(covered.text),
-    covered.text.replace(/\s+/g, ' ').slice(0, 90));
+  check('the five-year forecast is gone from the writing behind the cover',
+    !/Where this ends up/i.test(opened.text),
+    opened.text.replace(/\s+/g, ' ').slice(0, 90));
+  // The cover used to spell out what was behind it in a paragraph of its own,
+  // which is where the "two readings, not three" promise lived. That paragraph
+  // was cut as over-warning, so the gate now rests on the title and the caveat
+  // alone — which means both have to actually be on the cover, unopened.
+  check('the unopened cover still names the register and the limits',
+    /deliberately unkind/i.test(covered.text) &&
+    /not a diagnosis/i.test(covered.text) && /not a professional opinion/i.test(covered.text),
+    covered.text.replace(/\s+/g, ' ').slice(0, 120));
   // The caveat travels with the writing rather than staying on the cover the
   // reader has already dismissed — it is most needed while they are reading.
   check('the caveat stays on screen beside the writing',

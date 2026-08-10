@@ -373,6 +373,25 @@ check('the roast is still held to the evidence, and told why that matters',
   /a licence to drop the softening, not a licence to make things up/.test(prompts.PROFILE_SYSTEM) &&
   /the target recognising themselves/.test(prompts.PROFILE_SYSTEM) &&
   /Generic insults are not roasting/.test(prompts.PROFILE_SYSTEM));
+// Three named seams rather than "be harsh and see what turns up". They are
+// the things the export shows unusually clearly, so pointing the model at them
+// is the difference between a roast about this person and a roast about
+// anybody: announced plans against finished ones, what they take against what
+// they give back, and whatever else is plainly going badly.
+check('the roast is pointed at follow-through, reciprocity and the rest',
+  /the distance between what they announced and what they finished/.test(prompts.PROFILE_SYSTEM) &&
+  /who shows up for them against who they show up for/.test(prompts.PROFILE_SYSTEM) &&
+  /anything else they are plainly doing badly/.test(prompts.PROFILE_SYSTEM));
+check('those seams are named in the field the writing comes out of, too',
+  /plans announced and never closed out, things saved and never acted on/
+    .test(bonusProps.harsh.description) &&
+  /what they take and do not give back/.test(bonusProps.harsh.description));
+// The seams are an instruction to look, not permission to assert. A roast
+// about a follow-through problem the data does not show is the invented
+// insult the rest of this section exists to prevent.
+check('a seam with no evidence behind it is dropped rather than filled in',
+  /Where the evidence is not there, drop the seam rather than inventing a case for it/
+    .test(prompts.PROFILE_SYSTEM));
 check('the harsh read stays inside what the evidence supports',
   /the least charitable reading of this person that the evidence still fully supports/i
     .test(bonusProps.harsh.description) &&
