@@ -931,6 +931,42 @@ try {
     /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
   check('the review says nothing is sent until Send is pressed',
     /Nothing reaches Gemini or Claude until you press Send/i.test(reviewText));
+  // The claim used to appear twice — once as the subtitle, once again as a
+  // fineprint line under the buttons. The second copy is gone now that the
+  // subtitle carries it; held as an exact count so it cannot quietly become
+  // two again.
+  check('the claim appears once, not repeated as a fineprint line under the buttons',
+    (reviewText.match(/Nothing reaches Gemini or Claude/gi) || []).length === 1 &&
+    (await page.locator('#review-dialog .fineprint').count()) === 0,
+    (reviewText.match(/Nothing reaches Gemini or Claude/gi) || []).length + ' mentions');
+  // A <dialog> shown with showModal() gets `overflow: auto` from the
+  // browser's own stylesheet by default. With a scrollable list already
+  // inside it, an unscoped dialog would grow its own scrollbar the moment
+  // the list's is not enough to show everything — two nested scroll areas
+  // fighting over the same gesture, and specifically a *short-screen* bug: at
+  // this suite's own default 900px-tall viewport the fixture's content fits
+  // regardless of which container is supposed to be doing the scrolling, so
+  // the check has to shrink the window to the height where that stops being
+  // true, the same way the hero-mark sweep further up does for its own claim.
+  const reviewAtHeights = {};
+  for (const height of [900, 650, 560]) {
+    await page.setViewportSize({ width: 1100, height });
+    reviewAtHeights[height] = await page.evaluate(() => {
+      const dialog = document.querySelector('#review-dialog');
+      const list = document.querySelector('#review-list');
+      return {
+        outerScrolls: dialog.scrollHeight > dialog.clientHeight,
+        innerScrolls: list.scrollHeight > list.clientHeight,
+      };
+    });
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('the dialog itself never grows a second, outer scrollbar, at any height',
+    Object.values(reviewAtHeights).every(v => !v.outerScrolls),
+    JSON.stringify(reviewAtHeights));
+  check('the list is what actually scrolls once the window gets short',
+    reviewAtHeights[560].innerScrolls,
+    JSON.stringify(reviewAtHeights));
   check('direct messages and photos are offered as switches, both on by default',
     await page.locator('#review-dms').isChecked() && await page.locator('#review-images').isChecked());
   check('the messages switch states a real sampled count out of a real total',

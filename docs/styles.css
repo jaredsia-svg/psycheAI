@@ -887,13 +887,24 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 
 /* ---------- pre-send review ---------- */
 
-/* 65vh rather than a guess: measured at 552px of real content (seven rows,
-   an ordinary fixture) against a 900px-tall viewport, where 55vh clipped the
-   last row — the reader would have had to know to scroll to find the photos
-   switch at all. 65vh clears that with room to spare, while still capping on
-   a short viewport so Cancel/Send never scroll out of reach themselves —
-   only the list scrolls, never the buttons below it. */
-.review-list { display: flex; flex-direction: column; gap: .1rem; margin-bottom: 1rem; max-height: 65vh; overflow-y: auto; }
+/* A fixed, modest card rather than one that grows to fit its content: 30rem
+   keeps the dialog itself compact on any screen, including a short one,
+   which is also what "make it fit mobile better" turns out to mean here.
+   `overflow: hidden` is what stops the dialog element getting a scrollbar of
+   its own — a <dialog> shown with showModal() gets `overflow: auto` from the
+   browser's own stylesheet by default, and with a scrollable list already
+   inside it, that produced two nested scrollbars competing for the same
+   gesture. Flex column, so the title, subtitle and buttons keep their
+   natural size and the list absorbs whatever height is left over. */
+.review-dialog { display: flex; flex-direction: column; max-height: min(30rem, calc(100vh - 2rem)); overflow: hidden; }
+/* `min-height: 0` is the part that actually makes the list shrink: a flex
+   child defaults to never sizing below its content's natural height no
+   matter what its parent allows, which is exactly the outer-scrollbar bug
+   above, moved one level down. With it unset, the fixed 30rem card and a
+   full digest's worth of rows means this scrolls on every ordinary screen,
+   not just a short one — which is the point, since the alternative is the
+   card growing to match its content instead. */
+.review-list { display: flex; flex-direction: column; gap: .1rem; margin-bottom: 1rem; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 /* A read-only line: what it is and the real count, no control attached —
    distinct from the two switch-rows below it, which are the only rows here a
    reader can actually change. */

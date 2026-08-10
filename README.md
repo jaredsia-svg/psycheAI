@@ -514,6 +514,26 @@ A row with nothing in it says so rather than pretending to be a live switch: an 
 messages shows "Direct messages — none found" with the checkbox disabled, instead of an untickable
 promise about content that was never there.
 
+**One dialog, one scrollbar.** A `<dialog>` shown with `showModal()` gets `overflow: auto` from the
+browser's own stylesheet by default, and this one also holds a scrollable list — which meant the
+dialog element and the list inside it could both grow scrollbars for the same content at once. Fixed
+by making `.review-dialog` a fixed-height flex column (`max-height: min(30rem, calc(100vh - 2rem));
+overflow: hidden`) so the title, subtitle and buttons keep their natural size and only `.review-list`
+absorbs the rest, with `flex: 1 1 auto; min-height: 0` on the list so it actually shrinks to fit
+instead of holding its content's full height regardless of the cap. The 30rem ceiling is deliberate
+rather than "as tall as the content wants to be": a fixed, modest card puts the scrolling where it
+belongs, on the list, on every screen — not just a short one — which is also most of what "fit the
+popout box into the mobile version better" turned out to mean in practice.
+
+The bug this fixes is height-dependent, not fixture-dependent: at this suite's own 900px-tall default
+viewport the content fits regardless of which container is doing the scrolling, so a check written
+against that height alone would pass whether or not the fix was in place. The two checks that guard
+it shrink the browser window to 900, 650 and 560px, the same way the hero-mark sweep elsewhere in
+this file does for its own claim, and assert the dialog never scrolls at any of the three while the
+list does once the window is genuinely short. Removing the fix entirely was tried against this: both
+checks fail, and the diagnostic shows the outer dialog scrolling at 560 and 650px while the list does
+not — the exact shape of the original bug — while 900px alone reports nothing wrong.
+
 ### The photographs
 
 Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
@@ -1021,7 +1041,7 @@ npm test           # 341 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 589 checks: drives the real UI in Chromium against a
+npm run test:ui    # 592 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
