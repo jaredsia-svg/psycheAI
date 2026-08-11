@@ -817,6 +817,53 @@ const noMessages = Digest.build(withDmSignals, { includeMessages: false });
 check('omitMessages is safe to call on a digest with no messages to begin with',
   (() => { Digest.omitMessages(noMessages); return noMessages.coverage.directMessagesIncluded === false; })());
 
+// The five rows that used to be read-only in the review dialog and are now
+// checkboxes, same as the messages one above — each gets a fresh digest built
+// from the real fixture, redacted, and checked against the sibling built
+// alongside it, so a bug that touches more than its own row shows up as a
+// mismatch rather than passing by coincidence.
+const captionsRedacted = Digest.omitCaptionsAndComments(Digest.build(signals, { includeMessages: false }));
+check('omitCaptionsAndComments empties both real fields',
+  captionsRedacted.samples.captions.length === 0 && captionsRedacted.samples.comments.length === 0);
+check('omitCaptionsAndComments zeroes the sampling coverage rather than leaving it stale',
+  captionsRedacted.coverage.sampling.captions.shown === 0 &&
+  captionsRedacted.coverage.sampling.comments.shown === 0);
+check('omitCaptionsAndComments leaves the rest of the digest untouched',
+  captionsRedacted.following.length === digest.following.length &&
+  captionsRedacted.instagramTopics.length === digest.instagramTopics.length);
+
+const activityRedacted = Digest.omitActivity(Digest.build(signals, { includeMessages: false }));
+check('omitActivity removes both counts and rhythm entirely',
+  activityRedacted.counts === undefined && activityRedacted.rhythm === undefined);
+check('omitActivity leaves the rest of the digest untouched',
+  activityRedacted.samples.captions.length === digest.samples.captions.length &&
+  activityRedacted.following.length === digest.following.length);
+
+const accountsRedacted = Digest.omitAccounts(Digest.build(signals, { includeMessages: false }));
+check('omitAccounts empties following and every engagement list',
+  accountsRedacted.following.length === 0 && accountsRedacted.mostLikedAccounts.length === 0 &&
+  accountsRedacted.mostSavedAccounts.length === 0 && accountsRedacted.mostEngagedWith.length === 0);
+check('omitAccounts removes the following sampling coverage that named it',
+  accountsRedacted.coverage.sampling.following === undefined);
+check('omitAccounts leaves the rest of the digest untouched',
+  accountsRedacted.samples.captions.length === digest.samples.captions.length &&
+  accountsRedacted.instagramTopics.length === digest.instagramTopics.length);
+
+const topicsRedacted = Digest.omitTopics(Digest.build(signals, { includeMessages: false }));
+check('omitTopics empties both Instagram-inferred lists',
+  topicsRedacted.instagramTopics.length === 0 && topicsRedacted.instagramAdInterests.length === 0);
+check('omitTopics leaves the rest of the digest untouched',
+  topicsRedacted.following.length === digest.following.length &&
+  topicsRedacted.samples.searches.length === digest.samples.searches.length);
+
+const searchesRedacted = Digest.omitSearches(Digest.build(signals, { includeMessages: false }));
+check('omitSearches empties the search sample', searchesRedacted.samples.searches.length === 0);
+check('there really were searches to begin with, or the check above is vacuous',
+  digest.samples.searches.length > 0, digest.samples.searches.length + ' searches');
+check('omitSearches leaves the rest of the digest untouched',
+  searchesRedacted.samples.captions.length === digest.samples.captions.length &&
+  searchesRedacted.instagramTopics.length === digest.instagramTopics.length);
+
 // ---------- how images reach the model ----------
 
 const withPhotos = Digest.build(withImages, {

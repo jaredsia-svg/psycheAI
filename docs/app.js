@@ -477,13 +477,7 @@
     });
   }
 
-  /** One line of the review list: what a category is, with its real count. Not a control. */
-  function reviewRow(icon, title, detail) {
-    return '<div class="review-row"><span class="review-row-icon" aria-hidden="true">' + icon + '</span>' +
-      '<div><strong>' + esc(title) + '</strong><span class="muted">' + esc(detail) + '</span></div></div>';
-  }
-
-  /** One togglable row: the exact markup and behaviour the main page used to show. */
+  /** One togglable row: checked and enabled when there is something to send, disabled when there is not. */
   function reviewSwitch(id, count, onLabel, offLabel, detail) {
     const has = count > 0;
     return '<label class="switch-row"><input type="checkbox" id="' + id + '"' +
@@ -504,29 +498,45 @@
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
+    const captionsCount = digest.samples.captions.length;
+    const commentsCount = digest.samples.comments.length;
     const engagedCount = digest.mostLikedAccounts.length + digest.mostSavedAccounts.length +
       digest.mostEngagedWith.length;
+    const followingCount = digest.following.length;
+    const topicsCount = digest.instagramTopics.length + digest.instagramAdInterests.length;
+    const searchesCount = digest.samples.searches.length;
 
+    // Every row is a real checkbox now — nothing here is "review only". Each
+    // is checked and enabled by default, matching the DM/photo rows below
+    // that this was originally built around, and each disables itself when
+    // there is genuinely nothing of that kind to send rather than offering a
+    // toggle with no effect.
     list.innerHTML =
-      reviewRow('✍️', 'Your captions & comments',
-        digest.samples.captions.length + ' captions, ' + digest.samples.comments.length +
+      reviewSwitch('review-captions', captionsCount + commentsCount,
+        'Your captions & comments', 'Your captions & comments — none found',
+        captionsCount + ' captions, ' + commentsCount +
         ' comments — a sample of your own words. Needed for any read at all.') +
-      reviewRow('📊', 'Activity & timing',
+      reviewSwitch('review-activity', 1,
+        'Activity & timing', 'Activity & timing',
         'Post counts, likes, saves and when you tend to be active. Numbers only, no text.') +
-      reviewRow('🔗', 'Accounts you follow and engage with',
-        digest.following.length + ' followed accounts, plus ' + engagedCount +
+      reviewSwitch('review-accounts', followingCount + engagedCount,
+        'Accounts you follow and engage with', 'Accounts you follow and engage with — none found',
+        followingCount + ' followed accounts, plus ' + engagedCount +
         ' names among who you like, save and comment on most.') +
-      reviewRow('🏷️', 'Instagram’s own inferred topics',
+      reviewSwitch('review-topics', topicsCount,
+        'Instagram’s own inferred topics', 'Instagram’s own inferred topics — none found',
         digest.instagramTopics.length + ' topics and ' + digest.instagramAdInterests.length +
         ' ad interests Instagram has already guessed about you.') +
-      reviewRow('🔍', 'Searches', digest.samples.searches.length + ' recent searches.') +
+      reviewSwitch('review-searches', searchesCount,
+        'Searches', 'Searches — none found',
+        searchesCount + ' recent searches.') +
       reviewSwitch('review-dms', dmCount,
-        'Direct messages — on', 'Direct messages — none found',
+        'Direct messages', 'Direct messages — none found',
         dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +
           'your side of any conversation is ever included.' :
           'This export did not include any direct messages to sample.') +
       reviewSwitch('review-images', imageCount,
-        'Photos — on', 'Photos — none selected',
+        'Photos', 'Photos — none selected',
         imageCount ? imageCount + ' of your own photos, resized. Videos are never included.' :
           'No photos were selected from this export.');
 
@@ -534,6 +544,11 @@
       let answer = null;
       const send = () => {
         answer = {
+          includeCaptions: captionsCount + commentsCount > 0 && $('#review-captions').checked,
+          includeActivity: $('#review-activity').checked,
+          includeAccounts: followingCount + engagedCount > 0 && $('#review-accounts').checked,
+          includeTopics: topicsCount > 0 && $('#review-topics').checked,
+          includeSearches: searchesCount > 0 && $('#review-searches').checked,
           includeMessages: dmCount > 0 && $('#review-dms').checked,
           includeImages: imageCount > 0 && $('#review-images').checked,
         };
@@ -624,6 +639,11 @@
       return;
     }
 
+    if (!decision.includeCaptions) Digest.omitCaptionsAndComments(digest);
+    if (!decision.includeActivity) Digest.omitActivity(digest);
+    if (!decision.includeAccounts) Digest.omitAccounts(digest);
+    if (!decision.includeTopics) Digest.omitTopics(digest);
+    if (!decision.includeSearches) Digest.omitSearches(digest);
     if (!decision.includeMessages) Digest.omitMessages(digest);
 
     let images = [];

@@ -47,12 +47,17 @@ async function chooseDepth(page, depth) {
 }
 
 // Every upload now also stops at the pre-send review, after the depth
-// picker. `options.untickMessages` / `options.untickImages` let a caller
-// exercise the opt-out from here; both default to leaving the pre-checked
-// boxes alone, which is the ordinary path most flows want.
+// picker. Every row there is a checkbox; each `options.untickX` lets a
+// caller exercise that row's opt-out from here, and all default to leaving
+// the pre-checked boxes alone, which is the ordinary path most flows want.
 async function answerReview(page, options) {
   const opts = options || {};
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  if (opts.untickCaptions) await page.uncheck('#review-captions');
+  if (opts.untickActivity) await page.uncheck('#review-activity');
+  if (opts.untickAccounts) await page.uncheck('#review-accounts');
+  if (opts.untickTopics) await page.uncheck('#review-topics');
+  if (opts.untickSearches) await page.uncheck('#review-searches');
   if (opts.untickMessages) await page.uncheck('#review-dms');
   if (opts.untickImages) await page.uncheck('#review-images');
   await page.click('#review-send');
@@ -991,8 +996,24 @@ try {
   check('the list is what actually scrolls once the window gets short',
     reviewAtHeights[560].innerScrolls,
     JSON.stringify(reviewAtHeights));
+  // Every row used to be a static line with an emoji icon and no control,
+  // bar the two switches at the foot for DMs and photos — a reader could
+  // read what was in the digest but not act on five sixths of it. All seven
+  // are checkboxes now, so this holds the count directly rather than
+  // trusting the two rows checked below to stand in for all of them.
+  check('all seven review rows are checkboxes, each checked by default',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 7 &&
+    (await page.evaluate(() =>
+      [...document.querySelectorAll('#review-list input[type="checkbox"]')].every(el => el.checked))));
+  check('the icon column is gone — nothing in the list is decorative any more',
+    (await page.locator('#review-list .review-row-icon').count()) === 0);
   check('direct messages and photos are offered as switches, both on by default',
     await page.locator('#review-dms').isChecked() && await page.locator('#review-images').isChecked());
+  // "— on" used to distinguish these two from the read-only rows above them;
+  // now that every row is a checkbox, the state is shown by the checkbox
+  // itself and the suffix would just be noise.
+  check('the DM and photo labels no longer carry a redundant "— on" suffix',
+    !/Direct messages — on|Photos — on/.test(reviewText), reviewText.slice(0, 400));
   check('the messages switch states a real sampled count out of a real total',
     /\d+ of your own messages sampled out of \d+ total/.test(
       await page.locator('#review-dms ~ span').innerText()),
@@ -2339,11 +2360,11 @@ try {
     deepDigest.coverage.digestChars < 545066, deepDigest.coverage.digestChars + ' chars');
 
   // ---- the opt-out actually opts out ----
-  // The two switches moved from the main page into the review dialog, so the
-  // export is now read and the digest now built with both DMs and photos
-  // included unconditionally — the opt-out has to work by stripping them back
-  // out afterwards rather than by never reading them in. This is the check
-  // that proves the stripping is real: not a UI state, but genuinely absent
+  // Every row moved from a description into a control, so the export is now
+  // read and the digest now built with everything included unconditionally
+  // — each opt-out has to work by stripping its fields back out afterwards
+  // rather than by never reading them in. This is the check that proves the
+  // stripping is real for all seven rows: not UI state, but genuinely absent
   // from what reaches the model.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
@@ -2359,14 +2380,48 @@ try {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
   await chooseDepth(page, 'standard');
-  await answerReview(page, { untickMessages: true, untickImages: true });
+  await answerReview(page, {
+    untickCaptions: true, untickActivity: true, untickAccounts: true,
+    untickTopics: true, untickSearches: true, untickMessages: true, untickImages: true,
+  });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
   check('the opt-out is recorded for the model', optedOut.coverage.directMessagesIncluded === false);
   check('no message text survives the opt-out', !JSON.stringify(optedOut).includes('Own message'));
+  check('unticking captions & comments empties both real fields',
+    optedOut.samples.captions.length === 0 && optedOut.samples.comments.length === 0,
+    optedOut.samples.captions.length + ' captions, ' + optedOut.samples.comments.length + ' comments');
+  check('the sampling coverage reflects the captions/comments opt-out',
+    optedOut.coverage.sampling.captions.shown === 0 && optedOut.coverage.sampling.comments.shown === 0);
+  check('unticking activity & timing removes both counts and rhythm entirely',
+    optedOut.counts === undefined && optedOut.rhythm === undefined);
+  check('unticking accounts empties following and every engagement list',
+    optedOut.following.length === 0 && optedOut.mostLikedAccounts.length === 0 &&
+    optedOut.mostSavedAccounts.length === 0 && optedOut.mostEngagedWith.length === 0);
+  check('unticking topics empties both Instagram-inferred lists',
+    optedOut.instagramTopics.length === 0 && optedOut.instagramAdInterests.length === 0);
+  check('unticking searches empties the search sample',
+    optedOut.samples.searches.length === 0);
 
   const optedOutBody = analyseBodies[analyseBodies.length - 1];
+  const optedOutSent = JSON.parse(optedOutBody).digest;
+  // Everything above was read off localStorage, which is what handleFiles
+  // wrote — the same object it sent, by construction, but proving it directly
+  // against the actual request body is what rules out a bug where the two
+  // quietly diverge.
+  check('the stripped fields are genuinely absent from the request body, not just from storage',
+    optedOutSent.samples.captions.length === 0 && optedOutSent.samples.comments.length === 0 &&
+    optedOutSent.counts === undefined && optedOutSent.rhythm === undefined &&
+    optedOutSent.following.length === 0 && optedOutSent.mostLikedAccounts.length === 0 &&
+    optedOutSent.mostSavedAccounts.length === 0 && optedOutSent.mostEngagedWith.length === 0 &&
+    optedOutSent.instagramTopics.length === 0 && optedOutSent.instagramAdInterests.length === 0 &&
+    optedOutSent.samples.searches.length === 0,
+    JSON.stringify({
+      captions: optedOutSent.samples.captions.length, counts: optedOutSent.counts,
+      following: optedOutSent.following.length, topics: optedOutSent.instagramTopics.length,
+      searches: optedOutSent.samples.searches.length,
+    }));
   check('unticking the image switch sends no images', JSON.parse(optedOutBody).images.length === 0);
   check('the image opt-out is recorded for the model', optedOut.coverage.images.included === false &&
     optedOut.coverage.images.attached === 0);
@@ -2378,6 +2433,21 @@ try {
   // than its outcome: no time was spent on it.
   check('declining photos in the review skips extracting them, not just sending them',
     !/Preparing image \d+ of \d+/.test(await page.evaluate(() => (window.__progressLabels || []).join('|'))));
+
+  // The sections below reuse whatever profile is sitting in localStorage, and
+  // the QR-size check further down assumes a realistically shaped card. The
+  // fallback interests and near-zero confidence an all-opted-out digest
+  // produces are a real result of the test above, not a shape the rest of the
+  // suite should have to render around — reset to an ordinary upload with
+  // nothing declined before continuing.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page, 'standard');
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {

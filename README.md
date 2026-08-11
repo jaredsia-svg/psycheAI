@@ -496,34 +496,49 @@ subset and hedge a confidence figure it has no reason to hedge.
 
 Once depth is chosen, and before anything reaches the model, a second dialog shows the reader the
 real digest that was just built — real counts, not a description of what the app generally does —
-with two switches: direct messages, and photos. Both used to be checkboxes on the upload page,
-ticked before the archive had even been opened; they moved here because a choice made before you can
-see what it actually contains is not an informed one, and because "download this app's data
-practices in the abstract" and "here are your own 18 messages, sampled from 36, decide" are different
-levels of consent.
+as seven checkboxes, one per category: captions & comments, activity & timing, accounts followed and
+engaged with, Instagram's own inferred topics, searches, direct messages, and photos. All seven are
+ticked by default and every one is a real control, not just the two — DMs and photos — that used to
+be. Untick anything and it is genuinely gone before Send is pressed, the same guarantee the DM/photo
+switches always made, just extended to the rest of the digest. All seven used to be checkboxes on the
+upload page, ticked before the archive had even been opened; they moved here because a choice made
+before you can see what it actually contains is not an informed one, and because "download this
+app's data practices in the abstract" and "here are your own 18 messages, sampled from 36, decide"
+are different levels of consent.
 
 That move inverted how messages and images are handled upstream. `IG.readExports` used to take
 `includeMessages`/`includeImages` and skip parsing the relevant files outright when either was off —
 cheap, but it meant the old checkboxes were a blind guess, since there was nothing yet to show a
 count of. Both are now parsed unconditionally, and the review dialog is what removes anything the
-reader declines, **after** it already exists: `Digest.omitMessages()` deletes `directMessages` and
-its coverage entries from an already-built digest, and photo extraction is deferred until after the
-review closes, so declining photos skips the decode-and-downscale step outright rather than doing the
-work and throwing the result away. `tools/uitest.mjs` checks the second half of that directly, not
-just its outcome — it records every `#progress-label` value during a decline and asserts
-`"Preparing image"` never appears in it, which a version that extracted first and discarded second
-would still pass on "no images were sent" alone.
+reader declines, **after** it already exists. Five of the seven rows are plain field deletions on an
+already-built digest — `Digest.omitCaptionsAndComments()`, `omitActivity()`, `omitAccounts()`,
+`omitTopics()`, `omitSearches()`, each following the shape `omitMessages()` set: empty the real
+fields, correct the coverage counters that named them, touch nothing else. `omitActivity()` deletes
+`counts` and `rhythm` together, since both are numbers-only — post/like/save/follow totals and the
+hour-of-day/day-of-week histograms — never names or text, which is what separates that row from
+`omitAccounts()`, the one row here that does carry other people's names. Photos are the one row that
+also changes what happens *upstream*: extraction is deferred until after the review closes, so
+declining photos skips the decode-and-downscale step outright rather than doing the work and
+throwing the result away. `tools/uitest.mjs` checks that half directly, not just its outcome — it
+records every `#progress-label` value during a decline and asserts `"Preparing image"` never appears
+in it, which a version that extracted first and discarded second would still pass on "no images were
+sent" alone.
 
-Declining is proven rather than trusted. The suite drives a real upload, unticks both switches in the
-review dialog, and checks the actual request body: no `directMessages` key, no message text anywhere
-in the digest — not just the user's own, the whole block — and an empty `images` array with not one
-base64 byte in the payload. Both `omitMessages()` and the deferred-extraction guard were fault-injected
-while this shipped: skipping the redaction call, and running extraction regardless of the reader's
-answer. Each broke a different, specific set of checks with a diagnostic naming what leaked.
+Declining is proven rather than trusted. The suite drives a real upload, unticks all seven rows, and
+checks the actual request body: no `directMessages` key, no message text anywhere in the digest — not
+just the user's own, the whole block — empty arrays for following/topics/searches/engagement, no
+`counts` or `rhythm` at all, and an empty `images` array with not one base64 byte in the payload.
+Every `omit*()` function and the deferred-extraction guard were fault-injected while this shipped:
+each was skipped or disabled in turn, and each broke a different, specific set of checks with a
+diagnostic naming what leaked — proof that the checks are wired to the field they claim to guard,
+not just to each other.
 
 A row with nothing in it says so rather than pretending to be a live switch: an export with no direct
 messages shows "Direct messages — none found" with the checkbox disabled, instead of an untickable
-promise about content that was never there.
+promise about content that was never there. The same applies to any of the other six rows on a
+genuinely thin export — the fixture used by the UI suite is deliberately built to have something in
+every row, precisely so this disabled-when-empty path never accidentally becomes the only path
+exercised.
 
 **One dialog, one scrollbar.** A `<dialog>` shown with `showModal()` gets `overflow: auto` from the
 browser's own stylesheet by default, and this one also holds a scrollable list — which meant the
@@ -549,7 +564,7 @@ not — the exact shape of the original bug — while 900px alone reports nothin
 
 Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
 nightclub are the same row in the digest. So **a small sample of images is sent by default**, and
-the switch on the upload page turns it off.
+the Photos row in the pre-send review turns it off.
 
 `docs/images.js` picks them. Candidates are the stills the JSON references — carousels contribute
 only their cover frame, videos never qualify, and anything under 12KB is discarded as a thumbnail
@@ -575,7 +590,7 @@ analysis after a page reload uses the written evidence alone unless you upload t
 **Direct messages are included by default**, because how someone writes to people who already know
 them is the most revealing text in the export. Only the user's own messages are ever sampled — the
 other side of every conversation is counted for the statistics and then discarded, before anything
-leaves the browser. The switch on the upload page turns the whole thing off.
+leaves the browser. The Direct messages row in the pre-send review turns the whole thing off.
 
 The archive is unzipped in the browser with the File API. The server proxies two model calls and
 stores nothing — your profile and reports live in this browser's local storage until you press
@@ -1045,14 +1060,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 341 checks: synthesises a real ZIP export and runs
+npm test           # 354 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 595 checks: drives the real UI in Chromium against a
+npm run test:ui    # 605 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

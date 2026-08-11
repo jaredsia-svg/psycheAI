@@ -401,5 +401,53 @@
     return digest;
   }
 
-  root.PsycheDigest = { build, LIMITS, DEPTHS, charBudget, COST_CAP, omitMessages };
+  // The rest of these follow the same shape as omitMessages above: each is
+  // called from the pre-send review after the reader has unticked one row of
+  // it, and each empties the real fields rather than a copy, so there is
+  // nothing left over for a bug to accidentally still send.
+
+  function omitCaptionsAndComments(digest) {
+    digest.samples.captions = [];
+    digest.samples.comments = [];
+    if (digest.coverage && digest.coverage.sampling) {
+      digest.coverage.sampling.captions.shown = 0;
+      digest.coverage.sampling.comments.shown = 0;
+    }
+    return digest;
+  }
+
+  // Bundled together because both are numbers-only, never names or text:
+  // `counts` is post/like/save/follow totals, `rhythm` is the hour-of-day and
+  // day-of-week histograms. Distinct from omitAccounts below, which is the
+  // one row here that carries other people's names.
+  function omitActivity(digest) {
+    delete digest.counts;
+    delete digest.rhythm;
+    return digest;
+  }
+
+  function omitAccounts(digest) {
+    digest.following = [];
+    digest.mostLikedAccounts = [];
+    digest.mostSavedAccounts = [];
+    digest.mostEngagedWith = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.following;
+    return digest;
+  }
+
+  function omitTopics(digest) {
+    digest.instagramTopics = [];
+    digest.instagramAdInterests = [];
+    return digest;
+  }
+
+  function omitSearches(digest) {
+    digest.samples.searches = [];
+    return digest;
+  }
+
+  root.PsycheDigest = {
+    build, LIMITS, DEPTHS, charBudget, COST_CAP,
+    omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

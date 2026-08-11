@@ -914,18 +914,10 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    not just a short one — which is the point, since the alternative is the
    card growing to match its content instead. */
 .review-list { display: flex; flex-direction: column; gap: .1rem; margin-bottom: 1rem; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-/* A read-only line: what it is and the real count, no control attached —
-   distinct from the two switch-rows below it, which are the only rows here a
-   reader can actually change. */
-.review-row { display: flex; gap: .7rem; align-items: flex-start; padding: .55rem 0; border-bottom: 1px solid var(--line); }
-.review-row:last-of-type { border-bottom: 0; }
-.review-row-icon { font-size: 1.15rem; line-height: 1.4; flex: none; width: 1.4em; text-align: center; }
-.review-row strong { display: block; font-size: .92rem; }
-.review-row .muted { display: block; margin-top: .1rem; font-size: .84rem; line-height: 1.4; }
-/* The two togglable rows reuse .switch-row exactly, so they read as the same
-   control the main page used to show — only their position changed. Ruled
-   the same as the read-only rows above so the list looks like one list
-   rather than two glued together. */
+/* Every row here is a real checkbox — .switch-row is the exact control the
+   main page used to show for direct messages and photos, reused for all
+   seven rows so the list reads as one control rather than a description with
+   two toggles glued to the end of it. */
 .review-list .switch-row { margin: 0; padding: .55rem 0; border-bottom: 1px solid var(--line); }
 .review-list .switch-row:last-child { border-bottom: 0; }
 

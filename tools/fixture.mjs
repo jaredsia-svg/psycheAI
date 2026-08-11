@@ -235,6 +235,11 @@ function buildExport() {
     followers.push({ string_list_data: [{ value: 'follower_' + i, href: '', timestamp: at(i, 9) }] });
   }
 
+  const searches = ['trail shoes for wide feet', 'half marathon training plan', 'sourdough starter recipe',
+    'church near me', 'parkrun results', 'waterproof hiking boots', 'family recipes for six',
+    'volunteer opportunities this weekend', 'gym coach near me', 'nature photography tips']
+    .map((term, i) => ({ string_map_data: { Search: { value: term, timestamp: at(i, 10) } } }));
+
   const files = [
     { name: 'your_instagram_activity/content/posts_1.json', content: JSON.stringify(posts) },
     { name: 'your_instagram_activity/likes/liked_posts.json', content: JSON.stringify({ likes_media_likes: likes }) },
@@ -258,6 +263,10 @@ function buildExport() {
         inferred_data_ig_interest: ['Running', 'Camping', 'Cooking', 'Volunteering']
           .map(name => ({ string_map_data: { Interest: { value: name } } })),
       }),
+    },
+    {
+      name: 'logged_information/search/word_or_phrase_searches.json',
+      content: JSON.stringify({ searches_user: searches }),
     },
     {
       name: 'personal_information/personal_information/personal_information.json',
