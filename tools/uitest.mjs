@@ -1311,6 +1311,31 @@ try {
       return Boolean(behaviour.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING) &&
         Boolean(bonus.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
+  // The badge is a label for what the section is, not a second title — it
+  // has to be a small pill beside "Let us roast you", not text that reads as
+  // part of the sentence.
+  check('the title reads "Let us roast you", with a "Bonus Section" badge beside it',
+    await page.evaluate(() => {
+      const h2 = document.querySelector('#profile-body .bonus-card .card-head h2');
+      const badge = h2 && h2.querySelector('.mode-badge');
+      return Boolean(badge) && badge.textContent.trim() === 'Bonus Section' &&
+        h2.textContent.replace(/\s+/g, ' ').trim() === 'Let us roast you Bonus Section';
+    }),
+    await page.evaluate(() =>
+      (document.querySelector('#profile-body .bonus-card .card-head h2') || {}).innerHTML));
+  // Two words in a pill this narrow have room to break between themselves —
+  // "BONUS" over "SECTION" — on a phone-width title line that is already
+  // fighting the heading text for space. The badge as a whole may still drop
+  // to its own line; what it may not do is split internally. An inline
+  // element that wraps reports one ClientRect per visual line, so more than
+  // one means the two words broke apart rather than moving together.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const badgeLineFragments = await page.evaluate(() =>
+    document.querySelector('#profile-body .bonus-card .card-head h2 .mode-badge')
+      .getClientRects().length);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('the badge never breaks its own two words across two lines, even at phone width',
+    badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
   const covered = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .bonus-card');
     return { html: card.innerHTML, text: card.innerText };
@@ -1816,10 +1841,12 @@ try {
   // The bonus roast is the one deliberate exception to page/PDF parity: on
   // screen it is behind a cover somebody has to open, and a PDF has no cover,
   // so printing it would hand the harshest writing in the report to whoever
-  // the file reaches. Excluded here and asserted absent below.
+  // the file reaches. Excluded here and asserted absent below. Its <h2> reads
+  // "Let us roast you Bonus Section" — the badge sits inside the same
+  // heading, so textContent picks up both.
   const pageSections = (await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim())))
-    .filter(title => title !== 'The bonus roast');
+    .filter(title => title !== 'Let us roast you Bonus Section');
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
@@ -1863,12 +1890,12 @@ try {
   // heading, both subheadings, and a phrase from the writing itself, since a
   // renderer could drop the headings and still lay down the prose.
   check('the PDF leaves the bonus section out entirely',
-    !pdfText.includes('(The bonus roast)') &&
+    !pdfText.includes('(Let us roast you)') &&
     !pdfText.includes('(The least charitable assessment of you)') &&
     !pdfText.includes('(What an honest friend would tell you)') &&
     !/not an assessment, not a diagnosis/i.test(pdfText) &&
     !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
-    String(pdfText.match(/\((?:The bonus roast|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
+    String(pdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

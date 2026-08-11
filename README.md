@@ -773,12 +773,15 @@ it:
   since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
   hand to somebody else drags in a person who never agreed to any of this.
 
-### The bonus roast
+### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the
 least charitable reading the evidence still supports, and the advice a friend gives when they have
 stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
-meets every fair section first and the confidence caveat still gets the last word over all of it.
+meets every fair section first and the confidence caveat still gets the last word over all of it. A
+small "Bonus Section" badge sits beside the title — a label for what the section is, spliced onto the
+already-escaped title text the same way "Coming soon" sits beside Comprehensive on the depth picker,
+not a second heading competing with the one next to it.
 
 The register is stated in the prompt rather than left for the model to infer from "unkind", because
 the page calls it a roast on the cover and the two would otherwise drift apart. What the prompt is
@@ -1103,7 +1106,7 @@ npm test           # 357 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 616 checks: drives the real UI in Chromium against a
+npm run test:ui    # 618 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

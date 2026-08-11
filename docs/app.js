@@ -196,8 +196,14 @@
   // alone and `revealBonus` injects the writing on the click.
   function bonusBlock(bonus) {
     if (!bonus) return '';
+    // The badge is unescaped HTML spliced onto an already-escaped title —
+    // sectionHead just concatenates whatever it is handed into the <h2>, so
+    // this is the one call site that hands it a title with markup in it
+    // rather than plain text, same trick .mode-title uses beside "Coming
+    // soon" on the depth picker.
+    const title = esc(TEXT.bonus) + ' <span class="mode-badge">' + esc(TEXT.bonusBadge) + '</span>';
     return '<div class="card section-card bonus-card">' +
-      sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub)) +
+      sectionHead('🕳️', title, esc(TEXT.bonusSub)) +
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
       '<p class="fineprint">' + esc(TEXT.bonusCaveat) + '</p>' +

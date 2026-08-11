@@ -199,7 +199,11 @@
     // The unsparing section. Everything the reader is told before they open it
     // is here, because a cover that undersells what is behind it is not
     // consent — they should be able to decide not to look.
-    bonus: 'The bonus roast',
+    bonus: 'Let us roast you',
+    // Sits beside the title as a small badge, the same way "Coming soon"
+    // does on the comprehensive depth option — a label for what this section
+    // is, not a second title competing with the one it sits next to.
+    bonusBadge: 'Bonus Section',
     // The cover ran a paragraph explaining what was behind it as well. It was
     // cut: the title and the caveat under it already say the same thing, and
     // three stacked blocks of warning made a joke look like a legal notice.
