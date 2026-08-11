@@ -18,7 +18,7 @@
   const LIMITS = {
     captions: 560,
     comments: 360,
-    messages: 280,
+    messages: 1000,
     following: 1000,
     likedAuthors: 240,
     savedAuthors: 120,
@@ -120,12 +120,16 @@
   // Take the most recent items and the longest items. Recency shows who they
   // are now; length shows where they actually had something to say. A purely
   // random sample tends to return a pile of one-word captions.
+  //
+  // The floor is 4 characters rather than 1: "ok", "lol", "yes" carry no
+  // signal the model can read anything from, and dropping them means the
+  // limited slots above go to text that actually says something.
   function sampleTexts(texts, limit, maxChars) {
     const cleaned = [];
     const seen = new Set();
     for (const text of texts) {
       const value = trim(text, maxChars);
-      if (value.length < 2 || seen.has(value)) continue;
+      if (value.length < 4 || seen.has(value)) continue;
       seen.add(value);
       cleaned.push(value);
     }

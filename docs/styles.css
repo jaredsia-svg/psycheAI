@@ -407,6 +407,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .btn-outline:hover { background: var(--accent-soft); }
 .btn-row { display: flex; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
+/* A quiet secondary action reads as a link, not a third button competing
+   with Cancel/Send for weight — no box, no background, just the site's
+   ordinary link colour and underline. */
+.link-btn {
+  appearance: none; background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; font-size: .86rem; color: var(--accent);
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+}
+.link-btn:hover { filter: brightness(1.06); }
 .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 1.4rem; }
 
 /* ---------- upload ---------- */
@@ -919,7 +928,14 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    seven rows so the list reads as one control rather than a description with
    two toggles glued to the end of it. */
 .review-list .switch-row { margin: 0; padding: .55rem 0; border-bottom: 1px solid var(--line); }
+/* The download link is the list's real last child now, not Photos — the
+   border this removes would otherwise sit under a link with nothing below
+   it, and the border above the link is what actually separates it from
+   Photos. Centred and given breathing room so it reads as a small utility
+   at the foot of the list rather than an eighth row trying to pass as one
+   of the seven checkboxes above it. */
 .review-list .switch-row:last-child { border-bottom: 0; }
+.review-download-row { margin: 0; padding: .8rem 0 .3rem; text-align: center; }
 
 /* ---------- print / PDF export ---------- */
 /*

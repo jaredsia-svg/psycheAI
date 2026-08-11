@@ -543,6 +543,11 @@
   <h2 id="review-dialog-title">Review what gets sent</h2>
   <p class="muted">Nothing reaches the AI model until you press Send. Untick any form of data if
     you prefer for it not to be included.</p>
+  <!-- The download row is written into #review-list itself, as its last
+       child, rather than placed here as static markup — it has to sit below
+       Photos, inside the same scroll region as the seven rows above it, not
+       float above the list where it would always be visible regardless of
+       scroll position. See reviewSwitch's caller in app.js. -->
   <div class="review-list" id="review-list"></div>
   <div class="btn-row">
     <button class="btn btn-ghost" id="review-cancel" type="button">Cancel</button>

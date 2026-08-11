@@ -1041,6 +1041,103 @@ try {
       return new RegExp('^' + sends + ' of your own photos').test(said);
     }),
     await page.locator('#review-images ~ span .muted').innerText());
+  // The download link has to sit inside the same scroll region as the seven
+  // checkboxes, below the last of them — not above the list, where it would
+  // always be visible regardless of scroll position, and not in the
+  // subtitle's spot where it used to live before this moved.
+  check('the download link lives inside the scrollable list, below Photos',
+    await page.evaluate(() => {
+      const list = document.querySelector('#review-list');
+      const link = document.querySelector('#review-download');
+      const images = document.querySelector('#review-images');
+      if (!list.contains(link)) return false;
+      return Boolean(images.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+
+  // ---- downloading what's actually being sent ----
+  //
+  // A reader can now take the real digest away and read it in full, rather
+  // than trusting the review dialog's own summary of it. It is a self-
+  // contained .html file rather than .json, on the reasoning that a
+  // double-click has to open it in whatever browser is already on the
+  // device — no separate app that understands JSON required — so this both
+  // parses the human-readable table it opens with and pulls the exact digest
+  // back out of the embedded <pre> block. Two things matter: that the digest
+  // in that block really is the same object the request would carry, not a
+  // separately-built description of it that could drift, and that both the
+  // table and the digest reflect whatever the checkboxes currently say — so
+  // this checks a default download, then unticks three unrelated rows and
+  // checks a second download reflects exactly those three and nothing else,
+  // in both places.
+  const extractDigestFromPreviewHtml = html => {
+    const pre = html.match(/<pre>([\s\S]*?)<\/pre>/)[1];
+    const unescaped = pre.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+      .replace(/&#39;/g, '\'').replace(/&amp;/g, '&');
+    return JSON.parse(unescaped);
+  };
+  const beforeDownload = analyseBodies.length;
+  const download1 = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    page.click('#review-download'),
+  ]).then(([event]) => event);
+  check('the download is offered as a named HTML file',
+    download1.suggestedFilename() === 'psycheai-digest-preview.html', download1.suggestedFilename());
+  check('downloading does not send anything or close the dialog',
+    analyseBodies.length === beforeDownload &&
+    (await page.evaluate(() => document.querySelector('#review-dialog').open)));
+  const path1 = join(shotDir, 'digest-preview-default.html');
+  mkdirSync(shotDir, { recursive: true });
+  await download1.saveAs(path1);
+  const html1 = readFileSync(path1, 'utf8');
+  check('the file opens on its own — a real, self-contained HTML document',
+    html1.startsWith('<!doctype html>') && !/https?:\/\//.test(html1),
+    html1.slice(0, 40));
+  check('the readable table says all seven rows are included, by default',
+    (html1.match(/>Included</g) || []).length === 7 && (html1.match(/>Excluded</g) || []).length === 0,
+    JSON.stringify({ included: (html1.match(/>Included</g) || []).length,
+      excluded: (html1.match(/>Excluded</g) || []).length }));
+  const preview1 = extractDigestFromPreviewHtml(html1);
+  check('the default download carries the real, un-redacted digest',
+    Boolean(preview1.directMessages) && preview1.samples.captions.length > 0 &&
+    preview1.instagramTopics.length > 0 && preview1.coverage.images.included === true,
+    JSON.stringify({ dms: Boolean(preview1.directMessages), captions: preview1.samples.captions.length,
+      topics: preview1.instagramTopics.length, images: preview1.coverage.images }));
+
+  await page.uncheck('#review-dms');
+  await page.uncheck('#review-topics');
+  await page.uncheck('#review-images');
+  const download2 = await Promise.all([
+    page.waitForEvent('download', { timeout: 20000 }),
+    page.click('#review-download'),
+  ]).then(([event]) => event);
+  const path2 = join(shotDir, 'digest-preview-partial.html');
+  await download2.saveAs(path2);
+  const html2 = readFileSync(path2, 'utf8');
+  check('the readable table now shows exactly the three unticked rows as excluded',
+    (html2.match(/>Excluded</g) || []).length === 3 &&
+    /Direct messages<\/td><td class="no">Excluded/.test(html2) &&
+    /Instagram.s own inferred topics<\/td><td class="no">Excluded/.test(html2) &&
+    /Photos<\/td><td class="no">Excluded/.test(html2),
+    JSON.stringify({ excluded: (html2.match(/>Excluded</g) || []).length }));
+  const preview2 = extractDigestFromPreviewHtml(html2);
+  check('the second download reflects exactly the boxes just unticked',
+    preview2.directMessages === undefined && preview2.instagramTopics.length === 0 &&
+    preview2.coverage.images.included === false && preview2.coverage.images.attached === 0,
+    JSON.stringify({ dms: preview2.directMessages, topics: preview2.instagramTopics.length,
+      images: preview2.coverage.images }));
+  check('the second download leaves the untouched rows exactly as they were',
+    preview2.samples.captions.length === preview1.samples.captions.length &&
+    preview2.samples.comments.length === preview1.samples.comments.length &&
+    preview2.following.length === preview1.following.length &&
+    preview2.samples.searches.length === preview1.samples.searches.length,
+    JSON.stringify({ captions: preview2.samples.captions.length, following: preview2.following.length }));
+  // Downloading must not itself opt anything out — only Send may. Re-ticked
+  // here so the ordinary send a few lines down still exercises the default,
+  // everything-included path the checks right after it expect.
+  await page.check('#review-dms');
+  await page.check('#review-topics');
+  await page.check('#review-images');
+
   await shot('1c-review');
 
   await page.click('#review-send');

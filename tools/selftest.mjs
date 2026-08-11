@@ -953,6 +953,41 @@ check('sampling counts stay honest on a small account',
   digest.coverage.sampling.captions.shown === digest.samples.captions.length &&
   digest.coverage.sampling.captions.available === signals.captions.length);
 
+// ---------- the DM cap, raised ----------
+//
+// The small fixture's 18 messages never come close to binding either the old
+// cap or the new one, so this needs its own synthetic account the same way
+// the caption/comment caps above needed heavySignals().
+const manyMessages = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+const heavyMessagesSignals = {
+  ...signals,
+  messages: {
+    total: 5000, threads: 40, groupThreads: 2, sent: 2500, received: 2500, avgSentLength: 42,
+    ownTexts: manyMessages(2500, i => 'A real message with actual content, number ' + i + '.'),
+  },
+};
+const heavyMessages = Digest.build(heavyMessagesSignals, { includeMessages: true });
+check('the DM cap is 1000, not the old 280', Digest.LIMITS.messages === 1000);
+check('a heavy account caps DMs at the new limit',
+  heavyMessages.directMessages.ownMessageSample.length === 1000,
+  heavyMessages.directMessages.ownMessageSample.length + ' messages');
+
+// ---------- the 4-character floor ----------
+//
+// "ok", "lol", "brb" carry nothing a model can read anything into, so the
+// limited slots in every sampled list should go to text that actually says
+// something. Checked against captions here since sampleTexts() is the one
+// function behind captions, comments and messages alike — proving it once
+// on its shortest, plainest input proves it for all three.
+const shortTextDigest = Digest.build({ ...signals,
+  captions: ['a', 'ok', 'lol', 'brb', 'fine', 'A real sentence with actual substance.'] },
+  { includeMessages: false });
+check('captions under 4 characters are dropped, 4 and over are kept',
+  shortTextDigest.samples.captions.length === 2 &&
+  shortTextDigest.samples.captions.includes('fine') &&
+  shortTextDigest.samples.captions.includes('A real sentence with actual substance.'),
+  JSON.stringify(shortTextDigest.samples.captions));
+
 // ---------- comprehensive depth ----------
 //
 // The point of the second depth is that the price, not a row of per-source

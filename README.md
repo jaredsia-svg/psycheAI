@@ -428,10 +428,14 @@ topics. **Sampled** — the text:
 | Comments you wrote | 360 |
 | Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
 | Accounts you like / save most | 240 / 120 |
-| Your own DMs | 280 — parsed and counted unconditionally now; excluded from what is sent only if you untick them in the pre-send review, after you have seen the real count |
+| Your own DMs | 1,000 — parsed and counted unconditionally now; excluded from what is sent only if you untick them in the pre-send review, after you have seen the real count |
 | Searches | last 160 |
 
 (Those are the Standard caps; see below for Comprehensive.)
+
+Captions, comments and messages share one sampler, and it now drops anything under 4 characters
+before the caps above are even applied — "ok", "lol", "brb" carry nothing a model can read anything
+into, and every slot one of those occupies is a slot a real sentence does not get.
 
 A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
 inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
@@ -544,6 +548,33 @@ promise about content that was never there. The same applies to any of the other
 genuinely thin export — the fixture used by the UI suite is deliberately built to have something in
 every row, precisely so this disabled-when-empty path never accidentally becomes the only path
 exercised.
+
+**Reading the summary in your own words is one thing; reading the actual digest is another.** A
+"Download what's being sent, as an HTML file" link is the list's own last child — inside the same
+scroll region as the seven checkboxes, below Photos, not floating above the list where it would
+always be visible regardless of scroll position. It downloads a `.html` file rather than `.json`
+deliberately: opening it takes a double-click into whatever browser is already installed, not an app
+that knows how to pretty-print JSON. The page it opens to is two things — a readable table naming
+each of the seven categories as Included or Excluded with the same detail line the checklist itself
+shows, and the full digest below it in a `<pre>` block for anyone who wants the exact fields. Both
+halves are read from the same `rows` array `askReview()` builds the checklist from, so the table's
+copy cannot drift from the checklist's.
+
+The file is the same object the checkboxes describe, not a second, separately-written description of
+it that could quietly drift from the first. `applyReviewDecision()` in `docs/app.js` is the one
+function that redacts a digest according to a set of ticked boxes, and it is shared by both callers:
+`handleFiles` runs it on the real digest once Send has resolved, and the download button runs it on a
+throwaway `JSON.parse(JSON.stringify(digest))` clone at click time, against whatever the boxes say
+*right now* — so unticking three rows and downloading again produces a file with exactly those three
+marked Excluded and gone from the embedded digest, everything else untouched, without ever mutating
+the digest the dialog itself is still holding. Clicking Download does not check, uncheck, close the
+dialog, or send anything; the suite proves the first of those by downloading twice with different
+boxes ticked in between and checking both the table and the embedded digest in each file, and the
+rest by asserting the dialog is still `open` and the request count has not moved. Photos are the one
+field the shared function does not touch — `handleFiles`'s decode-and-downscale step is a real async
+side effect a preview must never trigger, so both callers patch `coverage.images` by hand instead, and
+the download reflects a decline in that flag immediately rather than waiting for an extraction that
+has not happened yet.
 
 **One dialog, one scrollbar.** A `<dialog>` shown with `showModal()` gets `overflow: auto` from the
 browser's own stylesheet by default, and this one also holds a scrollable list — which meant the
@@ -1065,14 +1096,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 354 checks: synthesises a real ZIP export and runs
+npm test           # 357 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 605 checks: drives the real UI in Chromium against a
+npm run test:ui    # 616 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
