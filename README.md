@@ -372,12 +372,17 @@ named the free consumer chat apps as the contrast and pointed readers at the pro
 verify it; both were cut as the paragraph was tightened to what a reader actually needs on first
 read, not as a change to what is being claimed.
 
-The unpacking screen picked up a matching line — "Reading your data on this device… (nothing has
-been sent yet)" — set once, at the point where it is true, and overwritten the moment it stops
-being true. `runAnalysis` replaces it with the actual send-in-progress copy the instant a request is
-about to go out, so the claim is never left on screen past the point where it would become a lie. A
-check catches it mid-flow, after the archive is unpacked but before the depth is chosen — the one
-moment where "nothing has been sent yet" and "the reader can still see it" are both true at once.
+The unpacking screen carried this same claim as a fineprint line under the progress bar — "Reading
+your data on this device… (nothing has been sent yet)" — set once, at the point where it is true,
+and overwritten the moment it stops being true. That row is gone now; the claim moved into the
+progress label itself, reported from `docs/instagram.js` as each batch of files is parsed:
+"Reading your data on your device. No data is being sent out." The heading above it is just
+"Loading" rather than naming the phase, on the same reasoning the badge redesign followed — say less,
+say it once. `runAnalysis` still replaces the working screen's title and note with the actual
+send-in-progress copy the instant a request is about to go out, so the claim is never left on screen
+past the point where it would become a lie. Because the label moves fast against the mock and the
+depth dialog opens once reading finishes, the check records every value the label takes rather than
+trying to catch it mid-flight, then confirms the claim appeared at least once during reading.
 
 ### Recognising the archive at all
 

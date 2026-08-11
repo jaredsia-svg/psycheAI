@@ -581,11 +581,13 @@
       return;
     }
 
-    $('#working-title').textContent = 'Reading your export';
-    // True for the whole of this phase and nowhere else: runAnalysis overwrites
-    // this note the moment a request is actually about to go out, so the claim
-    // never survives past the point where it would stop being true.
-    $('#working-note').textContent = 'Reading your data on this device… (nothing has been sent yet)';
+    $('#working-title').textContent = 'Loading';
+    // No fineprint row for this phase — the "nothing sent" claim now lives in
+    // the progress label itself, reported from instagram.js as each batch of
+    // files is parsed. Cleared explicitly rather than left alone, so a second
+    // upload in the same session cannot show a stale line runAnalysis wrote
+    // for the previous one while this phase is only reading, not sending.
+    $('#working-note').textContent = '';
     setProgress(0, 'Opening the archive…');
     show('working');
 

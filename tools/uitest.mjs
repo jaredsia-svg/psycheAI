@@ -878,13 +878,23 @@ try {
 
   // ---- upload ----
   // The waiting screen flashes past against the mock, so record every value
-  // the title takes rather than trying to catch it mid-flight.
+  // the title and the progress label take rather than trying to catch either
+  // mid-flight. The label matters here specifically: the "nothing sent yet"
+  // claim used to live in a fineprint line under the progress bar, which is
+  // gone now, and moved into the label reported while the archive is being
+  // parsed — by the time the depth dialog opens, the label has already moved
+  // on to "Finished reading", so only a full recording catches it.
   await page.evaluate(() => {
     window.__titles = [];
-    const node = document.querySelector('#working-title');
-    window.__titles.push(node.textContent);
-    new MutationObserver(() => window.__titles.push(node.textContent))
-      .observe(node, { childList: true, characterData: true, subtree: true });
+    const titleNode = document.querySelector('#working-title');
+    window.__titles.push(titleNode.textContent);
+    new MutationObserver(() => window.__titles.push(titleNode.textContent))
+      .observe(titleNode, { childList: true, characterData: true, subtree: true });
+
+    window.__earlyLabels = [];
+    const labelNode = document.querySelector('#progress-label');
+    new MutationObserver(() => window.__earlyLabels.push(labelNode.textContent))
+      .observe(labelNode, { childList: true, characterData: true, subtree: true });
   });
 
   await page.setInputFiles('#file-input', {
@@ -898,14 +908,20 @@ try {
     await page.locator('#depth-dialog').isVisible());
   check('nothing was sent to the model before the choice was made',
     analyseBodies.length === 0, analyseBodies.length + ' requests');
-  // The note under the progress bar makes the same claim the check above
-  // proves: at this point in the flow — archive unpacked, depth not yet
-  // chosen — nothing has left the device. runAnalysis only overwrites this
-  // note once a request is actually about to go out, so catching it here,
-  // before that happens, is what proves the claim was still true when made.
-  check('the working screen says plainly that nothing has been sent yet',
-    (await page.locator('#working-note').innerText()).includes('nothing has been sent yet'),
-    await page.locator('#working-note').innerText());
+  // The claim that nothing has left the device used to live in a fineprint
+  // line under the progress bar; that row is gone, and the claim now rides
+  // the progress label itself while the archive is being parsed, recorded
+  // above since the label has already moved on by the time this runs.
+  check('the fineprint row under the progress bar is gone',
+    (await page.locator('#working-note').innerText()) === '',
+    JSON.stringify(await page.locator('#working-note').innerText()));
+  check('the progress label said plainly that no data was being sent out, while reading',
+    (await page.evaluate(() => window.__earlyLabels || []))
+      .some(t => /No data is being sent out/i.test(t)),
+    JSON.stringify(await page.evaluate(() => window.__earlyLabels || [])));
+  check('the working title says "Loading" before anything more specific is known',
+    (await page.evaluate(() => window.__titles || []))[0] === 'Loading',
+    JSON.stringify(await page.evaluate(() => window.__titles || [])));
   check('the profile is not showing behind the picker',
     !(await page.locator('#view-profile').isVisible()));
   check('the picker offers exactly two depths',
@@ -959,15 +975,15 @@ try {
   check('the review names the accounts you follow, with a real count',
     /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
   check('the review says nothing is sent until Send is pressed',
-    /Nothing reaches Gemini or Claude until you press Send/i.test(reviewText));
+    /Nothing reaches the AI model until you press Send/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
   // subtitle carries it; held as an exact count so it cannot quietly become
   // two again.
   check('the claim appears once, not repeated as a fineprint line under the buttons',
-    (reviewText.match(/Nothing reaches Gemini or Claude/gi) || []).length === 1 &&
+    (reviewText.match(/Nothing reaches the AI model/gi) || []).length === 1 &&
     (await page.locator('#review-dialog .fineprint').count()) === 0,
-    (reviewText.match(/Nothing reaches Gemini or Claude/gi) || []).length + ' mentions');
+    (reviewText.match(/Nothing reaches the AI model/gi) || []).length + ' mentions');
   // A <dialog> shown with showModal() gets `overflow: auto` from the
   // browser's own stylesheet by default. With a scrollable list already
   // inside it, an unscoped dialog would grow its own scrollbar the moment

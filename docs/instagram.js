@@ -513,7 +513,8 @@
       const data = await job.archive.json(job.entry);
       done++;
       if (done % 10 === 0 || done === jobs.length) {
-        report({ phase: 'parse', done, total: jobs.length, label: 'Reading your activity' });
+        report({ phase: 'parse', done, total: jobs.length,
+          label: 'Reading your data on your device. No data is being sent out.' });
       }
       if (!data) continue;
       signals.files.used++;
