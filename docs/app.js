@@ -4,6 +4,7 @@
   'use strict';
 
   const IG = window.PsycheInstagram;
+  const Supplement = window.PsycheSupplement;
   const Images = window.PsycheImages;
   const Digest = window.PsycheDigest;
   const Card = window.PsycheCard;
@@ -448,6 +449,119 @@
     $('#progress-bar').classList.remove('indeterminate');
   }
 
+  // Offered once the Instagram archive has parsed, before the depth picker.
+  //
+  // Unlike every other dialog here, this one does not resolve-then-act: it
+  // stays open while a second archive is read, and only Skip or Continue
+  // close it. That is forced by the file picker. `input.click()` opens the OS
+  // dialog only inside a user-gesture task, and a promise that resolves and
+  // *then* opens a picker has lost that gesture — Safari and Firefox block it.
+  // So the picker is opened synchronously from the source button's own click
+  // handler. Staying open is also the better flow: a reader can add Google and
+  // Facebook without the dialog closing and reopening between them.
+  //
+  // Resolves an object, never null. Skip and Continue are the same resolution;
+  // the only difference is what is in it. Escape behaves as Skip.
+  function askSupplement() {
+    const dialog = $('#supplement-dialog');
+    const status = $('#supplement-status');
+    const input = $('#supplement-input');
+    const buttons = dialog.querySelectorAll('.mode-option');
+    const added = {};
+    let pending = '';
+    let busy = false;
+
+    const LABELS = { google: 'Google Takeout', facebook: 'Facebook' };
+
+    const say = (message, tone) => {
+      status.textContent = message || '';
+      status.hidden = !message;
+      status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
+    };
+
+    const setBusy = state => {
+      busy = state;
+      for (const button of buttons) button.disabled = state || Boolean(added[button.dataset.supplement]);
+    };
+
+    const summarise = () => {
+      const names = Object.keys(added).map(key => LABELS[key]);
+      if (!names.length) return;
+      $('#supplement-continue').hidden = false;
+      say('✓ Added ' + names.join(' and ') + '.', 'good');
+    };
+
+    return new Promise(resolve => {
+      const choose = event => {
+        const source = event.currentTarget.dataset.supplement;
+        if (busy || added[source]) return;
+        pending = source;
+        // Reset first: the change event does not fire when the same file is
+        // picked twice, so without this a reader who re-picks after an error
+        // gets silence. Nothing else in this app resets a file input, which is
+        // a live bug there and not one to inherit.
+        input.value = '';
+        input.click();
+      };
+
+      const read = async () => {
+        const files = Array.from(input.files || []).filter(f => /\.zip$/i.test(f.name));
+        input.value = '';
+        if (!pending || !files.length) return;
+        const source = pending;
+        pending = '';
+        setBusy(true);
+        say('Reading your ' + LABELS[source] + ' export on this device…');
+        try {
+          const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
+          added[source] = await reader(files, {
+            onProgress: p => say(p.label === 'Finished reading'
+              ? 'Reading your ' + LABELS[source] + ' export on this device…'
+              : p.label),
+          });
+          setBusy(false);
+          summarise();
+        } catch (error) {
+          setBusy(false);
+          // Deliberately the opposite of handleFiles's catch, which drops back
+          // to the welcome page. A failed *supplement* must never cost the
+          // reader the Instagram export they already gave: the dialog stays
+          // open, says what went wrong, and they can try another file or skip.
+          say((error && error.message) || 'That archive could not be read.', 'bad');
+          summarise();
+        }
+      };
+
+      const done = () => dialog.close();
+
+      for (const button of buttons) button.addEventListener('click', choose);
+      input.addEventListener('change', read);
+      $('#supplement-skip').addEventListener('click', done);
+      $('#supplement-continue').addEventListener('click', done);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) {
+          button.removeEventListener('click', choose);
+          button.disabled = false;
+        }
+        input.removeEventListener('change', read);
+        $('#supplement-skip').removeEventListener('click', done);
+        $('#supplement-continue').removeEventListener('click', done);
+        resolve(added);
+      }, { once: true });
+
+      // Reset the dialog's own state, because it is reused markup and a second
+      // upload in the same session would otherwise open on the last run's
+      // "✓ Added" line.
+      say('');
+      $('#supplement-continue').hidden = true;
+      setBusy(false);
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
+    });
+  }
+
   // Asked once the archive is open, so a real choice is made before anything
   // is sent. The dialog's own markup carries the two options' descriptions;
   // this just runs it.
@@ -713,6 +827,11 @@
       // of them, and image extraction is the slowest step here by a wide
       // margin — no sense doing it twice or doing it for a run the reader
       // then backs out of.
+      // Offered before the depth picker, so a reader adding a second export
+      // is not asked how deep to go on data they have not contributed yet.
+      // Always resolves an object; skipping gives an empty one.
+      signals.supplements = await askSupplement();
+
       depth = await askDepth();
       if (!depth) {
         show('welcome');

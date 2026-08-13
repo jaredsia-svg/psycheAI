@@ -497,6 +497,40 @@
   <div class="sample-dialog-body" id="sample-body"></div>
 </dialog>
 
+<!-- Offered once the Instagram archive has already parsed, so a reader who
+     declines — or whose second archive fails — still has everything they came
+     with. The hidden file input lives inside the dialog because the picker has
+     to be opened synchronously from a button's own click handler: calling
+     .click() after an await has lost its user gesture and is blocked in Safari
+     and Firefox. See askSupplement. -->
+<dialog id="supplement-dialog" class="mode-dialog" aria-labelledby="supplement-dialog-title">
+  <h2 id="supplement-dialog-title">Add more data?</h2>
+  <p class="muted">Your Instagram export has been read. You can add a Google or Facebook export to
+    deepen the analysis, or skip straight to it.</p>
+  <div class="mode-options">
+    <button class="mode-option" data-supplement="google" type="button">
+      <span class="mode-icon">🔍</span>
+      <span><strong>Google Takeout</strong>
+        <span class="muted">Your "My Activity" export — what you searched, watched on YouTube,
+          browsed, and asked Gemini. See the instructions on the previous page.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-supplement="facebook" type="button">
+      <span class="mode-icon">📘</span>
+      <span><strong>Facebook</strong>
+        <span class="muted">Your posts, comments, friends and Messenger history — usually an older
+          stretch of life than Instagram covers.</span>
+      </span>
+    </button>
+  </div>
+  <p class="supplement-status" id="supplement-status" hidden></p>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="supplement-skip" type="button">Skip this step</button>
+    <button class="btn" id="supplement-continue" type="button" hidden>Continue</button>
+  </div>
+  <input type="file" id="supplement-input" accept=".zip,application/zip" multiple hidden>
+</dialog>
+
 <dialog id="depth-dialog" class="mode-dialog" aria-labelledby="depth-dialog-title">
   <h2 id="depth-dialog-title">How deep should the analysis go?</h2>
   <p class="muted" id="depth-dialog-sub">Choose Standard or Comprehensive analysis. Standard is free.</p>
@@ -622,6 +656,7 @@
 <script src="vendor/jsqr.js"></script>
 <script src="zip.js"></script>
 <script src="instagram.js"></script>
+<script src="supplement.js"></script>
 <script src="images.js"></script>
 <script src="digest.js"></script>
 <script src="card.js"></script>

@@ -903,6 +903,22 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .mode-price { display: block; margin-top: .35rem; font-size: .85rem; font-weight: 600; }
 
+/* The supplement dialog's one live region: progress while a second archive is
+   read, "✓ Added …" once it is, or the error when it will not parse. It sits
+   above the buttons rather than replacing the options, because a failed
+   supplement leaves the dialog open and both sources still offered. */
+.supplement-status {
+  margin: 0 0 .6rem; padding: .5rem .7rem; border-radius: 10px;
+  font-size: .88rem; line-height: 1.45;
+  background: var(--accent-soft); color: var(--ink-soft);
+}
+.supplement-status.is-good { color: var(--good); background: var(--good-soft); font-weight: 600; }
+.supplement-status.is-bad { color: var(--warn); background: var(--warn-soft); }
+/* A source already added reads as done rather than merely unavailable — the
+   ✓ line above says which, so the row only has to stop inviting a second go. */
+.mode-option:disabled .mode-icon,
+.mode-option:disabled strong { opacity: .45; }
+
 /* ---------- pre-send review ---------- */
 
 /* A fixed, modest card rather than one that grows to fit its content: 30rem

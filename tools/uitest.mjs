@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-import { buildExportZip, buildForeignExportZip } from './fixture.mjs';
+import { buildExportZip, buildForeignExportZip, buildTakeoutZip, buildTakeoutHtmlZip } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -39,9 +39,52 @@ async function clickClear(page, selector) {
   await page.click(selector);
 }
 
+// Every upload now stops first at the supplement offer. Skipping is the
+// ordinary path — most flows in this suite are about what Instagram alone
+// produces — so this is what nearly every caller wants.
+async function skipSupplement(page) {
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await page.click('#supplement-skip');
+}
+
+// Tolerant of the dialog already being closed, so `chooseDepth` can call it
+// unconditionally: a flow that added a supplement and pressed Continue has
+// closed it already, and should not hang waiting for it a second time.
+async function passSupplement(page) {
+  if (await page.locator('#supplement-dialog[open]').count()) await page.click('#supplement-skip');
+}
+
+// Adding one instead — driven through the real file chooser rather than by
+// setting the input directly. That matters: the dialog only sets its pending
+// source inside the button's own click handler, because the picker has to be
+// opened synchronously from a user gesture. Driving the chooser exercises that
+// path; poking the input behind it would pass even if the button were wired to
+// nothing at all.
+async function addSupplement(page, source, buffer, name) {
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 30000 }),
+    page.click('#supplement-dialog .mode-option[data-supplement="' + source + '"]'),
+  ]);
+  await chooser.setFiles({
+    name: name || (source + '.zip'), mimeType: 'application/zip', buffer,
+  });
+  // Wait for a *terminal* state rather than for particular words: the status
+  // line carries live progress while the archive is read, and matching on the
+  // wording of every possible error is how a helper quietly stops waiting for
+  // the right thing.
+  await page.waitForFunction(() => {
+    const text = document.querySelector('#supplement-status').textContent || '';
+    return Boolean(text) && !/^Reading your /.test(text) && !/^Opening /.test(text) &&
+      !/No data is being sent out/.test(text);
+  }, { timeout: 60000 });
+}
+
 // Every upload now stops at the depth picker, so the suite has to answer it
 // the way a reader would before anything else can proceed.
 async function chooseDepth(page, depth) {
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 }).catch(() => {});
+  await passSupplement(page);
   await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
   await page.click('#depth-dialog .mode-option[data-depth="' + depth + '"]');
 }
@@ -900,10 +943,36 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
+  // ---- the supplement offer ----
+  // It comes first, once the Instagram archive has parsed and before the depth
+  // picker, so a reader adding a second export is not asked how deep to go on
+  // data they have not contributed yet.
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  check('the supplement offer opens once the Instagram archive is read',
+    await page.locator('#supplement-dialog').isVisible());
+  check('it opens before the depth picker, not after',
+    !(await page.locator('#depth-dialog[open]').count()));
+  check('nothing has reached the model at the point it is offered',
+    analyseBodies.length === 0, analyseBodies.length + ' requests');
+  check('it offers exactly the two sources, both enabled',
+    (await page.locator('#supplement-dialog .mode-option').count()) === 2 &&
+    (await page.evaluate(() => [...document.querySelectorAll('#supplement-dialog .mode-option')]
+      .every(b => !b.disabled))));
+  const supplementText = await page.locator('#supplement-dialog').innerText();
+  check('it names both exports and says the step can be skipped',
+    /Google Takeout/.test(supplementText) && /Facebook/.test(supplementText) &&
+    /Skip this step/.test(supplementText), supplementText.replace(/\s+/g, ' ').slice(0, 140));
+  check('Continue is hidden until something has actually been added',
+    !(await page.locator('#supplement-continue').isVisible()));
+  await shot('1a-supplement');
+
   // ---- the depth picker ----
   // It has to interrupt: nothing should reach the model before the reader has
   // said how much of their export to send.
+  await skipSupplement(page);
   await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+  check('skipping goes straight to the depth picker',
+    await page.locator('#depth-dialog').isVisible());
   check('the depth picker opens once the archive is read',
     await page.locator('#depth-dialog').isVisible());
   check('nothing was sent to the model before the choice was made',
@@ -2399,9 +2468,9 @@ try {
   // Racing the two outcomes names which one happened and leaves the run alive.
   const outcome = await Promise.race([
     page.waitForSelector('#upload-error:not([hidden])', { timeout: 30000 }).then(() => 'refused'),
-    page.waitForSelector('#depth-dialog[open]', { timeout: 30000 }).then(() => 'accepted for analysis'),
+    page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 }).then(() => 'accepted for analysis'),
   ]).catch(() => 'neither refused nor accepted');
-  if (outcome !== 'refused') await page.evaluate(() => document.querySelector('#depth-dialog').close());
+  if (outcome !== 'refused') await page.evaluate(() => document.querySelector('#supplement-dialog').close());
   const foreignError = (await page.locator('#upload-error').innerText()).replace(/\s+/g, ' ').trim();
   check('a Facebook download is refused at the upload step',
     outcome === 'refused' && /Only 3 kinds of Instagram activity/.test(foreignError),
@@ -2425,6 +2494,7 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
+  await skipSupplement(page);
   await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
 
   // Cancelling is a real answer: it must cost nothing and go back, not push on.
@@ -2468,6 +2538,100 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('#review-dialog')).display));
 
+  // ---- actually adding a supplement ----
+  //
+  // The dialog stays open while a second archive is read, so that a reader can
+  // add both without it closing between them — and, more importantly, so that
+  // a supplement which fails to parse never costs them the Instagram export
+  // they already gave. Both halves are checked here.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+
+  // The failure path first, because it is the one that must not be expensive.
+  // An HTML Takeout is the archive most readers will reach for, since that is
+  // Google's default.
+  const beforeBadSupplement = analyseBodies.length;
+  await addSupplement(page, 'google', buildTakeoutHtmlZip(), 'takeout-html.zip');
+  const badStatus = await page.locator('#supplement-status').innerText();
+  check('a supplement that cannot be read says so without closing the dialog',
+    (await page.locator('#supplement-dialog[open]').count()) === 1 &&
+    /HTML format/i.test(badStatus) && /Multiple formats/i.test(badStatus), badStatus);
+  check('the failure names JSON as the fix rather than shrugging',
+    /JSON/.test(badStatus), badStatus);
+  check('a failed supplement sends nothing and leaves the reader mid-flow',
+    analyseBodies.length === beforeBadSupplement &&
+    !(await page.locator('#view-welcome').isVisible()));
+  check('both sources are still offered after one of them failed',
+    await page.evaluate(() => [...document.querySelectorAll('#supplement-dialog .mode-option')]
+      .every(b => !b.disabled)));
+
+  // Picking the *same* file again has to fail again, out loud. A real file
+  // input does not fire `change` when re-given the value it already holds, so
+  // without an explicit reset the second attempt is met with silence, which
+  // reads as the app hanging rather than as the file being wrong.
+  //
+  // This one is held at source rather than at runtime, and the reason is worth
+  // stating: Playwright's file chooser sets files programmatically and
+  // dispatches `change` regardless, so a driven re-pick succeeds whether the
+  // reset is there or not. A runtime check here passes with the reset deleted
+  // — it was written that way first and proved exactly nothing. Nothing else
+  // in this app resets a file input, so this is not inherited behaviour and
+  // there is no other guard on it.
+  const appSource = await page.evaluate(() => fetch('app.js').then(r => r.text()));
+  check('the supplement input is cleared around every pick, so a re-pick still fires',
+    (appSource.match(/input\.value = '';/g) || []).length >= 2 &&
+    /input\.value = '';\s*\n\s*input\.click\(\);/.test(appSource),
+    String((appSource.match(/input\.value = '';/g) || []).length) + ' resets');
+
+  // Now a good one, on the same still-open dialog.
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  const goodStatus = await page.locator('#supplement-status').innerText();
+  check('a Takeout that reads is confirmed by name', /Added Google Takeout/i.test(goodStatus), goodStatus);
+  check('Continue appears once something has been added',
+    await page.locator('#supplement-continue').isVisible());
+  check('the source just added stops inviting a second go',
+    await page.evaluate(() =>
+      document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]').disabled));
+  check('the other source is still on offer',
+    await page.evaluate(() =>
+      !document.querySelector('#supplement-dialog .mode-option[data-supplement="facebook"]').disabled));
+
+  // And the Facebook export the primary dropzone refuses is accepted here.
+  await addSupplement(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
+  check('the Facebook archive refused as a primary export is accepted as a supplement',
+    /Added Google Takeout and Facebook/i.test(await page.locator('#supplement-status').innerText()),
+    await page.locator('#supplement-status').innerText());
+  await shot('1b-supplement-added');
+
+  await page.click('#supplement-continue');
+  await chooseDepth(page, 'standard');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  await shot('1c-review-supplemented');
+  await page.click('#review-send');
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+
+  const bothBody = JSON.parse(analyseBodies[analyseBodies.length - 1]).digest;
+  check('the digest records all three sources it was built from',
+    JSON.stringify(bothBody.coverage.sources) === '["instagram","google","facebook"]',
+    JSON.stringify(bothBody.coverage.sources));
+  check('the watch history arrives as a channel histogram, not a list of titles',
+    bothBody.google.topChannels.length === 8 && bothBody.google.counts.watched === 940,
+    bothBody.google.topChannels.length + ' channels from ' + bothBody.google.counts.watched);
+  check('the browsing history arrives as hostnames, with no path or query anywhere',
+    bothBody.google.topDomains.length === 4 &&
+    !JSON.stringify(bothBody).includes('utm_source') &&
+    !JSON.stringify(bothBody).includes('deep/path'),
+    JSON.stringify(bothBody.google.topDomains.map(d => d.name)));
+  check('only the reader\'s own Facebook messages are in the request body',
+    bothBody.facebook.ownMessageSample.length > 0 &&
+    !JSON.stringify(bothBody.facebook).includes('Sarah'));
+
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
@@ -2476,6 +2640,7 @@ try {
   // opens the gate deliberately rather than deleting it. That the shipped
   // markup keeps the gate shut is asserted on a fresh load further up; the
   // reload at the end of this block puts it back.
+  await skipSupplement(page);
   await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
   await page.evaluate(() => {
     document.querySelector('#depth-dialog .mode-option[data-depth="comprehensive"]').disabled = false;
