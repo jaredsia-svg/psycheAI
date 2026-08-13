@@ -26,7 +26,30 @@
     topics: 400,
     adInterests: 400,
     textChars: 600,
-    totalChars: 600000,
+    // Supplementary sources. Sized so both together add roughly 100,000 chars
+    // — about $0.04 of input against a run whose realistic total is $0.20 —
+    // and every one of them is a cap on an *aggregate*, never on a raw list.
+    // The same watch history shipped as raw titles would be 3.1M chars and
+    // $1.33 of input on its own, five times the entire budget.
+    youtubeChannels: 120,
+    youtubeTitles: 150,
+    youtubeSearches: 100,
+    googleSearchTerms: 150,
+    googleSearches: 150,
+    chromeDomains: 100,
+    geminiPrompts: 80,
+    fbPosts: 200,
+    fbComments: 150,
+    fbFriends: 300,
+    fbSearches: 80,
+    fbMessages: 200,
+    // Derived rather than typed, so the ceiling and the price cannot drift
+    // apart. This was hardcoded at 600000, which is 49,516 chars *past* what
+    // COST_CAP buys: a digest that actually filled it would have cost $0.5212
+    // against a $0.50 cap. Dormant while the only source was Instagram, since
+    // a heavy account reaches 156k — but supplements make it reachable.
+    // `charBudget` is defined below, so this is filled in after both exist.
+    totalChars: 0,
   };
 
   // ---------- how much to send ----------
@@ -82,9 +105,15 @@
 
   const COST_CAP = 0.50;
   const COMPREHENSIVE_IMAGES = 20;
+  const STANDARD_IMAGES = 14;
+
+  // Both depths now derive their ceiling from the same price, differing only
+  // in how many images they reserve room for. Comprehensive already did this;
+  // standard was carrying a hand-typed number that quietly exceeded it.
+  LIMITS.totalChars = charBudget(COST_CAP, STANDARD_IMAGES);
 
   const DEPTHS = {
-    standard: { images: 14, limits: LIMITS },
+    standard: { images: STANDARD_IMAGES, limits: LIMITS },
     comprehensive: {
       images: COMPREHENSIVE_IMAGES,
       limits: {
@@ -101,6 +130,18 @@
         topics: 5000,
         adInterests: 5000,
         textChars: 1200,
+        youtubeChannels: 2000,
+        youtubeTitles: 3000,
+        youtubeSearches: 2000,
+        googleSearchTerms: 3000,
+        googleSearches: 3000,
+        chromeDomains: 2000,
+        geminiPrompts: 1000,
+        fbPosts: 3000,
+        fbComments: 3000,
+        fbFriends: 5000,
+        fbSearches: 2000,
+        fbMessages: 3000,
         totalChars: charBudget(COST_CAP, COMPREHENSIVE_IMAGES),
       },
     },
@@ -305,6 +346,11 @@
           'each text source you are seeing: where shown equals available you are reading ' +
           'everything that source had, and where it is lower you are reading a subset and should ' +
           'weight your confidence accordingly.',
+        // Which exports this digest was built from. The prompt reads this
+        // rather than assuming Instagram, because a report written with a
+        // browsing history behind it should not claim the same things as one
+        // written without.
+        sources: ['instagram'],
         sampling: {
           captions: { shown: 0, available: signals.captions.length },
           comments: { shown: 0, available: signals.comments.length },
@@ -334,6 +380,67 @@
       };
     }
 
+    // ---------- supplementary sources ----------
+    //
+    // Both blocks are built only when their fragment is present, so a digest
+    // from an Instagram export alone is byte-identical to what this produced
+    // before supplements existed.
+    //
+    // Every field here is an aggregate or a bounded sample. `topKeys` on a
+    // counting Map is the same move `mostLikedAccounts` has always used, and
+    // it is what makes a decade of watch history affordable: 940 records
+    // become a histogram of 8 channels, not 940 strings.
+    const supplements = signals.supplements || {};
+
+    if (supplements.google) {
+      const g = supplements.google;
+      digest.coverage.sources.push('google');
+      digest.google = {
+        note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled.',
+        span: g.span,
+        counts: g.counts,
+        topChannels: topKeys(g.channels, LIMITS.youtubeChannels),
+        videoTitleSample: sampleTexts(g.videoTitles, LIMITS.youtubeTitles, 120),
+        topYoutubeSearches: topKeys(g.youtubeSearchTerms, LIMITS.youtubeSearches),
+        topGoogleSearches: topKeys(g.googleSearchTerms, LIMITS.googleSearchTerms),
+        googleSearchSample: sampleTexts(g.googleSearches, LIMITS.googleSearches, 120),
+        // Hostnames, never URLs — the path and query never leave supplement.js.
+        topDomains: topKeys(g.domains, LIMITS.chromeDomains),
+        geminiPromptSample: sampleTexts(g.geminiPrompts, LIMITS.geminiPrompts, 300),
+      };
+      digest.coverage.sampling.youtubeTitles = {
+        shown: digest.google.videoTitleSample.length, available: g.counts.watched,
+      };
+      digest.coverage.sampling.googleSearches = {
+        shown: digest.google.googleSearchSample.length, available: g.counts.googleSearches,
+      };
+      digest.coverage.sampling.geminiPrompts = {
+        shown: digest.google.geminiPromptSample.length, available: g.counts.prompts,
+      };
+    }
+
+    if (supplements.facebook) {
+      const f = supplements.facebook;
+      digest.coverage.sources.push('facebook');
+      digest.facebook = {
+        note: 'From a Facebook export. Only the user\'s own messages are sampled; the other side of ' +
+          'every conversation was counted and discarded.',
+        span: f.span,
+        counts: f.counts,
+        postSample: sampleTexts(f.posts, LIMITS.fbPosts, 240),
+        commentSample: sampleTexts(f.comments, LIMITS.fbComments, 240),
+        friends: sampleEvenly(f.friends, LIMITS.fbFriends),
+        topSearches: topKeys(f.searchTerms, LIMITS.fbSearches),
+        ownMessageSample: sampleTexts(f.ownMessages, LIMITS.fbMessages, 240),
+      };
+      digest.coverage.sampling.facebookPosts = {
+        shown: digest.facebook.postSample.length, available: f.counts.posts,
+      };
+      digest.coverage.sampling.facebookFriends = {
+        shown: digest.facebook.friends.length, available: f.counts.friends,
+      };
+    }
+
     // The bound that actually holds the cost ceiling, so it has to survive a
     // pathological export rather than a typical one.
     //
@@ -355,24 +462,59 @@
       ['instagramTopics', () => digest.instagramTopics, v => { digest.instagramTopics = v; }],
       ['instagramAdInterests', () => digest.instagramAdInterests, v => { digest.instagramAdInterests = v; }],
     ];
+    // Supplement lists are registered separately, and the loop empties these
+    // before it touches anything above. The loop is otherwise source-blind —
+    // it shrinks whichever list is largest — so on an account with a big
+    // Takeout it would happily shave captions while a browsing histogram sat
+    // untouched. Instagram is the primary evidence and the thing the whole
+    // report is written from; a supplement is an addition. Additions go first.
+    const trimmableSupplements = [
+      ['videoTitleSample', () => digest.google && digest.google.videoTitleSample, v => { digest.google.videoTitleSample = v; }],
+      ['googleSearchSample', () => digest.google && digest.google.googleSearchSample, v => { digest.google.googleSearchSample = v; }],
+      ['topGoogleSearches', () => digest.google && digest.google.topGoogleSearches, v => { digest.google.topGoogleSearches = v; }],
+      ['topYoutubeSearches', () => digest.google && digest.google.topYoutubeSearches, v => { digest.google.topYoutubeSearches = v; }],
+      ['topChannels', () => digest.google && digest.google.topChannels, v => { digest.google.topChannels = v; }],
+      ['topDomains', () => digest.google && digest.google.topDomains, v => { digest.google.topDomains = v; }],
+      ['geminiPromptSample', () => digest.google && digest.google.geminiPromptSample, v => { digest.google.geminiPromptSample = v; }],
+      ['postSample', () => digest.facebook && digest.facebook.postSample, v => { digest.facebook.postSample = v; }],
+      ['commentSample', () => digest.facebook && digest.facebook.commentSample, v => { digest.facebook.commentSample = v; }],
+      ['fbFriends', () => digest.facebook && digest.facebook.friends, v => { digest.facebook.friends = v; }],
+      ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
+      ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
+    ];
     const FLOOR = 20;
+    // Supplements shrink further than Instagram lists do before the loop gives
+    // up on them, which is the second half of "additions go first".
+    const SUPPLEMENT_FLOOR = 10;
 
     let encoded = JSON.stringify(digest);
     while (encoded.length > LIMITS.totalChars) {
       let worst = null;
       let worstCost = 0;
-      for (const entry of trimmable) {
+      // Two passes, not one list: any supplement still above its floor is
+      // preferred over every Instagram list, however small it has become.
+      let floor = SUPPLEMENT_FLOOR;
+      for (const entry of trimmableSupplements) {
         const list = entry[1]();
-        if (!Array.isArray(list) || list.length <= FLOOR) continue;
+        if (!Array.isArray(list) || list.length <= SUPPLEMENT_FLOOR) continue;
         const cost = JSON.stringify(list).length;
         if (cost > worstCost) { worstCost = cost; worst = entry; }
+      }
+      if (!worst) {
+        floor = FLOOR;
+        for (const entry of trimmable) {
+          const list = entry[1]();
+          if (!Array.isArray(list) || list.length <= FLOOR) continue;
+          const cost = JSON.stringify(list).length;
+          if (cost > worstCost) { worstCost = cost; worst = entry; }
+        }
       }
       // Everything is at its floor; a digest this size is as small as this
       // export reduces to, and refusing to send it would be worse than
       // spending slightly over.
       if (!worst) break;
       const list = worst[1]();
-      worst[2](list.slice(0, Math.max(FLOOR, Math.floor(list.length * 0.75))));
+      worst[2](list.slice(0, Math.max(floor, Math.floor(list.length * 0.75))));
       encoded = JSON.stringify(digest);
     }
 
@@ -450,8 +592,74 @@
     return digest;
   }
 
+  // ---------- supplementary redaction ----------
+  //
+  // One per review row, same shape as everything above: empty the real fields,
+  // correct the coverage counters that named them, touch nothing else. Each
+  // guards on the block existing, because a reader who added only Google can
+  // still untick a Facebook row that was never rendered.
+
+  function omitYouTube(digest) {
+    if (!digest.google) return digest;
+    digest.google.topChannels = [];
+    digest.google.videoTitleSample = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.youtubeTitles;
+    return digest;
+  }
+
+  function omitYouTubeSearches(digest) {
+    if (!digest.google) return digest;
+    digest.google.topYoutubeSearches = [];
+    return digest;
+  }
+
+  function omitGoogleSearches(digest) {
+    if (!digest.google) return digest;
+    digest.google.topGoogleSearches = [];
+    digest.google.googleSearchSample = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.googleSearches;
+    return digest;
+  }
+
+  function omitChrome(digest) {
+    if (!digest.google) return digest;
+    digest.google.topDomains = [];
+    return digest;
+  }
+
+  function omitGeminiPrompts(digest) {
+    if (!digest.google) return digest;
+    digest.google.geminiPromptSample = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.geminiPrompts;
+    return digest;
+  }
+
+  function omitFacebookPosts(digest) {
+    if (!digest.facebook) return digest;
+    digest.facebook.postSample = [];
+    digest.facebook.commentSample = [];
+    digest.facebook.topSearches = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.facebookPosts;
+    return digest;
+  }
+
+  function omitFacebookConnections(digest) {
+    if (!digest.facebook) return digest;
+    digest.facebook.friends = [];
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.facebookFriends;
+    return digest;
+  }
+
+  function omitFacebookMessages(digest) {
+    if (!digest.facebook) return digest;
+    digest.facebook.ownMessageSample = [];
+    return digest;
+  }
+
   root.PsycheDigest = {
     build, LIMITS, DEPTHS, charBudget, COST_CAP,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
+    omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
+    omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

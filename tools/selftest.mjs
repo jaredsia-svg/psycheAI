@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInThisContext } from 'node:vm';
 
-import { buildExportZip, buildForeignExportZip } from './fixture.mjs';
+import { buildExportZip, buildForeignExportZip, buildTakeoutZip, buildTakeoutHtmlZip } from './fixture.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -27,11 +27,12 @@ const check = (label, ok, detail) => {
 
 // copy.js is here so the suite can hold the client's vocabulary against the
 // server's — the working-relationship list exists in both and must not drift.
-for (const file of ['zip.js', 'instagram.js', 'images.js', 'digest.js', 'card.js', 'copy.js']) {
+for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'images.js', 'digest.js', 'card.js', 'copy.js']) {
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
 const IG = globalThis.PsycheInstagram;
+const Supplement = globalThis.PsycheSupplement;
 const Images = globalThis.PsycheImages;
 const Digest = globalThis.PsycheDigest;
 const Card = globalThis.PsycheCard;
@@ -674,6 +675,131 @@ check('the refusal says how little was read and what to try',
 check('the refusal holds even though its messages parsed perfectly',
   Boolean(foreignError) && /Facebook or WhatsApp/.test(foreignError.message));
 
+// ---------- supplements: Google Takeout and Facebook ----------
+//
+// The same Facebook archive refused above is accepted here. That is the whole
+// design: the primary floor is untouched, so a Facebook download still cannot
+// masquerade as an Instagram export, but read by handlers that know its real
+// shapes it is worth having as an addition. One fixture, both behaviours.
+
+const google = await Supplement.readGoogle(
+  [new File([buildTakeoutZip()], 'takeout.zip', { type: 'application/zip' })], {});
+
+check('a Takeout yields all four My Activity services',
+  ['youtube', 'youtubeSearches', 'googleSearches', 'chrome', 'gemini']
+    .every(kind => google.kinds[kind]), Object.keys(google.kinds).join(', '));
+
+// The fixture carries a German-locale block: translated folder, translated
+// filename, translated title verbs, same URL shapes. If anything classifies on
+// English these records vanish and the counts drop by exactly 40 apiece.
+check('localised records are classified too, so nothing reads English to decide',
+  google.counts.watched === 940 && google.counts.googleSearches === 1240,
+  google.counts.watched + ' watched, ' + google.counts.googleSearches + ' searches');
+
+// The record that separates "read titleUrl" from "read an English prefix": a
+// German YouTube *search*. It carries products=YouTube exactly as a watch
+// does, so the only locale-proof way to tell them apart is the
+// /results?search_query= URL. Classify on the title and these 25 silently
+// become watches — the counts move together and both assertions below fail.
+check('a localised YouTube search is still a search, not a watch',
+  google.counts.youtubeSearches === 285 && google.counts.watched === 940,
+  google.counts.youtubeSearches + ' yt searches, ' + google.counts.watched + ' watched');
+check('its query comes out of the URL rather than the translated title',
+  [...google.youtubeSearchTerms.keys()].some(t => /^berglauf technik/i.test(t)) &&
+  ![...google.youtubeSearchTerms.keys()].some(t => /gesucht/i.test(t)),
+  [...google.youtubeSearchTerms.keys()].slice(0, 4).join(' | '));
+
+// Aggregation is the point. 940 watch records must not become 940 anything —
+// they become a channel histogram plus a bounded title sample.
+check('watch history is aggregated to a channel histogram, not a list of 940 rows',
+  google.channels.size === 8 && google.counts.watched === 940,
+  google.channels.size + ' channels from ' + google.counts.watched + ' records');
+const topChannel = [...google.channels.entries()].sort((a, b) => b[1] - a[1])[0];
+check('the channel histogram is ordered by real watch counts',
+  topChannel[0] === 'Trail Runner Nation' && topChannel[1] === 303, JSON.stringify(topChannel));
+const topTerm = [...google.googleSearchTerms.entries()].sort((a, b) => b[1] - a[1])[0];
+check('repeated searches are counted rather than repeated',
+  topTerm[0] === 'half marathon training plan' && topTerm[1] === 300, JSON.stringify(topTerm));
+
+// The strongest privacy claim in this module: a browsing history reduces to
+// hostnames. The fixture's URLs carry deep paths and query strings precisely
+// so that a parser which kept them would be caught here.
+check('Chrome history is reduced to hostnames, never URLs',
+  google.domains.size === 4 &&
+  [...google.domains.keys()].every(d => !/[/?#:]/.test(d) && !/^www\./.test(d)),
+  [...google.domains.keys()].join(', '));
+check('no path or query string from a visited URL survives anywhere',
+  !JSON.stringify([...google.domains.keys()]).includes('utm_source') &&
+  !JSON.stringify([...google.domains.keys()]).includes('deep/path'));
+
+// Takeout ships My Activity as HTML unless the user changes it, so this is the
+// archive most people reach for first. The error has to name the fix.
+let takeoutHtmlError = null;
+try {
+  await Supplement.readGoogle([new File([buildTakeoutHtmlZip()], 'takeout.zip')], {});
+} catch (error) {
+  takeoutHtmlError = error;
+}
+check('an HTML Takeout is refused with the exact fix named',
+  Boolean(takeoutHtmlError) && /HTML format/i.test(takeoutHtmlError.message) &&
+  /Multiple formats/.test(takeoutHtmlError.message) && /JSON/.test(takeoutHtmlError.message),
+  takeoutHtmlError && takeoutHtmlError.message);
+
+const facebook = await Supplement.readFacebook(
+  [new File([buildForeignExportZip()], 'facebook.zip', { type: 'application/zip' })], {});
+
+check('the same Facebook archive the primary floor refuses is accepted as a supplement',
+  Object.keys(facebook.kinds).length >= 4, Object.keys(facebook.kinds).join(', '));
+// instagram.js falls back to `title` for Facebook comments and files "X
+// commented on Y's post" as if the user wrote it. The supplement reader goes
+// to the nested field where the real text lives.
+check('Facebook comments extract the real text, not Meta\'s own boilerplate',
+  facebook.comments.length === 25 && /Real comment text/.test(facebook.comments[0]) &&
+  !facebook.comments.some(c => /commented on/.test(c)), facebook.comments[0]);
+check('Facebook posts extract their body text', facebook.posts.length === 40 &&
+  /A Facebook status update/.test(facebook.posts[0]), facebook.posts[0]);
+check('flat {name} follow rows are read, which the Instagram handler skips entirely',
+  facebook.friends.length === 150, facebook.friends.length + ' names');
+
+// Messenger and Instagram DMs share a format, so they share the privacy rule.
+check('only the user\'s own Messenger messages are kept',
+  facebook.ownMessages.length === 15 && facebook.counts.messages === 30 &&
+  facebook.counts.received === 15,
+  JSON.stringify({ kept: facebook.ownMessages.length, total: facebook.counts.messages }));
+check('the other side of a Facebook conversation never reaches the fragment',
+  !JSON.stringify(facebook.ownMessages).includes('Sarah') &&
+  !JSON.stringify(facebook.posts).includes('Sarah'));
+// The owner has to be resolved before messages can be split by sender, which
+// is why profile_information is read in a first pass.
+check('the account owner is resolved from profile_information', facebook.owner === 'Alec',
+  JSON.stringify(facebook.owner));
+
+// The likeliest mistake at this step is picking the Instagram zip a second
+// time. Meta's two exports overlap enough that it would partly parse — the
+// follow lists and the DMs are readable by these handlers — so it has to be
+// named rather than half-accepted, or the reader silently double-counts.
+let againError = null;
+try {
+  await Supplement.readFacebook([new File([buildExportZip()], 'instagram.zip')], {});
+} catch (error) {
+  againError = error;
+}
+check('re-picking the Instagram export as a Facebook supplement is refused by name',
+  Boolean(againError) && /looks like your Instagram export/.test(againError.message),
+  againError && againError.message);
+
+// And an archive with nothing in it at all is refused rather than silently
+// adding zero — dropping a holiday photo folder here should say so.
+let thinError = null;
+try {
+  await Supplement.readFacebook(
+    [new File([buildTakeoutZip()], 'takeout.zip')], {});
+} catch (error) {
+  thinError = error;
+}
+check('an archive with no Facebook activity in it is refused, not silently accepted',
+  Boolean(thinError) && /kind/.test(thinError.message), thinError && thinError.message);
+
 // ---------- image selection ----------
 //
 // Only selection is covered here. Decoding and downscaling need canvas and
@@ -987,6 +1113,131 @@ check('captions under 4 characters are dropped, 4 and over are kept',
   shortTextDigest.samples.captions.includes('fine') &&
   shortTextDigest.samples.captions.includes('A real sentence with actual substance.'),
   JSON.stringify(shortTextDigest.samples.captions));
+
+// ---------- supplements in the digest: aggregation, cost, and precedence ----------
+
+const withBoth = Digest.build({ ...signals, supplements: { google, facebook } },
+  { includeMessages: true, includeImages: true, imageCount: 14 });
+
+check('the digest records which exports it was built from',
+  JSON.stringify(withBoth.coverage.sources) === '["instagram","google","facebook"]',
+  JSON.stringify(withBoth.coverage.sources));
+check('an Instagram-only digest still says so, and carries no supplement blocks',
+  JSON.stringify(digest.coverage.sources) === '["instagram"]' &&
+  digest.google === undefined && digest.facebook === undefined);
+
+// The claim the whole design rests on: 940 watch records reach the model as a
+// histogram and a bounded sample, never as 940 rows.
+check('940 watch records become a bounded histogram and sample, not 940 rows',
+  withBoth.google.topChannels.length === 8 &&
+  withBoth.google.videoTitleSample.length <= Digest.LIMITS.youtubeTitles &&
+  withBoth.google.counts.watched === 940,
+  withBoth.google.topChannels.length + ' channels, ' +
+  withBoth.google.videoTitleSample.length + ' titles sampled');
+check('the channel histogram keeps its real counts and ordering into the digest',
+  withBoth.google.topChannels[0].name === 'Trail Runner Nation' &&
+  withBoth.google.topChannels[0].count === 303,
+  JSON.stringify(withBoth.google.topChannels[0]));
+check('1,240 searches become a frequency table capped at the limit',
+  withBoth.google.topGoogleSearches.length === Digest.LIMITS.googleSearchTerms &&
+  withBoth.google.topGoogleSearches[0].count === 300,
+  withBoth.google.topGoogleSearches.length + ' terms');
+check('800 browsing records reach the model as four hostnames',
+  withBoth.google.topDomains.length === 4 &&
+  withBoth.google.topDomains.every(d => !/[/?#]/.test(d.name)),
+  JSON.stringify(withBoth.google.topDomains.map(d => d.name)));
+check('no browsing path or query string is anywhere in the finished digest',
+  !JSON.stringify(withBoth).includes('utm_source') &&
+  !JSON.stringify(withBoth).includes('deep/path'));
+check('only the user\'s own Facebook messages reach the digest',
+  withBoth.facebook.ownMessageSample.length > 0 &&
+  !JSON.stringify(withBoth.facebook).includes('Sarah'));
+
+// Cost. Both supplements together should be a rounding error against a run
+// whose output half alone is $0.2458 — that is what aggregation buys.
+const supplementChars = JSON.stringify(withBoth).length - JSON.stringify(digest).length;
+check('both supplements together add well under 120,000 chars to the digest',
+  supplementChars < 120000, supplementChars + ' chars added');
+check('a heavy account plus both supplements still fits the price ceiling',
+  heavy.coverage.digestChars + supplementChars < Digest.LIMITS.totalChars,
+  (heavy.coverage.digestChars + supplementChars) + ' vs ' + Digest.LIMITS.totalChars);
+
+// Standard's ceiling used to be a hand-typed 600000, which is 49,516 chars
+// past what COST_CAP actually buys. Derived now, so the two cannot drift.
+check('standard\'s character ceiling never exceeds what its own cost cap buys',
+  Digest.LIMITS.totalChars <= Digest.charBudget(Digest.COST_CAP, Digest.DEPTHS.standard.images),
+  Digest.LIMITS.totalChars + ' vs ' + Digest.charBudget(Digest.COST_CAP, Digest.DEPTHS.standard.images));
+check('and it is no longer the old hardcoded number', Digest.LIMITS.totalChars !== 600000,
+  String(Digest.LIMITS.totalChars));
+
+// Precedence. The trim loop is otherwise source-blind, so without the
+// supplement-first pass a large Takeout would shave Instagram captions to make
+// room for a browsing histogram. Instagram is the primary evidence.
+//
+// Run at comprehensive depth deliberately: standard's per-source caps are small
+// enough that a built digest never reaches the ceiling, so the loop never fires
+// and a check written against standard would pass whatever the loop did.
+// Comprehensive is where the caps stop binding and the price binds instead —
+// which is exactly the case this ordering exists for.
+const hugeGoogle = {
+  ...google,
+  videoTitles: Array.from({ length: 4000 }, (_, i) =>
+    'A very long video title that exists purely to make this list enormous and expensive, number ' + i),
+  googleSearches: Array.from({ length: 6000 }, (_, i) =>
+    'a search phrase long enough to matter for the budget and then some more words, number ' + i),
+};
+const deepAlone = Digest.build(heavySignals(),
+  { includeMessages: false, includeImages: true, imageCount: 20, depth: 'comprehensive' });
+const crowded = Digest.build({ ...heavySignals(), supplements: { google: hugeGoogle } },
+  { includeMessages: false, includeImages: true, imageCount: 20, depth: 'comprehensive' });
+
+// The trim loop must actually have run, or everything below is vacuous. The
+// direct evidence is that the supplement lists came out far under their own
+// comprehensive cap of 3,000 — nothing but the loop does that.
+check('the trim loop really did fire, or the checks below prove nothing',
+  crowded.google.videoTitleSample.length < 1000 &&
+  crowded.google.googleSearchSample.length < 1000,
+  crowded.google.videoTitleSample.length + ' titles, ' +
+  crowded.google.googleSearchSample.length + ' searches kept of 3000 allowed');
+check('a huge supplement never costs the primary export its captions',
+  crowded.coverage.sampling.captions.shown === deepAlone.coverage.sampling.captions.shown,
+  crowded.coverage.sampling.captions.shown + ' vs ' + deepAlone.coverage.sampling.captions.shown +
+  ' captions');
+check('the crowded digest still lands inside the budget',
+  crowded.coverage.digestChars <= Digest.DEPTHS.comprehensive.limits.totalChars,
+  crowded.coverage.digestChars + ' vs ' + Digest.DEPTHS.comprehensive.limits.totalChars);
+
+// ---------- supplementary omit functions ----------
+
+const omitCases = [
+  ['omitYouTube', d => d.google.topChannels.length === 0 && d.google.videoTitleSample.length === 0],
+  ['omitYouTubeSearches', d => d.google.topYoutubeSearches.length === 0],
+  ['omitGoogleSearches', d => d.google.topGoogleSearches.length === 0 && d.google.googleSearchSample.length === 0],
+  ['omitChrome', d => d.google.topDomains.length === 0],
+  ['omitGeminiPrompts', d => d.google.geminiPromptSample.length === 0],
+  ['omitFacebookPosts', d => d.facebook.postSample.length === 0 && d.facebook.commentSample.length === 0],
+  ['omitFacebookConnections', d => d.facebook.friends.length === 0],
+  ['omitFacebookMessages', d => d.facebook.ownMessageSample.length === 0],
+];
+for (const [name, emptied] of omitCases) {
+  const fresh = Digest.build({ ...signals, supplements: { google, facebook } },
+    { includeMessages: true, includeImages: false });
+  Digest[name](fresh);
+  check(name + ' empties its own fields', emptied(fresh));
+  // Each must touch only its own row. Captions and following stand in for
+  // "everything else", the same way the Instagram omit checks do above.
+  check(name + ' leaves the rest of the digest untouched',
+    fresh.samples.captions.length === withBoth.samples.captions.length &&
+    fresh.following.length === withBoth.following.length);
+}
+// Calling one for a source the reader never added must be a no-op, not a
+// crash reaching into an absent block.
+check('a supplementary omit is safe on a digest that has no supplements at all',
+  (() => {
+    const bare = Digest.build(signals, { includeMessages: false });
+    for (const [name] of omitCases) Digest[name](bare);
+    return bare.google === undefined && bare.facebook === undefined;
+  })());
 
 // ---------- comprehensive depth ----------
 //

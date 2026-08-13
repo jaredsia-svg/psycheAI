@@ -388,3 +388,132 @@ export function buildForeignExportZip() {
 
   return makeZip(files);
 }
+
+/**
+ * A Google Takeout "My Activity" export, shaped the way Google actually writes
+ * one: `Takeout/My Activity/<Service>/MyActivity.json`, an array of records
+ * carrying `header`, `title`, `titleUrl`, `time` and `products`.
+ *
+ * Three things here are deliberate rather than decorative.
+ *
+ * The **localised block** at the end is a German-locale record set with a
+ * translated folder name and translated title verbs. It exists so the parser
+ * cannot pass by reading English: classification has to come off `products`
+ * and the shape of `titleUrl`, and if anyone re-introduces a `startsWith
+ * ('Watched')` those records go missing and the count checks fail.
+ *
+ * The **volume** is large enough to bind the digest's caps rather than sit
+ * under them — the point of aggregation is only proven on an archive big
+ * enough to need it.
+ *
+ * The **Chrome entries carry full URLs with paths and query strings**, because
+ * the promise is that only the hostname ever survives into the digest. A
+ * fixture with bare domains would prove nothing.
+ */
+export function buildTakeoutZip() {
+  const at = (day, hour) => new Date(Date.UTC(2024, 0, 1 + day, hour)).toISOString();
+
+  const channels = ['Trail Runner Nation', 'Ginger Runner', 'Bon Appétit', 'Sunday Service',
+    'Marathon Handbook', 'Nature Photography', 'The Fitness Channel', 'Local Church Talks'];
+  const watched = Array.from({ length: 900 }, (_, i) => ({
+    header: 'YouTube',
+    // Weighted so the top channel is unambiguous and the ordering is testable.
+    title: 'Watched ' + ['A long run in the fells', 'Sourdough, properly', 'Race day nutrition',
+      'Hill repeats explained', 'A quiet morning walk'][i % 5] + ' ' + i,
+    titleUrl: 'https://www.youtube.com/watch?v=vid' + i,
+    subtitles: [{ name: channels[i % (i < 400 ? 2 : channels.length)] }],
+    time: at(i % 300, 7 + (i % 5)),
+    products: ['YouTube'],
+  }));
+
+  const ytSearches = Array.from({ length: 260 }, (_, i) => ({
+    header: 'YouTube',
+    title: 'Searched for ' + ['trail shoe review', 'marathon pacing', 'sourdough starter'][i % 3],
+    titleUrl: 'https://www.youtube.com/results?search_query=' +
+      encodeURIComponent(['trail shoe review', 'marathon pacing', 'sourdough starter'][i % 3]),
+    time: at(i % 300, 20),
+    products: ['YouTube'],
+  }));
+
+  const searches = Array.from({ length: 1200 }, (_, i) => ({
+    header: 'Search',
+    title: 'Searched for ' + 'query ' + i,
+    titleUrl: 'https://www.google.com/search?q=' +
+      encodeURIComponent(i % 4 === 0 ? 'half marathon training plan' : 'query ' + i),
+    time: at(i % 300, 6 + (i % 12)),
+    products: ['Search'],
+  }));
+
+  const chrome = Array.from({ length: 800 }, (_, i) => ({
+    header: 'Chrome',
+    title: 'Visited Some Page Title ' + i,
+    titleUrl: 'https://www.' + ['runnersworld.com', 'bbc.co.uk', 'github.com', 'reddit.com'][i % 4] +
+      '/some/deep/path/' + i + '?utm_source=newsletter&session=' + i,
+    time: at(i % 300, 9),
+    products: ['Chrome'],
+  }));
+
+  const gemini = Array.from({ length: 120 }, (_, i) => ({
+    header: 'Gemini Apps',
+    title: 'Prompted Help me plan a training week around a Saturday long run, number ' + i,
+    time: at(i % 300, 21),
+    products: ['Gemini Apps'],
+  }));
+
+  // German locale: translated folder, translated verbs, same URL shapes. The
+  // parser must still file these as YouTube watches and Google searches.
+  const localised = [
+    ...Array.from({ length: 40 }, (_, i) => ({
+      header: 'YouTube',
+      title: 'Ein Video angesehen: Bergläufe im Winter ' + i,
+      titleUrl: 'https://www.youtube.com/watch?v=de' + i,
+      subtitles: [{ name: 'Trail Runner Nation' }],
+      time: at(i, 8),
+      products: ['YouTube'],
+    })),
+    ...Array.from({ length: 40 }, (_, i) => ({
+      header: 'Suche',
+      title: 'Nach Laufschuhe gesucht',
+      titleUrl: 'https://www.google.com/search?q=' + encodeURIComponent('Laufschuhe test ' + i),
+      time: at(i, 11),
+      products: ['Search'],
+    })),
+    // A localised YouTube *search*. This is the one record that separates
+    // "classified on titleUrl" from "classified on an English prefix": it is
+    // products=YouTube like a watch, but it is a search, and the only
+    // locale-proof way to know that is the /results?search_query= URL.
+    ...Array.from({ length: 25 }, (_, i) => ({
+      header: 'YouTube',
+      title: 'Nach einem Video gesucht: Berglauf Technik ' + i,
+      titleUrl: 'https://www.youtube.com/results?search_query=' +
+        encodeURIComponent('Berglauf Technik ' + i),
+      time: at(i, 12),
+      products: ['YouTube'],
+    })),
+  ];
+
+  const files = [
+    { name: 'Takeout/My Activity/YouTube/MyActivity.json', content: JSON.stringify([...watched, ...ytSearches]) },
+    { name: 'Takeout/My Activity/Search/MyActivity.json', content: JSON.stringify(searches) },
+    { name: 'Takeout/My Activity/Chrome/MyActivity.json', content: JSON.stringify(chrome) },
+    { name: 'Takeout/My Activity/Gemini Apps/MyActivity.json', content: JSON.stringify(gemini) },
+    { name: 'Takeout/Meine Aktivitäten/Suche/MeineAktivitäten.json', content: JSON.stringify(localised) },
+    { name: 'Takeout/archive_browser.html', content: '<html>Takeout index</html>' },
+  ];
+
+  return makeZip(files);
+}
+
+/**
+ * The same export in Takeout's *default* format. My Activity ships as HTML
+ * unless the user goes into "Multiple formats" and changes it, so this is the
+ * archive most people will reach for first — and it has to fail with copy that
+ * names the fix rather than a shrug.
+ */
+export function buildTakeoutHtmlZip() {
+  return makeZip([
+    { name: 'Takeout/My Activity/Search/MyActivity.html', content: '<html>Searched for trail shoes</html>' },
+    { name: 'Takeout/My Activity/YouTube/MyActivity.html', content: '<html>Watched a video</html>' },
+    { name: 'Takeout/archive_browser.html', content: '<html>Takeout index</html>' },
+  ]);
+}
