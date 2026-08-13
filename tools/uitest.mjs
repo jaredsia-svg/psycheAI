@@ -199,6 +199,39 @@ try {
     /before any data is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
     await page.locator('.upload-card .card-sub').innerText().catch(() => 'missing'));
 
+  // The optional-sources card. The JSON instruction is the load-bearing one:
+  // Takeout ships My Activity as HTML by default, so a reader who follows the
+  // happy path lands on an archive the parser refuses. The deselect line is
+  // the other one that earns its place — without it people download fifty
+  // gigabytes of Photos and Gmail that are never read.
+  const optionalCard = await page.locator('#view-welcome .card', { hasText: 'Optional: add Google' }).innerText();
+  check('the optional-sources card says the step can be skipped',
+    /optional/i.test(optionalCard) && /skipping takes one click/i.test(optionalCard));
+  check('it tells the reader to deselect everything but My Activity',
+    /Deselect all/.test(optionalCard) && /My Activity/.test(optionalCard) &&
+    /Leave Photos, Gmail and Drive/.test(optionalCard));
+  check('it names the HTML default and the JSON fix, which Takeout hides two menus deep',
+    /Multiple formats/.test(optionalCard) && /JSON/.test(optionalCard) &&
+    /cannot\s+read the HTML version/.test(optionalCard) && /HTML is the default/.test(optionalCard),
+    optionalCard.replace(/\s+/g, ' ').slice(0, 200));
+  check('it promises site names only, matching what the parser actually keeps',
+    /Never\s+the pages you read, the web addresses, or when/.test(optionalCard));
+  check('it covers Facebook too, in JSON',
+    /Download your information/.test(optionalCard) && /Facebook/.test(optionalCard));
+  // It has to sit after the Instagram instructions and before the dropzone:
+  // Instagram is required and these are not, and a reader who stops at the
+  // upload box has still seen everything they need.
+  check('the optional card sits between the Instagram steps and the upload box',
+    await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#view-welcome .card')];
+      const igCard = cards.find(c => /How do I get my Instagram data/.test(c.textContent));
+      const optional = cards.find(c => /Optional: add Google/.test(c.textContent));
+      const upload = document.querySelector('#view-welcome .upload-card');
+      if (!igCard || !optional || !upload) return false;
+      return Boolean(igCard.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(optional.compareDocumentPosition(upload) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+
   // Nothing is asked for before the upload — the export carries the name.
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
   check('the upload box is the only thing to do',

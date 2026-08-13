@@ -422,6 +422,48 @@ through: the unit suite asserts the refusal and its wording, the browser suite a
 `#upload-error` and that nothing was sent. Deleting the floor, lowering it to three, or counting
 messages towards it each let that archive through, and each is caught.
 
+### Supplementary sources: Google Takeout and Facebook
+
+Instagram is the performed self: what somebody chose to publish. A Google Takeout "My Activity"
+export is the unperformed half — what they searched, watched, browsed and asked an AI — and a
+Facebook export is usually an older life stage that Instagram replaced. Both are offered *after*
+the Instagram archive has parsed, in a dialog whose first button is **Skip this step**.
+
+**The primary recognition floor is untouched.** A Facebook download still cannot pass as an
+Instagram export: every assertion in the section above passes unmodified, and `buildForeignExportZip()`
+is now reused as the Facebook *supplement* fixture — one archive proving both behaviours. Reading it
+with handlers that know its real shapes (`comments_v2` → `data[].comment.comment`, not the
+"X commented on Y's post" boilerplate the Instagram handler falls back to) turns the same file from
+worthless-as-primary into worth-having-as-addition. `readFacebook` separately refuses an *Instagram*
+archive by name, because re-picking the same zip is the likeliest mistake at that step and Meta's two
+exports overlap enough that it would otherwise half-parse and silently double-count.
+
+**Aggregate at collection time, never accumulate.** A decade of Search history is six figures of
+records. Counting into a `Map` costs one entry per distinct term where keeping the list costs one per
+record, so `docs/supplement.js` builds histograms as it reads and retains only a bounded text buffer
+for texture; `digest.js` then does the final `topKeys`/`sampleTexts`, the same split
+`signals.likedAuthors` has always used. This is not a micro-optimisation. The test fixture's watch
+history shipped raw would be **3.1M characters and $1.33 of input on its own** — five times the
+entire per-run budget. Aggregated, it is $0.02.
+
+**Never classify on English.** Google localises the folder name, the filename and the title verbs
+("Watched", "Searched for"). Classification reads `products` and the *shape of `titleUrl`* — a
+YouTube search is `/results?search_query=` in every language — and the query text is pulled out of
+the URL rather than by stripping a prefix. Prefix-stripping survives only as a cosmetic last step
+that keeps the raw string when it does not match. The fixture carries a German block including a
+German YouTube *search*, which is the single record that separates the two approaches: it is
+`products: YouTube` exactly as a watch is, and only the URL says otherwise.
+
+**Chrome is reduced to hostnames.** Never the page, the address, the query or the time. A full
+browsing history is at once the most invasive thing this app could carry and mostly noise — every
+page of every site somebody ever opened — where the domain histogram keeps the signal and drops the
+surveillance. The fixture's URLs carry deep paths and query strings so that a parser which kept them
+is caught rather than trusted.
+
+The eight new review rows appear **only when that source was added**, so a reader who skipped sees
+the same seven rows as before — which is what keeps the "exactly seven checkboxes" check meaningful
+instead of turning it into a count of whatever happens to be present.
+
 ### What is complete and what is sampled
 
 The distinction matters more than the digest's size. **Complete** — every count, the full
@@ -438,7 +480,40 @@ topics. **Sampled** — the text:
 | Your own DMs | 1,000 — parsed and counted unconditionally now; excluded from what is sent only if you untick them in the pre-send review, after you have seen the real count |
 | Searches | last 160 |
 
+Google Takeout, when added — every one of these is a cap on an **aggregate**, never on a raw list:
+
+| Source | Cap |
+|---|---|
+| YouTube channels | 120, as a histogram with real watch counts |
+| YouTube video titles | 150 sampled, out of however many were watched |
+| YouTube / Google search terms | 100 / 150, ordered by how often they were repeated |
+| Google search sample | 150 |
+| Chrome | 100 **hostnames** — never a URL, a page title, a query or a time |
+| Gemini Apps prompts | 80 |
+
+Facebook, when added: 200 posts, 150 comments, 300 friends sampled evenly, 80 repeated searches,
+and 200 of the reader's own Messenger messages — never the other side, exactly as Instagram DMs work.
+
 (Those are the Standard caps; see below for Comprehensive.)
+
+**Two things about the budget that supplements exposed.**
+
+The character ceiling is now *derived* for both depths. Standard carried a hand-typed
+`totalChars: 600000`, which is 49,516 characters past what `COST_CAP` actually buys — a digest that
+filled it would have cost **$0.5212 against a $0.50 cap**. That was dormant while Instagram was the
+only source, because a heavy account reaches 156k and never approached it; supplements make it
+reachable. It is `charBudget(COST_CAP, 14)` now, the way Comprehensive already was, and a check
+holds the two together.
+
+The trim loop shrinks whichever list is largest, which is source-blind — so a big Takeout would have
+shaved Instagram captions to make room for a browsing histogram. Instagram is the primary evidence
+and the thing the report is written from; a supplement is an addition, so **additions are trimmed
+first, and further** (floor 10 rather than 20) before any Instagram list is touched. Fault-injected
+by merging the two lists back into one: captions collapse from 1265 to 533.
+
+Worth keeping in proportion, though: **output dominates the bill.** Worst-case generation alone is
+$0.2458 of a heavy run's $0.33 ceiling, against $0.085 for the entire digest. Both supplements
+together add about $0.043 — roughly 2% of realistic total cost.
 
 Captions, comments and messages share one sampler, and it now drops anything under 4 characters
 before the caps above are even applied — "ok", "lol", "brb" carry nothing a model can read anything
@@ -1106,14 +1181,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 357 checks: synthesises a real ZIP export and runs
+npm test           # 428 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 617 checks: drives the real UI in Chromium against a
+npm run test:ui    # 663 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
