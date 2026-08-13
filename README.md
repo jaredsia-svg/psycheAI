@@ -305,17 +305,21 @@ makes it the easiest page in the app to overstate. It says three things, and eac
 code has to keep:
 
 - **The archive is reduced before anything is sent.** Unzipping and digest-building happen in the
-  browser; the summary is what is posted.
-- **The server relays and does not store.** It is a proxy, and the page says so rather than implying
-  the browser talks to Gemini directly — it cannot, because an API key cannot ship in a static page.
-  What the page does claim is that nothing is written to disk, put in a database, or logged.
-- **There is no store to breach.** No sign-up, no password, no user table. The report lives in
-  `localStorage` and is never uploaded; the QR card is self-contained, so there is no record behind
-  it to look up.
+  browser; the summary is what is posted, and the reader can review it themselves in the pre-send
+  dialog before it goes anywhere.
+- **The summary reaches Gemini or Claude, and only for as long as the request takes.** It is held for
+  the few seconds the analysis takes and never saved, stored or logged — the claim the page actually
+  makes now. It does not name PsycheAI's own server as the hop in between, on the reasoning that the
+  device-to-model story is what a reader needs; what it must not do is claim the opposite, that the
+  summary reaches the model *directly*, bypassing any relay at all, since that would misrepresent
+  `server.js`, which really is a relay. That negative is what the checks hold — see below.
+- **There is no store to breach.** No sign-up, no password, no user table, no database. The report
+  lives in `localStorage` and is never uploaded; the QR card is self-contained, so there is no record
+  behind it to look up.
 
 Both privacy sections are written for an adult with no technical background: no jargon, and no
-explaining-to-a-child similes either. "The file Instagram sends you contains everything: every post,
-every message, every search. Your device opens it and reduces it to a short summary." Simplifying is
+explaining-to-a-child similes either. "Your device will summarize the contents locally to a ~100kb
+file, which you can review the contents of, before sending it off for analysis." Simplifying is
 where accuracy usually slips, so the suite guards both ends — nine terms (`bounded summary`,
 `archive`, `.zip`, `API key`, `localStorage`, `proxy`, `endpoint`, `payload`, `end-to-end`) are
 asserted absent from those two sections, and the honesty checks below are re-pointed at whatever the
@@ -331,16 +335,19 @@ explainer; a link is a pointer, and that was a paragraph.
 
 The page used to explain *why* the relay exists and to note two further caveats — that an unlocked
 device is readable, and that the code can be self-hosted. All three were cut as clutter. Cutting a
-caveat is a product call rather than an accuracy one, so the checks for them went too; what could
-not go is the statement that the summary reaches the PsycheAI server at all, and the disclosure that
-Gemini or Claude read it under their own terms. Those two are what the remaining guards hold.
+caveat is a product call rather than an accuracy one, so the checks for them went too. The page later
+also dropped its one remaining explicit mention of the relay — "The summary goes to PsycheAI, which
+passes it straight on" — in favour of shorter copy that just names the destination model. That
+sentence's check was removed rather than repointed, since there is no wording left on the page for it
+to hold; what survives is the disclosure that Gemini or Claude read the summary under their own
+terms, and the negative guard below.
 
-A tempting fourth claim — that the summary never reaches the PsycheAI server at all — would be
-false, and the suite fails if it ever appears. Checks read the claims off the rendered page *and*
-the behaviour out of `server.js`, so the page cannot drift into overstatement and the server cannot
-quietly stop honouring it: `fs` is asserted to be read-only, `Cache-Control: no-store` to still be
-set, and the copy to keep naming both things outside the app's control — the model provider's terms,
-and an unlocked device.
+A tempting claim — that the summary never reaches the PsycheAI server at all, or reaches Gemini or
+Claude directly with nothing in between — would be false, and the suite fails if it ever appears.
+Checks read the claims off the rendered page *and* the behaviour out of `server.js`, so the page
+cannot drift into overstatement and the server cannot quietly stop honouring it: `fs` is asserted to
+be read-only, `Cache-Control: no-store` to still be set, and the copy is checked for the word
+"directly" beside the model or either provider's name, which it must never carry.
 
 Two more additions answer specific fears rather than the general one. **"No analytics, no trackers,
 no cookies"** is checkable the same way the source link is: nothing in `docs/` calls out to a
@@ -1106,7 +1113,7 @@ npm test           # 357 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 618 checks: drives the real UI in Chromium against a
+npm run test:ui    # 617 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -2836,13 +2836,14 @@ try {
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
 
   check('the page explains that the file is reduced before anything is sent',
-    /reduces it to a short summary/i.test(about) && /Only that summary is sent/i.test(about));
-  // The page no longer explains *why* the relay exists — that sentence was cut
-  // as clutter. It still has to say *that* it relays, which is the part a
-  // reader could otherwise be misled about, so these two carry it alone now.
-  check('the page is honest that the server relays rather than bypassing it',
-    /The summary goes to PsycheAI/i.test(about) && /passes it straight on/i.test(about),
-    about.slice(0, 1400));
+    /summarize the contents locally/i.test(about) &&
+    /before sending it off for analysis/i.test(about));
+  // The page no longer names PsycheAI as the explicit hop in between — that
+  // sentence was cut in favour of a shorter device-to-model story. It still
+  // must not claim the opposite, that the summary reaches Gemini or Claude
+  // directly with no relay at all; that negative is held further down
+  // ("the page does not claim the summary skips the PsycheAI server"),
+  // against server.js actually being the relay it is.
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   check('the claim that nothing is written to disk holds in server.js',
@@ -2851,7 +2852,7 @@ try {
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account or stored pile of data to breach',
-    /no sign-up, no password to create/i.test(about) && /does not have one/i.test(about) &&
+    /no sign-up, no password to create/i.test(about) && /does not have a database/i.test(about) &&
     /no\s+accumulated data for anyone to take/i.test(about));
 
   // A page that only reassures is not trustworthy. The device-readability and
@@ -2931,7 +2932,7 @@ try {
     !/end-to-end/i.test(about) && !/zero-knowledge/i.test(about));
   check('stays-here and gets-sent are shown side by side',
     (await page.locator('#view-about .split .ticks li').count()) >= 3 &&
-    (await page.locator('#view-about .split .sends li').count()) >= 3);
+    (await page.locator('#view-about .split .sends li').count()) >= 2);
   check('what you get back is a grid, not a paragraph',
     (await page.locator('#view-about .tile').count()) === 8);
   check('the QR and matching are one section now',
