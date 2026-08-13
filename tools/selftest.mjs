@@ -344,8 +344,14 @@ check('the cut subsections are gone from the schema, not just from the page',
 // screen time and against naming somebody's friends. The list is gone, but the
 // paragraph that replaced it reads the same counts, so the prompt still has to
 // say both — this is the one cut that could quietly remove a guardrail.
+//
+// The wording moved again when supplements arrived: "The export contains no
+// timing data" was true of Instagram alone and false the moment a YouTube
+// watch history could be present. It was rescoped rather than dropped, so this
+// now pins the guarantee across both sources instead of the old sentence.
 check('the timing-data ban survived the account list being cut',
-  /The export contains no timing data whatsoever/.test(prompts.PROFILE_SYSTEM));
+  /no watch time, no session length, no screen time/.test(prompts.PROFILE_SYSTEM) &&
+  /No source here carries timing data of any kind/.test(prompts.PROFILE_SYSTEM));
 check('the ban on naming private individuals survived it too',
   /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
 // The unsparing section. Its licence is to drop the softening, not to drop the
@@ -589,6 +595,31 @@ for (const [label, needle] of [
   ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
   ['says what may be taken from an image', /the setting, the activity, the company kept/],
   ['keeps images as weak evidence', /weakest evidence per item/],
+  // Supplementary sources. Each limit is pinned on its own rather than as one
+  // loose match, for the same reason the image limits are: they are the newest
+  // way this could go wrong, and they cover the most sensitive data the app
+  // has ever carried.
+  ['tells the model to read coverage.sources before writing', /Check .?coverage\.sources.? before you write anything/],
+  ['forbids naming a source the reader declined', /Never refer to a source that is not listed/],
+  ['describes the Google export when present', /Google Takeout "My Activity" export/],
+  ['frames the supplements as the unperformed half', /unperformed half of a life/],
+  ['warns that watch history contains autoplay and other people', /autoplay, things opened once by accident, background noise, children/i],
+  ['insists a single video means nothing', /A single video means nothing at all/],
+  ['warns that browsing is mostly work and errands', /Browsing is mostly work and errands/],
+  ['states that only website names are given, never pages', /never the page, the address, the query or the time/],
+  ['warns that AI prompts are task-shaped', /task-shaped, not self-expressive/],
+  ['says searches are questions rather than beliefs', /Searches are questions, not beliefs/],
+  ['blocks reading a diagnosis or affiliation out of a search',
+    /A searched symptom is not a diagnosis, a searched term is not an affiliation/],
+  ['tells the model to drop such a search rather than write around it',
+    /leave it out of the report entirely rather than to write around it/],
+  // The timing claim was flatly false once a watch history could be present.
+  // It had to be scoped rather than deleted: it is what stops the model
+  // inventing screen time, which is the single easiest thing to get wrong here.
+  ['still forbids any claim about time spent', /no watch time, no session length, no screen time/],
+  ['scopes that claim across both sources rather than to Instagram alone',
+    /No source here carries timing data of any kind/],
+  ['spells out that a watch count is not an evening', /a hundred openings, not an evening/],
   ['demands the per-axis writing be personal', /pasted into a stranger's profile/],
   ['wants one of the four axes to land uncomfortably', /let at least one of the four sting slightly/],
   ['forbids smuggling a summary into the last axis', /do not write one into the last axis instead/],
@@ -615,7 +646,7 @@ for (const [label, needle] of [
   // pinned rather than trusted to the schema alone.
   ['reads the four appetites as separate things', /what they subscribed to.*what actually catches them/],
   ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
-  ['refuses to invent time it cannot measure', /The export contains no timing data whatsoever/],
+  ['refuses to invent time it cannot measure', /No source here carries timing data of any kind/],
   ['will not name a private individual', /a friend or a relative is described rather than named/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
@@ -799,6 +830,25 @@ try {
 }
 check('an archive with no Facebook activity in it is refused, not silently accepted',
   Boolean(thinError) && /kind/.test(thinError.message), thinError && thinError.message);
+
+// The user turn names its sources rather than asserting Instagram, so a
+// supplemented run does not open by calling itself an Instagram digest — and,
+// more to the point, a declined source is never named as if it were there.
+const openingFor = sources =>
+  prompts.profileBlocks({ coverage: { sources } }, []).at(0).text.split('\n')[0];
+check('the user turn names Instagram alone when that is all there is',
+  /built from their Instagram data/.test(openingFor(['instagram'])), openingFor(['instagram']));
+check('it names two sources when two were given',
+  /built from their Instagram and Google data/.test(openingFor(['instagram', 'google'])),
+  openingFor(['instagram', 'google']));
+check('and lists three properly rather than with a stray comma',
+  /built from their Instagram, Google and Facebook data/
+    .test(openingFor(['instagram', 'google', 'facebook'])),
+  openingFor(['instagram', 'google', 'facebook']));
+check('a digest with no coverage block at all still opens sanely',
+  /built from their Instagram data/.test(prompts.profileBlocks({}, []).at(0).text));
+check('the opening no longer hardcodes the word Instagram',
+  !/Here is the Instagram evidence digest/.test(prompts.profileBlocks({}, []).at(0).text));
 
 // ---------- image selection ----------
 //

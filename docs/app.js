@@ -621,6 +621,16 @@
     if (!decision.includeTopics) Digest.omitTopics(target);
     if (!decision.includeSearches) Digest.omitSearches(target);
     if (!decision.includeMessages) Digest.omitMessages(target);
+    // Each is a no-op when its block is absent, so a reader who added only
+    // Google is unaffected by the Facebook keys being false.
+    if (!decision.includeYouTube) Digest.omitYouTube(target);
+    if (!decision.includeYouTubeSearches) Digest.omitYouTubeSearches(target);
+    if (!decision.includeGoogleSearches) Digest.omitGoogleSearches(target);
+    if (!decision.includeChrome) Digest.omitChrome(target);
+    if (!decision.includeGeminiPrompts) Digest.omitGeminiPrompts(target);
+    if (!decision.includeFacebookPosts) Digest.omitFacebookPosts(target);
+    if (!decision.includeFacebookConnections) Digest.omitFacebookConnections(target);
+    if (!decision.includeFacebookMessages) Digest.omitFacebookMessages(target);
     return target;
   }
 
@@ -716,6 +726,68 @@
           'No photos were selected from this export.'],
     ];
 
+    // Supplementary rows are appended only when that source was actually
+    // added, rather than rendered greyed out for everybody. A reader who
+    // skipped the offer sees the same seven rows they always saw — which is
+    // also what keeps the "exactly seven checkboxes" check honest instead of
+    // making it a count of whatever happens to be there.
+    const g = digest.google;
+    if (g) {
+      const watched = g.counts.watched;
+      const ytSearches = g.topYoutubeSearches.length;
+      const gSearches = g.counts.googleSearches;
+      const domains = g.topDomains.length;
+      const prompts = g.geminiPromptSample.length;
+      rows.push(
+        ['review-yt-watched', 'includeYouTube', watched,
+          'YouTube watch history', 'YouTube watch history — none found',
+          watched ? g.topChannels.length + ' channels you watch most, from ' + watched +
+            ' videos, plus a sample of titles. Not the full history.' :
+            'No watch history was found in this export.'],
+        ['review-yt-searches', 'includeYouTubeSearches', ytSearches,
+          'YouTube searches', 'YouTube searches — none found',
+          ytSearches ? ytSearches + ' of your most repeated YouTube searches.' :
+            'No YouTube searches were found in this export.'],
+        ['review-google-searches', 'includeGoogleSearches', gSearches,
+          'Google searches', 'Google searches — none found',
+          gSearches ? g.topGoogleSearches.length + ' of your most repeated searches out of ' +
+            gSearches + ', plus a sample of others.' :
+            'No Google searches were found in this export.'],
+        ['review-chrome', 'includeChrome', domains,
+          'Chrome browsing history', 'Chrome browsing history — none found',
+          domains ? domains + ' website names you visit most, out of ' + g.counts.visits +
+            ' visits. Only the site name — never the page, the address or when.' :
+            'No browsing history was found in this export.'],
+        ['review-gemini', 'includeGeminiPrompts', prompts,
+          'Gemini Apps prompts', 'Gemini Apps prompts — none found',
+          prompts ? prompts + ' of the things you have asked Gemini, in your own words.' :
+            'No Gemini Apps activity was found in this export.'],
+      );
+    }
+
+    const fb = digest.facebook;
+    if (fb) {
+      const fbWriting = fb.postSample.length + fb.commentSample.length;
+      const fbFriends = fb.friends.length;
+      const fbMessages = fb.ownMessageSample.length;
+      rows.push(
+        ['review-fb-posts', 'includeFacebookPosts', fbWriting,
+          'Facebook posts & comments', 'Facebook posts & comments — none found',
+          fbWriting ? fb.postSample.length + ' posts and ' + fb.commentSample.length +
+            ' comments — a sample of your own words on Facebook.' :
+            'No Facebook posts or comments were found in this export.'],
+        ['review-fb-connections', 'includeFacebookConnections', fbFriends,
+          'Facebook friends & follows', 'Facebook friends & follows — none found',
+          fbFriends ? fbFriends + ' names, sampled evenly across the list.' :
+            'No Facebook connections were found in this export.'],
+        ['review-fb-messages', 'includeFacebookMessages', fbMessages,
+          'Facebook Messenger', 'Facebook Messenger — none found',
+          fbMessages ? fbMessages + ' of your own messages sampled out of ' + fb.counts.messages +
+            ' total. Only your side of any conversation is ever included.' :
+            'No Messenger history was found in this export.'],
+      );
+    }
+
     // Every row is a real checkbox now — nothing here is "review only". Each
     // is checked and enabled by default, and each disables itself when there
     // is genuinely nothing of that kind to send rather than offering a
@@ -730,15 +802,17 @@
     // after toggling a box reflects the box as it stands right now, and the
     // one place this shape is written also backs Send — see
     // applyReviewDecision above for why that matters.
-    const currentDecision = () => ({
-      includeCaptions: captionsCount + commentsCount > 0 && $('#review-captions').checked,
-      includeActivity: $('#review-activity').checked,
-      includeAccounts: followingCount + engagedCount > 0 && $('#review-accounts').checked,
-      includeTopics: topicsCount > 0 && $('#review-topics').checked,
-      includeSearches: searchesCount > 0 && $('#review-searches').checked,
-      includeMessages: dmCount > 0 && $('#review-dms').checked,
-      includeImages: imageCount > 0 && $('#review-images').checked,
-    });
+    // Derived from `rows` rather than written out a second time. Each row
+    // already carries its own count in r[2], which is the same guard the
+    // seven hand-written keys used to apply one at a time, so this is exactly
+    // equivalent for them — and it means a row that was never rendered yields
+    // `false` rather than `undefined`. That distinction matters: `undefined`
+    // is falsy, so it would strip correctly today, but the moment anything
+    // reads a decision key positively an absent source would read as "keep".
+    const currentDecision = () => Object.fromEntries(rows.map(row => {
+      const box = $('#' + row[0]);
+      return [row[1], Boolean(row[2] > 0 && box && box.checked)];
+    }));
 
     return new Promise(resolve => {
       let answer = null;

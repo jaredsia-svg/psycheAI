@@ -103,6 +103,16 @@ async function answerReview(page, options) {
   if (opts.untickSearches) await page.uncheck('#review-searches');
   if (opts.untickMessages) await page.uncheck('#review-dms');
   if (opts.untickImages) await page.uncheck('#review-images');
+  // Supplement rows exist only when that source was added, so each is
+  // unchecked defensively rather than assumed present.
+  for (const [flag, id] of [
+    ['untickYouTube', '#review-yt-watched'], ['untickYouTubeSearches', '#review-yt-searches'],
+    ['untickGoogleSearches', '#review-google-searches'], ['untickChrome', '#review-chrome'],
+    ['untickGemini', '#review-gemini'], ['untickFacebookPosts', '#review-fb-posts'],
+    ['untickFacebookFriends', '#review-fb-connections'], ['untickFacebookMessages', '#review-fb-messages'],
+  ]) {
+    if (opts[flag] && await page.locator(id).count()) await page.uncheck(id);
+  }
   await page.click('#review-send');
 }
 
@@ -2610,6 +2620,28 @@ try {
   await page.click('#supplement-continue');
   await chooseDepth(page, 'standard');
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+
+  // Eight more rows, and only because both sources were added — a reader who
+  // skipped still sees the original seven, which is asserted on the very
+  // first upload further up and is what keeps that count meaningful.
+  check('adding both sources adds eight rows to the review, not a lumped-together one',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 15,
+    (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows');
+  const supplementedReview = await page.locator('#review-dialog').innerText();
+  for (const label of ['YouTube watch history', 'YouTube searches', 'Google searches',
+    'Chrome browsing history', 'Gemini Apps prompts', 'Facebook posts & comments',
+    'Facebook friends & follows', 'Facebook Messenger']) {
+    check('the review names ' + JSON.stringify(label) + ' as its own row',
+      supplementedReview.includes(label));
+  }
+  check('every supplement row is checked by default, like the Instagram ones',
+    await page.evaluate(() => [...document.querySelectorAll('#review-list input[type="checkbox"]')]
+      .every(el => el.checked)));
+  // The two most sensitive rows in the app say plainly what they contain.
+  check('the Chrome row promises site names only, never pages or addresses',
+    /Only the site name — never the page, the address or when/.test(supplementedReview));
+  check('the Messenger row repeats the own-side-only rule',
+    /Only your side of any conversation is ever included[\s\S]*Facebook Messenger|Facebook Messenger[\s\S]*Only your side/.test(supplementedReview));
   await shot('1c-review-supplemented');
   await page.click('#review-send');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
@@ -2629,6 +2661,59 @@ try {
   check('only the reader\'s own Facebook messages are in the request body',
     bothBody.facebook.ownMessageSample.length > 0 &&
     !JSON.stringify(bothBody.facebook).includes('Sarah'));
+
+  // ---- and unticking them strips them from what is actually sent ----
+  //
+  // Same standard as the Instagram rows: not UI state, not localStorage, but
+  // the body of the request that went out. Each supplement row is unticked and
+  // its fields must be gone from the digest the model received.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await addSupplement(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
+  await page.click('#supplement-continue');
+  await chooseDepth(page, 'standard');
+  await answerReview(page, {
+    untickYouTube: true, untickYouTubeSearches: true, untickGoogleSearches: true,
+    untickChrome: true, untickGemini: true, untickFacebookPosts: true,
+    untickFacebookFriends: true, untickFacebookMessages: true,
+  });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  const strippedBody = JSON.parse(analyseBodies[analyseBodies.length - 1]).digest;
+  check('unticking the YouTube rows empties the channels, titles and searches',
+    strippedBody.google.topChannels.length === 0 &&
+    strippedBody.google.videoTitleSample.length === 0 &&
+    strippedBody.google.topYoutubeSearches.length === 0,
+    JSON.stringify({ channels: strippedBody.google.topChannels.length,
+      titles: strippedBody.google.videoTitleSample.length }));
+  check('unticking Google searches empties both the frequency table and the sample',
+    strippedBody.google.topGoogleSearches.length === 0 &&
+    strippedBody.google.googleSearchSample.length === 0);
+  check('unticking Chrome empties the domain histogram',
+    strippedBody.google.topDomains.length === 0);
+  check('unticking Gemini empties the prompt sample',
+    strippedBody.google.geminiPromptSample.length === 0);
+  check('unticking the Facebook rows empties posts, comments, friends and messages',
+    strippedBody.facebook.postSample.length === 0 &&
+    strippedBody.facebook.commentSample.length === 0 &&
+    strippedBody.facebook.friends.length === 0 &&
+    strippedBody.facebook.ownMessageSample.length === 0);
+  // Not one word of any of it may survive anywhere in the payload. Every
+  // needle here is unique to a supplement fixture: "half marathon training
+  // plan" would look like a fine choice and is not, because the Instagram
+  // fixture's own searches contain it and those were never unticked.
+  const strippedRaw = analyseBodies[analyseBodies.length - 1];
+  check('no supplement text survives the opt-out anywhere in the request body',
+    !strippedRaw.includes('Ginger Runner') && !strippedRaw.includes('runnersworld.com') &&
+    !strippedRaw.includes('Help me plan a training week') &&
+    !strippedRaw.includes('Real comment text'));
+  // And the Instagram half is untouched by any of it.
+  check('unticking every supplement leaves the Instagram evidence alone',
+    strippedBody.samples.captions.length > 0 && strippedBody.following.length > 0 &&
+    strippedBody.counts !== undefined);
 
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
