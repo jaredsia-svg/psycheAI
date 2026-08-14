@@ -1334,6 +1334,27 @@ try {
     preview1.instagramTopics.length > 0 && preview1.coverage.images.included === true,
     JSON.stringify({ dms: Boolean(preview1.directMessages), captions: preview1.samples.captions.length,
       topics: preview1.instagramTopics.length, images: preview1.coverage.images }));
+  // The photographs ride along as embedded data URIs, so the file is the whole
+  // of what leaves the device rather than the text half of it. Counted against
+  // coverage.images.attached rather than a fixed number, so the two cannot
+  // disagree about how many are going.
+  const embedded1 = (html1.match(/<img alt="Photograph \d+" src="data:image\//g) || []).length;
+  check('the download embeds every photograph that is going to be sent',
+    embedded1 === preview1.coverage.images.attached && embedded1 > 0,
+    embedded1 + ' embedded vs ' + preview1.coverage.images.attached + ' attached');
+  check('they are self-contained data URIs, not links back to anything',
+    /src="data:image\/jpeg;base64,[A-Za-z0-9+/=]{500,}"/.test(html1));
+  check('each is labelled with the date it was posted, as the model is told',
+    (html1.match(/<figcaption>\d+\. \d{4}-\d{2}-\d{2}/g) || []).length > 0,
+    (/<figcaption>[^<]*/.exec(html1) || ['none'])[0]);
+  // What is embedded has to be the resized copy that actually gets sent, not
+  // the original still sitting in the archive — otherwise the file flatters
+  // what leaves the device. The fixture's own PNGs re-encode to JPEG, so the
+  // mime type is the tell.
+  check('what is embedded is the re-encoded copy that gets sent, not the archive original',
+    !/src="data:image\/png/.test(html1) && /src="data:image\/jpeg/.test(html1));
+  check('the file says plainly that these are resized rather than the originals',
+    /resized to fit a 1024px edge and re-encoded/.test(html1));
 
   await page.uncheck('#review-dms');
   await page.uncheck('#review-topics');
@@ -1357,6 +1378,12 @@ try {
     preview2.coverage.images.included === false && preview2.coverage.images.attached === 0,
     JSON.stringify({ dms: preview2.directMessages, topics: preview2.instagramTopics.length,
       images: preview2.coverage.images }));
+  // Unticking photos has to take them out of the file too. A preview of "what
+  // gets sent" that still showed the pictures would be describing a request
+  // that is not being made.
+  check('unticking photos removes them from the file, not just from the table',
+    !/<img alt="Photograph/.test(html2) && !/data:image\//.test(html2) &&
+    !/Photographs<\/h2>/.test(html2));
   check('the second download leaves the untouched rows exactly as they were',
     preview2.samples.captions.length === preview1.samples.captions.length &&
     preview2.samples.comments.length === preview1.samples.comments.length &&

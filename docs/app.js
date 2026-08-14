@@ -700,13 +700,32 @@
   // own row list, reused here so the category names and detail lines in this
   // table are read from the same place the checklist itself was, not typed
   // out a second time where they could drift.
-  function buildDigestPreviewHtml(rows, decision, preview) {
+  function buildDigestPreviewHtml(rows, decision, preview, photos) {
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
         '<td class="' + (included ? 'yes' : 'no') + '">' + (included ? 'Included' : 'Excluded') + '</td>' +
         '<td>' + esc(r[5]) + '</td></tr>';
     }).join('');
+
+    // Embedded as data URIs rather than linked, so the file is one thing the
+    // reader can keep, move or open offline — a preview that broke as soon as
+    // it left the Downloads folder would be worth little. These are the
+    // resized, re-encoded copies that actually go in the request, not the
+    // originals from the archive, so the file cannot flatter what is sent.
+    const list = Array.isArray(photos) ? photos : [];
+    const photosHtml = !list.length ? '' :
+      '<h2>Photographs</h2>' +
+      '<p class="muted">All ' + list.length + ' of them, exactly as they will be sent: resized to ' +
+      'fit a 1024px edge and re-encoded, which is smaller and softer than the originals still ' +
+      'sitting in your export. Nothing else from any photo is included — no location, no filename.</p>' +
+      '<div class="shots">' + list.map((p, i) =>
+        '<figure><img alt="Photograph ' + (i + 1) + '" src="data:' +
+        esc(p.mime || 'image/jpeg') + ';base64,' + esc(p.data) + '">' +
+        '<figcaption>' + (i + 1) + '. ' + esc(p.takenAt || 'date unknown') +
+        (p.kind && p.kind !== 'post' ? ' · ' + esc(p.kind) : '') +
+        (p.hasCaption ? ' · had a caption' : '') + '</figcaption></figure>').join('') +
+      '</div>';
     return '<!doctype html><html><head><meta charset="utf-8">' +
       '<title>What was sent to the AI model</title><style>' +
       'body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;' +
@@ -715,6 +734,11 @@
       'table{border-collapse:collapse;width:100%;margin:1rem 0}' +
       'th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid #e7dfec;font-size:.92rem}' +
       'td.yes{color:#2f7d5b;font-weight:600}td.no{color:#6b6076}' +
+      '.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem;' +
+      'margin:1rem 0}' +
+      '.shots figure{margin:0}' +
+      '.shots img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid #e7dfec}' +
+      '.shots figcaption{font-size:.78rem;color:#6b6076;margin-top:.3rem}' +
       'pre{background:#fff;border:1px solid #e7dfec;border-radius:10px;padding:1rem;' +
       'overflow-x:auto;font-size:.82rem;white-space:pre-wrap;word-break:break-word}' +
       '.muted{color:#6b6076;font-size:.9rem}' +
@@ -724,6 +748,7 @@
       '. This file was written directly to your device and was never uploaded anywhere.</p>' +
       '<table><thead><tr><th>Category</th><th>Status</th><th>Detail</th></tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table>' +
+      photosHtml +
       '<h2>Full digest</h2>' +
       '<p class="muted">The exact object sent alongside your photos, if any were included above.</p>' +
       '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
@@ -743,7 +768,13 @@
   //   null         — Escape, or the dialog closed some other way. Abandon.
   const REVIEW_BACK = 'review:back';
 
-  function askReview(digest, imageCount) {
+  // `getImages` is a lazy extractor, not the images themselves. Decoding and
+  // re-encoding a dozen photographs is the slowest thing this app does, and it
+  // is deliberately not done before the review — a reader who unticks photos or
+  // presses Back must not have paid for them. So the download button is what
+  // triggers it, on the one path where the reader has actually asked to see
+  // them, and the result is cached so the real send does not decode twice.
+  function askReview(digest, imageCount, getImages) {
     const dialog = $('#review-dialog');
     const list = $('#review-list');
 
@@ -896,14 +927,40 @@
       // and applyReviewDecision mutates in place. Nothing here ever leaves
       // the device; it is the same object Send would build, written to a
       // file instead of a request body.
-      const download = () => {
+      let downloading = false;
+      const download = async event => {
+        // Guarded because the photo pass takes seconds and the button stays
+        // live throughout: a second click would decode the same archive again
+        // and hand the reader two copies of the file.
+        if (downloading) return;
+        const button = event.currentTarget;
+        const label = button.textContent;
         const decision = currentDecision();
         const preview = applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision);
         if (!decision.includeImages) {
           preview.coverage.images.included = false;
           preview.coverage.images.attached = 0;
         }
-        const html = buildDigestPreviewHtml(rows, decision, preview);
+
+        // The photographs, but only when they are actually going to be sent —
+        // a file describing what leaves the device should not contain pictures
+        // that do not. Read through the same extractor the request itself
+        // uses, so what the reader opens is the resized, re-encoded image that
+        // will reach the model rather than the untouched original.
+        let photos = [];
+        if (decision.includeImages && imageCount && typeof getImages === 'function') {
+          downloading = true;
+          try {
+            photos = await getImages((done, total) =>
+              { button.textContent = 'Preparing photo ' + done + ' of ' + total + '…'; });
+          } catch (error) {
+            photos = [];
+          }
+          downloading = false;
+          button.textContent = label;
+        }
+
+        const html = buildDigestPreviewHtml(rows, decision, preview, photos);
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -956,6 +1013,14 @@
     let decision = null;
     let signals;
     let chosenImages = [];
+    // Set by whichever caller decodes the photographs first — the review's
+    // download button, or the send itself. See getExtractedImages.
+    let extractedImages = null;
+    const getExtractedImages = async (forSignals, forChosen, onProgress) => {
+      if (extractedImages) return extractedImages;
+      extractedImages = await Images.extract(forSignals, forChosen, onProgress || function () {});
+      return extractedImages;
+    };
     try {
       // Read everything the export has, unconditionally. The choice of what
       // to send used to gate this step, before the reader had seen any of
@@ -997,7 +1062,14 @@
           imageCount: chosenImages.length, depth: DEPTH,
         });
 
-        decision = await askReview(digest, chosenImages.length);
+        // Decode once at most, whoever asks first. The review's download
+        // button may want the photographs before Send does; if it took them,
+        // the extraction below reuses that result rather than putting the
+        // reader through the slowest step in the app a second time. Reset on
+        // each pass of the loop, because going Back can change the selection.
+        extractedImages = null;
+        decision = await askReview(digest, chosenImages.length, onProgress =>
+          getExtractedImages(signals, chosenImages, onProgress));
         if (decision !== REVIEW_BACK) break;
       }
     } catch (error) {
@@ -1020,7 +1092,7 @@
         // as a stall at the end. Only reached once the reader has agreed to
         // send photos at all, so declining them upstream skips this outright
         // rather than doing the work and then discarding it.
-        images = await Images.extract(signals, chosenImages, (done, total) => {
+        images = await getExtractedImages(signals, chosenImages, (done, total) => {
           setProgress(80 + Math.round((done / Math.max(1, total)) * 15),
             'Preparing image ' + done + ' of ' + total + '…');
         });

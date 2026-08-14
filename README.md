@@ -717,6 +717,23 @@ shows, and the full digest below it in a `<pre>` block for anyone who wants the 
 halves are read from the same `rows` array `askReview()` builds the checklist from, so the table's
 copy cannot drift from the checklist's.
 
+**The photographs ride along in it too**, embedded as `data:` URIs, so the file is the whole of what
+leaves the device rather than the text half of it. Three things make that honest rather than
+decorative. They are the **resized, re-encoded copies** the request actually carries — read through
+the same `Images.extract` the send uses, so what the reader opens cannot flatter what is sent, and the
+file says plainly that these are softer than the originals still in the export. They are **embedded,
+not linked**, so the file survives being moved out of the Downloads folder. And unticking Photos
+removes them from the file as well as from the table, because a preview of "what gets sent" that still
+showed the pictures would be describing a request nobody is making.
+
+Decoding is what makes this awkward, and the awkwardness is why it is wired the way it is: it is the
+slowest thing the app does, and it is deliberately deferred until *after* the review so that unticking
+Photos or pressing Back costs nothing. So the download button is the trigger — the one path where the
+reader has actually asked — and `getExtractedImages` caches the result, so a reader who previews and
+then sends does not sit through the same work twice. A reader who never clicks pays nothing, exactly
+as before. On the synthetic fixture the file is 91KB; with real photographs at a 1024px edge expect a
+few megabytes, which is why this is a download rather than a panel in the dialog.
+
 The file is the same object the checkboxes describe, not a second, separately-written description of
 it that could quietly drift from the first. `applyReviewDecision()` in `docs/app.js` is the one
 function that redacts a digest according to a set of ticked boxes, and it is shared by both callers:
@@ -1366,7 +1383,7 @@ npm test           # 483 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 692 checks: drives the real UI in Chromium against a
+npm run test:ui    # 698 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
