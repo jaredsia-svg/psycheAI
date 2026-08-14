@@ -181,7 +181,7 @@
     thrive: 'Where you would thrive',
     holdBack: 'What could hold you back',
 
-    activity: 'Your Instagram behaviour',
+    activity: 'Your digital footprint',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',

@@ -810,7 +810,7 @@ on their own terms, not just being told which ones they got. The caveat does one
 beyond the usual "this is popular, not validated" hedge: say plainly if the Enneagram read and the
 MBTI read seem to pull in different directions, rather than quietly smoothing the disagreement over.
 
-**Instagram behaviour**, which is the part of the export nobody reads themselves: what they post and
+**Your digital footprint**, which is the part of the export nobody reads themselves: what they post and
 in what mix, when they reach for the app, how their use changed month by month, and what they take
 in. It used to run to six facets and a list of hedged behavioural implications; the shape-of-attention
 facet and the implications list were trimmed for being the two subsections that told a reader the
@@ -1195,7 +1195,7 @@ npm test           # 428 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 670 checks: drives the real UI in Chromium against a
+npm run test:ui    # 669 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

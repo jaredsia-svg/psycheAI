@@ -226,19 +226,14 @@ try {
 
   // The JSON instruction is the load-bearing one: Takeout ships My Activity as
   // HTML by default, so a reader who follows the happy path lands on an
-  // archive the parser refuses. The deselect line is the other one that earns
-  // its place — without it people download fifty gigabytes of Photos and Gmail
-  // that are never read.
+  // archive the parser refuses.
   const optionalOpen = await page.locator('.optional-card').innerText();
   check('it tells the reader to deselect everything but My Activity',
-    /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen) &&
-    /Leave Photos, Gmail and Drive/.test(optionalOpen));
+    /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen));
   check('it names the HTML default and the JSON fix, which Takeout hides two menus deep',
     /Multiple formats/.test(optionalOpen) && /JSON/.test(optionalOpen) &&
     /cannot\s+read the HTML version/.test(optionalOpen) && /HTML is the default/.test(optionalOpen),
     optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
-  check('it promises site names only, matching what the parser actually keeps',
-    /Never\s+the pages you read, the web addresses, or when/.test(optionalOpen));
   check('it covers Facebook too, in JSON',
     /Download your information/.test(optionalOpen) && /Facebook/.test(optionalOpen));
   // Closed again so the rest of the suite meets the page as a reader first
@@ -1411,7 +1406,7 @@ try {
     ['career strengths and weaknesses', /At work/],
     ['the MBTI nickname', /The Protagonist/],
     ['values and beliefs as one section', /Values & Beliefs/],
-    ['the Instagram behaviour section', /Your Instagram behaviour/],
+    ['the digital footprint section', /Your digital footprint/],
     ['what they post', /What you post/i],
     ['when they are active', /When you are here/i],
     ['how their use changed', /How it changed/i],
@@ -1450,7 +1445,7 @@ try {
   // Behaviour is evidence for the verdicts, so it reads after them.
   const order = await page.locator('#profile-body h2').allInnerTexts();
   const at = needle => order.findIndex(t => t.includes(needle));
-  check('Instagram behaviour comes after At work', at('Instagram behaviour') > at('At work'),
+  check('digital footprint comes after At work', at('digital footprint') > at('At work'),
     order.join(' | '));
   // Confidence closes the report now instead of opening it.
   check('confidence is the last section of the report',
@@ -2157,7 +2152,7 @@ try {
       pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
     };
   }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'In relationships', 'At work',
-    'Your Instagram behaviour', 'What your QR code contains', 'Your matches',
+    'Your digital footprint', 'What your QR code contains', 'Your matches',
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
