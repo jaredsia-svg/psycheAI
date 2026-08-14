@@ -485,7 +485,7 @@ topics. **Sampled** — the text:
 | Accounts you follow | 1,000, spread evenly across the list rather than taken from the head |
 | Accounts you like / save most | 240 / 120 |
 | Your own DMs | 1,000 — parsed and counted unconditionally now; excluded from what is sent only if you untick them in the pre-send review, after you have seen the real count |
-| Searches | last 160 |
+| Searches | top 160 **by how often each was repeated**, with the count — not the last 160 |
 
 Google Takeout, when added — every one of these is a cap on an **aggregate**, never on a raw list:
 
@@ -525,6 +525,23 @@ together add about $0.043 — roughly 2% of realistic total cost.
 Captions, comments and messages share one sampler, and it now drops anything under 4 characters
 before the caps above are even applied — "ok", "lol", "brb" carry nothing a model can read anything
 into, and every slot one of those occupies is a slot a real sentence does not get.
+
+**Searches are a histogram now, and that was a real bug.** Instagram's searches were a plain
+`slice(-160)` while Google's went through `topKeys` — the two sources got different treatment for
+identical data, and the Instagram side was the wrong one. Measured on a realistic history (740
+searches: a handful of terms repeated, a long one-off tail, and forty instances of "ok"), the tail
+spent **40 of its 160 slots on the literal string "ok"** — it never passed through `sampleTexts`, so
+it never met the 4-character floor everything else does — and **39 more on duplicates**, leaving
+roughly half the budget carrying no information. Worse, the most-repeated term in the history was
+**absent entirely**, because it did not happen to fall inside the last 160 records. A repeated
+search is precisely the signal; recency alone throws it away. It is `topKeys(countTerms(...), 160, 4)`
+now, matching what Google's searches always did, and the model is told the counts are there.
+
+The 4-character floor on `topKeys` is **opt-in per call site**, which is the part worth not getting
+wrong: it is right for search terms and actively harmful for names. NPR, BBC and A24 are real
+channels and `x.com` is a real domain, so a blanket floor inside `topKeys` would delete them
+silently. Fault-injected in both directions — floor ignored, and floor applied to everything — and
+each direction fails its own check.
 
 A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
 inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
@@ -1188,7 +1205,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 428 checks: synthesises a real ZIP export and runs
+npm test           # 439 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

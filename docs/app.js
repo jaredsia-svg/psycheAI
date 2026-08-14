@@ -734,7 +734,7 @@
         ' ad interests Instagram has already guessed about you.'],
       ['review-searches', 'includeSearches', searchesCount,
         'Searches', 'Searches — none found',
-        searchesCount + ' recent searches.'],
+        searchesCount + ' search terms, with how often you repeated each.'],
       ['review-dms', 'includeMessages', dmCount,
         'Direct messages', 'Direct messages — none found',
         dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +

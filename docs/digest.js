@@ -197,11 +197,38 @@
     return out;
   }
 
-  function topKeys(map, limit) {
+  // `minLength` is opt-in rather than the default, and the distinction is the
+  // whole point: a *search term* under four characters is noise the same way a
+  // one-word caption is — "ok", "yt", "fb" — and it outranks real interests
+  // because junk is what gets typed most often. A *name* under four characters
+  // is not: NPR, BBC and A24 are real channels, and x.com is a real domain.
+  // So the floor is passed at the call site by whoever knows which they have.
+  function topKeys(map, limit, minLength) {
+    const floor = minLength || 0;
     return Array.from(map.entries())
+      .filter(([name]) => String(name).length >= floor)
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
       .map(([name, count]) => ({ name, count }));
+  }
+
+  // Counts repeats into a histogram, trimming and dropping blanks on the way.
+  // Instagram hands searches over as a flat chronological list where Google
+  // hands them over pre-counted, so this is what puts the two on equal footing.
+  //
+  // The floor is applied here rather than only at `topKeys`, so that the map's
+  // own size is a usable denominator: filtering later would report "160 of 403"
+  // while 403 still counted the junk that could never have been shown, which
+  // makes the coverage ratio the model calibrates against quietly wrong.
+  function countTerms(items, minLength) {
+    const floor = minLength || 0;
+    const map = new Map();
+    for (const item of items) {
+      const term = String(item == null ? '' : item).replace(/\s+/g, ' ').trim();
+      if (term.length < floor || !term) continue;
+      map.set(term, (map.get(term) || 0) + 1);
+    }
+    return map;
   }
 
   // ---------- activity shape ----------
@@ -277,6 +304,13 @@
     const depth = depthOf(opts.depth);
     const LIMITS = depth.limits;
 
+    // Counted once, read twice: the histogram itself and, below, how many
+    // distinct terms there were to begin with. That second number is the point
+    // of reporting coverage here at all — a top-160 says nothing about whether
+    // the tail behind it was 20 terms or 20,000, where the old chronological
+    // tail at least implied its own denominator.
+    const searchTerms = countTerms(signals.searches, 4);
+
     const digest = {
       schema: 'psycheai-digest/1',
       generatedAt: new Date().toISOString(),
@@ -311,7 +345,15 @@
       samples: {
         captions: sampleTexts(signals.captions, LIMITS.captions, LIMITS.textChars),
         comments: sampleTexts(signals.comments, LIMITS.comments, 240),
-        searches: signals.searches.slice(-LIMITS.searches),
+        // Frequency-ranked, not the last N. A plain tail spent its slots on
+        // whatever happened to be typed most recently: measured on a realistic
+        // history it wasted a quarter of them on the literal string "ok" —
+        // which bypassed the 4-character floor every other text list goes
+        // through sampleTexts to get — plus a quarter more on duplicates, and
+        // dropped the single most-repeated interest entirely because it fell
+        // outside the last 160 records. A repeated search *is* the signal, and
+        // this is the same treatment Google's searches already had.
+        searches: topKeys(searchTerms, LIMITS.searches, 4),
       },
       // Instagram's own inference about this person — curated, and much less
       // noisy than anything derived from raw follows.
@@ -355,6 +397,10 @@
           captions: { shown: 0, available: signals.captions.length },
           comments: { shown: 0, available: signals.comments.length },
           following: { shown: 0, available: signals.following.length },
+          // `available` is distinct terms, not raw searches — the list is a
+          // histogram, so the honest denominator is how many different things
+          // were searched for, not how many times.
+          searches: { shown: 0, available: searchTerms.size },
         },
       },
     };
@@ -362,6 +408,7 @@
     digest.coverage.sampling.captions.shown = digest.samples.captions.length;
     digest.coverage.sampling.comments.shown = digest.samples.comments.length;
     digest.coverage.sampling.following.shown = digest.following.length;
+    digest.coverage.sampling.searches.shown = digest.samples.searches.length;
 
     if (opts.includeMessages && messages.total) {
       digest.directMessages = {
@@ -401,8 +448,8 @@
         counts: g.counts,
         topChannels: topKeys(g.channels, LIMITS.youtubeChannels),
         videoTitleSample: sampleTexts(g.videoTitles, LIMITS.youtubeTitles, 120),
-        topYoutubeSearches: topKeys(g.youtubeSearchTerms, LIMITS.youtubeSearches),
-        topGoogleSearches: topKeys(g.googleSearchTerms, LIMITS.googleSearchTerms),
+        topYoutubeSearches: topKeys(g.youtubeSearchTerms, LIMITS.youtubeSearches, 4),
+        topGoogleSearches: topKeys(g.googleSearchTerms, LIMITS.googleSearchTerms, 4),
         googleSearchSample: sampleTexts(g.googleSearches, LIMITS.googleSearches, 120),
         // Hostnames, never URLs — the path and query never leave supplement.js.
         topDomains: topKeys(g.domains, LIMITS.chromeDomains),
@@ -430,7 +477,7 @@
         postSample: sampleTexts(f.posts, LIMITS.fbPosts, 240),
         commentSample: sampleTexts(f.comments, LIMITS.fbComments, 240),
         friends: sampleEvenly(f.friends, LIMITS.fbFriends),
-        topSearches: topKeys(f.searchTerms, LIMITS.fbSearches),
+        topSearches: topKeys(f.searchTerms, LIMITS.fbSearches, 4),
         ownMessageSample: sampleTexts(f.ownMessages, LIMITS.fbMessages, 240),
       };
       digest.coverage.sampling.facebookPosts = {
@@ -521,6 +568,7 @@
     digest.coverage.sampling.captions.shown = digest.samples.captions.length;
     digest.coverage.sampling.comments.shown = digest.samples.comments.length;
     digest.coverage.sampling.following.shown = digest.following.length;
+    digest.coverage.sampling.searches.shown = digest.samples.searches.length;
     digest.coverage.digestChars = encoded.length;
 
     return digest;
@@ -589,6 +637,10 @@
 
   function omitSearches(digest) {
     digest.samples.searches = [];
+    // The counter goes with the list, exactly as the supplement omitters do:
+    // leaving "shown: 160" behind next to an empty array would tell the model
+    // it is looking at a sample when it is looking at a redaction.
+    if (digest.coverage && digest.coverage.sampling) delete digest.coverage.sampling.searches;
     return digest;
   }
 

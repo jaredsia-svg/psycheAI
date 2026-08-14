@@ -1040,6 +1040,89 @@ check('omitSearches leaves the rest of the digest untouched',
   searchesRedacted.samples.captions.length === digest.samples.captions.length &&
   searchesRedacted.instagramTopics.length === digest.instagramTopics.length);
 
+// ---------- searches are a histogram, not the last N ----------
+//
+// This was a real bug, and the shape of the fixture is what proves it: the
+// most-repeated term is deliberately buried at the *start* of the history and
+// never repeated near the end, so a `slice(-N)` tail cannot see it at all. The
+// junk and the duplicates are the other two-thirds of what the tail wasted its
+// slots on. Measured against the old code: 40 of 160 slots went to "ok", 39
+// more to duplicates, and the top interest was absent.
+const searchHistory = [];
+for (let i = 0; i < 30; i++) searchHistory.push('marathon training plan');   // the signal, early
+for (let i = 0; i < 400; i++) searchHistory.push('one off query ' + i);      // enough to fill the cap
+for (let i = 0; i < 40; i++) searchHistory.push('ok');                       // junk, and recent
+for (let i = 0; i < 25; i++) searchHistory.push('sourdough starter');        // a second real repeat
+const searchDigest = Digest.build({ ...signals, searches: searchHistory }, { includeMessages: false });
+const searchSample = searchDigest.samples.searches;
+
+// Read through accessors that tolerate the old plain-string shape, so that
+// reverting the fix makes each of these fail on its own terms with a readable
+// diagnostic, rather than throwing on the first `.name` and taking the rest of
+// the suite down with it.
+const termOf = s => (s && typeof s === 'object' ? s.name : String(s));
+const countOf = s => (s && typeof s === 'object' ? s.count : undefined);
+
+check('searches carry how often each was repeated, not just the text',
+  searchSample.every(s => s && typeof s.name === 'string' && typeof s.count === 'number'),
+  JSON.stringify(searchSample[0]));
+check('the most-repeated search ranks first even though it is the oldest',
+  termOf(searchSample[0]) === 'marathon training plan' && countOf(searchSample[0]) === 30,
+  JSON.stringify(searchSample.slice(0, 2)));
+check('a second real repeat ranks above the one-off tail',
+  termOf(searchSample[1]) === 'sourdough starter' && countOf(searchSample[1]) === 25,
+  JSON.stringify(searchSample[1]));
+check('search terms under 4 characters are dropped, as they are everywhere else',
+  !searchSample.some(s => termOf(s).length < 4),
+  JSON.stringify(searchSample.map(termOf).filter(t => t.length < 4).slice(0, 6)));
+check('every slot is a distinct term, so repeats cost one slot rather than many',
+  new Set(searchSample.map(termOf)).size === searchSample.length,
+  searchSample.length + ' slots, ' + new Set(searchSample.map(termOf)).size + ' distinct');
+check('the cap still binds', searchSample.length === Digest.LIMITS.searches,
+  searchSample.length + ' vs ' + Digest.LIMITS.searches);
+// A top-N hides its own denominator in a way a chronological tail did not, so
+// the model is told how deep the tail behind it went.
+check('searches report their coverage, counted in distinct terms not raw searches',
+  searchDigest.coverage.sampling.searches.shown === searchSample.length &&
+  searchDigest.coverage.sampling.searches.available === 402 &&   // 400 one-offs + 2 repeats; "ok" excluded
+
+  searchDigest.coverage.sampling.searches.available < searchHistory.length,
+  JSON.stringify(searchDigest.coverage.sampling.searches) + ' of ' + searchHistory.length + ' raw');
+check('omitSearches drops the counter with the list, not just the list',
+  Digest.omitSearches(Digest.build({ ...signals, searches: searchHistory },
+    { includeMessages: false })).coverage.sampling.searches === undefined);
+
+// The floor is opt-in for a reason: it is right for search terms and wrong for
+// names. NPR and A24 are real channels, x.com is a real domain, and a blanket
+// 4-character rule inside topKeys would have silently deleted them.
+const shortNameDigest = Digest.build({ ...signals, supplements: { google: {
+  span: {}, counts: { watched: 3, youtubeSearches: 0, googleSearches: 0, browsed: 2, prompts: 0 },
+  channels: new Map([['NPR', 40], ['A24', 30], ['Some Longer Channel', 5]]),
+  videoTitles: [], youtubeSearchTerms: new Map(), googleSearchTerms: new Map(),
+  googleSearches: [], domains: new Map([['x.com', 90], ['bbc.co.uk', 20]]), geminiPrompts: [],
+} } }, { includeMessages: false });
+check('short channel names survive, because the floor is for terms not names',
+  shortNameDigest.google.topChannels.map(c => c.name).join(',') === 'NPR,A24,Some Longer Channel',
+  JSON.stringify(shortNameDigest.google.topChannels.map(c => c.name)));
+check('short domain names survive too',
+  shortNameDigest.google.topDomains.map(d => d.name).join(',') === 'x.com,bbc.co.uk',
+  JSON.stringify(shortNameDigest.google.topDomains.map(d => d.name)));
+
+// The same floor now applies to the supplements' own search histograms, which
+// had the identical hole — a Google export's top term came back as "ok".
+const junkTermDigest = Digest.build({ ...signals, supplements: { google: {
+  span: {}, counts: { watched: 0, youtubeSearches: 50, googleSearches: 50, browsed: 0, prompts: 0 },
+  channels: new Map(), videoTitles: [],
+  youtubeSearchTerms: new Map([['ok', 50], ['trail running shoes', 5]]),
+  googleSearchTerms: new Map([['fb', 90], ['how to fix a bike chain', 4]]),
+  googleSearches: [], domains: new Map(), geminiPrompts: [],
+} } }, { includeMessages: false });
+check('a Google search histogram no longer returns junk as its top term',
+  junkTermDigest.google.topGoogleSearches[0].name === 'how to fix a bike chain' &&
+  junkTermDigest.google.topYoutubeSearches[0].name === 'trail running shoes',
+  JSON.stringify([junkTermDigest.google.topGoogleSearches[0],
+    junkTermDigest.google.topYoutubeSearches[0]]));
+
 // ---------- how images reach the model ----------
 
 const withPhotos = Digest.build(withImages, {
