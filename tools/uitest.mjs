@@ -211,7 +211,7 @@ try {
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
   check('its summary still says what it is and that the step is skippable',
-    /Optional: add Google or Facebook data/.test(optionalCard) &&
+    /Optional: also add Google or Facebook data/.test(optionalCard) &&
     /Skipping takes one click/.test(optionalCard));
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
@@ -251,19 +251,27 @@ try {
   // hero buttons — so put the page back where it was before touching this.
   await page.evaluate(() => window.scrollTo(0, 0));
 
-  // It has to sit after the Instagram instructions and before the dropzone:
-  // Instagram is required and these are not, and a reader who stops at the
-  // upload box has still seen everything they need.
-  check('the optional card sits between the Instagram steps and the upload box',
+  // It lives *inside* the Instagram instructions card, after the numbered
+  // steps — the two are one job, and a second card of the same weight read as
+  // a second required step. Held as containment rather than as document order,
+  // because order alone was also true when it was a separate card sitting
+  // next to this one.
+  check('the optional sources live inside the Instagram instructions card, after its steps',
     await page.evaluate(() => {
-      const cards = [...document.querySelectorAll('#view-welcome .card')];
-      const igCard = cards.find(c => /How do I get my Instagram data/.test(c.textContent));
+      const igCard = [...document.querySelectorAll('#view-welcome .card')]
+        .find(c => /How do I get my Instagram data/.test(c.textContent));
       const optional = document.querySelector('.optional-card');
-      const upload = document.querySelector('#view-welcome .upload-card');
-      if (!igCard || !optional || !upload) return false;
-      return Boolean(igCard.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(optional.compareDocumentPosition(upload) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const steps = igCard && igCard.querySelector('ol');
+      if (!igCard || !optional || !steps) return false;
+      return igCard.contains(optional) &&
+        Boolean(steps.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
+  check('it is not a card of its own any more, so it reads as part of that one',
+    await page.evaluate(() => !document.querySelector('.optional-card').classList.contains('card')));
+  // One card between the Instagram steps and the upload box, not two.
+  check('the welcome page did not gain a second instructions card',
+    (await page.locator('#view-welcome > .card.help').count()) === 1,
+    String(await page.locator('#view-welcome > .card.help').count()));
 
   // Nothing is asked for before the upload — the export carries the name.
   check('there is no name field to fill in', (await page.locator('#display-name').count()) === 0);
@@ -501,11 +509,27 @@ try {
   // and the part that goes stale when Meta relabels something. Held as an
   // exact list, in order, because a marked-up phrase that no longer matches
   // what the app says is worse than one that was never marked at all.
+  // Scoped to the card's own numbered steps rather than the whole card: the
+  // optional-sources disclosure now lives inside it and carries its own
+  // labels, which are checked separately below. Left unscoped this asserted
+  // the union of both lists, and — because a closed <details> yields empty
+  // strings — did so against a row of blanks.
   check('the how-to underlines every label the reader has to find, and only those',
-    (await page.locator('.help-card .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
+    (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
     ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
       'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
-    (await page.locator('.help-card .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
+    (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
+  // The optional sources get the same treatment for the same reason — these
+  // are the words to hunt for in Google's and Facebook's menus, and they go
+  // stale the same way. textContent, since the disclosure is closed here.
+  check('the optional sources underline their menu labels too',
+    (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
+      .map(n => n.textContent.trim()).join(' | '))) ===
+    ['takeout.google.com', 'Deselect all', 'My Activity', 'Multiple formats', 'JSON',
+      'Settings & privacy', 'Accounts Centre', 'Your information and permissions',
+      'Download your information', 'All time', 'JSON'].join(' | '),
+    await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
+      .map(n => n.textContent.trim()).join(' | ')));
   check('the underline is not the one links use, since none of these are links',
     await page.evaluate(() => {
       const probe = document.createElement('a');

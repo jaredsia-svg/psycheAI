@@ -161,57 +161,60 @@
       <li>Instagram emails you a download link, usually within a few hours. Download it to your
           device and upload it below.</li>
     </ol>
+
+    <!-- Inside the Instagram card rather than beside it, because the two are
+         one job — "get your data" — and a second card of the same weight read
+         as a second required step. Secondary on purpose: Instagram is needed
+         and this is not, so it sits after those steps, collapsed, and a reader
+         who stops at the numbered list above has everything they need. The
+         offer to add these comes later anyway, once their Instagram export has
+         already been read.
+
+         The JSON line is the load-bearing one. Takeout ships My Activity as
+         HTML unless you go into "Multiple formats" and change it, so the
+         default path produces an archive PsycheAI refuses — and the deselect
+         line is what stops somebody downloading fifty gigabytes of Photos and
+         Gmail they were never going to be asked for.
+
+         A native <details> rather than the JS disclosure the bonus section
+         uses: that one keeps its text out of the DOM because it is a consent
+         gate, where the only thing worth hiding here is the length. <details>
+         gets keyboard support, Find-in-page and a working control with no
+         script at all. -->
+    <details class="optional-card">
+      <summary>
+        <span class="optional-title">Optional: also add Google or Facebook data</span>
+        <span class="muted">After your Instagram file is read you will be offered the chance to add
+          either of these. Skipping takes one click — open this only if you want the instructions.</span>
+      </summary>
+
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Go to <span class="ui-label">takeout.google.com</span> and press
+            <span class="ui-label">Deselect all</span>.</li>
+        <li>Tick <span class="ui-label">My Activity</span> only. Leave Photos, Gmail and Drive
+            unticked — they are never read, and they are what makes an export enormous.</li>
+        <li>Still in the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records from HTML to <span class="ui-label">JSON</span>. PsycheAI cannot
+            read the HTML version, and HTML is the default.</li>
+        <li>Export once, as a .zip. Google emails a link, usually within minutes.</li>
+      </ol>
+      <p class="fineprint">What gets read: the channels you watch most on YouTube, your most repeated
+        searches, the names of sites you visit most in Chrome, and what you have asked Gemini. Never
+        the pages you read, the web addresses, or when.</p>
+
+      <h3>Facebook</h3>
+      <ol>
+        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+            <span class="ui-label">Accounts Centre</span> →
+            <span class="ui-label">Your information and permissions</span>.</li>
+        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+            <span class="ui-label">JSON</span>.</li>
+        <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
+      </ol>
+    </details>
   </div>
-
-  <!-- Secondary on purpose: Instagram is required and this is not. It sits
-       below the Instagram instructions because a reader who stops here has
-       everything they need, and the offer to add these comes later anyway,
-       after their Instagram export has already been read.
-
-       The JSON line is the load-bearing one. Takeout ships My Activity as
-       HTML unless you go into "Multiple formats" and change it, so the
-       default path produces an archive PsycheAI refuses — and the deselect
-       line is what stops somebody downloading fifty gigabytes of Photos and
-       Gmail they were never going to be asked for. -->
-  <!-- Collapsed by default, and a native <details> rather than the JS
-       disclosure the bonus section uses. That one keeps its text out of the
-       DOM until asked for, because it is a consent gate; this is a page of
-       instructions for a step most readers will skip, so the only thing worth
-       hiding is the length. <details> gets keyboard support, Find-in-page and
-       a working control with no script at all. -->
-  <details class="card help optional-card">
-    <summary>
-      <span class="optional-title">Optional: add Google or Facebook data</span>
-      <span class="muted">After your Instagram file is read you will be offered the chance to add
-        either of these. Skipping takes one click — open this only if you want the instructions.</span>
-    </summary>
-
-    <h3>Google Takeout</h3>
-    <ol>
-      <li>Go to <span class="ui-label">takeout.google.com</span> and press
-          <span class="ui-label">Deselect all</span>.</li>
-      <li>Tick <span class="ui-label">My Activity</span> only. Leave Photos, Gmail and Drive
-          unticked — they are never read, and they are what makes an export enormous.</li>
-      <li>Still in the My Activity row, open <span class="ui-label">Multiple formats</span> and
-          change Activity records from HTML to <span class="ui-label">JSON</span>. PsycheAI cannot
-          read the HTML version, and HTML is the default.</li>
-      <li>Export once, as a .zip. Google emails a link, usually within minutes.</li>
-    </ol>
-    <p class="fineprint">What gets read: the channels you watch most on YouTube, your most repeated
-      searches, the names of sites you visit most in Chrome, and what you have asked Gemini. Never
-      the pages you read, the web addresses, or when.</p>
-
-    <h3>Facebook</h3>
-    <ol>
-      <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
-          <span class="ui-label">Accounts Centre</span> →
-          <span class="ui-label">Your information and permissions</span>.</li>
-      <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
-      <li>Set Date Range to <span class="ui-label">All time</span> and Format to
-          <span class="ui-label">JSON</span>.</li>
-      <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
-    </ol>
-  </details>
 
   <div class="card upload-card">
     <h2>Start here</h2>
