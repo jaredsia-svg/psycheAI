@@ -883,7 +883,7 @@
     // band keeps its height, so the space below simply stays empty; the
     // provenance line and the first section are positioned off `bandHeight`
     // rather than off this block, and do not move up to fill it.
-    const title = (card.name || 'Your') + '’s personality analysis';
+    const title = (card.name || 'Your') + '’s psyche';
     const titleStyle = { size: 27, bold: true, color: WHITE };
     let y = 96;
     for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
@@ -1121,7 +1121,7 @@
 
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
 
-    return serialise(doc, (who.name || 'Your') + '\u2019s personality analysis',
+    return serialise(doc, (who.name || 'Your') + '\u2019s psyche',
       'Personality analysis from an Instagram data export');
   }
 

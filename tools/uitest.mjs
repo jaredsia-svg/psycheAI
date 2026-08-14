@@ -445,7 +445,7 @@ try {
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your IG data | PsycheAI reads it | Learn about yourself | Test compatibility',
+    'Load your IG data | PsycheAI reads it | Gain insights | Test compatibility',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
   // reference is a claim about the page, so it is checked as one: the card it
@@ -725,7 +725,7 @@ try {
     buttonLight.start >= 4.5 && buttonLight.end >= 4.25, JSON.stringify(buttonLight));
 
   check('step three promises insight and states the privacy',
-    /personal life, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
+    /personality, relationships, and career/.test(await page.locator('.step-card').nth(2).innerText()) &&
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
@@ -1097,6 +1097,23 @@ try {
     const back = getComputedStyle(document.querySelector('#supplement-back'));
     return /gradient/.test(skip.backgroundImage) && !/gradient/.test(back.backgroundImage);
   }));
+  // Back used to be the 2px accent-purple outline .btn-outline draws — the
+  // same weight as a real choice between two options, which a single "go back"
+  // action is not. It is .btn-ghost now: a plain hairline border in the same
+  // colour every card and divider on the page uses, matching the review
+  // dialog's own Back button exactly rather than each dialog inventing its own
+  // idea of what a back button looks like.
+  check('Back has the review dialog\'s light hairline border, not the accent outline', await page.evaluate(() => {
+    const supplementBack = getComputedStyle(document.querySelector('#supplement-back'));
+    const reviewBack = getComputedStyle(document.querySelector('#review-cancel'));
+    const probe = document.createElement('span');
+    probe.style.borderColor = 'var(--accent)';
+    document.body.appendChild(probe);
+    const accentColour = getComputedStyle(probe).borderColor;
+    probe.remove();
+    return supplementBack.borderColor === reviewBack.borderColor &&
+      supplementBack.borderColor !== accentColour;
+  }));
 
   // The instructions, repeated here because this is where they are needed and
   // the welcome page is behind a modal by now. Read with textContent for the
@@ -1368,6 +1385,9 @@ try {
   check('profile is titled with the name from the export',
     (await page.locator('#profile-title').innerText()).includes('Aleç'),
     await page.locator('#profile-title').innerText());
+  check('the title reads "[name]\'s psyche", not "personality analysis"',
+    /Aleç.s psyche$/.test((await page.locator('#profile-title').innerText()).trim()),
+    await page.locator('#profile-title').innerText());
   await shot('2-profile');
 
   // The waiting screen speaks as the product, not as whichever model is wired
@@ -1402,7 +1422,7 @@ try {
     /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
 
   check('the personality and compatibility links appear once there is a profile',
-    (await visibleNav()).join('|') === 'My Personality|My Compatibility|FAQ',
+    (await visibleNav()).join('|') === 'My Psyche|My Compatibility|FAQ',
     (await visibleNav()).join('|'));
 
   // ---- the nav on a phone ----
@@ -1871,7 +1891,7 @@ try {
     /\/BaseFont \/Helvetica\b/.test(pdfText) && /\/BaseFont \/Helvetica-Bold/.test(pdfText));
   check('accented names survive into the PDF', /Ale\xe7/.test(pdfText));
   check('the document is titled for the reader',
-    /\/Title \(Ale\xe7.s personality analysis\)/.test(pdfText));
+    /\/Title \(Ale\xe7.s psyche\)/.test(pdfText));
   check('the PDF numbers its pages', /\(Page 2 of \d+\)/.test(pdfText));
 
   // ---- the brand mark ----
@@ -1913,8 +1933,8 @@ try {
   // evidence for it. The title itself still has to be drawn, or "no headline"
   // would also pass with the whole block deleted.
   check('the cover still prints the title',
-    /\(Ale\xe7.s personality analysis\)/.test(streams[0]),
-    (/\(.{0,30}personality analysis\)/.exec(streams[0]) || ['not drawn'])[0]);
+    /\(Ale\xe7.s psyche\)/.test(streams[0]),
+    (/\(.{0,30}psyche\)/.exec(streams[0]) || ['not drawn'])[0]);
   // Read the headline off the card this run actually produced rather than
   // naming a string here, so the check cannot drift away from the fixture.
   const storedHeadline = await page.evaluate(() =>

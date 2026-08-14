@@ -88,10 +88,11 @@ each renderer draws it explicitly and two checks cover it. The first version of 
 with the dot removed entirely — it searched to the end of the page, where any rounded rectangle's
 fill satisfied it. It is now scoped to the mark's own operators.
 
-The nav has been re-measured twice as its labels changed. "My Personality" and "My Compatibility"
-overflowed by 14px at 375 and 32px at 320, and shrinking the links to absorb it would have put them
-under the 11px minimum, so the wordmark came off every phone. Shortening "How it works" to "FAQ"
-gave back more than that cost — re-measured at 412 / 390 / 375 / 360 / 320px the nav sits on one row
+The nav has been re-measured twice as its labels changed. "My Personality" (since shortened to
+"My Psyche") and "My Compatibility" overflowed by 14px at 375 and 32px at 320, and shrinking the
+links to absorb it would have put them under the 11px minimum, so the wordmark came off every phone.
+Shortening "How it works" to "FAQ" gave back more than that cost — re-measured at
+412 / 390 / 375 / 360 / 320px the nav sits on one row
 with no horizontal scroll and nothing under 11.5px — so the wordmark is back, and only a folded
 phone under 320px still loses it. The footer kept saying "how it works" for several turns after
 that rename, which made one destination look like two; a check now reads both labels and requires
@@ -1221,7 +1222,7 @@ npm test           # 439 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 682 checks: drives the real UI in Chromium against a
+npm run test:ui    # 684 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

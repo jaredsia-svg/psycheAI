@@ -1302,7 +1302,7 @@
     const report = profile.report;
 
     const who = profile.card.name || 'Your';
-    $('#profile-title').textContent = who + '’s personality analysis';
+    $('#profile-title').textContent = who + '’s psyche';
 
     // The PDF letterhead. Only ever visible in print, but filled here so the
     // export never depends on anything happening at print time.
