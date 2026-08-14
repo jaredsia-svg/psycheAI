@@ -70,10 +70,12 @@ clear the margin, having first confirmed a version without the shrink logic does
 
 ### The mark
 
-`BRAND_MARK` in `docs/copy.js` is the logo, and it is drawn in **four** places from that one
-definition: the nav's inline SVG, the print letterhead's, the PDF's vector operators, and the QR
-download's label strip via `Path2D`. A UI check compares the shared paths against the `d` attributes
-in `index.html`, so an inline copy cannot drift.
+`BRAND_MARK` in `docs/copy.js` is the logo, and it is drawn in **six** places from that one
+definition: the nav's inline SVG, the welcome hero's watermark, the profile page's own watermark, the
+print letterhead's, the PDF's vector operators, and the QR download's label strip via `Path2D`. A UI
+check compares the shared paths against the `d` attributes in `index.html`, so an inline copy cannot
+drift — extended rather than folded in when the profile page got its own copy, so a mismatch there
+names itself instead of reading as a fault in one of the others.
 
 The supplied artwork is three `<ellipse>` elements — one rotated 60° — plus a filled `<circle>`.
 Each ellipse is written out here as four cubic Béziers, pre-rotated, rather than as arc commands:
@@ -117,6 +119,29 @@ query at click time — not at load, so changing the OS setting takes effect wit
 passes `'auto'` when it is set. It is checked in two browser contexts that differ only in that
 setting, recording the options the handler actually passes: a check on either context alone would
 have passed against the bug.
+
+**The profile page echoes the welcome hero now**, rather than the plain `.page-head` every other
+internal page uses. `.profile-hero` reuses `.hero`'s bleed, rounded foot and two-radial-gradient wash
+outright, and only overrides what has to differ because there is one line of text and one button here
+instead of a headline, a lede and two buttons — reusing `.hero`'s own padding wholesale would leave a
+band far taller than its content needs. `.profile-hero-mark` is a *separate* class and gradient id
+from `.hero-mark`, not a second copy of it: the check holding the mark to one shared definition counts
+every `.hero-mark` node in the document, and a sixth instance under that same class would have
+inflated the count it holds at exactly one rather than being covered by it. The two share their
+position, fade and colour through one selector and diverge only on size and bleed distance, scaled
+down to suit the shorter band.
+
+**Every error that lands back on the welcome page now scrolls to itself.** `show(view)` always calls
+`window.scrollTo(0, 0)`, and five places used to call it in the same breath as flashing a message into
+`#upload-error` — a bad archive, a bad photo, a failed analysis, a shared link arriving without a
+profile, asking to compare before building one. All five landed the reader at the very top of the
+page, with the reason sitting below the hero, the how-it-works row, the insight card and the
+instructions — a reader who had scrolled down to the dropzone to drop a file saw the page snap away
+from what they had just done. `showUploadError()` now runs `show()` and `flash()` as before, then
+`scrollIntoView`s the message itself, so the archive and the reason it failed stay on screen together.
+Checked against a reader's actual position — scrolled to the dropzone before the upload, the same
+place anyone dropping a file would be — rather than from the top, where the check would pass either
+way.
 
 The profile page and the scan page both show this person's own code and offer the same two actions,
 so painting the canvas, copying the link and building the download are each one function bound to
@@ -1222,7 +1247,7 @@ npm test           # 439 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 684 checks: drives the real UI in Chromium against a
+npm run test:ui    # 692 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

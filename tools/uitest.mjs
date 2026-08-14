@@ -1388,6 +1388,73 @@ try {
   check('the title reads "[name]\'s psyche", not "personality analysis"',
     /Aleç.s psyche$/.test((await page.locator('#profile-title').innerText()).trim()),
     await page.locator('#profile-title').innerText());
+
+  // The profile page's own top band, styled to match the welcome hero rather
+  // than the plain .page-head every other internal page gets — same gradient
+  // wash, same watermark mark bled behind the text.
+  check('the profile header shares the hero class, not the plain page-head',
+    await page.evaluate(() => {
+      const head = document.querySelector('#view-profile .profile-hero');
+      return Boolean(head) && head.classList.contains('hero') &&
+        document.querySelectorAll('#view-profile .page-head').length === 0;
+    }));
+  check('it carries the same two-radial-gradient wash the welcome hero uses',
+    await page.evaluate(() => {
+      const head = document.querySelector('#view-profile .profile-hero');
+      if (!head) return false;
+      const bg = getComputedStyle(head).backgroundImage;
+      return (bg.match(/radial-gradient/g) || []).length === 2;
+    }));
+  check('the watermark mark is drawn behind the title, faint and bled to the edge',
+    await page.evaluate(() => {
+      const mark = document.querySelector('#view-profile .profile-hero-mark');
+      if (!mark) return false;
+      const cs = getComputedStyle(mark);
+      return cs.position === 'absolute' && parseFloat(cs.opacity) < 0.3 &&
+        mark.getAttribute('aria-hidden') === 'true';
+    }));
+  // The check above holds regardless of whether the mark's own sizing and
+  // paint rules are missing entirely — position/opacity/aria-hidden all come
+  // from the rule it shares with .hero-mark, so a fault that deletes only
+  // .profile-hero-mark's own block (its right offset, width and gradient
+  // stroke) passes it vacuously. This is the part that actually distinguishes
+  // "styled like the welcome hero" from "present but blank": really bled past
+  // the band's own right edge, sized to something on screen, and actually
+  // painted with the gradient rather than left with no stroke at all.
+  check('the mark bleeds past the band\'s right edge and is stroked with its own gradient',
+    await page.evaluate(() => {
+      const head = document.querySelector('#view-profile .profile-hero');
+      const mark = document.querySelector('#view-profile .profile-hero-mark');
+      if (!head || !mark) return false;
+      const headBox = head.getBoundingClientRect();
+      const markBox = mark.getBoundingClientRect();
+      const cs = getComputedStyle(mark);
+      return markBox.width > 40 &&
+        markBox.right > headBox.right - 40 &&
+        /url\("?#profile-hero-mark-gradient"?\)/.test(cs.stroke);
+    }),
+    await page.evaluate(() => {
+      const mark = document.querySelector('#view-profile .profile-hero-mark');
+      return mark ? JSON.stringify({
+        width: mark.getBoundingClientRect().width, stroke: getComputedStyle(mark).stroke,
+      }) : 'no mark';
+    }));
+  // The same "one shared mark, four places" claim the nav/letterhead/hero
+  // check already holds — extended to the fifth copy rather than folded into
+  // that check's own fetch-and-parse, so a failure here names itself instead
+  // of reading as a mismatch in one of the original three.
+  check('the profile watermark is the same shape as the brand mark everywhere else',
+    await page.evaluate(() => {
+      const paths = [...document.querySelectorAll('#view-profile .profile-hero-mark path')]
+        .map(p => p.getAttribute('d'));
+      return JSON.stringify(paths) === JSON.stringify(window.PsycheCopy.BRAND_MARK.paths) &&
+        document.querySelectorAll('#view-profile .profile-hero-mark circle').length === 1;
+    }));
+  // A fifth `.hero-mark`-classed node would inflate the count the original
+  // check holds at exactly one, which is why this element uses its own class
+  // — proven here rather than assumed.
+  check('the profile watermark does not double-count as a second .hero-mark',
+    (await page.locator('.hero-mark').count()) <= 1);
   await shot('2-profile');
 
   // The waiting screen speaks as the product, not as whichever model is wired
@@ -1402,8 +1469,14 @@ try {
   check('there is no sub-headline under the profile title',
     (await page.locator('#profile-sub').count()) === 0);
   check('the export button is the first thing under the title', await page.evaluate(() => {
-    const head = document.querySelector('#view-profile .page-head');
-    return head.children.length === 2 && head.children[1].contains(document.querySelector('#export-pdf-top'));
+    // Three children now, not two: the watermark mark is first (decorative,
+    // aria-hidden, no bearing on what "first thing under the title" means),
+    // then the title, then the button row.
+    const head = document.querySelector('#view-profile .profile-hero');
+    return Boolean(head) && head.children.length === 3 &&
+      head.children[0].tagName === 'svg' &&
+      head.children[1].id === 'profile-title' &&
+      head.children[2].contains(document.querySelector('#export-pdf-top'));
   }));
 
   check('the share panel no longer explains the storage model',
@@ -2466,7 +2539,7 @@ try {
   check('the letterhead is print-only',
     await page.evaluate(() => getComputedStyle(document.querySelector('.letterhead')).display !== 'none'));
   check('the screen header is dropped when printing',
-    !(await page.locator('#view-profile .page-head').isVisible()));
+    !(await page.locator('#view-profile .profile-hero').isVisible()));
 
   // Nothing may depend on a background fill: printing them is off by default.
   check('no section relies on a background that will not print', await page.evaluate(() => {
@@ -2623,6 +2696,17 @@ try {
   // indistinguishable from a real one to the person reading it.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
+  // Reduced motion makes the scroll-to-error jump land instantly rather than
+  // animate, the same way the hero-start check above forces it — otherwise
+  // the checks below would be racing a smooth-scroll animation that has not
+  // finished by the time they read window.scrollY. Reset once they are done,
+  // since the rest of the suite runs on this same page.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  // Scrolled to the dropzone first, the way a real reader gets there — past
+  // the hero, the how-it-works row, the insight card and the instructions —
+  // so the scroll checks below are against a realistic starting position
+  // rather than the top of the page, where they would pass either way.
+  await page.locator('#dropzone').scrollIntoViewIfNeeded();
   const beforeForeign = analyseBodies.length;
   await page.setInputFiles('#file-input', {
     name: 'facebook-export.zip', mimeType: 'application/zip', buffer: buildForeignExportZip(),
@@ -2652,6 +2736,22 @@ try {
     analyseBodies.length === beforeForeign, analyseBodies.length - beforeForeign + ' requests');
   check('no half-built profile is left behind by the refusal',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+  // The bug this guards: show('welcome') always scrolls to the very top of
+  // the page, and it used to run in the same breath as flash('#upload-error',
+  // …) — so a reader who had scrolled down to the dropzone to drop a file got
+  // the rug pulled out from under them, landing back at the hero with the
+  // reason for the failure sitting off-screen below four cards. Checked with
+  // a reader's actual position: scrolled to the dropzone before the upload,
+  // the same place anyone dropping a file would be.
+  check('the error is scrolled into view, not left below the fold at the top of the page',
+    await page.evaluate(() => {
+      const r = document.querySelector('#upload-error').getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= window.innerHeight;
+    }));
+  check('the page did not snap back to the very top to show it',
+    (await page.evaluate(() => window.scrollY)) > 100,
+    'scrollY = ' + (await page.evaluate(() => window.scrollY)));
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   // ---- Back on the review steps upstream, it does not abandon ----
   //

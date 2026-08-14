@@ -343,7 +343,7 @@
       renderProfile(); show('profile'); return;
     }
     if (target === 'scan') {
-      if (!state.profile) { flash('#upload-error', 'Build your own profile first — a report needs two people.'); return show('welcome'); }
+      if (!state.profile) return showUploadError('Build your own profile first — a report needs two people.');
       renderScan(); show('scan'); return;
     }
     if (target === 'about') { renderAbout(); show('about'); return; }
@@ -386,6 +386,21 @@
   const scrollBehaviour = () =>
     (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? 'auto' : 'smooth');
+
+  // Every place that lands back on the welcome page with something to say —
+  // a bad archive, a bad photo, a failed analysis, a stale share link — used
+  // to call show('welcome') and flash the message in the same breath. show()
+  // always scrolls to the very top of the page, so the message landed below
+  // the fold behind the hero, the how-it-works row and the instructions card,
+  // and a reader who had scrolled down to drop a file saw nothing happen.
+  // This is the one path back that keeps the reason on screen: it scrolls to
+  // the message itself once show() and flash() have both run, rather than to
+  // wherever show() happens to leave the page.
+  function showUploadError(message) {
+    show('welcome');
+    flash('#upload-error', message);
+    $('#upload-error').scrollIntoView({ behavior: scrollBehaviour(), block: 'center' });
+  }
 
   $('#hero-start').addEventListener('click', () => {
     show('welcome');
@@ -986,8 +1001,7 @@
         if (decision !== REVIEW_BACK) break;
       }
     } catch (error) {
-      show('welcome');
-      flash('#upload-error', (error && error.message) || 'Could not read that archive.');
+      showUploadError((error && error.message) || 'Could not read that archive.');
       return;
     }
 
@@ -1018,8 +1032,7 @@
         // its own attachment to the model.
         digest.coverage.images.attached = images.length;
       } catch (error) {
-        show('welcome');
-        flash('#upload-error', (error && error.message) || 'Could not prepare your photos.');
+        showUploadError((error && error.message) || 'Could not prepare your photos.');
         return;
       }
     } else {
@@ -1079,8 +1092,7 @@
       show('profile');
     } catch (error) {
       stopElapsed();
-      show('welcome');
-      flash('#upload-error', (error && error.message) || 'The analysis failed.');
+      showUploadError((error && error.message) || 'The analysis failed.');
     }
   }
 
@@ -2151,8 +2163,7 @@
     if (state.profile && await runMatch(incoming)) return true;
 
     sessionStorage.setItem('psycheai_pending', incoming);
-    show('welcome');
-    flash('#upload-error', 'Someone shared their PsycheAI code with you. Build your own profile and the comparison runs automatically.');
+    showUploadError('Someone shared their PsycheAI code with you. Build your own profile and the comparison runs automatically.');
     return true;
   }
 

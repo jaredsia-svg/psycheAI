@@ -150,20 +150,50 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 /* Backdrop, not an object in the layout: large, faint, bled off the right so
    it reads as texture behind the words rather than a logo sitting beside them.
-   pointer-events off because it now covers the buttons underneath it. */
-.hero-mark {
+   pointer-events off because it now covers the buttons underneath it.
+
+   Shared with `.profile-hero-mark` below for the properties that do not
+   depend on how big the band is — position, fade, colour. A separate class
+   from `.hero-mark` rather than a second copy of it, so the "one shared
+   mark" check that counts every `.hero-mark` node in the document is not
+   thrown off by a fifth instance in it. */
+.hero-mark, .profile-hero-mark {
   position: absolute; z-index: -1; pointer-events: none;
-  top: 50%; right: clamp(-5rem, -4vw, -1.5rem); transform: translateY(-50%);
-  width: clamp(230px, 34vw, 420px); height: auto;
-  opacity: .14;
-  color: var(--accent);
+  top: 50%; transform: translateY(-50%); height: auto;
+  opacity: .14; color: var(--accent);
+}
+.hero-mark {
+  right: clamp(-5rem, -4vw, -1.5rem);
+  width: clamp(230px, 34vw, 420px);
   stroke: url(#hero-mark-gradient) currentColor;
 }
 .hero-mark circle { fill: url(#hero-mark-gradient) currentColor; }
 /* Stops set from CSS rather than as SVG attributes so they follow the theme:
-   both ends are the same pair the headline's own gradient uses. */
+   both ends are the same pair the headline's own gradient uses. Reused by
+   the profile page's gradient defs too, since a CSS class applies wherever
+   it is written regardless of which <linearGradient> it lives inside. */
 .hero-mark-from { stop-color: var(--accent); }
 .hero-mark-to { stop-color: var(--accent-2); }
+
+/* Scaled down from the welcome hero's mark to match the shorter band it sits
+   in — full size here would loom over one line of text and a button the way
+   it never does over a headline, a lede and two buttons. */
+.profile-hero-mark {
+  right: clamp(-3.5rem, -3vw, -.8rem);
+  width: clamp(150px, 24vw, 260px);
+  stroke: url(#profile-hero-mark-gradient) currentColor;
+}
+.profile-hero-mark circle { fill: url(#profile-hero-mark-gradient) currentColor; }
+
+/* The profile page's own top band. `.hero` supplies the bleed, the rounded
+   foot and the gradient wash; this only overrides what has to differ because
+   there is one line of text and one button here rather than a headline, a
+   lede and two — reusing `.hero`'s own padding would leave a band far taller
+   than its content needs, which reads as an empty page rather than a full
+   one. */
+.profile-hero { padding: clamp(1.3rem, 3.5vw, 1.9rem) clamp(1rem, 4vw, 2rem) clamp(1.2rem, 2.5vw, 1.6rem); }
+.profile-hero h1 { margin: 0 0 .8rem; }
+.profile-hero .btn-row { margin: 0; }
 
 .hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
 /* Nothing follows the buttons in the hero any more — the privacy badge that
