@@ -199,25 +199,58 @@ try {
     /before any data is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
     await page.locator('.upload-card .card-sub').innerText().catch(() => 'missing'));
 
-  // The optional-sources card. The JSON instruction is the load-bearing one:
-  // Takeout ships My Activity as HTML by default, so a reader who follows the
-  // happy path lands on an archive the parser refuses. The deselect line is
-  // the other one that earns its place — without it people download fifty
-  // gigabytes of Photos and Gmail that are never read.
-  const optionalCard = await page.locator('#view-welcome .card', { hasText: 'Optional: add Google' }).innerText();
-  check('the optional-sources card says the step can be skipped',
-    /optional/i.test(optionalCard) && /skipping takes one click/i.test(optionalCard));
+  // The optional-sources card. Collapsed by default, because it is a page of
+  // instructions for a step most readers will skip — but read with
+  // textContent rather than innerText, deliberately: a native <details> keeps
+  // its contents in the DOM when closed, which is what makes them findable
+  // with Find-in-page and readable by a screen reader that navigates by
+  // heading. innerText would report the empty string here and prove nothing.
+  const optionalCard = await page.evaluate(() =>
+    document.querySelector('.optional-card').textContent.replace(/\s+/g, ' '));
+  check('the optional-sources card is collapsed until the reader opens it',
+    await page.evaluate(() => !document.querySelector('.optional-card').open) &&
+    !(await page.locator('.optional-card ol').first().isVisible()));
+  check('its summary still says what it is and that the step is skippable',
+    /Optional: add Google or Facebook data/.test(optionalCard) &&
+    /Skipping takes one click/.test(optionalCard));
+  check('the instructions stay in the document while collapsed, so they can still be found',
+    /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
+
+  // Opening it is the only way the instructions become visible, and the
+  // summary is a real control rather than a styled div — clicking it is what
+  // a reader and a keyboard both do.
+  await page.click('.optional-card > summary');
+  check('clicking the summary opens it',
+    await page.evaluate(() => document.querySelector('.optional-card').open) &&
+    (await page.locator('.optional-card ol').first().isVisible()));
+
+  // The JSON instruction is the load-bearing one: Takeout ships My Activity as
+  // HTML by default, so a reader who follows the happy path lands on an
+  // archive the parser refuses. The deselect line is the other one that earns
+  // its place — without it people download fifty gigabytes of Photos and Gmail
+  // that are never read.
+  const optionalOpen = await page.locator('.optional-card').innerText();
   check('it tells the reader to deselect everything but My Activity',
-    /Deselect all/.test(optionalCard) && /My Activity/.test(optionalCard) &&
-    /Leave Photos, Gmail and Drive/.test(optionalCard));
+    /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen) &&
+    /Leave Photos, Gmail and Drive/.test(optionalOpen));
   check('it names the HTML default and the JSON fix, which Takeout hides two menus deep',
-    /Multiple formats/.test(optionalCard) && /JSON/.test(optionalCard) &&
-    /cannot\s+read the HTML version/.test(optionalCard) && /HTML is the default/.test(optionalCard),
-    optionalCard.replace(/\s+/g, ' ').slice(0, 200));
+    /Multiple formats/.test(optionalOpen) && /JSON/.test(optionalOpen) &&
+    /cannot\s+read the HTML version/.test(optionalOpen) && /HTML is the default/.test(optionalOpen),
+    optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
   check('it promises site names only, matching what the parser actually keeps',
-    /Never\s+the pages you read, the web addresses, or when/.test(optionalCard));
+    /Never\s+the pages you read, the web addresses, or when/.test(optionalOpen));
   check('it covers Facebook too, in JSON',
-    /Download your information/.test(optionalCard) && /Facebook/.test(optionalCard));
+    /Download your information/.test(optionalOpen) && /Facebook/.test(optionalOpen));
+  // Closed again so the rest of the suite meets the page as a reader first
+  // does, and so the screenshots below are of the default state.
+  await page.click('.optional-card > summary');
+  check('clicking the summary again closes it',
+    await page.evaluate(() => !document.querySelector('.optional-card').open));
+  // Clicking scrolled the page down to the card. Several checks below measure
+  // against the viewport — the hero-mark sweep reads elementFromPoint over the
+  // hero buttons — so put the page back where it was before touching this.
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   // It has to sit after the Instagram instructions and before the dropzone:
   // Instagram is required and these are not, and a reader who stops at the
   // upload box has still seen everything they need.
@@ -225,7 +258,7 @@ try {
     await page.evaluate(() => {
       const cards = [...document.querySelectorAll('#view-welcome .card')];
       const igCard = cards.find(c => /How do I get my Instagram data/.test(c.textContent));
-      const optional = cards.find(c => /Optional: add Google/.test(c.textContent));
+      const optional = document.querySelector('.optional-card');
       const upload = document.querySelector('#view-welcome .upload-card');
       if (!igCard || !optional || !upload) return false;
       return Boolean(igCard.compareDocumentPosition(optional) & Node.DOCUMENT_POSITION_FOLLOWING) &&

@@ -458,6 +458,35 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .help-card h2 { margin-top: 0; }
 .help-card p:last-child { margin-bottom: 0; }
 
+/* The optional-sources card, collapsed by default.
+   `list-item` display with `list-style: none` rather than the shorthand: it is
+   what removes the UA's default triangle in Chrome and Safari while leaving the
+   element a real summary, and the chevron below is drawn instead so it can
+   rotate and follow the theme. Firefox needs the ::-webkit-details-marker rule
+   too on older builds, which is why both are here. */
+.optional-card { padding-top: 0; padding-bottom: 0; }
+.optional-card > summary {
+  display: list-item; list-style: none; cursor: pointer;
+  padding: 1.1rem 0; margin: 0; position: relative; padding-right: 2rem;
+}
+.optional-card > summary::-webkit-details-marker { display: none; }
+.optional-card > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+.optional-title { display: block; font-size: 1.15rem; font-weight: 650; letter-spacing: -.015em; }
+.optional-card > summary .muted { display: block; margin-top: .25rem; font-size: .92rem; line-height: 1.5; }
+/* Drawn rather than a glyph, so it inherits the accent and rotates cleanly.
+   Centred on the first line of the summary rather than on the whole box, so it
+   stays beside the title when the sub-line wraps to three lines on a phone. */
+.optional-card > summary::after {
+  content: ''; position: absolute; right: .2rem; top: 1.55rem;
+  width: .55rem; height: .55rem; border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent); transform: rotate(45deg);
+  transition: transform .15s ease;
+}
+.optional-card[open] > summary::after { transform: rotate(-135deg); }
+.optional-card[open] > summary { border-bottom: 1px solid var(--line); }
+.optional-card > :last-child { margin-bottom: 1.1rem; }
+.optional-card h3:first-of-type { margin-top: 1.2rem; }
+
 /* ---------- progress ---------- */
 
 .progress { height: 10px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; margin: 1rem 0 .6rem; }

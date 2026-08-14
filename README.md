@@ -460,6 +460,13 @@ page of every site somebody ever opened — where the domain histogram keeps the
 surveillance. The fixture's URLs carry deep paths and query strings so that a parser which kept them
 is caught rather than trusted.
 
+The instructions for requesting either export live in a collapsed `<details>` on the welcome page —
+a native disclosure rather than the JS one the bonus section uses, because that one keeps its text
+out of the DOM as a consent gate and this is only a page of instructions for a step most readers
+skip. Left in the document while closed, they stay findable with Find-in-page and reachable by a
+screen reader navigating headings; the checks read `textContent` for the content and visibility for
+the disclosure, since `innerText` reports nothing for a closed `<details>` and would prove neither.
+
 The eight new review rows appear **only when that source was added**, so a reader who skipped sees
 the same seven rows as before — which is what keeps the "exactly seven checkboxes" check meaningful
 instead of turning it into a count of whatever happens to be present.
@@ -1188,7 +1195,7 @@ npm test           # 428 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 663 checks: drives the real UI in Chromium against a
+npm run test:ui    # 667 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

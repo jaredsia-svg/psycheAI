@@ -173,10 +173,18 @@
        default path produces an archive PsycheAI refuses — and the deselect
        line is what stops somebody downloading fifty gigabytes of Photos and
        Gmail they were never going to be asked for. -->
-  <div class="card help">
-    <h2>Optional: add Google or Facebook data</h2>
-    <p class="card-sub">After your Instagram file is read, you will be offered the chance to add
-      either of these. They are optional — skipping takes one click.</p>
+  <!-- Collapsed by default, and a native <details> rather than the JS
+       disclosure the bonus section uses. That one keeps its text out of the
+       DOM until asked for, because it is a consent gate; this is a page of
+       instructions for a step most readers will skip, so the only thing worth
+       hiding is the length. <details> gets keyboard support, Find-in-page and
+       a working control with no script at all. -->
+  <details class="card help optional-card">
+    <summary>
+      <span class="optional-title">Optional: add Google or Facebook data</span>
+      <span class="muted">After your Instagram file is read you will be offered the chance to add
+        either of these. Skipping takes one click — open this only if you want the instructions.</span>
+    </summary>
 
     <h3>Google Takeout</h3>
     <ol>
@@ -203,7 +211,7 @@
           <span class="ui-label">JSON</span>.</li>
       <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
     </ol>
-  </div>
+  </details>
 
   <div class="card upload-card">
     <h2>Start here</h2>
