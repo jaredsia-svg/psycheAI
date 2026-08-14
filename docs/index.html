@@ -553,27 +553,66 @@
      and Firefox. See askSupplement. -->
 <dialog id="supplement-dialog" class="mode-dialog" aria-labelledby="supplement-dialog-title">
   <h2 id="supplement-dialog-title">Add more data?</h2>
-  <p class="muted">Your Instagram export has been read. You can add a Google or Facebook export to
-    deepen the analysis, or skip straight to it.</p>
+  <p class="muted">You can add a Google or Facebook export to deepen the analysis, or skip straight
+    to it.</p>
   <div class="mode-options">
     <button class="mode-option" data-supplement="google" type="button">
       <span class="mode-icon">🔍</span>
       <span><strong>Google Takeout</strong>
-        <span class="muted">Your "My Activity" export — what you searched, watched on YouTube,
-          browsed, and asked Gemini. See the instructions on the previous page.</span>
+        <span class="muted">Load your "My Activity" takeout .zip file here</span>
       </span>
     </button>
     <button class="mode-option" data-supplement="facebook" type="button">
       <span class="mode-icon">📘</span>
       <span><strong>Facebook</strong>
-        <span class="muted">Your posts, comments, friends and Messenger history — usually an older
-          stretch of life than Instagram covers.</span>
+        <span class="muted">Load your facebook .zip file here</span>
       </span>
     </button>
   </div>
   <p class="supplement-status" id="supplement-status" hidden></p>
-  <div class="btn-row">
-    <button class="btn btn-ghost" id="supplement-skip" type="button">Skip this step</button>
+
+  <!-- The same instructions the welcome page carries, repeated here because
+       this is the moment they are actually needed: a reader who reaches this
+       dialog without having requested either export has to leave, and the
+       previous page is behind a modal by then. Collapsed and scrolling inside
+       its own box so the dialog keeps its height whether it is open or shut —
+       .mode-dialog is capped at the viewport, and a page of instructions
+       inlined at full height would push the buttons off the bottom. -->
+  <details class="supplement-help">
+    <summary>See download instructions</summary>
+    <div class="supplement-help-body">
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Go to <span class="ui-label">takeout.google.com</span> and press
+            <span class="ui-label">Deselect all</span>.</li>
+        <li>Tick <span class="ui-label">My Activity</span> only.</li>
+        <li>Still in the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records from HTML to <span class="ui-label">JSON</span>. PsycheAI cannot
+            read the HTML version, and HTML is the default.</li>
+        <li>Export once, as a .zip. Google emails a link, usually within minutes.</li>
+      </ol>
+      <h3>Facebook</h3>
+      <ol>
+        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+            <span class="ui-label">Accounts Centre</span> →
+            <span class="ui-label">Your information and permissions</span>.</li>
+        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+            <span class="ui-label">JSON</span>.</li>
+        <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
+      </ol>
+    </div>
+  </details>
+
+  <!-- Back is always available and always on the left; the right-hand slot is
+       Skip while nothing has been added and Continue once something has. The
+       two never appear together: once an archive is in, "skip" would be a lie
+       about what happens next, since skipping and continuing resolve the same
+       way and the data is kept either way. -->
+  <div class="btn-row supplement-actions">
+    <button class="btn btn-outline" id="supplement-back" type="button">Back</button>
+    <span class="btn-spacer"></span>
+    <button class="btn" id="supplement-skip" type="button">Skip this step</button>
     <button class="btn" id="supplement-continue" type="button" hidden>Continue</button>
   </div>
   <input type="file" id="supplement-input" accept=".zip,application/zip" multiple hidden>

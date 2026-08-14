@@ -460,8 +460,11 @@
   // handler. Staying open is also the better flow: a reader can add Google and
   // Facebook without the dialog closing and reopening between them.
   //
-  // Resolves an object, never null. Skip and Continue are the same resolution;
-  // the only difference is what is in it. Escape behaves as Skip.
+  // Resolves an object of what was added — Skip and Continue are the same
+  // resolution, the only difference being what is in it, and Escape behaves as
+  // Skip. Back is the one exception: it resolves null, the same signal askDepth
+  // gives when it is cancelled, and handleFiles drops back to the welcome page
+  // on it. That is why the return is not unconditionally an object any more.
   function askSupplement() {
     const dialog = $('#supplement-dialog');
     const status = $('#supplement-status');
@@ -470,6 +473,7 @@
     const added = {};
     let pending = '';
     let busy = false;
+    let cancelled = false;
 
     const LABELS = { google: 'Google Takeout', facebook: 'Facebook' };
 
@@ -479,15 +483,26 @@
       status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
     };
 
+    // Skip is only truthful while nothing has been contributed. The moment an
+    // archive is in — or is being read — the right-hand slot belongs to
+    // Continue, so the two swap rather than sitting side by side. Back is
+    // untouched by this and stays available throughout, including mid-read.
+    const showActions = () => {
+      const has = Object.keys(added).length > 0;
+      $('#supplement-continue').hidden = !has;
+      $('#supplement-skip').hidden = has || busy;
+    };
+
     const setBusy = state => {
       busy = state;
       for (const button of buttons) button.disabled = state || Boolean(added[button.dataset.supplement]);
+      showActions();
     };
 
     const summarise = () => {
+      showActions();
       const names = Object.keys(added).map(key => LABELS[key]);
       if (!names.length) return;
-      $('#supplement-continue').hidden = false;
       say('✓ Added ' + names.join(' and ') + '.', 'good');
     };
 
@@ -533,11 +548,13 @@
       };
 
       const done = () => dialog.close();
+      const goBack = () => { cancelled = true; dialog.close(); };
 
       for (const button of buttons) button.addEventListener('click', choose);
       input.addEventListener('change', read);
       $('#supplement-skip').addEventListener('click', done);
       $('#supplement-continue').addEventListener('click', done);
+      $('#supplement-back').addEventListener('click', goBack);
 
       dialog.addEventListener('close', () => {
         for (const button of buttons) {
@@ -547,14 +564,17 @@
         input.removeEventListener('change', read);
         $('#supplement-skip').removeEventListener('click', done);
         $('#supplement-continue').removeEventListener('click', done);
-        resolve(added);
+        $('#supplement-back').removeEventListener('click', goBack);
+        resolve(cancelled ? null : added);
       }, { once: true });
 
       // Reset the dialog's own state, because it is reused markup and a second
       // upload in the same session would otherwise open on the last run's
-      // "✓ Added" line.
+      // "✓ Added" line, its instructions still unfolded, or Skip still hidden
+      // from the run before.
       say('');
-      $('#supplement-continue').hidden = true;
+      cancelled = false;
+      dialog.querySelector('.supplement-help').open = false;
       setBusy(false);
 
       if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -903,8 +923,14 @@
       // then backs out of.
       // Offered before the depth picker, so a reader adding a second export
       // is not asked how deep to go on data they have not contributed yet.
-      // Always resolves an object; skipping gives an empty one.
-      signals.supplements = await askSupplement();
+      // Skipping resolves an empty object; Back resolves null, and abandons
+      // the run the same way cancelling the depth picker does.
+      const supplements = await askSupplement();
+      if (!supplements) {
+        show('welcome');
+        return;
+      }
+      signals.supplements = supplements;
 
       depth = await askDepth();
       if (!depth) {

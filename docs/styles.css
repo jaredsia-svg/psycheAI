@@ -955,6 +955,49 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-option:disabled .mode-icon,
 .mode-option:disabled strong { opacity: .45; }
 
+/* The repeated download instructions, collapsed. Everything here is in service
+   of one constraint: the dialog is capped at the viewport height, so opening a
+   page of instructions must not move the buttons underneath it. The body gets
+   its own max-height and scrolls, which keeps the dialog the same height open
+   or shut, and the type is stepped down a notch because this is reference
+   material a reader consults rather than prose they read through. */
+.supplement-help { margin: 0 0 .9rem; border-top: 1px solid var(--line); padding-top: .7rem; }
+.supplement-help > summary {
+  display: list-item; list-style: none; cursor: pointer;
+  font-size: .88rem; font-weight: 650; color: var(--accent);
+  padding-right: 1.2rem; position: relative;
+}
+.supplement-help > summary::-webkit-details-marker { display: none; }
+.supplement-help > summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px;
+}
+.supplement-help > summary::after {
+  content: ''; position: absolute; right: .2rem; top: .35em;
+  width: .4rem; height: .4rem;
+  border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg); transition: transform .15s ease;
+}
+.supplement-help[open] > summary::after { transform: rotate(-135deg); }
+
+.supplement-help-body {
+  max-height: 11rem; overflow-y: auto; margin-top: .6rem;
+  padding: .1rem .7rem .1rem .1rem;
+  font-size: .8rem; line-height: 1.5; color: var(--ink-soft);
+}
+.supplement-help-body h3 { font-size: .82rem; margin: .7rem 0 .3rem; color: var(--ink); }
+.supplement-help-body h3:first-child { margin-top: 0; }
+.supplement-help-body ol { margin: 0; padding-left: 1.1rem; }
+.supplement-help-body li { margin-bottom: .3rem; }
+.supplement-help-body li:last-child { margin-bottom: 0; }
+.supplement-help-body .ui-label { font-size: .78rem; }
+
+/* Back sits left, the forward action right. The spacer rather than
+   justify-content: space-between because the row holds three children and only
+   two are ever visible at once — space-between would centre the odd one out
+   and shift the forward button sideways as Skip gives way to Continue. */
+.supplement-actions { align-items: center; }
+.supplement-actions .btn-spacer { flex: 1 1 auto; }
+
 /* ---------- pre-send review ---------- */
 
 /* A fixed, modest card rather than one that grows to fit its content: 30rem

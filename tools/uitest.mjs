@@ -1059,6 +1059,60 @@ try {
     /Skip this step/.test(supplementText), supplementText.replace(/\s+/g, ' ').slice(0, 140));
   check('Continue is hidden until something has actually been added',
     !(await page.locator('#supplement-continue').isVisible()));
+
+  // The action row: Back on the left throughout, and one forward action on the
+  // right — Skip while nothing has been added, Continue once something has.
+  check('Back and Skip are both offered before anything is added',
+    (await page.locator('#supplement-back').isVisible()) &&
+    (await page.locator('#supplement-skip').isVisible()));
+  check('Back sits to the left of the forward action', await page.evaluate(() => {
+    const back = document.querySelector('#supplement-back').getBoundingClientRect();
+    const skip = document.querySelector('#supplement-skip').getBoundingClientRect();
+    return back.left < skip.left;
+  }));
+  // Filled vs outlined rather than two of the same: the forward action carries
+  // the gradient, Back is the plain-bordered one beside it.
+  check('Skip carries the filled gradient and Back does not', await page.evaluate(() => {
+    const skip = getComputedStyle(document.querySelector('#supplement-skip'));
+    const back = getComputedStyle(document.querySelector('#supplement-back'));
+    return /gradient/.test(skip.backgroundImage) && !/gradient/.test(back.backgroundImage);
+  }));
+
+  // The instructions, repeated here because this is where they are needed and
+  // the welcome page is behind a modal by now. Read with textContent for the
+  // same reason as the welcome page's copy: a closed <details> keeps its
+  // contents in the DOM, and innerText would report nothing.
+  const supplementHelp = await page.evaluate(() =>
+    document.querySelector('.supplement-help').textContent.replace(/\s+/g, ' '));
+  check('the download instructions are collapsed until asked for',
+    await page.evaluate(() => !document.querySelector('.supplement-help').open) &&
+    !(await page.locator('.supplement-help-body ol').first().isVisible()));
+  check('they cover both sources, with the JSON step that Takeout hides',
+    /Google Takeout/.test(supplementHelp) && /Facebook/.test(supplementHelp) &&
+    /Deselect all/.test(supplementHelp) && /Multiple formats/.test(supplementHelp) &&
+    /Download your information/.test(supplementHelp));
+  await page.click('.supplement-help > summary');
+  check('opening them reveals the steps',
+    await page.locator('.supplement-help-body ol').first().isVisible());
+  // The whole point of the scroll box: the dialog is capped at the viewport,
+  // so unfolding a page of instructions must not push the buttons out of it.
+  check('opening them does not push the buttons off the dialog', await page.evaluate(() => {
+    const dialog = document.querySelector('#supplement-dialog').getBoundingClientRect();
+    const back = document.querySelector('#supplement-back').getBoundingClientRect();
+    return back.bottom <= dialog.bottom + 1 && back.top >= dialog.top;
+  }));
+  check('the instructions scroll inside their own box rather than growing the dialog',
+    await page.evaluate(() => {
+      const body = document.querySelector('.supplement-help-body');
+      return body.scrollHeight > body.clientHeight && getComputedStyle(body).overflowY === 'auto';
+    }));
+  check('the instructions are set smaller than the dialog body text',
+    await page.evaluate(() => {
+      const help = parseFloat(getComputedStyle(document.querySelector('.supplement-help-body')).fontSize);
+      const body = parseFloat(getComputedStyle(document.querySelector('#supplement-dialog > .muted')).fontSize);
+      return help < body;
+    }));
+  await page.click('.supplement-help > summary');
   await shot('1a-supplement');
 
   // ---- the depth picker ----
@@ -2633,6 +2687,28 @@ try {
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('#review-dialog')).display));
 
+  // ---- Back abandons the run ----
+  //
+  // Skip and Back are opposites despite sitting in the same row: Skip goes on
+  // without a supplement, Back gives up on the upload entirely and returns to
+  // the welcome page — the same thing cancelling the depth picker does. Worth
+  // its own pass because the two are one click apart and confusing them would
+  // silently cost a reader the archive they just waited for.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  const beforeBack = analyseBodies.length;
+  await page.click('#supplement-back');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+  check('Back returns to the welcome page instead of going on to the depth picker',
+    (await page.locator('#view-welcome').isVisible()) &&
+    !(await page.locator('#depth-dialog[open]').count()));
+  check('Back sends nothing to the model', analyseBodies.length === beforeBack,
+    (analyseBodies.length - beforeBack) + ' requests after Back');
+
   // ---- actually adding a supplement ----
   //
   // The dialog stays open while a second archive is read, so that a reader can
@@ -2688,6 +2764,11 @@ try {
   check('a Takeout that reads is confirmed by name', /Added Google Takeout/i.test(goodStatus), goodStatus);
   check('Continue appears once something has been added',
     await page.locator('#supplement-continue').isVisible());
+  check('Skip gives way to Continue once an archive is in',
+    !(await page.locator('#supplement-skip').isVisible()),
+    'skip still visible');
+  check('Back stays available after something has been added',
+    await page.locator('#supplement-back').isVisible());
   check('the source just added stops inviting a second go',
     await page.evaluate(() =>
       document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]').disabled));
