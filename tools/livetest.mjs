@@ -113,6 +113,30 @@ check('the extraversion evidence is not just a message count',
   !extraversionEvidence.every(e => /messag|dm\b/i.test(e)),
   JSON.stringify(extraversionEvidence));
 
+// Whose life the captions describe. The fixture carries two captions in the
+// shape that was being misread — a named @handle owning the job in one and the
+// car in the other, with the account holder present only as the person who
+// wrote it down. Nothing in this export says the reader codes, founds
+// companies, or owns a vintage Toyota.
+//
+// Checked across the whole report rather than one section, because the damage
+// is that a borrowed fact propagates: into interests, into the essence pick,
+// into the card, and from there through a QR code into a compatibility report
+// about somebody who was never asked.
+const whole = JSON.stringify(report).toLowerCase();
+check('the reader is not given somebody else\'s job off a caption they wrote',
+  !/\b(saas|startup founder|founded)\b/.test(whole),
+  (/.{60}(saas|startup founder|founded).{60}/.exec(whole) || ['no match'])[0]);
+check('the reader is not given somebody else\'s car off a caption they wrote',
+  !/vintage car|car collector|\bmr2\b|supercharger/.test(whole),
+  (/.{60}(vintage car|car collector|mr2|supercharger).{60}/.exec(whole) || ['no match'])[0]);
+// The handles belong to other people and must not be quoted back as the
+// reader's own doing — naming them at all in a report they may hand to
+// somebody drags in a person who never agreed to any of this.
+check('neither third party is named anywhere in the report',
+  !whole.includes('mokkzy') && !whole.includes('yuhanchong'),
+  (/.{60}(mokkzy|yuhanchong).{60}/.exec(whole) || ['no match'])[0]);
+
 const card = globalThis.PsycheCard.shape(report.card);
 const payload = await globalThis.PsycheCard.encodeCard(card);
 check('the real card fits a scannable QR code',

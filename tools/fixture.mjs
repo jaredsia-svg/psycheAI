@@ -219,6 +219,15 @@ function buildExport() {
     'Booked the trail race for spring. Plan is on the fridge already.',
     'Cooked dinner for everyone. Nothing fancy, just together.',
     'Grateful for my people this year. Thank you all, really.',
+    // Captions whose subject is somebody else. Instagram is full of these and
+    // the fixture had none, so the report could attribute a stranger's job or
+    // possessions to the account holder and every check still passed. The
+    // grammatical shape is what matters: a named @handle carrying the noun
+    // phrase, with the author present only as the person who wrote it down.
+    'Finance professional turned vibe coding guru @mokkzy casually lecturing a group of ' +
+      'software engineers on his next SaaS startup',
+    'Toyota 1987 MR2 Supercharger, prob the only one in sg today, owned by prolific ' +
+      'vintage car collector @yuhanchong',
   ];
 
   // Every third post is wordless, which is the case the image sampling exists

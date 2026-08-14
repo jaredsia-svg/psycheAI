@@ -684,6 +684,34 @@ for (const [label, needle] of [
     /that is an introvert with close friends, and it should score below 50/],
   ['refuses message volume as trait evidence in the Big Five section',
     /"You send a lot of messages" is not evidence for this trait/],
+  // Captions about other people. Reported from real output: a caption naming
+  // somebody else's job or car was being read as the reader's own. Each half
+  // of the correction is pinned — the rule, the handle test, and the reframe
+  // that keeps such captions as evidence rather than discarding them.
+  ['separates writing a caption from being its subject',
+    /the author is not automatically the subject/i],
+  ['states that most captions are not about the account holder',
+    /Most of them are not about this person/],
+  ['gives the model a mechanical test for whose handle is whose',
+    /any other .?@handle.? is somebody else/],
+  ['carries the worked example of a misattributed job',
+    /@mokkzy is the finance professional, the guru and the founder/],
+  ['carries the worked example of a misattributed possession',
+    /The reader does not own it and is not a collector/],
+  ['refuses to let the correction become "ignore those captions"',
+    /rich evidence about its author/],
+  ['reads a third-party caption as being about who they are around',
+    /moves through those worlds, whatever they do for a living/],
+  ['names documenting rather than starring as a finding in itself',
+    /a connector, an observer, the one holding the camera/],
+  ['applies the same rule to comments, harder',
+    /its subject is nearly always that other person/],
+  ['falls back to what a caption shows them doing when authorship is unclear',
+    /the first is always true and the second may not be/],
+  ['holds the Big Five evidence strings to the same rule',
+    /it is a stranger's life offered to them as their own/],
+  ['stops the essence pick borrowing somebody else\'s biography',
+    /picking a character off a borrowed biography/],
   ['carries the same raised bar onto the MBTI axis',
     /\*\*E\*\* has to be earned with breadth/],
   // Opting out of DMs deletes directMessages outright, taking every breadth
@@ -711,7 +739,7 @@ for (const [label, needle] of [
 const file = new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' });
 const signals = await IG.readExports([file], { includeMessages: false });
 
-check('reads posts', signals.counts.posts === 12, 'got ' + signals.counts.posts);
+check('reads posts', signals.counts.posts === 14, 'got ' + signals.counts.posts);
 check('reads stories', signals.counts.stories === 30);
 check('reads likes', signals.counts.likes === 240);
 check('reads comments', signals.counts.comments === 40);
@@ -908,9 +936,9 @@ const withImages = await IG.readExports(
   [new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' })],
   { includeMessages: false, includeImages: true });
 
-check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 42,
+check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 44,
   'got ' + withImages.mediaRefs.length);
-check('indexes the image files in the archive', withImages.mediaIndex.total === 24,
+check('indexes the image files in the archive', withImages.mediaIndex.total === 26,
   'got ' + withImages.mediaIndex.total);
 check('resolves a media uri to its archive entry',
   Boolean(IG.findMedia(withImages.mediaIndex, 'media/posts/3.png')));
@@ -961,8 +989,19 @@ check('digest declares its schema', digest.schema === 'psycheai-digest/1');
 // The app no longer asks for a name, so the export's own must come through —
 // mojibake repaired, since that is the name the other person will read.
 check('digest takes the name from the export', digest.profile.name === 'Aleç', digest.profile.name);
-check('digest carries complete counts', digest.counts.posts === 12 && digest.counts.postsLiked === 240);
+check('digest carries complete counts', digest.counts.posts === 14 && digest.counts.postsLiked === 240);
 check('digest samples captions', digest.samples.captions.length > 0 && digest.samples.captions.length <= Digest.LIMITS.captions);
+// The prompt rule about whose life a caption describes is worth nothing if the
+// captions that trigger it never survive sampling, and it has a 4-character
+// floor and a half-recent/half-longest selection in front of it. Both of the
+// reported shapes have to actually reach the model, next to the username that
+// is the only thing letting it tell @mokkzy from the account holder.
+check('captions about other people reach the model, or the rule guards nothing',
+  digest.samples.captions.some(c => c.includes('@mokkzy')) &&
+  digest.samples.captions.some(c => c.includes('@yuhanchong')),
+  digest.samples.captions.length + ' captions sampled');
+check('and the reader\'s own handle is there to compare them against',
+  digest.profile.username === 'alec.runs', JSON.stringify(digest.profile.username));
 check('digest samples comments', digest.samples.comments.length > 0);
 check('digest carries the hour histogram', digest.rhythm.hourOfDay.length === 24);
 check('digest carries the weekday histogram', digest.rhythm.dayOfWeek.length === 7);

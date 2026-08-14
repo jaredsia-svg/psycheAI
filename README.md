@@ -615,9 +615,9 @@ The budget is derived rather than picked, in `charBudget()`:
 worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
 left for input      $0.50 − $0.2458           = $0.2542
                     ÷ $1.50/M                 = 169,493 tokens
-less system prompt + response schema          −  13,600
+less system prompt + response schema          −  14,400
 less 20 images × 258                          −   5,160
-                    × 3.5 chars/token         = 527,566 characters
+                    × 3.5 chars/token         = 524,766 characters
 ```
 
 That fixed reserve was **8,600 for a long time, and had gone stale** — it was typed when the system
@@ -807,6 +807,43 @@ evidence honestly:
 Both calls use **structured outputs**, so the response is guaranteed to match the schema and the UI
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
+
+### Who a caption is about
+
+Reported from real output: *"Finance professional turned vibe coding guru @mokkzy casually lecturing a
+group of software engineers on his next SaaS startup"* came back as evidence that the **reader** was a
+founder. *"Toyota 1987 MR2 Supercharger, prob the only one in sg today, owned by prolific vintage car
+collector @yuhanchong"* made them a car collector. In both the caption states outright whose job and
+whose car it is, and in both the reader is the person who was in the room and wrote it down.
+
+The prompt had invited this. It said their own words are the strongest signal and never distinguished
+**authoring** a sentence from **being its subject** — and Instagram is largely a place where people
+photograph other people. This is the worst class of error the report can make, because it does not
+read as a hedge or a stretch: it is a confident statement of fact about a life the reader does not
+have, and it propagates from the evidence string into interests, into the essence pick, into the card,
+and from there through a QR code into a compatibility report about somebody who never asked.
+
+The fix gives the model a mechanical test it can actually apply — the reader's handle is in
+`profile.username`, so **any other `@handle` is somebody else** — and both reported captions are
+written into the prompt as worked examples, since a rule stated abstractly is easier to nod along to
+than to apply.
+
+The half that matters more is the half that stops it overcorrecting. A caption about somebody else is
+not noise to be dropped; it is **rich evidence about its author**, just about different things: who
+they are around and what rooms they are in, what detail they bother to get right, how they write about
+other people, and whether the account is one where they document rather than star — which is itself a
+finding, and usually invisible to the person. The same rule governs comments more strictly still,
+since a comment sits on somebody else's post: "Congratulations on the new place!" says they show up
+warmly, not that they moved house. Where authorship is genuinely ambiguous the instruction is to say
+what the caption shows them *doing* — being there, noticing, writing it up — because that is true
+either way.
+
+The fixture had no third-party captions at all, so none of this was testable and the report could
+attribute a stranger's biography to the reader with every check still green. It now carries both
+reported captions verbatim, and a check asserts they survive sampling into the digest — the rule
+guards nothing if the captions that trigger it never reach the model. The live test asserts across the
+*whole* report that no SaaS startup, no vintage car and neither handle appears anywhere, since
+checking one section would miss the propagation that makes this damaging.
 
 ### The extraversion trap
 
@@ -1310,7 +1347,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 464 checks: synthesises a real ZIP export and runs
+npm test           # 478 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1328,7 +1365,7 @@ npm run test:ui    # 692 checks: drives the real UI in Chromium against a
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in
                    # every one
-npm run test:live  # 19 checks: two real model calls against whichever provider
+npm run test:live  # 22 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```
 
