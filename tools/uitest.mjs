@@ -210,9 +210,9 @@ try {
   check('the optional-sources card is collapsed until the reader opens it',
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
-  check('its summary still says what it is and that the step is skippable',
+  check('its summary still says what it is and when the offer comes',
     /Optional: also add Google or Facebook data/.test(optionalCard) &&
-    /Skipping takes one click/.test(optionalCard));
+    /After your Instagram file is read/.test(optionalCard));
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
 
