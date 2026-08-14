@@ -1205,16 +1205,17 @@ try {
     /\d+ captions?, \d+ comments?/.test(reviewText), reviewText.slice(0, 400));
   check('the review names the accounts you follow, with a real count',
     /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
-  check('the review says nothing is sent until Send is pressed',
-    /Nothing reaches the AI model until you press Send/i.test(reviewText));
+  check('the review names both providers and says nothing else can access the data',
+    /Choose which data gets analysed by Gemini or Claude/i.test(reviewText) &&
+    /None of this data or the results can be accessed by PsycheAI or others/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
   // subtitle carries it; held as an exact count so it cannot quietly become
   // two again.
   check('the claim appears once, not repeated as a fineprint line under the buttons',
-    (reviewText.match(/Nothing reaches the AI model/gi) || []).length === 1 &&
+    (reviewText.match(/Choose which data gets analysed/gi) || []).length === 1 &&
     (await page.locator('#review-dialog .fineprint').count()) === 0,
-    (reviewText.match(/Nothing reaches the AI model/gi) || []).length + ' mentions');
+    (reviewText.match(/Choose which data gets analysed/gi) || []).length + ' mentions');
   // A <dialog> shown with showModal() gets `overflow: auto` from the
   // browser's own stylesheet by default. With a scrollable list already
   // inside it, an unscoped dialog would grow its own scrollbar the moment
