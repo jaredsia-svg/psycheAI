@@ -2842,7 +2842,63 @@ try {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+
+  // ---- the reading bar, on the row being read ----
+  // Recorded rather than sampled. The fixture archives are small and the whole
+  // read can land between two polls, so a single mid-flight assertion would be
+  // flaky in exactly the way that gets a check deleted later. A MutationObserver
+  // on both rows captures every state the bar passes through, and the checks run
+  // against that record once the read has finished.
+  await page.evaluate(() => {
+    window.__barLog = { google: [], facebook: [] };
+    for (const source of ['google', 'facebook']) {
+      const row = document.querySelector(
+        '#supplement-dialog .mode-option[data-supplement="' + source + '"]');
+      const wrap = row.querySelector('.mode-progress');
+      const bar = row.querySelector('.progress-bar');
+      // Computed display, not the .hidden property. They are not the same
+      // thing: an author `display:block` beats the UA's `[hidden]` rule, so the
+      // property can read hidden while the track is plainly on screen. Asking
+      // the way the reader sees it is what catches that.
+      const snap = () => window.__barLog[source].push({
+        shown: getComputedStyle(wrap).display !== 'none',
+        loading: row.classList.contains('is-loading'),
+        width: parseFloat(bar.style.width) || 0,
+        label: row.querySelector('.mode-progress-label').textContent || '',
+        status: document.querySelector('#supplement-status').textContent || '',
+      });
+      snap();
+      new MutationObserver(snap).observe(row,
+        { attributes: true, subtree: true, childList: true, characterData: true });
+    }
+  });
   await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  const barLog = await page.evaluate(() => window.__barLog);
+  const shownG = barLog.google.filter(s => s.shown);
+  check('the reading bar appears on the row whose archive is being read',
+    shownG.length > 0, shownG.length + ' states with the bar visible');
+  check('the other source stays untouched while one is reading',
+    !barLog.facebook.some(s => s.shown || s.loading));
+  check('the bar advances rather than sitting at one value',
+    new Set(shownG.map(s => s.width)).size > 1 &&
+    Math.max(...shownG.map(s => s.width)) >= 90,
+    JSON.stringify(shownG.map(s => s.width)).slice(0, 80));
+  check('the row stays legible while it reads, rather than greyed out with the rest',
+    shownG.every(s => s.loading));
+  // The reader names the actual file ("Opening takeout.zip") and overwrites the
+  // placeholder almost immediately, which is the better copy of the two — so
+  // this matches the opening state rather than the exact placeholder wording.
+  check('the bar carries its own label, from opening the archive to reading it',
+    shownG.some(s => /^Opening /.test(s.label)) &&
+    shownG.some(s => /No data is being sent out/.test(s.label)),
+    JSON.stringify(shownG.map(s => s.label).slice(0, 3)));
+  check('the shared status line stays out of it, leaving the bar to report progress',
+    shownG.every(s => s.status === ''),
+    JSON.stringify(shownG.map(s => s.status).filter(Boolean).slice(0, 2)));
+  const restG = barLog.google[barLog.google.length - 1];
+  check('the bar is put away once the read finishes, and reset for the next one',
+    !restG.shown && !restG.loading && restG.width === 0, JSON.stringify(restG));
+
   await page.click('#supplement-continue');
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
   const withGoogleRows = await page.locator('#review-list input[type="checkbox"]').count();

@@ -520,6 +520,22 @@
       showActions();
     };
 
+    // Drives the bar on one row. `percent` of null puts the row back to rest:
+    // the bar is hidden and the width reset, so the next read starts from empty
+    // rather than animating down from wherever the last one stopped.
+    const rowOf = source => dialog.querySelector('.mode-option[data-supplement="' + source + '"]');
+    const setSourceProgress = (source, percent, label) => {
+      const row = rowOf(source);
+      if (!row) return;
+      const wrap = row.querySelector('.mode-progress');
+      const bar = row.querySelector('.progress-bar');
+      const text = row.querySelector('.mode-progress-label');
+      row.classList.toggle('is-loading', percent !== null);
+      wrap.hidden = percent === null;
+      bar.style.width = (percent === null ? 0 : percent) + '%';
+      if (label !== undefined) text.textContent = label || '';
+    };
+
     // The row itself carries "added" now, rather than a separate green line
     // restating it underneath. Two reasons it belongs on the row: it is the
     // thing the reader is looking at when they wonder whether it worked, and a
@@ -574,22 +590,32 @@
         const source = pending;
         pending = '';
         setBusy(true);
-        say('Reading your ' + LABELS[source] + ' export on this device…');
+        // The row's own bar reports this now, so the shared status line below
+        // stays empty and is left to do the one job the bar cannot: errors.
+        say('');
+        setSourceProgress(source, 0, 'Opening the archive…');
         try {
           const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
           added[source] = await reader(files, {
-            onProgress: p => say(p.label === 'Finished reading'
-              ? 'Reading your ' + LABELS[source] + ' export on this device…'
-              : p.label),
+            // The readers report {phase, done, total}, so this is a real
+            // fraction rather than a sweep. 'open' holds a visible sliver so
+            // the bar reads as started, and the parse phase — the long one —
+            // gets the rest of the track.
+            onProgress: p => {
+              const share = p.total ? Math.min(1, p.done / p.total) : 0;
+              const percent = p.phase === 'open' ? 6
+                : p.phase === 'done' ? 100
+                : 10 + Math.round(share * 85);
+              setSourceProgress(source, percent, p.label);
+            },
           });
           setBusy(false);
-          // Clears the "Reading…" progress line. It used to be overwritten by
-          // the green summary; with that gone the status has to be emptied
-          // here or the dialog would sit claiming to still be reading.
+          setSourceProgress(source, null, '');
           say('');
           summarise();
         } catch (error) {
           setBusy(false);
+          setSourceProgress(source, null, '');
           // Deliberately the opposite of handleFiles's catch, which drops back
           // to the welcome page. A failed *supplement* must never cost the
           // reader the Instagram export they already gave: the dialog stays
@@ -638,6 +664,11 @@
       say('');
       cancelled = false;
       dialog.querySelector('.supplement-help').open = false;
+      // Back stays live mid-read, so a reader can leave with a bar still
+      // running and a read still resolving into a dialog nobody is looking at.
+      // Both rows go back to rest here rather than on close, so that reopening
+      // never shows the last run's bar frozen part-way across.
+      for (const button of buttons) setSourceProgress(button.dataset.supplement, null, '');
       setBusy(false);
       // Re-ticks the rows and re-reveals Continue when this is a return trip
       // from the review. No-op on a first open, where `added` is empty.

@@ -581,16 +581,29 @@
   <p class="muted">You can add a Google or Facebook export to deepen the analysis, or skip straight
     to it.</p>
   <div class="mode-options">
+    <!-- The reading bar lives on the row that is being read, rather than in one
+         shared line underneath: with two sources the reader needs to see *which*
+         archive is being opened, and the row they just clicked is where they are
+         already looking. Spans rather than the divs the main progress bar uses,
+         because a <button> may only contain phrasing content. -->
     <button class="mode-option" data-supplement="google" type="button">
       <span class="mode-icon">🔍</span>
-      <span><strong>Google Takeout</strong>
+      <span class="mode-body"><strong>Google Takeout</strong>
         <span class="muted">Load your "My Activity" takeout .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
       </span>
     </button>
     <button class="mode-option" data-supplement="facebook" type="button">
       <span class="mode-icon">📘</span>
-      <span><strong>Facebook</strong>
+      <span class="mode-body"><strong>Facebook</strong>
         <span class="muted">Load your facebook .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
       </span>
     </button>
   </div>

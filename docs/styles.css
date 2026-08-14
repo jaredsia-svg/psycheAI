@@ -1006,6 +1006,35 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-option.is-added:disabled strong,
 .mode-option.is-added:disabled .muted { opacity: 1; }
 
+/* The per-source reading bar. Same gradient, radius and easing as the main
+   progress bar on the upload page — it is the same event, so it should not look
+   like a different one — at the .slim height, because this one sits inside a
+   row rather than across the page. The spans need display:block to lay out at
+   all, since the button they live in only permits phrasing content. */
+.mode-body { min-width: 0; }
+.mode-progress { display: block; margin-top: .55rem; }
+/* `display:block` above is an author rule and so beats the UA's
+   `[hidden]{display:none}` outright — specificity never enters into it. Without
+   this line every row sits with an empty track under its description, which is
+   exactly what shipped until a screenshot caught it. */
+.mode-progress[hidden] { display: none; }
+.mode-progress .progress { display: block; margin: 0 0 .3rem; }
+.mode-progress .progress-bar { display: block; }
+.mode-progress-label { display: block; font-size: .8rem; }
+
+/* setBusy() disables every row while one is reading, but the row doing the
+   reading has to stay legible — the greying that says "you cannot use this" is
+   wrong for the one source actively in use. Same reasoning and the same
+   `:disabled` specificity trick as .is-added below. */
+.mode-option.is-loading:disabled {
+  cursor: progress;
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.mode-option.is-loading:disabled .mode-icon,
+.mode-option.is-loading:disabled strong,
+.mode-option.is-loading:disabled .muted { opacity: 1; }
+
 /* Pushed to the right edge by the auto margin rather than positioned, so it
    cannot collide with a description that wraps to two lines. */
 .mode-added {
