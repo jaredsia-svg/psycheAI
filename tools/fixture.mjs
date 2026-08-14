@@ -261,6 +261,30 @@ function buildExport() {
     return { media, title: caption, creation_timestamp: stamp };
   });
 
+  // An earlier era, three to four years back and well outside the two-year
+  // window selection prefers. These are deliberately the *strongest* posts in
+  // the archive — long captions and big carousels, so they outscore everything
+  // recent — because that is the only arrangement that can tell the two rules
+  // apart. If selection still reaches past them for a weaker recent post, it is
+  // genuinely preferring recency; a fixture whose old posts were also its worst
+  // would pass whether the window existed or not.
+  const OLD_POSTS = 8;
+  const oldPosts = Array.from({ length: OLD_POSTS }, (_, i) => {
+    // The second one shares a day with the first. Without a collision in here
+    // the ordered fallback and the last-resort pass that abandons the one-a-day
+    // rule produce identical output, and removing the former goes unnoticed.
+    const stamp = at(1100 + (i === 1 ? 0 : i * 40), i === 1 ? 15 : 9);
+    const caption = 'A much older post, from back when I wrote paragraphs under everything. ' +
+      'This one is long enough to reach the top caption tier on its own, and it sits in a ' +
+      'carousel besides, so nothing recent can outscore it on the merits. Entry ' + (i + 1) + '.';
+    const media = [{ uri: 'media/old/' + i + '.png', creation_timestamp: stamp, title: caption }];
+    for (let k = 1; k <= 8; k++) {
+      media.push({ uri: 'media/old/' + i + '-' + k + '.png', creation_timestamp: stamp, title: '' });
+    }
+    return { media, title: caption, creation_timestamp: stamp };
+  });
+  posts.push(...oldPosts);
+
   // Morning-weighted activity, spread over roughly two years.
   const likes = [];
   for (let i = 0; i < 240; i++) {
@@ -362,6 +386,10 @@ function buildExport() {
     // are referenced by JSON that has no matching file, which is the ordinary
     // case for a split export and must not break selection.
     ...captions.map((_, i) => ({ name: 'media/posts/' + i + '.png', bytes: makePng(72, i) })),
+    // Covers for the older era. Real files, because the point of them is to be
+    // genuine candidates that selection chooses to pass over.
+    ...Array.from({ length: OLD_POSTS }, (_, i) =>
+      ({ name: 'media/old/' + i + '.png', bytes: makePng(72, 200 + i) })),
     ...Array.from({ length: 10 }, (_, i) => ({ name: 'media/stories/' + i + '.png', bytes: makePng(72, 100 + i) })),
     // Under the size floor: a thumbnail, not a photograph.
     { name: 'media/posts/thumb.png', bytes: makePng(8, 7) },

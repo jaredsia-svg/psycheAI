@@ -3743,17 +3743,14 @@ try {
         error => (error ? reject(error) : resolve()));
     });
 
-    // Modules across, measured off the rendered code rather than assumed.
-    const ctx = source.getContext('2d');
-    const row = ctx.getImageData(0, Math.floor(source.height / 2), source.width, 1).data;
-    let shortest = Infinity, run = 0, prev = null;
-    for (let x = 0; x < source.width; x++) {
-      const dark = row[x * 4] < 128;
-      if (dark === prev) run++;
-      else { if (prev !== null) shortest = Math.min(shortest, run); run = 1; }
-      prev = dark;
-    }
-    const modules = Math.round(source.width / shortest);
+    // Modules across, taken from the encoder rather than counted off the
+    // pixels. The old version of this scanned the middle row for its shortest
+    // run of one colour and divided the width by it, which is only correct when
+    // that row happens to contain an isolated single module and nothing gets
+    // antialiased — a one-pixel transitional run halves the estimate and the
+    // check fails on a code that is bit-for-bit the size it always was. It fired
+    // exactly that way on a payload whose length had not changed at all.
+    const modules = window.QRCode.create(url, { errorCorrectionLevel: 'L' }).modules.size;
 
     // Redraw at a series of widths and see where decoding gives out.
     const readAt = width => {
@@ -3786,16 +3783,21 @@ try {
     };
 
     return {
-      modules,
+      modules, payloadLen: payload.length,
       at900: readAt(900), at450: readAt(450), at300: readAt(300),
       frame480: inFrame(480), frame720: inFrame(720),
     };
   });
 
-  // Measured off the render rather than assumed, so it is approximate — the
-  // point is that the code has not silently grown a version or two.
+  // Exact, from the encoder — the point is that the code has not silently grown
+  // a version or two, and a version is four modules, so the band is roughly
+  // three either side of the 89 this payload actually produces. The payload
+  // length rides along in the detail because it is the thing that decides the
+  // version: if this ever fails, that number says at once whether the card grew
+  // or whether something about the encoding changed underneath it.
   check('the QR stays around ninety modules across',
-    scanTest.modules > 60 && scanTest.modules < 110, scanTest.modules + ' modules');
+    scanTest.modules >= 77 && scanTest.modules <= 101,
+    scanTest.modules + ' modules, payload ' + scanTest.payloadLen + ' chars');
   check('the code decodes at full backing size', scanTest.at900, JSON.stringify(scanTest));
   check('the code still decodes at half size', scanTest.at450, JSON.stringify(scanTest));
   check('the code survives being shrunk to 300px', scanTest.at300, JSON.stringify(scanTest));

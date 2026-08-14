@@ -781,9 +781,22 @@ only their cover frame, videos never qualify, and anything under 12KB is discard
 or a screenshot of text. Each is scored: posts outrank stories, larger files break ties, and the two
 rules that carry the most weight both measure **effort** — how much they wrote, and how much they
 assembled. A caption over 300 characters is worth 26 points and a nine-image carousel 22, against
-nothing for a wordless single. Then the timeline is cut into as many buckets as there are slots and
-the best of each bucket is taken, with no two picks from the same day — so the result spans first
-post to last rather than fifteen photos from one good summer.
+nothing for a wordless single.
+
+**Then recency decides which era those scores compete inside.** The slots are filled from the last
+two years on score alone; only when that window cannot fill them does selection reach further back,
+and only after that — when the whole archive is bunched onto a handful of days — does it give up the
+rule that no two picks share a day. The window is measured back from their most recent post rather
+than from the clock, which is the same thing for an export downloaded days after the last post, and
+a much better thing for a dormant account: counting from today would put the entire archive outside
+the window and collapse straight through to the fallback, losing the preference for recency
+altogether.
+
+This replaced an even spread across the whole timeline. That guaranteed range, and spent most of the
+slots describing somebody who no longer exists — on the test fixture, which reaches back to 2021, it
+took photographs from four years ago over the ones from this year. Now every pick comes from the
+recent window even though the older era in that fixture is deliberately its strongest material: the
+best score it passes over is 75, against 69 for the best it takes.
 
 **Effort is a stand-in for something the archive does not carry.** The question you actually want
 answered is which posts *mattered*, and the honest measure of that would be likes, comments and
@@ -798,10 +811,15 @@ resource in the app on the least considered posts in the archive — measured ag
 old rule picked a set whose mean caption length (34 characters) was *below* the pool it drew from
 (39). The current rule pulls it to 61, and drops the wordless share of the picks from 61% to 43%.
 
-It does not go further than that because the era-spread outranks it by construction: the bucket loop
-takes the best candidate *within* each slice of the timeline, so a stretch of months containing
-nothing but wordless posts still contributes one. Effort decides which photo represents an era, not
-which eras are represented.
+Recency still outranks effort by construction — the window decides which posts are eligible before
+any of them are scored — but within that window effort now decides freely, which is what the old
+per-era bucketing prevented.
+
+Both of these are visible to the model rather than left implicit. The prompt says the sample leans
+recent and deliberate, so a report cannot read the absence of an early era as the absence of a life,
+and it names `summary` and `harsh` as the two sections that should each spend a sentence or two on
+the photographs — conditionally, with an explicit instruction to leave them out when the pictures
+only repeat what the text already carries or when none came through at all.
 
 The chosen images are decoded, downscaled to a 768px long edge and re-encoded as JPEG **in the
 browser**, which also strips whatever EXIF the originals carried, GPS included. About 14 images
@@ -1395,7 +1413,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 489 checks: synthesises a real ZIP export and runs
+npm test           # 502 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

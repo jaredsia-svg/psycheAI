@@ -595,6 +595,14 @@ for (const [label, needle] of [
   ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
   ['says what may be taken from an image', /the setting, the activity, the company kept/],
   ['keeps images as weak evidence', /weakest evidence per item/],
+  // The two sections asked to draw on the photographs. Each is pinned on the
+  // instruction *and* on its escape hatch, because the failure worth guarding
+  // against is not silence about the pictures — it is a model that pads both
+  // sections with a sentence about them when there was nothing there to say.
+  ['names the two sections that should use the photos',
+    /`summary` and `harsh` are the two sections that should each spend a sentence or two on the photographs/],
+  ['says the sample leans recent and deliberate',
+    /selection prefers the last two years/],
   // Supplementary sources. Each limit is pinned on its own rather than as one
   // loose match, for the same reason the image limits are: they are the newest
   // way this could go wrong, and they cover the most sensitive data the app
@@ -748,12 +756,37 @@ for (const [label, needle] of [
   check('compatibility prompt ' + label, needle.test(prompts.COMPATIBILITY_SYSTEM));
 }
 
+// The instruction to draw on the photographs rides on the two field
+// descriptions rather than on the system prompt, so it is checked against the
+// schema — the loop above only ever sees PROFILE_SYSTEM, and a needle put in
+// that list would have passed by never being looked for.
+//
+// Each is pinned on the escape hatch as much as on the instruction. The failure
+// worth guarding against is not a report that stays silent about the pictures;
+// it is one that spends a sentence of both sections on them when there was
+// nothing there to say.
+const profileSchemaText = JSON.stringify(prompts.PROFILE_SCHEMA);
+for (const [label, needle] of [
+  ['asks the summary to use the photographs when they add something',
+    /give it one or two sentences here, inside the photograph rules/],
+  ['lets the summary skip them when they add nothing',
+    /If they only confirm what the text already established, leave them out/],
+  ['asks the roast to land on something specific in them',
+    /spend one or two sentences of this on them/],
+  ['lets the roast skip them when they add nothing',
+    /If the photographs give you nothing worth the words, leave them out/],
+  ['keeps the roast off how anyone in a photograph looks',
+    /nothing about how anyone in frame looks/],
+]) {
+  check('profile schema ' + label, needle.test(profileSchemaText));
+}
+
 // ---------- parse the synthetic export ----------
 
 const file = new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' });
 const signals = await IG.readExports([file], { includeMessages: false });
 
-check('reads posts', signals.counts.posts === 14, 'got ' + signals.counts.posts);
+check('reads posts', signals.counts.posts === 22, 'got ' + signals.counts.posts);
 check('reads stories', signals.counts.stories === 30);
 check('reads likes', signals.counts.likes === 240);
 check('reads comments', signals.counts.comments === 40);
@@ -950,9 +983,9 @@ const withImages = await IG.readExports(
   [new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' })],
   { includeMessages: false, includeImages: true });
 
-check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 44,
+check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 52,
   'got ' + withImages.mediaRefs.length);
-check('indexes the image files in the archive', withImages.mediaIndex.total === 26,
+check('indexes the image files in the archive', withImages.mediaIndex.total === 34,
   'got ' + withImages.mediaIndex.total);
 check('resolves a media uri to its archive entry',
   Boolean(IG.findMedia(withImages.mediaIndex, 'media/posts/3.png')));
@@ -973,16 +1006,66 @@ check('drops files below the size floor',
 check('never sends a video', picked.every(p => !/\.(mp4|mov|webm)$/i.test(p.path)));
 check('returns them oldest first',
   picked.every((p, i) => i === 0 || picked[i - 1].ts <= p.ts));
-// Scoring alone would cluster the picks in whichever era has the biggest
-// files, so check the result actually reaches across everything available.
+const mean = (rows, get) => rows.reduce((sum, r) => sum + get(r), 0) / (rows.length || 1);
+const share = (rows, ok) => rows.filter(ok).length / (rows.length || 1);
+
+// Recent life first. The fixture holds an older era three to four years back
+// whose posts are deliberately the strongest in the archive — long captions,
+// nine-image carousels — so these checks fail if selection is ranking on score
+// with no regard for when something was posted. That arrangement is the point:
+// against an older era that was also the weakest, every one of these would pass
+// whether the window existed or not.
 const datedRefs = withImages.mediaRefs
-  .filter(r => r.ts > 0 && IG.findMedia(withImages.mediaIndex, r.path))
-  .map(r => r.ts);
-const availableSpan = Math.max(...datedRefs) - Math.min(...datedRefs);
-const pickedSpan = picked[picked.length - 1].ts - picked[0].ts;
-check('spans the whole account history rather than one era',
-  pickedSpan >= availableSpan * 0.8,
-  Math.round(pickedSpan / 86400) + ' of ' + Math.round(availableSpan / 86400) + ' days');
+  .filter(r => r.ts > 0 && IG.findMedia(withImages.mediaIndex, r.path));
+const newestTs = Math.max(...datedRefs.map(r => r.ts));
+const windowStart = newestTs - Images.LIMITS.recentDays * 86400;
+const oldRefs = datedRefs.filter(r => r.ts < windowStart);
+
+check('the fixture really does hold an era outside the window to skip',
+  oldRefs.length >= 5 &&
+  mean(oldRefs, r => r.captionLen) > mean(datedRefs.filter(r => r.ts >= windowStart),
+    r => r.captionLen),
+  oldRefs.length + ' old refs, mean caption ' + Math.round(mean(oldRefs, r => r.captionLen)));
+check('every pick comes from the last two years while that window can fill them',
+  picked.every(p => p.ts >= windowStart),
+  picked.filter(p => p.ts < windowStart).length + ' picks from before the window');
+check('and passes over older posts that would outscore everything it took',
+  Images.scoreRef(oldRefs[0], 60000) >
+  Math.max(...picked.map(p => Images.scoreRef(p, 60000))),
+  'best skipped scores ' + Images.scoreRef(oldRefs[0], 60000) + ', best taken ' +
+  Math.max(...picked.map(p => Images.scoreRef(p, 60000))));
+// The fallback, driven by asking for more than the window can supply. Nothing
+// else in the suite reaches the older era, so without this the branch that
+// makes a dormant account usable at all would never run.
+// Driven by shrinking the window rather than by asking for more images: the
+// fixture's recent era holds more distinct days than the hard ceiling allows,
+// so no count it could be asked for would ever exhaust it naturally.
+const realWindow = Images.LIMITS.recentDays;
+Images.LIMITS.recentDays = 12;
+const shortWindowStart = newestTs - 12 * 86400;
+// Ten rather than fourteen on purpose: the recent window plus the older era's
+// distinct days can just cover ten, so a correct run never needs the last-resort
+// pass. That is what makes the one-a-day check below able to see the difference
+// between the ordered fallback and the pass that abandons the rule.
+const reachBack = Images.select(withImages, { count: 10 });
+Images.LIMITS.recentDays = realWindow;
+
+check('reaches further back once the recent window cannot fill the slots',
+  reachBack.length === 10 && reachBack.some(p => p.ts < shortWindowStart),
+  reachBack.length + ' picked, ' +
+  reachBack.filter(p => p.ts < shortWindowStart).length + ' from before the window');
+check('takes everything the window did have before reaching past it',
+  datedRefs.filter(r => r.ts >= shortWindowStart)
+    .every(r => reachBack.some(p => p.path === r.path)) ||
+  reachBack.filter(p => p.ts >= shortWindowStart).length ===
+    new Set(datedRefs.filter(r => r.ts >= shortWindowStart)
+      .map(r => Math.floor(r.ts / 86400))).size,
+  reachBack.filter(p => p.ts >= shortWindowStart).length + ' of ' +
+  datedRefs.filter(r => r.ts >= shortWindowStart).length + ' in-window candidates taken');
+check('and still refuses two shots from one day when it does',
+  new Set(reachBack.map(p => Math.floor(p.ts / 86400))).size === reachBack.length);
+check('the shrunken window is put back so later checks see the real one',
+  Images.LIMITS.recentDays === 730);
 check('takes no two images from the same day',
   new Set(picked.map(p => Math.floor(p.ts / 86400))).size === picked.length);
 check('prefers posts over stories',
@@ -994,14 +1077,18 @@ check('prefers posts over stories',
 // least considered posts in the archive. These checks pin the inversion, and
 // they are written as comparisons against the candidate pool rather than as
 // fixed numbers, so they still mean something if the fixture is edited.
+//
+// Scoped to the recent window, because that is the set selection is actually
+// choosing among — comparing the picks against the whole archive would measure
+// the window rather than the scoring, and the two rules would mask each other:
+// the older era here is uniformly long-captioned, so including it makes a
+// correctly-behaving selector look like it is avoiding long captions.
 const poolRefs = withImages.mediaRefs
-  .filter(r => IG.findMedia(withImages.mediaIndex, r.path))
   .filter(r => {
     const hit = IG.findMedia(withImages.mediaIndex, r.path);
-    return hit.bytes >= Images.LIMITS.minBytes && hit.bytes <= Images.LIMITS.maxBytes;
-  });
-const mean = (rows, get) => rows.reduce((sum, r) => sum + get(r), 0) / (rows.length || 1);
-const share = (rows, ok) => rows.filter(ok).length / (rows.length || 1);
+    return hit && hit.bytes >= Images.LIMITS.minBytes && hit.bytes <= Images.LIMITS.maxBytes;
+  })
+  .filter(r => r.ts === 0 || r.ts >= windowStart);
 
 check('the pool it chooses from really does hold both extremes',
   poolRefs.some(r => r.captionLen === 0) && poolRefs.some(r => r.captionLen >= 300) &&
@@ -1043,7 +1130,7 @@ check('digest declares its schema', digest.schema === 'psycheai-digest/1');
 // The app no longer asks for a name, so the export's own must come through —
 // mojibake repaired, since that is the name the other person will read.
 check('digest takes the name from the export', digest.profile.name === 'Aleç', digest.profile.name);
-check('digest carries complete counts', digest.counts.posts === 14 && digest.counts.postsLiked === 240);
+check('digest carries complete counts', digest.counts.posts === 22 && digest.counts.postsLiked === 240);
 check('digest samples captions', digest.samples.captions.length > 0 && digest.samples.captions.length <= Digest.LIMITS.captions);
 // The prompt rule about whose life a caption describes is worth nothing if the
 // captions that trigger it never survive sampling, and it has a 4-character
@@ -1957,7 +2044,8 @@ console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
   heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
 console.log('  images selected   : ' + picked.length + ' of ' + withImages.mediaRefs.length +
-  ' stills, spanning ' + Math.round(pickedSpan / 86400) + ' days');
+  ' stills, mean caption ' + Math.round(mean(picked, p => p.captionLen)) + ' chars, ' +
+  picked.filter(p => p.ts >= windowStart).length + ' from the last two years');
 
 if (failures.length) {
   console.error('\n' + failures.length + ' failed, ' + passed + ' passed:');

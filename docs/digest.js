@@ -89,7 +89,10 @@
   // tools/selftest.mjs — this file cannot import lib/prompts.js to measure it
   // directly, since it runs in the browser, so the check is what stops the
   // number drifting a third time.
-  const FIXED_INPUT_TOKENS = 15000;
+  // Raised from 15,000 when `summary` and `harsh` gained their instructions to
+  // draw on the photographs — the check below caught it the same run, which is
+  // the third time it has earned its place.
+  const FIXED_INPUT_TOKENS = 15500;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

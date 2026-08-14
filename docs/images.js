@@ -27,6 +27,10 @@
     // past roughly this size you pay for tokens without gaining detail.
     edge: 768,
     quality: 0.72,
+    // How far back "recent" reaches. Slots are filled from inside this window
+    // first, on score alone, and anything older is only reached for when the
+    // window cannot fill them.
+    recentDays: 730,
   };
 
   const DAY = 86400;
@@ -83,11 +87,17 @@
   /**
    * Chooses which images to send.
    *
-   * Scoring alone would return fifteen photos from whichever year they posted
-   * most, which says nothing about a life. So the candidates are split into
-   * equal-sized buckets along the timeline and the best of each bucket is
-   * taken: the result spans the account from first post to last, and eras when
-   * they posted more still get proportionally more slots.
+   * Recent life first. The slots are filled from the last two years on score
+   * alone, and only when that window cannot fill them does selection reach
+   * further back — so a reader who has been posting all along is described by
+   * who they are now, and one who stopped years ago is still described rather
+   * than left with an empty sample.
+   *
+   * This replaced an even spread across the whole timeline, which guaranteed
+   * range at the cost of spending most of the slots on a person who no longer
+   * exists. What survives from it is the one-a-day rule: within whichever era
+   * is being drawn from, no two picks come from the same day, so one eventful
+   * weekend cannot become the whole profile.
    *
    * @param {object} signals  from PsycheInstagram.readExports
    * @param {object} options  { count }
@@ -122,19 +132,38 @@
 
     const chosen = [];
     const usedDays = new Set();
-    const buckets = Math.min(want, dated.length);
-    const size = buckets ? dated.length / buckets : 0;
 
-    for (let i = 0; i < buckets; i++) {
-      const slice = dated.slice(Math.floor(i * size), Math.floor((i + 1) * size));
-      // Best in the bucket, but never a second shot from a day already
-      // represented — one eventful weekend should not become the profile.
-      const ranked = slice.slice().sort((a, b) => b.score - a.score || b.ts - a.ts);
-      const pick = ranked.find(c => !usedDays.has(Math.floor(c.ts / DAY))) || ranked[0];
-      if (!pick || chosen.includes(pick)) continue;
-      usedDays.add(Math.floor(pick.ts / DAY));
-      chosen.push(pick);
-    }
+    // The window is measured back from their most recent post, not from the
+    // clock. For the ordinary case — an export downloaded within days of the
+    // last post — the two are the same. They part company on a dormant account,
+    // where counting from today would put the whole archive outside the window
+    // and collapse straight through to the fallback, losing the preference for
+    // recency altogether. Counting from their last post instead gives the last
+    // two years they were actually alive on the platform, which is the thing
+    // worth having. It also keeps this deterministic: a fixture with fixed
+    // dates would otherwise drift out of the window as real time passed.
+    const newest = dated.length ? dated[dated.length - 1].ts : 0;
+    const cutoff = newest - LIMITS.recentDays * DAY;
+
+    const take = (candidates, oneADay) => {
+      const ranked = candidates.slice().sort((a, b) => b.score - a.score || b.ts - a.ts);
+      for (const candidate of ranked) {
+        if (chosen.length >= want) return;
+        if (chosen.includes(candidate)) continue;
+        const day = Math.floor(candidate.ts / DAY);
+        if (oneADay && usedDays.has(day)) continue;
+        usedDays.add(day);
+        chosen.push(candidate);
+      }
+    };
+
+    take(dated.filter(c => c.ts >= cutoff), true);
+    // Only reached when the recent window ran out of days to offer.
+    if (chosen.length < want) take(dated.filter(c => c.ts < cutoff), true);
+    // And this only when the whole archive is bunched onto a handful of days,
+    // where holding the one-a-day rule would mean sending four photographs
+    // because somebody posts in bursts. Range is the thing to give up there.
+    if (chosen.length < want) take(dated, false);
 
     for (const candidate of undated) {
       if (chosen.length >= want) break;
