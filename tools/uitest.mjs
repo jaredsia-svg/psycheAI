@@ -517,15 +517,28 @@ try {
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's and Facebook's menus, and they go
   // stale the same way. textContent, since the disclosure is closed here.
+  // takeout.google.com is not in this list: it is a real destination rather
+  // than a button inside somebody else's UI, so it is a genuine link instead
+  // of a ui-label — checked separately below.
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['takeout.google.com', 'Deselect all', 'My Activity', 'Multiple formats', 'JSON',
-      'Settings & privacy', 'Accounts Centre', 'Your information and permissions',
+    ['Deselect all', 'My Activity', 'Multiple formats', 'JSON', 'Next Step', 'Export once',
+      'Create Export', 'Settings & privacy', 'Accounts Centre', 'Your information and permissions',
       'Download your information', 'All time', 'JSON'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
-  check('the underline is not the one links use, since none of these are links',
+  // The one genuine link in the how-to: takeout.google.com is where the whole
+  // process starts, so it is worth being able to tap straight to it rather
+  // than only reading it as a hint to type in another tab.
+  check('takeout.google.com is a real link to the actual site, opened in a new tab',
+    await page.evaluate(() => {
+      const link = [...document.querySelectorAll('.optional-card a')]
+        .find(a => a.textContent.trim() === 'takeout.google.com');
+      return Boolean(link) && link.href === 'https://takeout.google.com/' &&
+        link.target === '_blank' && /noopener/.test(link.rel);
+    }));
+  check('the underline is not the one links use, and the one real link is the only <a> here',
     await page.evaluate(() => {
       const probe = document.createElement('a');
       probe.href = '#';
@@ -535,7 +548,7 @@ try {
       const labels = [...document.querySelectorAll('.help-card .ui-label')];
       return labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
-        document.querySelectorAll('.help-card a').length === 0;
+        document.querySelectorAll('.help-card a').length === 1;
     }));
   // The first three titles are the report's own section names, read from
   // copy.js, so a rename there fails this rather than leaving the landing
