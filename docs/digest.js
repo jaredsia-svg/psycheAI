@@ -90,9 +90,10 @@
   // directly, since it runs in the browser, so the check is what stops the
   // number drifting a third time.
   // Raised from 15,000 when `summary` and `harsh` gained their instructions to
-  // draw on the photographs — the check below caught it the same run, which is
-  // the third time it has earned its place.
-  const FIXED_INPUT_TOKENS = 15500;
+  // draw on the photographs, and again when the roast gained the test it has to
+  // put every hard line through. The check below caught both the same run, which
+  // is the third and fourth time it has earned its place.
+  const FIXED_INPUT_TOKENS = 16000;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

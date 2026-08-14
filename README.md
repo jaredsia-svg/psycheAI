@@ -1109,6 +1109,25 @@ gap between what somebody announces and what they do. Generic insults are not ro
 as a machine that did not actually look, and two checks hold that reasoning in the prompt rather
 than trusting it to survive the next edit.
 
+**The sharper failure is not the invented insult but the hollow one**, and it took a real report to
+surface it: *"you preach the gospel of self-driving cars and an autonomous future, yet half your
+stories are screenshots of news articles posted at 1am from your room."* Both halves are true. Neither
+touches the other — expecting a technology to arrive is not a promise to be asleep, or outdoors, or
+anywhere at all — so the sentence has the shape of a roast and none of the substance. It is what a
+model produces when it pattern-matches the rhetoric of wit without checking that the second clause
+costs the first anything, and a section full of it reads as a compilation of odd details rather than
+a reading of a person.
+
+The prompt now makes that a test rather than a hope. Before writing any line of the form *X, yet Y*
+the model has to state in one plain sentence what commitment X makes and what exactly Y costs it; if
+it cannot, it has two facts standing next to each other and is told to cut the line and either find
+the behaviour that genuinely undercuts the claim or make the point about X alone. Both halves must
+bear on the same commitment, posting rhythm is explicitly barred as evidence about whether opinions
+are sincere — it is evidence about habits — and two observations that can be defended are ranked
+above six that cannot. Nine checks pin it, and the worked example is pinned separately from the rule,
+because the rule without a concrete instance of it being broken is the part that historically fails
+to change anything.
+
 A third reading, **Where this ends up** — the five-year behavioural forecast — was cut along with
 the behaviour section's subsections. The no-diagnosis rule did not go with it: `harsh` and `advice`
 can drift into a clinical claim just as easily, and the forecast happened to be the field carrying
@@ -1416,7 +1435,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 502 checks: synthesises a real ZIP export and runs
+npm test           # 511 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

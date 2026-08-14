@@ -603,6 +603,23 @@ for (const [label, needle] of [
     /`summary` and `harsh` are the two sections that should each spend a sentence or two on the photographs/],
   ['says the sample leans recent and deliberate',
     /selection prefers the last two years/],
+  // The roast's logic test. Its failure mode is not the invented insult the
+  // rules above already cover — the facts are true — it is two unrelated ones
+  // joined by a "yet" that implies a hypocrisy neither supports, which reads as
+  // a compilation of odd details rather than a reading of anybody.
+  ['makes the roast state the contradiction before writing it',
+    /say what the contradiction actually is/],
+  ['names the hollow "yet" as the failure to avoid', /it is the hollow \*yet\*/],
+  ['carries the worked example of a contradiction that is not one',
+    /expecting a technology to arrive is not a promise to be asleep/],
+  ['tells it to cut the line when it cannot name the cost',
+    /you have two facts standing next to each other/],
+  ['requires both halves to bear on the same commitment',
+    /Both halves have to point at the same thing/],
+  ['blocks posting rhythm as proof of hypocrisy about content',
+    /never evidence about whether their opinions are sincere/],
+  ['prefers a defensible few to an undefendable pile',
+    /a pile of odd details is not an argument/],
   // Supplementary sources. Each limit is pinned on its own rather than as one
   // loose match, for the same reason the image limits are: they are the newest
   // way this could go wrong, and they cover the most sensitive data the app
@@ -777,6 +794,10 @@ for (const [label, needle] of [
     /If the photographs give you nothing worth the words, leave them out/],
   ['keeps the roast off how anyone in a photograph looks',
     /nothing about how anyone in frame looks/],
+  ['makes the roast field itself demand a nameable contradiction',
+    /Every hard line must name a contradiction you could state plainly/],
+  ['rates a hollow contradiction as the worst of the three failures',
+    /a hollow contradiction is worse than both/],
 ]) {
   check('profile schema ' + label, needle.test(profileSchemaText));
 }
