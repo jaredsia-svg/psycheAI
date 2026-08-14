@@ -79,11 +79,13 @@ check('confidence is honest about a thin export', report.confidence.score <= 75,
 // and the prompt-guard checks in selftest only prove the words are present,
 // not that they land.
 //
-// The fixture is deliberately the shape that was being misread: 36 messages
-// across 3 threads and *no* group threads, 22 distinct people commented on,
-// 240 likes against 12 posts. High-ish traffic, narrow reach, heavy lurking —
-// an introvert with a few close friends, which was coming back scored as an
-// extravert off the message volume alone.
+// The fixture is deliberately the shape that was being misread, and it now
+// carries the confounder too: 13 threads in the archive but only 3 the reader
+// ever answered, 1 group chat they were added to and never spoke in, 240 likes
+// against 12 posts. An introvert with a few close friends and an inbox full of
+// mail they ignored — which is the account that was coming back scored as an
+// extravert, first off raw message volume and then, once that was corrected,
+// off the raw thread count instead.
 //
 // Read defensively: the evidence check above already reports a missing array
 // as its own failure, and dereferencing one here as well would turn that into
@@ -93,7 +95,13 @@ const extraversion = (report.bigFive.extraversion || {}).score;
 const extraversionEvidence = (report.bigFive.extraversion || {}).evidence || [];
 check('a narrow, lurk-heavy account is not scored as an extravert',
   Number.isFinite(extraversion) && extraversion <= 65,
-  extraversion + '/100 — 3 threads, 0 group threads, 240 likes against 12 posts');
+  extraversion + '/100 — 3 of 13 threads answered, 0 of 1 groups spoken in, ' +
+  '240 likes against 12 posts');
+// The specific way it went wrong the second time: the archive's 13 threads
+// read as reach when only 3 of them were ever answered.
+check('the raw thread count is not cited as evidence of reach',
+  !extraversionEvidence.some(e => /\b13\b/.test(e)),
+  JSON.stringify(extraversionEvidence));
 check('the E/I axis reads introvert on that same evidence',
   /^I/.test(report.mbti.type) || report.mbti.type === 'Uncertain',
   report.mbti.type);

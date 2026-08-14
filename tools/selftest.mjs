@@ -659,9 +659,22 @@ for (const [label, needle] of [
     /the mode of contact introverts specifically prefer/],
   ['says plainly that volume is not the signal', /\*\*Volume is not the signal\. Breadth is\.\*\*/],
   ['points at messages-per-thread rather than the total',
-    /Thousands of messages across a handful of threads is \*depth\*/],
-  ['counts group threads as the stronger social evidence',
-    /Sustained group-chat presence is genuine extraversion evidence/],
+    /Thousands of messages across a handful of conversations they actually joined is \*depth\*/],
+  ['counts group participation, not group membership, as the stronger evidence',
+    /Sustained group-chat \*participation\* is genuine extraversion evidence/],
+  // The correction to the correction: the first version of this block pointed
+  // at `threads`, which counts stranger DMs and silent groups, so an inbox
+  // full of mail nobody answered read as social reach.
+  ['sends the model to activeThreads rather than the raw thread count',
+    /\*\*Use .?activeThreads.?, never .?threads.?\.\*\*/],
+  ['says what the raw thread count actually contains',
+    /message requests, one-off DMs from strangers, group chats somebody was added to and never opened/],
+  ['warns that the two can differ by a wide margin',
+    /can differ by a factor of forty for the same person/],
+  ['treats a null active count as unknown rather than zero',
+    /that is unknown, not zero/],
+  ['refuses the raw group count as participation evidence',
+    /Being in fifty group chats and speaking in one is the opposite of what it looks like/],
   ['prefers distinct people over comment volume',
     /Five hundred comments spread over six people is a small world/],
   ['reads lurking as introvert evidence', /lurking is introvert evidence/],
@@ -973,13 +986,41 @@ check('digest holds no raw archive bytes', !JSON.stringify(digest).includes('PK
 const withDmSignals = await IG.readExports([file], { includeMessages: true });
 const withDms = Digest.build(withDmSignals, { includeMessages: true });
 
-check('DMs are parsed when included', withDmSignals.messages.threads === 3, String(withDmSignals.messages.threads));
+check('DMs are parsed when included', withDmSignals.messages.threads === 13, String(withDmSignals.messages.threads));
 check('the account owner is identified in the threads', withDmSignals.messages.owner === 'Aleç',
   JSON.stringify(withDmSignals.messages.owner));
 check('sent and received are counted separately',
-  withDmSignals.messages.sent === 18 && withDmSignals.messages.received === 18,
+  withDmSignals.messages.sent === 18 && withDmSignals.messages.received === 33,
   withDmSignals.messages.sent + '/' + withDmSignals.messages.received);
-check('digest includes DM aggregates', withDms.directMessages.threads === 3);
+check('digest includes DM aggregates', withDms.directMessages.threads === 13);
+
+// The distinction the whole extraversion correction rests on. `threads` is
+// what the archive contains — nine of the fixture's are strangers who got no
+// reply, one is a group nobody answered — and `activeThreads` is what this
+// person actually took part in. Reading the first as social reach is what
+// turned quiet accounts into extraverts, so the gap is asserted rather than
+// the numbers alone: an equality here would mean the fixture stopped
+// exercising the case.
+check('threads counts the whole inbox, active threads only what was answered',
+  withDms.directMessages.activeThreads === 3 &&
+  withDms.directMessages.activeThreads < withDms.directMessages.threads,
+  withDms.directMessages.activeThreads + ' active of ' + withDms.directMessages.threads);
+check('a group they were added to but never spoke in does not count as participation',
+  withDms.directMessages.groupThreads === 1 && withDms.directMessages.activeGroupThreads === 0,
+  withDms.directMessages.groupThreads + ' groups, ' +
+  withDms.directMessages.activeGroupThreads + ' spoken in');
+// The two ratios the prompt weighs, on the same account, to show that reading
+// the wrong field genuinely inverts the answer rather than nudging it.
+check('the wrong denominator reads as breadth and the right one as depth',
+  (withDms.directMessages.totalMessages / withDms.directMessages.threads) < 5 &&
+  (withDms.directMessages.totalMessages / withDms.directMessages.activeThreads) > 15,
+  (withDms.directMessages.totalMessages / withDms.directMessages.threads).toFixed(1) + ' vs ' +
+  (withDms.directMessages.totalMessages / withDms.directMessages.activeThreads).toFixed(1));
+// Nobody else's name may survive the parse, and the silent threads are the
+// newest way one could: they are held per-thread while the owner is worked
+// out, then dropped.
+check('no name from a thread the reader never answered reaches the digest',
+  !/Stranger |Group Member /.test(JSON.stringify(withDms)));
 check('digest samples only the user\'s own messages',
   /Only the user's own messages/.test(withDms.directMessages.note));
 check('DM sampling coverage is reported', withDms.coverage.sampling.ownMessages.available === 18);

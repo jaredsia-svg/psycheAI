@@ -615,15 +615,15 @@ The budget is derived rather than picked, in `charBudget()`:
 worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
 left for input      $0.50 − $0.2458           = $0.2542
                     ÷ $1.50/M                 = 169,493 tokens
-less system prompt + response schema          −  13,000
+less system prompt + response schema          −  13,600
 less 20 images × 258                          −   5,160
-                    × 3.5 chars/token         = 529,666 characters
+                    × 3.5 chars/token         = 527,566 characters
 ```
 
 That fixed reserve was **8,600 for a long time, and had gone stale** — it was typed when the system
 prompt was 10,434 characters, and the supplementary-source rules, the hard limits and the
 extraversion correction all landed after it. By the time anyone measured, the prompt and schema were
-about 12,800 tokens, so the reserve was nearly 3,000 short. Under-reserving fails quietly in exactly
+about 13,100 tokens, so the reserve was nearly 4,500 short. Under-reserving fails quietly in exactly
 the wrong direction: it *inflates* what `charBudget` returns, so a digest that fills its ceiling costs
 more than `COST_CAP` claims it can.
 
@@ -819,15 +819,38 @@ specifically prefer, because it strips out everything they find costly about the
 DM traffic and constant meme-swapping with four close friends was being read as sociability.
 
 The correction is a block of the prompt that says so outright, and then replaces the raw totals with
-**breadth** measures, all of which the digest already carried and none of which were being used:
-messages ÷ threads (depth versus reach), `groupThreads` against `threads`,
-`counts.distinctPeopleCommentedOn` rather than `commentsWritten`, `closeFriends` rather than
+**breadth** measures: messages ÷ active threads (depth versus reach), group *participation* against
+it, `counts.distinctPeopleCommentedOn` rather than `commentsWritten`, `closeFriends` rather than
 `followers`, and likes-and-saves against posts as a lurking ratio. Alongside that it weights
 introvert-leaning evidence *up*, because it is the quieter half of the data and easy to skip: long
 average message length, solitary imagery, a rhythm that clusters when nobody else is awake, a small
 set of repeatedly-engaged accounts. Then it raises the bar with a number on it — do not score above
 roughly 60, and do not assign **E**, without breadth evidence; a high volume of talk with a small
 circle scores below 50.
+
+**The first version of this correction had the same bug it was fixing**, one layer down, and it is
+worth writing out because it is the more interesting half. It sent the model to `threads` and
+`groupThreads` — and those count every conversation *in the archive*, not every conversation the
+person took part in. An Instagram export is full of message requests, one-off DMs from strangers who
+got no reply, and group chats somebody was added to and never opened. Measured on a synthetic pair,
+the identical person — same 2,510 messages sent — read as 1,250 messages per thread with a clean
+inbox and 28.8 with 180 unanswered DMs and 12 silent groups behind it. The second one trips
+"spread thin across many threads is breadth", which is the original complaint arriving by a different
+road. It passed the suite only because the fixture had three threads and the reader had answered all
+three.
+
+So the digest now carries `activeThreads` and `activeGroupThreads` — conversations they actually
+spoke in — computed in `summariseMessages` because it needs the account owner, and the owner is only
+known once every thread has been read. They are **null, not zero**, when the export does not identify
+its owner, since zero is a claim and null is the absence of one. The per-thread sender tallies that
+produce them are transient in the same way `threadPartners` and `messageSenders` already are: held
+during the parse, dropped immediately after, and no name from them reaches the digest — asserted by
+its own check, because silent threads were a new way for a stranger's name to escape.
+
+The fixture gained nine unanswered DMs and one silent group chat, which is what makes any of this
+testable: it now reports 13 threads against 3 active, and 1 group against 0 spoken in. A check holds
+the *gap* rather than the numbers, so a fixture that stopped exercising the case fails instead of
+going quietly vacuous — verified by deleting the silent threads and watching six checks fall over.
 
 One case runs the other way from intuition. When a reader unticks direct messages, every breadth
 ratio above disappears with them, and what is left is almost entirely publishing volume — the single
@@ -1287,7 +1310,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 455 checks: synthesises a real ZIP export and runs
+npm test           # 464 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1305,7 +1328,7 @@ npm run test:ui    # 692 checks: drives the real UI in Chromium against a
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in
                    # every one
-npm run test:live  # 18 checks: two real model calls against whichever provider
+npm run test:live  # 19 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```
 

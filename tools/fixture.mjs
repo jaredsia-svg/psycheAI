@@ -153,7 +153,7 @@ function at(daysAgo, hour) {
 // detection matches after repairing both.
 function messageThreads() {
   const owner = 'Aleç';
-  return [1, 2, 3].map(thread => ({
+  const talkative = [1, 2, 3].map(thread => ({
     name: 'your_instagram_activity/messages/inbox/friend_' + thread + '_123/message_1.json',
     content: JSON.stringify({
       participants: [{ name: owner }, { name: 'Friend ' + thread }],
@@ -167,6 +167,40 @@ function messageThreads() {
       })),
     }),
   }));
+
+  // The half of a real inbox that makes `threads` a lie: people who messaged
+  // once and got nothing back, and a group somebody was added to and never
+  // spoke in. Every one of these inflates `threads` and `groupThreads` while
+  // saying nothing whatever about how sociable the account holder is — which
+  // is exactly the reading that was turning quiet people into extraverts, so
+  // the fixture has to contain some or the distinction cannot be tested.
+  const silent = Array.from({ length: 9 }, (_, i) => ({
+    name: 'your_instagram_activity/messages/inbox/stranger_' + i + '_777/message_1.json',
+    content: JSON.stringify({
+      participants: [{ name: owner }, { name: 'Stranger ' + i }],
+      thread_path: 'inbox/stranger_' + i + '_777',
+      messages: [{
+        sender_name: 'Stranger ' + i,
+        timestamp_ms: at(40 + i, 13) * 1000,
+        content: 'Unsolicited message ' + i + ' that was never replied to.',
+      }],
+    }),
+  }));
+
+  const silentGroup = {
+    name: 'your_instagram_activity/messages/inbox/school_group_555/message_1.json',
+    content: JSON.stringify({
+      participants: [{ name: owner }, { name: 'Group Member A' }, { name: 'Group Member B' }],
+      thread_path: 'inbox/school_group_555',
+      messages: Array.from({ length: 6 }, (_, i) => ({
+        sender_name: i % 2 === 0 ? 'Group Member A' : 'Group Member B',
+        timestamp_ms: at(30 + i, 19) * 1000,
+        content: 'Group chatter ' + i + ' the account holder never answered.',
+      })),
+    }),
+  };
+
+  return talkative.concat(silent, [silentGroup]);
 }
 
 // An outdoorsy, organised, family-oriented persona: steady weekly posting in

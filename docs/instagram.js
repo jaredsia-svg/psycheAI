@@ -348,12 +348,20 @@
       for (const name of participants) {
         out.threadPartners.set(name, (out.threadPartners.get(name) || 0) + 1);
       }
+      // Per-thread sender tallies, so that "threads this person actually
+      // spoke in" can be separated from "threads that exist in the export".
+      // The two are very different numbers and the export only carries the
+      // second: it includes message requests, one-off DMs from strangers and
+      // group chats somebody was added to and never opened.
+      const bySender = new Map();
+      out.threadSenders.push({ group: participants.length > 2, bySender });
       for (const msg of messages) {
         const sender = fixText(msg && msg.sender_name);
         const ts = toSeconds(msg && msg.timestamp_ms);
         const content = fixText((msg && msg.content) || '');
         out.counts.messages++;
         out.messageSenders.set(sender, (out.messageSenders.get(sender) || 0) + 1);
+        bySender.set(sender, (bySender.get(sender) || 0) + 1);
         out.messageEvents.push({ sender, ts, len: content.length });
         if (content) out.messageTexts.push({ sender, text: content });
       }
@@ -382,6 +390,13 @@
       commentedOn: new Map(),
       threadPartners: new Map(),
       messageSenders: new Map(),
+      // One entry per thread: whether it is a group, and how many messages
+      // each participant sent in it. Transient, like threadPartners and
+      // messageSenders beside it — it exists only so summariseMessages can
+      // work out how many threads the owner actually *spoke* in once the
+      // owner is known, and is emptied there. No name from it reaches the
+      // digest.
+      threadSenders: [],
       messageEvents: [],
       messageTexts: [],
       corpusChars: 0,
@@ -449,13 +464,37 @@
         if (m.sender === owner) ownTexts.push(m.text);
       }
     }
-    // Drop the raw transcript now that the aggregates exist.
+    // How many conversations they actually took part in, as opposed to how
+    // many exist in the archive. Only computable here, because it needs the
+    // owner, and the owner is only known once every thread has been read.
+    //
+    // Null rather than 0 when the owner could not be resolved: 0 would read
+    // as "spoke in nothing", which is a claim, where null is the absence of
+    // one. Nothing downstream may treat the two the same.
+    let activeThreads = null;
+    let activeGroupThreads = null;
+    if (owner) {
+      activeThreads = 0;
+      activeGroupThreads = 0;
+      for (const thread of signals.threadSenders) {
+        if (!thread.bySender.get(owner)) continue;
+        activeThreads++;
+        if (thread.group) activeGroupThreads++;
+      }
+    }
+
+    // Drop the raw transcript now that the aggregates exist. threadSenders
+    // goes with it: it is the only structure here holding other people's
+    // names per conversation, and it has served its one purpose.
     signals.messageTexts = [];
     signals.messageEvents = [];
+    signals.threadSenders = [];
     return {
       owner,
       threads: signals.counts.threads,
       groupThreads: signals.counts.groupThreads,
+      activeThreads,
+      activeGroupThreads,
       total: signals.counts.messages,
       sent: sentCount,
       received: receivedCount,

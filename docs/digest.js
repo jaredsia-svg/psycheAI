@@ -76,8 +76,8 @@
   const CHARS_PER_TOKEN = 3.5;
 
   // The system prompt plus the response schema, which are sent on every
-  // structured-output call and charged as input. Currently 23,461 + 21,431
-  // chars, so about 12,800 tokens at the ratio above.
+  // structured-output call and charged as input. Currently 24,364 + 21,431
+  // chars, so about 13,100 tokens at the ratio above.
   //
   // This was 8,600, typed when the prompt was 10,434 chars, and it went stale
   // as the prompt grew — the supplementary-source rules, the hard limits and
@@ -89,7 +89,7 @@
   // tools/selftest.mjs — this file cannot import lib/prompts.js to measure it
   // directly, since it runs in the browser, so the check is what stops the
   // number drifting a third time.
-  const FIXED_INPUT_TOKENS = 13000;
+  const FIXED_INPUT_TOKENS = 13600;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;
@@ -426,6 +426,15 @@
       digest.directMessages = {
         threads: messages.threads,
         groupThreads: messages.groupThreads,
+        // The numbers that actually mean something about this person's
+        // social reach. `threads` counts every conversation in the archive,
+        // including message requests, one-off DMs from strangers and groups
+        // they were added to and never opened — so on its own it reads as
+        // reach when much of it is inbound noise. These two count only the
+        // conversations they genuinely spoke in. Null when the export did
+        // not identify its own owner, which is not the same as zero.
+        activeThreads: messages.activeThreads,
+        activeGroupThreads: messages.activeGroupThreads,
         totalMessages: messages.total,
         sentByUser: messages.sent,
         receivedByUser: messages.received,
