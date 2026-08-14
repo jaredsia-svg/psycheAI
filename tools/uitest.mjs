@@ -80,13 +80,13 @@ async function addSupplement(page, source, buffer, name) {
   }, { timeout: 60000 });
 }
 
-// Every upload now stops at the depth picker, so the suite has to answer it
-// the way a reader would before anything else can proceed.
-async function chooseDepth(page, depth) {
+// The depth picker is gone — every run is Standard — so the only thing between
+// an upload and the review is the supplement offer. Kept as a named step
+// rather than inlined at forty call sites, and kept tolerant, so that the one
+// dialog left on the way through is answered the way a reader would.
+async function chooseDepth(page) {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 }).catch(() => {});
   await passSupplement(page);
-  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
-  await page.click('#depth-dialog .mode-option[data-depth="' + depth + '"]');
 }
 
 // Every upload now also stops at the pre-send review, after the depth
@@ -1045,8 +1045,8 @@ try {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
   check('the supplement offer opens once the Instagram archive is read',
     await page.locator('#supplement-dialog').isVisible());
-  check('it opens before the depth picker, not after',
-    !(await page.locator('#depth-dialog[open]').count()));
+  check('it opens before the review, not after',
+    !(await page.locator('#review-dialog[open]').count()));
   check('nothing has reached the model at the point it is offered',
     analyseBodies.length === 0, analyseBodies.length + ' requests');
   check('it offers exactly the two sources, both enabled',
@@ -1115,16 +1115,19 @@ try {
   await page.click('.supplement-help > summary');
   await shot('1a-supplement');
 
-  // ---- the depth picker ----
-  // It has to interrupt: nothing should reach the model before the reader has
-  // said how much of their export to send.
+  // ---- straight from the supplement offer to the review ----
+  //
+  // The depth picker used to sit between these two. It asked a question with
+  // one available answer, since Comprehensive has never been on sale, so it is
+  // gone and every run is Standard. What has to stay true is the part that was
+  // ever load-bearing: nothing reaches the model before the review.
   await skipSupplement(page);
-  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
-  check('skipping goes straight to the depth picker',
-    await page.locator('#depth-dialog').isVisible());
-  check('the depth picker opens once the archive is read',
-    await page.locator('#depth-dialog').isVisible());
-  check('nothing was sent to the model before the choice was made',
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('skipping the supplement offer goes straight to the review',
+    await page.locator('#review-dialog').isVisible());
+  check('the depth picker is gone from the document entirely',
+    (await page.locator('#depth-dialog').count()) === 0);
+  check('nothing was sent to the model before the review opened',
     analyseBodies.length === 0, analyseBodies.length + ' requests');
   // The claim that nothing has left the device used to live in a fineprint
   // line under the progress bar; that row is gone, and the claim now rides
@@ -1140,39 +1143,12 @@ try {
   check('the working title says "Loading" before anything more specific is known',
     (await page.evaluate(() => window.__titles || []))[0] === 'Loading',
     JSON.stringify(await page.evaluate(() => window.__titles || [])));
-  check('the profile is not showing behind the picker',
+  check('the profile is not showing behind the review',
     !(await page.locator('#view-profile').isVisible()));
-  check('the picker offers exactly two depths',
-    (await page.locator('#depth-dialog .mode-option').count()) === 2);
-  const depthText = await page.locator('#depth-dialog').innerText();
-  check('the picker names both depths', /Standard/.test(depthText) && /Comprehensive/.test(depthText));
-  check('the picker no longer quotes this export\'s counts or the run-cost budget',
-    !/\d+ captions and \d+ comments/.test(depthText) && !/\$0\.\d\d/.test(depthText), depthText);
-
-  // Comprehensive is built but not on sale. It stays on the picker so the
-  // reader knows it is coming and what it will cost, and it must not be
-  // choosable while that is true.
-  const comprehensiveOption = page.locator('#depth-dialog .mode-option[data-depth="comprehensive"]');
-  check('comprehensive is disabled while it is off sale', await comprehensiveOption.isDisabled());
-  check('standard is still selectable',
-    await page.locator('#depth-dialog .mode-option[data-depth="standard"]').isEnabled());
-  check('the picker names comprehensive\'s price and that it is not here yet',
-    /USD 2\.99 per analysis/.test(depthText) && /Coming soon/i.test(depthText), depthText);
-  // Both prices are stated, so both have to stay true together: the day
-  // standard stops being free this line has to change with it.
-  check('the picker says standard is the free one',
-    /Standard is free/i.test(depthText), depthText);
-  // The browser will not deliver a real click to a disabled button, so the
-  // thing worth proving is the case it does deliver: dispatchEvent goes
-  // straight to the listener, skipping every check a user click passes.
-  const beforeSynthetic = analyseBodies.length;
-  await comprehensiveOption.dispatchEvent('click');
-  check('a synthetic click on comprehensive chooses nothing and sends nothing',
-    (await page.locator('#depth-dialog').isVisible()) && analyseBodies.length === beforeSynthetic,
-    analyseBodies.length + ' requests');
-  await shot('1b-depth-picker');
-
-  await page.click('#depth-dialog .mode-option[data-depth="standard"]');
+  // The machinery still records a depth even with nothing left to pick, and
+  // standard is what every run must now be.
+  check('every run is standard now that there is nothing to choose',
+    await page.evaluate(() => window.PsycheDigest.DEPTHS.standard.images === 14));
 
   // ---- the pre-send review ----
   // The one dialog in this app whose entire content is generated fresh on
@@ -2630,50 +2606,106 @@ try {
   check('the reader is left on the upload page, not stranded on the spinner',
     (await page.locator('#view-welcome').isVisible()) &&
     !(await page.locator('#view-working').isVisible()));
-  check('the depth picker never opened for an archive that cannot be read',
-    !(await page.locator('#depth-dialog').isVisible()));
+  check('the review never opened for an archive that cannot be read',
+    !(await page.locator('#review-dialog').isVisible()));
   check('nothing from the wrong archive reached the model',
     analyseBodies.length === beforeForeign, analyseBodies.length - beforeForeign + ' requests');
   check('no half-built profile is left behind by the refusal',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
-  // ---- comprehensive depth, and backing out of the picker ----
+  // ---- Back on the review steps upstream, it does not abandon ----
+  //
+  // This is the one button in the app whose label changed meaning: it read
+  // "Cancel" and went to the welcome page, and now reads "Back" and reopens
+  // the supplement offer. The distinction that matters is that it is a step,
+  // not a discard — the archive stays read and the reader can go forward
+  // again — so both halves are checked.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await skipSupplement(page);
-  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
+  await chooseDepth(page);
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('the review\'s left button says Back, not Cancel',
+    (await page.locator('#review-cancel').innerText()).trim() === 'Back',
+    await page.locator('#review-cancel').innerText());
 
-  // Cancelling is a real answer: it must cost nothing and go back, not push on.
-  const beforeCancel = analyseBodies.length;
-  await page.click('#depth-cancel');
-  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
-  check('backing out of the picker returns to the upload page',
-    await page.locator('#view-welcome').isVisible());
-  check('backing out sends nothing to the model', analyseBodies.length === beforeCancel);
-  check('backing out leaves no half-built profile behind',
+  const beforeReviewBack = analyseBodies.length;
+  await page.click('#review-cancel');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  check('Back on the review reopens the supplement offer',
+    await page.locator('#supplement-dialog').isVisible());
+  check('it does not fall through to the welcome page',
+    !(await page.locator('#view-welcome').isVisible()));
+  check('Back on the review sends nothing to the model',
+    analyseBodies.length === beforeReviewBack);
+  check('Back on the review leaves no half-built profile behind',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
-  // ---- backing out of the review, one step later ----
-  // Cancelling here has to be exactly as free as cancelling the depth picker
-  // — the archive was already read and the digest already built by this
-  // point, so "cost nothing" is the thing actually worth proving.
+  // Forward again from there, proving the loop actually goes both ways rather
+  // than stranding the reader one dialog upstream.
+  await page.click('#supplement-skip');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('going forward again from the reopened offer returns to the review',
+    await page.locator('#review-dialog').isVisible());
+
+  // And Back from the *supplement* offer is still the real exit, which is what
+  // keeps the two buttons meaningfully different.
+  await page.click('#review-cancel');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await page.click('#supplement-back');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+  check('Back on the supplement offer is still the way out to the welcome page',
+    await page.locator('#view-welcome').isVisible());
+  check('leaving that way sends nothing and stores nothing',
+    analyseBodies.length === beforeReviewBack &&
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+
+  // ---- going back must not discard an archive already read ----
+  //
+  // The point of the whole loop. Re-reading a Takeout is slow, and a reader
+  // who goes back to change a checkbox would have every reason to expect the
+  // export they just added to still be there. Seeding askSupplement from the
+  // previous pass is what makes that true, and this is what holds it.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await chooseDepth(page, 'standard');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.click('#supplement-continue');
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
-  const beforeReviewCancel = analyseBodies.length;
+  const withGoogleRows = await page.locator('#review-list input[type="checkbox"]').count();
+  check('the Takeout reached the review on the way through',
+    withGoogleRows > 7, withGoogleRows + ' rows');
+
   await page.click('#review-cancel');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  check('the Takeout is still added after going back, not silently dropped',
+    /Added Google Takeout/i.test(await page.locator('#supplement-status').innerText()),
+    await page.locator('#supplement-status').innerText());
+  check('its row still reads as done rather than inviting a re-pick',
+    await page.evaluate(() =>
+      document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]').disabled));
+  check('Continue is offered again, and Skip stays out of the way',
+    (await page.locator('#supplement-continue').isVisible()) &&
+    !(await page.locator('#supplement-skip').isVisible()));
+
+  await page.click('#supplement-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('and the rebuilt digest still carries it, rather than losing the rows',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === withGoogleRows,
+    (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows after going back');
+
+  // Leave the flow the way out, so the check below meets an unobstructed page.
+  // It reads elementFromPoint against the dropzone, which an open modal covers.
+  await page.click('#review-cancel');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await page.click('#supplement-back');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
-  check('backing out of the review returns to the upload page',
-    await page.locator('#view-welcome').isVisible());
-  check('backing out of the review sends nothing to the model',
-    analyseBodies.length === beforeReviewCancel);
-  check('backing out of the review leaves no half-built profile behind',
-    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
+
   // Same class of bug the sample dialog was checked against above: a closed
   // <dialog> is still in the document, and an unscoped `display: flex` beats
   // the user agent's `dialog:not([open]) { display: none }`, leaving it laid
@@ -2703,9 +2735,9 @@ try {
   const beforeBack = analyseBodies.length;
   await page.click('#supplement-back');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
-  check('Back returns to the welcome page instead of going on to the depth picker',
+  check('Back returns to the welcome page instead of going on to the review',
     (await page.locator('#view-welcome').isVisible()) &&
-    !(await page.locator('#depth-dialog[open]').count()));
+    !(await page.locator('#review-dialog[open]').count()));
   check('Back sends nothing to the model', analyseBodies.length === beforeBack,
     (analyseBodies.length - beforeBack) + ' requests after Back');
 
@@ -2784,7 +2816,7 @@ try {
   await shot('1b-supplement-added');
 
   await page.click('#supplement-continue');
-  await chooseDepth(page, 'standard');
+  await chooseDepth(page);
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
 
   // Eight more rows, and only because both sources were added — a reader who
@@ -2841,7 +2873,7 @@ try {
   await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
   await addSupplement(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
   await page.click('#supplement-continue');
-  await chooseDepth(page, 'standard');
+  await chooseDepth(page);
   await answerReview(page, {
     untickYouTube: true, untickYouTubeSearches: true, untickGoogleSearches: true,
     untickChrome: true, untickGemini: true, untickFacebookPosts: true,
@@ -2881,39 +2913,12 @@ try {
     strippedBody.samples.captions.length > 0 && strippedBody.following.length > 0 &&
     strippedBody.counts !== undefined);
 
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'load' });
-  await page.setInputFiles('#file-input', {
-    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
-  });
-  // The digest machinery behind comprehensive is still here and still has to
-  // work on the day it goes on sale, so the coverage below stays and the test
-  // opens the gate deliberately rather than deleting it. That the shipped
-  // markup keeps the gate shut is asserted on a fresh load further up; the
-  // reload at the end of this block puts it back.
-  await skipSupplement(page);
-  await page.waitForSelector('#depth-dialog[open]', { timeout: 30000 });
-  await page.evaluate(() => {
-    document.querySelector('#depth-dialog .mode-option[data-depth="comprehensive"]').disabled = false;
-  });
-  await page.click('#depth-dialog .mode-option[data-depth="comprehensive"]');
-  await answerReview(page);
-  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
-
-  const deepDigest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
-  const deepBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-  check('choosing comprehensive records comprehensive in the digest',
-    deepDigest.coverage.depth === 'comprehensive');
-  check('comprehensive sends every caption of an ordinary export',
-    deepDigest.coverage.sampling.captions.shown === deepDigest.coverage.sampling.captions.available,
-    JSON.stringify(deepDigest.coverage.sampling.captions));
-  check('comprehensive asks for more photographs than standard',
-    deepDigest.coverage.images.attached > 14 || deepDigest.coverage.images.availableStills <= 14,
-    deepDigest.coverage.images.attached + ' attached of ' + deepDigest.coverage.images.availableStills);
-  check('the comprehensive digest really is what got sent',
-    deepBody.digest.coverage.depth === 'comprehensive');
-  check('the fixture is too small to hit the budget, so nothing was trimmed',
-    deepDigest.coverage.digestChars < 545066, deepDigest.coverage.digestChars + ' chars');
+  // Comprehensive is no longer reachable from the UI at all: the picker that
+  // offered it is gone, so what used to be driven through the dialog here now
+  // has no browser-level entry point. The machinery itself is untouched in
+  // digest.js and its coverage lives in tools/selftest.mjs — depth recorded,
+  // caps lifted, budget respected, coverage reported honestly — which is where
+  // it belongs now that no click can reach it.
 
   // ---- the opt-out actually opts out ----
   // Every row moved from a description into a control, so the export is now
@@ -2935,7 +2940,7 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await chooseDepth(page, 'standard');
+  await chooseDepth(page);
   await answerReview(page, {
     untickCaptions: true, untickActivity: true, untickAccounts: true,
     untickTopics: true, untickSearches: true, untickMessages: true, untickImages: true,
@@ -3001,7 +3006,7 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await chooseDepth(page, 'standard');
+  await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 

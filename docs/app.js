@@ -449,7 +449,8 @@
     $('#progress-bar').classList.remove('indeterminate');
   }
 
-  // Offered once the Instagram archive has parsed, before the depth picker.
+  // Offered once the Instagram archive has parsed, and again whenever the
+  // reader presses Back on the review.
   //
   // Unlike every other dialog here, this one does not resolve-then-act: it
   // stays open while a second archive is read, and only Skip or Continue
@@ -462,15 +463,20 @@
   //
   // Resolves an object of what was added — Skip and Continue are the same
   // resolution, the only difference being what is in it, and Escape behaves as
-  // Skip. Back is the one exception: it resolves null, the same signal askDepth
-  // gives when it is cancelled, and handleFiles drops back to the welcome page
-  // on it. That is why the return is not unconditionally an object any more.
-  function askSupplement() {
+  // Skip. Back is the one exception: it resolves null, and handleFiles drops
+  // back to the welcome page on it. That is why the return is not
+  // unconditionally an object.
+  //
+  // `existing` seeds it on re-entry. Coming back from the review has to find
+  // the archives still added: re-reading a Takeout is slow, and silently
+  // discarding one because the reader wanted to change a checkbox upstream
+  // would be the dialog undoing their work.
+  function askSupplement(existing) {
     const dialog = $('#supplement-dialog');
     const status = $('#supplement-status');
     const input = $('#supplement-input');
     const buttons = dialog.querySelectorAll('.mode-option');
-    const added = {};
+    const added = Object.assign({}, existing || {});
     let pending = '';
     let busy = false;
     let cancelled = false;
@@ -576,46 +582,22 @@
       cancelled = false;
       dialog.querySelector('.supplement-help').open = false;
       setBusy(false);
+      // Re-states "✓ Added …" and re-reveals Continue when this is a return
+      // trip from the review. No-op on a first open, where `added` is empty.
+      summarise();
 
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else { dialog.setAttribute('open', ''); buttons[0].focus(); }
     });
   }
 
-  // Asked once the archive is open, so a real choice is made before anything
-  // is sent. The dialog's own markup carries the two options' descriptions;
-  // this just runs it.
-  function askDepth() {
-    const dialog = $('#depth-dialog');
-
-    return new Promise(resolve => {
-      let answer = null;
-      const choose = event => {
-        // The browser already refuses real clicks on a disabled button, so this
-        // covers the one route that gets past it: a synthetic click, which
-        // dispatches straight to the listener without any of the checks a user
-        // click goes through. The attribute in index.html stays the single
-        // statement of what is on sale — this reads it rather than repeating it.
-        if (event.currentTarget.disabled) return;
-        answer = event.currentTarget.dataset.depth;
-        dialog.close();
-      };
-      const buttons = dialog.querySelectorAll('.mode-option');
-      for (const button of buttons) button.addEventListener('click', choose);
-
-      const cancel = () => dialog.close();
-      $('#depth-cancel').addEventListener('click', cancel);
-
-      dialog.addEventListener('close', () => {
-        for (const button of buttons) button.removeEventListener('click', choose);
-        $('#depth-cancel').removeEventListener('click', cancel);
-        resolve(answer);
-      }, { once: true });
-
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
-    });
-  }
+  // Every run is Standard. The depth picker that used to sit here asked a
+  // question with one available answer — Comprehensive has never been on sale
+  // — so it cost a click and a decision to arrive back where the reader
+  // started. The comprehensive *machinery* is untouched in digest.js and still
+  // covered by the unit suite; only the UI that offered it is gone, and
+  // Digest.build still records which depth built a digest.
+  const DEPTH = 'standard';
 
   /** One togglable row: checked and enabled when there is something to send, disabled when there is not. */
   function reviewSwitch(id, count, onLabel, offLabel, detail) {
@@ -697,6 +679,13 @@
   // just built, not a description of what the app generally does. Cancelling
   // discards the digest along with the archive; there is nowhere it is held
   // that a second attempt could reuse, by design — see handleFiles.
+  //
+  // What askReview resolves, and what each means to handleFiles:
+  //   an object    — Send. The decision about what to include.
+  //   REVIEW_BACK  — Back. Reopen the supplement offer, keeping what was added.
+  //   null         — Escape, or the dialog closed some other way. Abandon.
+  const REVIEW_BACK = 'review:back';
+
   function askReview(digest, imageCount) {
     const dialog = $('#review-dialog');
     const list = $('#review-list');
@@ -840,7 +829,12 @@
         answer = currentDecision();
         dialog.close();
       };
-      const cancel = () => dialog.close();
+      // Back, not Cancel: it steps one dialog upstream to the supplement offer
+      // rather than throwing the upload away. Distinguished from Escape by a
+      // sentinel, because `null` already means "abandoned" to handleFiles and
+      // the two need different answers — one reopens a dialog, the other goes
+      // to the welcome page.
+      const back = () => { answer = REVIEW_BACK; dialog.close(); };
       // A clone, not the digest itself — this dialog is not done with it yet,
       // and applyReviewDecision mutates in place. Nothing here ever leaves
       // the device; it is the same object Send would build, written to a
@@ -864,12 +858,12 @@
         setTimeout(() => URL.revokeObjectURL(href), 10000);
       };
       $('#review-send').addEventListener('click', send);
-      $('#review-cancel').addEventListener('click', cancel);
+      $('#review-cancel').addEventListener('click', back);
       $('#review-download').addEventListener('click', download);
 
       dialog.addEventListener('close', () => {
         $('#review-send').removeEventListener('click', send);
-        $('#review-cancel').removeEventListener('click', cancel);
+        $('#review-cancel').removeEventListener('click', back);
         $('#review-download').removeEventListener('click', download);
         resolve(answer);
       }, { once: true });
@@ -902,7 +896,7 @@
     show('working');
 
     let digest;
-    let depth;
+    let decision = null;
     let signals;
     let chosenImages = [];
     try {
@@ -917,46 +911,44 @@
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
 
-      // Comes before the images because the two depths want different numbers
-      // of them, and image extraction is the slowest step here by a wide
-      // margin — no sense doing it twice or doing it for a run the reader
-      // then backs out of.
-      // Offered before the depth picker, so a reader adding a second export
-      // is not asked how deep to go on data they have not contributed yet.
-      // Skipping resolves an empty object; Back resolves null, and abandons
-      // the run the same way cancelling the depth picker does.
-      const supplements = await askSupplement();
-      if (!supplements) {
-        show('welcome');
-        return;
+      // The supplement offer and the review are one loop, because Back on the
+      // review steps upstream to the offer rather than abandoning the upload.
+      // The digest is rebuilt on each pass rather than reused: going back is
+      // how a reader adds a source they had skipped, so the thing they are
+      // then reviewing has to include it.
+      for (;;) {
+        // Skipping resolves an empty object; Back resolves null and abandons
+        // the run. Seeded with whatever a previous pass added, so returning
+        // here does not throw away an archive already read.
+        const supplements = await askSupplement(signals.supplements);
+        if (!supplements) {
+          show('welcome');
+          return;
+        }
+        signals.supplements = supplements;
+
+        // Only the selection, not the extraction: picking which stills to use
+        // is cheap, and the reader has not yet said photos may be sent at all.
+        // The slow part — decoding and downscaling — waits for that answer,
+        // below, so declining costs nothing beyond this pick.
+        chosenImages = Images.select(signals, { count: Digest.DEPTHS[DEPTH].images });
+
+        setProgress(80, 'Building your evidence summary…');
+        await new Promise(resolve => setTimeout(resolve, 30));
+        digest = Digest.build(signals, {
+          includeMessages: true, includeImages: true,
+          imageCount: chosenImages.length, depth: DEPTH,
+        });
+
+        decision = await askReview(digest, chosenImages.length);
+        if (decision !== REVIEW_BACK) break;
       }
-      signals.supplements = supplements;
-
-      depth = await askDepth();
-      if (!depth) {
-        show('welcome');
-        return;
-      }
-
-      // Only the selection, not the extraction: picking which stills to use
-      // is cheap, and the reader has not yet said photos may be sent at all.
-      // The slow part — decoding and downscaling — waits for that answer, a
-      // few lines down, so declining costs nothing beyond this pick.
-      chosenImages = Images.select(signals, { count: Digest.DEPTHS[depth].images });
-
-      setProgress(80, 'Building your evidence summary…');
-      await new Promise(resolve => setTimeout(resolve, 30));
-      digest = Digest.build(signals, {
-        includeMessages: true, includeImages: true,
-        imageCount: chosenImages.length, depth,
-      });
     } catch (error) {
       show('welcome');
       flash('#upload-error', (error && error.message) || 'Could not read that archive.');
       return;
     }
 
-    const decision = await askReview(digest, chosenImages.length);
     if (!decision) {
       show('welcome');
       return;

@@ -427,7 +427,18 @@ messages towards it each let that archive through, and each is caught.
 Instagram is the performed self: what somebody chose to publish. A Google Takeout "My Activity"
 export is the unperformed half — what they searched, watched, browsed and asked an AI — and a
 Facebook export is usually an older life stage that Instagram replaced. Both are offered *after*
-the Instagram archive has parsed, in a dialog whose first button is **Skip this step**.
+the Instagram archive has parsed, in a dialog whose forward button is **Skip this step** until
+something has actually been added.
+
+That dialog and the review below it are **one loop**, not two steps in a line: the review's left
+button reads **Back** and reopens the supplement offer rather than throwing the upload away, and
+`askSupplement` is seeded with whatever the previous pass added so returning does not silently
+discard an archive already read — re-reading a Takeout is slow, and a reader who went back to change
+one checkbox has every reason to expect their export to still be there. The digest is rebuilt on each
+pass rather than reused, because going back is precisely how somebody adds a source they had skipped.
+Three signals come out of `askReview` and they are all different: a decision object means Send,
+`REVIEW_BACK` means reopen the offer, and `null` — Escape — means abandon. Only **Back on the
+supplement offer** leaves for the welcome page, which is what keeps the two Back buttons distinct.
 
 **The primary recognition floor is untouched.** A Facebook download still cannot pass as an
 Instagram export: every assertion in the section above passes unmodified, and `buildForeignExportZip()`
@@ -551,27 +562,26 @@ whole picture.
 
 ### Standard and Comprehensive
 
-Those caps are the **Standard** depth. Once the archive is open — but before anything is sent, and
-before the images are decoded, which is the slowest step here — a picker asks which depth to run.
+Those caps are the **Standard** depth, and Standard is what every run now uses.
 
 **Comprehensive** lifts every per-source cap far past what any real export reaches, so that the
 thing bounding the digest is a **price**, in one place, rather than ten caps that each have to be
 reasoned about separately. It also sends 20 photographs instead of 14.
 
-**Comprehensive is not on sale yet.** Its row in the picker is `disabled`, dimmed, and labelled
-*Coming soon* at USD 2.99 per analysis. It is shown rather than hidden because a disabled row that
-names a price reads as "later" where a missing row reads as "never existed". Two things enforce it:
-the attribute, which is what stops a real click and keeps the row out of the tab order entirely, and
-one line in `askDepth` that returns early when the clicked button is disabled — which covers the
-only route past the attribute, a synthetic `dispatchEvent('click')` that goes straight to the
-listener. A check fires a synthetic click and fails if anything is chosen; deleting that one line
-fails it while the attribute is still in place. Neither is a security boundary — the digest is built
-on the client, so anyone editing `app.js` sends whatever they like — it is a product gate, and the
-level of effort matches that.
+**The depth picker is gone.** It used to sit between the supplement offer and the review, asking
+which depth to run — but Comprehensive has never been on sale, so it was a question with one
+available answer, costing a click and a decision to arrive exactly where the reader started. A
+disabled row naming a future price is worth showing on a page somebody chose to read; it is not
+worth an interruption in a flow. `app.js` holds a single `DEPTH = 'standard'` now, and
+`askDepth`, `#depth-dialog` and the synthetic-click guard that protected the disabled row all went
+with it.
 
-Everything behind the gate is built and still under test. The suite re-enables the row deliberately
-and runs the whole comprehensive path, rather than dropping the coverage until it ships; the shipped
-markup is asserted shut on a fresh load first, so the re-enabling cannot mask a regression.
+The comprehensive **machinery is untouched** — `DEPTHS.comprehensive`, the lifted caps, the derived
+budget and `coverage.depth` are all still in `digest.js` and still work. What changed is that no
+click can reach them, so the coverage moved with the reachability: the browser suite no longer
+drives it (there is no dialog to drive), and `tools/selftest.mjs` carries it — depth recorded, caps
+lifted, budget respected on an oversized account, coverage reported honestly. Putting the feature on
+sale means adding a way to choose it, not rebuilding it.
 
 The budget is derived rather than picked, in `charBudget()`:
 
@@ -886,8 +896,7 @@ least charitable reading the evidence still supports, and the advice a friend gi
 stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
 meets every fair section first and the confidence caveat still gets the last word over all of it. A
 small "Bonus Section" badge sits beside the title — a label for what the section is, spliced onto the
-already-escaped title text the same way "Coming soon" sits beside Comprehensive on the depth picker,
-not a second heading competing with the one next to it.
+already-escaped title text rather than a second heading competing with the one next to it.
 
 The register is stated in the prompt rather than left for the model to infer from "unkind", because
 the page calls it a roast on the cover and the two would otherwise drift apart. What the prompt is
@@ -1212,7 +1221,7 @@ npm test           # 439 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 682 checks: drives the real UI in Chromium against a
+npm run test:ui    # 677 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
