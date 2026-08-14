@@ -674,7 +674,21 @@ for (const [label, needle] of [
   ['treats a null active count as unknown rather than zero',
     /that is unknown, not zero/],
   ['refuses the raw group count as participation evidence',
-    /Being in fifty group chats and speaking in one is the opposite of what it looks like/],
+    /not the raw .?groupThreads.?, which counts groups they were added to and sat silent in/],
+  // Group DMs are a minority behaviour on these platforms whatever somebody's
+  // temperament — that life is on WhatsApp, iMessage or in a room, none of
+  // which is in the export. So the evidence runs one way: presence counts,
+  // absence says nothing. Reported after the first version read every zero as
+  // a point towards introversion.
+  ['treats group-chat evidence as one-directional',
+    /its absence means nothing at all/],
+  ['names zero group threads as the ordinary case, not the introverted one',
+    /Zero active group threads is the ordinary case, not the introverted one/],
+  ['knows the close-friends list is opt-in and usually unset',
+    /most accounts never configure the list/],
+  ['generalises the rule past those two fields',
+    /A missing behaviour is only evidence if you would have expected to see it/],
+  ['refuses to score a trait on a blank', /Never build a trait score, a type letter or a line of the report on the absence/],
   ['prefers distinct people over comment volume',
     /Five hundred comments spread over six people is a small world/],
   ['reads lurking as introvert evidence', /lurking is introvert evidence/],

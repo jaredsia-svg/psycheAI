@@ -102,6 +102,15 @@ check('a narrow, lurk-heavy account is not scored as an extravert',
 check('the raw thread count is not cited as evidence of reach',
   !extraversionEvidence.some(e => /\b13\b/.test(e)),
   JSON.stringify(extraversionEvidence));
+// And the third: the fixture has no group chats the reader spoke in, which is
+// the ordinary result on these platforms rather than a sign of anything. Group
+// life happens on WhatsApp and in rooms, neither of which is in this export,
+// so an empty count is not a finding and must not be offered as one. The
+// introvert read here has to rest on what is present — 3 of 13 threads
+// answered, 240 likes against 12 posts — not on a blank.
+check('an empty group-chat count is not cited as evidence of introversion',
+  !extraversionEvidence.some(e => /group/i.test(e)),
+  JSON.stringify(extraversionEvidence));
 check('the E/I axis reads introvert on that same evidence',
   /^I/.test(report.mbti.type) || report.mbti.type === 'Uncertain',
   report.mbti.type);
@@ -136,6 +145,12 @@ check('the reader is not given somebody else\'s car off a caption they wrote',
 check('neither third party is named anywhere in the report',
   !whole.includes('mokkzy') && !whole.includes('yuhanchong'),
   (/.{60}(mokkzy|yuhanchong).{60}/.exec(whole) || ['no match'])[0]);
+// The empty group-chat count again, across the whole report rather than the
+// one evidence list — an absence read as a finding tends to surface as a line
+// of prose in the behaviour section rather than as a cited number.
+check('an empty group-chat count is not leaned on anywhere in the report',
+  !/no group|zero group|not in any group|absence of group|never.{0,20}group chat/i.test(whole),
+  (/.{70}group.{70}/.exec(whole) || ['no mention'])[0]);
 
 const card = globalThis.PsycheCard.shape(report.card);
 const payload = await globalThis.PsycheCard.encodeCard(card);

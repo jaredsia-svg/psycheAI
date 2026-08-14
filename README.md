@@ -615,9 +615,9 @@ The budget is derived rather than picked, in `charBudget()`:
 worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
 left for input      $0.50 − $0.2458           = $0.2542
                     ÷ $1.50/M                 = 169,493 tokens
-less system prompt + response schema          −  14,400
+less system prompt + response schema          −  15,000
 less 20 images × 258                          −   5,160
-                    × 3.5 chars/token         = 524,766 characters
+                    × 3.5 chars/token         = 522,666 characters
 ```
 
 That fixed reserve was **8,600 for a long time, and had gone stale** — it was typed when the system
@@ -864,6 +864,18 @@ average message length, solitary imagery, a rhythm that clusters when nobody els
 set of repeatedly-engaged accounts. Then it raises the bar with a number on it — do not score above
 roughly 60, and do not assign **E**, without breadth evidence; a high volume of talk with a small
 circle scores below 50.
+
+**Absence is not the low end of a scale**, and getting that wrong was the third round of this. Once
+group *participation* counted as evidence for **E**, an empty count started reading as evidence for
+**I** — but almost nobody group-chats on Instagram or Facebook whatever their temperament. That part
+of a life is on WhatsApp, iMessage, Discord or in a room, none of which appears in this export, so
+zero active group threads is the **modal** result rather than an introverted one. The same trap sits
+under `closeFriends`: it is an opt-in list most accounts never configure, so a zero means the feature
+went unused, not that nobody is close to them. Both now read one-directionally — a busy group life or
+a long close-friends list counts for something, an empty one counts for nothing — and the general rule
+sits above them, because this recurs with every opt-in or platform-specific field the export has:
+**a missing behaviour is only evidence if you would have expected to see it.** Saved collections,
+stories, a filled-in bio, all the same. Say nothing rather than reading a blank as a finding.
 
 **The first version of this correction had the same bug it was fixing**, one layer down, and it is
 worth writing out because it is the more interesting half. It sent the model to `threads` and
@@ -1347,7 +1359,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 478 checks: synthesises a real ZIP export and runs
+npm test           # 483 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1365,7 +1377,7 @@ npm run test:ui    # 692 checks: drives the real UI in Chromium against a
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in
                    # every one
-npm run test:live  # 22 checks: two real model calls against whichever provider
+npm run test:live  # 24 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```
 
