@@ -747,9 +747,14 @@
     const list = Array.isArray(photos) ? photos : [];
     const photosHtml = !list.length ? '' :
       '<h2>Photographs</h2>' +
+      // Read off Images.LIMITS rather than written out, because this sentence
+      // shipped claiming 1024px against a real edge of 768. A file whose whole
+      // job is to state what leaves the device cannot carry a number that has
+      // to be kept in sync with the code by hand.
       '<p class="muted">All ' + list.length + ' of them, exactly as they will be sent: resized to ' +
-      'fit a 1024px edge and re-encoded, which is smaller and softer than the originals still ' +
-      'sitting in your export. Nothing else from any photo is included — no location, no filename.</p>' +
+      'fit a ' + Images.LIMITS.edge + 'px edge and re-encoded, which is smaller and softer than ' +
+      'the originals still sitting in your export. Nothing else from any photo is included — ' +
+      'no location, no filename.</p>' +
       '<div class="shots">' + list.map((p, i) =>
         '<figure><img alt="Photograph ' + (i + 1) + '" src="data:' +
         esc(p.mime || 'image/jpeg') + ';base64,' + esc(p.data) + '">' +

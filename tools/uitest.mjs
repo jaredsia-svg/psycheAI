@@ -1353,8 +1353,17 @@ try {
   // mime type is the tell.
   check('what is embedded is the re-encoded copy that gets sent, not the archive original',
     !/src="data:image\/png/.test(html1) && /src="data:image\/jpeg/.test(html1));
-  check('the file says plainly that these are resized rather than the originals',
-    /resized to fit a 1024px edge and re-encoded/.test(html1));
+  // Checked against the live constant, not against a number written out here.
+  // The literal this replaced said 1024px while the real edge was 768, and the
+  // check passed the whole time because it was asserting the same wrong number
+  // the page was printing — two copies of a claim agreeing with each other and
+  // with nothing else. Reading LIMITS.edge means the only way to pass is to
+  // state what the resizing actually does.
+  const realEdge = await page.evaluate(() => window.PsycheImages.LIMITS.edge);
+  check('the file states the real resize edge, whatever it currently is',
+    new RegExp('resized to fit a ' + realEdge + 'px edge and re-encoded').test(html1),
+    'edge is ' + realEdge + 'px; file says ' +
+    ((/fit a (\d+)px edge/.exec(html1) || [])[1] || 'nothing'));
 
   await page.uncheck('#review-dms');
   await page.uncheck('#review-topics');

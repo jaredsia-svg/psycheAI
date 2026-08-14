@@ -731,8 +731,11 @@ slowest thing the app does, and it is deliberately deferred until *after* the re
 Photos or pressing Back costs nothing. So the download button is the trigger — the one path where the
 reader has actually asked — and `getExtractedImages` caches the result, so a reader who previews and
 then sends does not sit through the same work twice. A reader who never clicks pays nothing, exactly
-as before. On the synthetic fixture the file is 91KB; with real photographs at a 1024px edge expect a
-few megabytes, which is why this is a download rather than a panel in the dialog.
+as before. On the synthetic fixture the file is 91KB; with real photographs at the 768px edge expect
+a few megabytes, which is why this is a download rather than a panel in the dialog. The sentence in
+that file naming the edge is interpolated from `Images.LIMITS.edge` rather than written out — it
+shipped once saying 1024px against a real edge of 768, and a file whose whole job is to state what
+leaves the device should not carry a number kept in sync by hand.
 
 The file is the same object the checkboxes describe, not a second, separately-written description of
 it that could quietly drift from the first. `applyReviewDecision()` in `docs/app.js` is the one
