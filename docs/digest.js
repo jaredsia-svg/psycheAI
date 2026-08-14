@@ -75,9 +75,21 @@
   // against roughly 44,700 tokens.
   const CHARS_PER_TOKEN = 3.5;
 
-  // The system prompt (10,434 chars) plus the response schema (19,639), which
-  // is sent on every structured-output call and is charged as input.
-  const FIXED_INPUT_TOKENS = 8600;
+  // The system prompt plus the response schema, which are sent on every
+  // structured-output call and charged as input. Currently 23,461 + 21,431
+  // chars, so about 12,800 tokens at the ratio above.
+  //
+  // This was 8,600, typed when the prompt was 10,434 chars, and it went stale
+  // as the prompt grew — the supplementary-source rules, the hard limits and
+  // the extraversion correction all landed after it was written. Under-
+  // reserving here does not fail loudly: it inflates what `charBudget` hands
+  // back, so a digest that fills its ceiling quietly costs more than COST_CAP
+  // says it can. Set slightly above the measured figure so ordinary edits do
+  // not immediately invalidate it, and held to the real prompt by a check in
+  // tools/selftest.mjs — this file cannot import lib/prompts.js to measure it
+  // directly, since it runs in the browser, so the check is what stops the
+  // number drifting a third time.
+  const FIXED_INPUT_TOKENS = 13000;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;
@@ -709,7 +721,7 @@
   }
 
   root.PsycheDigest = {
-    build, LIMITS, DEPTHS, charBudget, COST_CAP,
+    build, LIMITS, DEPTHS, charBudget, COST_CAP, FIXED_INPUT_TOKENS,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,

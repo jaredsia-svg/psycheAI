@@ -615,10 +615,25 @@ The budget is derived rather than picked, in `charBudget()`:
 worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
 left for input      $0.50 − $0.2458           = $0.2542
                     ÷ $1.50/M                 = 169,493 tokens
-less system prompt + response schema          −   8,600
+less system prompt + response schema          −  13,000
 less 20 images × 258                          −   5,160
-                    × 3.5 chars/token         = 545,066 characters
+                    × 3.5 chars/token         = 529,666 characters
 ```
+
+That fixed reserve was **8,600 for a long time, and had gone stale** — it was typed when the system
+prompt was 10,434 characters, and the supplementary-source rules, the hard limits and the
+extraversion correction all landed after it. By the time anyone measured, the prompt and schema were
+about 12,800 tokens, so the reserve was nearly 3,000 short. Under-reserving fails quietly in exactly
+the wrong direction: it *inflates* what `charBudget` returns, so a digest that fills its ceiling costs
+more than `COST_CAP` claims it can.
+
+The check that was supposed to catch this could not, because it repeated the same `8600` literal
+rather than reading it. It was holding the arithmetic against the implementation's own number, so the
+two agreed with each other while neither agreed with the prompt being sent — a check written to mirror
+the code instead of the world. It now reads `Digest.FIXED_INPUT_TOKENS` and, separately, measures
+`PROFILE_SYSTEM` plus `PROFILE_SCHEMA` and fails if the reserve is smaller than either. `digest.js`
+runs in the browser and cannot import `lib/prompts.js` to compute this for itself, so that check is
+the only thing standing between the constant and a third round of drift.
 
 It budgets for the **worst** case, not the likely one. `thinkingLevel` is HIGH and thinking bills at
 the output rate, so the only number that can be relied on is the generation cap — reserving all of it
@@ -792,6 +807,38 @@ evidence honestly:
 Both calls use **structured outputs**, so the response is guaranteed to match the schema and the UI
 renders it without defensive parsing. Both stream, because thinking tokens and a long report share
 one output budget.
+
+### The extraversion trap
+
+Introverted readers kept coming back rated as extraverts, and the cause is structural rather than a
+model quirk: **every social number in the digest is a volume count of mediated, asynchronous,
+text-based contact.** Messages sent, comments written, posts published, accounts followed — all of it
+composed alone, on a phone, at a moment of the person's choosing, with as long as they liked to word
+it. That is not merely compatible with introversion; it is the mode of contact introverts
+specifically prefer, because it strips out everything they find costly about the live version. Heavy
+DM traffic and constant meme-swapping with four close friends was being read as sociability.
+
+The correction is a block of the prompt that says so outright, and then replaces the raw totals with
+**breadth** measures, all of which the digest already carried and none of which were being used:
+messages ÷ threads (depth versus reach), `groupThreads` against `threads`,
+`counts.distinctPeopleCommentedOn` rather than `commentsWritten`, `closeFriends` rather than
+`followers`, and likes-and-saves against posts as a lurking ratio. Alongside that it weights
+introvert-leaning evidence *up*, because it is the quieter half of the data and easy to skip: long
+average message length, solitary imagery, a rhythm that clusters when nobody else is awake, a small
+set of repeatedly-engaged accounts. Then it raises the bar with a number on it — do not score above
+roughly 60, and do not assign **E**, without breadth evidence; a high volume of talk with a small
+circle scores below 50.
+
+One case runs the other way from intuition. When a reader unticks direct messages, every breadth
+ratio above disappears with them, and what is left is almost entirely publishing volume — the single
+most misleading evidence for this trait. So a missing message block is *more* reason to hedge, not
+less, and the prompt says so.
+
+Each part of this is pinned by its own check rather than one loose match over the block, so three
+quarters of it cannot be deleted without a failure. The live test — the only place a prompt
+instruction can be shown to actually land, rather than merely to be present — now sends the fixture
+*with* its messages, which it previously did not, and asserts that an account with 3 threads, no
+group threads and 240 likes against 12 posts does not come back as an extravert.
 
 ### What the model is told not to do
 
@@ -1240,7 +1287,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 439 checks: synthesises a real ZIP export and runs
+npm test           # 455 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1258,7 +1305,7 @@ npm run test:ui    # 692 checks: drives the real UI in Chromium against a
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in
                    # every one
-npm run test:live  # 15 checks: two real model calls against whichever provider
+npm run test:live  # 18 checks: two real model calls against whichever provider
                    # is configured. Skips cleanly without a key.
 ```
 

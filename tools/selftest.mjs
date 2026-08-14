@@ -648,6 +648,38 @@ for (const [label, needle] of [
   ['looks for the gap rather than the totals', /Read the \*\*gaps\*\*/],
   ['refuses to invent time it cannot measure', /No source here carries timing data of any kind/],
   ['will not name a private individual', /a friend or a relative is described rather than named/],
+  // The extraversion correction. Readers who are plainly introverts were being
+  // scored as extraverts off DM volume, so each part of the fix is pinned
+  // separately: the diagnosis, the ratios that replace the raw counts, the
+  // instruction to weight the quiet evidence up, and the raised bar itself.
+  // One loose match over the whole block would let three of the four be
+  // deleted without a failure.
+  ['names the bias in its own evidence', /digest systematically overstates extraversion/],
+  ['explains why screen-based contact is not extraversion evidence',
+    /the mode of contact introverts specifically prefer/],
+  ['says plainly that volume is not the signal', /\*\*Volume is not the signal\. Breadth is\.\*\*/],
+  ['points at messages-per-thread rather than the total',
+    /Thousands of messages across a handful of threads is \*depth\*/],
+  ['counts group threads as the stronger social evidence',
+    /Sustained group-chat presence is genuine extraversion evidence/],
+  ['prefers distinct people over comment volume',
+    /Five hundred comments spread over six people is a small world/],
+  ['reads lurking as introvert evidence', /lurking is introvert evidence/],
+  ['weights the quieter introvert signals up', /Weight introvert-leaning evidence up/],
+  ['raises the bar with a number on it', /Do not score extraversion above roughly 60/],
+  ['puts a narrow-but-loud reader below the midpoint',
+    /that is an introvert with close friends, and it should score below 50/],
+  ['refuses message volume as trait evidence in the Big Five section',
+    /"You send a lot of messages" is not evidence for this trait/],
+  ['carries the same raised bar onto the MBTI axis',
+    /\*\*E\*\* has to be earned with breadth/],
+  // Opting out of DMs deletes directMessages outright, taking every breadth
+  // ratio with it and leaving publishing volume — the most misleading
+  // evidence there is for this trait — as the only social signal left.
+  ['handles the reader who opted out of messages',
+    /coverage\.directMessagesIncluded.? is false/],
+  ['treats a missing message block as more reason to hedge, not less',
+    /has given you less breadth evidence, not less reason to be careful/],
 ]) {
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
@@ -1432,10 +1464,28 @@ check('comprehensive reports the fraction honestly when it cannot send it all',
 {
   const CHARS_PER_TOKEN = 3.5;
   const images = Digest.DEPTHS.comprehensive.images;
-  const worstCost = ((DEEP.totalChars / CHARS_PER_TOKEN) + 8600 + images * 258) * (1.50 / 1e6) +
-    32768 * (7.50 / 1e6);
+  // Reads the module's own constant rather than repeating the literal. The
+  // repeated `8600` here is why this check sat green through the drift below:
+  // it was holding the arithmetic against the same stale number the
+  // implementation used, so the two agreed with each other and neither agreed
+  // with the prompt actually being sent.
+  const worstCost = ((DEEP.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS +
+    images * 258) * (1.50 / 1e6) + 32768 * (7.50 / 1e6);
   check('a full comprehensive digest plus maximum output stays under the cap',
     worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
+
+  // The constant against the thing it is supposed to be measuring. digest.js
+  // runs in the browser and cannot import lib/prompts.js, so nothing there can
+  // catch this drifting — it went stale by nearly 3,000 tokens before anyone
+  // noticed, which quietly bought a bigger digest than COST_CAP pays for.
+  const fixedActual = Math.round(
+    (prompts.PROFILE_SYSTEM.length + JSON.stringify(prompts.PROFILE_SCHEMA).length) / CHARS_PER_TOKEN);
+  check('the fixed-prompt reserve is not smaller than the prompt actually sent',
+    Digest.FIXED_INPUT_TOKENS >= fixedActual,
+    Digest.FIXED_INPUT_TOKENS + ' reserved vs ' + fixedActual + ' real');
+  check('and is not wildly over-reserved either, which would shrink the digest for nothing',
+    Digest.FIXED_INPUT_TOKENS <= fixedActual * 1.15,
+    Digest.FIXED_INPUT_TOKENS + ' reserved vs ' + fixedActual + ' real');
   check('the budget is not needlessly conservative either',
     worstCost > Digest.COST_CAP - 0.01, '$' + worstCost.toFixed(4));
   check('a tighter cap buys a smaller digest', Digest.charBudget(0.25, 20) < Digest.charBudget(0.50, 20));
