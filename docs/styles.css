@@ -950,10 +950,38 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .supplement-status.is-good { color: var(--good); background: var(--good-soft); font-weight: 600; }
 .supplement-status.is-bad { color: var(--warn); background: var(--warn-soft); }
-/* A source already added reads as done rather than merely unavailable — the
-   ✓ line above says which, so the row only has to stop inviting a second go. */
 .mode-option:disabled .mode-icon,
 .mode-option:disabled strong { opacity: .45; }
+
+/* A source that has been added, as opposed to one that is merely unavailable.
+   It stays `disabled`, because adding the same export twice makes no sense and
+   the attribute is what actually stops that — but the greying that comes with
+   `disabled` says "you cannot use this", where the truth here is "you already
+   did". So the row goes green at full contrast and takes a tick, and this is
+   the only thing that says so now that the green summary line underneath is
+   gone. `:disabled` in the selector rather than `.is-added` alone so it beats
+   the greying rules above on specificity rather than on source order. */
+.mode-option.is-added:disabled {
+  cursor: default;
+  background: var(--good-soft);
+  border-color: var(--good);
+}
+.mode-option.is-added:disabled:hover,
+.mode-option.is-added:disabled:focus-visible {
+  background: var(--good-soft);
+  border-color: var(--good);
+}
+.mode-option.is-added:disabled .mode-icon,
+.mode-option.is-added:disabled .mode-title strong,
+.mode-option.is-added:disabled strong,
+.mode-option.is-added:disabled .muted { opacity: 1; }
+
+/* Pushed to the right edge by the auto margin rather than positioned, so it
+   cannot collide with a description that wraps to two lines. */
+.mode-added {
+  margin-left: auto; align-self: center; flex: none;
+  color: var(--good); font-size: 1.2rem; font-weight: 700; line-height: 1;
+}
 
 /* The repeated download instructions, collapsed. Everything here is in service
    of one constraint: the dialog is capped at the viewport height, so opening a

@@ -73,11 +73,18 @@ async function addSupplement(page, source, buffer, name) {
   // line carries live progress while the archive is read, and matching on the
   // wording of every possible error is how a helper quietly stops waiting for
   // the right thing.
-  await page.waitForFunction(() => {
+  //
+  // The two terminal states are now different shapes. Success ticks the row
+  // and clears the status, so waiting on status text alone would hang forever
+  // on the happy path; failure leaves the status holding the reason.
+  await page.waitForFunction(source => {
+    const row = document.querySelector(
+      '#supplement-dialog .mode-option[data-supplement="' + source + '"]');
+    if (row && row.classList.contains('is-added')) return true;
     const text = document.querySelector('#supplement-status').textContent || '';
     return Boolean(text) && !/^Reading your /.test(text) && !/^Opening /.test(text) &&
       !/No data is being sent out/.test(text);
-  }, { timeout: 60000 });
+  }, source, { timeout: 60000 });
 }
 
 // The depth picker is gone — every run is Standard — so the only thing between
@@ -2697,8 +2704,9 @@ try {
   await page.click('#review-cancel');
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
   check('the Takeout is still added after going back, not silently dropped',
-    /Added Google Takeout/i.test(await page.locator('#supplement-status').innerText()),
-    await page.locator('#supplement-status').innerText());
+    await page.evaluate(() =>
+      document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]')
+        .classList.contains('is-added')));
   check('its row still reads as done rather than inviting a re-pick',
     await page.evaluate(() =>
       document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]').disabled));
@@ -2803,10 +2811,46 @@ try {
     /input\.value = '';\s*\n\s*input\.click\(\);/.test(appSource),
     String((appSource.match(/input\.value = '';/g) || []).length) + ' resets');
 
-  // Now a good one, on the same still-open dialog.
+  // Now a good one, on the same still-open dialog. Confirmed on the row
+  // itself rather than a status line — that line only ever carried the error
+  // case now; a successful add ticks the source's own box instead.
   await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
-  const goodStatus = await page.locator('#supplement-status').innerText();
-  check('a Takeout that reads is confirmed by name', /Added Google Takeout/i.test(goodStatus), goodStatus);
+  const googleRow = () => page.locator('#supplement-dialog .mode-option[data-supplement="google"]');
+  check('a Takeout that reads turns its row green with a tick',
+    await googleRow().evaluate(el => el.classList.contains('is-added') &&
+      Boolean(el.querySelector('.mode-added'))));
+  // The class alone is not the thing a reader sees — this is. `:disabled`
+  // greys out everything else on the page, and that greying is what "added"
+  // has to visibly beat: full-strength text and an actual tint, not the same
+  // washed-out row with a class name attached that happens to do nothing.
+  check('an added row reads at full contrast, not the disabled grey every other row gets',
+    await googleRow().evaluate(el => {
+      const cs = getComputedStyle(el);
+      const label = getComputedStyle(el.querySelector('strong'));
+      const bg = cs.backgroundColor;
+      return parseFloat(label.opacity) === 1 && bg !== 'rgba(0, 0, 0, 0)' &&
+        !/^rgb\(255, 255, 255\)$/.test(bg);
+    }),
+    await googleRow().evaluate(el => JSON.stringify({
+      opacity: getComputedStyle(el.querySelector('strong')).opacity,
+      bg: getComputedStyle(el).backgroundColor,
+    })));
+  check('the tick itself is coloured with the success token, not inherited text colour',
+    await googleRow().evaluate(el => {
+      // A probe styled with the actual custom property is the ground truth —
+      // comparing against a sibling's colour is not, because an unstyled tick
+      // still inherits *something* that differs from a neighbour by coincidence
+      // of cascade, which is exactly the failure mode worth ruling out.
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--good)';
+      document.body.appendChild(probe);
+      const goodColour = getComputedStyle(probe).color;
+      probe.remove();
+      return getComputedStyle(el.querySelector('.mode-added')).color === goodColour;
+    }));
+  check('the status line used for progress is empty again once the read finished',
+    (await page.locator('#supplement-status').innerText()) === '',
+    JSON.stringify(await page.locator('#supplement-status').innerText()));
   check('Continue appears once something has been added',
     await page.locator('#supplement-continue').isVisible());
   check('Skip gives way to Continue once an archive is in',
@@ -2815,17 +2859,22 @@ try {
   check('Back stays available after something has been added',
     await page.locator('#supplement-back').isVisible());
   check('the source just added stops inviting a second go',
-    await page.evaluate(() =>
-      document.querySelector('#supplement-dialog .mode-option[data-supplement="google"]').disabled));
-  check('the other source is still on offer',
-    await page.evaluate(() =>
-      !document.querySelector('#supplement-dialog .mode-option[data-supplement="facebook"]').disabled));
+    await googleRow().evaluate(el => el.disabled));
+  check('the other source is still on offer, and not marked as added',
+    await page.evaluate(() => {
+      const fb = document.querySelector('#supplement-dialog .mode-option[data-supplement="facebook"]');
+      return !fb.disabled && !fb.classList.contains('is-added') && !fb.querySelector('.mode-added');
+    }));
 
   // And the Facebook export the primary dropzone refuses is accepted here.
   await addSupplement(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
-  check('the Facebook archive refused as a primary export is accepted as a supplement',
-    /Added Google Takeout and Facebook/i.test(await page.locator('#supplement-status').innerText()),
-    await page.locator('#supplement-status').innerText());
+  const facebookRow = () => page.locator('#supplement-dialog .mode-option[data-supplement="facebook"]');
+  check('the Facebook archive refused as a primary export is accepted as a supplement, and ticked too',
+    await facebookRow().evaluate(el => el.classList.contains('is-added') &&
+      Boolean(el.querySelector('.mode-added'))));
+  check('both rows read as added at once, independently',
+    await googleRow().evaluate(el => el.classList.contains('is-added')) &&
+    await facebookRow().evaluate(el => el.classList.contains('is-added')));
   await shot('1b-supplement-added');
 
   await page.click('#supplement-continue');

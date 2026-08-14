@@ -505,11 +505,38 @@
       showActions();
     };
 
+    // The row itself carries "added" now, rather than a separate green line
+    // restating it underneath. Two reasons it belongs on the row: it is the
+    // thing the reader is looking at when they wonder whether it worked, and a
+    // per-source state read better per source than as one sentence that had to
+    // join names with "and" as the list grew.
+    //
+    // Still `disabled` — adding the same export twice makes no sense — but the
+    // greying that goes with `disabled` says "you cannot use this" where the
+    // truth is "you already did", so `.is-added` overrides it in the stylesheet.
+    const markAdded = () => {
+      for (const button of buttons) {
+        const isAdded = Boolean(added[button.dataset.supplement]);
+        button.classList.toggle('is-added', isAdded);
+        const tick = button.querySelector('.mode-added');
+        if (isAdded && !tick) {
+          const mark = document.createElement('span');
+          mark.className = 'mode-added';
+          // A bare glyph announces as nothing useful, so the tick carries the
+          // word for anyone not looking at it.
+          mark.setAttribute('role', 'img');
+          mark.setAttribute('aria-label', 'Added');
+          mark.textContent = '✓';
+          button.appendChild(mark);
+        } else if (!isAdded && tick) {
+          tick.remove();
+        }
+      }
+    };
+
     const summarise = () => {
+      markAdded();
       showActions();
-      const names = Object.keys(added).map(key => LABELS[key]);
-      if (!names.length) return;
-      say('✓ Added ' + names.join(' and ') + '.', 'good');
     };
 
     return new Promise(resolve => {
@@ -541,6 +568,10 @@
               : p.label),
           });
           setBusy(false);
+          // Clears the "Reading…" progress line. It used to be overwritten by
+          // the green summary; with that gone the status has to be emptied
+          // here or the dialog would sit claiming to still be reading.
+          say('');
           summarise();
         } catch (error) {
           setBusy(false);
@@ -548,6 +579,11 @@
           // to the welcome page. A failed *supplement* must never cost the
           // reader the Instagram export they already gave: the dialog stays
           // open, says what went wrong, and they can try another file or skip.
+          //
+          // summarise() no longer writes to the status, which incidentally
+          // fixes a real bug: it used to re-assert "✓ Added …" straight over
+          // the error whenever anything had already been added, so a second
+          // archive failing after a first succeeded reported success.
           say((error && error.message) || 'That archive could not be read.', 'bad');
           summarise();
         }
@@ -566,6 +602,12 @@
         for (const button of buttons) {
           button.removeEventListener('click', choose);
           button.disabled = false;
+          // The green row has to come off with the disabled state, or a later
+          // upload in the same session opens on the previous run's ticks. The
+          // reset on open re-applies them from `added` when this was a Back.
+          button.classList.remove('is-added');
+          const tick = button.querySelector('.mode-added');
+          if (tick) tick.remove();
         }
         input.removeEventListener('change', read);
         $('#supplement-skip').removeEventListener('click', done);
@@ -576,14 +618,14 @@
 
       // Reset the dialog's own state, because it is reused markup and a second
       // upload in the same session would otherwise open on the last run's
-      // "✓ Added" line, its instructions still unfolded, or Skip still hidden
-      // from the run before.
+      // error line, its instructions still unfolded, or Skip still hidden from
+      // the run before.
       say('');
       cancelled = false;
       dialog.querySelector('.supplement-help').open = false;
       setBusy(false);
-      // Re-states "✓ Added …" and re-reveals Continue when this is a return
-      // trip from the review. No-op on a first open, where `added` is empty.
+      // Re-ticks the rows and re-reveals Continue when this is a return trip
+      // from the review. No-op on a first open, where `added` is empty.
       summarise();
 
       if (typeof dialog.showModal === 'function') dialog.showModal();
