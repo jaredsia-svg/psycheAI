@@ -218,7 +218,14 @@ function buildExport() {
     'Camping by the lake. No signal, no plans, perfect.',
     'Booked the trail race for spring. Plan is on the fridge already.',
     'Cooked dinner for everyone. Nothing fancy, just together.',
-    'Grateful for my people this year. Thank you all, really.',
+    // Long enough to reach the top caption tier in the selector. Every other
+    // caption here sits in the middle bands, so without one of these the
+    // highest-effort branch of the scoring would never be exercised.
+    'Grateful for my people this year. Thank you all, really. It has been a strange one — ' +
+      'I moved twice, changed jobs, lost someone I loved, and found out who actually picks ' +
+      'up the phone at midnight. I am not good at saying any of this out loud, so I am ' +
+      'writing it down here instead: thank you for staying. Next year I want to be better ' +
+      'at asking for help before things get bad.',
     // Captions whose subject is somebody else. Instagram is full of these and
     // the fixture had none, so the report could attribute a stranger's job or
     // possessions to the account holder and every check still passed. The
@@ -230,15 +237,28 @@ function buildExport() {
       'vintage car collector @yuhanchong',
   ];
 
-  // Every third post is wordless, which is the case the image sampling exists
-  // to cover — and which the selector is supposed to favour.
+  // Every third post is wordless. The selector used to favour exactly these,
+  // and now deliberately does the opposite, so they stay in the fixture as the
+  // case it has to score *down* rather than the case it has to find.
+  //
+  // Carousels on a regular beat, in three sizes, because selection reads
+  // carousel length as effort and a fixture where every post carried one image
+  // would leave that whole branch of the scoring unexercised. Only the cover is
+  // ever a candidate, so the extra members are referenced but not present in
+  // the archive — the same split-export shape the stories below already use,
+  // and it keeps the media counts these tests assert unchanged.
   const posts = captions.map((title, i) => {
-    const caption = i % 3 === 2 ? '' : title;
-    return {
-      media: [{ uri: 'media/posts/' + i + '.png', creation_timestamp: at(i * 14, 7), title: caption }],
-      title: caption,
-      creation_timestamp: at(i * 14, 7),
-    };
+    // The long one is exempt from the blanking, because it happens to land on a
+    // third slot and it is the only caption here that reaches the top scoring
+    // tier — losing it to the rule would quietly leave that branch untested.
+    const caption = i % 3 === 2 && title.length < 300 ? '' : title;
+    const stamp = at(i * 14, 7);
+    const extra = i % 5 !== 0 ? 0 : i % 15 === 0 ? 8 : i % 10 === 0 ? 3 : 1;
+    const media = [{ uri: 'media/posts/' + i + '.png', creation_timestamp: stamp, title: caption }];
+    for (let k = 1; k <= extra; k++) {
+      media.push({ uri: 'media/posts/' + i + '-' + k + '.png', creation_timestamp: stamp, title: '' });
+    }
+    return { media, title: caption, creation_timestamp: stamp };
   });
 
   // Morning-weighted activity, spread over roughly two years.

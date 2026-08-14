@@ -162,11 +162,19 @@
   // Records that an image exists, not the image itself. Selection happens
   // later, once the whole timeline is known, and the bytes are only read for
   // the handful that get chosen.
-  function addMedia(out, kind, uri, timestamp, captionLen) {
+  // `mediaCount` is how many pieces the post carried, not how many are being
+  // kept — only the cover survives as a candidate. It is recorded because a
+  // ten-image carousel is a post somebody sat and assembled, and selection uses
+  // that as evidence of effort. Videos in the carousel count too: they are part
+  // of what was assembled even though they can never be sent.
+  function addMedia(out, kind, uri, timestamp, captionLen, mediaCount) {
     if (out.mediaRefs.length >= LIMITS.mediaRefs) return;
     const path = String(uri || '');
     if (!path || !IMAGE_EXT.test(path)) return;
-    out.mediaRefs.push({ path, kind, ts: toSeconds(timestamp) || 0, captionLen: captionLen || 0 });
+    out.mediaRefs.push({
+      path, kind, ts: toSeconds(timestamp) || 0, captionLen: captionLen || 0,
+      mediaCount: Math.max(1, mediaCount || 1),
+    });
   }
 
   function addText(out, text) {
@@ -199,7 +207,8 @@
           if (VIDEO_EXT.test(uri)) out.counts.videoPosts++;
           else if (!cover && IMAGE_EXT.test(uri)) cover = uri;
         }
-        addMedia(out, 'post', cover, (media[0] && media[0].creation_timestamp) || ts, caption.length);
+        addMedia(out, 'post', cover, (media[0] && media[0].creation_timestamp) || ts,
+          caption.length, media.length);
       }
     },
     stories(out, data) {
@@ -207,7 +216,8 @@
         pushEvent(out, 'story', story.creation_timestamp);
         out.counts.stories++;
         addText(out, story.title);
-        addMedia(out, 'story', story.uri, story.creation_timestamp, fixText(story.title || '').length);
+        addMedia(out, 'story', story.uri, story.creation_timestamp,
+          fixText(story.title || '').length, 1);
       }
     },
     reels(out, data) {
@@ -230,7 +240,7 @@
       for (const item of asArray(data, 'ig_profile_picture')) {
         pushEvent(out, 'profilePhoto', item.creation_timestamp);
         out.counts.profilePhotos++;
-        addMedia(out, 'profile', item.uri, item.creation_timestamp, 0);
+        addMedia(out, 'profile', item.uri, item.creation_timestamp, 0, 1);
       }
     },
     likedPosts(out, data) {

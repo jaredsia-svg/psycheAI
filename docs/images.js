@@ -44,11 +44,32 @@
     if (ref.kind === 'post') value += 30;
     else if (ref.kind === 'profile') value += 16;
 
-    // The whole point of looking at pictures is the posts that carry no words.
-    // A captioned post is already represented in the digest; a wordless one is
-    // invisible without this.
-    if (ref.captionLen === 0) value += 16;
-    else if (ref.captionLen < 40) value += 8;
+    // Effort, as the archive is able to show it. Instagram's export carries no
+    // likes, comments or views on your own posts — every likes file in it
+    // records what you gave other people, not what you received — so "which
+    // posts mattered" has to be read off what the person themselves put in.
+    // Two things survive that test, and both are here.
+    //
+    // The first is how much they wrote. A long caption is a post somebody
+    // stopped and composed; a wordless one is very often a repost, a reshared
+    // meme or a filler shot. This deliberately replaces an older rule that
+    // scored the *absence* of a caption, on the theory that wordless posts were
+    // invisible to a text-only digest. True, but it selected hardest for the
+    // least considered thing in the archive: coverage of a blank is not worth a
+    // slot that could hold a post they cared about.
+    if (ref.captionLen >= 300) value += 26;
+    else if (ref.captionLen >= 150) value += 20;
+    else if (ref.captionLen >= 60) value += 14;
+    else if (ref.captionLen >= 15) value += 7;
+
+    // The second is how much they assembled. A ten-image carousel is not one
+    // decision, it is ten, and nobody builds one by accident. Only the cover is
+    // ever a candidate, so this credits the post the cover came from rather
+    // than letting a carousel take ten slots.
+    const pieces = ref.mediaCount || 1;
+    if (pieces >= 8) value += 22;
+    else if (pieces >= 4) value += 15;
+    else if (pieces >= 2) value += 8;
 
     // File size is a crude proxy for "a real photograph rather than a graphic",
     // and crude is fine here — it only ever breaks ties.
@@ -70,7 +91,7 @@
    *
    * @param {object} signals  from PsycheInstagram.readExports
    * @param {object} options  { count }
-   * @returns {Array<{path,kind,ts,captionLen,bytes}>} chronological
+   * @returns {Array<{path,kind,ts,captionLen,bytes,mediaCount}>} chronological
    */
   function select(signals, options) {
     const opts = options || {};
@@ -122,6 +143,7 @@
 
     return chosen.sort((a, b) => a.ts - b.ts).map(c => ({
       path: c.path, kind: c.kind, ts: c.ts, captionLen: c.captionLen, bytes: c.bytes,
+      mediaCount: c.mediaCount || 1,
     }));
   }
 
@@ -194,5 +216,10 @@
     return out;
   }
 
-  root.PsycheImages = { select, extract, LIMITS };
+  // `scoreRef` is exported for the tests. Selection through a real archive can
+  // only ever show the aggregate — that carousels and long captions win more
+  // slots than their share of the pool — and an aggregate check passes for the
+  // wrong reasons if two rules drift in opposite directions. Reaching the
+  // judgement directly lets each rule be pinned on its own.
+  root.PsycheImages = { select, extract, scoreRef: score, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

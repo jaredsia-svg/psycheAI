@@ -988,8 +988,48 @@ check('takes no two images from the same day',
 check('prefers posts over stories',
   picked.filter(p => p.kind === 'post').length > picked.filter(p => p.kind === 'story').length,
   JSON.stringify(picked.map(p => p.kind)));
-check('favours the wordless posts the text misses',
-  picked.some(p => p.captionLen === 0));
+// Selection reads effort, not novelty. The old rule paid 16 points for a
+// caption of zero on the theory that a wordless post was invisible to a
+// text-only digest — true, but it spent the scarcest thing in the app on the
+// least considered posts in the archive. These checks pin the inversion, and
+// they are written as comparisons against the candidate pool rather than as
+// fixed numbers, so they still mean something if the fixture is edited.
+const poolRefs = withImages.mediaRefs
+  .filter(r => IG.findMedia(withImages.mediaIndex, r.path))
+  .filter(r => {
+    const hit = IG.findMedia(withImages.mediaIndex, r.path);
+    return hit.bytes >= Images.LIMITS.minBytes && hit.bytes <= Images.LIMITS.maxBytes;
+  });
+const mean = (rows, get) => rows.reduce((sum, r) => sum + get(r), 0) / (rows.length || 1);
+const share = (rows, ok) => rows.filter(ok).length / (rows.length || 1);
+
+check('the pool it chooses from really does hold both extremes',
+  poolRefs.some(r => r.captionLen === 0) && poolRefs.some(r => r.captionLen >= 300) &&
+  poolRefs.some(r => r.mediaCount > 1),
+  JSON.stringify({ wordless: poolRefs.filter(r => !r.captionLen).length,
+    long: poolRefs.filter(r => r.captionLen >= 300).length,
+    carousels: poolRefs.filter(r => r.mediaCount > 1).length }));
+check('picks posts they wrote at length, not the ones they wrote nothing on',
+  mean(picked, p => p.captionLen) > mean(poolRefs, r => r.captionLen),
+  Math.round(mean(picked, p => p.captionLen)) + ' chars picked vs ' +
+  Math.round(mean(poolRefs, r => r.captionLen)) + ' available');
+check('no longer hunts for the wordless posts it used to prefer',
+  share(picked, p => p.captionLen === 0) < share(poolRefs, r => r.captionLen === 0),
+  Math.round(share(picked, p => !p.captionLen) * 100) + '% of picks vs ' +
+  Math.round(share(poolRefs, r => !r.captionLen) * 100) + '% of the pool');
+check('a long caption is worth more than a short one, all else equal',
+  Images.scoreRef({ kind: 'post', captionLen: 400, mediaCount: 1 }, 50000) >
+  Images.scoreRef({ kind: 'post', captionLen: 0, mediaCount: 1 }, 50000));
+check('reads a carousel as effort and prefers it to a single still',
+  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 9 }, 50000) >
+  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 1 }, 50000));
+check('and prefers a longer carousel to a shorter one',
+  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 9 }, 50000) >
+  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 2 }, 50000));
+check('carousels reach the selection more often than their share of the pool',
+  share(picked, p => p.mediaCount > 1) > share(poolRefs, r => r.mediaCount > 1),
+  Math.round(share(picked, p => p.mediaCount > 1) * 100) + '% of picks vs ' +
+  Math.round(share(poolRefs, r => r.mediaCount > 1) * 100) + '% of the pool');
 check('a lower count is honoured', Images.select(withImages, { count: 4 }).length === 4);
 check('a count of zero sends nothing', Images.select(withImages, { count: 0 }).length === 0);
 check('a count above the ceiling is clamped',

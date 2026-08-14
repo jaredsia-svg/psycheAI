@@ -778,11 +778,30 @@ the Photos row in the pre-send review turns it off.
 
 `docs/images.js` picks them. Candidates are the stills the JSON references — carousels contribute
 only their cover frame, videos never qualify, and anything under 12KB is discarded as a thumbnail
-or a screenshot of text. Each is scored: posts outrank stories, **wordless posts get a bonus**
-because they are precisely what the digest cannot see, and larger files break ties. Then the
-timeline is cut into as many buckets as there are slots and the best of each bucket is taken, with
-no two picks from the same day — so the result spans first post to last rather than fifteen photos
-from one good summer.
+or a screenshot of text. Each is scored: posts outrank stories, larger files break ties, and the two
+rules that carry the most weight both measure **effort** — how much they wrote, and how much they
+assembled. A caption over 300 characters is worth 26 points and a nine-image carousel 22, against
+nothing for a wordless single. Then the timeline is cut into as many buckets as there are slots and
+the best of each bucket is taken, with no two picks from the same day — so the result spans first
+post to last rather than fifteen photos from one good summer.
+
+**Effort is a stand-in for something the archive does not carry.** The question you actually want
+answered is which posts *mattered*, and the honest measure of that would be likes, comments and
+views — none of which Instagram exports. Every likes file in the download records what you gave
+other people (`liked_posts.json`, `liked_comments.json`), never what you received. So selection
+reads the two things the person themselves put in, both of which are in the export: caption length,
+and how many pieces they assembled into one post.
+
+This replaced an earlier rule that paid a bonus for the *absence* of a caption, on the theory that
+wordless posts were invisible to a text-only digest. That was true, and it still spent the scarcest
+resource in the app on the least considered posts in the archive — measured against the fixture, the
+old rule picked a set whose mean caption length (34 characters) was *below* the pool it drew from
+(39). The current rule pulls it to 61, and drops the wordless share of the picks from 61% to 43%.
+
+It does not go further than that because the era-spread outranks it by construction: the bucket loop
+takes the best candidate *within* each slice of the timeline, so a stretch of months containing
+nothing but wordless posts still contributes one. Effort decides which photo represents an era, not
+which eras are represented.
 
 The chosen images are decoded, downscaled to a 768px long edge and re-encoded as JPEG **in the
 browser**, which also strips whatever EXIF the originals carried, GPS included. About 14 images
@@ -1376,7 +1395,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 483 checks: synthesises a real ZIP export and runs
+npm test           # 489 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
