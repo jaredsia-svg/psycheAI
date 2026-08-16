@@ -640,6 +640,50 @@ the output rate, so the only number that can be relied on is the generation cap 
 means the ceiling holds even when the model thinks for as long as it is allowed to, instead of
 holding on average and quietly breaking on exactly the accounts that give it the most to chew on.
 
+### Context caching, and why the ceiling is the wrong thing to look at
+
+The budget above governs the digest, and on a typical run the digest is **4% of the bill**:
+
+| | typical run | share |
+| --- | --- | --- |
+| Output, including thinking, at $7.50/M | $0.0600 | 64% |
+| System prompt + schema, 16,000 tokens, identical every call | $0.0240 | 26% |
+| Photographs (14) | $0.0054 | 6% |
+| The digest itself | $0.0040 | 4% |
+
+The fixed prompt costs six times what the evidence does, and it is the same bytes every time. Claude's
+adapter had always cached it (`cache_control: ephemeral`); Gemini's — the default provider — re-sent
+and re-paid for it on every call. `lib/gemini.js` now parks `PROFILE_SYSTEM` in an explicit context
+cache, which is about 9,100 tokens, worth roughly **$0.010–0.012 a call, or 11–13% of a typical run**,
+with identical inputs and outputs.
+
+Three decisions in there are worth stating, because each one is a place this could have been done
+badly.
+
+**Explicit, not implicit.** Implicit caching is automatic and free but best-effort, with a short
+eviction window that suits steady high-rate traffic. This app goes minutes or hours between analyses,
+which is precisely when an implicit entry has already been evicted. An explicit entry with its own TTL
+survives the gaps.
+
+**Short TTL, because caching is not free.** Cached tokens carry an hourly storage charge, so an entry
+no second call ever reaches costs more than it saved — roughly break-even at one analysis per hour on
+a one-hour TTL. The cache is therefore created lazily, only ever *after* a real call, when another is
+most likely, and defaults to a 15-minute life so a quiet night lapses instead of billing storage.
+`PSYCHEAI_GEMINI_CACHE_TTL` raises it once traffic keeps it warm, or `0` turns it off.
+
+**The compatibility prompt is deliberately left uncached.** At ~1,900 tokens it is under the floor
+Gemini will accept, so offering it would fail on every call and buy a wasted round trip. The schema is
+excluded for a different reason: `responseJsonSchema` is generation config rather than content, so
+those ~6,600 tokens are still billed in full. Only the system instruction is cacheable, which is why
+the saving is 11–13% and not the 26% the table might suggest.
+
+None of this may fail the analysis, so every path returns to sending the prompt inline: a create that
+fails backs off for ten minutes rather than retrying per call, and a handle the API has forgotten is
+dropped and the call retried once without it. A cache that works and a cache that silently stopped
+being hit produce identical reports, so `usage.cachedTokens` reports what was actually served from
+cache, and `tools/livetest.mjs` runs the analysis twice and prints whether the second call hit — the
+only place the arrangement can be confirmed against the real API rather than against a stub.
+
 For most accounts comprehensive sends **everything**, and `coverage.sampling` then reports shown
 equal to available. For a very heavy account it does not: 4,000 captions at ~150 characters is
 600,000 on its own, past the budget, so the digest is trimmed back to fit and reports the fraction
@@ -1435,7 +1479,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 511 checks: synthesises a real ZIP export and runs
+npm test           # 526 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

@@ -58,6 +58,155 @@ for (const engine of [claude, gemini, mock]) {
 check('providers are distinguishable', new Set([claude.name, gemini.name, mock.name]).size === 3);
 check('gemini can list models for discovery', typeof gemini.listModels === 'function');
 
+// ---------- Gemini context caching ----------
+//
+// The system prompt is re-billed on every call — about 9,100 tokens for the
+// profile analysis, more than the digest and the photographs together — so it
+// is parked in an explicit cache. None of that is visible from the outside: a
+// cache that works and a cache that silently stopped being hit produce exactly
+// the same report. So these drive the real code against a stub client and
+// assert on what it was asked to do.
+{
+  const T = gemini.__testing;
+
+  // A stub standing in for @google/genai. Records every create and every
+  // request so the assertions can read what actually went to the API.
+  const stubClient = (opts = {}) => {
+    const calls = { creates: [], requests: [] };
+    let created = 0;
+    return {
+      calls,
+      caches: {
+        create: async config => {
+          calls.creates.push(config);
+          if (opts.createFails) throw new Error('caches.create is not supported for this model');
+          created++;
+          return { name: 'cachedContents/stub-' + created };
+        },
+      },
+      models: {
+        generateContentStream: async request => {
+          calls.requests.push(request);
+          if (opts.rejectCache && request.config.cachedContent) {
+            throw new Error('CachedContent not found: ' + request.config.cachedContent);
+          }
+          return (async function* () {
+            yield {
+              text: '{"ok":true}',
+              candidates: [{ finishReason: 'STOP' }],
+              usageMetadata: {
+                promptTokenCount: 22310, candidatesTokenCount: 8000,
+                thoughtsTokenCount: 0, cachedContentTokenCount: request.config.cachedContent ? 9132 : 0,
+              },
+            };
+          })();
+        },
+      },
+    };
+  };
+
+  const run = (stub, system) => T.complete({
+    system, schema: { type: 'object' }, blocks: [{ type: 'text', text: 'evidence' }],
+  });
+
+  const BIG = 'x'.repeat(Math.ceil(T.CACHE_MIN_TOKENS * 3.5) + 1000);
+  const SMALL = 'x'.repeat(1000);
+
+  check('the profile prompt is big enough to be worth caching',
+    T.cacheable(prompts.PROFILE_SYSTEM));
+  // Not an oversight. Gemini refuses to cache below a floor, and this prompt is
+  // under it — offering it would fail on every call and buy a wasted round trip.
+  check('the compatibility prompt is left uncached, being under the size floor',
+    !T.cacheable(prompts.COMPATIBILITY_SYSTEM));
+
+  process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'stub-key-for-tests';
+
+  // Cold call creates one cache; the next reuses it rather than making another.
+  T.reset();
+  let stub = stubClient();
+  T.setClient(stub);
+  const first = await run(stub, BIG);
+  const second = await run(stub, BIG);
+  check('a cache is created once and then reused',
+    stub.calls.creates.length === 1, stub.calls.creates.length + ' creates for 2 calls');
+  check('the cached handle is sent instead of the system prompt',
+    stub.calls.requests.every(r => r.config.cachedContent && !r.config.systemInstruction),
+    JSON.stringify(stub.calls.requests.map(r => ({
+      cached: Boolean(r.config.cachedContent), system: Boolean(r.config.systemInstruction) }))));
+  check('the schema still rides inline, being config rather than cacheable content',
+    stub.calls.requests.every(r => r.config.responseJsonSchema));
+  check('the cache is created with a TTL so a quiet period lets it lapse',
+    /^\d+s$/.test(stub.calls.creates[0].config.ttl), stub.calls.creates[0].config.ttl);
+  check('the saving is reported back rather than assumed',
+    first.usage.cachedTokens === 9132 && second.usage.cachedTokens === 9132,
+    JSON.stringify({ first: first.usage.cachedTokens, second: second.usage.cachedTokens }));
+
+  // A prompt edit must not be served out of the previous prompt's cache.
+  T.reset();
+  stub = stubClient();
+  T.setClient(stub);
+  await run(stub, BIG);
+  await run(stub, BIG + ' edited');
+  check('editing the prompt makes a new cache rather than serving the old one',
+    stub.calls.creates.length === 2 && T.entryCount() === 2,
+    stub.calls.creates.length + ' creates');
+
+  // Under the floor: never offered, so no create is attempted at all.
+  T.reset();
+  stub = stubClient();
+  T.setClient(stub);
+  await run(stub, SMALL);
+  check('a prompt under the floor is sent inline with no create attempted',
+    stub.calls.creates.length === 0 &&
+    stub.calls.requests.every(r => r.config.systemInstruction && !r.config.cachedContent));
+
+  // Creation failing must not touch the analysis.
+  T.reset();
+  stub = stubClient({ createFails: true });
+  T.setClient(stub);
+  const degraded = await run(stub, BIG);
+  check('a cache that cannot be created falls back to sending the prompt inline',
+    degraded.data.ok === true &&
+    stub.calls.requests.every(r => r.config.systemInstruction && !r.config.cachedContent));
+  check('and reports no saving rather than pretending', degraded.usage.cachedTokens === 0);
+  // Otherwise every analysis pays for a create that is structurally doomed.
+  await run(stub, BIG);
+  check('a failed create backs off instead of retrying on every call',
+    stub.calls.creates.length === 1 && T.onCooldown(),
+    stub.calls.creates.length + ' creates across 2 calls');
+
+  // The handle going stale mid-flight is the one failure that happens in
+  // normal operation, when a cache expires between lookup and use.
+  T.reset();
+  stub = stubClient({ rejectCache: true });
+  T.setClient(stub);
+  // Caught rather than awaited bare: without the recovery this throws, and an
+  // escaping exception kills the run instead of being counted as the failure it
+  // is — which is exactly how this check first failed to catch its own fault.
+  let recovered = null;
+  let recoveryError = null;
+  try {
+    recovered = await run(stub, BIG);
+  } catch (error) {
+    recoveryError = error;
+  }
+  check('a rejected cache handle is dropped and the call retried without it',
+    !recoveryError && recovered && recovered.data.ok === true &&
+    stub.calls.requests.length === 2 &&
+    Boolean(stub.calls.requests[0].config.cachedContent) &&
+    !stub.calls.requests[1].config.cachedContent,
+    recoveryError ? 'threw: ' + recoveryError.message
+      : JSON.stringify(stub.calls.requests.map(r => Boolean(r.config.cachedContent))));
+  check('a stale handle is forgotten so the next call does not reuse it',
+    T.entryCount() === 0);
+  check('cache errors are told apart from real ones',
+    T.isCacheError(new Error('CachedContent not found: cachedContents/x')) &&
+    !T.isCacheError(new Error('API key not valid')));
+
+  // Leave no stub behind for the checks that follow.
+  T.reset();
+}
+
 // Provider selection is env-driven, so exercise the branches rather than
 // documenting them and hoping.
 async function selectionFor(env) {

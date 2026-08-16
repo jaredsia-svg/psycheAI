@@ -56,7 +56,21 @@ console.log('Sending a ' + digest.coverage.digestChars + '-char digest…');
 const started = Date.now();
 const profile = await engine.analyseProfile(digest);
 console.log('  profile in ' + Math.round((Date.now() - started) / 1000) + 's, ' +
-  profile.usage.outputTokens + ' output tokens');
+  profile.usage.inputTokens + ' input / ' + profile.usage.outputTokens + ' output tokens');
+
+// The one place a context cache can actually be confirmed. Everything in the
+// mocked suites proves the request was *shaped* right; only a real call proves
+// Google honoured it. A cold first call reports nothing cached, which is
+// expected — the cache is created by that call for the next one to use — so
+// this runs the analysis twice and reports both.
+if (typeof profile.usage.cachedTokens === 'number') {
+  console.log('  cached input on this call: ' + profile.usage.cachedTokens + ' tokens' +
+    (profile.usage.cachedTokens ? '' : ' (cold — the cache is created by this call)'));
+  const again = await engine.analyseProfile(digest);
+  const hit = again.usage.cachedTokens || 0;
+  console.log('  second call cached: ' + hit + ' of ' + again.usage.inputTokens + ' input tokens' +
+    (hit ? ' — cache is live' : ' — NOT being served from cache, worth investigating'));
+}
 
 const report = profile.data;
 check('every top-level section is present',
