@@ -138,7 +138,7 @@
   // the type for nothing. On a narrow viewport the paired rows stack, which
   // makes the card taller and narrower — closer to the shape of the screen it
   // has to land on, so the same content is drawn larger.
-  const CARD_W_NARROW = 820;
+  const CARD_W_NARROW = 700;
   // How much vertical room the inline preview may take on the page.
   const PREVIEW_MAX_H = 460;
   // Height set aside at the foot of the full-screen view for the download bar.
@@ -199,18 +199,31 @@
   }
 
   // Four to six lines of the report's own opening, rather than the card's
-  // two-sentence version. Cut at a sentence end so the card never trails off
-  // mid-clause, and only if there is a sentence boundary in a sensible place —
-  // a hard character cut would do exactly what the sentence break is there to
-  // avoid.
-  const CARD_BLURB_MAX = 340;
+  // two-sentence version — and always whole sentences.
+  //
+  // The first version of this appended an ellipsis when it could not find a
+  // sentence break inside the window, which put a visible "…" on the card and
+  // left the reader looking at a thought that stops halfway. A shorter complete
+  // passage beats a longer truncated one, so when no sentence ends in range it
+  // falls back through the card's own two-sentence summary to the first
+  // sentence of the report. None of those paths can produce an ellipsis.
+  const CARD_BLURB_MAX = 360;
+  function firstSentence(text) {
+    const end = Math.min(...['. ', '! ', '? ']
+      .map(mark => text.indexOf(mark))
+      .filter(at => at > 0)
+      .concat([text.length]));
+    return text.slice(0, Math.min(end + 1, text.length)).trim();
+  }
   function cardBlurb(report) {
     const full = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
-    if (!full) return (report && report.card && report.card.summary) || '';
+    const short = String((report && report.card && report.card.summary) || '').trim();
+    if (!full) return short;
     if (full.length <= CARD_BLURB_MAX) return full;
-    const window = full.slice(0, CARD_BLURB_MAX);
-    const stop = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '));
-    return stop > CARD_BLURB_MAX * 0.5 ? window.slice(0, stop + 1) : window.trim() + '…';
+    const head = full.slice(0, CARD_BLURB_MAX);
+    const stop = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
+    if (stop > CARD_BLURB_MAX * 0.4) return head.slice(0, stop + 1).trim();
+    return short || firstSentence(full);
   }
 
   const titlesOf = (rows, limit) => (rows || []).slice(0, limit)
@@ -344,16 +357,6 @@
       (essence.franchise ? '<span class="essence-franchise">' + esc(essence.franchise) + '</span>' : '') +
       '</div>' +
       '<p class="essence-why">' + esc(essence.why) + '</p></div></div>';
-  }
-
-  function glanceBlock(report) {
-    const items = Copy.glanceItems(report);
-    if (!items.length) return '';
-    return '<div class="glance">' + items.map(item =>
-      '<div class="glance-item"><span class="glance-label">' + esc(item.label) + '</span>' +
-      '<span class="glance-value">' + esc(item.value) + '</span>' +
-      (item.note ? '<span class="glance-note">' + esc(item.note) + '</span>' : '') +
-      '</div>').join('') + '</div>';
   }
 
   function loveLanguageColumn(title, blurb, items) {
@@ -1487,8 +1490,12 @@
 
     let html = '';
 
+    // No glance row here any more: the psyche card above the report already
+    // shows the type, the enneagram and the highest and lowest traits, and
+    // saying them again three centimetres lower is just the same four facts
+    // twice. The PDF keeps its own — it has no card in front of it.
     html += '<div class="card section-card">' + head('👤', esc(TEXT.whoYouAre)) +
-      essenceBlock(report.essence) + glanceBlock(report) + paragraphs(report.summary) + '</div>';
+      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
 
     // Big Five.
     html += '<div class="card section-card">' +

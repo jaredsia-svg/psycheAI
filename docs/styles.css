@@ -1309,10 +1309,10 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   font-size: 25px; letter-spacing: .18em; text-transform: uppercase;
   opacity: .85; margin: 0 0 10px;
 }
-.pc-name { display: flex; align-items: center; gap: 18px; }
-.pc-icon { font-size: 72px; line-height: 1; flex: none; }
+.pc-name { display: flex; align-items: center; gap: 14px; }
+.pc-icon { font-size: 52px; line-height: 1; flex: none; }
 .pc-name h2 {
-  font-size: 70px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
+  font-size: 54px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
   margin: 0; color: #fff;
 }
 .pc-blurb { font-size: 25px; line-height: 1.48; margin: 16px 0 0; opacity: .96; }
@@ -1369,11 +1369,22 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-trait { font-size: 23px; gap: 8px; }
 /* Four strength words across one narrow column: "moderate" twice will not fit
    at full size, and the last one ran into the block beside it. */
+/* Two stat columns rather than three on a narrow card. Three left the TYPE
+   block about a third of 700px, which is not enough for four strength words
+   side by side — and a narrower card is what lets the whole thing be drawn
+   larger on a phone, so the column count gives way rather than the width. */
+.psyche-card.pc-narrow .pc-stats { grid-template-columns: 1fr 1fr; }
 .psyche-card.pc-narrow .pc-letters { gap: 4px; }
 .psyche-card.pc-narrow .pc-letter b { font-size: 34px; }
 .psyche-card.pc-narrow .pc-letter i { font-size: 13px; }
 .psyche-card.pc-narrow .pc-lab-icon { font-size: 20px; }
 .psyche-card.pc-narrow .pc-blurb { margin-top: 10px; }
+/* The hero is the tightest block on a narrow card, and the character's name is
+   the largest thing in it — so it comes down another step there rather than
+   the paragraph beneath it losing sentences. */
+.psyche-card.pc-narrow .pc-icon { font-size: 42px; }
+.psyche-card.pc-narrow .pc-name h2 { font-size: 44px; }
+.psyche-card.pc-narrow .pc-kicker { font-size: 22px; }
 .psyche-card.pc-narrow .pc-list li { margin-bottom: 2px; }
 .pc-col, .pc-half {
   background: var(--bg-alt); border: 1px solid var(--line); border-radius: 20px;
@@ -1406,7 +1417,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .card-dialog::backdrop { background: rgba(20, 14, 28, .92); }
 .card-dialog-frame { overflow: hidden; place-self: center; }
 .card-dialog-close {
-  position: fixed; top: 14px; right: 14px; width: 44px; height: 44px;
+  position: fixed; top: 14px; right: 14px; z-index: 2; width: 44px; height: 44px;
   border-radius: 50%; border: 1px solid rgba(255, 255, 255, .3);
   background: rgba(255, 255, 255, .12); color: #fff; font-size: 1.1rem;
   cursor: pointer; line-height: 1;

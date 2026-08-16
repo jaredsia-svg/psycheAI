@@ -1178,8 +1178,8 @@ The full-screen check measures the right edge as well as the bottom, and a separ
 the letter row's `scrollWidth` against its `clientWidth`, because overflow *inside* a block is
 invisible to a card-level measurement.
 
-It sits in a section of its own — "Your Psyche Card" — above the writing, headed by the lockup on the
-left and whose card it is on the right. The wordmark used to sit alone at the foot, which named the
+It sits in a section of its own — "Summary" — above the writing, headed by the lockup on the left and
+whose card it is on the right. The wordmark used to sit alone at the foot, which named the
 product but not the person; on a card meant to be shown to somebody else the name is the more useful
 half. The mark is the same path data the nav, the PDF and the QR label draw, so the logo is one shape
 in five places rather than a picture to keep in step.
@@ -1204,6 +1204,23 @@ comment.
 
 **The download button at the top of the page is gone**, leaving the one at the foot. Two buttons put
 the exit before the thing being exited; somebody who has read the report is at the bottom of it.
+
+**The summary is whole sentences or nothing.** The first version cut to a character count and
+appended an ellipsis when it could not find a sentence break, which put a visible "…" on the card and
+left the reader with a thought that stops halfway — worst of all on a phone, where the narrow card
+runs the text longest. It now falls back through the card's own two-sentence summary to the first
+sentence of the report, and none of those paths can produce an ellipsis. The character's name and
+icon came down a size to make the room, and down again on a narrow card, where the hero is the
+tightest block and the name is the largest thing in it.
+
+That freed enough height on a phone to make the card **narrower**, which is counter-intuitive but
+correct: the card is width-bound there, so a narrower one is drawn *larger*. It could not go below
+820px while the stats sat in three columns — four strength words will not fit a third of 700px — so
+the column count gives way instead, two-up on narrow. Body text went 12.1px to 13.6px.
+
+**The glance row is gone from the page.** It repeated the MBTI type, the enneagram and the highest
+and lowest traits a few centimetres under a card that already shows all four. The PDF keeps its own,
+having no card in front of it, so `Copy.glanceItems` stays and a check holds it there.
 
 **Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
 goes because the comparison is to a character's temperament and naming the studio invites the reader
@@ -1563,7 +1580,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 732 checks: drives the real UI in Chromium against a
+npm run test:ui    # 730 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

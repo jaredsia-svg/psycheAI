@@ -1438,7 +1438,7 @@ try {
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
       const title = document.querySelector('#psyche-card-title');
-      return Boolean(section) && !section.hidden && title.textContent === 'Your Psyche Card' &&
+      return Boolean(section) && !section.hidden && title.textContent === 'Summary' &&
         section.contains(document.querySelector('#psyche-card-open'));
     }), await page.locator('#psyche-card-title').innerText());
   // The lockup on the left and the owner on the right. The wordmark used to sit
@@ -1510,6 +1510,13 @@ try {
   });
   check('the summary runs four to six lines rather than a single strapline',
     blurbLines >= 4 && blurbLines <= 7, blurbLines + ' lines');
+  // Whole sentences only. Truncating to a character count and appending an
+  // ellipsis put a visible "…" on the card and left the reader with a thought
+  // that stops halfway; a shorter complete passage is the better trade.
+  const blurbText = await page.locator('#psyche-card .pc-blurb').innerText();
+  check('the summary is never cut off mid-thought with an ellipsis',
+    !/[…]|\.\.\./.test(blurbText) && /[.!?]$/.test(blurbText.trim()),
+    JSON.stringify(blurbText.slice(-60)));
   check('the Big Five block names only the highest and the lowest',
     await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
@@ -2087,29 +2094,24 @@ try {
     return !franchise.closest('.essence-noun') && fill !== 'rgba(0, 0, 0, 0)';
   }));
 
-  // The headline findings are repeated up top, taken from the sections below
-  // rather than restated by the model, so they cannot drift apart.
-  const glance = await page.locator('.glance').innerText();
-  check('the opening section shows the headline findings at a glance',
-    (await page.locator('.glance-item').count()) === 4, glance.replace(/\n/g, ' / '));
-  check('the glance names the MBTI type', /ENFJ/.test(glance));
-  check('the glance names the highest and lowest traits',
-    /Agreeableness/.test(glance) && /Emotional sensitivity/.test(glance), glance.replace(/\n/g, ' / '));
-  check('the glance agrees with the Big Five section below', await page.evaluate(() => {
-    const values = [...document.querySelectorAll('.glance-item')].map(i => i.innerText);
-    const high = values.find(v => v.startsWith('HIGHEST'));
-    const low = values.find(v => v.startsWith('LOWEST'));
-    const scores = [...document.querySelectorAll('.trait-num')].map(n => Number(n.textContent));
-    return high.includes(String(Math.max(...scores))) && low.includes(String(Math.min(...scores)));
-  }));
-  check('the glance carries the Enneagram type, wing and nickname',
-    /Enneagram/i.test(glance) && /9w1/.test(glance) && /The Peacemaker/.test(glance),
-    glance.replace(/\n/g, ' / '));
-  check('the glance sits above the summary prose', await page.evaluate(() => {
-    const g = document.querySelector('.glance');
-    const p = g.parentElement.querySelector('p:not([class])');
-    return Boolean(g.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING);
-  }));
+  // The glance row came off this page: the psyche card above it already carries
+  // the type, the enneagram and the highest and lowest traits, so repeating
+  // them a few centimetres below was the same four facts twice. The PDF keeps
+  // its own copy — it has no card in front of it — so `glanceItems` stays.
+  check('the opening section no longer repeats the card as a glance row',
+    (await page.locator('.glance').count()) === 0 &&
+    (await page.locator('.glance-item').count()) === 0);
+  check('and the PDF still builds one, having no card of its own',
+    await page.evaluate(async () => {
+      const source = await fetch('pdf.js').then(r => r.text());
+      return /Copy\.glanceItems/.test(source);
+    }));
+  check('the summary prose still opens the section',
+    await page.evaluate(() => {
+      const section = [...document.querySelectorAll('#profile-body .section-card')][0];
+      return Boolean(section.querySelector('.essence')) &&
+        Boolean(section.querySelector('p:not([class])'));
+    }));
   check('the icon really is a pictograph, not text',
     (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
 
