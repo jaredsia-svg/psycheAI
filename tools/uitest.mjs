@@ -1468,6 +1468,29 @@ try {
         title === document.querySelector('#psyche-card-title') &&
         icon.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING;
     }));
+  // Unlike every other section on this page, the box around the card hugs its
+  // content instead of spanning the full container — the preview stops
+  // growing once PREVIEW_MAX_H is reached, and a full-width box around a
+  // narrow frame is exactly the empty-sided slab this replaced. Checked at a
+  // laptop width, where the gap used to be real: on a phone the preview
+  // already runs close to the full slot width, so there is nothing there to
+  // measure a difference against.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(150);
+  const hug = await page.evaluate(() => {
+    const container = document.querySelector('.container').getBoundingClientRect();
+    const section = document.querySelector('#psyche-card-section').getBoundingClientRect();
+    const frame = document.querySelector('#psyche-card').parentElement.getBoundingClientRect();
+    return {
+      hugsTheFrame: section.width - frame.width < 60,
+      centred: Math.abs((section.left - container.left) - (container.right - section.right)) <= 1,
+      narrowerThanContainer: section.width < container.width - 100,
+    };
+  });
+  check('the box hugs the card rather than spanning the full container',
+    hug.hugsTheFrame && hug.narrowerThanContainer, JSON.stringify(hug));
+  check('and is centred in the page rather than left-aligned inside it',
+    hug.centred, JSON.stringify(hug));
   // The lockup on the left and the owner on the right. The wordmark used to sit
   // alone at the foot, which named the product but not the person — on a card
   // meant to be shown to somebody else the name is the more useful half.

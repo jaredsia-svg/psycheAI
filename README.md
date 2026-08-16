@@ -1183,6 +1183,16 @@ title the same way every other section on the page is (`sectionHead()`'s `.card-
 pair). The section used to carry a bespoke `<h2>` with no icon at all, which was the one place on the
 page breaking a rhythm the rest of it keeps.
 
+**The box around it is sized to the card, not to the page.** Every other `.section-card` spans the full
+container because its content — paragraphs, trait bars — actually wants that width. This one does not:
+the inline preview is capped at `PREVIEW_MAX_H` and stops growing once it is tall enough, so on a
+laptop the frame stalls out at roughly a third of the container's width while the box around it stayed
+full width — a slab of empty white down each side, 199px of it either way on a 1440px screen. `width:
+fit-content` with `margin: auto` makes the box hug whichever child is widest, ordinarily the frame, and
+centres what is left. One box-sizing rule rather than a breakpoint: on a phone the frame already runs
+close to the full slot width, so fit-content lands on essentially the box the old full-width rule
+produced, and there was nothing there to guard with a media query.
+
 Inside the card, headed by the lockup on the left and whose card it is on the right. The wordmark used
 to sit alone at the foot, which named the product but not the person; on a card meant to be shown to
 somebody else the name is the more useful half. The mark is the same path data the nav, the PDF and
@@ -1594,7 +1604,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 737 checks: drives the real UI in Chromium against a
+npm run test:ui    # 739 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

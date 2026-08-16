@@ -1449,7 +1449,18 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-brand span { font-size: 23px; }
 .psyche-card.pc-narrow .pc-owner { font-size: 20px; }
 
-/* The section the card now lives in on the profile page. */
+/* The section the card now lives in on the profile page. Every other
+   .section-card spans the full container because its content — paragraphs,
+   trait bars — actually wants that width. This one does not: the preview is
+   capped at PREVIEW_MAX_H and stops growing once it is tall enough, so on a
+   wide screen the frame stalls out narrow while the box around it stays full
+   width, leaving a slab of empty white down each side. width: fit-content
+   makes the box hug whichever child is widest — the frame, ordinarily — and
+   margin: auto centres what is left, so the fix is one box sizing rule rather
+   than a breakpoint to maintain. On a phone the frame already runs close to
+   the full slot width, so fit-content lands on essentially the same box the
+   old full-width rule produced — nothing to guard with a media query. */
+#psyche-card-section { width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; }
 
 /* The download control, pinned under the card in the full-screen view. */
 .card-dialog-bar { display: flex; justify-content: center; padding: 14px 0 22px; }
