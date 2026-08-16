@@ -160,7 +160,7 @@
     cardSection: 'Summary',
     cardHint: 'Tap to open full screen',
     cardDownload: 'Download as image',
-    cardType: 'Type',
+    cardType: 'MBTI',
     cardEnneagram: 'Enneagram',
     cardBigFive: 'Big Five',
     cardValues: 'Values',

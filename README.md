@@ -1205,6 +1205,16 @@ comment.
 **The download button at the top of the page is gone**, leaving the one at the foot. Two buttons put
 the exit before the thing being exited; somebody who has read the report is at the bottom of it.
 
+**The paragraph carries three findings, not one**: the report's own opening, then one sentence on how
+they are with people, then one on how they are at work — the first sentence of the strongest thing the
+analysis found in each. They are quoted from `relationship.strengths` and `career.strengths` rather
+than written again for the card, and a check reads both back out of the stored report, so the card
+cannot start inventing sentences about a person it sits above. The summary's own share came down to
+make room, which is why the card did not need to grow to fit them.
+
+**The MBTI block is labelled MBTI and names the type under its letters** — "The Protagonist" is the
+part a reader repeats, and the row above already spells the code out.
+
 **The summary is whole sentences or nothing.** The first version cut to a character count and
 appended an ellipsis when it could not find a sentence break, which put a visible "…" on the card and
 left the reader with a thought that stops halfway — worst of all on a phone, where the narrow card
@@ -1580,7 +1590,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 730 checks: drives the real UI in Chromium against a
+npm run test:ui    # 736 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

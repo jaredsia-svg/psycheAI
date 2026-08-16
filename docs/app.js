@@ -207,7 +207,10 @@
   // passage beats a longer truncated one, so when no sentence ends in range it
   // falls back through the card's own two-sentence summary to the first
   // sentence of the report. None of those paths can produce an ellipsis.
-  const CARD_BLURB_MAX = 360;
+  // The summary's share of the paragraph. Lower than it was, because two more
+  // sentences now follow it and the whole thing still has to read as one
+  // passage rather than a wall.
+  const CARD_BLURB_MAX = 260;
   function firstSentence(text) {
     const end = Math.min(...['. ', '! ', '? ']
       .map(mark => text.indexOf(mark))
@@ -215,7 +218,7 @@
       .concat([text.length]));
     return text.slice(0, Math.min(end + 1, text.length)).trim();
   }
-  function cardBlurb(report) {
+  function cardSummary(report) {
     const full = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
     const short = String((report && report.card && report.card.summary) || '').trim();
     if (!full) return short;
@@ -224,6 +227,30 @@
     const stop = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
     if (stop > CARD_BLURB_MAX * 0.4) return head.slice(0, stop + 1).trim();
     return short || firstSentence(full);
+  }
+
+  // One sentence off the strongest thing the report found, for people and for
+  // work. The `detail` runs two or three sentences and the first carries the
+  // finding; the `title` is a headline rather than a sentence, so it is only a
+  // fallback and gets a full stop put on it.
+  function strengthSentence(rows) {
+    const top = (rows || []).find(row => row && (row.detail || row.title));
+    if (!top) return '';
+    const detail = String(top.detail || '').trim();
+    if (detail) return firstSentence(detail);
+    const title = String(top.title || '').trim();
+    return title ? title.replace(/[.!?]*$/, '') + '.' : '';
+  }
+
+  // The summary, then how they are with people, then how they are at work.
+  // Three findings rather than one, because the card is the only part of the
+  // report most readers will look at twice.
+  function cardBlurb(report) {
+    return [
+      cardSummary(report),
+      strengthSentence(report && report.relationship && report.relationship.strengths),
+      strengthSentence(report && report.career && report.career.strengths),
+    ].filter(Boolean).join(' ');
   }
 
   const titlesOf = (rows, limit) => (rows || []).slice(0, limit)
@@ -283,7 +310,12 @@
         // above them was the same information twice — the row below says ENFJ
         // and says how firmly each letter was picked.
         '<div class="pc-stat">' + cardLab(CARD_ICONS.type, TEXT.cardType) +
-          (letters ? '<div class="pc-letters">' + letters + '</div>' : '') + '</div>' +
+          (letters ? '<div class="pc-letters">' + letters + '</div>' : '') +
+          // The name under the letters rather than the four-letter code above
+          // them: "The Protagonist" is the part a reader repeats, and the row
+          // already spells the code out.
+          (mbti.nickname ? '<p class="pc-sub pc-mbti-name">' + esc(mbti.nickname) + '</p>' : '') +
+          '</div>' +
         (enneagramLabel ? '<div class="pc-stat">' + cardLab(CARD_ICONS.enneagram, TEXT.cardEnneagram) +
           '<p class="pc-big">' + enneagramLabel + '</p>' +
           (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +

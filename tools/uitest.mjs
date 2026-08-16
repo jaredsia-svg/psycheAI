@@ -1434,6 +1434,19 @@ try {
   // below render, so a check that it *has* the fields is really a check that
   // the two cannot drift apart.
   const cardText = await page.locator('#psyche-card').innerText();
+  // The download button used to sit under the title; with it gone, the margin
+  // below the h1 plus the hero's own were holding open an empty row above the
+  // first card. Measured as the real distance between the two: 43px now, 70px
+  // with the old margin restored, so the threshold sits between the two with
+  // room either side rather than on top of the failing value.
+  check('no empty row is left between the title and the first section',
+    await page.evaluate(() => {
+      const title = document.querySelector('#profile-title').getBoundingClientRect();
+      const first = document.querySelector('#psyche-card-section').getBoundingClientRect();
+      return first.top - title.bottom;
+    }) < 58, await page.evaluate(() => Math.round(
+      document.querySelector('#psyche-card-section').getBoundingClientRect().top -
+      document.querySelector('#profile-title').getBoundingClientRect().bottom) + 'px'));
   check('the card lives in a named section of its own',
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
@@ -1489,12 +1502,15 @@ try {
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
   // same information twice.
-  check('the MBTI block shows the letters with their strengths, not the code twice',
+  check('the MBTI block is labelled MBTI, and names the type under its letters',
     await page.evaluate(() => {
       const stat = document.querySelector('#psyche-card .pc-stat');
       const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
-      return letters === 'ENFJ' && !stat.querySelector('.pc-big');
-    }), cardText.replace(/\s+/g, ' ').slice(0, 90));
+      const name = stat.querySelector('.pc-mbti-name');
+      return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
+        letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
+        Boolean(name) && /^The /.test(name.textContent.trim());
+    }), cardText.replace(/\s+/g, ' ').slice(0, 110));
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
     JSON.stringify(cardText.match(/slight|moderate|clear/g)));
@@ -1508,8 +1524,57 @@ try {
     if (!el) return 0;
     return Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight));
   });
-  check('the summary runs four to six lines rather than a single strapline',
-    blurbLines >= 4 && blurbLines <= 7, blurbLines + ' lines');
+  check('the summary runs several lines rather than a single strapline',
+    blurbLines >= 4 && blurbLines <= 10, blurbLines + ' lines');
+  // The paragraph carries three findings, not one: the report's opening, then
+  // how they are with people, then how they are at work. Checked against the
+  // stored report rather than against fixed text, so it fails if the card ever
+  // starts inventing sentences instead of quoting the analysis it sits above.
+  const blurbSources = await page.evaluate(() => {
+    const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
+    const blurb = document.querySelector('#psyche-card .pc-blurb').innerText;
+    const opener = rows => {
+      const top = (rows || []).find(row => row && (row.detail || row.title));
+      const text = String((top && (top.detail || top.title)) || '').trim();
+      return text.split(/(?<=[.!?])\s/)[0].trim();
+    };
+    return {
+      rel: opener(report.relationship && report.relationship.strengths),
+      work: opener(report.career && report.career.strengths),
+      hasRel: blurb.includes(opener(report.relationship && report.relationship.strengths)),
+      hasWork: blurb.includes(opener(report.career && report.career.strengths)),
+      startsWithSummary: blurb.startsWith(report.summary.split(/\s*\n+\s*/)[0].slice(0, 40)),
+    };
+  });
+  check('the paragraph adds a sentence on people and one on work',
+    blurbSources.hasRel && blurbSources.hasWork && blurbSources.startsWithSummary,
+    JSON.stringify(blurbSources));
+
+  check('the psyche card sits above the written report',
+    await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-open');
+      const body = document.querySelector('#profile-body');
+      return Boolean(card) && !card.hidden &&
+        (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    }));
+  check('it carries the character, the enneagram and a summary',
+    /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
+    /Mock summary paragraph one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+  // The four-letter code is gone: the row below it spells the same type out and
+  // says how firmly each letter was picked, so printing ENFJ above it was the
+  // same information twice.
+  check('the MBTI block is labelled MBTI, and names the type under its letters',
+    await page.evaluate(() => {
+      const stat = document.querySelector('#psyche-card .pc-stat');
+      const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
+      const name = stat.querySelector('.pc-mbti-name');
+      return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
+        letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
+        Boolean(name) && /^The /.test(name.textContent.trim());
+    }), cardText.replace(/\s+/g, ' ').slice(0, 110));
+  check('each MBTI letter carries how strongly it leans',
+    (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
+    JSON.stringify(cardText.match(/slight|moderate|clear/g)));
   // Whole sentences only. Truncating to a character count and appending an
   // ellipsis put a visible "…" on the card and left the reader with a thought
   // that stops halfway; a shorter complete passage is the better trade.
