@@ -1013,6 +1013,32 @@ instruction can be shown to actually land, rather than merely to be present — 
 *with* its messages, which it previously did not, and asserts that an account with 3 threads, no
 group threads and 240 likes against 12 posts does not come back as an extravert.
 
+**Two fields, one trait, and nothing was making them agree.** `bigFive.extraversion` and the MBTI E/I
+letter describe the same thing, and the summary card puts them a few centimetres apart — so a score
+of 62 above the word **I** reads as the report arguing with itself, which is exactly what was coming
+back. The prompt already set the same raised bar for both, but a shared bar is not a shared answer:
+each field was free to land wherever its own reasoning took it.
+
+It is now arithmetic rather than a plea for consistency. `bigFive` is written before `mbti`, so the
+number exists by the time the axis is chosen: **55 or above takes E, 45 or below takes I**, and the
+band between them allows either letter at `slight` strength only. `strength` tracks distance from 50
+on the same scale, and the axis's `why` may not argue against the trait's `reading` — if one says
+"sociable" while the other says "keeps to a few people", one of them is wrong and the evidence decides
+which, rather than either being nudged to match the other. The rule is repeated at the field
+descriptions themselves, because that is where the letter actually gets picked.
+
+**And the empty group chat is now banned outright rather than explained.** The prompt had said twice
+that an absent group life means nothing — once in the group-threads bullet, once in the general
+missing-behaviour rule — and reports kept citing it anyway. An explanation is not a prohibition. The
+phrasings are named and barred from every `evidence` string and every axis `why`: Instagram and
+Facebook messaging is overwhelmingly one-to-one, group life happens on WhatsApp, iMessage, Discord or
+in a room, and zero group threads is what the *average extravert's* export looks like. It separates
+nobody from anybody, so it is silence, and silence does not go in an evidence list.
+
+The live test carries the alignment rule too — the letter against the score, the middle band hedged,
+and the axis reasoning checked for the same blank the trait evidence is checked for. That is the only
+place either rule can be shown to land rather than merely to be present.
+
 ### What the model is told not to do
 
 Identify or speculate about specific other people in your data, or infer sexual orientation, health
@@ -1597,7 +1623,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 526 checks: synthesises a real ZIP export and runs
+npm test           # 537 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

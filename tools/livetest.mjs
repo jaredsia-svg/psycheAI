@@ -128,6 +128,26 @@ check('an empty group-chat count is not cited as evidence of introversion',
 check('the E/I axis reads introvert on that same evidence',
   /^I/.test(report.mbti.type) || report.mbti.type === 'Uncertain',
   report.mbti.type);
+// The two fields describe one trait and sit side by side in the summary card,
+// so a score of 62 above the letter I reads as the report arguing with itself.
+// The prompt makes that numeric, and this is the only place the rule can be
+// confirmed against a model rather than against the prompt's own wording.
+const eiAxis = (report.mbti.letters || []).find(l => l && /E\/?I/i.test(l.axis || ''));
+if (Number.isFinite(extraversion) && eiAxis) {
+  const letter = String(eiAxis.choice || '').toUpperCase();
+  const agrees = extraversion >= 55 ? letter === 'E'
+    : extraversion <= 45 ? letter === 'I'
+    : letter === 'E' || letter === 'I';
+  check('the E/I letter agrees with the extraversion score',
+    agrees, 'extraversion ' + extraversion + ' with letter ' + letter);
+  check('and a middle-band score is hedged rather than asserted',
+    extraversion < 46 || extraversion > 54 || eiAxis.strength === 'slight',
+    'extraversion ' + extraversion + ', strength ' + eiAxis.strength);
+  // The same blank barred from the Big Five evidence is barred here: the axis
+  // reasoning is where it tended to reappear once the trait evidence was clean.
+  check('the axis reasoning does not fall back on the empty group count',
+    !/group/i.test(String(eiAxis.why || '')), String(eiAxis.why || '').slice(0, 140));
+}
 // A score is only as good as its reasoning: the correction is meant to move
 // the model off raw volume, so the evidence it cites should not be a message
 // count dressed up as sociability.

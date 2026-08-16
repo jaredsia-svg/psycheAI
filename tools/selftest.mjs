@@ -872,6 +872,33 @@ for (const [label, needle] of [
     /that is an introvert with close friends, and it should score below 50/],
   ['refuses message volume as trait evidence in the Big Five section',
     /"You send a lot of messages" is not evidence for this trait/],
+  // The E/I letter and the extraversion score are two fields describing one
+  // trait, and readers put them side by side. Nothing tied them together, so a
+  // report could score 62 and then print "I" — the contradiction gets noticed
+  // immediately because both sit in the same summary card. The rule is numeric
+  // rather than a plea for consistency, so there is something to check.
+  ['ties the E/I letter to the extraversion score',
+    /The E\/I letter and the extraversion score are one finding/],
+  ['gives that tie an actual threshold', /extraversion \*\*55 or above\*\* → the letter is \*\*E\*\*/],
+  ['and the other side of it', /extraversion \*\*45 or below\*\* → the letter is \*\*I\*\*/],
+  ['makes the middle band hedge rather than pick', /either letter is defensible, but `strength` must be `slight`/],
+  ['forbids the axis reasoning contradicting the trait reading',
+    /must not argue against the trait's `reading`/],
+  ['restates the tie where the letter is actually chosen',
+    /It also has to match the extraversion score you have already written/],
+  // Absence of group threads. The prompt already explained why it means
+  // nothing, twice, and reports kept citing it anyway — an explanation is not
+  // a prohibition, so this is written as a ban on the phrasing itself, at the
+  // point the evidence strings are produced.
+  ['bans the empty group life from the evidence outright',
+    /never write the absence of group chats into the evidence/i],
+  ['names the phrasings it is banning', /"No active group threads", "no group conversations"/],
+  ['says why: these platforms are one-to-one',
+    /Instagram and Facebook messaging is overwhelmingly one-to-one/],
+  ['points out it separates nobody from anybody',
+    /what the \*average\* extravert's export looks like/],
+  ['calls the blank silence rather than a finding',
+    /it is silence, and silence does not go in an evidence list/],
   // Captions about other people. Reported from real output: a caption naming
   // somebody else's job or car was being read as the reader's own. Each half
   // of the correction is pinned — the rule, the handle test, and the reframe
