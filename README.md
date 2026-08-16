@@ -1178,6 +1178,33 @@ The full-screen check measures the right edge as well as the bottom, and a separ
 the letter row's `scrollWidth` against its `clientWidth`, because overflow *inside* a block is
 invisible to a card-level measurement.
 
+It sits in a section of its own — "Your Psyche Card" — above the writing, headed by the lockup on the
+left and whose card it is on the right. The wordmark used to sit alone at the foot, which named the
+product but not the person; on a card meant to be shown to somebody else the name is the more useful
+half. The mark is the same path data the nav, the PDF and the QR label draw, so the logo is one shape
+in five places rather than a picture to keep in step.
+
+**Full screen offers it as a PNG.** The card is DOM and the reader wants an image, so it is
+rasterised through an SVG `<foreignObject>` — the one route a browser offers without shipping a
+rendering library. Painted at twice the card's own size so it stands up to being posted, on an opaque
+white ground because a PNG with alpha would go transparent where the corner radius rounds, which reads
+as a hole in any viewer with a dark page.
+
+The failure mode there is specific and quiet: the image loads, the canvas paints, and what comes out
+is blank — so a check that the file exists proves nothing. The test reads the pixels back and counts
+strongly purple ones, since the hero gradient guarantees thousands of them in a correct render and
+none in a broken one. Stripping the stylesheet from the export fails it at `purple: 0`.
+
+Getting there cost one wrong diagnosis worth recording. Inlining the whole of `styles.css` into the
+SVG fails outright, and the obvious suspect — four `url(#hero-mark-gradient)` references to gradients
+that live in `index.html` — is not the culprit. The file's *comments* mention `<linearGradient>` and
+`<dialog>`, and raw CSS dropped into an XML `<style>` hands those to the parser as unclosed tags.
+Reading `cssText` off the CSSOM sidesteps it for free, because the parser has already stripped every
+comment.
+
+**The download button at the top of the page is gone**, leaving the one at the foot. Two buttons put
+the exit before the thing being exited; somebody who has read the report is at the bottom of it.
+
 **Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
 goes because the comparison is to a character's temperament and naming the studio invites the reader
 to check the costume instead. Attachment style goes because this is the most shareable surface in the
@@ -1536,7 +1563,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 722 checks: drives the real UI in Chromium against a
+npm run test:ui    # 732 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

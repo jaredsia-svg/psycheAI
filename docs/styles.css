@@ -1315,7 +1315,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   font-size: 70px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
   margin: 0; color: #fff;
 }
-.pc-blurb { font-size: 29px; line-height: 1.5; margin: 18px 0 0; opacity: .96; }
+.pc-blurb { font-size: 25px; line-height: 1.48; margin: 16px 0 0; opacity: .96; }
 
 .pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-stat {
@@ -1398,9 +1398,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   padding: 0; border: 0; background: rgba(20, 14, 28, .92);
   display: none; place-items: center; overflow: hidden;
 }
-.card-dialog[open] { display: grid; }
+/* Two rows: the card centred in whatever is left, and the bar in normal flow
+   beneath it. The bar used to be position:fixed, which floated it over the
+   card's last row — reserving height for it does not help while the card is
+   centred in the whole viewport. */
+.card-dialog[open] { display: grid; grid-template-rows: 1fr auto; }
 .card-dialog::backdrop { background: rgba(20, 14, 28, .92); }
-.card-dialog-frame { overflow: hidden; }
+.card-dialog-frame { overflow: hidden; place-self: center; }
 .card-dialog-close {
   position: fixed; top: 14px; right: 14px; width: 44px; height: 44px;
   border-radius: 50%; border: 1px solid rgba(255, 255, 255, .3);
@@ -1415,3 +1419,25 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pc-love { list-style: none; padding-left: 0; }
 .pc-love li { display: flex; align-items: center; gap: 10px; }
 .pc-love-icon { font-size: 26px; line-height: 1; flex: none; }
+
+/* The card's masthead: the lockup on the left, whose card it is on the right. */
+.pc-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.pc-brand { display: flex; align-items: center; gap: 12px; color: var(--accent); }
+.pc-brand-mark { width: 40px; height: 40px; flex: none; }
+.pc-brand span { font-size: 27px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
+.pc-owner {
+  font-size: 24px; font-weight: 600; color: var(--ink-soft);
+  letter-spacing: .02em; text-align: right; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.psyche-card.pc-narrow .pc-brand-mark { width: 32px; height: 32px; }
+.psyche-card.pc-narrow .pc-brand span { font-size: 23px; }
+.psyche-card.pc-narrow .pc-owner { font-size: 20px; }
+
+/* The section the card now lives in on the profile page. */
+.card-section-title { font-size: 1.15rem; margin: 0 0 .9rem; }
+#psyche-card-section .psyche-card-slot { margin-bottom: 0; }
+
+/* The download control, pinned under the card in the full-screen view. */
+.card-dialog-bar { display: flex; justify-content: center; padding: 14px 0 22px; }
+.card-dialog-bar .btn { box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }

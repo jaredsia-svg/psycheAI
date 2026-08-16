@@ -141,6 +141,8 @@
   const CARD_W_NARROW = 820;
   // How much vertical room the inline preview may take on the page.
   const PREVIEW_MAX_H = 460;
+  // Height set aside at the foot of the full-screen view for the download bar.
+  const CARD_BAR_SPACE = 84;
   const NARROW_ASPECT = 0.62;
 
   // The strongest and weakest of the five, named. Ties break on the fixed key
@@ -158,6 +160,20 @@
       if (row.score < low.score) low = row;
     }
     return high === low ? null : { high, low };
+  }
+
+  // The mark as inline SVG, from the same path data the nav, the PDF and the QR
+  // label draw. `currentColor` so the one markup works on the card's light
+  // header without a second copy in a different colour.
+  function brandMarkSvg(className) {
+    const mark = Copy.BRAND_MARK;
+    return '<svg class="' + className + '" viewBox="0 0 ' + mark.viewBox + ' ' + mark.viewBox + '" ' +
+      'fill="none" stroke="currentColor" stroke-width="' + mark.strokeWidth + '" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      mark.paths.map(d => '<path d="' + d + '"/>').join('') +
+      (mark.dot ? '<circle cx="' + mark.dot.cx + '" cy="' + mark.dot.cy + '" r="' + mark.dot.r +
+        '" fill="currentColor" stroke="none"/>' : '') +
+      '</svg>';
   }
 
   const cardLab = (icon, label) =>
@@ -215,6 +231,7 @@
   function psycheCardHtml(report) {
     if (!report) return '';
     const card = report.card || {};
+    const cardName = card.name || '';
     const essence = report.essence || {};
     const name = essenceName(essence);
     const mbti = report.mbti || {};
@@ -233,6 +250,14 @@
     const blurb = cardBlurb(report);
 
     return '' +
+      // Masthead: the lockup on the left, whose card this is on the right. The
+      // wordmark used to sit alone at the foot, which named the product but not
+      // the person — on a card meant to be shown to somebody else the name is
+      // the more useful half.
+      '<div class="pc-top">' +
+        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
+        (cardName ? '<span class="pc-owner">' + esc(cardName) + '</span>' : '') +
+      '</div>' +
       '<div class="pc-hero">' +
         '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
@@ -274,7 +299,7 @@
           (love.giving || []).slice(0, 2).map(l => l && l.language)) +
       '</div>' +
 
-      '<p class="pc-foot">PsycheAI</p>';
+      '';
   }
 
   // Scale-to-fit, measured rather than assumed: the card is laid out at
@@ -1638,8 +1663,10 @@
     // Hidden rather than left empty on a report too old or too thin to fill it,
     // so the page never opens on a blank frame with a "tap to expand" label
     // under it.
-    $('#psyche-card-open').hidden = !cardHtml;
+    $('#psyche-card-section').hidden = !cardHtml;
+    $('#psyche-card-title').textContent = TEXT.cardSection;
     $('#psyche-card-hint').textContent = TEXT.cardHint;
+    $('#card-download').textContent = TEXT.cardDownload;
     layoutPsycheCard();
 
     $('#profile-body').innerHTML = reportSectionsHtml(report);
@@ -1868,7 +1895,7 @@
   // neither is knowable from a stylesheet.
   function layoutPsycheCard() {
     const slot = $('#psyche-card-open');
-    if (slot && !slot.hidden) {
+    if (slot && !$('#psyche-card-section').hidden) {
       // Capped in height as well as width. Left width-led it filled the column
       // and pushed "Who you are" a screen and a half down the page — the
       // opposite of what a summary above the report is for. It is a thumbnail
@@ -1880,8 +1907,143 @@
     if (dialog && dialog.open) {
       // Full screen is the case the whole fixed-size approach exists for: fit
       // both axes, with a small margin so it never touches the edges.
+      // The download bar is pinned to the bottom of the viewport, so the card is
+      // fitted into what is left above it rather than into the whole screen —
+      // otherwise the button lands on top of the card's last row.
       fitCard($('#psyche-card-full'),
-        window.innerWidth * 0.94, window.innerHeight * 0.94, 'screen');
+        window.innerWidth * 0.94, window.innerHeight * 0.96 - CARD_BAR_SPACE, 'screen');
+    }
+  }
+
+  // ---------- the card as an image ----------
+  //
+  // The card is DOM, and the reader wants a PNG. Rasterising it means putting
+  // the markup inside an SVG <foreignObject>, loading that as an image and
+  // painting it to a canvas — the one route a browser offers without shipping a
+  // rendering library.
+  //
+  // Two things make or break it. The SVG carries no reference to the page it
+  // came from, so the whole stylesheet is inlined; it is fetched once and kept,
+  // rather than reconstructed from cssRules, because the variables the card's
+  // colours resolve through live on :root and are easy to miss when picking
+  // rules out by selector. And every node has to be XHTML — serialised through
+  // XMLSerializer, with the namespace declared on the wrapper — since an SVG
+  // document rejects the HTML parser's unclosed tags.
+  // Only the rules the card actually uses, read out of the live CSSOM.
+  //
+  // Fetching styles.css and inlining the text was the obvious first attempt, and
+  // it fails outright — the SVG never loads and the download silently produces
+  // nothing. The reason is worth writing down because it is not the one you
+  // would guess: the file's *comments* mention `<linearGradient>` and
+  // `<dialog>`, and dropping raw CSS into an XML `<style>` element hands those
+  // to the XML parser as unclosed tags. Reading `cssText` off the CSSOM avoids
+  // it for free, since the parser has already stripped every comment.
+  //
+  // Selecting by prefix is then about size and relevance rather than
+  // correctness: the card's own rules plus the custom properties its colours
+  // resolve through, and none of the rest of the app.
+  const CARD_RULE = /^(:root|\.psyche-card|\.pc-)/;
+  let styleSheetText = null;
+  function cardStyles() {
+    if (styleSheetText !== null) return styleSheetText;
+    const parts = [
+      // The page's own reset is not in the extracted set, and the card's
+      // geometry assumes it.
+      '*{box-sizing:border-box}',
+      'div,p,h2,ul,li,span{margin:0;padding:0}',
+      'ul{list-style-position:inside}',
+      '.psyche-card{font-family:' +
+        '-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif}',
+    ];
+    for (const sheet of document.styleSheets) {
+      let rules;
+      // A stylesheet from another origin throws on access rather than
+      // returning nothing, and there is no reason to fail the export over one.
+      try { rules = sheet.cssRules; } catch (error) { continue; }
+      for (const rule of rules) {
+        if (!rule.selectorText) continue;
+        const matches = rule.selectorText.split(',')
+          .some(selector => CARD_RULE.test(selector.trim()));
+        if (matches) parts.push(rule.cssText);
+      }
+    }
+    styleSheetText = parts.join('\n');
+    return styleSheetText;
+  }
+
+  const CARD_IMAGE_SCALE = 2;
+
+  async function cardImageBlob() {
+    const source = $('#psyche-card-full');
+    if (!source) return null;
+    const width = source.offsetWidth;
+    const height = source.offsetHeight;
+    if (!width || !height) return null;
+
+    // A clone at scale 1: the live node is under a transform that fits it to the
+    // screen, and the image should be the card at full size rather than at
+    // whatever this viewport happened to shrink it to.
+    const clone = source.cloneNode(true);
+    clone.style.transform = 'none';
+    clone.style.margin = '0';
+    clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+
+    const markup = new XMLSerializer().serializeToString(clone);
+    const css = cardStyles();
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height +
+      '" viewBox="0 0 ' + width + ' ' + height + '">' +
+      '<foreignObject x="0" y="0" width="' + width + '" height="' + height + '">' +
+      '<style>' + css + '</style>' + markup +
+      '</foreignObject></svg>';
+
+    const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    const image = new Image();
+    image.decoding = 'sync';
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('the card could not be drawn'));
+      image.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * CARD_IMAGE_SCALE;
+    canvas.height = height * CARD_IMAGE_SCALE;
+    const context = canvas.getContext('2d');
+    // The card's own background is painted by its stylesheet, but a PNG with an
+    // alpha channel behind it would go transparent wherever the radius rounds
+    // the corners, which reads as a hole in every viewer that shows a dark page.
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.scale(CARD_IMAGE_SCALE, CARD_IMAGE_SCALE);
+    context.drawImage(image, 0, 0);
+
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  }
+
+  async function downloadCardImage(event) {
+    const button = event.currentTarget;
+    const label = button.textContent;
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const blob = await cardImageBlob();
+      if (!blob) throw new Error('empty');
+      const name = 'psycheai-card-' +
+        String((state.profile && state.profile.card && state.profile.card.name) || 'me')
+          .toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = name + '.png';
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    } catch (error) {
+      button.textContent = 'Could not build the image';
+      setTimeout(() => { button.textContent = label; }, 3000);
+    } finally {
+      button.disabled = false;
     }
   }
 
@@ -1894,6 +2056,7 @@
   }
 
   $('#psyche-card-open').addEventListener('click', openPsycheCard);
+  $('#card-download').addEventListener('click', downloadCardImage);
   $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
   // Clicking the backdrop closes it: the dialog element itself fills the screen,
   // so a click that lands on it rather than on the card is a click outside.
@@ -1902,7 +2065,6 @@
   });
   window.addEventListener('resize', layoutPsycheCard);
 
-  $('#export-pdf-top').addEventListener('click', exportPdf);
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
 
   /**

@@ -931,7 +931,7 @@ try {
   // a control that gets removed fails here rather than turning the guard into
   // a check that nothing is nothing.
   for (const [what, selector] of [
-    ['a download button', '#export-pdf-top, #export-pdf-bottom'],
+    ['a download button', '#export-pdf-bottom'],
     ['a delete button', '#delete-profile'],
     ['the QR compatibility panel', '.qr-panel'],
   ]) {
@@ -1434,6 +1434,48 @@ try {
   // below render, so a check that it *has* the fields is really a check that
   // the two cannot drift apart.
   const cardText = await page.locator('#psyche-card').innerText();
+  check('the card lives in a named section of its own',
+    await page.evaluate(() => {
+      const section = document.querySelector('#psyche-card-section');
+      const title = document.querySelector('#psyche-card-title');
+      return Boolean(section) && !section.hidden && title.textContent === 'Your Psyche Card' &&
+        section.contains(document.querySelector('#psyche-card-open'));
+    }), await page.locator('#psyche-card-title').innerText());
+  // The lockup on the left and the owner on the right. The wordmark used to sit
+  // alone at the foot, which named the product but not the person — on a card
+  // meant to be shown to somebody else the name is the more useful half.
+  check('the card is headed by the logo, the wordmark and the owner',
+    await page.evaluate(() => {
+      const top = document.querySelector('#psyche-card .pc-top');
+      if (!top) return false;
+      const brand = top.querySelector('.pc-brand');
+      const owner = top.querySelector('.pc-owner');
+      return Boolean(brand && brand.querySelector('svg.pc-brand-mark')) &&
+        /PsycheAI/.test(brand.textContent) && Boolean(owner) && owner.textContent.trim().length > 0 &&
+        brand.getBoundingClientRect().left < owner.getBoundingClientRect().left;
+    }), cardText.replace(/\s+/g, ' ').slice(0, 60));
+  check('the card draws the same mark the nav and the PDF draw',
+    await page.evaluate(() => {
+      const navPath = document.querySelector('.brand-mark path').getAttribute('d');
+      const cardPath = document.querySelector('#psyche-card .pc-brand-mark path').getAttribute('d');
+      return navPath === cardPath;
+    }));
+  check('the wordmark no longer sits at the foot as well',
+    (await page.locator('#psyche-card .pc-foot').count()) === 0);
+  // The gradient block sizes to its own content, so a summary that spills past
+  // it is a real defect rather than a cosmetic one.
+  // scrollHeight against clientHeight, both layout values: the card is drawn
+  // under a scale transform, so a rect measured in screen pixels compared
+  // against a computed padding in card pixels is comparing two different units
+  // — a mistake this suite has now made twice.
+  check('the summary fits inside the gradient block it sits in',
+    await page.evaluate(() => {
+      const hero = document.querySelector('#psyche-card .pc-hero');
+      return Boolean(hero.querySelector('.pc-blurb')) && hero.scrollHeight <= hero.clientHeight + 1;
+    }), await page.evaluate(() => {
+      const hero = document.querySelector('#psyche-card .pc-hero');
+      return hero.scrollHeight + ' content vs ' + hero.clientHeight + ' box';
+    }));
   check('the psyche card sits above the written report',
     await page.evaluate(() => {
       const card = document.querySelector('#psyche-card-open');
@@ -1550,8 +1592,11 @@ try {
       // where the frame's overflow:hidden swallowed it silently.
       const widest = Math.max(...[...card.querySelectorAll('*')]
         .map(el => el.getBoundingClientRect().right));
+      const bar = document.querySelector('#card-download').getBoundingClientRect();
       return {
         open: document.querySelector('#card-dialog').open,
+        // The bar is pinned to the viewport foot; the card must end above it.
+        barOverlaps: bar.top < box.bottom - 1,
         fits: box.width <= window.innerWidth + 1 && box.height <= window.innerHeight + 1,
         clipped: lowest > box.bottom + 1 || widest > box.right + 1,
         scrolls: document.documentElement.scrollWidth > window.innerWidth,
@@ -1561,6 +1606,62 @@ try {
     await page.waitForTimeout(120);
     return out;
   };
+  // The card as a PNG. Rasterising DOM through an SVG foreignObject fails in a
+  // particular way — the image loads, the canvas paints, and what comes out is
+  // blank — so checking the file exists proves nothing. These read the pixels
+  // back and look for the card's own gradient.
+  await page.click('#psyche-card-open');
+  await page.waitForTimeout(250);
+  check('the full-screen view offers a download', await page.locator('#card-download').isVisible());
+  check('and says what it does',
+    (await page.locator('#card-download').innerText()) === 'Download as image',
+    await page.locator('#card-download').innerText());
+  const [cardDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#card-download'),
+  ]);
+  const cardPngPath = join(shotDir, 'psyche-card.png');
+  await cardDownload.saveAs(cardPngPath);
+  check('the image is offered as a named PNG',
+    /^psycheai-card-.*\.png$/.test(cardDownload.suggestedFilename()), cardDownload.suggestedFilename());
+  const cardPng = readFileSync(cardPngPath);
+  check('the file really is a PNG',
+    cardPng.length > 5000 && cardPng.slice(1, 4).toString('latin1') === 'PNG',
+    cardPng.length + ' bytes');
+  // Painted at 2x the card's own size, so it stands up to being posted.
+  const pngSize = await page.evaluate(async bytes => {
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width; canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(bitmap, 0, 0);
+    const px = ctx.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    // Distinct colours across the whole image: a blank render is one or two.
+    const seen = new Set();
+    for (let i = 0; i < px.length; i += 4 * 97) {
+      seen.add(px[i] + ',' + px[i + 1] + ',' + px[i + 2]);
+      if (seen.size > 400) break;
+    }
+    // The hero gradient runs purple to pink, so a correctly drawn card has
+    // strongly purple pixels in it. A blank or text-only render has none.
+    let purple = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const r = px[i], g = px[i + 1], b = px[i + 2];
+      if (r > 90 && r < 190 && g < 90 && b > 110) purple++;
+    }
+    const card = document.querySelector('#psyche-card-full');
+    return { w: bitmap.width, h: bitmap.height, colours: seen.size, purple,
+      cardW: card.offsetWidth, cardH: card.offsetHeight };
+  }, Array.from(cardPng));
+  check('the image is the card at twice its own size',
+    pngSize.w === pngSize.cardW * 2 && pngSize.h === pngSize.cardH * 2,
+    JSON.stringify(pngSize));
+  check('and is actually drawn, not a blank canvas',
+    pngSize.colours > 20 && pngSize.purple > 2000, JSON.stringify(pngSize));
+  await page.click('#card-dialog-close');
+  await page.waitForTimeout(150);
+
   const onLaptop = await fitAt(1440, 860);
   const onPhone = await fitAt(390, 844);
   check('clicking the card opens it full screen', onLaptop.open && onPhone.open);
@@ -1568,6 +1669,9 @@ try {
     onLaptop.fits && !onLaptop.clipped && !onLaptop.scrolls, JSON.stringify(onLaptop));
   check('and fits a phone screen whole, with nothing cut off',
     onPhone.fits && !onPhone.clipped && !onPhone.scrolls, JSON.stringify(onPhone));
+  check('the download bar sits below the card rather than on top of it',
+    !onLaptop.barOverlaps && !onPhone.barOverlaps,
+    JSON.stringify({ laptop: onLaptop.barOverlaps, phone: onPhone.barOverlaps }));
   await page.setViewportSize({ width: 1440, height: 860 });
   await page.waitForTimeout(150);
 
@@ -1650,16 +1754,18 @@ try {
   // The one-line summary under the title is gone.
   check('there is no sub-headline under the profile title',
     (await page.locator('#profile-sub').count()) === 0);
-  check('the export button is the first thing under the title', await page.evaluate(() => {
-    // Three children now, not two: the watermark mark is first (decorative,
-    // aria-hidden, no bearing on what "first thing under the title" means),
-    // then the title, then the button row.
-    const head = document.querySelector('#view-profile .profile-hero');
-    return Boolean(head) && head.children.length === 3 &&
-      head.children[0].tagName === 'svg' &&
-      head.children[1].id === 'profile-title' &&
-      head.children[2].contains(document.querySelector('#export-pdf-top'));
-  }));
+  // The header carries the title and nothing else now. The download used to sit
+  // here as well as at the foot, which put the exit before the thing being
+  // exited — the one at the bottom is where somebody who has read the report
+  // actually is.
+  check('the profile header is the mark and the title, with no button row',
+    await page.evaluate(() => {
+      const head = document.querySelector('#view-profile .profile-hero');
+      return Boolean(head) && head.children.length === 2 &&
+        head.children[0].tagName === 'svg' &&
+        head.children[1].id === 'profile-title' &&
+        !head.querySelector('button');
+    }));
 
   check('the share panel no longer explains the storage model',
     !/There is no account and no database/.test(await page.locator('#view-profile .qr-actions').innerText()));
@@ -2103,15 +2209,12 @@ try {
     (await page.locator('.implications').count()) === 0);
 
   // ---- the downloadable report, and what Ctrl+P still does ----
-  check('there is an export button at the top',
-    await page.locator('#export-pdf-top').isVisible());
-  check('there is an export button at the bottom',
-    await page.locator('#export-pdf-bottom').isVisible());
+  check('there is one export button, at the bottom',
+    (await page.locator('#export-pdf-bottom').isVisible()) &&
+    (await page.locator('#export-pdf-top').count()) === 0);
   check('the export button says what it does',
-    (await page.locator('#export-pdf-top').innerText()) === 'Download full report',
-    await page.locator('#export-pdf-top').innerText());
-  check('both export buttons agree',
-    (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report');
+    (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report',
+    await page.locator('#export-pdf-bottom').innerText());
 
   // The report is typeset by pdf.js rather than handed to the print dialog, so
   // the thing to test is the actual file: click the button, keep what the
@@ -2120,7 +2223,7 @@ try {
   const pdfPath = join(shotDir, 'report.pdf');
   const [pdfDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#export-pdf-top'),
+    page.click('#export-pdf-bottom'),
   ]);
   await pdfDownload.saveAs(pdfPath);
   const pdf = readFileSync(pdfPath);
@@ -2690,7 +2793,7 @@ try {
   // check it against the print media type rather than trusting the rules exist.
   await page.emulateMedia({ media: 'print' });
   check('navigation is dropped when printing', !(await page.locator('.nav').isVisible()));
-  check('the export buttons are not printed', !(await page.locator('#export-pdf-top').isVisible()));
+  check('the export buttons are not printed', !(await page.locator('#export-pdf-bottom').isVisible()));
   check('the report itself is printed', await page.locator('#profile-body').isVisible());
   check('the QR code is printed', await page.locator('#qr-canvas').isVisible());
   check('the QR code is sized for paper rather than for screen',
