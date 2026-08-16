@@ -1270,3 +1270,128 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .split { grid-template-columns: 1fr; gap: .2rem; }
   .tile-grid, .facet-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- the psyche card ---------- */
+/*
+   Laid out at a fixed 880x1320 and scaled to fit by app.js. Everything in here
+   is therefore in card pixels, not screen pixels: a font-size of 30 means 30 at
+   scale 1, and the whole thing shrinks together. That is the point — a card
+   that reflowed would fit every screen and look composed on none, and the
+   requirement is one screen with no scrolling on a phone and a laptop alike.
+*/
+.psyche-card-slot {
+  display: block; width: 100%; padding: 0; margin: 0 0 1.1rem; border: 0;
+  background: none; cursor: zoom-in; font: inherit; color: inherit;
+}
+/* Belt and braces against the 880px card escaping its column: the frame's real
+   size is set in JS from the measured width, but a frame that has not been
+   measured yet must clip rather than push the page sideways. */
+.psyche-card-frame { margin: 0 auto; overflow: hidden; max-width: 100%; width: 100%; }
+.psyche-card {
+  width: 1000px; transform-origin: top left;
+  display: flex; flex-direction: column; gap: 22px;
+  padding: 54px 56px; border-radius: 34px;
+  background: var(--bg); color: var(--ink);
+  box-shadow: 0 2px 3px rgba(36, 26, 46, .05), 0 18px 50px rgba(36, 26, 46, .10);
+}
+.psyche-card-hint {
+  display: block; text-align: center; margin-top: .5rem;
+  font-size: .82rem; color: var(--ink-soft);
+}
+.psyche-card-slot:hover .psyche-card-hint,
+.psyche-card-slot:focus-visible .psyche-card-hint { color: var(--accent); }
+
+.pc-hero {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-radius: 26px; padding: 38px 40px; color: #fff;
+}
+.pc-kicker {
+  font-size: 22px; letter-spacing: .18em; text-transform: uppercase;
+  opacity: .85; margin: 0 0 10px;
+}
+.pc-name { display: flex; align-items: center; gap: 18px; }
+.pc-icon { font-size: 60px; line-height: 1; flex: none; }
+.pc-name h2 {
+  font-size: 62px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
+  margin: 0; color: #fff;
+}
+.pc-blurb { font-size: 27px; line-height: 1.45; margin: 16px 0 0; opacity: .95; }
+
+.pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pc-stat {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 20px;
+  padding: 22px 24px;
+}
+.pc-lab {
+  font-size: 18px; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--ink-soft); margin: 0 0 12px; font-weight: 600;
+}
+.pc-big { font-size: 42px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.pc-sub { font-size: 21px; color: var(--ink-soft); margin: 6px 0 0; }
+.pc-letters { display: flex; gap: 8px; margin-top: 12px; }
+.pc-letter { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.pc-letter b { font-size: 25px; font-weight: 700; }
+.pc-letter i {
+  font-style: normal; font-size: 14px; color: var(--ink-soft);
+  letter-spacing: .04em; margin-top: 2px;
+}
+/* gap, not just space-between: a long trait name that wraps would otherwise
+   run straight into its own score. */
+.pc-trait {
+  font-size: 24px; margin: 0 0 6px; display: flex; gap: 14px;
+  justify-content: space-between; align-items: baseline; line-height: 1.25;
+}
+.pc-trait b { font-variant-numeric: tabular-nums; }
+.pc-hi { color: var(--good); }
+.pc-lo { color: var(--ink-soft); }
+
+.pc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pc-row-2 { grid-template-columns: 1fr 1fr; }
+/* Applied by fitCard when the screen is much taller than it is wide. Padding is
+   the only thing here that can be cut without losing content, and on a narrow
+   screen the card is height-bound, so every pixel of it comes straight back as
+   a larger scale factor and bigger type. */
+.psyche-card.pc-narrow { padding: 34px 32px; gap: 14px; }
+.psyche-card.pc-narrow .pc-row-2 { grid-template-columns: 1fr; }
+.psyche-card.pc-narrow .pc-hero { padding: 26px 28px; }
+.psyche-card.pc-narrow .pc-stat,
+.psyche-card.pc-narrow .pc-col,
+.psyche-card.pc-narrow .pc-half { padding: 15px 17px; }
+.psyche-card.pc-narrow .pc-lab { margin-bottom: 8px; }
+.psyche-card.pc-narrow .pc-blurb { margin-top: 10px; }
+.psyche-card.pc-narrow .pc-list li { margin-bottom: 2px; }
+.pc-col, .pc-half {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 20px;
+  padding: 20px 22px;
+}
+.pc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pc-chip {
+  background: var(--accent-soft); color: var(--accent); border-radius: 11px;
+  padding: 9px 15px; font-size: 21px; font-weight: 500; line-height: 1.2;
+}
+.pc-list { margin: 0; padding-left: 22px; }
+.pc-list li { font-size: 23px; line-height: 1.4; margin-bottom: 5px; }
+.pc-foot {
+  margin: 4px 0 0; text-align: center; font-size: 18px;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--ink-soft);
+}
+
+/* Full screen. The dialog is the backdrop, so a click landing on it rather
+   than on the card counts as a click outside and closes. */
+.card-dialog {
+  width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh;
+  padding: 0; border: 0; background: rgba(20, 14, 28, .92);
+  display: none; place-items: center; overflow: hidden;
+}
+.card-dialog[open] { display: grid; }
+.card-dialog::backdrop { background: rgba(20, 14, 28, .92); }
+.card-dialog-frame { overflow: hidden; }
+.card-dialog-close {
+  position: fixed; top: 14px; right: 14px; width: 44px; height: 44px;
+  border-radius: 50%; border: 1px solid rgba(255, 255, 255, .3);
+  background: rgba(255, 255, 255, .12); color: #fff; font-size: 1.1rem;
+  cursor: pointer; line-height: 1;
+}
+.card-dialog-close:hover, .card-dialog-close:focus-visible {
+  background: rgba(255, 255, 255, .24); outline: none;
+}

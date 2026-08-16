@@ -1426,6 +1426,92 @@ try {
     /Aleç.s psyche$/.test((await page.locator('#profile-title').innerText()).trim()),
     await page.locator('#profile-title').innerText());
 
+  // ---- the psyche card ----
+  //
+  // The report at a glance, above the writing, and the one part of this page
+  // whose whole job is to fit on a screen — so the checks are about geometry as
+  // much as content. Everything on it is read off the same report the sections
+  // below render, so a check that it *has* the fields is really a check that
+  // the two cannot drift apart.
+  const cardText = await page.locator('#psyche-card').innerText();
+  check('the psyche card sits above the written report',
+    await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-open');
+      const body = document.querySelector('#profile-body');
+      return Boolean(card) && !card.hidden &&
+        (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    }));
+  check('it carries the character, the type, the enneagram and a summary',
+    /Bruce Banner/.test(cardText) && /ENFJ/.test(cardText) && /9w1/.test(cardText) &&
+    /Mock two-sentence card summary/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+  check('each MBTI letter carries how strongly it leans',
+    (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
+    JSON.stringify(cardText.match(/slight|moderate|clear/g)));
+  check('the Big Five block names only the highest and the lowest',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
+      if (rows.length !== 2) return false;
+      const nums = rows.map(r => Number((r.textContent.match(/(\d+)\s*$/) || [])[1]));
+      return nums[0] > nums[1];
+    }), cardText.replace(/\s+/g, ' ').slice(0, 200));
+  check('values, beliefs and interests share one row',
+    await page.evaluate(() => {
+      const cols = [...document.querySelectorAll('#psyche-card .pc-row:not(.pc-row-2) .pc-col')];
+      if (cols.length !== 3) return false;
+      const tops = cols.map(c => Math.round(c.getBoundingClientRect().top));
+      return tops.every(t => Math.abs(t - tops[0]) <= 1);
+    }));
+  check('it keeps love languages and both sets of strengths and weaknesses',
+    /Receives love as/i.test(cardText) && /Gives love as/i.test(cardText) &&
+    /Strong in relationships/i.test(cardText) && /Strong at work/i.test(cardText) &&
+    /Costs you in relationships/i.test(cardText) && /Costs you at work/i.test(cardText));
+  // Three deliberate omissions, each for its own reason — the studio name
+  // invites checking the costume, attachment is the most intimate line in the
+  // report and this is the most shareable surface, and the QR is redundant on
+  // the reader's own page where one already sits below.
+  check('it drops the franchise, the attachment style and the QR code',
+    !/Marvel|Pixar|Disney/i.test(cardText) && !/attachment/i.test(cardText) &&
+    (await page.locator('#psyche-card canvas').count()) === 0,
+    cardText.replace(/\s+/g, ' ').slice(0, 160));
+  check('the inline preview is capped so it does not push the report off screen',
+    await page.evaluate(() => {
+      const frame = document.querySelector('#psyche-card').parentElement;
+      return frame.getBoundingClientRect().height <= 470;
+    }), await page.evaluate(() =>
+      Math.round(document.querySelector('#psyche-card').parentElement.getBoundingClientRect().height) + 'px'));
+
+  // Full screen, on the two shapes that matter. The card is laid out at a fixed
+  // width and scaled, so "it fits" is a real measurement rather than a hope —
+  // and the first build of this clipped its own last row.
+  const fitAt = async (width, height) => {
+    await page.setViewportSize({ width, height });
+    await page.click('#psyche-card-open');
+    await page.waitForTimeout(220);
+    const out = await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-full');
+      const box = card.getBoundingClientRect();
+      const lowest = Math.max(...[...card.children].map(el => el.getBoundingClientRect().bottom));
+      return {
+        open: document.querySelector('#card-dialog').open,
+        fits: box.width <= window.innerWidth + 1 && box.height <= window.innerHeight + 1,
+        clipped: lowest > box.bottom + 1,
+        scrolls: document.documentElement.scrollWidth > window.innerWidth,
+      };
+    });
+    await page.click('#card-dialog-close');
+    await page.waitForTimeout(120);
+    return out;
+  };
+  const onLaptop = await fitAt(1440, 860);
+  const onPhone = await fitAt(390, 844);
+  check('clicking the card opens it full screen', onLaptop.open && onPhone.open);
+  check('it fits a laptop screen whole, with nothing cut off',
+    onLaptop.fits && !onLaptop.clipped && !onLaptop.scrolls, JSON.stringify(onLaptop));
+  check('and fits a phone screen whole, with nothing cut off',
+    onPhone.fits && !onPhone.clipped && !onPhone.scrolls, JSON.stringify(onPhone));
+  await page.setViewportSize({ width: 1440, height: 860 });
+  await page.waitForTimeout(150);
+
   // The profile page's own top band, styled to match the welcome hero rather
   // than the plain .page-head every other internal page gets — same gradient
   // wash, same watermark mark bled behind the text.

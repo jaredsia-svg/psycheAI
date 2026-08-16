@@ -114,6 +114,178 @@
   // than a character, so a profile saved before that change still renders.
   const essenceName = essence => (essence && (essence.character || essence.noun)) || '';
 
+  // ---------- the psyche card ----------
+  //
+  // The report at a glance, above the writing. Everything on it is read off the
+  // same `report` the sections below render, so the two cannot disagree — there
+  // is no second copy of any of this to keep in sync.
+  //
+  // It is laid out at one fixed size and then scaled to fit, rather than reflowed
+  // responsively. A card that reflows fits every screen and looks composed on
+  // none of them, and the requirement here is the opposite: one screen, no
+  // scrolling, on a phone and on a laptop alike. Fixed geometry plus a scale
+  // factor gives that on both, and keeps a single layout to reason about.
+  // Width is fixed so the design is stable — the same three columns, the same
+  // type sizes, on every screen. Height is *measured* rather than fixed, because
+  // a real report's titles run longer than any number typed here would allow
+  // for, and a card with a hardcoded height silently clips the last row when
+  // they do. That is exactly what the first version of this did.
+  const CARD_W = 1000;
+
+  // A phone screen is much taller relative to its width than this card is, so a
+  // single layout scaled to fit leaves a third of the screen empty and shrinks
+  // the type for nothing. On a narrow viewport the paired rows stack, which
+  // makes the card taller and narrower — closer to the shape of the screen it
+  // has to land on, so the same content is drawn larger.
+  const CARD_W_NARROW = 820;
+  // How much vertical room the inline preview may take on the page.
+  const PREVIEW_MAX_H = 460;
+  const NARROW_ASPECT = 0.62;
+
+  // The strongest and weakest of the five, named. Ties break on the fixed key
+  // order, which is arbitrary but stable — the alternative is a card whose
+  // "highest" trait changes between renders of the same report.
+  function bigFiveEnds(bigFive) {
+    const rows = Object.keys(TRAIT_LABELS)
+      .map(key => ({ key, label: TRAIT_LABELS[key], score: (bigFive && bigFive[key] && bigFive[key].score) || 0 }))
+      .filter(row => row.score > 0);
+    if (!rows.length) return null;
+    let high = rows[0];
+    let low = rows[0];
+    for (const row of rows) {
+      if (row.score > high.score) high = row;
+      if (row.score < low.score) low = row;
+    }
+    return high === low ? null : { high, low };
+  }
+
+  function cardChipRow(label, items) {
+    const list = (items || []).filter(Boolean);
+    if (!list.length) return '';
+    return '<div class="pc-col"><p class="pc-lab">' + esc(label) + '</p><div class="pc-chips">' +
+      list.map(item => '<span class="pc-chip">' + esc(item) + '</span>').join('') + '</div></div>';
+  }
+
+  function cardListBlock(label, items) {
+    const list = (items || []).filter(Boolean);
+    if (!list.length) return '';
+    return '<div class="pc-half"><p class="pc-lab">' + esc(label) + '</p><ul class="pc-list">' +
+      list.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul></div>';
+  }
+
+  const titlesOf = (rows, limit) => (rows || []).slice(0, limit)
+    .map(row => (row && (row.title || row.name || row.value || row.belief)) || '')
+    .filter(Boolean);
+
+  /**
+   * The card's markup, from a full report.
+   *
+   * Deliberately omits three things the written report carries. The franchise
+   * ("Marvel", "Pixar") is dropped because the comparison is to the character's
+   * temperament and naming the studio invites the reader to check the costume
+   * instead. Attachment style is dropped because this is the surface most likely
+   * to be shown to somebody else, and it is the most intimate line in the
+   * report. The QR code is dropped because this is the reader's own page, where
+   * they already have one.
+   */
+  function psycheCardHtml(report) {
+    if (!report) return '';
+    const card = report.card || {};
+    const essence = report.essence || {};
+    const name = essenceName(essence);
+    const mbti = report.mbti || {};
+    const enneagram = report.enneagram || {};
+    const ends = bigFiveEnds(report.bigFive);
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+
+    const letters = (mbti.letters || []).map(letter =>
+      '<span class="pc-letter"><b>' + esc(letter.choice || '') + '</b>' +
+      '<i>' + esc(letter.strength || '') + '</i></span>').join('');
+
+    const enneagramLabel = enneagram.type
+      ? esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '')
+      : '';
+
+    // card.summary is two sentences under 120 characters — written for exactly
+    // this job, so the card does not have to truncate the report's own prose
+    // and risk cutting a sentence in half.
+    const blurb = card.summary || card.headline || '';
+
+    return '' +
+      '<div class="pc-hero">' +
+        '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
+        '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
+          esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' +
+        (blurb ? '<p class="pc-blurb">' + esc(blurb) + '</p>' : '') +
+      '</div>' +
+
+      '<div class="pc-stats">' +
+        '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardType) + '</p>' +
+          '<p class="pc-big">' + esc(mbti.type || '—') + '</p>' +
+          (letters ? '<div class="pc-letters">' + letters + '</div>' : '') + '</div>' +
+        (enneagramLabel ? '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardEnneagram) + '</p>' +
+          '<p class="pc-big">' + enneagramLabel + '</p>' +
+          (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
+          '</div>' : '') +
+        (ends ? '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardBigFive) + '</p>' +
+          '<p class="pc-trait pc-hi">' + esc(ends.high.label) + ' <b>' + ends.high.score + '</b></p>' +
+          '<p class="pc-trait pc-lo">' + esc(ends.low.label) + ' <b>' + ends.low.score + '</b></p>' +
+          '</div>' : '') +
+      '</div>' +
+
+      // Values, beliefs and interests share one row: they are the same kind of
+      // claim about a person and read as a set rather than as three sections.
+      '<div class="pc-row">' +
+        cardChipRow(TEXT.cardValues, titlesOf(report.values, 3)) +
+        cardChipRow(TEXT.cardBeliefs, titlesOf(report.beliefs, 2)) +
+        cardChipRow(TEXT.cardInterests, titlesOf(report.interests, 3)) +
+      '</div>' +
+
+      '<div class="pc-row pc-row-2">' +
+        cardListBlock(TEXT.cardLoveIn,
+          ((love.receiving || []).slice(0, 2).map(l => l && l.language)).filter(Boolean)) +
+        cardListBlock(TEXT.cardLoveOut,
+          ((love.giving || []).slice(0, 2).map(l => l && l.language)).filter(Boolean)) +
+      '</div>' +
+
+      '<div class="pc-row pc-row-2">' +
+        cardListBlock(TEXT.cardRelStrong, titlesOf(report.relationship && report.relationship.strengths, 2)) +
+        cardListBlock(TEXT.cardWorkStrong, titlesOf(report.career && report.career.strengths, 2)) +
+      '</div>' +
+      '<div class="pc-row pc-row-2">' +
+        cardListBlock(TEXT.cardRelCost, titlesOf(report.relationship && report.relationship.weaknesses, 2)) +
+        cardListBlock(TEXT.cardWorkCost, titlesOf(report.career && report.career.weaknesses, 2)) +
+      '</div>' +
+
+      '<p class="pc-foot">PsycheAI</p>';
+  }
+
+  // Scale-to-fit, measured rather than assumed: the card is laid out at
+  // CARD_W x CARD_H and shrunk by whichever axis runs out first, so it lands
+  // whole on a phone and on a laptop without a scrollbar on either.
+  function fitCard(el, availableWidth, availableHeight, options) {
+    if (!el) return;
+    // `narrow` is about the shape of the *screen*, not of the box the card is
+    // being fitted into, so the height-capped inline preview must not trip it.
+    const narrow = options === 'screen' &&
+      availableWidth / availableHeight < NARROW_ASPECT;
+    el.classList.toggle('pc-narrow', narrow);
+    const width = narrow ? CARD_W_NARROW : CARD_W;
+    el.style.width = width + 'px';
+    // offsetHeight is a layout value and ignores the transform already on the
+    // element, so this is the card's natural height at CARD_W whatever scale it
+    // is currently drawn at — no need to reset the transform to measure.
+    const naturalHeight = el.offsetHeight;
+    if (!naturalHeight) return;
+    const scale = Math.min(availableWidth / width, availableHeight / naturalHeight);
+    el.style.transform = 'scale(' + scale + ')';
+    const frame = el.parentElement;
+    if (frame) {
+      frame.style.width = width * scale + 'px';
+      frame.style.height = naturalHeight * scale + 'px';
+    }
+  }
+
   function essenceBlock(essence) {
     const name = essenceName(essence);
     if (!name) return '';
@@ -266,6 +438,10 @@
     if (view !== 'scan') stopCamera();
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
     syncNav();
+    // The psyche card is scaled from the width of the column it sits in, and a
+    // hidden view measures zero — so a card rendered before its view was shown
+    // would be scaled to nothing. Re-fit here, where the width is real.
+    if (view === 'profile') layoutPsycheCard();
     window.scrollTo(0, 0);
   }
 
@@ -1439,6 +1615,16 @@
       (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
       ' Your full report is not included.';
 
+    const cardHtml = psycheCardHtml(report);
+    $('#psyche-card').innerHTML = cardHtml;
+    $('#psyche-card-full').innerHTML = cardHtml;
+    // Hidden rather than left empty on a report too old or too thin to fill it,
+    // so the page never opens on a blank frame with a "tap to expand" label
+    // under it.
+    $('#psyche-card-open').hidden = !cardHtml;
+    $('#psyche-card-hint').textContent = TEXT.cardHint;
+    layoutPsycheCard();
+
     $('#profile-body').innerHTML = reportSectionsHtml(report);
 
     // Sits after the action buttons rather than inside the report: it is a
@@ -1657,6 +1843,47 @@
       setTimeout(() => { button.textContent = label; }, 3000);
     }
   }
+
+  // ---------- psyche card: inline preview and full screen ----------
+  //
+  // Both copies are scaled here rather than in CSS, because the fit depends on
+  // the viewport and on the column the preview happens to be sitting in, and
+  // neither is knowable from a stylesheet.
+  function layoutPsycheCard() {
+    const slot = $('#psyche-card-open');
+    if (slot && !slot.hidden) {
+      // Capped in height as well as width. Left width-led it filled the column
+      // and pushed "Who you are" a screen and a half down the page — the
+      // opposite of what a summary above the report is for. It is a thumbnail
+      // to be tapped, so it is sized like one.
+      const width = slot.clientWidth || CARD_W;
+      fitCard($('#psyche-card'), width, PREVIEW_MAX_H);
+    }
+    const dialog = $('#card-dialog');
+    if (dialog && dialog.open) {
+      // Full screen is the case the whole fixed-size approach exists for: fit
+      // both axes, with a small margin so it never touches the edges.
+      fitCard($('#psyche-card-full'),
+        window.innerWidth * 0.94, window.innerHeight * 0.94, 'screen');
+    }
+  }
+
+  function openPsycheCard() {
+    const dialog = $('#card-dialog');
+    if (!dialog) return;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    layoutPsycheCard();
+  }
+
+  $('#psyche-card-open').addEventListener('click', openPsycheCard);
+  $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
+  // Clicking the backdrop closes it: the dialog element itself fills the screen,
+  // so a click that lands on it rather than on the card is a click outside.
+  $('#card-dialog').addEventListener('click', event => {
+    if (event.target === $('#card-dialog')) $('#card-dialog').close();
+  });
+  window.addEventListener('resize', layoutPsycheCard);
 
   $('#export-pdf-top').addEventListener('click', exportPdf);
   $('#export-pdf-bottom').addEventListener('click', exportPdf);

@@ -1135,6 +1135,36 @@ it:
   since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
   hand to somebody else drags in a person who never agreed to any of this.
 
+### The psyche card
+
+The report opens with the whole of itself on one card, above the writing. It is real elements rather
+than a rendered image — crisp at any size, readable to a screen reader, and built from the same
+`report` object the sections below render, so the two cannot drift apart. Clicking it opens it full
+screen.
+
+**It is laid out at one fixed width and then scaled, rather than reflowed.** A card that reflows fits
+every screen and looks composed on none, and the requirement here is the opposite: one screen, no
+scrolling, on a phone and on a laptop alike. Fixed geometry plus a scale factor gives that on both,
+and leaves a single layout to reason about. The *height* is measured rather than fixed, because a
+real report's titles run longer than any number typed into the source would allow for — the first
+version of this carried a hardcoded 1320px and silently clipped its own last row on the test fixture,
+which is exactly the failure a fixed height produces.
+
+Two adjustments earn their keep. On a screen much taller than it is wide the paired rows stack, which
+makes the card taller and narrower — closer to the shape of the phone it has to land on, so the same
+content is drawn larger. Padding tightens in the same mode, since the card is height-bound there and
+every pixel of padding comes back as scale. Together those take the phone from a 0.37 scale to 0.45,
+which is 8px body text to 10px. The inline preview is capped at 460px tall, because left width-led it
+filled the column and pushed "Who you are" a screen and a half down the page — the opposite of what a
+summary above the report is for.
+
+**Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
+goes because the comparison is to a character's temperament and naming the studio invites the reader
+to check the costume instead. Attachment style goes because this is the most shareable surface in the
+app and it is the most intimate line in the report. The QR code goes because this is the reader's own
+page, where one already sits below. All three are pinned by a check, since "we removed it" is the
+kind of claim that quietly stops being true.
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the
@@ -1486,7 +1516,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 705 checks: drives the real UI in Chromium against a
+npm run test:ui    # 716 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -140,6 +140,23 @@
     whoYouAre: 'Who you are',
     essenceLabel: 'You are most like',
 
+    // The at-a-glance card above the report. Its labels live here for the same
+    // reason the section titles do — they are the same words in a second place,
+    // and a check in the UI suite fails if app.js types any of them itself.
+    cardHint: 'Tap to open full screen',
+    cardType: 'Type',
+    cardEnneagram: 'Enneagram',
+    cardBigFive: 'Big Five',
+    cardValues: 'Values',
+    cardBeliefs: 'Believes',
+    cardInterests: 'Interests',
+    cardLoveIn: 'Receives love as',
+    cardLoveOut: 'Gives love as',
+    cardRelStrong: 'Strong in relationships',
+    cardWorkStrong: 'Strong at work',
+    cardRelCost: 'Costs you in relationships',
+    cardWorkCost: 'Costs you at work',
+
     bigFive: 'Big Five',
     bigFiveSub: '0–100, where 50 is an average person. Each score lists the evidence behind it.',
 
