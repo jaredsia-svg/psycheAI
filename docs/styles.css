@@ -1306,39 +1306,40 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   border-radius: 26px; padding: 38px 40px; color: #fff;
 }
 .pc-kicker {
-  font-size: 22px; letter-spacing: .18em; text-transform: uppercase;
+  font-size: 25px; letter-spacing: .18em; text-transform: uppercase;
   opacity: .85; margin: 0 0 10px;
 }
 .pc-name { display: flex; align-items: center; gap: 18px; }
-.pc-icon { font-size: 60px; line-height: 1; flex: none; }
+.pc-icon { font-size: 72px; line-height: 1; flex: none; }
 .pc-name h2 {
-  font-size: 62px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
+  font-size: 70px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
   margin: 0; color: #fff;
 }
-.pc-blurb { font-size: 27px; line-height: 1.45; margin: 16px 0 0; opacity: .95; }
+.pc-blurb { font-size: 29px; line-height: 1.5; margin: 18px 0 0; opacity: .96; }
 
 .pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-stat {
   background: var(--bg-alt); border: 1px solid var(--line); border-radius: 20px;
-  padding: 22px 24px;
+  padding: 22px 24px; min-width: 0;
 }
 .pc-lab {
-  font-size: 18px; letter-spacing: .2em; text-transform: uppercase;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 21px; letter-spacing: .18em; text-transform: uppercase;
   color: var(--ink-soft); margin: 0 0 12px; font-weight: 600;
 }
-.pc-big { font-size: 42px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
-.pc-sub { font-size: 21px; color: var(--ink-soft); margin: 6px 0 0; }
-.pc-letters { display: flex; gap: 8px; margin-top: 12px; }
+.pc-big { font-size: 46px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+.pc-sub { font-size: 24px; color: var(--ink-soft); margin: 6px 0 0; }
+.pc-letters { display: flex; gap: 8px; margin-top: 4px; }
 .pc-letter { display: flex; flex-direction: column; align-items: center; flex: 1; }
-.pc-letter b { font-size: 25px; font-weight: 700; }
+.pc-letter b { font-size: 40px; font-weight: 800; letter-spacing: -.01em; }
 .pc-letter i {
-  font-style: normal; font-size: 14px; color: var(--ink-soft);
+  font-style: normal; font-size: 17px; color: var(--ink-soft);
   letter-spacing: .04em; margin-top: 2px;
 }
 /* gap, not just space-between: a long trait name that wraps would otherwise
    run straight into its own score. */
 .pc-trait {
-  font-size: 24px; margin: 0 0 6px; display: flex; gap: 14px;
+  font-size: 27px; margin: 0 0 6px; display: flex; gap: 14px;
   justify-content: space-between; align-items: baseline; line-height: 1.25;
 }
 .pc-trait b { font-variant-numeric: tabular-nums; }
@@ -1353,11 +1354,25 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    a larger scale factor and bigger type. */
 .psyche-card.pc-narrow { padding: 34px 32px; gap: 14px; }
 .psyche-card.pc-narrow .pc-row-2 { grid-template-columns: 1fr; }
+/* Except the love pair, which is read across rather than down — stacking it
+   loses the giving-against-receiving comparison the row exists to make. */
+.psyche-card.pc-narrow .pc-love-row { grid-template-columns: 1fr 1fr; }
 .psyche-card.pc-narrow .pc-hero { padding: 26px 28px; }
 .psyche-card.pc-narrow .pc-stat,
 .psyche-card.pc-narrow .pc-col,
 .psyche-card.pc-narrow .pc-half { padding: 15px 17px; }
 .psyche-card.pc-narrow .pc-lab { margin-bottom: 8px; }
+/* "Agreeableness" is one unbreakable word, so at the narrow card's column width
+   it pushed its own score past the card edge and the frame clipped it. Smaller
+   type in this mode only, and grid children allowed to shrink below their
+   min-content width, which they do not do by default. */
+.psyche-card.pc-narrow .pc-trait { font-size: 23px; gap: 8px; }
+/* Four strength words across one narrow column: "moderate" twice will not fit
+   at full size, and the last one ran into the block beside it. */
+.psyche-card.pc-narrow .pc-letters { gap: 4px; }
+.psyche-card.pc-narrow .pc-letter b { font-size: 34px; }
+.psyche-card.pc-narrow .pc-letter i { font-size: 13px; }
+.psyche-card.pc-narrow .pc-lab-icon { font-size: 20px; }
 .psyche-card.pc-narrow .pc-blurb { margin-top: 10px; }
 .psyche-card.pc-narrow .pc-list li { margin-bottom: 2px; }
 .pc-col, .pc-half {
@@ -1366,13 +1381,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .pc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .pc-chip {
-  background: var(--accent-soft); color: var(--accent); border-radius: 11px;
-  padding: 9px 15px; font-size: 21px; font-weight: 500; line-height: 1.2;
+  background: var(--accent-soft); color: var(--accent); border-radius: 12px;
+  padding: 10px 17px; font-size: 24px; font-weight: 500; line-height: 1.2;
 }
 .pc-list { margin: 0; padding-left: 22px; }
-.pc-list li { font-size: 23px; line-height: 1.4; margin-bottom: 5px; }
+.pc-list li { font-size: 27px; line-height: 1.4; margin-bottom: 7px; }
 .pc-foot {
-  margin: 4px 0 0; text-align: center; font-size: 18px;
+  margin: 4px 0 0; text-align: center; font-size: 20px;
   letter-spacing: .3em; text-transform: uppercase; color: var(--ink-soft);
 }
 
@@ -1395,3 +1410,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .card-dialog-close:hover, .card-dialog-close:focus-visible {
   background: rgba(255, 255, 255, .24); outline: none;
 }
+
+.pc-lab-icon { font-size: 24px; line-height: 1; flex: none; }
+.pc-love { list-style: none; padding-left: 0; }
+.pc-love li { display: flex; align-items: center; gap: 10px; }
+.pc-love-icon { font-size: 26px; line-height: 1; flex: none; }

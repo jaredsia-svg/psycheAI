@@ -44,6 +44,20 @@
     return { name: pole.name, against: MBTI_POLES[pole.opposite].name };
   }
 
+  // One glyph per block on the psyche card. Emoji rather than artwork for the
+  // same reason the essence icon is: the card has to survive being a PDF, a
+  // screenshot and a print, and an emoji needs no asset pipeline to do it.
+  const CARD_ICONS = {
+    type: '🧭',
+    enneagram: '🔢',
+    bigFive: '📊',
+    values: '⚖️',
+    beliefs: '💡',
+    interests: '✨',
+    loveIn: '💝',
+    loveOut: '🎁',
+  };
+
   // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
   // model — same reasoning as the MBTI poles.
   const LOVE_LANGUAGE_ICONS = {
@@ -152,10 +166,6 @@
     cardInterests: 'Interests',
     cardLoveIn: 'Receives love as',
     cardLoveOut: 'Gives love as',
-    cardRelStrong: 'Strong in relationships',
-    cardWorkStrong: 'Strong at work',
-    cardRelCost: 'Costs you in relationships',
-    cardWorkCost: 'Costs you at work',
 
     bigFive: 'Big Five',
     bigFiveSub: '0–100, where 50 is an average person. Each score lists the evidence behind it.',
@@ -306,7 +316,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, ACTIVITY_FACETS, MODE_LABELS,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, CARD_ICONS, ACTIVITY_FACETS, MODE_LABELS,
     WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

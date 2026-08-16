@@ -1153,10 +1153,30 @@ which is exactly the failure a fixed height produces.
 Two adjustments earn their keep. On a screen much taller than it is wide the paired rows stack, which
 makes the card taller and narrower — closer to the shape of the phone it has to land on, so the same
 content is drawn larger. Padding tightens in the same mode, since the card is height-bound there and
-every pixel of padding comes back as scale. Together those take the phone from a 0.37 scale to 0.45,
-which is 8px body text to 10px. The inline preview is capped at 460px tall, because left width-led it
-filled the column and pushed "Who you are" a screen and a half down the page — the opposite of what a
-summary above the report is for.
+every pixel of padding comes back as scale. The love-language pair is the one exception to the
+stacking: giving and receiving are read *against* each other, and stacking them loses the comparison
+the row exists to make. The inline preview is capped at 460px tall, because left width-led it filled
+the column and pushed "Who you are" a screen and a half down the page — the opposite of what a summary
+above the report is for.
+
+**What is on it was cut back to make room for the rest.** The strength and weakness lists for
+relationships and work came off, which bought the space for four to six lines of the report's own
+opening — the card previously carried the two-sentence version written for the QR payload, which was
+a strapline rather than a summary. Every block gained a glyph, love languages reuse the same five
+already mapped in `copy.js`, and the type sizes went up a step throughout. Together those took the
+laptop from 13px body text to 16px and the phone from 10px to 12px, with the card still landing whole
+on both.
+
+The MBTI block shows the four letters with their slight/moderate/clear leans and no longer prints the
+code above them, since the row already spells it and says how firmly each letter was picked.
+
+Two overflow bugs surfaced only under measurement, and both are pinned now. "Agreeableness" is one
+unbreakable word, and at the narrow card's column width it pushed its own score past the card edge
+where the frame's `overflow: hidden` swallowed it — grid children do not shrink below min-content
+unless told to. And the four strength words under the MBTI letters ran into the block beside them.
+The full-screen check measures the right edge as well as the bottom, and a separate check compares
+the letter row's `scrollWidth` against its `clientWidth`, because overflow *inside* a block is
+invisible to a card-level measurement.
 
 **Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
 goes because the comparison is to a character's temperament and naming the studio invites the reader
@@ -1516,7 +1536,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 716 checks: drives the real UI in Chromium against a
+npm run test:ui    # 722 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

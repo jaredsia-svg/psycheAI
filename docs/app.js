@@ -15,6 +15,7 @@
   const TEXT = Copy.TEXT;
   const TRAIT_LABELS = Copy.TRAIT_LABELS;
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
+  const CARD_ICONS = Copy.CARD_ICONS;
   const axisLabel = Copy.axisLabel;
 
   const $ = sel => document.querySelector(sel);
@@ -159,18 +160,41 @@
     return high === low ? null : { high, low };
   }
 
-  function cardChipRow(label, items) {
+  const cardLab = (icon, label) =>
+    '<p class="pc-lab"><span class="pc-lab-icon" aria-hidden="true">' + esc(icon) + '</span>' +
+    esc(label) + '</p>';
+
+  function cardChipRow(icon, label, items) {
     const list = (items || []).filter(Boolean);
     if (!list.length) return '';
-    return '<div class="pc-col"><p class="pc-lab">' + esc(label) + '</p><div class="pc-chips">' +
+    return '<div class="pc-col">' + cardLab(icon, label) + '<div class="pc-chips">' +
       list.map(item => '<span class="pc-chip">' + esc(item) + '</span>').join('') + '</div></div>';
   }
 
-  function cardListBlock(label, items) {
-    const list = (items || []).filter(Boolean);
+  // Love languages are fixed vocabulary with a glyph each already mapped in
+  // copy.js, so the icon comes from the language rather than being chosen here.
+  function cardLoveBlock(icon, label, languages) {
+    const list = (languages || []).filter(Boolean);
     if (!list.length) return '';
-    return '<div class="pc-half"><p class="pc-lab">' + esc(label) + '</p><ul class="pc-list">' +
-      list.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul></div>';
+    return '<div class="pc-half">' + cardLab(icon, label) + '<ul class="pc-list pc-love">' +
+      list.map(language => '<li><span class="pc-love-icon" aria-hidden="true">' +
+        esc(LOVE_LANGUAGE_ICONS[language] || '💗') + '</span>' + esc(language) + '</li>').join('') +
+      '</ul></div>';
+  }
+
+  // Four to six lines of the report's own opening, rather than the card's
+  // two-sentence version. Cut at a sentence end so the card never trails off
+  // mid-clause, and only if there is a sentence boundary in a sensible place —
+  // a hard character cut would do exactly what the sentence break is there to
+  // avoid.
+  const CARD_BLURB_MAX = 340;
+  function cardBlurb(report) {
+    const full = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
+    if (!full) return (report && report.card && report.card.summary) || '';
+    if (full.length <= CARD_BLURB_MAX) return full;
+    const window = full.slice(0, CARD_BLURB_MAX);
+    const stop = Math.max(window.lastIndexOf('. '), window.lastIndexOf('! '), window.lastIndexOf('? '));
+    return stop > CARD_BLURB_MAX * 0.5 ? window.slice(0, stop + 1) : window.trim() + '…';
   }
 
   const titlesOf = (rows, limit) => (rows || []).slice(0, limit)
@@ -206,10 +230,7 @@
       ? esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '')
       : '';
 
-    // card.summary is two sentences under 120 characters — written for exactly
-    // this job, so the card does not have to truncate the report's own prose
-    // and risk cutting a sentence in half.
-    const blurb = card.summary || card.headline || '';
+    const blurb = cardBlurb(report);
 
     return '' +
       '<div class="pc-hero">' +
@@ -220,14 +241,16 @@
       '</div>' +
 
       '<div class="pc-stats">' +
-        '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardType) + '</p>' +
-          '<p class="pc-big">' + esc(mbti.type || '—') + '</p>' +
+        // The type letters carry their own strengths, so the four-letter code
+        // above them was the same information twice — the row below says ENFJ
+        // and says how firmly each letter was picked.
+        '<div class="pc-stat">' + cardLab(CARD_ICONS.type, TEXT.cardType) +
           (letters ? '<div class="pc-letters">' + letters + '</div>' : '') + '</div>' +
-        (enneagramLabel ? '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardEnneagram) + '</p>' +
+        (enneagramLabel ? '<div class="pc-stat">' + cardLab(CARD_ICONS.enneagram, TEXT.cardEnneagram) +
           '<p class="pc-big">' + enneagramLabel + '</p>' +
           (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
           '</div>' : '') +
-        (ends ? '<div class="pc-stat"><p class="pc-lab">' + esc(TEXT.cardBigFive) + '</p>' +
+        (ends ? '<div class="pc-stat">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
           '<p class="pc-trait pc-hi">' + esc(ends.high.label) + ' <b>' + ends.high.score + '</b></p>' +
           '<p class="pc-trait pc-lo">' + esc(ends.low.label) + ' <b>' + ends.low.score + '</b></p>' +
           '</div>' : '') +
@@ -236,25 +259,19 @@
       // Values, beliefs and interests share one row: they are the same kind of
       // claim about a person and read as a set rather than as three sections.
       '<div class="pc-row">' +
-        cardChipRow(TEXT.cardValues, titlesOf(report.values, 3)) +
-        cardChipRow(TEXT.cardBeliefs, titlesOf(report.beliefs, 2)) +
-        cardChipRow(TEXT.cardInterests, titlesOf(report.interests, 3)) +
+        cardChipRow(CARD_ICONS.values, TEXT.cardValues, titlesOf(report.values, 3)) +
+        cardChipRow(CARD_ICONS.beliefs, TEXT.cardBeliefs, titlesOf(report.beliefs, 2)) +
+        cardChipRow(CARD_ICONS.interests, TEXT.cardInterests, titlesOf(report.interests, 3)) +
       '</div>' +
 
-      '<div class="pc-row pc-row-2">' +
-        cardListBlock(TEXT.cardLoveIn,
-          ((love.receiving || []).slice(0, 2).map(l => l && l.language)).filter(Boolean)) +
-        cardListBlock(TEXT.cardLoveOut,
-          ((love.giving || []).slice(0, 2).map(l => l && l.language)).filter(Boolean)) +
-      '</div>' +
-
-      '<div class="pc-row pc-row-2">' +
-        cardListBlock(TEXT.cardRelStrong, titlesOf(report.relationship && report.relationship.strengths, 2)) +
-        cardListBlock(TEXT.cardWorkStrong, titlesOf(report.career && report.career.strengths, 2)) +
-      '</div>' +
-      '<div class="pc-row pc-row-2">' +
-        cardListBlock(TEXT.cardRelCost, titlesOf(report.relationship && report.relationship.weaknesses, 2)) +
-        cardListBlock(TEXT.cardWorkCost, titlesOf(report.career && report.career.weaknesses, 2)) +
+      // Side by side on every screen, including a phone: giving and receiving
+      // are read against each other, and stacking them loses the comparison
+      // that makes the pair worth showing at all.
+      '<div class="pc-row pc-row-2 pc-love-row">' +
+        cardLoveBlock(CARD_ICONS.loveIn, TEXT.cardLoveIn,
+          (love.receiving || []).slice(0, 2).map(l => l && l.language)) +
+        cardLoveBlock(CARD_ICONS.loveOut, TEXT.cardLoveOut,
+          (love.giving || []).slice(0, 2).map(l => l && l.language)) +
       '</div>' +
 
       '<p class="pc-foot">PsycheAI</p>';

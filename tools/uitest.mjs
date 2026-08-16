@@ -1441,12 +1441,33 @@ try {
       return Boolean(card) && !card.hidden &&
         (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }));
-  check('it carries the character, the type, the enneagram and a summary',
-    /Bruce Banner/.test(cardText) && /ENFJ/.test(cardText) && /9w1/.test(cardText) &&
-    /Mock two-sentence card summary/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+  check('it carries the character, the enneagram and a summary',
+    /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
+    /Mock summary paragraph one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+  // The four-letter code is gone: the row below it spells the same type out and
+  // says how firmly each letter was picked, so printing ENFJ above it was the
+  // same information twice.
+  check('the MBTI block shows the letters with their strengths, not the code twice',
+    await page.evaluate(() => {
+      const stat = document.querySelector('#psyche-card .pc-stat');
+      const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
+      return letters === 'ENFJ' && !stat.querySelector('.pc-big');
+    }), cardText.replace(/\s+/g, ' ').slice(0, 90));
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
     JSON.stringify(cardText.match(/slight|moderate|clear/g)));
+  // Four to six lines of the report's own opening rather than the card's
+  // two-sentence version, so the summary is worth reading on its own.
+  // offsetHeight, not getBoundingClientRect: the card is drawn under a scale
+  // transform, which shrinks the rect but not the computed line-height, so the
+  // two are in different units and the ratio comes out nonsense.
+  const blurbLines = await page.evaluate(() => {
+    const el = document.querySelector('#psyche-card .pc-blurb');
+    if (!el) return 0;
+    return Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight));
+  });
+  check('the summary runs four to six lines rather than a single strapline',
+    blurbLines >= 4 && blurbLines <= 7, blurbLines + ' lines');
   check('the Big Five block names only the highest and the lowest',
     await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
@@ -1461,10 +1482,43 @@ try {
       const tops = cols.map(c => Math.round(c.getBoundingClientRect().top));
       return tops.every(t => Math.abs(t - tops[0]) <= 1);
     }));
-  check('it keeps love languages and both sets of strengths and weaknesses',
+  check('it keeps love languages and drops the strength and weakness lists',
     /Receives love as/i.test(cardText) && /Gives love as/i.test(cardText) &&
-    /Strong in relationships/i.test(cardText) && /Strong at work/i.test(cardText) &&
-    /Costs you in relationships/i.test(cardText) && /Costs you at work/i.test(cardText));
+    !/Strong in relationships/i.test(cardText) && !/Strong at work/i.test(cardText) &&
+    !/Costs you in relationships/i.test(cardText) && !/Costs you at work/i.test(cardText),
+    cardText.replace(/\s+/g, ' ').slice(0, 200));
+  // Read across rather than down, so they stay two-up even on a phone where
+  // every other pair stacks.
+  check('giving and receiving sit side by side on a phone as well',
+    await page.evaluate(async () => {
+      const card = document.querySelector('#psyche-card-full');
+      card.classList.add('pc-narrow');
+      const halves = [...document.querySelectorAll('#psyche-card-full .pc-love-row .pc-half')];
+      const tops = halves.map(h => Math.round(h.getBoundingClientRect().top));
+      card.classList.remove('pc-narrow');
+      return halves.length === 2 && Math.abs(tops[0] - tops[1]) <= 1;
+    }));
+  // Overflow inside a block, which the card-level check above cannot see: the
+  // four strength words sit in one column and ran into the block beside them.
+  check('the MBTI strengths fit their own column on a phone',
+    await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-full');
+      card.classList.add('pc-narrow');
+      const row = card.querySelector('.pc-letters');
+      const over = row.scrollWidth > row.clientWidth + 1;
+      card.classList.remove('pc-narrow');
+      return !over;
+    }));
+  check('every block on the card is labelled with an icon',
+    await page.evaluate(() => {
+      const labs = [...document.querySelectorAll('#psyche-card .pc-lab')];
+      return labs.length > 0 && labs.every(l => l.querySelector('.pc-lab-icon'));
+    }));
+  check('each love language carries its own glyph',
+    await page.evaluate(() => {
+      const items = [...document.querySelectorAll('#psyche-card .pc-love li')];
+      return items.length > 0 && items.every(li => li.querySelector('.pc-love-icon'));
+    }));
   // Three deliberate omissions, each for its own reason — the studio name
   // invites checking the costume, attachment is the most intimate line in the
   // report and this is the most shareable surface, and the QR is redundant on
@@ -1491,10 +1545,15 @@ try {
       const card = document.querySelector('#psyche-card-full');
       const box = card.getBoundingClientRect();
       const lowest = Math.max(...[...card.children].map(el => el.getBoundingClientRect().bottom));
+      // Sideways as well as down. A single unbreakable word — "Agreeableness"
+      // — was pushing its own score past the card's right edge on a phone,
+      // where the frame's overflow:hidden swallowed it silently.
+      const widest = Math.max(...[...card.querySelectorAll('*')]
+        .map(el => el.getBoundingClientRect().right));
       return {
         open: document.querySelector('#card-dialog').open,
         fits: box.width <= window.innerWidth + 1 && box.height <= window.innerHeight + 1,
-        clipped: lowest > box.bottom + 1,
+        clipped: lowest > box.bottom + 1 || widest > box.right + 1,
         scrolls: document.documentElement.scrollWidth > window.innerWidth,
       };
     });
