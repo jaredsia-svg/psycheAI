@@ -1451,9 +1451,23 @@ try {
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
       const title = document.querySelector('#psyche-card-title');
-      return Boolean(section) && !section.hidden && title.textContent === 'Summary' &&
+      return Boolean(section) && !section.hidden && title.textContent === 'Summary card' &&
         section.contains(document.querySelector('#psyche-card-open'));
     }), await page.locator('#psyche-card-title').innerText());
+  // Every other section on the page opens with an icon beside its title —
+  // .card-head + .card-icon, built by the same sectionHead() the rest of the
+  // report uses. This section used to carry a bespoke <h2> with no icon at
+  // all, which broke that rhythm on the one card above the writing.
+  check('the section title carries an icon, in line with every other section',
+    await page.evaluate(() => {
+      const section = document.querySelector('#psyche-card-section');
+      const head = section.querySelector('.card-head');
+      const icon = head && head.querySelector('.card-icon');
+      const title = head && head.querySelector('h2');
+      return Boolean(head) && Boolean(icon) && icon.textContent.trim().length > 0 &&
+        title === document.querySelector('#psyche-card-title') &&
+        icon.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING;
+    }));
   // The lockup on the left and the owner on the right. The wordmark used to sit
   // alone at the foot, which named the product but not the person — on a card
   // meant to be shown to somebody else the name is the more useful half.

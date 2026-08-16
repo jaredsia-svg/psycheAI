@@ -1178,11 +1178,15 @@ The full-screen check measures the right edge as well as the bottom, and a separ
 the letter row's `scrollWidth` against its `clientWidth`, because overflow *inside* a block is
 invisible to a card-level measurement.
 
-It sits in a section of its own — "Summary" — above the writing, headed by the lockup on the left and
-whose card it is on the right. The wordmark used to sit alone at the foot, which named the
-product but not the person; on a card meant to be shown to somebody else the name is the more useful
-half. The mark is the same path data the nav, the PDF and the QR label draw, so the logo is one shape
-in five places rather than a picture to keep in step.
+It sits in a section of its own — "Summary card" — above the writing, opened with an icon beside the
+title the same way every other section on the page is (`sectionHead()`'s `.card-head` / `.card-icon`
+pair). The section used to carry a bespoke `<h2>` with no icon at all, which was the one place on the
+page breaking a rhythm the rest of it keeps.
+
+Inside the card, headed by the lockup on the left and whose card it is on the right. The wordmark used
+to sit alone at the foot, which named the product but not the person; on a card meant to be shown to
+somebody else the name is the more useful half. The mark is the same path data the nav, the PDF and
+the QR label draw, so the logo is one shape in five places rather than a picture to keep in step.
 
 **Full screen offers it as a PNG.** The card is DOM and the reader wants an image, so it is
 rasterised through an SVG `<foreignObject>` — the one route a browser offers without shipping a
@@ -1590,7 +1594,7 @@ npm test           # 526 checks: synthesises a real ZIP export and runs
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 736 checks: drives the real UI in Chromium against a
+npm run test:ui    # 737 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

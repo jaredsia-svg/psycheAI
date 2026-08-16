@@ -157,7 +157,7 @@
     // The at-a-glance card above the report. Its labels live here for the same
     // reason the section titles do — they are the same words in a second place,
     // and a check in the UI suite fails if app.js types any of them itself.
-    cardSection: 'Summary',
+    cardSection: 'Summary card',
     cardHint: 'Tap to open full screen',
     cardDownload: 'Download as image',
     cardType: 'MBTI',

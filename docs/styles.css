@@ -1450,8 +1450,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-owner { font-size: 20px; }
 
 /* The section the card now lives in on the profile page. */
-.card-section-title { font-size: 1.15rem; margin: 0 0 .9rem; }
-#psyche-card-section .psyche-card-slot { margin-bottom: 0; }
 
 /* The download control, pinned under the card in the full-screen view. */
 .card-dialog-bar { display: flex; justify-content: center; padding: 14px 0 22px; }
