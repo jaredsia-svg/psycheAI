@@ -1639,24 +1639,12 @@ try {
     }));
   check('the card headline is gone, leaving the character name to lead straight into the summary',
     (await page.locator('#psyche-card .pc-headline').count()) === 0);
-  // Rhythm and energy get their own labelled row, same shape as the type and
-  // Big Five stats above it.
-  check('rhythm and energy each get a labelled block',
+  check('rhythm and energy are gone from the card',
     await page.evaluate(() => {
-      const stats = [...document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row) .pc-stat')];
-      if (stats.length !== 2) return false;
-      const [rhythm, energy] = stats;
-      return /Rhythm/i.test(rhythm.querySelector('.pc-lab').textContent) &&
-        /Energy/i.test(energy.querySelector('.pc-lab').textContent) &&
-        Boolean(rhythm.querySelector('.pc-phrase')) && Boolean(energy.querySelector('.pc-phrase'));
-    }));
-  check('the rhythm and energy phrases are the card\'s own fields',
-    await page.evaluate(() => {
-      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
-      const stats = [...document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row) .pc-stat')];
-      const [rhythm, energy] = stats;
-      return rhythm.querySelector('.pc-phrase').textContent.trim() === report.card.rhythm &&
-        energy.querySelector('.pc-phrase').textContent.trim() === report.card.energy;
+      const labs = [...document.querySelectorAll('#psyche-card .pc-lab')].map(l => l.textContent);
+      const noLabs = !labs.some(text => /Rhythm/i.test(text) || /Energy/i.test(text));
+      const noRow = document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row)').length === 0;
+      return noLabs && noRow;
     }));
   check('it keeps love languages and drops the strength and weakness lists',
     /Receives love as/i.test(cardText) && /Gives love as/i.test(cardText) &&

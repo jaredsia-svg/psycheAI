@@ -198,14 +198,6 @@
       '</ul></div>';
   }
 
-  // Rhythm and energy are already short, hand-written phrases on the card
-  // rather than lists, so they get one line each instead of chips.
-  function cardPhraseBlock(icon, label, phrase) {
-    const value = String(phrase || '').trim();
-    if (!value) return '';
-    return '<div class="pc-stat">' + cardLab(icon, label) + '<p class="pc-phrase">' + esc(value) + '</p></div>';
-  }
-
   // Split on a sentence-ending mark followed by whitespace, keeping the mark
   // with the sentence it closes.
   function splitSentences(text) {
@@ -267,12 +259,6 @@
 
     const blurb = cardBlurb(report);
 
-    // Rhythm and energy read from the report's own card — the same short
-    // phrases the QR code carries — so what is shown here never disagrees
-    // with what a compatibility scan would see.
-    const rhythmEnergy = cardPhraseBlock(CARD_ICONS.rhythm, TEXT.cardRhythm, card.rhythm) +
-      cardPhraseBlock(CARD_ICONS.energy, TEXT.cardEnergy, card.energy);
-
     return '' +
       // Masthead. Three slots on fixed grid columns rather than DOM order, so
       // each one is pinned to its own column and stays put whether or not the
@@ -313,11 +299,6 @@
           '<p class="pc-trait pc-lo">' + esc(ends.low.label) + ' <b>' + ends.low.score + '</b></p>' +
           '</div>' : '') +
       '</div>' +
-
-      // Rhythm and energy get their own row, same shape as the stats row
-      // above: they are facts about the person the same way MBTI and
-      // Enneagram are, not a list of items like the row that follows.
-      (rhythmEnergy ? '<div class="pc-row pc-row-2">' + rhythmEnergy + '</div>' : '') +
 
       // Values, beliefs and interests share one row: they are the same kind of
       // claim about a person and read as a set rather than as three sections.

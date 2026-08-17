@@ -1349,10 +1349,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pc-trait b { font-variant-numeric: tabular-nums; }
 .pc-hi { color: var(--good); }
 .pc-lo { color: var(--ink-soft); }
-/* Rhythm and energy are already short hand-written phrases rather than a
-   score or a code, so they get a plain paragraph inside the same .pc-stat
-   shell the type and Big Five blocks use, sized to match .pc-trait. */
-.pc-phrase { font-size: 24px; line-height: 1.35; margin: 0; }
 
 .pc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-row-2 { grid-template-columns: 1fr 1fr; }
@@ -1375,7 +1371,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    type in this mode only, and grid children allowed to shrink below their
    min-content width, which they do not do by default. */
 .psyche-card.pc-narrow .pc-trait { font-size: 23px; gap: 8px; }
-.psyche-card.pc-narrow .pc-phrase { font-size: 21px; }
 /* Four strength words across one narrow column: "moderate" twice will not fit
    at full size, and the last one ran into the block beside it. */
 /* Two stat columns rather than three on a narrow card. Three left the TYPE
