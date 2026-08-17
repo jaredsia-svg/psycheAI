@@ -250,12 +250,27 @@
     return title ? title.replace(/[.!?]*$/, '') + '.' : '';
   }
 
-  // The summary, then how they are with people, then how they are at work.
-  // Three findings rather than one, because the card is the only part of the
-  // report most readers will look at twice.
+  // The summary, then why the character comparison holds, one finding apiece
+  // on energy and rhythm, then how they are with people and at work. Six
+  // findings rather than three, because the card is the only part of the
+  // report most readers will look at twice and a short paragraph was leaving
+  // real findings — the extraversion reading, the actual hour-and-weekday
+  // rhythm — sitting unused one section away.
+  //
+  // Energy and rhythm are read from the report's evidence-backed prose here
+  // (the Big Five extraversion reading, the behavioural rhythm detail) rather
+  // than repeating the card's own short `energy`/`rhythm` phrases shown in the
+  // stat row below — the paragraph earns its length with new detail instead
+  // of restating the same six words twice on one card.
   function cardBlurb(report) {
+    const essence = report && report.essence;
+    const extraversion = report && report.bigFive && report.bigFive.extraversion;
+    const rhythm = report && report.activity && report.activity.rhythm;
     return [
       cardSummary(report),
+      essence && essence.why ? firstSentence(essence.why) : '',
+      extraversion && extraversion.reading ? firstSentence(extraversion.reading) : '',
+      rhythm && rhythm.detail ? firstSentence(rhythm.detail) : '',
       strengthSentence(report && report.relationship && report.relationship.strengths),
       strengthSentence(report && report.career && report.career.strengths),
     ].filter(Boolean).join(' ');
@@ -306,17 +321,17 @@
       cardPhraseBlock(CARD_ICONS.energy, TEXT.cardEnergy, card.energy);
 
     return '' +
-      // Masthead. Three slots on fixed grid columns rather than two flex
-      // children, so the confidence badge stays centred whether or not the
-      // reader's name is present — the name and the badge are independent of
-      // each other's length, only the brand mark is pinned to the far edge.
+      // Masthead. Three slots on fixed grid columns rather than DOM order, so
+      // each one is pinned to its own column and stays put whether or not the
+      // other two are present — the brand mark leads, the reader's own name
+      // sits centred under it, and the confidence score closes the row.
       '<div class="pc-top">' +
+        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
         (cardName ? '<span class="pc-owner">' + esc(cardName) + '</span>' : '') +
         (hasConfidence ? '<span class="pc-confidence" title="' + esc(TEXT.cardConfidence) + '">' +
           '<span class="pc-confidence-icon" aria-hidden="true">' + esc(CARD_ICONS.confidence) + '</span>' +
           '<b>' + Math.round(confidence) + '</b><span class="pc-confidence-max">/100</span>' +
           '</span>' : '') +
-        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
       '</div>' +
       '<div class="pc-hero">' +
         '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +

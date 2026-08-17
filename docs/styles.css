@@ -1445,27 +1445,27 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pc-love li { display: flex; align-items: center; gap: 10px; }
 .pc-love-icon { font-size: 26px; line-height: 1; flex: none; }
 
-/* The card's masthead: whose card it is on the left, how confident the
-   reading is in the middle, the lockup on the right. Three fixed grid
+/* The card's masthead: the lockup on the left, whose card it is in the
+   middle, how confident the reading is on the right. Three fixed grid
    columns rather than a two-child flex row, so each slot is pinned to its
    own column and stays put whether or not the other two are present —
    the owner name and the confidence badge vary in length independently, and
    neither should be able to push the brand mark off the corner. */
 .pc-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
 .pc-brand {
-  grid-column: 3; justify-self: end;
+  grid-column: 1; justify-self: start;
   display: flex; align-items: center; gap: 12px; color: var(--accent);
 }
 .pc-brand-mark { width: 40px; height: 40px; flex: none; }
 .pc-brand span { font-size: 27px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
 .pc-owner {
-  grid-column: 1; justify-self: start;
+  grid-column: 2; justify-self: center;
   font-size: 24px; font-weight: 600; color: var(--ink-soft);
-  letter-spacing: .02em; text-align: left; min-width: 0;
+  letter-spacing: .02em; text-align: center; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .pc-confidence {
-  grid-column: 2; justify-self: center;
+  grid-column: 3; justify-self: end;
   display: flex; align-items: baseline; gap: 6px;
   font-size: 24px; font-weight: 700; color: var(--ink); white-space: nowrap;
 }

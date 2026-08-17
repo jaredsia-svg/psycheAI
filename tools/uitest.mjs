@@ -1491,11 +1491,10 @@ try {
     hug.hugsTheFrame && hug.narrowerThanContainer, JSON.stringify(hug));
   check('and is centred in the page rather than left-aligned inside it',
     hug.centred, JSON.stringify(hug));
-  // The owner on the left, the confidence score in the middle, the lockup on
+  // The lockup on the left, the owner in the middle, the confidence score on
   // the right. The wordmark used to sit alone at the foot, which named the
-  // product but not the person — on a card meant to be shown to somebody else
-  // the name is the more useful half, and it now leads rather than trailing.
-  check('the card is headed by the owner, the confidence score, and the wordmark, in that order',
+  // product but not the person — it now leads the row instead.
+  check('the card is headed by the wordmark, the owner, and the confidence score, in that order',
     await page.evaluate(() => {
       const top = document.querySelector('#psyche-card .pc-top');
       if (!top) return false;
@@ -1505,8 +1504,8 @@ try {
       return Boolean(brand && brand.querySelector('svg.pc-brand-mark')) &&
         /PsycheAI/.test(brand.textContent) && Boolean(owner) && owner.textContent.trim().length > 0 &&
         Boolean(confidence) && /\d+\/100/.test(confidence.textContent) &&
-        owner.getBoundingClientRect().left < confidence.getBoundingClientRect().left &&
-        confidence.getBoundingClientRect().left < brand.getBoundingClientRect().left;
+        brand.getBoundingClientRect().left < owner.getBoundingClientRect().left &&
+        owner.getBoundingClientRect().left < confidence.getBoundingClientRect().left;
     }), cardText.replace(/\s+/g, ' ').slice(0, 60));
   check('the confidence score is the card\'s own field, out of 100',
     await page.evaluate(() => {
@@ -1574,26 +1573,34 @@ try {
   });
   check('the summary runs several lines rather than a single strapline',
     blurbLines >= 4 && blurbLines <= 10, blurbLines + ' lines');
-  // The paragraph carries three findings, not one: the report's opening, then
-  // how they are with people, then how they are at work. Checked against the
-  // stored report rather than against fixed text, so it fails if the card ever
+  // The paragraph carries six findings, not three: the report's opening, why
+  // the character comparison holds, one finding apiece on energy and rhythm,
+  // then how they are with people and at work. Checked against the stored
+  // report rather than against fixed text, so it fails if the card ever
   // starts inventing sentences instead of quoting the analysis it sits above.
   const blurbSources = await page.evaluate(() => {
+    const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s/)[0].trim();
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
     const blurb = document.querySelector('#psyche-card .pc-blurb').innerText;
     const opener = rows => {
       const top = (rows || []).find(row => row && (row.detail || row.title));
-      const text = String((top && (top.detail || top.title)) || '').trim();
-      return text.split(/(?<=[.!?])\s/)[0].trim();
+      return firstSentence((top && (top.detail || top.title)) || '');
     };
+    const why = firstSentence(report.essence && report.essence.why);
+    const energy = firstSentence(report.bigFive && report.bigFive.extraversion && report.bigFive.extraversion.reading);
+    const rhythm = firstSentence(report.activity && report.activity.rhythm && report.activity.rhythm.detail);
     return {
-      rel: opener(report.relationship && report.relationship.strengths),
-      work: opener(report.career && report.career.strengths),
       hasRel: blurb.includes(opener(report.relationship && report.relationship.strengths)),
       hasWork: blurb.includes(opener(report.career && report.career.strengths)),
+      hasWhy: Boolean(why) && blurb.includes(why),
+      hasEnergy: Boolean(energy) && blurb.includes(energy),
+      hasRhythm: Boolean(rhythm) && blurb.includes(rhythm),
       startsWithSummary: blurb.startsWith(report.summary.split(/\s*\n+\s*/)[0].slice(0, 40)),
     };
   });
+  check('the paragraph adds a sentence on the character comparison, energy and rhythm',
+    blurbSources.hasWhy && blurbSources.hasEnergy && blurbSources.hasRhythm,
+    JSON.stringify(blurbSources));
   check('the paragraph adds a sentence on people and one on work',
     blurbSources.hasRel && blurbSources.hasWork && blurbSources.startsWithSummary,
     JSON.stringify(blurbSources));
