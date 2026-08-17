@@ -240,9 +240,12 @@
   // One sentence off the strongest thing the report found, for people and for
   // work. The `detail` runs two or three sentences and the first carries the
   // finding; the `title` is a headline rather than a sentence, so it is only a
-  // fallback and gets a full stop put on it.
-  function strengthSentence(rows) {
-    const top = (rows || []).find(row => row && (row.detail || row.title));
+  // fallback and gets a full stop put on it. `skip` picks the Nth strongest
+  // finding rather than always the first, so a second relationship sentence
+  // does not just repeat the one already used.
+  function strengthSentence(rows, skip) {
+    const eligible = (rows || []).filter(row => row && (row.detail || row.title));
+    const top = eligible[skip || 0];
     if (!top) return '';
     const detail = String(top.detail || '').trim();
     if (detail) return firstSentence(detail);
@@ -250,28 +253,28 @@
     return title ? title.replace(/[.!?]*$/, '') + '.' : '';
   }
 
-  // The summary, then why the character comparison holds, one finding apiece
-  // on energy and rhythm, then how they are with people and at work. Six
-  // findings rather than three, because the card is the only part of the
+  // The summary, then why the character comparison holds, one finding on
+  // energy, then two on relationship or social strengths and one on work.
+  // Six findings rather than three, because the card is the only part of the
   // report most readers will look at twice and a short paragraph was leaving
-  // real findings — the extraversion reading, the actual hour-and-weekday
-  // rhythm — sitting unused one section away.
+  // real findings — the extraversion reading, a second relationship strength
+  // — sitting unused one section away.
   //
-  // Energy and rhythm are read from the report's evidence-backed prose here
-  // (the Big Five extraversion reading, the behavioural rhythm detail) rather
-  // than repeating the card's own short `energy`/`rhythm` phrases shown in the
-  // stat row below — the paragraph earns its length with new detail instead
-  // of restating the same six words twice on one card.
+  // Energy is read from the report's evidence-backed prose here (the Big
+  // Five extraversion reading) rather than repeating the card's own short
+  // `energy` phrase shown in the stat row below — the paragraph earns its
+  // length with new detail instead of restating the same few words twice on
+  // one card.
   function cardBlurb(report) {
     const essence = report && report.essence;
     const extraversion = report && report.bigFive && report.bigFive.extraversion;
-    const rhythm = report && report.activity && report.activity.rhythm;
+    const relationshipStrengths = report && report.relationship && report.relationship.strengths;
     return [
       cardSummary(report),
       essence && essence.why ? firstSentence(essence.why) : '',
       extraversion && extraversion.reading ? firstSentence(extraversion.reading) : '',
-      rhythm && rhythm.detail ? firstSentence(rhythm.detail) : '',
-      strengthSentence(report && report.relationship && report.relationship.strengths),
+      strengthSentence(relationshipStrengths),
+      strengthSentence(relationshipStrengths, 1),
       strengthSentence(report && report.career && report.career.strengths),
     ].filter(Boolean).join(' ');
   }

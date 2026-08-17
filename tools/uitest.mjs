@@ -1574,33 +1574,39 @@ try {
   check('the summary runs several lines rather than a single strapline',
     blurbLines >= 4 && blurbLines <= 10, blurbLines + ' lines');
   // The paragraph carries six findings, not three: the report's opening, why
-  // the character comparison holds, one finding apiece on energy and rhythm,
-  // then how they are with people and at work. Checked against the stored
-  // report rather than against fixed text, so it fails if the card ever
-  // starts inventing sentences instead of quoting the analysis it sits above.
+  // the character comparison holds, one finding on energy, two on
+  // relationship or social strengths, and one on work. Checked against the
+  // stored report rather than against fixed text, so it fails if the card
+  // ever starts inventing sentences instead of quoting the analysis it sits
+  // above.
   const blurbSources = await page.evaluate(() => {
     const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s/)[0].trim();
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
     const blurb = document.querySelector('#psyche-card .pc-blurb').innerText;
-    const opener = rows => {
-      const top = (rows || []).find(row => row && (row.detail || row.title));
+    const opener = (rows, skip) => {
+      const eligible = (rows || []).filter(row => row && (row.detail || row.title));
+      const top = eligible[skip || 0];
       return firstSentence((top && (top.detail || top.title)) || '');
     };
     const why = firstSentence(report.essence && report.essence.why);
     const energy = firstSentence(report.bigFive && report.bigFive.extraversion && report.bigFive.extraversion.reading);
-    const rhythm = firstSentence(report.activity && report.activity.rhythm && report.activity.rhythm.detail);
+    const relStrengths = report.relationship && report.relationship.strengths;
+    const rel1 = opener(relStrengths, 0);
+    const rel2 = opener(relStrengths, 1);
     return {
-      hasRel: blurb.includes(opener(report.relationship && report.relationship.strengths)),
+      hasRel: Boolean(rel1) && blurb.includes(rel1),
+      hasRel2: Boolean(rel2) && blurb.includes(rel2) && rel2 !== rel1,
       hasWork: blurb.includes(opener(report.career && report.career.strengths)),
       hasWhy: Boolean(why) && blurb.includes(why),
       hasEnergy: Boolean(energy) && blurb.includes(energy),
-      hasRhythm: Boolean(rhythm) && blurb.includes(rhythm),
       startsWithSummary: blurb.startsWith(report.summary.split(/\s*\n+\s*/)[0].slice(0, 40)),
     };
   });
-  check('the paragraph adds a sentence on the character comparison, energy and rhythm',
-    blurbSources.hasWhy && blurbSources.hasEnergy && blurbSources.hasRhythm,
+  check('the paragraph adds a sentence on the character comparison and on energy',
+    blurbSources.hasWhy && blurbSources.hasEnergy,
     JSON.stringify(blurbSources));
+  check('the paragraph adds a second, different sentence on relationship strengths',
+    blurbSources.hasRel2, JSON.stringify(blurbSources));
   check('the paragraph adds a sentence on people and one on work',
     blurbSources.hasRel && blurbSources.hasWork && blurbSources.startsWithSummary,
     JSON.stringify(blurbSources));
