@@ -51,11 +51,14 @@
     type: '🧭',
     enneagram: '🔢',
     bigFive: '📊',
+    rhythm: '🕒',
+    energy: '🔋',
     values: '⚖️',
     beliefs: '💡',
     interests: '✨',
     loveIn: '💝',
     loveOut: '🎁',
+    confidence: '🎯',
   };
 
   // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
@@ -171,11 +174,14 @@
     cardType: 'MBTI',
     cardEnneagram: 'Enneagram',
     cardBigFive: 'Big Five',
+    cardRhythm: 'Rhythm',
+    cardEnergy: 'Energy',
     cardValues: 'Values',
     cardBeliefs: 'Believes',
     cardInterests: 'Interests',
     cardLoveIn: 'Receives love as',
     cardLoveOut: 'Gives love as',
+    cardConfidence: 'Confidence',
 
     bigFive: 'Big Five',
     bigFiveSub: '0–100, where 50 is an average person. Each score lists the evidence behind it.',

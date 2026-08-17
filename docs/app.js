@@ -198,6 +198,14 @@
       '</ul></div>';
   }
 
+  // Rhythm and energy are already short, hand-written phrases on the card
+  // rather than lists, so they get one line each instead of chips.
+  function cardPhraseBlock(icon, label, phrase) {
+    const value = String(phrase || '').trim();
+    if (!value) return '';
+    return '<div class="pc-stat">' + cardLab(icon, label) + '<p class="pc-phrase">' + esc(value) + '</p></div>';
+  }
+
   // Four to six lines of the report's own opening, rather than the card's
   // two-sentence version — and always whole sentences.
   //
@@ -278,6 +286,8 @@
     const enneagram = report.enneagram || {};
     const ends = bigFiveEnds(report.bigFive);
     const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const confidence = Number(card.confidence);
+    const hasConfidence = Number.isFinite(confidence) && confidence > 0;
 
     const letters = (mbti.letters || []).map(letter =>
       '<span class="pc-letter"><b>' + esc(letter.choice || '') + '</b>' +
@@ -289,19 +299,32 @@
 
     const blurb = cardBlurb(report);
 
+    // Rhythm and energy read from the report's own card — the same short
+    // phrases the QR code carries — so what is shown here never disagrees
+    // with what a compatibility scan would see.
+    const rhythmEnergy = cardPhraseBlock(CARD_ICONS.rhythm, TEXT.cardRhythm, card.rhythm) +
+      cardPhraseBlock(CARD_ICONS.energy, TEXT.cardEnergy, card.energy);
+
     return '' +
-      // Masthead: the lockup on the left, whose card this is on the right. The
-      // wordmark used to sit alone at the foot, which named the product but not
-      // the person — on a card meant to be shown to somebody else the name is
-      // the more useful half.
+      // Masthead. Three slots on fixed grid columns rather than two flex
+      // children, so the confidence badge stays centred whether or not the
+      // reader's name is present — the name and the badge are independent of
+      // each other's length, only the brand mark is pinned to the far edge.
       '<div class="pc-top">' +
-        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
         (cardName ? '<span class="pc-owner">' + esc(cardName) + '</span>' : '') +
+        (hasConfidence ? '<span class="pc-confidence" title="' + esc(TEXT.cardConfidence) + '">' +
+          '<span class="pc-confidence-icon" aria-hidden="true">' + esc(CARD_ICONS.confidence) + '</span>' +
+          '<b>' + Math.round(confidence) + '</b><span class="pc-confidence-max">/100</span>' +
+          '</span>' : '') +
+        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
       '</div>' +
       '<div class="pc-hero">' +
         '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
           esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' +
+        // The model's own one-line read of the person, ahead of the longer
+        // blurb below it — the archetype names a type, this names them.
+        (card.headline ? '<p class="pc-headline">' + esc(card.headline) + '</p>' : '') +
         (blurb ? '<p class="pc-blurb">' + esc(blurb) + '</p>' : '') +
       '</div>' +
 
@@ -325,6 +348,11 @@
           '<p class="pc-trait pc-lo">' + esc(ends.low.label) + ' <b>' + ends.low.score + '</b></p>' +
           '</div>' : '') +
       '</div>' +
+
+      // Rhythm and energy get their own row, same shape as the stats row
+      // above: they are facts about the person the same way MBTI and
+      // Enneagram are, not a list of items like the row that follows.
+      (rhythmEnergy ? '<div class="pc-row pc-row-2">' + rhythmEnergy + '</div>' : '') +
 
       // Values, beliefs and interests share one row: they are the same kind of
       // claim about a person and read as a set rather than as three sections.

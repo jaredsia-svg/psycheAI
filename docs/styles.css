@@ -1319,7 +1319,11 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   font-size: 54px; font-weight: 800; letter-spacing: -.025em; line-height: 1.02;
   margin: 0; color: #fff;
 }
-.pc-blurb { font-size: 25px; line-height: 1.48; margin: 16px 0 0; opacity: .96; }
+/* The model's one-line read of the person, between the archetype name and the
+   longer blurb — bolder than the blurb since it is a single deliberate
+   phrase rather than a paragraph. */
+.pc-headline { font-size: 29px; font-weight: 700; line-height: 1.3; margin: 14px 0 0; }
+.pc-blurb { font-size: 25px; line-height: 1.48; margin: 12px 0 0; opacity: .96; }
 
 .pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-stat {
@@ -1349,6 +1353,10 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pc-trait b { font-variant-numeric: tabular-nums; }
 .pc-hi { color: var(--good); }
 .pc-lo { color: var(--ink-soft); }
+/* Rhythm and energy are already short hand-written phrases rather than a
+   score or a code, so they get a plain paragraph inside the same .pc-stat
+   shell the type and Big Five blocks use, sized to match .pc-trait. */
+.pc-phrase { font-size: 24px; line-height: 1.35; margin: 0; }
 
 .pc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-row-2 { grid-template-columns: 1fr 1fr; }
@@ -1371,6 +1379,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    type in this mode only, and grid children allowed to shrink below their
    min-content width, which they do not do by default. */
 .psyche-card.pc-narrow .pc-trait { font-size: 23px; gap: 8px; }
+.psyche-card.pc-narrow .pc-phrase { font-size: 21px; }
 /* Four strength words across one narrow column: "moderate" twice will not fit
    at full size, and the last one ran into the block beside it. */
 /* Two stat columns rather than three on a narrow card. Three left the TYPE
@@ -1382,7 +1391,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-letter b { font-size: 34px; }
 .psyche-card.pc-narrow .pc-letter i { font-size: 13px; }
 .psyche-card.pc-narrow .pc-lab-icon { font-size: 20px; }
-.psyche-card.pc-narrow .pc-blurb { margin-top: 10px; }
+.psyche-card.pc-narrow .pc-headline { font-size: 25px; margin-top: 10px; }
+.psyche-card.pc-narrow .pc-blurb { margin-top: 8px; }
 /* The hero is the tightest block on a narrow card, and the character's name is
    the largest thing in it — so it comes down another step there rather than
    the paragraph beneath it losing sentences. */
@@ -1435,19 +1445,38 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pc-love li { display: flex; align-items: center; gap: 10px; }
 .pc-love-icon { font-size: 26px; line-height: 1; flex: none; }
 
-/* The card's masthead: the lockup on the left, whose card it is on the right. */
-.pc-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
-.pc-brand { display: flex; align-items: center; gap: 12px; color: var(--accent); }
+/* The card's masthead: whose card it is on the left, how confident the
+   reading is in the middle, the lockup on the right. Three fixed grid
+   columns rather than a two-child flex row, so each slot is pinned to its
+   own column and stays put whether or not the other two are present —
+   the owner name and the confidence badge vary in length independently, and
+   neither should be able to push the brand mark off the corner. */
+.pc-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+.pc-brand {
+  grid-column: 3; justify-self: end;
+  display: flex; align-items: center; gap: 12px; color: var(--accent);
+}
 .pc-brand-mark { width: 40px; height: 40px; flex: none; }
 .pc-brand span { font-size: 27px; font-weight: 700; letter-spacing: -.01em; color: var(--ink); }
 .pc-owner {
+  grid-column: 1; justify-self: start;
   font-size: 24px; font-weight: 600; color: var(--ink-soft);
-  letter-spacing: .02em; text-align: right; min-width: 0;
+  letter-spacing: .02em; text-align: left; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.pc-confidence {
+  grid-column: 2; justify-self: center;
+  display: flex; align-items: baseline; gap: 6px;
+  font-size: 24px; font-weight: 700; color: var(--ink); white-space: nowrap;
+}
+.pc-confidence-icon { font-size: 22px; line-height: 1; }
+.pc-confidence-max { font-size: 16px; font-weight: 500; color: var(--ink-soft); }
 .psyche-card.pc-narrow .pc-brand-mark { width: 32px; height: 32px; }
 .psyche-card.pc-narrow .pc-brand span { font-size: 23px; }
 .psyche-card.pc-narrow .pc-owner { font-size: 20px; }
+.psyche-card.pc-narrow .pc-confidence { font-size: 20px; }
+.psyche-card.pc-narrow .pc-confidence-icon { font-size: 18px; }
+.psyche-card.pc-narrow .pc-confidence-max { font-size: 14px; }
 
 /* The section the card now lives in on the profile page. Every other
    .section-card spans the full container because its content — paragraphs,

@@ -1491,19 +1491,30 @@ try {
     hug.hugsTheFrame && hug.narrowerThanContainer, JSON.stringify(hug));
   check('and is centred in the page rather than left-aligned inside it',
     hug.centred, JSON.stringify(hug));
-  // The lockup on the left and the owner on the right. The wordmark used to sit
-  // alone at the foot, which named the product but not the person — on a card
-  // meant to be shown to somebody else the name is the more useful half.
-  check('the card is headed by the logo, the wordmark and the owner',
+  // The owner on the left, the confidence score in the middle, the lockup on
+  // the right. The wordmark used to sit alone at the foot, which named the
+  // product but not the person — on a card meant to be shown to somebody else
+  // the name is the more useful half, and it now leads rather than trailing.
+  check('the card is headed by the owner, the confidence score, and the wordmark, in that order',
     await page.evaluate(() => {
       const top = document.querySelector('#psyche-card .pc-top');
       if (!top) return false;
       const brand = top.querySelector('.pc-brand');
       const owner = top.querySelector('.pc-owner');
+      const confidence = top.querySelector('.pc-confidence');
       return Boolean(brand && brand.querySelector('svg.pc-brand-mark')) &&
         /PsycheAI/.test(brand.textContent) && Boolean(owner) && owner.textContent.trim().length > 0 &&
-        brand.getBoundingClientRect().left < owner.getBoundingClientRect().left;
+        Boolean(confidence) && /\d+\/100/.test(confidence.textContent) &&
+        owner.getBoundingClientRect().left < confidence.getBoundingClientRect().left &&
+        confidence.getBoundingClientRect().left < brand.getBoundingClientRect().left;
     }), cardText.replace(/\s+/g, ' ').slice(0, 60));
+  check('the confidence score is the card\'s own field, out of 100',
+    await page.evaluate(() => {
+      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
+      const shown = document.querySelector('#psyche-card .pc-confidence b').textContent.trim();
+      return Number(shown) === Math.round(Number(report.card.confidence)) &&
+        /\/100/.test(document.querySelector('#psyche-card .pc-confidence-max').textContent);
+    }));
   check('the card draws the same mark the nav and the PDF draw',
     await page.evaluate(() => {
       const navPath = document.querySelector('.brand-mark path').getAttribute('d');
@@ -1632,6 +1643,40 @@ try {
       if (cols.length !== 3) return false;
       const tops = cols.map(c => Math.round(c.getBoundingClientRect().top));
       return tops.every(t => Math.abs(t - tops[0]) <= 1);
+    }));
+  // The model's own one-line read of the person, between the archetype name
+  // and the longer blurb.
+  check('the card carries the card headline, ahead of the summary',
+    await page.evaluate(() => {
+      const headline = document.querySelector('#psyche-card .pc-headline');
+      const blurb = document.querySelector('#psyche-card .pc-blurb');
+      return Boolean(headline) && headline.textContent.trim().length > 0 &&
+        Boolean(blurb) && headline.compareDocumentPosition(blurb) === Node.DOCUMENT_POSITION_FOLLOWING;
+    }), await page.locator('#psyche-card .pc-headline').innerText().catch(() => '(missing)'));
+  check('the headline is the card\'s own field, not the report\'s summary',
+    await page.evaluate(() => {
+      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
+      const headline = document.querySelector('#psyche-card .pc-headline').textContent.trim();
+      return headline === report.card.headline;
+    }));
+  // Rhythm and energy get their own labelled row, same shape as the type and
+  // Big Five stats above it.
+  check('rhythm and energy each get a labelled block',
+    await page.evaluate(() => {
+      const stats = [...document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row) .pc-stat')];
+      if (stats.length !== 2) return false;
+      const [rhythm, energy] = stats;
+      return /Rhythm/i.test(rhythm.querySelector('.pc-lab').textContent) &&
+        /Energy/i.test(energy.querySelector('.pc-lab').textContent) &&
+        Boolean(rhythm.querySelector('.pc-phrase')) && Boolean(energy.querySelector('.pc-phrase'));
+    }));
+  check('the rhythm and energy phrases are the card\'s own fields',
+    await page.evaluate(() => {
+      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
+      const stats = [...document.querySelectorAll('#psyche-card .pc-row.pc-row-2:not(.pc-love-row) .pc-stat')];
+      const [rhythm, energy] = stats;
+      return rhythm.querySelector('.pc-phrase').textContent.trim() === report.card.rhythm &&
+        energy.querySelector('.pc-phrase').textContent.trim() === report.card.energy;
     }));
   check('it keeps love languages and drops the strength and weakness lists',
     /Receives love as/i.test(cardText) && /Gives love as/i.test(cardText) &&
