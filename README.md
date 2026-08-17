@@ -258,7 +258,7 @@ catch its siblings across all 40 versions.
 | `GEMINI_API_KEY` | Uses Gemini, if `XAI_API_KEY` is not set. |
 | `ANTHROPIC_API_KEY` | Uses Claude, if neither of the above is set. |
 | `PSYCHEAI_PROVIDER` | Forces `grok`, `gemini` or `anthropic` when you have more than one key. |
-| `XAI_MODEL` | Grok model ID. Default `grok-4`. |
+| `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID. Default `claude-opus-5`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
