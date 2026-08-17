@@ -1895,9 +1895,6 @@
   // page, and on mobile often offered no PDF destination at all. pdf.js writes
   // the file directly, so the download is one click and looks the same
   // everywhere.
-  // The PDF is still typeset in the browser, exactly as before — what changed
-  // is where it goes. Instead of landing on the reader's disk it is posted to
-  // the server, which relays it to them by mail and keeps only the address.
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
     return window.PsychePDF.build(profile.report, profile.card, {
@@ -1909,31 +1906,18 @@
     });
   }
 
-  // FileReader rather than a loop over the bytes: a report runs to hundreds of
-  // kilobytes, and building the binary string by hand blocks the tab long
-  // enough to be visible.
-  function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error('The report could not be read back.'));
-      reader.onload = () => {
-        const url = String(reader.result || '');
-        const comma = url.indexOf(',');
-        resolve(comma >= 0 ? url.slice(comma + 1) : '');
-      };
-      reader.readAsDataURL(blob);
-    });
-  }
-
   // ---------- where the report goes ----------
   //
-  // The reader gives an address and the server mails it to them. Two things
-  // this deliberately does not do: it does not save the address anywhere on the
-  // device, and it does not fall back to a local download when the send fails —
-  // a silent fallback would make it impossible for anyone to tell whether the
-  // mail path is working at all, and the failure message is more useful than a
-  // file appearing for reasons the reader cannot see.
-  function askEmailAndSend(event) {
+  // The report itself never leaves the device — it is typeset in the browser
+  // and downloaded straight to disk, exactly as it always was. What is new is
+  // that the reader is asked for an address first, which is posted to the
+  // server and recorded there, and only there: `recipients.record` on the
+  // server side has no parameter an attachment could go in, so there is no
+  // code path that could send the report anywhere. This deliberately does not
+  // save the address anywhere on the device, and does not let the download
+  // through if recording the address fails — a silent download on failure
+  // would make it impossible to tell whether recording is working at all.
+  function askEmailAndDownload(event) {
     const button = event.currentTarget;
     const profile = state.profile;
     if (!profile) return;
@@ -1952,6 +1936,17 @@
 
     const close = () => dialog.close();
 
+    const downloadReport = () => {
+      const href = URL.createObjectURL(buildReportPdf(profile));
+      const link = document.createElement('a');
+      link.download = 'psycheai-report.pdf';
+      link.href = href;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10000);
+    };
+
     const send = async () => {
       const address = input.value.trim();
       // The same shape the server insists on, checked here first so an obvious
@@ -1964,21 +1959,21 @@
       sendButton.disabled = true;
       say(TEXT.mailSending);
       try {
-        const pdf = await blobToBase64(buildReportPdf(profile));
-        const response = await fetch('api/report-email', {
+        const response = await fetch('api/record-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: address, pdf, name: profile.card.name || '' }),
+          body: JSON.stringify({ email: address }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'The report could not be sent.');
+        if (!response.ok) throw new Error(data.error || 'That address could not be recorded.');
+        downloadReport();
         say(TEXT.mailSent, 'good');
         sendButton.disabled = false;
         sendButton.textContent = label;
-        setTimeout(() => { if (dialog.open) close(); }, 2200);
+        setTimeout(() => { if (dialog.open) close(); }, 1400);
         return;
       } catch (error) {
-        say((error && error.message) || 'The report could not be sent.', 'bad');
+        say((error && error.message) || 'That address could not be recorded.', 'bad');
       }
       sendButton.disabled = false;
       sendButton.textContent = label;
@@ -2007,7 +2002,7 @@
     input.focus();
   }
 
-  const exportPdf = askEmailAndSend;
+  const exportPdf = askEmailAndDownload;
 
   // ---------- psyche card: inline preview and full screen ----------
   //

@@ -39,48 +39,36 @@ npm run mock              # http://localhost:3000, PSYCHEAI_MOCK=1
 Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
 work.
 
-### Emailing the report, and who can see what
+### Recording an address before "Download full report", and who can see what
 
-"Download full report" no longer downloads. It asks for an address and the server mails the PDF as an
-attachment through Amazon SES. The two things that arrangement is asked to guarantee pull in opposite
-directions, so it is worth being exact about which one holds and how far.
+"Download full report" still downloads the PDF straight to the reader's own device — typeset in the
+browser, exactly as it always was. What it does first is ask for an email address, which is posted to
+the server and recorded there before the download is let through.
 
 ```bash
-export PSYCHEAI_MAIL_FROM=reports@yourdomain.com   # a verified SES sender
-export AWS_REGION=us-east-1                        # plus AWS credentials in the environment
-export PSYCHEAI_ADMIN_TOKEN=...                    # unset ⇒ the address list is refused, not open
+export PSYCHEAI_ADMIN_TOKEN=...   # unset ⇒ the address list is refused, not open
 npm start
 ```
 
 **The operator gets every address, and never gets a report.** That is not a policy somebody has to
-remember — it is which function is handed what. `recipients.record()` takes an address and has no
-parameter an attachment could go in; `mail.sendReport()` takes the PDF and hands it to SES. Nothing
-holds both, so there is no code path that could write a report to the store. A check asserts the
-function's arity for exactly that reason, and injecting a `report` field into the stored line fails
-two checks.
+remember — the report is never passed to the server at all. `recipients.record()` takes an address
+and has no parameter a report could go in, so there is no code path that could write one to the
+store. A check asserts the function's arity for exactly that reason, and injecting a `report` field
+into the stored line fails a check.
 
 The address list is written to `data/recipients.jsonl` — append-only JSON lines, greppable by whoever
 owns the box, gitignored — and read back at `GET /api/recipients` behind a bearer token compared in
 constant time. With no `PSYCHEAI_ADMIN_TOKEN` set the route 404s rather than serving openly: a list of
 real people's contact details answering to anyone who guesses the path is worse than no route at all.
 
-**SES specifically, and that is not a detail.** Postmark retains full message bodies for 45 days by
-default and Resend stores content for its logs UI — either would put every reader's personality
-report in a third party's systems and make "we do not keep it" false from the first send. SES does not
-retain content, which is the only reason the claim survives contact with a vendor.
+One consequence worth accepting deliberately: a reader who mistypes their address does not get their
+download, and there is no fallback that lets it through anyway. That is on purpose — the point of
+asking is that an address is actually recorded before the file leaves.
 
-**What the claim is not.** The PDF passes through the server's memory on its way to SES, so an
-administrator with access to the running process could add logging, attach a debugger, or read memory
-mid-request. "Designed so the report is never retained and is not available afterwards" is true and
-useful; "impossible for an operator to observe in transit" is not something any server-side attachment
-relay can offer, and nothing here pretends otherwise. The party that certainly does keep a permanent
-copy is the reader's own mail provider — the covering note says so in as many words, and a check
-holds that sentence in place.
-
-One consequence worth accepting deliberately: a reader who mistypes their address, or whose mail
-bounces, does not get their report and there is no local fallback. That is on purpose. A silent
-fall-back to a download would make it impossible to tell whether the mail path works at all, and an
-error message is more use than a file appearing for reasons nobody can see.
+Emailing the report was tried in an earlier version — relaying the PDF through Amazon SES rather than
+downloading it — and pulled back out for now, since it needs a verified sending domain this project
+doesn't have yet. It may return once one exists; nothing about the current design forecloses it, since
+the address collection this section describes is exactly the piece such a feature would reuse.
 
 ### Making the code scannable
 
@@ -1666,14 +1654,14 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 557 checks: synthesises a real ZIP export and runs
+npm test           # 550 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
                    # rules and the keyword subset Gemini supports; and exercises
                    # every branch of provider selection
-npm run test:ui    # 742 checks: drives the real UI in Chromium against a
+npm run test:ui    # 743 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

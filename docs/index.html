@@ -324,11 +324,11 @@
     </button>
   </section>
 
-  <!-- Where the full report goes. The PDF is built in the browser exactly as it
-     always was; what changed is that it leaves by mail rather than to the
-     reader's own disk, so the address is asked for here. -->
+  <!-- The full report still downloads to the reader's own disk exactly as it
+     always did; what's new is that an address is recorded before the
+     download is let through. -->
 <dialog id="mail-dialog" class="mode-dialog" aria-labelledby="mail-dialog-title">
-  <h2 id="mail-dialog-title">Where should we send it?</h2>
+  <h2 id="mail-dialog-title">Before you download</h2>
   <p class="muted" id="mail-dialog-blurb"></p>
   <label class="mail-field">
     <span>Email address</span>
@@ -339,7 +339,7 @@
   <p class="fineprint" id="mail-fineprint"></p>
   <div class="btn-row">
     <button class="btn btn-ghost" id="mail-cancel" type="button">Cancel</button>
-    <button class="btn" id="mail-send" type="button">Send my report</button>
+    <button class="btn" id="mail-send" type="button">Download my report</button>
   </div>
 </dialog>
 

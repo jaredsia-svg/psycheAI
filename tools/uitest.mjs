@@ -2320,53 +2320,50 @@ try {
     (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report',
     await page.locator('#export-pdf-bottom').innerText());
 
-  // The report is typeset by pdf.js rather than handed to the print dialog, so
-  // the thing to test is the actual file. It no longer arrives as a download —
-  // the button asks for an address and the server mails it — so the file is
-  // taken off the wire instead: intercept the POST, decode the base64 the page
-  // sent, and run exactly the same assertions on it. The PDF is still built in
-  // the browser, so what is checked here is still the real artefact.
-  let postedReport = null;
+  // The report is typeset by pdf.js and downloads straight to the reader's
+  // own device, exactly as it always did — what's new is that an address is
+  // recorded first. Intercept only that recording POST; the download itself
+  // is taken off the wire with Playwright's real download event, so what is
+  // checked below is still the actual artefact the browser wrote.
   let postedEmail = '';
-  await page.route('**/api/report-email', async route => {
+  await page.route('**/api/record-email', async route => {
     const sentBody = JSON.parse(route.request().postData() || '{}');
-    postedReport = Buffer.from(sentBody.pdf || '', 'base64');
     postedEmail = sentBody.email || '';
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"sent":true}' });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"recorded":true}' });
   });
 
   await page.click('#export-pdf-bottom');
   await page.waitForSelector('#mail-dialog[open]', { timeout: 15000 });
-  check('the report button asks where to send it rather than downloading',
+  check('the report button asks for an address before downloading',
     await page.locator('#mail-dialog').isVisible());
   check('the dialog says the address is kept and the report is not',
     /keep your email address/i.test(await page.locator('#mail-fineprint').innerText()) &&
     /do not keep the report/i.test(await page.locator('#mail-fineprint').innerText()),
     await page.locator('#mail-fineprint').innerText());
 
-  // An obvious typo is refused before anything is built or sent.
+  // An obvious typo is refused before anything is recorded or downloaded.
   await page.fill('#mail-address', 'not-an-address');
   await page.click('#mail-send');
   await page.waitForTimeout(200);
-  check('an unusable address is refused without sending anything',
-    postedReport === null &&
+  check('an unusable address is refused without recording or downloading anything',
+    postedEmail === '' &&
     /does not look like an email address/i.test(await page.locator('#mail-status').innerText()),
     await page.locator('#mail-status').innerText());
 
   await page.fill('#mail-address', 'reader@example.com');
-  await page.click('#mail-send');
-  await page.waitForFunction(() => {
-    const status = document.querySelector('#mail-status');
-    return status && /Sent\./i.test(status.textContent || '');
-  }, null, { timeout: 30000 });
+  const pdfPath = join(shotDir, 'report.pdf');
+  const [reportDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#mail-send'),
+  ]);
+  await reportDownload.saveAs(pdfPath);
   check('the address the reader typed is what gets posted',
     postedEmail === 'reader@example.com', postedEmail);
-  await page.waitForTimeout(2400);
-  const pdfPath = join(shotDir, 'report.pdf');
-  writeFileSync(pdfPath, postedReport);
-  const pdf = postedReport;
+  check('the download is offered as a PDF named for the report',
+    reportDownload.suggestedFilename() === 'psycheai-report.pdf', reportDownload.suggestedFilename());
+  await page.unroute('**/api/record-email');
+  const pdf = readFileSync(pdfPath);
   const pdfText = pdf.toString('latin1');
-  await page.unroute('**/api/report-email');
   check('it is a real PDF', pdfText.startsWith('%PDF-1.'), pdfText.slice(0, 8));
   check('the PDF is properly terminated', pdfText.trimEnd().endsWith('%%EOF'));
   check('the cross-reference table points inside the file', (() => {

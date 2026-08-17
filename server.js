@@ -12,7 +12,6 @@ const path = require('node:path');
 
 const provider = require('./lib/provider');
 const prompts = require('./lib/prompts');
-const mail = require('./lib/mail');
 const recipients = require('./lib/recipients');
 
 const ROOT = path.join(__dirname, 'docs');
@@ -122,34 +121,20 @@ async function handleAnalyse(request, response) {
   sendJson(response, 200, await engine.analyseProfile(body.digest, cleanImages(body.images)));
 }
 
-// The report goes to the reader by mail rather than down the wire to their own
-// browser, so this endpoint receives a PDF the browser has just built.
-//
-// The division of what is kept is the feature, and it is enforced by which
-// function is handed what. `recipients.record` is given the address and only
-// the address — it has no parameter for an attachment. `mail.sendReport` is
-// given the PDF and hands it straight to SES. Neither ever holds both, and
-// nothing here writes the PDF anywhere: it lives in `body` for the duration of
-// the request and is collected afterwards like any other local.
-//
-// The address is recorded only once the send has succeeded. Recording first
-// would build a list of people who were told the mail failed, which is worse
-// than useless for the one job the list has.
-async function handleReportEmail(request, response) {
+// The report is typeset and downloaded entirely client-side and never reaches
+// this endpoint at all — it exists only so an address can be recorded before
+// the browser lets the download through. `recipients.record` is given the
+// address and only the address; there is no parameter here an attachment
+// could go in, and no code path that could write one.
+async function handleRecordEmail(request, response) {
   const body = await readJsonBody(request);
-  const address = mail.validAddress(body && body.email);
+  const address = recipients.validAddress(body && body.email);
   if (!address) {
     sendJson(response, 400, { error: 'That does not look like an email address.' });
     return;
   }
-  if (!body || typeof body.pdf !== 'string' || !body.pdf) {
-    sendJson(response, 400, { error: 'Expected a "pdf" field holding the report.' });
-    return;
-  }
-
-  await mail.sendReport({ to: address, pdfBase64: body.pdf, name: body.name });
   recipients.record(address);
-  sendJson(response, 200, { sent: true });
+  sendJson(response, 200, { recorded: true });
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -220,7 +205,7 @@ const server = http.createServer((request, response) => {
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
         : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
           : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-            : route === '/api/report-email' && request.method === 'POST' ? () => handleReportEmail(request, response)
+            : route === '/api/record-email' && request.method === 'POST' ? () => handleRecordEmail(request, response)
               : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
                 : null;
 

@@ -42,10 +42,8 @@ const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
 const claude = await import('../lib/claude.js').then(m => m.default);
 const gemini = await import('../lib/gemini.js').then(m => m.default);
-process.env.PSYCHEAI_MAIL_MOCK = '1';
 process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
   join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
-const mail = await import('../lib/mail.js').then(m => m.default);
 const recipients = await import('../lib/recipients.js').then(m => m.default);
 
 // ---------- provider parity ----------
@@ -61,56 +59,24 @@ for (const engine of [claude, gemini, mock]) {
   check(engine.name + ' names a model', typeof engine.MODEL === 'string' && engine.MODEL.length > 0);
 }
 
-// ---------- the report by mail, and who can see what ----------
+// ---------- the address that is recorded before a download, and who can see it ----------
 //
-// The point of this feature is a split: the operator gets the list of
-// addresses that asked for a report, and never gets the reports. That is not a
-// policy anyone has to remember — it is which function is handed what.
-// `recipients.record` takes an address and has no parameter for an attachment;
-// `mail.sendReport` takes the PDF and hands it to SES. Nothing holds both.
+// The report itself is typeset and downloaded entirely in the browser and
+// never reaches this module at all — the only thing that reaches the server
+// is the address, and `recipients.record` takes an address and nothing else.
 {
   rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
 
-  check('mail runs in mock mode for the suite, sending nothing', mail.describe().mock === true);
   // Deliberately not RFC 5322: that grammar admits addresses no provider will
-  // accept, and rejecting a valid oddity costs somebody their report.
-  check('a usable address is accepted', mail.validAddress(' Reader@Example.com ') === 'Reader@Example.com');
+  // accept, and rejecting a valid oddity costs somebody their download.
+  check('a usable address is accepted', recipients.validAddress(' Reader@Example.com ') === 'Reader@Example.com');
   for (const bad of ['nope', 'a@b', 'a b@c.com', '@example.com', 'a@.com', '']) {
-    check('an unusable address is refused: ' + JSON.stringify(bad), mail.validAddress(bad) === '');
+    check('an unusable address is refused: ' + JSON.stringify(bad), recipients.validAddress(bad) === '');
   }
 
-  const pdf = Buffer.from('%PDF-1.4 pretend report').toString('base64');
-  const result = await mail.sendReport({ to: 'reader@example.com', pdfBase64: pdf, name: 'Aleç' });
-  check('a report is relayed to the address given', result.mock === true && mail.__sent.length === 1);
-  check('the mock records the address and the size, not the attachment',
-    mail.__sent[0].to === 'reader@example.com' &&
-    !JSON.stringify(mail.__sent[0]).includes(pdf.slice(0, 24)),
-    JSON.stringify(mail.__sent[0]));
-  await mail.sendReport({ to: 'reader@example.com', pdfBase64: pdf }).catch(() => {});
-
-  // The MIME the real path would send. Built here rather than trusted, because
-  // an attachment that arrives corrupt is the sort of thing only a real
-  // recipient would otherwise notice.
-  const mime = mail.buildMime({
-    from: 'reports@psycheai.test', to: 'reader@example.com', replyTo: '',
-    subject: 'Your PsycheAI report', filename: 'psycheai-report.pdf',
-    pdfBase64: pdf, text: 'body',
-  });
-  check('the message is multipart with a PDF attachment',
-    /Content-Type: multipart\/mixed; boundary="/.test(mime) &&
-    /Content-Type: application\/pdf; name="psycheai-report\.pdf"/.test(mime) &&
-    /Content-Disposition: attachment; filename="psycheai-report\.pdf"/.test(mime));
-  check('the attachment is base64 with wrapped lines',
-    /Content-Transfer-Encoding: base64/.test(mime) &&
-    mime.split('\r\n').every(line => line.length <= 998));
-  check('the covering note tells the reader who keeps what, on both sides',
-    /does not keep the report itself/i.test(mail.COVERING_NOTE) &&
-    /keeps your email address/i.test(mail.COVERING_NOTE) &&
-    /Your email provider will keep this message/i.test(mail.COVERING_NOTE),
-    JSON.stringify(mail.COVERING_NOTE.slice(0, 80)));
-
-  // Storage. The address is written down on purpose; the report is not, and
-  // there is no code path that could write one.
+  // Storage. The address is written down on purpose; the report is never
+  // passed to this module at all, so there is no code path that could write
+  // one down beside it.
   recipients.record('Reader@Example.com');
   recipients.record('reader@example.com');
   recipients.record('other@example.com');
@@ -125,7 +91,6 @@ for (const engine of [claude, gemini, mock]) {
       const row = JSON.parse(line);
       return Object.keys(row).sort().join(',') === 'at,email';
     }), stored.split('\n')[0]);
-  check('and the report never reaches the store', !stored.includes(pdf.slice(0, 24)));
   // `record` takes an address and nothing else, so a future edit cannot
   // casually start storing a report beside it without changing the signature.
   check('the store has no parameter it could put a report in', recipients.record.length === 1);
