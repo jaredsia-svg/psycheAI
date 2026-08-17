@@ -3,7 +3,7 @@
 *The personality analysis you didn't know you needed.*
 
 Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an evidence
-summary, and hands that to a language model — **xAI Grok**, **Google Gemini** or **Anthropic Claude**
+summary, and hands that to a language model — **Google Gemini**, **Anthropic Claude** or **xAI Grok**
 — which writes you a detailed profile: your Big Five and a long-form MBTI reading with the reasoning behind
 each, a behavioural read of how you actually use Instagram, your interests, beliefs and values, and
 your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
@@ -21,16 +21,16 @@ PsycheAI needs a server because an API key cannot ship inside a web page. Set wh
 ```bash
 npm install
 
-# xAI Grok — get a key at console.x.ai
-export XAI_API_KEY=xai-...
-npm start                 # http://localhost:3000
-
-# …or Google Gemini — get a key at aistudio.google.com/apikey
+# Google Gemini — get a key at aistudio.google.com/apikey
 export GEMINI_API_KEY=...
-npm start
+npm start                 # http://localhost:3000
 
 # …or Anthropic Claude
 export ANTHROPIC_API_KEY=sk-ant-...
+npm start
+
+# …or xAI Grok — get a key at console.x.ai
+export XAI_API_KEY=xai-...
 npm start
 ```
 
@@ -254,13 +254,13 @@ catch its siblings across all 40 versions.
 
 | Variable | Effect |
 |---|---|
-| `XAI_API_KEY` | Uses Grok. Takes priority if more than one key is set. |
-| `GEMINI_API_KEY` | Uses Gemini, if `XAI_API_KEY` is not set. |
-| `ANTHROPIC_API_KEY` | Uses Claude, if neither of the above is set. |
-| `PSYCHEAI_PROVIDER` | Forces `grok`, `gemini` or `anthropic` when you have more than one key. |
-| `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
+| `GEMINI_API_KEY` | Uses Gemini. Takes priority if more than one key is set. |
+| `ANTHROPIC_API_KEY` | Uses Claude, if `GEMINI_API_KEY` is not set. |
+| `XAI_API_KEY` | Uses Grok, if neither of the above is set. Fully supported, just not the default. |
+| `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` when you have more than one key. |
 | `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID. Default `claude-opus-5`. |
+| `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 
 Model IDs change often on every provider, so the defaults above will go stale. List what your key
@@ -1719,7 +1719,7 @@ docs/                 the browser app — no build step
   vendor/             qrcode (generation) · jsQR (scanning)
 lib/
   prompts.js          both system prompts and both output schemas, provider-neutral
-  provider.js         picks Grok, Gemini, Claude or mock from the environment
+  provider.js         picks Gemini, Claude, Grok or mock from the environment
   grok.js             the openai SDK, pointed at xAI's API
   gemini.js           the Google GenAI SDK calls
   claude.js           the Anthropic SDK calls
