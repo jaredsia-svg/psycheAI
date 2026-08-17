@@ -340,9 +340,6 @@
         '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
           esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' +
-        // The model's own one-line read of the person, ahead of the longer
-        // blurb below it — the archetype names a type, this names them.
-        (card.headline ? '<p class="pc-headline">' + esc(card.headline) + '</p>' : '') +
         (blurb ? '<p class="pc-blurb">' + esc(blurb) + '</p>' : '') +
       '</div>' +
 

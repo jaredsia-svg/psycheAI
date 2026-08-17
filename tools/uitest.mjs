@@ -1657,21 +1657,8 @@ try {
       const tops = cols.map(c => Math.round(c.getBoundingClientRect().top));
       return tops.every(t => Math.abs(t - tops[0]) <= 1);
     }));
-  // The model's own one-line read of the person, between the archetype name
-  // and the longer blurb.
-  check('the card carries the card headline, ahead of the summary',
-    await page.evaluate(() => {
-      const headline = document.querySelector('#psyche-card .pc-headline');
-      const blurb = document.querySelector('#psyche-card .pc-blurb');
-      return Boolean(headline) && headline.textContent.trim().length > 0 &&
-        Boolean(blurb) && headline.compareDocumentPosition(blurb) === Node.DOCUMENT_POSITION_FOLLOWING;
-    }), await page.locator('#psyche-card .pc-headline').innerText().catch(() => '(missing)'));
-  check('the headline is the card\'s own field, not the report\'s summary',
-    await page.evaluate(() => {
-      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
-      const headline = document.querySelector('#psyche-card .pc-headline').textContent.trim();
-      return headline === report.card.headline;
-    }));
+  check('the card headline is gone, leaving the character name to lead straight into the summary',
+    (await page.locator('#psyche-card .pc-headline').count()) === 0);
   // Rhythm and energy get their own labelled row, same shape as the type and
   // Big Five stats above it.
   check('rhythm and energy each get a labelled block',
