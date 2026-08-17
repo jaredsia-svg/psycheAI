@@ -324,7 +324,26 @@
     </button>
   </section>
 
-  <dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
+  <!-- Where the full report goes. The PDF is built in the browser exactly as it
+     always was; what changed is that it leaves by mail rather than to the
+     reader's own disk, so the address is asked for here. -->
+<dialog id="mail-dialog" class="mode-dialog" aria-labelledby="mail-dialog-title">
+  <h2 id="mail-dialog-title">Where should we send it?</h2>
+  <p class="muted" id="mail-dialog-blurb"></p>
+  <label class="mail-field">
+    <span>Email address</span>
+    <input type="email" id="mail-address" autocomplete="email" inputmode="email"
+           placeholder="you@example.com" spellcheck="false">
+  </label>
+  <p class="mail-status" id="mail-status" hidden></p>
+  <p class="fineprint" id="mail-fineprint"></p>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="mail-cancel" type="button">Cancel</button>
+    <button class="btn" id="mail-send" type="button">Send my report</button>
+  </div>
+</dialog>
+
+<dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
     <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
     <div class="card-dialog-bar">
       <button class="btn" id="card-download" type="button"></button>

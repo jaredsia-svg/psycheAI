@@ -1469,3 +1469,18 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 /* The type's name, under its four letters. */
 .pc-mbti-name { margin-top: 10px; }
 .psyche-card.pc-narrow .pc-mbti-name { margin-top: 6px; font-size: 21px; }
+
+/* ---------- the report-by-mail dialog ---------- */
+.mail-field { display: block; margin: 1rem 0 .4rem; }
+.mail-field span {
+  display: block; font-size: .82rem; font-weight: 600; color: var(--ink-soft);
+  letter-spacing: .04em; text-transform: uppercase; margin-bottom: .35rem;
+}
+.mail-field input {
+  width: 100%; font: inherit; color: inherit; padding: .7rem .8rem;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg-alt);
+}
+.mail-field input:focus-visible { outline: none; border-color: var(--accent); }
+.mail-status { margin: .5rem 0 0; font-size: .9rem; }
+.mail-status.is-bad { color: var(--danger); }
+.mail-status.is-good { color: var(--good); }

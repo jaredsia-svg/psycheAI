@@ -12,6 +12,8 @@ const path = require('node:path');
 
 const provider = require('./lib/provider');
 const prompts = require('./lib/prompts');
+const mail = require('./lib/mail');
+const recipients = require('./lib/recipients');
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -120,6 +122,54 @@ async function handleAnalyse(request, response) {
   sendJson(response, 200, await engine.analyseProfile(body.digest, cleanImages(body.images)));
 }
 
+// The report goes to the reader by mail rather than down the wire to their own
+// browser, so this endpoint receives a PDF the browser has just built.
+//
+// The division of what is kept is the feature, and it is enforced by which
+// function is handed what. `recipients.record` is given the address and only
+// the address — it has no parameter for an attachment. `mail.sendReport` is
+// given the PDF and hands it straight to SES. Neither ever holds both, and
+// nothing here writes the PDF anywhere: it lives in `body` for the duration of
+// the request and is collected afterwards like any other local.
+//
+// The address is recorded only once the send has succeeded. Recording first
+// would build a list of people who were told the mail failed, which is worse
+// than useless for the one job the list has.
+async function handleReportEmail(request, response) {
+  const body = await readJsonBody(request);
+  const address = mail.validAddress(body && body.email);
+  if (!address) {
+    sendJson(response, 400, { error: 'That does not look like an email address.' });
+    return;
+  }
+  if (!body || typeof body.pdf !== 'string' || !body.pdf) {
+    sendJson(response, 400, { error: 'Expected a "pdf" field holding the report.' });
+    return;
+  }
+
+  await mail.sendReport({ to: address, pdfBase64: body.pdf, name: body.name });
+  recipients.record(address);
+  sendJson(response, 200, { sent: true });
+}
+
+// The address list, for whoever runs this server. Refused outright rather than
+// served openly when no token is configured: a list of addresses that answers
+// to anyone who guesses the path is worse than having no route.
+function handleRecipients(request, response, url) {
+  if (!recipients.configured()) {
+    sendJson(response, 404, { error: 'No such endpoint.' });
+    return;
+  }
+  const header = request.headers['authorization'] || '';
+  const token = header.replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '';
+  if (!recipients.authorised(token)) {
+    sendJson(response, 401, { error: 'Not authorised.' });
+    return;
+  }
+  const rows = recipients.list();
+  sendJson(response, 200, { count: rows.length, recipients: rows });
+}
+
 async function handleCompatibility(request, response) {
   const body = await readJsonBody(request);
   const a = body && body.a;
@@ -170,7 +220,9 @@ const server = http.createServer((request, response) => {
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
         : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
           : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-            : null;
+            : route === '/api/report-email' && request.method === 'POST' ? () => handleReportEmail(request, response)
+              : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
+                : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });
@@ -184,6 +236,9 @@ const server = http.createServer((request, response) => {
           : provider.active
             ? provider.active.describeError(error)
             : { status: 500, message: (error && error.message) || 'Unknown server error.' };
+        // The message only. This route's request body is somebody's personality
+        // report, and an error handler that logs bodies would put it in the
+        // server log — which is exactly the thing the design is built to avoid.
         console.error('[' + route + ']', error && error.message ? error.message : error);
         sendJson(response, described.status, { error: described.message });
       });

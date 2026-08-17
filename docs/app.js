@@ -1895,37 +1895,119 @@
   // page, and on mobile often offered no PDF destination at all. pdf.js writes
   // the file directly, so the download is one click and looks the same
   // everywhere.
-  function exportPdf(event) {
+  // The PDF is still typeset in the browser, exactly as before — what changed
+  // is where it goes. Instead of landing on the reader's disk it is posted to
+  // the server, which relays it to them by mail and keeps only the address.
+  function buildReportPdf(profile) {
+    const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
+    return window.PsychePDF.build(profile.report, profile.card, {
+      date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      model: profile.model || '',
+      // The page shows a matches section when this device has any, so the
+      // report does too.
+      history: store.read(KEYS.history, []),
+    });
+  }
+
+  // FileReader rather than a loop over the bytes: a report runs to hundreds of
+  // kilobytes, and building the binary string by hand blocks the tab long
+  // enough to be visible.
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('The report could not be read back.'));
+      reader.onload = () => {
+        const url = String(reader.result || '');
+        const comma = url.indexOf(',');
+        resolve(comma >= 0 ? url.slice(comma + 1) : '');
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // ---------- where the report goes ----------
+  //
+  // The reader gives an address and the server mails it to them. Two things
+  // this deliberately does not do: it does not save the address anywhere on the
+  // device, and it does not fall back to a local download when the send fails —
+  // a silent fallback would make it impossible for anyone to tell whether the
+  // mail path is working at all, and the failure message is more useful than a
+  // file appearing for reasons the reader cannot see.
+  function askEmailAndSend(event) {
     const button = event.currentTarget;
-    const label = button.textContent;
     const profile = state.profile;
     if (!profile) return;
-    try {
-      const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
-      const blob = window.PsychePDF.build(profile.report, profile.card, {
-        date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
-        model: profile.model || '',
-        // The page shows a matches section when this device has any, so the
-        // report does too.
-        history: store.read(KEYS.history, []),
-      });
-      const name = 'psycheai-report-' +
-        String(profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
-      // Same shape as the QR download: a Blob URL and an anchor that is really
-      // in the document, because Firefox ignores a click on a detached one.
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = name + '.pdf';
-      link.href = href;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 10000);
-    } catch (error) {
-      button.textContent = 'Could not build the PDF';
-      setTimeout(() => { button.textContent = label; }, 3000);
-    }
+
+    const dialog = $('#mail-dialog');
+    const input = $('#mail-address');
+    const status = $('#mail-status');
+    const sendButton = $('#mail-send');
+    const label = sendButton.textContent;
+
+    const say = (message, tone) => {
+      status.textContent = message || '';
+      status.hidden = !message;
+      status.className = 'mail-status' + (tone ? ' is-' + tone : '');
+    };
+
+    const close = () => dialog.close();
+
+    const send = async () => {
+      const address = input.value.trim();
+      // The same shape the server insists on, checked here first so an obvious
+      // typo costs a moment rather than a round trip.
+      if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(address)) {
+        say('That does not look like an email address.', 'bad');
+        input.focus();
+        return;
+      }
+      sendButton.disabled = true;
+      say(TEXT.mailSending);
+      try {
+        const pdf = await blobToBase64(buildReportPdf(profile));
+        const response = await fetch('api/report-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: address, pdf, name: profile.card.name || '' }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'The report could not be sent.');
+        say(TEXT.mailSent, 'good');
+        sendButton.disabled = false;
+        sendButton.textContent = label;
+        setTimeout(() => { if (dialog.open) close(); }, 2200);
+        return;
+      } catch (error) {
+        say((error && error.message) || 'The report could not be sent.', 'bad');
+      }
+      sendButton.disabled = false;
+      sendButton.textContent = label;
+    };
+
+    const onKey = keyEvent => { if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); send(); } };
+
+    sendButton.addEventListener('click', send);
+    $('#mail-cancel').addEventListener('click', close);
+    input.addEventListener('keydown', onKey);
+    dialog.addEventListener('close', () => {
+      sendButton.removeEventListener('click', send);
+      $('#mail-cancel').removeEventListener('click', close);
+      input.removeEventListener('keydown', onKey);
+      sendButton.disabled = false;
+      sendButton.textContent = label;
+      button.focus();
+    }, { once: true });
+
+    $('#mail-dialog-blurb').textContent = TEXT.mailBlurb;
+    $('#mail-fineprint').textContent = TEXT.mailFine;
+    say('');
+    input.value = '';
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    input.focus();
   }
+
+  const exportPdf = askEmailAndSend;
 
   // ---------- psyche card: inline preview and full screen ----------
   //

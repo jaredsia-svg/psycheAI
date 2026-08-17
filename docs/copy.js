@@ -160,6 +160,16 @@
     cardSection: 'Summary card',
     cardHint: 'Tap to open full screen',
     cardDownload: 'Download as image',
+
+    // The report goes out by mail rather than to the reader's disk, so the
+    // dialog has to say what happens to both halves — the address is kept, the
+    // report is not, and their own mail provider keeps it regardless.
+    mailBlurb: 'Your full report will be emailed to you as a PDF.',
+    mailFine: 'We keep your email address. We do not keep the report — it is ' +
+      'relayed straight to you and not stored. Your email provider will keep ' +
+      'this message, and the attachment, for as long as you leave it there.',
+    mailSending: 'Building and sending your report…',
+    mailSent: 'Sent. Check your inbox — and your spam folder, just in case.',
     cardType: 'MBTI',
     cardEnneagram: 'Enneagram',
     cardBigFive: 'Big Five',

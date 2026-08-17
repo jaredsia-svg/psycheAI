@@ -5,7 +5,8 @@
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInThisContext } from 'node:vm';
@@ -41,6 +42,11 @@ const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
 const claude = await import('../lib/claude.js').then(m => m.default);
 const gemini = await import('../lib/gemini.js').then(m => m.default);
+process.env.PSYCHEAI_MAIL_MOCK = '1';
+process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
+  join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
+const mail = await import('../lib/mail.js').then(m => m.default);
+const recipients = await import('../lib/recipients.js').then(m => m.default);
 
 // ---------- provider parity ----------
 //
@@ -53,6 +59,85 @@ for (const engine of [claude, gemini, mock]) {
     .filter(key => !(key in engine));
   check(engine.name + ' implements the provider interface', missing.length === 0, 'missing ' + missing);
   check(engine.name + ' names a model', typeof engine.MODEL === 'string' && engine.MODEL.length > 0);
+}
+
+// ---------- the report by mail, and who can see what ----------
+//
+// The point of this feature is a split: the operator gets the list of
+// addresses that asked for a report, and never gets the reports. That is not a
+// policy anyone has to remember — it is which function is handed what.
+// `recipients.record` takes an address and has no parameter for an attachment;
+// `mail.sendReport` takes the PDF and hands it to SES. Nothing holds both.
+{
+  rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
+
+  check('mail runs in mock mode for the suite, sending nothing', mail.describe().mock === true);
+  // Deliberately not RFC 5322: that grammar admits addresses no provider will
+  // accept, and rejecting a valid oddity costs somebody their report.
+  check('a usable address is accepted', mail.validAddress(' Reader@Example.com ') === 'Reader@Example.com');
+  for (const bad of ['nope', 'a@b', 'a b@c.com', '@example.com', 'a@.com', '']) {
+    check('an unusable address is refused: ' + JSON.stringify(bad), mail.validAddress(bad) === '');
+  }
+
+  const pdf = Buffer.from('%PDF-1.4 pretend report').toString('base64');
+  const result = await mail.sendReport({ to: 'reader@example.com', pdfBase64: pdf, name: 'Aleç' });
+  check('a report is relayed to the address given', result.mock === true && mail.__sent.length === 1);
+  check('the mock records the address and the size, not the attachment',
+    mail.__sent[0].to === 'reader@example.com' &&
+    !JSON.stringify(mail.__sent[0]).includes(pdf.slice(0, 24)),
+    JSON.stringify(mail.__sent[0]));
+  await mail.sendReport({ to: 'reader@example.com', pdfBase64: pdf }).catch(() => {});
+
+  // The MIME the real path would send. Built here rather than trusted, because
+  // an attachment that arrives corrupt is the sort of thing only a real
+  // recipient would otherwise notice.
+  const mime = mail.buildMime({
+    from: 'reports@psycheai.test', to: 'reader@example.com', replyTo: '',
+    subject: 'Your PsycheAI report', filename: 'psycheai-report.pdf',
+    pdfBase64: pdf, text: 'body',
+  });
+  check('the message is multipart with a PDF attachment',
+    /Content-Type: multipart\/mixed; boundary="/.test(mime) &&
+    /Content-Type: application\/pdf; name="psycheai-report\.pdf"/.test(mime) &&
+    /Content-Disposition: attachment; filename="psycheai-report\.pdf"/.test(mime));
+  check('the attachment is base64 with wrapped lines',
+    /Content-Transfer-Encoding: base64/.test(mime) &&
+    mime.split('\r\n').every(line => line.length <= 998));
+  check('the covering note tells the reader who keeps what, on both sides',
+    /does not keep the report itself/i.test(mail.COVERING_NOTE) &&
+    /keeps your email address/i.test(mail.COVERING_NOTE) &&
+    /Your email provider will keep this message/i.test(mail.COVERING_NOTE),
+    JSON.stringify(mail.COVERING_NOTE.slice(0, 80)));
+
+  // Storage. The address is written down on purpose; the report is not, and
+  // there is no code path that could write one.
+  recipients.record('Reader@Example.com');
+  recipients.record('reader@example.com');
+  recipients.record('other@example.com');
+  const rows = recipients.list();
+  check('the operator gets every address that asked', rows.length === 2, JSON.stringify(rows));
+  check('addresses are folded to one row with a request count',
+    (rows.find(r => r.email === 'reader@example.com') || {}).requests === 2,
+    JSON.stringify(rows));
+  const stored = readFileSync(process.env.PSYCHEAI_RECIPIENTS_FILE, 'utf8');
+  check('what is on disk is addresses and timestamps, nothing else',
+    stored.split('\n').filter(Boolean).every(line => {
+      const row = JSON.parse(line);
+      return Object.keys(row).sort().join(',') === 'at,email';
+    }), stored.split('\n')[0]);
+  check('and the report never reaches the store', !stored.includes(pdf.slice(0, 24)));
+  // `record` takes an address and nothing else, so a future edit cannot
+  // casually start storing a report beside it without changing the signature.
+  check('the store has no parameter it could put a report in', recipients.record.length === 1);
+
+  // The admin route is refused outright without a token rather than served
+  // openly: a list of addresses answering to anyone who finds the path is
+  // worse than no route.
+  check('the list is closed when no token is configured', recipients.configured() === false);
+  check('and refuses every token while it is closed',
+    recipients.authorised('') === false && recipients.authorised('anything') === false);
+
+  rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
 }
 
 check('providers are distinguishable', new Set([claude.name, gemini.name, mock.name]).size === 3);
