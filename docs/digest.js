@@ -1,4 +1,4 @@
-// Reduces a parsed Instagram export into the evidence digest sent to Claude.
+// Reduces a parsed Instagram export into the evidence digest sent to the model.
 //
 // This is the privacy boundary and the cost boundary at once. The archive can
 // be gigabytes; what leaves the browser is a bounded summary — activity

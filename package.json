@@ -9,7 +9,8 @@
     "test": "node tools/selftest.mjs",
     "test:ui": "node tools/uitest.mjs",
     "test:live": "node tools/livetest.mjs",
-    "models": "node tools/models.mjs"
+    "models": "node tools/models.mjs",
+    "models:grok": "node tools/models-grok.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
-    "@google/genai": "^2.13.0"
+    "@google/genai": "^2.13.0",
+    "openai": "^7.4.0"
   }
 }

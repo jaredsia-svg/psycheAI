@@ -3,8 +3,8 @@
 *The personality analysis you didn't know you needed.*
 
 Upload your Instagram data export. PsycheAI unpacks it in your browser, distils it into an evidence
-summary, and hands that to a language model — **Google Gemini** or **Anthropic Claude** — which
-writes you a detailed profile: your Big Five and a long-form MBTI reading with the reasoning behind
+summary, and hands that to a language model — **xAI Grok**, **Google Gemini** or **Anthropic Claude**
+— which writes you a detailed profile: your Big Five and a long-form MBTI reading with the reasoning behind
 each, a behavioural read of how you actually use Instagram, your interests, beliefs and values, and
 your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
 PDF when you are done.
@@ -21,9 +21,13 @@ PsycheAI needs a server because an API key cannot ship inside a web page. Set wh
 ```bash
 npm install
 
-# Google Gemini — get a key at aistudio.google.com/apikey
-export GEMINI_API_KEY=...
+# xAI Grok — get a key at console.x.ai
+export XAI_API_KEY=xai-...
 npm start                 # http://localhost:3000
+
+# …or Google Gemini — get a key at aistudio.google.com/apikey
+export GEMINI_API_KEY=...
+npm start
 
 # …or Anthropic Claude
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -250,43 +254,55 @@ catch its siblings across all 40 versions.
 
 | Variable | Effect |
 |---|---|
-| `GEMINI_API_KEY` | Uses Gemini. Takes priority if both keys are set. |
-| `ANTHROPIC_API_KEY` | Uses Claude. |
-| `PSYCHEAI_PROVIDER` | Forces `gemini` or `anthropic` when you have both keys. |
+| `XAI_API_KEY` | Uses Grok. Takes priority if more than one key is set. |
+| `GEMINI_API_KEY` | Uses Gemini, if `XAI_API_KEY` is not set. |
+| `ANTHROPIC_API_KEY` | Uses Claude, if neither of the above is set. |
+| `PSYCHEAI_PROVIDER` | Forces `grok`, `gemini` or `anthropic` when you have more than one key. |
+| `XAI_MODEL` | Grok model ID. Default `grok-4`. |
 | `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID. Default `claude-opus-5`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 
-Gemini model IDs change often, so the default here will go stale. List what your key can actually
-reach:
+Model IDs change often on every provider, so the defaults above will go stale. List what your key
+can actually reach:
 
 ```bash
-npm run models            # needs GEMINI_API_KEY
+npm run models:grok       # needs XAI_API_KEY
+npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
 `gemini-3.6-flash` is the default because it is generally available and cheap enough to re-run
 freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
 
-Both providers share the same prompts and the same output schemas (`lib/prompts.js`) — Gemini's
-`responseJsonSchema` accepts real JSON Schema, so nothing is translated between them. The server
-picks a provider at startup and the rest of the app never knows which one ran.
+All three providers share the same prompts and the same output schemas (`lib/prompts.js`). Gemini's
+`responseJsonSchema` accepts real JSON Schema and Grok's `response_format` strict JSON schema mode
+does too, so nothing is translated for either of them; Claude's structured-output config takes the
+same schema object under a different field name. The server picks a provider at startup and the rest
+of the app never knows which one ran.
+
+`lib/grok.js` talks to xAI through the `openai` package rather than a dedicated xAI SDK — xAI's API
+is deliberately OpenAI-compatible, so this is `openai` pointed at `https://api.x.ai/v1` with an
+`XAI_API_KEY` rather than an `OPENAI_API_KEY`, not a call to OpenAI's own models.
 
 ### When the model is overloaded
 
-Both APIs occasionally answer "too much load right now" rather than an actual response — Gemini as
-an `UNAVAILABLE`/503, Anthropic as a 529 `overloaded_error`. It is a capacity blip on the provider's
-side, not a problem with the key, the request, or this app, and it usually clears within seconds. So
-`lib/gemini.js` and `lib/claude.js` each retry automatically — three attempts with growing gaps
+All three APIs occasionally answer "too much load right now" rather than an actual response — Gemini
+as an `UNAVAILABLE`/503, Anthropic as a 529 `overloaded_error`, Grok as a generic 5xx (xAI does not
+document a distinct overloaded code the way the other two do, so any `InternalServerError` from the
+`openai` SDK is treated the same way). It is a capacity blip on the provider's side, not a problem
+with the key, the request, or this app, and it usually clears within seconds. So `lib/gemini.js`,
+`lib/claude.js` and `lib/grok.js` each retry automatically — three attempts with growing gaps
 (2s, 5s, 12s) — before giving up and surfacing a message that says so, rather than failing on the
 first hit the way a straight pass-through would.
 
-`tools/fixtures/retry-behaviour.cjs` tests this against fake SDKs standing in for `@google/genai` and
-`@anthropic-ai/sdk`, stubbed into the require cache before `lib/gemini.js`/`lib/claude.js` ever import
-the real packages — the fakes have to be there first, so this runs in its own process rather than
-inside `tools/selftest.mjs` directly, which has already loaded the real modules by the time it gets
-here. It scripts an overload that clears after a couple of attempts (recovers), one that never clears
-(gives up at exactly four attempts and reports it), and a non-retryable error (fails on the first
+`tools/fixtures/retry-behaviour.cjs` tests this against fake SDKs standing in for `@google/genai`,
+`@anthropic-ai/sdk` and `openai`, stubbed into the require cache before `lib/gemini.js`/`lib/claude.js`/
+`lib/grok.js` ever import the real packages — the fakes have to be there first, so this runs in its
+own process rather than inside `tools/selftest.mjs` directly, which has already loaded the real
+modules by the time it gets here. It scripts an overload that clears after a couple of attempts
+(recovers), one that never clears (gives up at exactly four attempts and reports it), and a
+non-retryable error (fails on the first
 attempt, no delay). `tools/selftest.mjs` spawns it and folds each line of its output into its own
 tally, so a break here fails `npm test` rather than needing a separate command.
 
@@ -364,7 +380,7 @@ code has to keep:
 - **The archive is reduced before anything is sent.** Unzipping and digest-building happen in the
   browser; the summary is what is posted, and the reader can review it themselves in the pre-send
   dialog before it goes anywhere.
-- **The summary reaches Gemini or Claude, and only for as long as the request takes.** It is held for
+- **The summary reaches Grok, Gemini or Claude, and only for as long as the request takes.** It is held for
   the few seconds the analysis takes and never saved, stored or logged — the claim the page actually
   makes now. It does not name PsycheAI's own server as the hop in between, on the reasoning that the
   device-to-model story is what a reader needs; what it must not do is claim the opposite, that the
@@ -396,11 +412,11 @@ caveat is a product call rather than an accuracy one, so the checks for them wen
 also dropped its one remaining explicit mention of the relay — "The summary goes to PsycheAI, which
 passes it straight on" — in favour of shorter copy that just names the destination model. That
 sentence's check was removed rather than repointed, since there is no wording left on the page for it
-to hold; what survives is the disclosure that Gemini or Claude read the summary under their own
+to hold; what survives is the disclosure that Grok, Gemini or Claude read the summary under their own
 terms, and the negative guard below.
 
-A tempting claim — that the summary never reaches the PsycheAI server at all, or reaches Gemini or
-Claude directly with nothing in between — would be false, and the suite fails if it ever appears.
+A tempting claim — that the summary never reaches the PsycheAI server at all, or reaches the model
+directly with nothing in between — would be false, and the suite fails if it ever appears.
 Checks read the claims off the rendered page *and* the behaviour out of `server.js`, so the page
 cannot drift into overstatement and the server cannot quietly stop honouring it: `fs` is asserted to
 be read-only, `Cache-Control: no-store` to still be set, and the copy is checked for the word
@@ -427,9 +443,10 @@ its box, so a future rewording that lengthens the claim again cannot silently br
 The **paid-API-access** paragraph is the one place this page states something about a third party's
 policy rather than only its own, so it stays hedged even after being trimmed to one sentence: "that
 is their policy to keep, not ours to guarantee," rather than asserted as this app's own promise —
-not a claim PsycheAI is in a position to make on Google's or Anthropic's behalf. The claim itself is
-narrow and true — Gemini and Claude are reached through paid API access, and paid API terms from
-both providers exclude customer inputs from training, as of when this was written. That second half
+not a claim PsycheAI is in a position to make on xAI's, Google's or Anthropic's behalf. The claim
+itself is narrow and true — Grok, Gemini and Claude are all reached through paid API access, and paid
+API terms from all three providers exclude customer inputs from training, as of when this was
+written. That second half
 is exactly why it stays phrased as their policy rather than restated as fact: it is the one claim on
 this page that could become false without this app changing anything at all. An earlier version also
 named the free consumer chat apps as the contrast and pointed readers at the providers' own terms to
@@ -1654,14 +1671,16 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 550 checks: synthesises a real ZIP export and runs
+npm test           # 562 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
-                   # rules and the keyword subset Gemini supports; and exercises
-                   # every branch of provider selection
-npm run test:ui    # 743 checks: drives the real UI in Chromium against a
+                   # rules and the keyword subset Gemini supports; exercises
+                   # every branch of provider selection; and drives the
+                   # automatic-retry logic against fake SDKs standing in for
+                   # all three real providers
+npm run test:ui    # 746 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
@@ -1700,7 +1719,8 @@ docs/                 the browser app — no build step
   vendor/             qrcode (generation) · jsQR (scanning)
 lib/
   prompts.js          both system prompts and both output schemas, provider-neutral
-  provider.js         picks Gemini, Claude or mock from the environment
+  provider.js         picks Grok, Gemini, Claude or mock from the environment
+  grok.js             the openai SDK, pointed at xAI's API
   gemini.js           the Google GenAI SDK calls
   claude.js           the Anthropic SDK calls
   mock.js             canned analyses for tests and for clicking around

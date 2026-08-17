@@ -1205,8 +1205,8 @@ try {
     /\d+ captions?, \d+ comments?/.test(reviewText), reviewText.slice(0, 400));
   check('the review names the accounts you follow, with a real count',
     /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
-  check('the review names both providers and says nothing else can access the data',
-    /Choose which data gets analysed by Gemini or Claude/i.test(reviewText) &&
+  check('the review names all three providers and says nothing else can access the data',
+    /Choose which data gets analysed by Grok, Gemini or Claude/i.test(reviewText) &&
     /None of this data or the results can be accessed by PsycheAI or others/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
@@ -3947,8 +3947,8 @@ try {
   // A page that only reassures is not trustworthy. The device-readability and
   // self-hosting notes were cut as clutter; the one that remains is the one a
   // reader cannot check for themselves, so it has to stay named.
-  check('the page names the model provider as the party that reads the summary',
-    /Gemini or Claude/.test(about));
+  check('the page names all three model providers as the party that reads the summary',
+    /Grok, Gemini or Claude/.test(about));
   check('the page admits their terms govern that, once it reaches them',
     /their\s+terms apply/i.test(about));
   // The paid-API/no-training claim carries its own hedge — "not ours to
@@ -3983,18 +3983,19 @@ try {
     !/(no|nobody)\s*one?\s*else|not shared with anyone|only you can see your data/i.test(heroClaim),
     heroClaim);
 
-  // Step two names the two model providers outright and repeats the no-storage
-  // promise. The storage half is what the server.js checks above prove. The
-  // naming half is held against the loader, so dropping or swapping a provider
-  // fails here rather than leaving this card telling the reader about a model
-  // the app can no longer reach.
+  // Step two names the three model providers outright and repeats the
+  // no-storage promise. The storage half is what the server.js checks above
+  // prove. The naming half is held against the loader, so dropping or
+  // swapping a provider fails here rather than leaving this card telling the
+  // reader about a model the app can no longer reach.
   const stepTwoClaim = (await page.evaluate(
     () => document.querySelectorAll('#view-welcome .step-card')[1].textContent))
     .replace(/\s+/g, ' ').trim();
   const providerSource = readFileSync(join(root, 'lib', 'provider.js'), 'utf8');
-  check('step two names both providers the loader can actually reach',
-    /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) &&
-    /'\.\/gemini'/.test(providerSource) && /'\.\/claude'/.test(providerSource), stepTwoClaim);
+  check('step two names all three providers the loader can actually reach',
+    /Grok/.test(stepTwoClaim) && /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) &&
+    /'\.\/grok'/.test(providerSource) && /'\.\/gemini'/.test(providerSource) && /'\.\/claude'/.test(providerSource),
+    stepTwoClaim);
   check('step two repeats that nothing is stored here',
     /No data is stored by PsycheAI/i.test(stepTwoClaim), stepTwoClaim);
 
@@ -4016,7 +4017,7 @@ try {
   // The two claims most likely to be quietly overstated later.
   check('the page does not claim the summary skips the PsycheAI server',
     !/never (?:sent|goes|reaches)[^.]{0,40}PsycheAI server/i.test(about) &&
-    !/directly to (?:the model|Google|Anthropic)/i.test(about), about.slice(0, 1600));
+    !/directly to (?:the model|Google|Anthropic|xAI)/i.test(about), about.slice(0, 1600));
   check('the page does not promise encryption it does not implement',
     !/end-to-end/i.test(about) && !/zero-knowledge/i.test(about));
   check('stays-here and gets-sent are shown side by side',

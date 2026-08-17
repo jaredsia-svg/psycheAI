@@ -1,6 +1,7 @@
-// Exercises the automatic-retry-on-overload logic in lib/gemini.js and
-// lib/claude.js against fake SDKs, in its own process so the fakes can sit in
-// the require cache before those files ever import the real packages.
+// Exercises the automatic-retry-on-overload logic in lib/gemini.js,
+// lib/claude.js and lib/grok.js against fake SDKs, in its own process so the
+// fakes can sit in the require cache before those files ever import the real
+// packages.
 //
 // Runs standalone (`node tools/fixtures/retry-behaviour.cjs`) and prints one
 // JSON line per check to stdout; tools/selftest.mjs spawns it and folds each
@@ -102,6 +103,62 @@ function makeFakeAnthropic(behaviours, counter) {
   return Anthropic;
 }
 
+// ---------- fake openai (lib/grok.js talks to xAI through this SDK) ----------
+
+class FakeOpenAIApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+class FakeOpenAIAuthenticationError extends FakeOpenAIApiError {}
+class FakeOpenAIPermissionDeniedError extends FakeOpenAIApiError {}
+class FakeOpenAINotFoundError extends FakeOpenAIApiError {}
+class FakeOpenAIRateLimitError extends FakeOpenAIApiError {}
+class FakeOpenAIAPIConnectionError extends FakeOpenAIApiError {}
+class FakeOpenAIBadRequestError extends FakeOpenAIApiError {}
+class FakeOpenAIAPIError extends FakeOpenAIApiError {}
+class FakeOpenAIInternalServerError extends FakeOpenAIApiError {}
+
+/**
+ * `behaviours`: a queue consumed one per call to chat.completions.create(...).
+ * A "throw" behaves like the real SDK failing before any stream opens, which
+ * is the case that matters for the retry loop — lib/grok.js never gets as far
+ * as reading a chunk.
+ */
+function makeFakeOpenAI(behaviours, counter) {
+  const queue = behaviours.slice();
+  function OpenAI() {}
+  OpenAI.prototype.chat = {
+    completions: {
+      create: async () => {
+        counter.calls++;
+        const next = queue.shift();
+        if (!next) throw new Error('fake ran out of scripted behaviour');
+        if (next.throw) throw next.throw;
+        const text = JSON.stringify(next.data || {});
+        return (async function* () {
+          yield { choices: [{ delta: { content: text } }] };
+          yield {
+            choices: [{ delta: {}, finish_reason: 'stop' }],
+            usage: { prompt_tokens: 1, completion_tokens: 1 },
+          };
+        })();
+      },
+    },
+  };
+  OpenAI.prototype.models = { list: async () => (async function* () {})() };
+  OpenAI.AuthenticationError = FakeOpenAIAuthenticationError;
+  OpenAI.PermissionDeniedError = FakeOpenAIPermissionDeniedError;
+  OpenAI.NotFoundError = FakeOpenAINotFoundError;
+  OpenAI.RateLimitError = FakeOpenAIRateLimitError;
+  OpenAI.APIConnectionError = FakeOpenAIAPIConnectionError;
+  OpenAI.BadRequestError = FakeOpenAIBadRequestError;
+  OpenAI.APIError = FakeOpenAIAPIError;
+  OpenAI.InternalServerError = FakeOpenAIInternalServerError;
+  return OpenAI;
+}
+
 /** Installs a fake in the require cache so lib/*.js resolve it, not the real package. */
 function stub(specifier, fakeExports) {
   const resolved = require.resolve(specifier);
@@ -122,6 +179,14 @@ function loadClaude(behaviours) {
   stub('@anthropic-ai/sdk', makeFakeAnthropic(behaviours, counter));
   process.env.ANTHROPIC_API_KEY = 'fake-key-for-testing';
   return { engine: require('../../lib/claude.js'), counter };
+}
+
+function loadGrok(behaviours) {
+  const counter = { calls: 0 };
+  delete require.cache[require.resolve('../../lib/grok.js')];
+  stub('openai', makeFakeOpenAI(behaviours, counter));
+  process.env.XAI_API_KEY = 'fake-key-for-testing';
+  return { engine: require('../../lib/grok.js'), counter };
 }
 
 /** Runs one analyseProfile() call to completion, never letting it reject unseen. */
@@ -220,6 +285,58 @@ async function main() {
     check('Claude: an unclassified API error does not crash describeError (regression)',
       !threw, threw && threw.message);
     check('Claude: an unclassified API error is still reported, not swallowed',
+      Boolean(described) && described.status === 502 && /418/.test(described.message),
+      described && JSON.stringify(described));
+  }
+
+  // ---------- Grok ----------
+
+  {
+    const { engine, counter } = loadGrok([
+      { throw: new FakeOpenAIInternalServerError('Internal Server Error', 503) },
+      { throw: new FakeOpenAIInternalServerError('Internal Server Error', 503) },
+      { data: { ok: true } },
+    ]);
+    const outcome = await attempt(engine);
+    check('Grok: recovers after two overloaded responses',
+      Boolean(outcome.data && outcome.data.ok === true), JSON.stringify(outcome));
+    check('Grok: recovering took exactly three attempts', counter.calls === 3, counter.calls + ' calls');
+  }
+
+  {
+    const { engine, counter } = loadGrok(Array.from({ length: 10 }, () =>
+      ({ throw: new FakeOpenAIInternalServerError('Internal Server Error', 503) })));
+    const outcome = await attempt(engine);
+    check('Grok: gives up after exactly 4 attempts (1 try + 3 retries)', counter.calls === 4, counter.calls + ' calls');
+    const described = outcome.error ? engine.describeError(outcome.error) : null;
+    check('Grok: the final error names automatic retrying',
+      Boolean(described) && /retrying automatically/i.test(described.message), described && described.message);
+    check('Grok: the final error is a 503', Boolean(described) && described.status === 503,
+      described && String(described.status));
+  }
+
+  {
+    const { engine, counter } = loadGrok([{ throw: new FakeOpenAIAuthenticationError('invalid api key', 401) }]);
+    const outcome = await attempt(engine);
+    check('Grok: does not retry an auth failure', counter.calls === 1, counter.calls + ' attempts');
+    const described = outcome.error ? engine.describeError(outcome.error) : null;
+    check('Grok: an auth failure is still reported as one',
+      Boolean(described) && /no valid xAI API key/i.test(described.message), described && described.message);
+  }
+
+  {
+    const { engine } = loadGrok([{ throw: new FakeOpenAIAPIError('teapot', 418) }]);
+    const outcome = await attempt(engine);
+    let described;
+    let threw = null;
+    try {
+      described = outcome.error ? engine.describeError(outcome.error) : null;
+    } catch (describeErrorThrew) {
+      threw = describeErrorThrew;
+    }
+    check('Grok: an unclassified API error does not crash describeError',
+      !threw, threw && threw.message);
+    check('Grok: an unclassified API error is still reported, not swallowed',
       Boolean(described) && described.status === 502 && /418/.test(described.message),
       described && JSON.stringify(described));
   }

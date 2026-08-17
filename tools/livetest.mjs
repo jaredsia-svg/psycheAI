@@ -1,9 +1,10 @@
-// Live check against whichever provider is configured — Gemini or Anthropic.
-// Skips cleanly without credentials, so it is safe to run in CI.
+// Live check against whichever provider is configured — Grok, Gemini or
+// Anthropic. Skips cleanly without credentials, so it is safe to run in CI.
 //
+//   XAI_API_KEY=...       node tools/livetest.mjs
 //   GEMINI_API_KEY=...    node tools/livetest.mjs
 //   ANTHROPIC_API_KEY=... node tools/livetest.mjs
-//   PSYCHEAI_PROVIDER=anthropic node tools/livetest.mjs   # when both are set
+//   PSYCHEAI_PROVIDER=anthropic node tools/livetest.mjs   # when more than one is set
 //
 // This is the one thing the mock-mode suites cannot cover: that the prompts
 // and schemas are actually accepted by the API and that the model fills every
@@ -23,7 +24,7 @@ const status = provider.describe();
 
 if (!status.ready || status.mock) {
   console.log('\n  livetest skipped — ' +
-    (status.mock ? 'mock mode is on.' : 'no GEMINI_API_KEY or ANTHROPIC_API_KEY set.') + '\n');
+    (status.mock ? 'mock mode is on.' : 'no XAI_API_KEY, GEMINI_API_KEY or ANTHROPIC_API_KEY set.') + '\n');
   process.exit(0);
 }
 

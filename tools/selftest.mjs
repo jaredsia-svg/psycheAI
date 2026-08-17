@@ -42,17 +42,18 @@ const prompts = await import('../lib/prompts.js').then(m => m.default);
 const mock = await import('../lib/mock.js').then(m => m.default);
 const claude = await import('../lib/claude.js').then(m => m.default);
 const gemini = await import('../lib/gemini.js').then(m => m.default);
+const grok = await import('../lib/grok.js').then(m => m.default);
 process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
   join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
 const recipients = await import('../lib/recipients.js').then(m => m.default);
 
 // ---------- provider parity ----------
 //
-// Both providers share the prompts and schemas and must be interchangeable
-// from the server's point of view, so assert the interface rather than
-// trusting it.
+// All three real providers share the prompts and schemas and must be
+// interchangeable from the server's point of view, so assert the interface
+// rather than trusting it.
 
-for (const engine of [claude, gemini, mock]) {
+for (const engine of [claude, gemini, grok, mock]) {
   const missing = ['name', 'analyseProfile', 'analyseCompatibility', 'describeError', 'hasKey', 'MODEL']
     .filter(key => !(key in engine));
   check(engine.name + ' implements the provider interface', missing.length === 0, 'missing ' + missing);
@@ -105,8 +106,9 @@ for (const engine of [claude, gemini, mock]) {
   rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
 }
 
-check('providers are distinguishable', new Set([claude.name, gemini.name, mock.name]).size === 3);
+check('providers are distinguishable', new Set([claude.name, gemini.name, grok.name, mock.name]).size === 4);
 check('gemini can list models for discovery', typeof gemini.listModels === 'function');
+check('grok can list models for discovery', typeof grok.listModels === 'function');
 
 // ---------- Gemini context caching ----------
 //
