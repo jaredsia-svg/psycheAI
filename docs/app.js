@@ -206,77 +206,27 @@
     return '<div class="pc-stat">' + cardLab(icon, label) + '<p class="pc-phrase">' + esc(value) + '</p></div>';
   }
 
-  // Four to six lines of the report's own opening, rather than the card's
-  // two-sentence version — and always whole sentences.
-  //
-  // The first version of this appended an ellipsis when it could not find a
-  // sentence break inside the window, which put a visible "…" on the card and
-  // left the reader looking at a thought that stops halfway. A shorter complete
-  // passage beats a longer truncated one, so when no sentence ends in range it
-  // falls back through the card's own two-sentence summary to the first
-  // sentence of the report. None of those paths can produce an ellipsis.
-  // The summary's share of the paragraph. Lower than it was, because two more
-  // sentences now follow it and the whole thing still has to read as one
-  // passage rather than a wall.
-  const CARD_BLURB_MAX = 260;
-  function firstSentence(text) {
-    const end = Math.min(...['. ', '! ', '? ']
-      .map(mark => text.indexOf(mark))
-      .filter(at => at > 0)
-      .concat([text.length]));
-    return text.slice(0, Math.min(end + 1, text.length)).trim();
-  }
-  function cardSummary(report) {
-    const full = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
-    const short = String((report && report.card && report.card.summary) || '').trim();
-    if (!full) return short;
-    if (full.length <= CARD_BLURB_MAX) return full;
-    const head = full.slice(0, CARD_BLURB_MAX);
-    const stop = Math.max(head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '));
-    if (stop > CARD_BLURB_MAX * 0.4) return head.slice(0, stop + 1).trim();
-    return short || firstSentence(full);
+  // Split on a sentence-ending mark followed by whitespace, keeping the mark
+  // with the sentence it closes.
+  function splitSentences(text) {
+    return String(text || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
   }
 
-  // One sentence off the strongest thing the report found, for people and for
-  // work. The `detail` runs two or three sentences and the first carries the
-  // finding; the `title` is a headline rather than a sentence, so it is only a
-  // fallback and gets a full stop put on it. `skip` picks the Nth strongest
-  // finding rather than always the first, so a second relationship sentence
-  // does not just repeat the one already used.
-  function strengthSentence(rows, skip) {
-    const eligible = (rows || []).filter(row => row && (row.detail || row.title));
-    const top = eligible[skip || 0];
-    if (!top) return '';
-    const detail = String(top.detail || '').trim();
-    if (detail) return firstSentence(detail);
-    const title = String(top.title || '').trim();
-    return title ? title.replace(/[.!?]*$/, '') + '.' : '';
-  }
+  const CARD_BLURB_SENTENCES = 5;
 
-  // The summary, then why the character comparison holds, one finding on
-  // energy, then two on relationship or social strengths and one on work.
-  // Six findings rather than three, because the card is the only part of the
-  // report most readers will look at twice and a short paragraph was leaving
-  // real findings — the extraversion reading, a second relationship strength
-  // — sitting unused one section away.
-  //
-  // Energy is read from the report's evidence-backed prose here (the Big
-  // Five extraversion reading) rather than repeating the card's own short
-  // `energy` phrase shown in the stat row below — the paragraph earns its
-  // length with new detail instead of restating the same few words twice on
-  // one card.
+  // The card's paragraph is a condensed version of one thing — the "Who you
+  // are" section's own narrative (`report.summary`) — rather than a splice of
+  // findings pulled from several sections. It stays positive-to-neutral by
+  // construction rather than by scanning for negative words after the fact:
+  // `report.summary` is written as the report's own affirming portrait (type,
+  // traits, values, how they are to be close to and how they work), and this
+  // never reaches into `relationship.weaknesses`, `career.weaknesses` or the
+  // roast, which is where the report's critical material actually lives.
   function cardBlurb(report) {
-    const essence = report && report.essence;
-    const extraversion = report && report.bigFive && report.bigFive.extraversion;
-    const relationshipStrengths = report && report.relationship && report.relationship.strengths;
-    return [
-      cardSummary(report),
-      essence && essence.why ? firstSentence(essence.why) : '',
-      extraversion && extraversion.reading ? firstSentence(extraversion.reading) : '',
-      strengthSentence(relationshipStrengths),
-      strengthSentence(relationshipStrengths, 1),
-      strengthSentence(report && report.career && report.career.strengths),
-    ].filter(Boolean).join(' ');
+    const summary = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
+    const sentences = splitSentences(summary).slice(0, CARD_BLURB_SENTENCES);
+    if (sentences.length) return sentences.join(' ');
+    return String((report && report.card && report.card.summary) || '').trim();
   }
 
   const titlesOf = (rows, limit) => (rows || []).slice(0, limit)

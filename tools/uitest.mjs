@@ -1561,7 +1561,7 @@ try {
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
     JSON.stringify(cardText.match(/slight|moderate|clear/g)));
-  // Four to six lines of the report's own opening rather than the card's
+  // Several lines of the report's own opening rather than the card's
   // two-sentence version, so the summary is worth reading on its own.
   // offsetHeight, not getBoundingClientRect: the card is drawn under a scale
   // transform, which shrinks the rect but not the computed line-height, so the
@@ -1572,43 +1572,23 @@ try {
     return Math.round(el.offsetHeight / parseFloat(getComputedStyle(el).lineHeight));
   });
   check('the summary runs several lines rather than a single strapline',
-    blurbLines >= 4 && blurbLines <= 10, blurbLines + ' lines');
-  // The paragraph carries six findings, not three: the report's opening, why
-  // the character comparison holds, one finding on energy, two on
-  // relationship or social strengths, and one on work. Checked against the
-  // stored report rather than against fixed text, so it fails if the card
-  // ever starts inventing sentences instead of quoting the analysis it sits
-  // above.
+    blurbLines >= 3 && blurbLines <= 10, blurbLines + ' lines');
+  // The paragraph is up to five sentences of report.summary itself, in order
+  // — nothing spliced in from relationship, career or the essence rationale.
+  // Checked against the stored report rather than fixed text, so it fails if
+  // the card ever starts inventing or reordering sentences.
   const blurbSources = await page.evaluate(() => {
-    const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s/)[0].trim();
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
     const blurb = document.querySelector('#psyche-card .pc-blurb').innerText;
-    const opener = (rows, skip) => {
-      const eligible = (rows || []).filter(row => row && (row.detail || row.title));
-      const top = eligible[skip || 0];
-      return firstSentence((top && (top.detail || top.title)) || '');
-    };
-    const why = firstSentence(report.essence && report.essence.why);
-    const energy = firstSentence(report.bigFive && report.bigFive.extraversion && report.bigFive.extraversion.reading);
-    const relStrengths = report.relationship && report.relationship.strengths;
-    const rel1 = opener(relStrengths, 0);
-    const rel2 = opener(relStrengths, 1);
+    const summary = String(report.summary || '').replace(/\s*\n+\s*/g, ' ').trim();
+    const sentences = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 5);
     return {
-      hasRel: Boolean(rel1) && blurb.includes(rel1),
-      hasRel2: Boolean(rel2) && blurb.includes(rel2) && rel2 !== rel1,
-      hasWork: blurb.includes(opener(report.career && report.career.strengths)),
-      hasWhy: Boolean(why) && blurb.includes(why),
-      hasEnergy: Boolean(energy) && blurb.includes(energy),
-      startsWithSummary: blurb.startsWith(report.summary.split(/\s*\n+\s*/)[0].slice(0, 40)),
+      matchesFirstFiveSentences: blurb.replace(/\s+/g, ' ').trim() === sentences.join(' ').replace(/\s+/g, ' ').trim(),
+      sentenceCount: sentences.length,
     };
   });
-  check('the paragraph adds a sentence on the character comparison and on energy',
-    blurbSources.hasWhy && blurbSources.hasEnergy,
-    JSON.stringify(blurbSources));
-  check('the paragraph adds a second, different sentence on relationship strengths',
-    blurbSources.hasRel2, JSON.stringify(blurbSources));
-  check('the paragraph adds a sentence on people and one on work',
-    blurbSources.hasRel && blurbSources.hasWork && blurbSources.startsWithSummary,
+  check('the paragraph is exactly the summary\'s own first five sentences',
+    blurbSources.matchesFirstFiveSentences && blurbSources.sentenceCount <= 5,
     JSON.stringify(blurbSources));
 
   check('the psyche card sits above the written report',
