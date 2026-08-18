@@ -17,6 +17,7 @@
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
   const axisLabel = Copy.axisLabel;
+  const ENNEAGRAM_DESCRIPTIONS = Copy.ENNEAGRAM_DESCRIPTIONS;
 
   const $ = sel => document.querySelector(sel);
   const KEYS = {
@@ -269,6 +270,9 @@
     const enneagramLabel = enneagram.type
       ? esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '')
       : '';
+    // The type's own textbook definition, not this person's — see
+    // ENNEAGRAM_DESCRIPTIONS for why that split matters.
+    const enneagramDesc = ENNEAGRAM_DESCRIPTIONS[enneagram.type] || '';
 
     const blurb = cardBlurb(report);
 
@@ -306,6 +310,7 @@
         (enneagramLabel ? '<div class="pc-stat">' + cardLab(CARD_ICONS.enneagram, TEXT.cardEnneagram) +
           '<p class="pc-big">' + enneagramLabel + '</p>' +
           (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
+          (enneagramDesc ? '<p class="pc-desc">' + esc(enneagramDesc) + '</p>' : '') +
           '</div>' : '') +
         (bigFiveRows.length ? '<div class="pc-stat">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
           bigFiveRows.map(row => '<p class="pc-trait">' + esc(row.label) + ' <b>' + row.score + '</b></p>').join('') +

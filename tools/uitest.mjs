@@ -1624,6 +1624,26 @@ try {
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
     JSON.stringify(cardText.match(/slight|moderate|clear/g)));
+  // The type's own fixed definition (docs/copy.js's ENNEAGRAM_DESCRIPTIONS),
+  // not a personalised reading — sits under the nickname in the Enneagram
+  // block, one sentence, so the badge and the nickname mean something to a
+  // reader who has never heard of the Enneagram.
+  check('the Enneagram box carries a one-sentence description of the type',
+    await page.evaluate(() => {
+      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
+      const enneagram = stats.find(s => /Enneagram/i.test(s.querySelector('.pc-lab').textContent));
+      const desc = enneagram && enneagram.querySelector('.pc-desc');
+      return Boolean(desc) && desc.textContent.trim().length > 0 &&
+        desc.compareDocumentPosition(enneagram.querySelector('.pc-sub')) === Node.DOCUMENT_POSITION_PRECEDING;
+    }), cardText.replace(/\s+/g, ' ').slice(0, 260));
+  check('the description matches the type shown, not a different one',
+    await page.evaluate(() => {
+      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
+      const enneagram = stats.find(s => /Enneagram/i.test(s.querySelector('.pc-lab').textContent));
+      const type = enneagram.querySelector('.pc-big').textContent.trim().charAt(0);
+      const desc = enneagram.querySelector('.pc-desc').textContent.trim();
+      return desc === window.PsycheCopy.ENNEAGRAM_DESCRIPTIONS[type];
+    }));
   // Whole sentences only. Truncating to a character count and appending an
   // ellipsis put a visible "…" on the card and left the reader with a thought
   // that stops halfway; a shorter complete passage is the better trade.

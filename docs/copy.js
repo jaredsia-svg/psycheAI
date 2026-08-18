@@ -44,6 +44,24 @@
     return { name: pole.name, against: MBTI_POLES[pole.opposite].name };
   }
 
+  // One neutral, textbook sentence per type — fixed vocabulary the same way
+  // MBTI_POLES is, and for the same reason: it describes the type itself,
+  // not this person, so it is resolved here rather than asked of the model.
+  // The card's own `why` field is the personalised version of this and runs
+  // five or six sentences, too long for the card; this is the one-line
+  // definition that makes the nickname legible on its own.
+  const ENNEAGRAM_DESCRIPTIONS = {
+    1: 'Principled and improvement-driven, with a strong inner critic and a fear of being wrong.',
+    2: 'Warm and generous, driven to be needed and to earn love through giving.',
+    3: 'Success-driven and adaptable, oriented around image and getting things done.',
+    4: 'Introspective and expressive, drawn to what feels authentic and wary of being ordinary.',
+    5: 'Curious and self-contained, gathering knowledge while guarding their time and energy.',
+    6: 'Committed and vigilant, scanning for risk and seeking security through trust.',
+    7: 'Spontaneous and optimistic, chasing new experiences to outrun discomfort.',
+    8: 'Assertive and protective, wanting control and resisting being controlled.',
+    9: 'Easygoing and accommodating, seeking harmony and often merging with other people\'s agendas.',
+  };
+
   // One glyph per block on the psyche card. Emoji rather than artwork for the
   // same reason the essence icon is: the card has to survive being a PDF, a
   // screenshot and a print, and an emoji needs no asset pipeline to do it.
@@ -328,7 +346,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, CARD_ICONS, ACTIVITY_FACETS, MODE_LABELS,
-    WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, ENNEAGRAM_DESCRIPTIONS, LOVE_LANGUAGE_ICONS, CARD_ICONS,
+    ACTIVITY_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
