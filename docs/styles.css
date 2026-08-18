@@ -1355,8 +1355,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   justify-content: space-between; align-items: baseline; line-height: 1.25;
 }
 .pc-trait b { font-variant-numeric: tabular-nums; }
-.pc-hi { color: var(--good); }
-.pc-lo { color: var(--ink-soft); }
 
 .pc-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .pc-row-2 { grid-template-columns: 1fr 1fr; }

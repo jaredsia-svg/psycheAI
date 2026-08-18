@@ -145,21 +145,15 @@
   const CARD_BAR_SPACE = 84;
   const NARROW_ASPECT = 0.62;
 
-  // The strongest and weakest of the five, named. Ties break on the fixed key
-  // order, which is arbitrary but stable — the alternative is a card whose
-  // "highest" trait changes between renders of the same report.
-  function bigFiveEnds(bigFive) {
-    const rows = Object.keys(TRAIT_LABELS)
+  // Four of the five traits, in a fixed order rather than picked out by
+  // score — extraversion is left off deliberately, since the MBTI block
+  // above already carries the E/I letter and showing it a second time here
+  // would be the same finding stated twice on one card.
+  const BIG_FIVE_CARD_KEYS = ['openness', 'conscientiousness', 'agreeableness', 'neuroticism'];
+  function bigFiveCardRows(bigFive) {
+    return BIG_FIVE_CARD_KEYS
       .map(key => ({ key, label: TRAIT_LABELS[key], score: (bigFive && bigFive[key] && bigFive[key].score) || 0 }))
       .filter(row => row.score > 0);
-    if (!rows.length) return null;
-    let high = rows[0];
-    let low = rows[0];
-    for (const row of rows) {
-      if (row.score > high.score) high = row;
-      if (row.score < low.score) low = row;
-    }
-    return high === low ? null : { high, low };
   }
 
   // The mark as inline SVG, from the same path data the nav, the PDF and the QR
@@ -263,7 +257,7 @@
     const name = essenceName(essence);
     const mbti = report.mbti || {};
     const enneagram = report.enneagram || {};
-    const ends = bigFiveEnds(report.bigFive);
+    const bigFiveRows = bigFiveCardRows(report.bigFive);
     const love = (report.relationship && report.relationship.loveLanguages) || {};
     const confidence = Number(card.confidence);
     const hasConfidence = Number.isFinite(confidence) && confidence > 0;
@@ -313,9 +307,8 @@
           '<p class="pc-big">' + enneagramLabel + '</p>' +
           (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
           '</div>' : '') +
-        (ends ? '<div class="pc-stat">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
-          '<p class="pc-trait pc-hi">' + esc(ends.high.label) + ' <b>' + ends.high.score + '</b></p>' +
-          '<p class="pc-trait pc-lo">' + esc(ends.low.label) + ' <b>' + ends.low.score + '</b></p>' +
+        (bigFiveRows.length ? '<div class="pc-stat">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
+          bigFiveRows.map(row => '<p class="pc-trait">' + esc(row.label) + ' <b>' + row.score + '</b></p>').join('') +
           '</div>' : '') +
       '</div>' +
 

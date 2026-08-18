@@ -1631,13 +1631,25 @@ try {
   check('the summary is never cut off mid-thought with an ellipsis',
     !/[…]|\.\.\./.test(blurbText) && /[.!?]$/.test(blurbText.trim()),
     JSON.stringify(blurbText.slice(-60)));
-  check('the Big Five block names only the highest and the lowest',
+  // Extraversion is left off deliberately — the MBTI block above already
+  // carries the E/I letter, so all four of the other traits are shown
+  // instead of just the highest and lowest.
+  check('the Big Five block names four traits, with real scores, in a fixed order',
     await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
-      if (rows.length !== 2) return false;
-      const nums = rows.map(r => Number((r.textContent.match(/(\d+)\s*$/) || [])[1]));
-      return nums[0] > nums[1];
-    }), cardText.replace(/\s+/g, ' ').slice(0, 200));
+      if (rows.length !== 4) return false;
+      const texts = rows.map(r => r.textContent);
+      const order = ['Openness', 'Conscientiousness', 'Agreeableness', 'Emotional sensitivity'];
+      return order.every((label, i) => texts[i].includes(label)) &&
+        texts.join(' ').includes('62') && texts.join(' ').includes('71') &&
+        texts.join(' ').includes('77') && texts.join(' ').includes('35');
+    }), cardText.replace(/\s+/g, ' ').slice(0, 260));
+  check('extraversion does not appear a second time in the Big Five block',
+    await page.evaluate(() => {
+      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
+      const bigFive = stats.find(s => /Big Five/i.test(s.querySelector('.pc-lab').textContent));
+      return Boolean(bigFive) && !/Extraversion/.test(bigFive.textContent);
+    }));
   check('values, beliefs and interests share one row',
     await page.evaluate(() => {
       const cols = [...document.querySelectorAll('#psyche-card .pc-row:not(.pc-row-2) .pc-col')];
