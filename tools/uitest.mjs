@@ -1549,14 +1549,14 @@ try {
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
   // same information twice.
-  check('the MBTI block is labelled MBTI, and names the type under its letters',
+  check('the MBTI block is labelled MBTI, names the type in its letters, and drops the type name',
     await page.evaluate(() => {
       const stat = document.querySelector('#psyche-card .pc-stat');
       const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
-      const name = stat.querySelector('.pc-mbti-name');
       return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
         letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
-        Boolean(name) && /^The /.test(name.textContent.trim());
+        stat.querySelectorAll('.pc-mbti-name').length === 0 &&
+        !/The Protagonist/.test(stat.textContent);
     }), cardText.replace(/\s+/g, ' ').slice(0, 110));
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
@@ -1612,14 +1612,14 @@ try {
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
   // same information twice.
-  check('the MBTI block is labelled MBTI, and names the type under its letters',
+  check('the MBTI block is labelled MBTI, names the type in its letters, and drops the type name',
     await page.evaluate(() => {
       const stat = document.querySelector('#psyche-card .pc-stat');
       const letters = [...stat.querySelectorAll('.pc-letter b')].map(b => b.textContent).join('');
-      const name = stat.querySelector('.pc-mbti-name');
       return /MBTI/.test(stat.querySelector('.pc-lab').textContent) &&
         letters === 'ENFJ' && !stat.querySelector('.pc-big') &&
-        Boolean(name) && /^The /.test(name.textContent.trim());
+        stat.querySelectorAll('.pc-mbti-name').length === 0 &&
+        !/The Protagonist/.test(stat.textContent);
     }), cardText.replace(/\s+/g, ' ').slice(0, 110));
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
@@ -1669,6 +1669,24 @@ try {
       const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
       const bigFive = stats.find(s => /Big Five/i.test(s.querySelector('.pc-lab').textContent));
       return Boolean(bigFive) && !/Extraversion/.test(bigFive.textContent);
+    }));
+  check('each Big Five trait carries a bullet', await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
+    return rows.length > 0 && rows.every(row => getComputedStyle(row, '::before').content.includes('•'));
+  }));
+  // The box is stretched to match the taller MBTI/Enneagram blocks beside it
+  // (grid rows default to align-items: stretch); the four rows should use
+  // that height rather than sitting bunched at the top with empty space
+  // below them, so the last row's bottom edge should land near the box's,
+  // not partway up it.
+  check('the Big Five rows spread to fill the box rather than bunching at the top',
+    await page.evaluate(() => {
+      const stat = [...document.querySelectorAll('#psyche-card .pc-stat')]
+        .find(s => /Big Five/i.test(s.querySelector('.pc-lab').textContent));
+      const rows = [...stat.querySelectorAll('.pc-trait')];
+      const box = stat.getBoundingClientRect();
+      const lastRow = rows[rows.length - 1].getBoundingClientRect();
+      return (box.bottom - lastRow.bottom) < (box.height * 0.25);
     }));
   check('values, beliefs and interests share one row',
     await page.evaluate(() => {

@@ -302,18 +302,16 @@
         // and says how firmly each letter was picked.
         '<div class="pc-stat">' + cardLab(CARD_ICONS.type, TEXT.cardType) +
           (letters ? '<div class="pc-letters">' + letters + '</div>' : '') +
-          // The name under the letters rather than the four-letter code above
-          // them: "The Protagonist" is the part a reader repeats, and the row
-          // already spells the code out.
-          (mbti.nickname ? '<p class="pc-sub pc-mbti-name">' + esc(mbti.nickname) + '</p>' : '') +
           '</div>' +
         (enneagramLabel ? '<div class="pc-stat">' + cardLab(CARD_ICONS.enneagram, TEXT.cardEnneagram) +
           '<p class="pc-big">' + enneagramLabel + '</p>' +
           (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
           (enneagramDesc ? '<p class="pc-desc">' + esc(enneagramDesc) + '</p>' : '') +
           '</div>' : '') +
-        (bigFiveRows.length ? '<div class="pc-stat">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
+        (bigFiveRows.length ? '<div class="pc-stat pc-stat-bigfive">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
+          '<div class="pc-trait-list">' +
           bigFiveRows.map(row => '<p class="pc-trait">' + esc(row.label) + ' <b>' + row.score + '</b></p>').join('') +
+          '</div>' +
           '</div>' : '') +
       '</div>' +
 
