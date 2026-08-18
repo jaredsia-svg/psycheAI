@@ -1573,22 +1573,30 @@ try {
   });
   check('the summary runs several lines rather than a single strapline',
     blurbLines >= 3 && blurbLines <= 10, blurbLines + ' lines');
-  // The paragraph is up to five sentences of report.summary itself, in order
-  // — nothing spliced in from relationship, career or the essence rationale.
-  // Checked against the stored report rather than fixed text, so it fails if
-  // the card ever starts inventing or reordering sentences.
+  // Four sentences from four different places — the summary's opening two,
+  // then one dedicated relationship strength and one dedicated career
+  // strength — checked against the stored report rather than fixed text, so
+  // it fails if the card ever starts inventing sentences or drifting onto a
+  // different source.
   const blurbSources = await page.evaluate(() => {
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
-    const blurb = document.querySelector('#psyche-card .pc-blurb').innerText;
-    const summary = String(report.summary || '').replace(/\s*\n+\s*/g, ' ').trim();
-    const sentences = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 5);
-    return {
-      matchesFirstFiveSentences: blurb.replace(/\s+/g, ' ').trim() === sentences.join(' ').replace(/\s+/g, ' ').trim(),
-      sentenceCount: sentences.length,
+    const blurb = document.querySelector('#psyche-card .pc-blurb').innerText.replace(/\s+/g, ' ').trim();
+    const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
+    const strengthSentence = rows => {
+      const top = (rows || []).find(row => row && (row.detail || row.title));
+      if (!top) return '';
+      const detail = String(top.detail || '').trim();
+      return detail ? firstSentence(detail) : (top.title ? String(top.title).trim().replace(/[.!?]*$/, '') + '.' : '');
     };
+    const summary = String(report.summary || '').replace(/\s*\n+\s*/g, ' ').trim();
+    const opening = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
+    const relationship = strengthSentence(report.relationship && report.relationship.strengths);
+    const career = strengthSentence(report.career && report.career.strengths);
+    const expected = [...opening, relationship, career].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+    return { blurb, expected, sentenceCount: [...opening, relationship, career].filter(Boolean).length };
   });
-  check('the paragraph is exactly the summary\'s own first five sentences',
-    blurbSources.matchesFirstFiveSentences && blurbSources.sentenceCount <= 5,
+  check('the paragraph is exactly four sentences: the summary\'s opening two, a relationship strength, a career strength',
+    blurbSources.blurb === blurbSources.expected && blurbSources.sentenceCount <= 4,
     JSON.stringify(blurbSources));
 
   check('the psyche card sits above the written report',

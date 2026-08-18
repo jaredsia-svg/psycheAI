@@ -203,20 +203,39 @@
   function splitSentences(text) {
     return String(text || '').trim().split(/(?<=[.!?])\s+/).filter(Boolean);
   }
+  const firstSentence = text => splitSentences(text)[0] || '';
 
-  const CARD_BLURB_SENTENCES = 5;
+  // One sentence off the strongest thing the report found. The `detail` runs
+  // two or three sentences and the first carries the finding; the `title` is
+  // a headline rather than a sentence, so it is only a fallback and gets a
+  // full stop put on it.
+  function strengthSentence(rows) {
+    const top = (rows || []).find(row => row && (row.detail || row.title));
+    if (!top) return '';
+    const detail = String(top.detail || '').trim();
+    if (detail) return firstSentence(detail);
+    const title = String(top.title || '').trim();
+    return title ? title.replace(/[.!?]*$/, '') + '.' : '';
+  }
 
-  // The card's paragraph is a condensed version of one thing — the "Who you
-  // are" section's own narrative (`report.summary`) — rather than a splice of
-  // findings pulled from several sections. It stays positive-to-neutral by
-  // construction rather than by scanning for negative words after the fact:
-  // `report.summary` is written as the report's own affirming portrait (type,
-  // traits, values, how they are to be close to and how they work), and this
-  // never reaches into `relationship.weaknesses`, `career.weaknesses` or the
-  // roast, which is where the report's critical material actually lives.
+  // Four sentences, each from a different part of the report, so nothing
+  // said once gets said again: the opening two sentences of report.summary —
+  // stopping there deliberately, before the summary's own paragraph on
+  // relationships and career begins — plus one dedicated relationship
+  // strength and one dedicated career strength, read straight from
+  // relationship.strengths and career.strengths rather than from the summary.
+  //
+  // It stays positive by construction rather than by scanning for negative
+  // words after the fact: report.summary is written as the report's own
+  // affirming portrait, and .strengths is never .weaknesses — this never
+  // reaches into relationship.weaknesses, career.weaknesses or the roast,
+  // which is where the report's critical material actually lives.
   function cardBlurb(report) {
     const summary = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
-    const sentences = splitSentences(summary).slice(0, CARD_BLURB_SENTENCES);
+    const opening = splitSentences(summary).slice(0, 2);
+    const relationship = strengthSentence(report && report.relationship && report.relationship.strengths);
+    const career = strengthSentence(report && report.career && report.career.strengths);
+    const sentences = [...opening, relationship, career].filter(Boolean);
     if (sentences.length) return sentences.join(' ');
     return String((report && report.card && report.card.summary) || '').trim();
   }
