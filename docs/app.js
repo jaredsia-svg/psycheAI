@@ -489,6 +489,44 @@
     reveal.focus();
   }
 
+  // The paid section. Same shape and the same reasoning as the bonus section
+  // above it — a cover that has to be opened on purpose rather than a card to
+  // scroll past — except this cover opens with a payment instead of a click,
+  // and the price is what is being consented to rather than the content.
+  //
+  // Nothing behind the cover is written into the markup here, same rule as
+  // bonusBlock: it ships only once the reader has actually unlocked it, so a
+  // page saved or view-sourced before that point never had it to give away.
+  // Today that content is a placeholder — see copy.js — but the gate is built
+  // for the real writing this section is going to hold, not for the stand-in.
+  function premiumBlock() {
+    const title = esc(TEXT.premium) + ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    const unlocked = Boolean(state.profile && state.profile.premiumUnlocked);
+    return '<div class="card section-card premium-card">' +
+      sectionHead('🔒', title, esc(TEXT.premiumSub)) +
+      '<div class="premium-cover"' + (unlocked ? ' hidden' : '') + '>' +
+      '<h3>' + esc(TEXT.premiumCoverTitle) + '</h3>' +
+      '<p>' + esc(TEXT.premiumCoverBlurb) + '</p>' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="' + unlocked + '">' +
+      esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel) + '</button></div>' +
+      '<div class="premium-body"' + (unlocked ? '' : ' hidden') + '>' +
+      (unlocked ? premiumBodyHtml() : '') + '</div></div>';
+  }
+
+  function premiumBodyHtml() {
+    return '<h3>' + esc(TEXT.premiumUnlockedTitle) + '</h3><p>' + esc(TEXT.premiumUnlockedBody) + '</p>';
+  }
+
+  /** Fills a cover's sibling body once the payment has actually gone through. */
+  function revealPremium(cover) {
+    const card = cover.closest('.premium-card');
+    const body = card.querySelector('.premium-body');
+    body.innerHTML = premiumBodyHtml();
+    body.hidden = false;
+    cover.hidden = true;
+    cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
+  }
+
   // The wrapper exists for print: a trait's bar, its reading and its evidence
   // are one thought, and a page break between them looks like a mistake.
   function bar(label, value, extra) {
@@ -550,7 +588,7 @@
         if (!response.ok) throw new Error('The sample could not be loaded.');
         return response.json();
       });
-      $('#sample-body').innerHTML = reportSectionsHtml(report, { bonus: false });
+      $('#sample-body').innerHTML = reportSectionsHtml(report, { bonus: false, premium: false });
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -685,6 +723,9 @@
     }
     const hide = event.target.closest('.bonus-hide');
     if (hide) hideBonus(hide);
+
+    const unlock = event.target.closest('.premium-unlock');
+    if (unlock) openPremiumDialog(unlock);
   });
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -1524,6 +1565,7 @@
    */
   function reportSectionsHtml(report, options) {
     const includeBonus = !options || options.bonus !== false;
+    const includePremium = !options || options.premium !== false;
     const head = sectionHead;
 
     let html = '';
@@ -1667,6 +1709,11 @@
     // just an insult rather than the thing it is on a real report, so the
     // sample leaves it out rather than showing it dressed as an example.
     if (includeBonus) html += bonusBlock(report.bonus);
+
+    // Below the roast, same reasoning as excluding the roast itself from the
+    // sample: nobody should be offered a card-payment prompt on a demo
+    // account that was never theirs to unlock.
+    if (includePremium) html += premiumBlock();
 
     // Confidence closes the report rather than opening it: read after the
     // whole thing, it says how much of what you just read to believe.
@@ -2196,6 +2243,152 @@
   $('#compat-dialog-close').addEventListener('click', () => $('#compat-dialog').close());
   $('#compat-dialog').addEventListener('click', event => {
     if (event.target === $('#compat-dialog')) $('#compat-dialog').close();
+  });
+
+  // ---------- premium unlock: Stripe's Payment Request Button ----------
+  //
+  // Apple Pay and Google Pay both come from the one integration point —
+  // Stripe decides at mount time which wallet, if either, this browser and
+  // device actually offer, rather than the app choosing between two buttons
+  // of its own. Stripe.js is the one script in this app not vendored under
+  // docs/vendor/: Stripe does not support a pinned local copy, since the file
+  // at this URL carries its own fraud-detection updates. Loaded lazily, on
+  // the first real (non-mock) Unlock press, rather than paid for by every
+  // visitor whether or not they ever reach this section.
+  let stripeJsLoad = null;
+  function loadStripeJs() {
+    if (window.Stripe) return Promise.resolve(window.Stripe);
+    if (!stripeJsLoad) {
+      stripeJsLoad = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://js.stripe.com/v3/';
+        script.onload = () => resolve(window.Stripe);
+        script.onerror = () => reject(new Error('Stripe could not be loaded.'));
+        document.head.appendChild(script);
+      });
+    }
+    return stripeJsLoad;
+  }
+
+  function premiumStatus(message, tone) {
+    const status = $('#premium-status');
+    status.textContent = message || '';
+    status.hidden = !message;
+    status.className = 'premium-status' + (tone ? ' is-' + tone : '');
+  }
+
+  /** Marks the report unlocked, persists it, and swaps the cover for the writing. */
+  function finishPremiumUnlock(cover, dialog) {
+    if (state.profile) {
+      state.profile.premiumUnlocked = true;
+      // Best-effort: a browser too full to hold this one extra boolean still
+      // leaves the reader with the unlock they already paid for, on screen,
+      // for the rest of this visit — it just will not survive a reload.
+      store.write(KEYS.profile, state.profile);
+    }
+    revealPremium(cover);
+    dialog.close();
+  }
+
+  /**
+   * Wires the real (non-mock) path: creates the PaymentRequest, mounts the
+   * button only if this browser can actually satisfy it, and confirms
+   * against the PaymentIntent lib/stripe.js already created server-side.
+   *
+   * `handleActions: false` on the first confirm, then a second unqualified
+   * confirm if Stripe comes back asking for one, is the two-step Stripe
+   * itself documents for this exact button — most cards clear on the first
+   * pass, and the second only ever runs for the ones that come back
+   * `requires_action`.
+   */
+  async function mountPaymentRequestButton(intent, cover, dialog) {
+    const Stripe = await loadStripeJs();
+    const stripe = Stripe(intent.publishableKey);
+    const paymentRequest = stripe.paymentRequest({
+      country: intent.country,
+      currency: intent.currency,
+      total: { label: 'Supplementary analysis', amount: intent.amount },
+      requestPayerName: false,
+      requestPayerEmail: false,
+    });
+
+    const canPay = await paymentRequest.canMakePayment();
+    if (!canPay) {
+      premiumStatus(TEXT.premiumNoWallet, 'bad');
+      return;
+    }
+
+    const prButton = stripe.elements().create('paymentRequestButton', { paymentRequest });
+    prButton.mount('#premium-payment-request-button');
+
+    paymentRequest.on('paymentmethod', async event => {
+      const confirmation = await stripe.confirmCardPayment(
+        intent.clientSecret, { payment_method: event.paymentMethod.id }, { handleActions: false });
+      if (confirmation.error) {
+        event.complete('fail');
+        premiumStatus(confirmation.error.message || TEXT.premiumFailed, 'bad');
+        return;
+      }
+      event.complete('success');
+      if (confirmation.paymentIntent.status === 'requires_action') {
+        const followUp = await stripe.confirmCardPayment(intent.clientSecret);
+        if (followUp.error) {
+          premiumStatus(followUp.error.message || TEXT.premiumFailed, 'bad');
+          return;
+        }
+      }
+      finishPremiumUnlock(cover, dialog);
+    });
+  }
+
+  /**
+   * Opens the dialog, then asks the server for a PaymentIntent. The button
+   * that triggered this is disabled for the round trip so a second click
+   * cannot open a second one, and re-enabled in `finally` regardless of how
+   * the attempt ends — cancelled, failed or unlocked all leave a clean cover
+   * behind, in case the reader closes the dialog and tries again.
+   */
+  async function openPremiumDialog(button) {
+    const dialog = $('#premium-dialog');
+    if (dialog.open) return;
+    $('#premium-dialog-title').textContent = TEXT.premiumDialogTitle;
+    $('#premium-dialog-blurb').textContent = TEXT.premiumDialogBlurb;
+    $('#premium-cancel').textContent = TEXT.premiumCancel;
+    $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-mock-pay').hidden = true;
+    premiumStatus('');
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+
+    const cover = button.closest('.premium-cover');
+    button.disabled = true;
+    try {
+      const response = await fetch('api/create-payment-intent', { method: 'POST' });
+      const intent = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error((intent && intent.error) || TEXT.premiumNotConfigured);
+
+      if (intent.mock) {
+        // The whole Stripe round trip stands in for a click here — mock mode
+        // never loads Stripe.js or touches the network again, the same way
+        // PSYCHEAI_MOCK=1 never calls a real model.
+        const mockButton = $('#premium-mock-pay');
+        mockButton.textContent = TEXT.premiumMockPay;
+        mockButton.hidden = false;
+        mockButton.onclick = () => finishPremiumUnlock(cover, dialog);
+        return;
+      }
+
+      await mountPaymentRequestButton(intent, cover, dialog);
+    } catch (error) {
+      premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  $('#premium-cancel').addEventListener('click', () => $('#premium-dialog').close());
+  $('#premium-dialog').addEventListener('click', event => {
+    if (event.target === $('#premium-dialog')) $('#premium-dialog').close();
   });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);

@@ -919,6 +919,32 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .bonus-body h3:first-of-type { margin-top: 0; }
 .bonus-hide { margin-top: .6rem; }
 
+/* The premium section's cover — the same grey, switched-off stripe treatment
+   as .bonus-cover just above, kept as its own rule rather than a shared class
+   because the two covers gate unrelated things (a content warning vs. a
+   paywall) and have no reason to stay coupled just because they currently
+   look alike. */
+.premium-cover {
+  position: relative; overflow: hidden;
+  border: 1px dashed var(--line); border-radius: var(--radius);
+  background: repeating-linear-gradient(
+    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
+  padding: 1.4rem clamp(1rem, 4vw, 1.8rem); text-align: center;
+}
+.premium-cover h3 { margin-top: 0; color: var(--ink-soft); }
+.premium-cover p { max-width: 54ch; margin-inline: auto; }
+.premium-unlock { margin: 0; }
+.premium-body h3:first-of-type { margin-top: 0; }
+
+/* The payment dialog. Same field/status shape as #mail-dialog, since both ask
+   for one thing before letting something through. The button element Stripe
+   mounts sizes itself to its container, so this just gives it room to sit
+   apart from the blurb above it and the cancel row below. */
+#premium-payment-request-button { margin: 1rem 0; min-height: 40px; }
+.premium-status { margin: .5rem 0 0; font-size: .9rem; }
+.premium-status.is-bad { color: var(--danger); }
+.premium-status.is-good { color: var(--good); }
+
 
 
 /* ---------- basis picker ---------- */

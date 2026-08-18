@@ -1026,6 +1026,11 @@ try {
   check('the sample does not offer the bonus roast at all',
     (await page.locator('#sample-body .bonus-card').count()) === 0 &&
     !/deliberately unkind/i.test(await page.locator('#sample-body').innerText()));
+  // Same reasoning as the roast: nobody should be offered a card-payment
+  // prompt for a report that was never theirs to unlock.
+  check('the sample does not offer the premium unlock at all',
+    (await page.locator('#sample-body .premium-card').count()) === 0 &&
+    !/Unlock it once for/i.test(await page.locator('#sample-body').innerText()));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.
@@ -1958,6 +1963,7 @@ try {
   check('the profile watermark does not double-count as a second .hero-mark',
     (await page.locator('.hero-mark').count()) <= 1);
   await shot('2-profile');
+  if (shots) await page.locator('#profile-body .premium-card').screenshot({ path: join(shotDir, '2a-premium-crop.png') });
 
   // The waiting screen speaks as the product, not as whichever model is wired
   // up behind it.
@@ -2230,6 +2236,86 @@ try {
   // gate only works once per page load.
   check('covering it again takes the writing back out of the page',
     !/uncharitable reading/i.test(reclosed.html) && reclosed.expanded === 'false');
+
+  // ---- the premium section ----
+  //
+  // Same shape as the bonus section just above, and tested the same way: the
+  // section sits below it and above confidence, the badge matches "Bonus
+  // Section"'s own design, and the cover reads as switched-off rather than as
+  // another card — dashed border, striped background, nothing behind it in
+  // the DOM until it is actually unlocked.
+  check('the premium section sits below the bonus roast and above confidence',
+    await page.evaluate(() => {
+      const bonus = document.querySelector('#profile-body .bonus-card');
+      const premium = document.querySelector('#profile-body .premium-card');
+      const confidence = document.querySelector('#profile-body .confidence-card');
+      if (!bonus || !premium || !confidence) return false;
+      return Boolean(bonus.compareDocumentPosition(premium) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(premium.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  check('the title reads "Supplementary analysis", with a "Premium users only" badge beside it',
+    await page.evaluate(() => {
+      const h2 = document.querySelector('#profile-body .premium-card .card-head h2');
+      const badge = h2 && h2.querySelector('.mode-badge');
+      return Boolean(badge) && badge.textContent.trim() === 'Premium users only' &&
+        h2.textContent.replace(/\s+/g, ' ').trim() === 'Supplementary analysis Premium users only';
+    }),
+    await page.evaluate(() =>
+      (document.querySelector('#profile-body .premium-card .card-head h2') || {}).innerHTML));
+  check('the cover reads as switched off — dashed border, striped background',
+    await page.evaluate(() => {
+      const style = getComputedStyle(document.querySelector('#profile-body .premium-cover'));
+      return style.borderStyle.includes('dashed') && /repeating-linear-gradient/.test(style.backgroundImage);
+    }));
+  check('the cover names the price and offers to unlock it',
+    /\$1\.99/.test(await page.locator('#profile-body .premium-cover').innerText()) &&
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('$1.99'));
+  check('the placeholder writing is absent from the page until it is unlocked',
+    !/Thanks for unlocking/i.test(await page.locator('#profile-body .premium-card').innerHTML()));
+
+  await clickClear(page, '#profile-body .premium-unlock');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  check('the unlock dialog opens with a title and a blurb',
+    /Unlock supplementary analysis/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()));
+  // The suite runs the server with PSYCHEAI_MOCK=1, so lib/stripe.js never
+  // touches a real Stripe account and app.js never loads Stripe.js at all —
+  // #premium-mock-pay stands in for the whole wallet round trip, the same
+  // way mock mode stands in for a real model call everywhere else in this
+  // suite. That also means the flow is deterministic here in a way the real
+  // Apple Pay / Google Pay path structurally cannot be: canMakePayment()
+  // depends on the device, which is exactly why the mock path exists for
+  // driving it in CI at all.
+  check('mock mode offers a simulate-payment button rather than a real wallet button',
+    await page.locator('#premium-mock-pay').isVisible() &&
+    (await page.locator('#premium-mock-pay').innerText()).includes('mock') &&
+    (await page.locator('#premium-payment-request-button').innerHTML()) === '');
+  if (shots) await page.locator('#premium-dialog').screenshot({ path: join(shotDir, '2b-premium-dialog-crop.png') });
+  await page.click('#premium-mock-pay');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+  const unlocked = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .premium-card');
+    return {
+      text: card.innerText,
+      coverHidden: card.querySelector('.premium-cover').hidden,
+      expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded'),
+    };
+  });
+  check('a simulated payment closes the dialog and reveals the placeholder',
+    /Thanks for unlocking/i.test(unlocked.text) && unlocked.coverHidden && unlocked.expanded === 'true');
+  check('the unlock is persisted, not just an in-memory flag',
+    (await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('psycheai_profile')).premiumUnlocked)) === true);
+
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  check('the unlock survives a reload, so a reader who paid does not pay twice',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .premium-card');
+      return Boolean(card) && card.querySelector('.premium-cover').hidden &&
+        /Thanks for unlocking/i.test(card.innerText);
+    }));
+
   // Held as an exact list rather than as "contains", so a control cannot
   // reappear here unnoticed. "Re-run the analysis" was one of three and is
   // gone: nothing in the app offers a second model call on the same export
@@ -2689,15 +2775,20 @@ try {
   // require the PDF to carry all of them, in the same order. This is what keeps
   // the two from drifting — the first version of this PDF split values from
   // beliefs, renamed half the sections and put behaviour in a different place.
-  // The bonus roast is the one deliberate exception to page/PDF parity: on
-  // screen it is behind a cover somebody has to open, and a PDF has no cover,
-  // so printing it would hand the harshest writing in the report to whoever
-  // the file reaches. Excluded here and asserted absent below. Its <h2> reads
-  // "Let us roast you Bonus Section" — the badge sits inside the same
-  // heading, so textContent picks up both.
+  // The bonus roast and the premium section are the deliberate exceptions to
+  // page/PDF parity. The roast sits behind a cover somebody has to open, and
+  // a PDF has no cover, so printing it would hand the harshest writing in the
+  // report to whoever the file reaches. The premium section sits behind a
+  // paywall for the same structural reason — a PDF cannot ask for a card —
+  // and today's placeholder text is not written to be handed around
+  // unlocked either. Both excluded here and asserted absent below. Each <h2>
+  // reads as title-plus-badge — "Let us roast you Bonus Section",
+  // "Supplementary analysis Premium users only" — since the badge sits
+  // inside the same heading and textContent picks up both.
   const pageSections = (await page.evaluate(() =>
     [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim())))
-    .filter(title => title !== 'Let us roast you Bonus Section');
+    .filter(title => title !== 'Let us roast you Bonus Section' &&
+      title !== 'Supplementary analysis Premium users only');
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
@@ -2747,6 +2838,11 @@ try {
     !/not an assessment, not a diagnosis/i.test(pdfText) &&
     !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
     String(pdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
+  check('the PDF leaves the premium section out entirely',
+    !pdfText.includes('(Supplementary analysis)') &&
+    !pdfText.includes('(This part of the report is locked)') &&
+    !/Unlock it once for/i.test(pdfText) && !/Thanks for unlocking/i.test(pdfText),
+    String(pdfText.match(/\(Supplementary analysis\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

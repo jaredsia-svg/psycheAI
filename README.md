@@ -74,6 +74,51 @@ downloading it — and pulled back out for now, since it needs a verified sendin
 doesn't have yet. It may return once one exists; nothing about the current design forecloses it, since
 the address collection this section describes is exactly the piece such a feature would reuse.
 
+### The $1.99 "Supplementary analysis" unlock
+
+One section of the report, **Supplementary analysis**, sits behind a one-time $1.99 charge rather than
+behind a click. It is built exactly like the bonus roast beside it — a cover in the page until the
+reader does something about it, nothing behind the cover written into the DOM until they do — except
+what unlocks it is a payment instead of a "show me anyway" button, taken on-site through Stripe's
+Payment Request Button so the browser offers Apple Pay or Google Pay directly. Today the unlocked
+content is a placeholder (see `premiumUnlockedBody` in `docs/copy.js`); the paywall was built to ship
+ahead of the writing it is eventually going to hold, not as a stand-in for it.
+
+```bash
+export STRIPE_SECRET_KEY=sk_...        # server-side only — creates the PaymentIntent
+export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
+export STRIPE_ACCOUNT_COUNTRY=US       # optional — the merchant's country, not the buyer's
+npm start
+```
+
+Both keys are required — `STRIPE_SECRET_KEY` alone reports not-ready, since a real charge needs the
+browser to have the publishable key too. `PSYCHEAI_MOCK=1` (`npm run mock`) skips Stripe entirely on
+both ends: the server hands back a fake PaymentIntent instead of calling Stripe's API, and the client
+never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" button stands in for the whole
+wallet round trip, the same way mock mode already stands in for a real model call. This is what
+`tools/uitest.mjs` drives to test the unlock flow end to end without a real card.
+
+**Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
+script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
+— but Stripe does not support a pinned local copy, since the file at that URL carries its own
+fraud-detection updates, and it is loaded on demand from `app.js` only once a reader actually presses
+Unlock rather than fetched by every visitor whether or not they ever reach this section.
+
+The amount is fixed in `lib/stripe.js` and never taken from the request — `POST /api/create-payment-
+intent` takes no body at all, so there is nothing a client could tamper with to change what it pays.
+The digest and the report never come near this file either: `createPaymentIntent` takes a description
+string and nothing else, the same discipline `recipients.record()` uses above for an email address.
+
+**What this does not do yet, on purpose:** there is no webhook, so a browser that closes the instant
+after Stripe confirms a charge — before `finishPremiumUnlock` writes `premiumUnlocked` to
+`localStorage` — has been charged without an unlock to show for it. Building that out means a public
+HTTPS endpoint registered with Stripe and a webhook signing secret, both deployment-specific in a way
+the rest of this app deliberately isn't, so it's left for whoever actually deploys this with real
+keys. The unlock is also purely local: it lives in the same `psycheai_profile` record everything else
+about a report does, so it is gone the moment that record is (a fresh analysis, "Delete everything",
+or simply a different browser) — there is no account for a payment to attach to, the same way there is
+no account for anything else in this app.
+
 ### Making the code scannable
 
 A whole profile is a lot of data for a QR code — about 630 characters, which comes out around **87
@@ -1698,7 +1743,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 563 checks: synthesises a real ZIP export and runs
+npm test           # 577 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1707,7 +1752,7 @@ npm test           # 563 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 758 checks: drives the real UI in Chromium against a
+npm run test:ui    # 770 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

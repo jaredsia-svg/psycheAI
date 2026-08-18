@@ -343,6 +343,25 @@
   </div>
 </dialog>
 
+<!-- The unlock flow for the paid "Supplementary analysis" section. Stripe.js
+     itself is not loaded here — it is the one script in this app fetched
+     from a CDN rather than vendored, since Stripe does not support a pinned
+     local copy, and it is injected on demand from app.js only once a reader
+     actually presses Unlock, rather than paid for by every visitor on every
+     page load. Mock mode never touches it at all: #premium-mock-pay stands
+     in for the whole Stripe round trip so the flow can be driven end to end
+     without a real card or a real key. -->
+<dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title">
+  <h2 id="premium-dialog-title"></h2>
+  <p class="muted" id="premium-dialog-blurb"></p>
+  <div id="premium-payment-request-button"></div>
+  <button class="btn" id="premium-mock-pay" type="button" hidden></button>
+  <p class="premium-status" id="premium-status" hidden></p>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
+  </div>
+</dialog>
+
 <dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
     <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
     <div class="card-dialog-bar">

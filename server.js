@@ -13,6 +13,7 @@ const path = require('node:path');
 const provider = require('./lib/provider');
 const prompts = require('./lib/prompts');
 const recipients = require('./lib/recipients');
+const payments = require('./lib/stripe');
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -72,7 +73,7 @@ function readJsonBody(request) {
 // ---------- routes ----------
 
 async function handleStatus(response) {
-  sendJson(response, 200, provider.describe());
+  sendJson(response, 200, { ...provider.describe(), payments: payments.describe() });
 }
 
 // Every analysis route needs a configured provider; refuse early and clearly
@@ -135,6 +136,19 @@ async function handleRecordEmail(request, response) {
   }
   recipients.record(address);
   sendJson(response, 200, { recorded: true });
+}
+
+// The amount is fixed in lib/stripe.js and never taken from the request — a
+// client is not trusted with what it pays. There is nothing else for the body
+// to carry: this route creates a PaymentIntent for exactly one product, the
+// supplementary-analysis unlock, and nothing report-shaped is anywhere near
+// its signature — same discipline as handleRecordEmail above.
+async function handleCreatePaymentIntent(response) {
+  if (!payments.hasKey()) {
+    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+    return;
+  }
+  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — Supplementary analysis unlock'));
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -207,7 +221,8 @@ const server = http.createServer((request, response) => {
           : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
             : route === '/api/record-email' && request.method === 'POST' ? () => handleRecordEmail(request, response)
               : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
-                : null;
+                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(response)
+                  : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });

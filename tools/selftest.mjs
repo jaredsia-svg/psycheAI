@@ -46,6 +46,7 @@ const grok = await import('../lib/grok.js').then(m => m.default);
 process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
   join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
 const recipients = await import('../lib/recipients.js').then(m => m.default);
+const payments = await import('../lib/stripe.js').then(m => m.default);
 
 // ---------- provider parity ----------
 //
@@ -288,6 +289,112 @@ check('no key reports not-ready with a hint',
   selections.none.ready === false && /GEMINI_API_KEY/.test(selections.none.hint), selections.none.hint);
 check('GEMINI_MODEL overrides the default model',
   selections.customModel.model === 'gemini-3.1-pro-preview', selections.customModel.model);
+
+// ---------- payments (lib/stripe.js) ----------
+//
+// Same reasoning as provider selection above: readiness is env-driven, so
+// exercise the branches in a fresh process rather than trusting the two
+// module-level constants they are read from once at require time.
+async function paymentsFor(env) {
+  const out = execFileSync(process.execPath,
+    ['-e', 'process.stdout.write(JSON.stringify(require("' + join(root, 'lib', 'stripe.js') + '").describe()))'],
+    { env: { PATH: process.env.PATH, ...env } });
+  return JSON.parse(out.toString());
+}
+
+// createPaymentIntent is async and either resolves or throws, so the child
+// process reports both shapes as one JSON object rather than the describe()
+// helper's single require-and-print.
+async function paymentIntentFor(env) {
+  const script = 'require("' + join(root, 'lib', 'stripe.js') + '").createPaymentIntent("test")' +
+    '.then(r => process.stdout.write(JSON.stringify({ ok: true, ...r })))' +
+    '.catch(e => process.stdout.write(JSON.stringify({ ok: false, status: e.status, message: e.message })));';
+  const out = execFileSync(process.execPath, ['-e', script], { env: { PATH: process.env.PATH, ...env } });
+  return JSON.parse(out.toString());
+}
+
+const paymentSelections = {
+  none: await paymentsFor({}),
+  mock: await paymentsFor({ PSYCHEAI_MOCK: '1' }),
+  secretOnly: await paymentsFor({ STRIPE_SECRET_KEY: 'sk_test_x' }),
+  both: await paymentsFor({ STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_PUBLISHABLE_KEY: 'pk_test_x' }),
+  customCountry: await paymentsFor({ PSYCHEAI_MOCK: '1', STRIPE_ACCOUNT_COUNTRY: 'GB' }),
+};
+
+check('no keys reports not-ready with a hint naming both env vars',
+  paymentSelections.none.ready === false &&
+  /STRIPE_SECRET_KEY/.test(paymentSelections.none.hint) && /STRIPE_PUBLISHABLE_KEY/.test(paymentSelections.none.hint),
+  paymentSelections.none.hint);
+check('mock mode is ready without any key at all, and never exposes a publishable key',
+  paymentSelections.mock.ready === true && paymentSelections.mock.mock === true &&
+  paymentSelections.mock.publishableKey === '');
+check('a secret key alone is not enough to be ready — the browser needs the publishable key too',
+  paymentSelections.secretOnly.ready === false, JSON.stringify(paymentSelections.secretOnly));
+check('both keys together are ready, and the publishable key is exposed for the browser',
+  paymentSelections.both.ready === true && paymentSelections.both.publishableKey === 'pk_test_x');
+check('the default merchant country is US', paymentSelections.mock.country === 'US', paymentSelections.mock.country);
+check('STRIPE_ACCOUNT_COUNTRY overrides the default',
+  paymentSelections.customCountry.country === 'GB', paymentSelections.customCountry.country);
+check('the unlock price is $1.99 in cents, in USD',
+  paymentSelections.mock.priceCents === 199 && paymentSelections.mock.currency === 'usd',
+  paymentSelections.mock.priceCents + ' ' + paymentSelections.mock.currency);
+
+const intents = {
+  mock: await paymentIntentFor({ PSYCHEAI_MOCK: '1' }),
+  unconfigured: await paymentIntentFor({}),
+};
+check('mock mode creates a fake PaymentIntent without touching a real Stripe account',
+  intents.mock.ok === true && intents.mock.mock === true && /^pi_mock_/.test(intents.mock.id) &&
+  intents.mock.amount === 199 && intents.mock.currency === 'usd',
+  JSON.stringify(intents.mock));
+check('with no key and no mock mode, creating a PaymentIntent fails with a clear 503',
+  intents.unconfigured.ok === false && intents.unconfigured.status === 503 &&
+  /not configured/i.test(intents.unconfigured.message),
+  JSON.stringify(intents.unconfigured));
+
+// The real (non-mock) branch calls Stripe's actual API, which npm test must
+// never do — so it is exercised here with __testing.setClient standing in for
+// the SDK, the same seam lib/gemini.js uses to test its own real-call path
+// without spending a token. A real key has to be present for this branch to
+// even run, so the stub is installed inside the same child process rather
+// than passed in some other way.
+async function paymentIntentWithStub(clientBody) {
+  const script = [
+    'const stripe = require("' + join(root, 'lib', 'stripe.js') + '");',
+    'stripe.__testing.setClient({ paymentIntents: { create: async () => { ' + clientBody + ' } } });',
+    'stripe.createPaymentIntent("test")',
+    '.then(r => process.stdout.write(JSON.stringify({ ok: true, ...r })))',
+    '.catch(e => process.stdout.write(JSON.stringify({ ok: false, status: e.status, message: e.message })));',
+  ].join('\n');
+  const out = execFileSync(process.execPath, ['-e', script],
+    { env: { PATH: process.env.PATH, STRIPE_SECRET_KEY: 'sk_test_stub', STRIPE_PUBLISHABLE_KEY: 'pk_test_stub' } });
+  return JSON.parse(out.toString());
+}
+
+const stubbedSuccess = await paymentIntentWithStub(
+  'return { id: "pi_stub_1", client_secret: "pi_stub_1_secret", amount: 199, currency: "usd" };');
+check('a real PaymentIntent maps Stripe\'s snake_case client_secret to clientSecret, and is not marked mock',
+  stubbedSuccess.ok === true && stubbedSuccess.mock === false && stubbedSuccess.id === 'pi_stub_1' &&
+  stubbedSuccess.clientSecret === 'pi_stub_1_secret' && stubbedSuccess.publishableKey === 'pk_test_stub',
+  JSON.stringify(stubbedSuccess));
+
+const stubbedDecline = await paymentIntentWithStub(
+  'throw Object.assign(new Error("Your card was declined."), { statusCode: 402 });');
+check('a declined charge surfaces Stripe\'s own status and message, not a generic 500',
+  stubbedDecline.ok === false && stubbedDecline.status === 402 &&
+  stubbedDecline.message === 'Your card was declined.', JSON.stringify(stubbedDecline));
+
+// describeError is pure, so it is worth checking directly rather than through
+// a child process — the two shapes it has to handle are an error this file's
+// own code already tagged with a status, and a raw Stripe SDK error, which
+// names the field `statusCode` rather than `status`.
+check('describeError passes through an error that already carries a status untouched',
+  payments.describeError(Object.assign(new Error('x'), { status: 503 })).status === 503);
+check('describeError maps a Stripe SDK error\'s statusCode to status, keeping its message',
+  payments.describeError({ statusCode: 402, message: 'Your card was declined.' }).status === 402 &&
+  payments.describeError({ statusCode: 402, message: 'Your card was declined.' }).message === 'Your card was declined.');
+check('describeError falls back to a 500 and a generic message for something shapeless',
+  payments.describeError({}).status === 500 && /could not be started/i.test(payments.describeError({}).message));
 
 // ---------- schema validation ----------
 //

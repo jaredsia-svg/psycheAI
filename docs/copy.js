@@ -279,6 +279,36 @@
       'argue with, not a verdict — and if any of it lands somewhere heavier than that, the person to ' +
       'talk to about it is a person.',
 
+    // The paid section. Same shape as the bonus section above — a badge
+    // beside the title, a cover that has to be opened on purpose — except the
+    // cover is a paywall rather than a content warning, so it reads a price
+    // and asks for a card instead of asking to be shown anyway.
+    premium: 'Supplementary analysis',
+    premiumBadge: 'Premium users only',
+    premiumSub: 'A second pass the standard report does not run, priced and sold separately from it.',
+    premiumCoverTitle: 'This part of the report is locked',
+    premiumCoverBlurb: 'Unlock it once for $1.99 — no account, no subscription, and it stays open on ' +
+      'this device for as long as this report does.',
+    // The section's own button is drawn before anything has been fetched
+    // from the server, so it carries this static label; the dialog it opens
+    // fetches a real PaymentIntent and shows *that* amount once it has one,
+    // which is the one actually charged. Two numbers agreeing is a sign they
+    // have not drifted, not a coincidence to engineer away.
+    premiumPriceLabel: '$1.99',
+    premiumUnlockPrefix: 'Unlock — ',
+    premiumUnlockedTitle: 'Unlocked',
+    premiumUnlockedBody: 'Thanks for unlocking Supplementary analysis. There is nothing behind this ' +
+      'cover yet beyond this note — the section exists so the paywall could ship on its own, ahead of ' +
+      'the writing it is going to hold.',
+    premiumDialogTitle: 'Unlock supplementary analysis',
+    premiumDialogBlurb: 'A one-time charge, taken on this device — Apple Pay or Google Pay, whichever ' +
+      'this browser offers.',
+    premiumMockPay: 'Simulate payment (mock mode)',
+    premiumNotConfigured: 'Payments are not set up on this server yet.',
+    premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',
+    premiumFailed: 'The payment did not go through. Nothing was charged.',
+    premiumCancel: 'Cancel',
+
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',
