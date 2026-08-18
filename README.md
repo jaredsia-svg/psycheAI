@@ -88,6 +88,7 @@ export STRIPE_SECRET_KEY=sk_...        # server-side only — creates and verifi
 export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
 export STRIPE_ACCOUNT_COUNTRY=US       # optional — the merchant's country, not the buyer's
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
+export XAI_API_KEY=xai-...             # the premium analysis always runs on Grok — see below
 npm start
 ```
 
@@ -97,6 +98,17 @@ on both ends: the server hands back a fake PaymentIntent instead of calling Stri
 client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" button stands in for the
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
+
+**The premium analysis always runs on Grok, regardless of which provider the free report used.** This
+is a fixed choice made in `server.js`'s `premiumEngine()`, not a fallback through the same
+auto-detection `lib/provider.js` uses for the free report — `requirePremiumEngine()` calls
+`require('./lib/grok')` directly, so a deployment with `GEMINI_API_KEY` set but no `XAI_API_KEY` has
+free reports and no working premium section at all, rather than premium quietly running on Gemini.
+`GEMINI_API_KEY`, `ANTHROPIC_API_KEY` and `XAI_API_KEY` can all be set on the same server at once —
+`lib/provider.js` picks one of them for the free report by its own priority order, and `XAI_API_KEY`
+is what premium reads independently of that choice. Mock mode is the one exception: with
+`PSYCHEAI_MOCK=1`, `provider.active` is already the mock module, and `premiumEngine()` follows it
+there too rather than demanding a real Grok key just to click through the flow.
 
 **Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
 script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
@@ -1803,7 +1815,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 601 checks: synthesises a real ZIP export and runs
+npm test           # 607 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

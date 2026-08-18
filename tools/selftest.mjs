@@ -293,6 +293,46 @@ check('no key reports not-ready with a hint',
 check('GEMINI_MODEL overrides the default model',
   selections.customModel.model === 'gemini-3.1-pro-preview', selections.customModel.model);
 
+// The premium analysis is a fixed choice — always Grok — deliberately
+// decoupled from provider.active, so this is exercised the same way as
+// provider selection above: real env combos in a fresh process, since the
+// decision is read from module-level constants at require time. server.js
+// exports premiumEngine() specifically so this can be checked directly
+// (no HTTP round trip, no server left listening) rather than through the
+// full route, which would also need a verified payment to reach it.
+async function premiumEngineFor(env) {
+  const out = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'server.js') + '"); ' +
+      'const e = s.premiumEngine(); process.stdout.write(JSON.stringify({ name: e && e.name }));'],
+    { env: { PATH: process.env.PATH, ...env } });
+  return JSON.parse(out.toString());
+}
+
+const premiumSelections = {
+  none: await premiumEngineFor({}),
+  geminiOnly: await premiumEngineFor({ GEMINI_API_KEY: 'x' }),
+  xaiOnly: await premiumEngineFor({ XAI_API_KEY: 'x' }),
+  both: await premiumEngineFor({ GEMINI_API_KEY: 'x', XAI_API_KEY: 'x' }),
+  mock: await premiumEngineFor({ PSYCHEAI_MOCK: '1' }),
+  mockPlusXai: await premiumEngineFor({ PSYCHEAI_MOCK: '1', XAI_API_KEY: 'x' }),
+};
+
+check('premium has no engine at all with nothing configured',
+  premiumSelections.none.name === null);
+// The one that actually matters: Gemini is what the free report would use
+// here (it wins auto-detection), and premium still refuses rather than
+// quietly falling back to it.
+check('premium refuses even when the MAIN provider (Gemini) is configured, if there is no XAI_API_KEY',
+  premiumSelections.geminiOnly.name === null, JSON.stringify(premiumSelections.geminiOnly));
+check('premium works from an XAI_API_KEY alone, with no main provider configured at all',
+  premiumSelections.xaiOnly.name === 'grok');
+check('premium uses Grok even when Gemini is also configured and would win the main provider slot',
+  premiumSelections.both.name === 'grok');
+check('mock mode carries premium too, the same way it carries the main provider',
+  premiumSelections.mock.name === 'mock');
+check('mock mode wins over a real XAI_API_KEY for premium, same as it does for the main provider',
+  premiumSelections.mockPlusXai.name === 'mock');
+
 // ---------- payments (lib/stripe.js) ----------
 //
 // Same reasoning as provider selection above: readiness is env-driven, so

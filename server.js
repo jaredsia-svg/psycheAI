@@ -15,6 +15,12 @@ const prompts = require('./lib/prompts');
 const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
+// Required directly rather than reached through provider.active: the premium
+// analysis always runs on Grok, regardless of which provider the free report
+// used. A deployment with only GEMINI_API_KEY set still has no premium
+// engine — see premiumEngine() below — rather than silently falling back to
+// whichever provider happened to win auto-detection.
+const grok = require('./lib/grok');
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -74,7 +80,11 @@ function readJsonBody(request) {
 // ---------- routes ----------
 
 async function handleStatus(response) {
-  sendJson(response, 200, { ...provider.describe(), payments: payments.describe() });
+  const premium = premiumEngine();
+  sendJson(response, 200, {
+    ...provider.describe(), payments: payments.describe(),
+    premiumProvider: { name: premium ? premium.name : 'grok', ready: Boolean(premium) },
+  });
 }
 
 // Every analysis route needs a configured provider; refuse early and clearly
@@ -87,6 +97,31 @@ function requireEngine(response) {
     return null;
   }
   return provider.active;
+}
+
+// The premium analysis always runs on Grok — a fixed choice, not whichever
+// provider the free report happened to use — so it is resolved independently
+// of provider.active rather than through requireEngine above. Mock mode is
+// the one exception: PSYCHEAI_MOCK=1 (or PSYCHEAI_PROVIDER=mock) already
+// makes provider.active the mock module, and premium follows it there too,
+// the same way a developer testing the free report never needs a real
+// GEMINI_API_KEY. Outside mock mode, a server with GEMINI_API_KEY but no
+// XAI_API_KEY has no premium engine at all — see requirePremiumEngine below,
+// which is what actually enforces this at the route.
+function premiumEngine() {
+  if (provider.active && provider.active.name === 'mock') return provider.active;
+  return grok.hasKey() ? grok : null;
+}
+
+function requirePremiumEngine(response) {
+  const engine = premiumEngine();
+  if (!engine) {
+    sendJson(response, 503, {
+      error: 'The premium analysis always uses Grok, regardless of the main provider, and this server has no XAI_API_KEY configured.',
+    });
+    return null;
+  }
+  return engine;
 }
 
 // The browser already caps and downscales, but the endpoint is open to anyone
@@ -185,7 +220,7 @@ async function handlePremiumAnalysis(request, response) {
     });
     return;
   }
-  const engine = requireEngine(response);
+  const engine = requirePremiumEngine(response);
   if (!engine) return;
   const result = await engine.analysePremium(body.digest);
   paymentLedger.recordUse(paymentIntentId);
@@ -290,10 +325,18 @@ const server = http.createServer((request, response) => {
   serveStatic(route, response);
 });
 
-server.listen(PORT, () => {
-  const status = provider.describe();
-  console.log('PsycheAI running at http://localhost:' + PORT);
-  if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
-  else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
-  else console.log('  Not configured. ' + status.hint);
-});
+// Guarded so tools/selftest.mjs can require() this file to reach
+// premiumEngine() directly — the fastest, most deterministic way to prove
+// which provider premium actually resolves to under a given env, with no
+// HTTP round trip and no server left listening behind the test.
+if (require.main === module) {
+  server.listen(PORT, () => {
+    const status = provider.describe();
+    console.log('PsycheAI running at http://localhost:' + PORT);
+    if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
+    else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
+    else console.log('  Not configured. ' + status.hint);
+  });
+}
+
+module.exports = { premiumEngine };
