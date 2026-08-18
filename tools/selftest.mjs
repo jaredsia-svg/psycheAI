@@ -1885,19 +1885,21 @@ const deep = Digest.build(heavySignals(), { includeMessages: false, depth: 'comp
 const DEEP = Digest.DEPTHS.comprehensive.limits;
 
 check('comprehensive records its own depth', deep.coverage.depth === 'comprehensive');
-check('comprehensive sends far more than standard',
-  deep.coverage.digestChars > heavy.coverage.digestChars * 2,
+check('comprehensive sends more than standard',
+  deep.coverage.digestChars > heavy.coverage.digestChars * 1.3,
   deep.coverage.digestChars + ' vs ' + heavy.coverage.digestChars + ' chars');
 // This synthetic account is deliberately past what the cap can hold — 4,000
-// captions of ~150 characters is 600,000 on its own, against a 545,000 budget
-// — so comprehensive is bound by the price here rather than sending everything.
-// That is the honest shape of the feature: "as much as $0.50 buys", which for
-// most accounts is all of it and for the very heaviest is not.
-check('comprehensive sends far more captions than standard',
-  deep.samples.captions.length > Digest.LIMITS.captions * 2,
-  deep.samples.captions.length + ' vs ' + heavy.samples.captions.length);
-check('comprehensive sends the whole follow list where it fits',
-  deep.following.length === 4000, deep.following.length + ' of 4000');
+// captions of ~150 characters is 600,000 on its own, well past DEEP.totalChars
+// — so comprehensive is bound by the price here rather than sending
+// everything. At the $0.50 cap this was true only of captions, the single
+// costliest list, and every other list (follows included) survived intact; at
+// $0.25 the budget is tight enough that the trim loop reaches follows too. The
+// per-source *cap* is still lifted far past standard's regardless of price —
+// that part of "comprehensive" does not depend on COST_CAP at all.
+check('comprehensive configures a far higher per-source cap on captions than standard',
+  DEEP.captions > Digest.LIMITS.captions * 50, DEEP.captions + ' vs ' + Digest.LIMITS.captions);
+check('comprehensive still sends most of a 4,000-account follow list despite the tighter budget',
+  deep.following.length > 2000, deep.following.length + ' of 4000');
 check('comprehensive stays inside its own budget on an oversized account',
   deep.coverage.digestChars <= DEEP.totalChars,
   deep.coverage.digestChars + ' of ' + DEEP.totalChars);
@@ -1940,9 +1942,16 @@ check('comprehensive reports the fraction honestly when it cannot send it all',
   // implementation used, so the two agreed with each other and neither agreed
   // with the prompt actually being sent.
   const worstCost = ((DEEP.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS +
-    images * 258) * (1.50 / 1e6) + 32768 * (7.50 / 1e6);
+    images * 258) * (1.50 / 1e6) + Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6);
   check('a full comprehensive digest plus maximum output stays under the cap',
     worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
+  // digest.js cannot require() lib/gemini.js — it runs in the browser — so its
+  // copy of the real generation cap is a duplicated literal, same as
+  // FIXED_INPUT_TOKENS above. Held to lib/gemini.js's own constant here so a
+  // change to one alone silently under-costs the other.
+  check('the digest budget\'s output cap matches lib/gemini.js\'s real one',
+    Digest.MAX_OUTPUT_TOKENS === gemini.MAX_OUTPUT_TOKENS,
+    Digest.MAX_OUTPUT_TOKENS + ' vs ' + gemini.MAX_OUTPUT_TOKENS);
 
   // The constant against the thing it is supposed to be measuring. digest.js
   // runs in the browser and cannot import lib/prompts.js, so nothing there can

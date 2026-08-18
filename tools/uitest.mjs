@@ -1659,7 +1659,7 @@ try {
       const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
       if (rows.length !== 4) return false;
       const texts = rows.map(r => r.textContent);
-      const order = ['Openness', 'Conscientiousness', 'Agreeableness', 'Emotional sensitivity'];
+      const order = ['Openness', 'Conscientious', 'Agreeableness', 'Emotional sensitivity'];
       return order.every((label, i) => texts[i].includes(label)) &&
         texts.join(' ').includes('62') && texts.join(' ').includes('71') &&
         texts.join(' ').includes('77') && texts.join(' ').includes('35');
@@ -1671,8 +1671,19 @@ try {
       return Boolean(bigFive) && !/Extraversion/.test(bigFive.textContent);
     }));
   check('each Big Five trait carries a bullet', await page.evaluate(() => {
+    const labels = [...document.querySelectorAll('#psyche-card .pc-trait-label')];
+    return labels.length > 0 && labels.every(label => getComputedStyle(label, '::before').content.includes('•'));
+  }));
+  // "Conscientiousness" is one solid word with no space for the browser to
+  // wrap at, and at this column's width it used to run past the card edge on
+  // some platforms' font metrics. app.js now trims it to "Conscientious" for
+  // the card specifically (TRAIT_LABELS keeps the full word for the report),
+  // so this checks that none of the four rows overflow their box at the
+  // card's real width — scrollWidth/clientWidth are layout values and ignore
+  // fitCard()'s preview-sizing transform, so no font-size trick is needed.
+  check('no Big Five trait label overflows its row', await page.evaluate(() => {
     const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
-    return rows.length > 0 && rows.every(row => getComputedStyle(row, '::before').content.includes('•'));
+    return rows.length === 4 && rows.every(row => row.scrollWidth <= row.clientWidth + 1);
   }));
   // The box is stretched to match the taller MBTI/Enneagram blocks beside it
   // (grid rows default to align-items: stretch); the four rows should use

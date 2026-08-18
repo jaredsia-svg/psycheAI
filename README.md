@@ -660,12 +660,12 @@ sale means adding a way to choose it, not rebuilding it.
 The budget is derived rather than picked, in `charBudget()`:
 
 ```
-worst-case output   32,768 tokens × $7.50/M   = $0.2458   (the hard generation cap)
-left for input      $0.50 − $0.2458           = $0.2542
-                    ÷ $1.50/M                 = 169,493 tokens
-less system prompt + response schema          −  15,000
+worst-case output   16,000 tokens × $7.50/M   = $0.1200   (the hard generation cap)
+left for input      $0.25 − $0.1200           = $0.1300
+                    ÷ $1.50/M                 =  86,667 tokens
+less system prompt + response schema          −  16,800
 less 20 images × 258                          −   5,160
-                    × 3.5 chars/token         = 522,666 characters
+                    × 3.5 chars/token         = 226,473 characters
 ```
 
 That fixed reserve was **8,600 for a long time, and had gone stale** — it was typed when the system
@@ -735,8 +735,10 @@ only place the arrangement can be confirmed against the real API rather than aga
 For most accounts comprehensive sends **everything**, and `coverage.sampling` then reports shown
 equal to available. For a very heavy account it does not: 4,000 captions at ~150 characters is
 600,000 on its own, past the budget, so the digest is trimmed back to fit and reports the fraction
-honestly. The feature is "as much as $0.50 buys", which is usually all of it and sometimes is not —
-on the self-test's heavy fixture that is 1,265 captions against standard's 560.
+honestly. The feature is "as much as $0.25 buys", which is usually all of it and sometimes is not —
+on the self-test's heavy fixture that is 299 captions against standard's 560, since the trim loop
+targets whichever list is costing the most and a tighter cap now reaches follows and comments too,
+not just captions.
 
 Trimming is what actually enforces the ceiling, so it repeatedly shrinks whichever sample list is
 currently costing the most. It used to touch captions and comments only, which was safe while every
@@ -1671,7 +1673,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 562 checks: synthesises a real ZIP export and runs
+npm test           # 563 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1680,7 +1682,7 @@ npm test           # 562 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 746 checks: drives the real UI in Chromium against a
+npm run test:ui    # 754 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

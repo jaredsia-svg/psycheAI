@@ -151,9 +151,20 @@
   // above already carries the E/I letter and showing it a second time here
   // would be the same finding stated twice on one card.
   const BIG_FIVE_CARD_KEYS = ['openness', 'conscientiousness', 'agreeableness', 'neuroticism'];
+  // "Conscientiousness" is one solid word with no space for the browser to
+  // wrap at, so at this column's width it ran past the card edge rather than
+  // dropping to a second line the way "Openness to experience" does. The card
+  // is a compact summary rather than the full report, so it trims the trait
+  // to "Conscientious" here instead. TRAIT_LABELS itself is left alone, since
+  // the full written report has room for the whole word.
+  const CARD_LABEL_OVERRIDES = { conscientiousness: 'Conscientious' };
   function bigFiveCardRows(bigFive) {
     return BIG_FIVE_CARD_KEYS
-      .map(key => ({ key, label: TRAIT_LABELS[key], score: (bigFive && bigFive[key] && bigFive[key].score) || 0 }))
+      .map(key => ({
+        key,
+        label: CARD_LABEL_OVERRIDES[key] || TRAIT_LABELS[key],
+        score: (bigFive && bigFive[key] && bigFive[key].score) || 0,
+      }))
       .filter(row => row.score > 0);
   }
 
@@ -310,7 +321,8 @@
           '</div>' : '') +
         (bigFiveRows.length ? '<div class="pc-stat pc-stat-bigfive">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
           '<div class="pc-trait-list">' +
-          bigFiveRows.map(row => '<p class="pc-trait">' + esc(row.label) + ' <b>' + row.score + '</b></p>').join('') +
+          bigFiveRows.map(row => '<p class="pc-trait"><span class="pc-trait-label">' + esc(row.label) +
+            '</span><b>' + row.score + '</b></p>').join('') +
           '</div>' +
           '</div>' : '') +
       '</div>' +

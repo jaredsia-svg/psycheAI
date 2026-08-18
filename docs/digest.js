@@ -100,8 +100,11 @@
   const IMAGE_TOKENS = 258;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
-  // report plus thinking — that a single call can possibly bill for.
-  const MAX_OUTPUT_TOKENS = 32768;
+  // report plus thinking — that a single call can possibly bill for. Held to
+  // lib/gemini.js's own copy by a check in tools/selftest.mjs, the same way
+  // FIXED_INPUT_TOKENS above is held to the real prompt — this file cannot
+  // require() a Node module, so it cannot read the real constant directly.
+  const MAX_OUTPUT_TOKENS = 16000;
 
   /**
    * The largest digest that keeps one analysis under `costCap`.
@@ -120,7 +123,7 @@
     return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
   }
 
-  const COST_CAP = 0.50;
+  const COST_CAP = 0.25;
   const COMPREHENSIVE_IMAGES = 20;
   const STANDARD_IMAGES = 14;
 
@@ -735,7 +738,7 @@
   }
 
   root.PsycheDigest = {
-    build, LIMITS, DEPTHS, charBudget, COST_CAP, FIXED_INPUT_TOKENS,
+    build, LIMITS, DEPTHS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,
