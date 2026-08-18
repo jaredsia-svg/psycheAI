@@ -1983,10 +1983,27 @@ try {
         !head.querySelector('button');
     }));
 
+  check('the shareable-card character count note is gone',
+    (await page.locator('#payload-size').count()) === 0);
+  check('"Test compatibility" carries the same gradient as the other primary actions, not the ghost style',
+    await page.evaluate(() =>
+      /gradient/.test(getComputedStyle(document.querySelector('#test-compat-open')).backgroundImage)));
+
   // The QR panel is a popout now, opened from beside the download button —
   // everything below reads text or geometry from inside it, so the dialog has
   // to actually be open first: a closed <dialog> is display:none, and
   // innerText/getBoundingClientRect both read as empty/zero through that.
+  // Scrolled down first because the trigger sits at the foot of a long
+  // report — the case that actually exposed the scroll-jumps-to-top bug this
+  // covers (a dialog whose position was overridden off the UA stylesheet's
+  // `fixed`, so it rendered at its in-flow position instead of pinned to the
+  // viewport), which a page short enough to need no scrolling never would.
+  const scrollBeforeOpen = await page.evaluate(() => {
+    window.scrollTo(0, document.body.scrollHeight);
+    return window.scrollY;
+  });
+  check('the scroll position used for the close check is actually down the page',
+    scrollBeforeOpen > 200, scrollBeforeOpen);
   await page.click('#test-compat-open');
   check('the compatibility popout opens', await page.locator('#compat-dialog').isVisible());
   await shot('2b-compat-dialog');
@@ -2006,6 +2023,9 @@ try {
     /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
   await page.click('#compat-dialog-close');
   check('the compatibility popout closes', !(await page.locator('#compat-dialog').isVisible()));
+  check('closing it leaves the reader where they were, not snapped back to the top',
+    Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeOpen) < 5,
+    'before ' + scrollBeforeOpen + ', after ' + (await page.evaluate(() => window.scrollY)));
 
   check('the personality and compatibility links appear once there is a profile',
     (await visibleNav()).join('|') === 'My Psyche|My Compatibility|FAQ',
@@ -3123,10 +3143,13 @@ try {
   check('no raw undefined in the profile', !/\bundefined\b/.test(profileText));
 
   // ---- QR ----
-  const payloadNote = await page.locator('#payload-size').innerText();
-  const payloadLength = Number((payloadNote.match(/card: (\d+)/) || [])[1]);
-  check('QR payload is small enough to scan', payloadLength > 0 && payloadLength < 1800, payloadNote);
-  check('the payload note says the full report is excluded', /full report is not included/.test(payloadNote));
+  // The character-count fineprint under the QR code is gone from the popout
+  // now, but the underlying scannability guarantee it used to report on is
+  // still real and still worth holding — read straight from the stored
+  // profile rather than from UI copy that no longer exists.
+  const payloadLength = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('psycheai_profile')).payload.length);
+  check('QR payload is small enough to scan', payloadLength > 0 && payloadLength < 1800, payloadLength);
 
   const darkPixels = await page.evaluate(() => {
     const canvas = document.querySelector('#qr-canvas');

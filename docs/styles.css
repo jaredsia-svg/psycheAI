@@ -936,10 +936,17 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-dialog .btn-row { margin-bottom: .4rem; }
 
 /* The QR code and its actions need more elbow room side by side than the
-   30rem default gives most mode-dialogs, and the close cross needs the
-   dialog itself to be the positioning root rather than the viewport — this
-   box is centred on the page, not pinned full-screen the way .card-dialog is. */
-.compat-dialog { position: relative; width: min(38rem, calc(100vw - 2rem)); }
+   30rem default gives most mode-dialogs. Width only — position is left at
+   the UA stylesheet's own `fixed`, which is what actually centres a modal
+   dialog on the viewport regardless of where the page was scrolled to.
+   Overriding it to `relative` was tried first, on the reasoning that the
+   close cross needs a positioning root — but `position: fixed` is already a
+   valid containing block for an `absolute` child, so nothing needed the
+   override, and it broke the one thing `fixed` was doing: the dialog no
+   longer being pinned to the viewport is what left it laid out at its
+   in-flow position for anything that measured it while scrolled, which is
+   what the reader actually saw as the page jumping under the dialog. */
+.compat-dialog { width: min(38rem, calc(100vw - 2rem)); }
 .compat-dialog .qr-title { padding-right: 2.2rem; }
 .compat-dialog-close {
   position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;

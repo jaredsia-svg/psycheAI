@@ -1552,6 +1552,21 @@ was in it. Ctrl+P still carries the code onto the printed page regardless: the d
 so `#compat-dialog` is forced back to `display: block` under `@media print` — otherwise the printed
 page would have a gap where the code used to be.
 
+Three things changed once this actually shipped and got used. The character-count fineprint under the
+QR code (`#payload-size`, "Shareable card: N characters…") is gone — a number nobody asked for and a
+sentence reassuring the reader about something they had not wondered about. `#test-compat-open` lost
+its `.btn-ghost` class in favour of plain `.btn`, the same gradient **Download full report** and
+**Copy my link** already carry, so the one button that opens something now looks like it opens
+something. And closing the popout used to snap the whole page back to the top — jarring on a report
+long enough to need real scrolling to reach the button in the first place. The cause was not the
+close, where the jump was actually seen, but the open: `.compat-dialog` had overridden `position` to
+`relative` so the close cross would have a positioning root, on the reasoning that `.mode-dialog`'s
+UA-stylesheet `position: fixed` was the wrong thing to keep — except `fixed` is *already* a valid
+containing block for an `absolute` child, so nothing needed the override, and it broke the one thing
+`fixed` was doing: pinning the dialog to the viewport regardless of scroll. With that gone, `showModal()`
+laid the dialog out at its in-flow position instead, which is what actually reset the scroll. Removing
+the override fixed it outright — the width-only version of `.compat-dialog` is all that survived.
+
 The row held a fourth button, once: **Re-run the analysis**, which spent a second model call on the
 same export and replaced the report with a differently-worded one; it has been removed, and the row
 is pinned as an exact list of three so nothing creeps back into it. Its handler went with it rather
@@ -1692,7 +1707,7 @@ npm test           # 563 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 755 checks: drives the real UI in Chromium against a
+npm run test:ui    # 758 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

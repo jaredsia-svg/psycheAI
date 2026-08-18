@@ -1697,11 +1697,6 @@
 
     paintQrCanvas('#qr-canvas');
 
-    const size = profile.payload.length;
-    $('#payload-size').textContent = 'Shareable card: ' + size + ' characters' +
-      (size > Card.COMFORTABLE_PAYLOAD ? ' — dense, so use the link if scanning is unreliable.' : '.') +
-      ' Your full report is not included.';
-
     const cardHtml = psycheCardHtml(report);
     $('#psyche-card').innerHTML = cardHtml;
     $('#psyche-card-full').innerHTML = cardHtml;
@@ -2189,10 +2184,10 @@
 
   // The QR code and its actions were an always-visible panel on the profile
   // page; they are a popout now, opened on demand from beside the download
-  // button. paintQrCanvas and #payload-size are still filled by renderProfile
-  // regardless of whether the dialog is open — drawing to a canvas does not
-  // need the element to be visible — so the dialog always opens with a code
-  // that is already current.
+  // button. paintQrCanvas is still filled by renderProfile regardless of
+  // whether the dialog is open — drawing to a canvas does not need the
+  // element to be visible — so the dialog always opens with a code that is
+  // already current.
   $('#test-compat-open').addEventListener('click', () => {
     const dialog = $('#compat-dialog');
     if (typeof dialog.showModal === 'function') dialog.showModal();
