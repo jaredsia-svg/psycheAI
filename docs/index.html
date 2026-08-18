@@ -343,24 +343,41 @@
   </div>
 </dialog>
 
-<!-- The unlock flow for the paid "Supplementary analysis" section. Stripe.js
-     itself is not loaded here — it is the one script in this app fetched
-     from a CDN rather than vendored, since Stripe does not support a pinned
-     local copy, and it is injected on demand from app.js only once a reader
-     actually presses Unlock, rather than paid for by every visitor on every
-     page load. Mock mode never touches it at all: #premium-mock-pay stands
-     in for the whole Stripe round trip so the flow can be driven end to end
-     without a real card or a real key. Payment and generation are two
+<!-- The unlock flow shared by the roast, the supplementary analysis and the
+     report download — one payment (or one promo code) unlocks all three.
+     Stripe.js itself is not loaded here — it is the one script in this app
+     fetched from a CDN rather than vendored, since Stripe does not support a
+     pinned local copy, and it is injected on demand from app.js only once a
+     reader actually presses Unlock, rather than paid for by every visitor on
+     every page load. Mock mode never touches it at all: #premium-mock-pay
+     stands in for the whole Stripe round trip so the flow can be driven end
+     to end without a real card or a real key. Payment and generation are two
      separate steps server-side — #premium-retry re-runs only the second one,
      since a payment that already cleared should never need retaking just
-     because the model call after it failed. -->
+     because the model call after it failed. #premium-progress shows a live
+     seconds count while that second step is in flight, since a long
+     structured call with nothing else on screen reads as stalled otherwise.
+     The promo row at the bottom is a second, independent way to authorise
+     the same call — see server.js's handlePremiumAnalysis — for anyone who
+     should not need to pay at all. -->
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
   <div id="premium-payment-request-button"></div>
   <button class="btn" id="premium-mock-pay" type="button" hidden></button>
   <button class="btn" id="premium-retry" type="button" hidden></button>
+  <div class="premium-progress" id="premium-progress" hidden>
+    <div class="progress"><div class="progress-bar indeterminate"></div></div>
+    <p class="premium-progress-time" id="premium-progress-time"></p>
+  </div>
   <p class="premium-status" id="premium-status" hidden></p>
+  <div class="premium-promo">
+    <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
+    <div class="premium-promo-row">
+      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false">
+      <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
+    </div>
+  </div>
   <div class="btn-row">
     <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
   </div>

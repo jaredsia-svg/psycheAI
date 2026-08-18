@@ -25,6 +25,20 @@ const grok = require('./lib/grok');
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
 
+// A single backdoor around the whole payment flow, for the people who should
+// not need to pay — friends, reviewers, whoever this server's operator wants
+// to wave through. It bypasses verifyPaid and the usage ledger entirely
+// rather than fabricating a fake PaymentIntent for them to flow through: a
+// promo redemption never touches lib/stripe.js or lib/premiumLedger.js at
+// all, so it works even on a deployment with no Stripe key configured, as
+// long as the premium (Grok) engine itself is set up. Overridable so a real
+// deployment is not stuck with a code that shipped in this repo's history.
+const PROMO_CODE = process.env.PSYCHEAI_PROMO_CODE || 'jialatsia';
+function isValidPromoCode(code) {
+  return typeof code === 'string' && code.trim().length > 0 &&
+    code.trim().toLowerCase() === PROMO_CODE.toLowerCase();
+}
+
 // The digest is bounded client-side, but never trust that from the server.
 // A dozen-odd downscaled JPEGs land near 1MB of base64; the rest is headroom.
 const MAX_BODY_BYTES = 24 * 1024 * 1024;
@@ -177,22 +191,30 @@ async function handleRecordEmail(request, response) {
 // The amount is fixed in lib/stripe.js and never taken from the request — a
 // client is not trusted with what it pays. There is nothing else for the body
 // to carry: this route creates a PaymentIntent for exactly one product, the
-// supplementary-analysis unlock, and nothing report-shaped is anywhere near
-// its signature — same discipline as handleRecordEmail above.
+// single unlock that covers the roast, the supplementary analysis and the
+// report download, and nothing report-shaped is anywhere near its signature
+// — same discipline as handleRecordEmail above.
 async function handleCreatePaymentIntent(response) {
   if (!payments.hasKey()) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
     return;
   }
-  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — Supplementary analysis unlock'));
+  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — full report unlock'));
 }
 
-// The paid analysis. Gated on a fresh check with Stripe rather than on
-// anything the client claims — verifyPaid() re-retrieves the PaymentIntent
-// and confirms both that it succeeded and that it was for the real unlock
-// price, and paymentLedger caps how many times one payment can be spent, so
-// this is the one route in the app where "did the reader pay" is actually
-// enforced server-side rather than trusted from a boolean in localStorage.
+// The paid analysis — the one call that unlocks the roast, the supplementary
+// analysis and (client-side) the report download all at once, since all
+// three now sit behind the same single $1.99 unlock rather than three
+// separate ones. Gated on a fresh check with Stripe rather than on anything
+// the client claims — verifyPaid() re-retrieves the PaymentIntent and
+// confirms both that it succeeded and that it was for the real unlock price,
+// and paymentLedger caps how many times one payment can be spent, so this is
+// the one route in the app where "did the reader pay" is actually enforced
+// server-side rather than trusted from a boolean in localStorage.
+//
+// A valid promoCode skips all of that — verifyPaid, hasKey, the ledger —
+// rather than routing through them with a fabricated identity, because there
+// is no payment to verify and no use to meter: see isValidPromoCode above.
 //
 // The digest travels in the request body exactly the way it does to
 // /api/analyse — nothing is stored between the two calls, so this is not a
@@ -204,9 +226,21 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 400, { error: 'Expected a "digest" object.' });
     return;
   }
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  if (promoCode) {
+    if (!isValidPromoCode(promoCode)) {
+      sendJson(response, 402, { error: 'That code is not valid.' });
+      return;
+    }
+    const engine = requirePremiumEngine(response);
+    if (!engine) return;
+    sendJson(response, 200, await engine.analysePremium(body.digest));
+    return;
+  }
+
   const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
   if (!paymentIntentId) {
-    sendJson(response, 400, { error: 'Expected a "paymentIntentId" string.' });
+    sendJson(response, 400, { error: 'Expected a "paymentIntentId" or "promoCode" string.' });
     return;
   }
   if (!payments.hasKey()) {
@@ -339,4 +373,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { premiumEngine };
+module.exports = { premiumEngine, isValidPromoCode };

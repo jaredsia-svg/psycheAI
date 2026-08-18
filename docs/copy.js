@@ -255,42 +255,42 @@
 
     // The unsparing section. Everything the reader is told before they open it
     // is here, because a cover that undersells what is behind it is not
-    // consent — they should be able to decide not to look.
+    // consent — they should be able to decide not to look. It used to run
+    // free, behind a click-to-reveal cover; it now sits behind the same
+    // $1.99 unlock as the supplementary analysis and the report download, so
+    // the cover reads as a paywall rather than a content warning — the price
+    // and the register both belong on it.
     bonus: 'Let us roast you',
     // Sits beside the title as a small badge, the same way "Coming soon"
     // does on the comprehensive depth option — a label for what this section
     // is, not a second title competing with the one it sits next to.
     bonusBadge: 'Bonus Section',
-    // The cover ran a paragraph explaining what was behind it as well. It was
-    // cut: the title and the caveat under it already say the same thing, and
-    // three stacked blocks of warning made a joke look like a legal notice.
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusReveal: 'Show me anyway',
-    bonusHide: 'Hide',
+    bonusCoverBlurb: 'Unlock it once for $1.99 — the same unlock that opens the supplementary analysis ' +
+      'below and the report download, and it stays open on this device for as long as this report does.',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
-    // Stays on screen after the reveal rather than only appearing on the cover:
-    // this is the part a reader most needs while they are reading it, and the
-    // part they are least likely to scroll back up for.
+    // Stays on screen beside the writing rather than only appearing on the
+    // cover: this is the part a reader most needs while they are reading it,
+    // and the part they are least likely to scroll back up for.
     bonusCaveat: 'This is an AI model being deliberately harsh about behavioural traces from your ' +
       'IG data. It is not an assessment, not a diagnosis and not a professional opinion of any kind. ' +
       'It cannot see your circumstances, your history or your reasons. Treat it as a provocation to ' +
       'argue with, not a verdict — and if any of it lands somewhere heavier than that, the person to ' +
       'talk to about it is a person.',
 
-    // The paid section. Same shape as the bonus section above — a badge
-    // beside the title, a cover that has to be opened on purpose — except the
-    // cover is a paywall rather than a content warning, so it reads a price
-    // and asks for a card instead of asking to be shown anyway.
+    // The paid section. Same shape as the roast above — a badge beside the
+    // title, a cover that has to be opened on purpose, a paywall rather than
+    // a content warning.
     premium: 'Supplementary analysis',
     premiumBadge: 'Premium users only',
     premiumSub: 'A second pass the standard report does not run, priced and sold separately from it.',
     premiumCoverTitle: 'This part of the report is locked',
-    premiumCoverBlurb: 'Unlock it once for $1.99 — no account, no subscription, and it stays open on ' +
-      'this device for as long as this report does.',
-    // The section's own button is drawn before anything has been fetched
-    // from the server, so it carries this static label; the dialog it opens
+    premiumCoverBlurb: 'Unlock it once for $1.99 — the same unlock that opens the roast above and the ' +
+      'report download, and it stays open on this device for as long as this report does.',
+    // The button on each card is drawn before anything has been fetched from
+    // the server, so it carries this static label; the dialog it opens
     // fetches a real PaymentIntent and shows *that* amount once it has one,
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
@@ -298,7 +298,10 @@
     premiumUnlockPrefix: 'Unlock — ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
-    // reason: a long structured response with thinking enabled.
+    // reason: a long structured response with thinking enabled. The dialog
+    // also shows a live seconds count beside it (see #premium-progress) for
+    // the same reason app.js shows elapsed time on the free analysis: a
+    // still sentence next to a spinning bar reads as stalled.
     premiumGenerating: 'Generating your analysis…',
     premiumPatternsTitle: 'Patterns worth your attention',
     premiumAdviceTitle: 'How to actually live better',
@@ -310,20 +313,29 @@
       'professional opinion. It cannot see your circumstances, your history or your reasons, and it is ' +
       'not a diagnosis of anything. If anything above lands somewhere heavier than a passing thought, ' +
       'the person to talk to about it is a person.',
-    premiumDialogTitle: 'Unlock supplementary analysis',
+    // Shared by all three triggers — either cover's Unlock button, or the
+    // download button below — since one unlock now covers all three, this
+    // dialog no longer names just one of them.
+    premiumDialogTitle: 'Unlock the full report',
     premiumDialogBlurb: 'A one-time charge, taken on this device — Apple Pay or Google Pay, whichever ' +
-      'this browser offers.',
+      'this browser offers. It unlocks the roast, the supplementary analysis and the report download ' +
+      'together.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',
     premiumFailed: 'The payment did not go through. Nothing was charged.',
     // The payment can succeed and the analysis call can still fail on its own
     // — a slow model, a dropped connection — so this says plainly that the
-    // charge itself is not in question, only the writing.
-    premiumGenerationFailed: 'The payment went through, but the analysis could not be generated. Try ' +
-      'again — the same payment can be used a few more times before it needs a new one.',
+    // charge itself is not in question, only the writing. A promo code that
+    // authorised the call but hit the same failure reads the same way, since
+    // "went through" is true of either kind of authorisation.
+    premiumGenerationFailed: 'That went through, but the analysis could not be generated. Try again — ' +
+      'the same payment can be used a few more times before it needs a new one.',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
+    premiumPromoLabel: 'Have a promo code?',
+    premiumPromoPlaceholder: 'Promo code',
+    premiumPromoApply: 'Apply',
 
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +

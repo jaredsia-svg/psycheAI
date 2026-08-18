@@ -56,8 +56,9 @@
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds
   // (from psycheai_digest) travelling again, not a second upload of anything
-  // new.
-  const analysePremium = (digest, paymentIntentId) => post('/api/premium-analysis', { digest, paymentIntentId });
+  // new. `auth` is one of `{ paymentIntentId }` or `{ promoCode }` — the two
+  // ways server.js's handlePremiumAnalysis will accept unlocking this call.
+  const analysePremium = (digest, auth) => post('/api/premium-analysis', Object.assign({ digest }, auth));
 
   root.PsycheLLM = { status, analyseProfile, analyseCompatibility, analysePremium };
 })(typeof window !== 'undefined' ? window : globalThis);

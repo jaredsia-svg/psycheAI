@@ -895,35 +895,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    the three beside it, so it is an ordinary .facet now and needs no rules of
    its own. */
 
-/* The bonus section's cover. Greyed and inert-looking on purpose: it should
-   read as something switched off rather than as another card to scroll past.
-   The blur here is on the cover's own decoration, never on the writing — the
-   writing is not in the document until the button is pressed, because a CSS
-   blur hides nothing from select-all, a screen reader or view-source. */
-.bonus-cover {
-  position: relative; overflow: hidden;
-  border: 1px dashed var(--line); border-radius: var(--radius);
-  background: repeating-linear-gradient(
-    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
-  padding: 1.4rem clamp(1rem, 4vw, 1.8rem); text-align: center;
-}
-.bonus-cover h3 { margin-top: 0; color: var(--ink-soft); }
-.bonus-cover p { max-width: 54ch; margin-inline: auto; }
-.bonus-cover .fineprint { margin-bottom: 1rem; }
-.bonus-reveal { margin: 0; }
-/* Sits above the writing, and stays there — it is most needed while the
-   section is being read, not on the cover the reader has already dismissed. */
-.bonus-caveat {
-  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem;
-}
-.bonus-body h3:first-of-type { margin-top: 0; }
-.bonus-hide { margin-top: .6rem; }
-
-/* The premium section's cover — the same grey, switched-off stripe treatment
-   as .bonus-cover just above, kept as its own rule rather than a shared class
-   because the two covers gate unrelated things (a content warning vs. a
-   paywall) and have no reason to stay coupled just because they currently
-   look alike. */
+/* The cover shared by both paid sections — the roast and the supplementary
+   analysis, and previously "the premium section's cover" alone until the
+   roast moved behind the same paywall and adopted the same markup. Greyed
+   and inert-looking on purpose: it should read as something switched off
+   rather than as another card to scroll past. The writing is not in the
+   document at all until a real result arrives, because a CSS blur would
+   hide nothing from select-all, a screen reader or view-source. */
 .premium-cover {
   position: relative; overflow: hidden;
   border: 1px dashed var(--line); border-radius: var(--radius);
@@ -935,9 +913,15 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .premium-cover p { max-width: 54ch; margin-inline: auto; }
 .premium-unlock { margin: 0; }
 .premium-body h3:first-of-type { margin-top: 0; }
+/* Sits above the writing it belongs to, and stays there — it is most needed
+   while the section is being read, not on a cover the reader has already
+   dismissed. */
+.bonus-caveat {
+  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem;
+}
 /* Same treatment as .bonus-caveat above, and the same reason: fixed app copy
    the reader should see with the writing rather than only on a cover they
-   have already dismissed, in a section with even more reason to carry it. */
+   have already dismissed. */
 .premium-caveat {
   border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-top: 1.2rem;
 }
@@ -953,6 +937,27 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .premium-status { margin: .5rem 0 0; font-size: .9rem; }
 .premium-status.is-bad { color: var(--danger); }
 .premium-status.is-good { color: var(--good); }
+
+/* The live seconds count while the paid model call is in flight. Reuses the
+   ordinary .progress/.progress-bar.indeterminate pair the upload page's own
+   progress bar uses — there is no real percentage to report for a single
+   request/response call, only elapsed time, so the bar sweeps rather than
+   fills and the number beside it is what actually moves. */
+.premium-progress { margin: 1rem 0; }
+.premium-progress-time { margin: 0; font-size: .85rem; color: var(--ink-soft); text-align: center; }
+
+/* The promo-code row at the foot of the dialog — a second, independent way
+   to authorise the same unlock, for a reader who should not need to pay at
+   all rather than a discount applied to a real charge. Sits below the status
+   line and above Cancel, set off with a rule so it does not read as part of
+   the payment flow above it. */
+.premium-promo {
+  margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--line);
+}
+.premium-promo-label { display: block; font-size: .85rem; color: var(--ink-soft); margin-bottom: .4rem; }
+.premium-promo-row { display: flex; gap: .5rem; }
+.premium-promo-input { flex: 1; min-width: 0; }
+.premium-promo-row .btn { flex: none; margin: 0; }
 
 
 

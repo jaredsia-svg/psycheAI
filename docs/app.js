@@ -438,103 +438,92 @@
       '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
   }
 
-  // The unsparing section, behind a cover the reader has to open.
+  // ---------- the two paid sections: the roast and the supplementary analysis ----------
+  //
+  // Both sit behind one $1.99 unlock now — one payment reveals both at once,
+  // along with the report download further down the page. They used to be
+  // built differently: the roast ran free, in the same call as everything
+  // else, behind a click-to-reveal cover with no payment involved; the
+  // supplementary analysis alone was paid. Now both are generated together by
+  // one paid call to Grok (lib/prompts.js's PREMIUM_SCHEMA carries harsh,
+  // advice, patternsWorthAttention and lifeAdvice), so
+  // `state.profile.premiumAnalysis` holds all four fields once there is a
+  // result — its mere presence *is* "unlocked" for both cards; there is no
+  // separate boolean that could drift out of sync with whether real content
+  // actually exists.
   //
   // The text is NOT written into the markup here. Blurring it with CSS would
   // look the same and protect nothing: select-all copies it, a screen reader
-  // reads it out, and view-source hands it over. Somebody who has decided not
-  // to read this should not have it on their page at all, so the cover ships
-  // alone and `revealBonus` injects the writing on the click.
-  function bonusBlock(bonus) {
-    if (!bonus) return '';
-    // The badge is unescaped HTML spliced onto an already-escaped title —
-    // sectionHead just concatenates whatever it is handed into the <h2>, so
-    // this is the one call site that hands it a title with markup in it
-    // rather than plain text, same trick .mode-title uses beside "Coming
-    // soon" on the depth picker.
-    const title = esc(TEXT.bonus) + ' <span class="mode-badge">' + esc(TEXT.bonusBadge) + '</span>';
-    return '<div class="card section-card bonus-card">' +
-      sectionHead('🕳️', title, esc(TEXT.bonusSub)) +
-      '<div class="bonus-cover">' +
-      '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
-      '<p class="fineprint">' + esc(TEXT.bonusCaveat) + '</p>' +
-      '<button class="btn bonus-reveal" type="button" aria-expanded="false">' +
-      esc(TEXT.bonusReveal) + '</button></div>' +
-      '<div class="bonus-body" hidden></div></div>';
+  // reads it out, and view-source hands it over. The server does not even run
+  // the paid model call until it has independently verified a real payment
+  // (lib/stripe.js's verifyPaid) or a valid promo code, so there is nothing
+  // for a page saved or view-sourced before that point to give away — each
+  // cover ships alone, and revealPaidSections injects the writing once a
+  // real result has actually arrived.
+  function paidAnalysis() {
+    return (state.profile && state.profile.premiumAnalysis) || null;
   }
 
-  /** Fills a cover's sibling body with the writing it was hiding. */
-  function revealBonus(cover, bonus) {
-    const card = cover.closest('.bonus-card');
-    const body = card.querySelector('.bonus-body');
-    body.innerHTML =
-      '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
-      '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(bonus.harsh) +
-      '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(bonus.advice) +
-      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>';
-    body.hidden = false;
-    cover.hidden = true;
-  }
-
-  /** Puts the cover back, and takes the writing out of the page with it. */
-  function hideBonus(button) {
-    const card = button.closest('.bonus-card');
-    const body = card.querySelector('.bonus-body');
-    const cover = card.querySelector('.bonus-cover');
-    body.innerHTML = '';
-    body.hidden = true;
-    cover.hidden = false;
-    const reveal = cover.querySelector('.bonus-reveal');
-    reveal.setAttribute('aria-expanded', 'false');
-    reveal.focus();
-  }
-
-  // The paid section. Same shape and the same reasoning as the bonus section
-  // above it — a cover that has to be opened on purpose rather than a card to
-  // scroll past — except this cover opens with a payment instead of a click,
-  // and what is behind it is generated fresh from the digest rather than
-  // written into the page ahead of time.
-  //
-  // Nothing behind the cover is written into the markup here, same rule as
-  // bonusBlock: the server does not even run the paid model call until it has
-  // independently verified a real payment (lib/stripe.js's verifyPaid), so
-  // there is nothing for a page saved or view-sourced before that point to
-  // give away. state.profile.premiumAnalysis holds the result once there is
-  // one — its mere presence *is* "unlocked"; there is no separate boolean
-  // that could drift out of sync with whether real content actually exists.
-  function premiumBlock() {
-    const title = esc(TEXT.premium) + ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
-    const analysis = state.profile && state.profile.premiumAnalysis;
-    return '<div class="card section-card premium-card">' +
-      sectionHead('🔒', title, esc(TEXT.premiumSub)) +
+  /** The one cover/body shape both paid cards share; only the copy differs. */
+  function paywallCard(cardClass, icon, title, sub, coverTitle, coverBlurb, bodyHtml) {
+    const analysis = paidAnalysis();
+    return '<div class="card section-card ' + cardClass + '">' +
+      sectionHead(icon, title, sub) +
       '<div class="premium-cover"' + (analysis ? ' hidden' : '') + '>' +
-      '<h3>' + esc(TEXT.premiumCoverTitle) + '</h3>' +
-      '<p>' + esc(TEXT.premiumCoverBlurb) + '</p>' +
+      '<h3>' + esc(coverTitle) + '</h3>' +
+      '<p>' + esc(coverBlurb) + '</p>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(analysis) + '">' +
       esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel) + '</button></div>' +
       '<div class="premium-body"' + (analysis ? '' : ' hidden') + '>' +
-      (analysis ? premiumBodyHtml(analysis) : '') + '</div></div>';
+      (analysis ? bodyHtml(analysis) : '') + '</div></div>';
+  }
+
+  // The badge is unescaped HTML spliced onto an already-escaped title —
+  // sectionHead just concatenates whatever it is handed into the <h2>, so
+  // this is one of the two call sites that hand it a title with markup in
+  // it rather than plain text, same trick .mode-title uses beside "Coming
+  // soon" on the depth picker.
+  function bonusBlock() {
+    const title = esc(TEXT.bonus) + ' <span class="mode-badge">' + esc(TEXT.bonusBadge) + '</span>';
+    return paywallCard('bonus-card', '🕳️', title, esc(TEXT.bonusSub),
+      TEXT.bonusCoverTitle, TEXT.bonusCoverBlurb, bonusBodyHtml);
+  }
+
+  function bonusBodyHtml(analysis) {
+    return '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
+      '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) +
+      '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice);
+  }
+
+  function premiumBlock() {
+    const title = esc(TEXT.premium) + ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    return paywallCard('premium-card', '🔒', title, esc(TEXT.premiumSub),
+      TEXT.premiumCoverTitle, TEXT.premiumCoverBlurb, premiumBodyHtml);
   }
 
   // points() already renders a {title, detail, evidence} list exactly the
-  // way PREMIUM_SCHEMA's two fields are shaped — the same helper the rest of
-  // the report uses for its own evidence-bearing lists. The caveat is fixed
-  // copy shown beside whatever the model returned, not read from it — see
-  // the comment on PREMIUM_SCHEMA in lib/prompts.js for why.
+  // way patternsWorthAttention/lifeAdvice are shaped — the same helper the
+  // rest of the report uses for its own evidence-bearing lists. The caveat is
+  // fixed copy shown beside whatever the model returned, not read from it —
+  // see the comment on PREMIUM_SCHEMA in lib/prompts.js for why.
   function premiumBodyHtml(analysis) {
     return '<h3>' + esc(TEXT.premiumPatternsTitle) + '</h3>' + points(analysis.patternsWorthAttention) +
       '<h3>' + esc(TEXT.premiumAdviceTitle) + '</h3>' + points(analysis.lifeAdvice) +
       '<p class="fineprint premium-caveat">' + esc(TEXT.premiumCaveat) + '</p>';
   }
 
-  /** Fills a cover's sibling body once a real analysis has actually arrived. */
-  function revealPremium(cover, analysis) {
-    const card = cover.closest('.premium-card');
-    const body = card.querySelector('.premium-body');
-    body.innerHTML = premiumBodyHtml(analysis);
-    body.hidden = false;
-    cover.hidden = true;
-    cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
+  /** Fills both cards' bodies at once, once a real analysis has arrived — one payment, both sections. */
+  function revealPaidSections(analysis) {
+    for (const [cardClass, bodyHtml] of [['bonus-card', bonusBodyHtml], ['premium-card', premiumBodyHtml]]) {
+      const card = document.querySelector('#profile-body .' + cardClass);
+      if (!card) continue;
+      const cover = card.querySelector('.premium-cover');
+      const body = card.querySelector('.premium-body');
+      body.innerHTML = bodyHtml(analysis);
+      body.hidden = false;
+      cover.hidden = true;
+      cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
+    }
   }
 
   // The wrapper exists for print: a trait's bar, its reading and its evidence
@@ -717,23 +706,13 @@
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#sample-close').addEventListener('click', closeSample);
 
-  // Delegated, because the covers are written by innerHTML in two places — the
-  // real report — the sample never renders this section at all, so a
-  // `.bonus-reveal` can only belong to the reader's own report. The writing is
-  // looked up from state rather than read out of the page, since the whole
-  // point is that it was never put in the page.
+  // Delegated, because both covers are written by innerHTML — the sample
+  // never renders either section at all, so a `.premium-unlock` here can
+  // only belong to the reader's own report. Both the roast cover and the
+  // supplementary-analysis cover use this same class and open this same
+  // dialog: they share one unlock, so there is nothing for a per-card
+  // handler to do differently.
   document.addEventListener('click', event => {
-    const reveal = event.target.closest('.bonus-reveal');
-    if (reveal) {
-      const source = state.profile && state.profile.report;
-      if (!source || !source.bonus) return;
-      reveal.setAttribute('aria-expanded', 'true');
-      revealBonus(reveal.closest('.bonus-cover'), source.bonus);
-      return;
-    }
-    const hide = event.target.closest('.bonus-hide');
-    if (hide) hideBonus(hide);
-
     const unlock = event.target.closest('.premium-unlock');
     if (unlock) openPremiumDialog(unlock);
   });
@@ -1718,7 +1697,7 @@
     // account for a stranger who has not asked to see it, a roast reads as
     // just an insult rather than the thing it is on a real report, so the
     // sample leaves it out rather than showing it dressed as an example.
-    if (includeBonus) html += bonusBlock(report.bonus);
+    if (includeBonus) html += bonusBlock();
 
     // Below the roast, same reasoning as excluding the roast itself from the
     // sample: nobody should be offered a card-payment prompt on a demo
@@ -2287,23 +2266,65 @@
     status.className = 'premium-status' + (tone ? ' is-' + tone : '');
   }
 
+  // A live seconds counter beside the (indeterminate — there is no real
+  // percentage to report for a single request/response call) progress bar,
+  // so a reader watching a long structured call is looking at a number that
+  // moves rather than a bar that never fills and a sentence that never
+  // changes.
+  let progressTimer = null;
+  function startProgress() {
+    const bar = $('#premium-progress');
+    const time = $('#premium-progress-time');
+    bar.hidden = false;
+    const start = Date.now();
+    const tick = () => { time.textContent = Math.floor((Date.now() - start) / 1000) + 's'; };
+    tick();
+    progressTimer = setInterval(tick, 1000);
+  }
+  function stopProgress() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+    $('#premium-progress').hidden = true;
+  }
+
+  // Set by openPremiumDialog on every open, and read by the promo-code apply
+  // handler below — the one control in this dialog that is not itself inside
+  // openPremiumDialog's own call stack, since a reader can type a code in at
+  // any point while the dialog is open rather than only right after it opens.
+  let dialogOnUnlocked = null;
+
   /**
-   * Runs once a payment has actually cleared — calls the paid route with the
-   * same digest the free report used, and only reveals or persists anything
-   * once that call really succeeds. Payment and generation are deliberately
-   * two separate steps on the server (lib/stripe.js's verifyPaid, then
-   * lib/premiumLedger's usage cap, then the model call), so a generation that
-   * fails after a successful charge is a "try again" here — re-sending the
-   * same paymentIntentId spends one more of the handful of uses the server
-   * allows per payment — never a "pay again".
+   * Runs once a payment has actually cleared, or a valid promo code has been
+   * entered — calls the paid route with the same digest the free report
+   * used, and only reveals or persists anything once that call really
+   * succeeds. `auth` is `{ paymentIntentId }` or `{ promoCode }`; either way
+   * the server treats authorisation and generation as separate steps (see
+   * server.js's handlePremiumAnalysis), so a generation that fails after a
+   * real charge or a valid code is a "try again" here — re-sending the same
+   * auth spends one more of the handful of uses the server allows per
+   * payment (promo codes carry no such cap) — never a "pay again".
+   *
+   * Reveals both paid cards at once and, once revealed, runs `onUnlocked` if
+   * one was given — the callback the download button uses to fall straight
+   * through into the download it was actually pressed for, rather than
+   * leaving the reader to notice the report unlocked and press it again.
    */
-  async function runPremiumAnalysis(paymentIntentId, cover, dialog) {
-    $('#premium-payment-request-button').innerHTML = '';
-    $('#premium-mock-pay').hidden = true;
+  async function runPremiumAnalysis(auth, dialog, onUnlocked) {
+    // Only clear the payment controls for an actual payment attempt. A promo
+    // attempt is a wholly separate authorisation path — hiding the wallet or
+    // mock-pay button while it runs would strand a reader whose code turns
+    // out to be wrong with no visible way to just pay instead, short of
+    // closing and reopening the dialog.
+    if (auth.paymentIntentId) {
+      $('#premium-payment-request-button').innerHTML = '';
+      $('#premium-mock-pay').hidden = true;
+    }
     $('#premium-retry').hidden = true;
+    $('#premium-promo-input').disabled = true;
+    $('#premium-promo-apply').disabled = true;
     premiumStatus(TEXT.premiumGenerating);
+    startProgress();
     try {
-      const result = await LLM.analysePremium(state.digest, paymentIntentId);
+      const result = await LLM.analysePremium(state.digest, auth);
       if (state.profile) {
         state.profile.premiumAnalysis = result.data;
         // Best-effort: a browser too full to hold this still leaves the
@@ -2311,14 +2332,19 @@
         // this visit — it just will not survive a reload.
         store.write(KEYS.profile, state.profile);
       }
-      revealPremium(cover, result.data);
+      revealPaidSections(result.data);
+      stopProgress();
       dialog.close();
+      if (onUnlocked) onUnlocked();
     } catch (error) {
+      stopProgress();
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
+      $('#premium-promo-input').disabled = false;
+      $('#premium-promo-apply').disabled = false;
       const retry = $('#premium-retry');
       retry.textContent = TEXT.premiumRetry;
       retry.hidden = false;
-      retry.onclick = () => runPremiumAnalysis(paymentIntentId, cover, dialog);
+      retry.onclick = () => runPremiumAnalysis(auth, dialog, onUnlocked);
     }
   }
 
@@ -2333,13 +2359,13 @@
    * pass, and the second only ever runs for the ones that come back
    * `requires_action`.
    */
-  async function mountPaymentRequestButton(intent, cover, dialog) {
+  async function mountPaymentRequestButton(intent, dialog, onUnlocked) {
     const Stripe = await loadStripeJs();
     const stripe = Stripe(intent.publishableKey);
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
-      total: { label: 'Supplementary analysis', amount: intent.amount },
+      total: { label: 'PsycheAI unlock', amount: intent.amount },
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -2369,7 +2395,7 @@
           return;
         }
       }
-      runPremiumAnalysis(intent.id, cover, dialog);
+      runPremiumAnalysis({ paymentIntentId: intent.id }, dialog, onUnlocked);
     });
   }
 
@@ -2379,21 +2405,34 @@
    * cannot open a second one, and re-enabled in `finally` regardless of how
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
+   *
+   * One dialog now opens from three different places — the roast cover, the
+   * supplementary-analysis cover, and the download button below — because
+   * one payment (or one promo code) unlocks all three. `onUnlocked`, when
+   * given, runs once generation actually succeeds; only the download button
+   * passes one, to fall through into the download itself once the report is
+   * unlocked.
    */
-  async function openPremiumDialog(button) {
+  async function openPremiumDialog(button, onUnlocked) {
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
+    dialogOnUnlocked = onUnlocked || null;
     $('#premium-dialog-title').textContent = TEXT.premiumDialogTitle;
     $('#premium-dialog-blurb').textContent = TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-mock-pay').hidden = true;
     $('#premium-retry').hidden = true;
+    $('#premium-promo-label').textContent = TEXT.premiumPromoLabel;
+    $('#premium-promo-input').placeholder = TEXT.premiumPromoPlaceholder;
+    $('#premium-promo-input').value = '';
+    $('#premium-promo-input').disabled = false;
+    $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
+    $('#premium-promo-apply').disabled = false;
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
 
-    const cover = button.closest('.premium-cover');
     button.disabled = true;
     try {
       const response = await fetch('api/create-payment-intent', { method: 'POST' });
@@ -2407,11 +2446,11 @@
         const mockButton = $('#premium-mock-pay');
         mockButton.textContent = TEXT.premiumMockPay;
         mockButton.hidden = false;
-        mockButton.onclick = () => runPremiumAnalysis(intent.id, cover, dialog);
+        mockButton.onclick = () => runPremiumAnalysis({ paymentIntentId: intent.id }, dialog, onUnlocked);
         return;
       }
 
-      await mountPaymentRequestButton(intent, cover, dialog);
+      await mountPaymentRequestButton(intent, dialog, onUnlocked);
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
     } finally {
@@ -2419,12 +2458,35 @@
     }
   }
 
+  // The promo path never touches Stripe or create-payment-intent at all — it
+  // goes straight to the same paid route a real payment reaches, with a code
+  // instead of a paymentIntentId, so it works even mid-dialog while a wallet
+  // button is already mounted, and even on a server with no Stripe key set.
+  function applyPromoCode() {
+    const input = $('#premium-promo-input');
+    const code = input.value.trim();
+    if (!code) return;
+    runPremiumAnalysis({ promoCode: code }, $('#premium-dialog'), dialogOnUnlocked);
+  }
+  $('#premium-promo-apply').addEventListener('click', applyPromoCode);
+  $('#premium-promo-input').addEventListener('keydown', event => {
+    if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }
+  });
+
   $('#premium-cancel').addEventListener('click', () => $('#premium-dialog').close());
   $('#premium-dialog').addEventListener('click', event => {
     if (event.target === $('#premium-dialog')) $('#premium-dialog').close();
   });
 
-  $('#export-pdf-bottom').addEventListener('click', exportPdf);
+  // Gated behind the same unlock as the roast and the supplementary analysis
+  // now, rather than always available: a reader who has not paid (and has no
+  // promo code) sees the paywall instead of the download prompt. Once
+  // unlocked, this falls straight through to the ordinary download flow.
+  $('#export-pdf-bottom').addEventListener('click', event => {
+    if (paidAnalysis()) { exportPdf(event); return; }
+    const button = event.currentTarget;
+    openPremiumDialog(button, () => exportPdf({ currentTarget: button }));
+  });
 
   /**
    * The same download for a comparison. Built from `state.lastReport`, which

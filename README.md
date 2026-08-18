@@ -74,21 +74,28 @@ downloading it — and pulled back out for now, since it needs a verified sendin
 doesn't have yet. It may return once one exists; nothing about the current design forecloses it, since
 the address collection this section describes is exactly the piece such a feature would reuse.
 
-### The $1.99 "Supplementary analysis" unlock
+### The $1.99 unlock: the roast, the supplementary analysis, and the download
 
-One section of the report, **Supplementary analysis**, sits behind a one-time $1.99 charge rather than
-behind a click. It is built like the bonus roast beside it — a cover in the page until the reader does
-something about it, nothing behind the cover written into the DOM until they do — except what unlocks
-it is a payment instead of a "show me anyway" button, taken on-site through Stripe's Payment Request
-Button so the browser offers Apple Pay or Google Pay directly, and what is behind the cover is a real,
-model-generated second pass over the reader's own digest rather than static copy.
+Three things in the report sit behind one $1.99 charge rather than three separate ones: **Let us roast
+you**, **Supplementary analysis**, and the "Download full report" button. All three are gated on the
+same unlock, taken on-site through Stripe's Payment Request Button so the browser offers Apple Pay or
+Google Pay directly — pressing any one of the three prompts for it, and paying once (or redeeming a
+promo code, see below) reveals all three at once. Both paid sections are built the same way: a cover in
+the page until the unlock clears, nothing behind the cover written into the DOM until it does, and what
+is behind it is a real, model-generated pass over the reader's own digest rather than static copy.
+
+The roast used to be free — generated in the same call as the rest of the report, sitting behind a
+plain click-to-reveal cover with no payment involved. It moved behind the paid unlock alongside the
+supplementary analysis, and moved provider with it: both now come out of the same paid call to Grok
+(see below), rather than the roast being written by whichever provider ran the free report.
 
 ```bash
 export STRIPE_SECRET_KEY=sk_...        # server-side only — creates and verifies PaymentIntents
 export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
 export STRIPE_ACCOUNT_COUNTRY=US       # optional — the merchant's country, not the buyer's
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
-export XAI_API_KEY=xai-...             # the premium analysis always runs on Grok — see below
+export XAI_API_KEY=xai-...             # the roast and the supplementary analysis always run on Grok
+export PSYCHEAI_PROMO_CODE=...         # optional — overrides the default promo code; see below
 npm start
 ```
 
@@ -99,16 +106,24 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
-**The premium analysis always runs on Grok, regardless of which provider the free report used.** This
-is a fixed choice made in `server.js`'s `premiumEngine()`, not a fallback through the same
-auto-detection `lib/provider.js` uses for the free report — `requirePremiumEngine()` calls
-`require('./lib/grok')` directly, so a deployment with `GEMINI_API_KEY` set but no `XAI_API_KEY` has
-free reports and no working premium section at all, rather than premium quietly running on Gemini.
+**The paid call always runs on Grok, regardless of which provider the free report used.** This is a
+fixed choice made in `server.js`'s `premiumEngine()`, not a fallback through the same auto-detection
+`lib/provider.js` uses for the free report — `requirePremiumEngine()` calls `require('./lib/grok')`
+directly, so a deployment with `GEMINI_API_KEY` set but no `XAI_API_KEY` has a working free report and
+no working roast or supplementary analysis at all, rather than either one quietly running on Gemini.
 `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` and `XAI_API_KEY` can all be set on the same server at once —
 `lib/provider.js` picks one of them for the free report by its own priority order, and `XAI_API_KEY`
-is what premium reads independently of that choice. Mock mode is the one exception: with
+is what the paid call reads independently of that choice. Mock mode is the one exception: with
 `PSYCHEAI_MOCK=1`, `provider.active` is already the mock module, and `premiumEngine()` follows it
 there too rather than demanding a real Grok key just to click through the flow.
+
+**A promo code bypasses payment entirely.** The unlock dialog carries a promo-code field at its foot,
+independent of the Stripe flow above it — entering the right code calls `/api/premium-analysis` with a
+`promoCode` instead of a `paymentIntentId`, and `server.js`'s `isValidPromoCode()` checks it
+case-insensitively against `PSYCHEAI_PROMO_CODE` (default `jialatsia`, overridable so this repo's own
+history is not a permanent backdoor into a real deployment). A valid code skips `verifyPaid` and the
+usage ledger both — there is no payment to verify and no use to meter — so it works even on a server
+with no Stripe keys configured at all, as long as the Grok engine itself is set up.
 
 **Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
 script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
@@ -122,7 +137,7 @@ An earlier version of this feature had a real problem: "unlocked" was a boolean 
 itself once the Payment Request flow reported success, and nothing on the server ever checked that
 claim against Stripe. Anyone with devtools open — no special tooling, every browser has this — could
 set `state.profile.premiumUnlocked = true` in the console, or just hand-edit the `psycheai_profile`
-entry in Local Storage, and see the unlocked section for nothing. Worse, because the unlocked content
+entry in Local Storage, and see the paid sections for nothing. Worse, because the unlocked content
 used to be static copy sitting in `docs/copy.js`, it shipped to *every* visitor's browser regardless of
 payment — it never needed a bypass in the first place, just View Source.
 
@@ -132,14 +147,17 @@ its own verification, rather than something the client reveals:
 - `POST /api/create-payment-intent` creates the PaymentIntent — the amount is fixed in `lib/stripe.js`
   and never taken from the request, so there is nothing in the body a client could tamper with to
   change what it pays.
-- `POST /api/premium-analysis` is the route that actually matters. It takes the digest (resent exactly
-  as `/api/analyse` takes it — nothing is stored between the two calls, so this is not a second upload,
-  it is the browser's own `psycheai_digest` travelling again) and a `paymentIntentId`. Before it will
-  spend a single token, it calls `payments.verifyPaid(paymentIntentId)`, which independently
-  **re-retrieves that PaymentIntent from Stripe** and confirms both that it actually succeeded and that
-  it was for the real $1.99 — status alone is not enough, or a client could present some other real
-  PaymentIntent it holds, for any amount, and pass a check that only asked whether *something* had
-  succeeded.
+- `POST /api/premium-analysis` is the route that actually matters, and the one call that produces both
+  the roast and the supplementary analysis together. It takes the digest (resent exactly as
+  `/api/analyse` takes it — nothing is stored between the two calls, so this is not a second upload, it
+  is the browser's own `psycheai_digest` travelling again) and either a `paymentIntentId` or a
+  `promoCode`. Given a `paymentIntentId`, it calls `payments.verifyPaid(paymentIntentId)` before it will
+  spend a single token, which independently **re-retrieves that PaymentIntent from Stripe** and confirms
+  both that it actually succeeded and that it was for the real $1.99 — status alone is not enough, or a
+  client could present some other real PaymentIntent it holds, for any amount, and pass a check that
+  only asked whether *something* had succeeded. Given a `promoCode` instead, it checks that against
+  `isValidPromoCode()` and skips `verifyPaid` and the ledger below entirely — there is no payment behind
+  a promo redemption to verify or meter.
 - The model call happens **only after** that check passes, and the result is returned directly — never
   written anywhere the client could read it without asking. There is no static "unlocked" string left
   in the shipped JS for View Source to find, because there no longer is one.
@@ -170,26 +188,34 @@ the same way there is no account for anything else in this app.
 
 #### What the paid section actually asks the model for, and what it refused to
 
-The feature was originally specified as two prompts: "advice on how to live your life better", and
-"what mental illness or disorders you should look out for". The second one was declined, deliberately,
-not built as asked. `lib/prompts.js` already carries an explicit, repeatedly-restated rule that the
-free report's own "unsparing" bonus section is not licensed to name, imply or predict a clinical
-condition — the comment there says the rule "holds hardest" in exactly the section most tempted to
-break it. Asking a model to name what mental illness a reader might have, from Instagram behaviour, is
-the same false medical claim with a bigger licence: no clinical training, no history, no assessment,
-no standing, in a document the reader paid for and may keep or show to someone else.
+`PREMIUM_SCHEMA` carries four fields from one call: `harsh` and `advice` (the roast — moved here from
+the free report, unchanged in substance) and `patternsWorthAttention` and `lifeAdvice`. The latter two
+were originally specified as two prompts: "advice on how to live your life better", and "what mental
+illness or disorders you should look out for". The second one was declined, deliberately, not built as
+asked. `lib/prompts.js` already carried an explicit, repeatedly-restated rule that the roast is not
+licensed to name, imply or predict a clinical condition even though it is deliberately unkind elsewhere
+— the comment there says the rule "holds hardest" in exactly the section most tempted to break it.
+Asking a model to name what mental illness a reader might have, from Instagram behaviour, is the same
+false medical claim with a bigger licence: no clinical training, no history, no assessment, no standing,
+in a document the reader paid for and may keep or show to someone else.
 
 What shipped instead is **`patternsWorthAttention`** — evidence-cited behavioural observations, with a
-system prompt (`PREMIUM_SYSTEM`) that restates the diagnosis ban in full rather than assuming it
-carries over from the free report's prompt (it does not — this is a separate system prompt on a
-separate call). Where a pattern is exactly the kind of thing worth a professional's attention, the
-model is told to say that in those words rather than guess at what it might be. The safety caveat
-itself is not something the model writes: unlike the validity caveats elsewhere in this file (MBTI,
-Enneagram, love languages — "this framework is popular rather than validated"), `PREMIUM_SCHEMA` has no
-`caveat` field at all. It is fixed copy (`premiumCaveat` in `docs/copy.js`) shown beside the writing
-regardless of what came back, so it is never subject to being softened, forgotten or phrased
-differently on a given run. The "how to live better" half of the ask was unproblematic and is built as
-`lifeAdvice`, in the same evidence-cited shape.
+system prompt (`PREMIUM_SYSTEM`) that restates the diagnosis ban in full rather than assuming it carries
+over from the free report's prompt (it does not — this is its own system prompt on its own call), and
+states plainly that the ban covers the roast in this same call exactly as much as it covers this field,
+so a licence to go deeper on a paid, unsparing pass cannot erode it. Where a pattern is exactly the kind
+of thing worth a professional's attention, the model is told to say that in those words rather than
+guess at what it might be. The safety caveat itself is not something the model writes: unlike the
+validity caveats elsewhere in this file (MBTI, Enneagram, love languages — "this framework is popular
+rather than validated"), `PREMIUM_SCHEMA` has no `caveat` field at all. It is fixed copy (`premiumCaveat`
+in `docs/copy.js`) shown beside the writing regardless of what came back, so it is never subject to being
+softened, forgotten or phrased differently on a given run. The "how to live better" half of the ask was
+unproblematic and is built as `lifeAdvice`, in the same evidence-cited shape.
+
+Unlike the free report, this call receives no photographs — only the digest — so the roast's old
+instructions to draw on a photo when one gave it something worth saying moved out with the rest of the
+free report's photograph handling; `summary` is now the only field in either call that reasons about
+images at all.
 
 ### Making the code scannable
 
@@ -663,9 +689,10 @@ surveillance. The fixture's URLs carry deep paths and query strings so that a pa
 is caught rather than trusted.
 
 The instructions for requesting either export live in a collapsed `<details>` on the welcome page —
-a native disclosure rather than the JS one the bonus section uses, because that one keeps its text
-out of the DOM as a consent gate and this is only a page of instructions for a step most readers
-skip. Left in the document while closed, they stay findable with Find-in-page and reachable by a
+a native disclosure rather than the JS-managed one the paid roast and supplementary-analysis covers
+use, because those keep their text out of the DOM entirely as a payment gate and this is only a page
+of instructions for a step most readers skip. Left in the document while closed, they stay findable
+with Find-in-page and reachable by a
 screen reader navigating headings; the checks read `textContent` for the content and visibility for
 the disclosure, since `innerText` reports nothing for a closed `<details>` and would prove neither.
 
@@ -1450,10 +1477,22 @@ kind of claim that quietly stops being true.
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the
 least charitable reading the evidence still supports, and the advice a friend gives when they have
-stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
-meets every fair section first and the confidence caveat still gets the last word over all of it. A
-small "Bonus Section" badge sits beside the title — a label for what the section is, spliced onto the
-already-escaped title text rather than a second heading competing with the one next to it.
+stopped managing your feelings. It sits below the behaviour read and above the supplementary analysis,
+which in turn sits above confidence, so the reader meets every fair section first and the confidence
+caveat still gets the last word over all of it. A small "Bonus Section" badge sits beside the title —
+a label for what the section is, spliced onto the already-escaped title text rather than a second
+heading competing with the one next to it.
+
+**It used to run free, in the same call as the rest of the report — it does not any more.** `harsh`
+and `advice` moved out of `PROFILE_SCHEMA`/`PROFILE_SYSTEM` entirely and into `PREMIUM_SCHEMA`/
+`PREMIUM_SYSTEM`, the paid, Grok-only call described in ["The $1.99 unlock"](#the-199-unlock-the-roast-the-supplementary-analysis-and-the-download)
+above, alongside the supplementary analysis. The prompt instructions below carried over essentially
+unchanged; only the reader's relationship to them changed — one $1.99 unlock (or one promo code) now
+buys the roast, the supplementary analysis, and the report download together, rather than the roast
+opening for free on a click. One casualty of the move: this call receives no photographs (only the
+digest), so the old instruction for the roast to spend a sentence on a photograph when one gave it
+something worth saying is gone along with the images themselves — `summary`, in the free report, is
+now the only field in either call that reasons about pictures at all.
 
 The register is stated in the prompt rather than left for the model to infer from "unkind", because
 the page calls it a roast on the cover and the two would otherwise drift apart. What the prompt is
@@ -1484,35 +1523,40 @@ because the rule without a concrete instance of it being broken is the part that
 to change anything.
 
 A third reading, **Where this ends up** — the five-year behavioural forecast — was cut along with
-the behaviour section's subsections. The no-diagnosis rule did not go with it: `harsh` and `advice`
-can drift into a clinical claim just as easily, and the forecast happened to be the field carrying
-the longest statement of the ban, so the checks now read it off the hard limits instead.
+the behaviour section's subsections, back when this still lived in the free report. The no-diagnosis
+rule did not go with it: `harsh` and `advice` can drift into a clinical claim just as easily, and the
+forecast happened to be the field carrying the longest statement of the ban, so the checks now read
+it off the hard limits instead.
 
 **It is not a diagnosis, and cannot become one.** The obvious question — *what is wrong with me* —
 is the one thing this section may not answer. A model naming a condition from posting patterns is
 inventing a clinical claim it has no standing to make, in a document people export to PDF and show
 to other people, and the landing page says in as many words that this is not a clinical or
-diagnostic tool. The ban is stated twice in `PROFILE_SYSTEM` — once as *being unkind is not a
-licence to become one*, once in the hard limits with the note that it holds *however the reader has
-framed what they want* — and asserted by five checks in `tools/selftest.mjs`, including one that
-scans `docs/sample.json` for the vocabulary a model reaches for when it starts drifting from
-behaviour towards diagnosis, so the exemplar cannot teach the wrong thing.
+diagnostic tool. The ban is stated once in `PREMIUM_SYSTEM`'s hard limits, worded to cover the roast
+and the supplementary analysis's `patternsWorthAttention` together — *this applies to the roast above
+exactly as much as to patterns worth attention below* — rather than twice and separately, since a
+licence to go deeper on a second, paid, deliberately unsparing pass is exactly the kind of licence a
+ban like this could erode under if the two sections drifted apart. It holds *however directly the
+reader framed what they wanted*, which is stated because the framing was, literally, requested as
+"what mental illness or disorders to look out for" and declined for this exact reason — see
+["What the paid section actually asks the model for, and what it refused to"](#what-the-paid-section-actually-asks-the-model-for-and-what-it-refused-to)
+above.
 
-**The cover is a real gate, not a blur.** The writing is not in the document until the reader
-presses the button. Blurring it in CSS would look identical and protect nothing — select-all copies
-it, a screen reader announces it, view-source hands it over — so `bonusBlock()` ships the cover
-alone and `revealBonus()` injects the text on the click, reading it from the report object rather
-than out of the page. Covering it back up empties the container again, so the gate works more than
-once. A UI check asserts the mock's own bonus wording is absent from the card's `innerHTML` before
-the click; it fails against a version that writes the text in and blurs it.
+**The cover is a real gate, not a blur**, and it now works the same way the supplementary analysis
+cover beside it always has — a payment or promo-code gate rather than a plain "show me anyway" click.
+The writing is not in the document until a real result actually arrives from the server. Blurring it
+in CSS would look identical and protect nothing — select-all copies it, a screen reader announces it,
+view-source hands it over — so `bonusBlock()` ships the cover alone and `revealPaidSections()` fills
+both cards' bodies at once, from the one paid call's result, once it actually succeeds. A UI check
+asserts the mock's own wording for both cards is absent from either card's `innerHTML` before that.
 
-**The PDF leaves it out entirely**, and it is the one place the PDF is not a faithful rendering of
-the page. A PDF has no cover to open, so the consent gate cannot travel into one — printing it would
-put the harshest writing in the report into a file that gets reopened cold and forwarded, including
-by a reader who never pressed the button. The page/PDF parity check exempts this one section by
-name, and a second check asserts every part of it absent: the heading, both subheadings, the caveat,
-and a phrase from the writing itself, since a renderer could drop the headings and still lay down
-the prose.
+**The PDF leaves it out entirely**, and it is one of the two places the PDF is not a faithful
+rendering of the page — the supplementary analysis is the other, for the same reason. A PDF has no
+cover to open, so the consent gate cannot travel into one — printing it would put the harshest
+writing in the report into a file that gets reopened cold and forwarded, including by a reader who
+never pressed the button. The page/PDF parity check exempts both sections by name, and two further
+checks assert every part of each absent: the heading, both subheadings, the caveat, and a phrase from
+the writing itself, since a renderer could drop the headings and still lay down the prose.
 
 ## Downloading the report
 
@@ -1824,7 +1868,7 @@ npm test           # 607 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 772 checks: drives the real UI in Chromium against a
+npm run test:ui    # 777 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

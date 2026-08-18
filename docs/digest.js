@@ -92,9 +92,12 @@
   // Raised from 15,000 when `summary` and `harsh` gained their instructions to
   // draw on the photographs, again when the roast gained the test it has to put
   // every hard line through, and again when E/I was tied to the extraversion
-  // score. The check below caught all three the same run it happened, which is
-  // the third, fourth and fifth time it has earned its place.
-  const FIXED_INPUT_TOKENS = 16800;
+  // score — then dropped back down here when the roast itself (harsh/advice)
+  // moved out of PROFILE_SYSTEM/PROFILE_SCHEMA entirely, into the paid
+  // PREMIUM_SYSTEM/PREMIUM_SCHEMA the free report no longer pays to generate.
+  // The check below caught the shrink the same run it happened, the same way
+  // it caught every growth before it.
+  const FIXED_INPUT_TOKENS = 14300;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

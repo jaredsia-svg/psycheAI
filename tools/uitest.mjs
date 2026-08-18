@@ -2140,27 +2140,51 @@ try {
   check('the confidence meter came with it',
     await page.locator('.confidence-card .confidence-fill').isVisible());
 
-  // ---- the bonus section ----
+  // ---- the download gate, while nothing is unlocked yet ----
   //
-  // The cover is the consent gate, so what matters is that it really gates.
-  // A CSS blur would look identical and protect nothing — select-all copies
-  // it, a screen reader announces it, view-source hands it over — so the
-  // writing must genuinely not be in the document until the button is pressed.
-  // This checks the DOM, not the pixels.
-  check('the bonus section sits below the behaviour read and above confidence',
+  // Checked before either paid cover is touched, while the report is still
+  // entirely locked: pressing the download button has to open the same
+  // paywall the two covers do, rather than going straight to the
+  // email-then-download flow it used to.
+  await clickClear(page, '#export-pdf-bottom');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  check('the download button opened the paywall, not the email dialog',
+    (await page.locator('#premium-dialog').isVisible()) &&
+    !(await page.locator('#mail-dialog').isVisible()));
+  await page.click('#premium-cancel');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+
+  // ---- the two paid sections: the roast and the supplementary analysis ----
+  //
+  // Both sit behind one $1.99 unlock now, so both are tested together: one
+  // payment (simulated below) has to reveal both cards at once, along with
+  // the download button just proven locked above. The cover is the consent
+  // gate, so what matters is that it really gates. A CSS blur would look
+  // identical and protect nothing — select-all copies it, a screen reader
+  // announces it, view-source hands it over — so the writing must genuinely
+  // not be in the document until a real result has arrived. This checks the
+  // DOM, not the pixels.
+  check('the roast card sits below the behaviour read and above the supplementary analysis',
     await page.evaluate(() => {
       const bonus = document.querySelector('#profile-body .bonus-card');
       const grid = document.querySelector('#profile-body .facet-grid');
       const behaviour = grid && grid.closest('.section-card');
-      const confidence = document.querySelector('#profile-body .confidence-card');
-      if (!bonus || !behaviour || !confidence) return false;
+      const premium = document.querySelector('#profile-body .premium-card');
+      if (!bonus || !behaviour || !premium) return false;
       return Boolean(behaviour.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(bonus.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
+        Boolean(bonus.compareDocumentPosition(premium) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  check('the supplementary analysis card sits below the roast and above confidence',
+    await page.evaluate(() => {
+      const premium = document.querySelector('#profile-body .premium-card');
+      const confidence = document.querySelector('#profile-body .confidence-card');
+      if (!premium || !confidence) return false;
+      return Boolean(premium.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
   // The badge is a label for what the section is, not a second title — it
-  // has to be a small pill beside "Let us roast you", not text that reads as
-  // part of the sentence.
-  check('the title reads "Let us roast you", with a "Bonus Section" badge beside it',
+  // has to be a small pill beside the card's own title, not text that reads
+  // as part of the sentence.
+  check('the roast card reads "Let us roast you", with a "Bonus Section" badge beside it',
     await page.evaluate(() => {
       const h2 = document.querySelector('#profile-body .bonus-card .card-head h2');
       const badge = h2 && h2.querySelector('.mode-badge');
@@ -2169,6 +2193,15 @@ try {
     }),
     await page.evaluate(() =>
       (document.querySelector('#profile-body .bonus-card .card-head h2') || {}).innerHTML));
+  check('the supplementary analysis card reads "Supplementary analysis", with a "Premium users only" badge beside it',
+    await page.evaluate(() => {
+      const h2 = document.querySelector('#profile-body .premium-card .card-head h2');
+      const badge = h2 && h2.querySelector('.mode-badge');
+      return Boolean(badge) && badge.textContent.trim() === 'Premium users only' &&
+        h2.textContent.replace(/\s+/g, ' ').trim() === 'Supplementary analysis Premium users only';
+    }),
+    await page.evaluate(() =>
+      (document.querySelector('#profile-body .premium-card .card-head h2') || {}).innerHTML));
   // Two words in a pill this narrow have room to break between themselves —
   // "BONUS" over "SECTION" — on a phone-width title line that is already
   // fighting the heading text for space. The badge as a whole may still drop
@@ -2182,102 +2215,55 @@ try {
   await page.setViewportSize({ width: 1100, height: 900 });
   check('the badge never breaks its own two words across two lines, even at phone width',
     badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
-  const covered = await page.evaluate(() => {
+
+  // Both covers now share the same paywall markup — dashed border, striped
+  // background, price, Unlock button — since both gate the same $1.99 unlock.
+  for (const [what, cardClass] of [['the roast cover', '.bonus-card'], ['the supplementary analysis cover', '.premium-card']]) {
+    check(what + ' reads as switched off — dashed border, striped background',
+      await page.evaluate(cls => {
+        const style = getComputedStyle(document.querySelector('#profile-body ' + cls + ' .premium-cover'));
+        return style.borderStyle.includes('dashed') && /repeating-linear-gradient/.test(style.backgroundImage);
+      }, cardClass));
+    check(what + ' names the price and offers to unlock it',
+      /\$1\.99/.test(await page.locator('#profile-body ' + cardClass + ' .premium-cover').innerText()) &&
+      (await page.locator('#profile-body ' + cardClass + ' .premium-unlock').innerText()).includes('$1.99'));
+  }
+  const roastCovered = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .bonus-card');
     return { html: card.innerHTML, text: card.innerText };
   });
-  check('the covered section warns what is behind it before it is opened',
-    /deliberately unkind/i.test(covered.text) && /not a diagnosis/i.test(covered.text));
-  // Against the mock's own bonus wording, so this fails if the writing is
-  // present in any form — rendered, hidden, or sitting in an attribute.
-  check('the writing is absent from the page until the reader asks for it',
-    // Both surviving fields, matched against the mock's own wording. The
-    // forecast's phrase used to be the second half of this and stopped meaning
-    // anything the moment that field was cut — a regex for a string the
-    // fixture can no longer contain passes whatever the code does.
-    !/uncharitable reading/i.test(covered.html) && !/unsoftened advice/i.test(covered.html),
-    covered.html.slice(0, 200));
-  await clickClear(page, '#profile-body .bonus-reveal');
-  const opened = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .bonus-card');
-    return {
-      text: card.innerText,
-      coverHidden: card.querySelector('.bonus-cover').hidden,
-      expanded: card.querySelector('.bonus-reveal').getAttribute('aria-expanded'),
-    };
-  });
-  check('opening it shows both readings',
-    /least charitable assessment/i.test(opened.text) && /honest friend would tell you/i.test(opened.text) &&
-    opened.coverHidden);
-  check('the five-year forecast is gone from the writing behind the cover',
-    !/Where this ends up/i.test(opened.text),
-    opened.text.replace(/\s+/g, ' ').slice(0, 90));
-  // The cover used to spell out what was behind it in a paragraph of its own,
-  // which is where the "two readings, not three" promise lived. That paragraph
-  // was cut as over-warning, so the gate now rests on the title and the caveat
-  // alone — which means both have to actually be on the cover, unopened.
-  check('the unopened cover still names the register and the limits',
-    /deliberately unkind/i.test(covered.text) &&
-    /not a diagnosis/i.test(covered.text) && /not a professional opinion/i.test(covered.text),
-    covered.text.replace(/\s+/g, ' ').slice(0, 120));
-  // The caveat travels with the writing rather than staying on the cover the
-  // reader has already dismissed — it is most needed while they are reading.
-  check('the caveat stays on screen beside the writing',
-    /not an assessment, not a diagnosis/i.test(opened.text) &&
-    (await page.locator('#profile-body .bonus-caveat').isVisible()));
-  check('the reveal button reports its state to assistive tech',
-    opened.expanded === 'true', String(opened.expanded));
-  await clickClear(page, '#profile-body .bonus-hide');
-  const reclosed = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .bonus-card');
-    return { html: card.innerHTML, expanded: card.querySelector('.bonus-reveal').getAttribute('aria-expanded') };
-  });
-  // Covering it back up has to remove the writing, not merely hide it, or the
-  // gate only works once per page load.
-  check('covering it again takes the writing back out of the page',
-    !/uncharitable reading/i.test(reclosed.html) && reclosed.expanded === 'false');
-
-  // ---- the premium section ----
-  //
-  // Same shape as the bonus section just above, and tested the same way: the
-  // section sits below it and above confidence, the badge matches "Bonus
-  // Section"'s own design, and the cover reads as switched-off rather than as
-  // another card — dashed border, striped background, nothing behind it in
-  // the DOM until it is actually unlocked.
-  check('the premium section sits below the bonus roast and above confidence',
-    await page.evaluate(() => {
-      const bonus = document.querySelector('#profile-body .bonus-card');
-      const premium = document.querySelector('#profile-body .premium-card');
-      const confidence = document.querySelector('#profile-body .confidence-card');
-      if (!bonus || !premium || !confidence) return false;
-      return Boolean(bonus.compareDocumentPosition(premium) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(premium.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }));
-  check('the title reads "Supplementary analysis", with a "Premium users only" badge beside it',
-    await page.evaluate(() => {
-      const h2 = document.querySelector('#profile-body .premium-card .card-head h2');
-      const badge = h2 && h2.querySelector('.mode-badge');
-      return Boolean(badge) && badge.textContent.trim() === 'Premium users only' &&
-        h2.textContent.replace(/\s+/g, ' ').trim() === 'Supplementary analysis Premium users only';
-    }),
-    await page.evaluate(() =>
-      (document.querySelector('#profile-body .premium-card .card-head h2') || {}).innerHTML));
-  check('the cover reads as switched off — dashed border, striped background',
-    await page.evaluate(() => {
-      const style = getComputedStyle(document.querySelector('#profile-body .premium-cover'));
-      return style.borderStyle.includes('dashed') && /repeating-linear-gradient/.test(style.backgroundImage);
-    }));
-  check('the cover names the price and offers to unlock it',
-    /\$1\.99/.test(await page.locator('#profile-body .premium-cover').innerText()) &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('$1.99'));
-  check('the placeholder writing is absent from the page until it is unlocked',
+  check('the roast cover warns what is behind it before it is unlocked',
+    /deliberately unkind/i.test(roastCovered.text));
+  // Against the mock's own wording for both cards, so this fails if either
+  // card's writing is present in any form — rendered, hidden, or sitting in
+  // an attribute — before a real result has arrived.
+  check('neither card\'s writing is in the page until the report is unlocked',
+    !/uncharitable reading/i.test(roastCovered.html) && !/unsoftened advice/i.test(roastCovered.html) &&
     !/Thanks for unlocking/i.test(await page.locator('#profile-body .premium-card').innerHTML()));
 
-  await clickClear(page, '#profile-body .premium-unlock');
+  // Unlocking from the roast cover — proving that either cover reaches the
+  // same shared paywall, not just the supplementary analysis one.
+  await clickClear(page, '#profile-body .bonus-card .premium-unlock');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
-  check('the unlock dialog opens with a title and a blurb',
-    /Unlock supplementary analysis/.test(await page.locator('#premium-dialog-title').innerText()) &&
-    /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()));
+  // The dialog no longer names just one of the three things it unlocks.
+  check('the unlock dialog opens with a title and a blurb naming all three unlocks',
+    /Unlock the full report/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
+    /roast.*supplementary analysis.*download/i.test(await page.locator('#premium-dialog-blurb').innerText()));
+  // A second, independent way to authorise the same call. Only its presence
+  // is checked in the browser here — actually submitting a code, right or
+  // wrong, goes through a real fetch to /api/premium-analysis, and a wrong
+  // one deliberately gets a 402 back, which Chrome logs as a console error
+  // regardless of how gracefully the page handles it. That would trip the
+  // end-of-suite "no console errors anywhere" check for an error this test
+  // caused on purpose, so the actual request/response behaviour — right
+  // code, wrong code, case-insensitivity — is exercised directly against the
+  // running server further down (see "the promo-code bypass" below) rather
+  // than through the browser.
+  check('the promo row is present and starts empty',
+    (await page.locator('#premium-promo-input').inputValue()) === '' &&
+    (await page.locator('#premium-promo-label').innerText()).length > 0);
+
   // The suite runs the server with PSYCHEAI_MOCK=1, so lib/stripe.js never
   // touches a real Stripe account and app.js never loads Stripe.js at all —
   // #premium-mock-pay stands in for the whole wallet round trip, the same
@@ -2291,53 +2277,124 @@ try {
     (await page.locator('#premium-mock-pay').innerText()).includes('mock') &&
     (await page.locator('#premium-payment-request-button').innerHTML()) === '');
   if (shots) await page.locator('#premium-dialog').screenshot({ path: join(shotDir, '2b-premium-dialog-crop.png') });
+  // The mock call is in-process and answers almost instantly, too fast for a
+  // poll-based wait to reliably catch the progress bar mid-flight — so this
+  // one request is deliberately slowed down, the standard way to make a
+  // transient loading state observable without changing the app's own
+  // timing for everyone else.
+  await page.route('**/api/premium-analysis', async route => {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    await route.continue();
+  });
   await page.click('#premium-mock-pay');
   // Payment and generation are two separate steps — clicking the mock button
   // only finishes the first, and the (mocked) model call that follows it is
   // what actually closes the dialog, exactly as it would for the real
-  // analysis the free report already makes the reader wait for.
+  // analysis the free report already makes the reader wait for. A progress
+  // bar with a live seconds count is shown for exactly that stretch, so it
+  // is checked here, before waiting for the dialog to close it away.
+  await page.waitForSelector('#premium-progress:not([hidden])', { timeout: 10000 });
+  check('a progress bar with a live seconds count shows while the paid call is in flight',
+    await page.locator('#premium-progress .progress-bar.indeterminate').isVisible() &&
+    /^\d+s$/.test((await page.locator('#premium-progress-time').innerText()).trim()));
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+  await page.unroute('**/api/premium-analysis');
+  check('the progress bar is gone once the dialog closes',
+    !(await page.locator('#premium-progress').isVisible()));
   if (shots) await page.locator('#profile-body .premium-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
-  const unlocked = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .premium-card');
-    return {
-      text: card.innerText,
-      coverHidden: card.querySelector('.premium-cover').hidden,
-      expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded'),
-    };
-  });
+  const unlocked = await page.evaluate(() => ({
+    bonus: (() => {
+      const card = document.querySelector('#profile-body .bonus-card');
+      return { text: card.innerText, coverHidden: card.querySelector('.premium-cover').hidden,
+        expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded') };
+    })(),
+    premium: (() => {
+      const card = document.querySelector('#profile-body .premium-card');
+      return { text: card.innerText, coverHidden: card.querySelector('.premium-cover').hidden,
+        expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded') };
+    })(),
+  }));
   // Against the mock's own wording (lib/mock.js's analysePremium) rather than
   // a paraphrase, so this fails if the real content never actually arrived —
-  // and against both section headings, so a reveal that dropped one field
+  // and against both cards' headings, so a reveal that dropped either one
   // still fails here rather than only in a schema check nobody sees fire.
-  check('a simulated payment closes the dialog and reveals the real (mocked) analysis',
-    /Patterns worth your attention/i.test(unlocked.text) &&
-    /How to actually live better/i.test(unlocked.text) &&
-    /Long quiet stretches between bursts of posting/i.test(unlocked.text) &&
-    /Pick one open loop from the last month/i.test(unlocked.text) &&
-    unlocked.coverHidden && unlocked.expanded === 'true',
-    unlocked.text.slice(0, 200));
-  check('the safety caveat is shown beside the writing, not just on the cover',
-    /not a screening tool/i.test(unlocked.text) && /the person to talk to about it is a person/i.test(unlocked.text));
-  check('no clinical condition is named in the mocked content', await page.evaluate(() => {
-    const text = document.querySelector('#profile-body .premium-card').innerText;
+  check('a simulated payment closes the dialog and reveals the roast, mocked',
+    /least charitable assessment/i.test(unlocked.bonus.text) &&
+    /honest friend would tell you/i.test(unlocked.bonus.text) &&
+    /uncharitable reading/i.test(unlocked.bonus.text) &&
+    unlocked.bonus.coverHidden && unlocked.bonus.expanded === 'true',
+    unlocked.bonus.text.slice(0, 200));
+  check('the same payment reveals the supplementary analysis too, mocked',
+    /Patterns worth your attention/i.test(unlocked.premium.text) &&
+    /How to actually live better/i.test(unlocked.premium.text) &&
+    /Long quiet stretches between bursts of posting/i.test(unlocked.premium.text) &&
+    /Pick one open loop from the last month/i.test(unlocked.premium.text) &&
+    unlocked.premium.coverHidden && unlocked.premium.expanded === 'true',
+    unlocked.premium.text.slice(0, 200));
+  check('the roast caveat stays on screen beside the writing',
+    /not an assessment, not a diagnosis/i.test(unlocked.bonus.text) &&
+    (await page.locator('#profile-body .bonus-caveat').isVisible()));
+  check('the supplementary analysis caveat is shown beside the writing, not just on the cover',
+    /not a screening tool/i.test(unlocked.premium.text) &&
+    /the person to talk to about it is a person/i.test(unlocked.premium.text));
+  check('no clinical condition is named in either card\'s mocked content', await page.evaluate(() => {
+    const text = document.querySelector('#profile-body').innerText;
     return !/\b(depression|anxiety disorder|adhd|bipolar|ptsd|ocd)\b/i.test(text);
   }));
-  check('the unlock is persisted as the real analysis, not a boolean flag',
+  check('the unlock is persisted as the real analysis, not a boolean flag, and carries all four fields',
     await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis;
-      return Boolean(stored) && Array.isArray(stored.patternsWorthAttention) &&
-        stored.patternsWorthAttention.length > 0 && Array.isArray(stored.lifeAdvice);
+      return Boolean(stored) && typeof stored.harsh === 'string' && typeof stored.advice === 'string' &&
+        Array.isArray(stored.patternsWorthAttention) && stored.patternsWorthAttention.length > 0 &&
+        Array.isArray(stored.lifeAdvice) && stored.lifeAdvice.length > 0;
     }));
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
-  check('the unlock survives a reload, so a reader who paid does not pay twice',
+  check('the unlock survives a reload, so a reader who paid does not pay twice — both cards',
     await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .premium-card');
-      return Boolean(card) && card.querySelector('.premium-cover').hidden &&
-        /Long quiet stretches between bursts of posting/i.test(card.innerText);
+      const bonus = document.querySelector('#profile-body .bonus-card');
+      const premium = document.querySelector('#profile-body .premium-card');
+      return Boolean(bonus) && Boolean(premium) &&
+        bonus.querySelector('.premium-cover').hidden && premium.querySelector('.premium-cover').hidden &&
+        /uncharitable reading/i.test(bonus.innerText) &&
+        /Long quiet stretches between bursts of posting/i.test(premium.innerText);
     }));
+
+  // ---- the promo-code bypass, against the running server directly ----
+  //
+  // Exercised with Node's own fetch rather than through the browser — see
+  // the comment above the promo row check further up for why: a wrong code
+  // deliberately gets a real 402 back, which the browser's own devtools
+  // would log as a console error regardless of how gracefully app.js handles
+  // it, tripping the end-of-suite "no console errors" check for an error
+  // this test caused on purpose. Hitting the server directly proves exactly
+  // the same route behaviour without a page involved to log anything.
+  const premiumUrl = 'http://localhost:' + PORT + '/api/premium-analysis';
+  const minimalDigest = { coverage: { sources: ['instagram'] } };
+  async function tryPromo(promoCode) {
+    const response = await fetch(premiumUrl, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ digest: minimalDigest, promoCode }),
+    });
+    return { status: response.status, body: await response.json().catch(() => ({})) };
+  }
+  const wrongPromo = await tryPromo('not-the-code');
+  check('a wrong promo code is refused with a 402 and no analysis',
+    wrongPromo.status === 402 && /not valid/i.test(wrongPromo.body.error || ''),
+    JSON.stringify(wrongPromo));
+  const rightPromo = await tryPromo('jialatsia');
+  check('the correct promo code unlocks the analysis with no payment at all',
+    rightPromo.status === 200 && typeof rightPromo.body.data.harsh === 'string' &&
+    Array.isArray(rightPromo.body.data.patternsWorthAttention),
+    JSON.stringify(rightPromo).slice(0, 200));
+  const caseInsensitivePromo = await tryPromo('  JiaLatSia  ');
+  check('the promo code is case-insensitive and tolerates surrounding whitespace',
+    caseInsensitivePromo.status === 200);
+  const emptyPromo = await tryPromo('');
+  check('an empty promo code falls through to requiring a paymentIntentId instead',
+    emptyPromo.status === 400 && /paymentIntentId.*promoCode/.test(emptyPromo.body.error || ''),
+    JSON.stringify(emptyPromo));
 
   // Held as an exact list rather than as "contains", so a control cannot
   // reappear here unnoticed. "Re-run the analysis" was one of three and is
