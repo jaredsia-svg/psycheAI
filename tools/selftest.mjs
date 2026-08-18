@@ -47,6 +47,9 @@ process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
   join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
 const recipients = await import('../lib/recipients.js').then(m => m.default);
 const payments = await import('../lib/stripe.js').then(m => m.default);
+process.env.PSYCHEAI_PAYMENTS_FILE = process.env.PSYCHEAI_PAYMENTS_FILE ||
+  join(tmpdir(), 'psycheai-selftest-payments.jsonl');
+const paymentLedger = await import('../lib/premiumLedger.js').then(m => m.default);
 
 // ---------- provider parity ----------
 //
@@ -396,6 +399,83 @@ check('describeError maps a Stripe SDK error\'s statusCode to status, keeping it
 check('describeError falls back to a 500 and a generic message for something shapeless',
   payments.describeError({}).status === 500 && /could not be started/i.test(payments.describeError({}).message));
 
+// verifyPaid is the function that actually closes the client-side-trust gap
+// (see the README section on it) — a fabricated or never-completed
+// PaymentIntent has to fail here, not just look plausible.
+async function mockVerifyFlow() {
+  const script = [
+    'const stripe = require("' + join(root, 'lib', 'stripe.js') + '");',
+    '(async () => {',
+    '  const created = await stripe.createPaymentIntent("test");',
+    '  const verified = await stripe.verifyPaid(created.id)',
+    '    .then(r => ({ ok: true, ...r })).catch(e => ({ ok: false, status: e.status, message: e.message }));',
+    '  const fabricated = await stripe.verifyPaid("pi_mock_never_created")',
+    '    .then(r => ({ ok: true, ...r })).catch(e => ({ ok: false, status: e.status, message: e.message }));',
+    '  process.stdout.write(JSON.stringify({ created, verified, fabricated }));',
+    '})();',
+  ].join('\n');
+  const out = execFileSync(process.execPath, ['-e', script], { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
+  return JSON.parse(out.toString());
+}
+
+const verifyFlow = await mockVerifyFlow();
+check('verifyPaid succeeds for a PaymentIntent this process actually created',
+  verifyFlow.verified.ok === true && verifyFlow.verified.status === 'succeeded' &&
+  verifyFlow.verified.amount === 199 && verifyFlow.verified.currency === 'usd',
+  JSON.stringify(verifyFlow.verified));
+check('verifyPaid rejects a fabricated id that was never created, even shaped like a real one',
+  verifyFlow.fabricated.ok === false && verifyFlow.fabricated.status === 402,
+  JSON.stringify(verifyFlow.fabricated));
+
+// The real (non-mock) path, stubbed the same way createPaymentIntent's was —
+// this is what proves verifyPaid checks status *and* amount, not just
+// whether Stripe recognises the id at all.
+async function verifyPaidWithStub(retrieveBody) {
+  const script = [
+    'const stripe = require("' + join(root, 'lib', 'stripe.js') + '");',
+    'stripe.__testing.setClient({ paymentIntents: { retrieve: async () => (' + retrieveBody + ') } });',
+    'stripe.verifyPaid("pi_test_1")',
+    '.then(r => process.stdout.write(JSON.stringify({ ok: true, ...r })))',
+    '.catch(e => process.stdout.write(JSON.stringify({ ok: false, status: e.status, message: e.message })));',
+  ].join('\n');
+  const out = execFileSync(process.execPath, ['-e', script],
+    { env: { PATH: process.env.PATH, STRIPE_SECRET_KEY: 'sk_test_stub', STRIPE_PUBLISHABLE_KEY: 'pk_test_stub' } });
+  return JSON.parse(out.toString());
+}
+
+const notSucceeded = await verifyPaidWithStub(
+  '{ id: "pi_test_1", status: "requires_payment_method", amount: 199, currency: "usd" }');
+check('verifyPaid rejects a PaymentIntent that exists but has not actually succeeded',
+  notSucceeded.ok === false && notSucceeded.status === 402 && /has not gone through/i.test(notSucceeded.message),
+  JSON.stringify(notSucceeded));
+
+const wrongAmount = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 50, currency: "usd" }');
+check('verifyPaid rejects a succeeded PaymentIntent for the wrong amount',
+  wrongAmount.ok === false && wrongAmount.status === 402 && /does not match/i.test(wrongAmount.message),
+  JSON.stringify(wrongAmount));
+
+const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "usd" }');
+check('verifyPaid accepts a genuinely succeeded PaymentIntent for the right amount',
+  genuine.ok === true && genuine.status === 'succeeded', JSON.stringify(genuine));
+
+// ---------- payment ledger (lib/premiumLedger.js) ----------
+//
+// The piece verifyPaid alone cannot provide: a successful PaymentIntent
+// verifies as successful every time it is re-presented, so something has to
+// cap how many analyses one payment can actually buy.
+check('a PaymentIntent nobody has used yet has a usage count of zero',
+  paymentLedger.usageCount('pi_selftest_unused_' + Date.now()) === 0);
+{
+  const id = 'pi_selftest_cap_' + Date.now();
+  check('canUse is true before the cap is reached', paymentLedger.canUse(id));
+  for (let i = 0; i < paymentLedger.MAX_USES; i++) paymentLedger.recordUse(id);
+  check('usageCount reflects every recorded use',
+    paymentLedger.usageCount(id) === paymentLedger.MAX_USES, paymentLedger.usageCount(id));
+  check('canUse is false once the cap is reached', !paymentLedger.canUse(id));
+  check('a different PaymentIntent is unaffected by another one\'s usage',
+    paymentLedger.canUse('pi_selftest_unrelated_' + Date.now()));
+}
+
 // ---------- schema validation ----------
 //
 // Structured outputs reject schemas that omit `additionalProperties: false`,
@@ -440,7 +520,8 @@ function walkKeywords(node, path, report) {
   if (node.items) walkKeywords(node.items, path + '[]', report);
 }
 
-for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMPATIBILITY_SCHEMA', prompts.COMPATIBILITY_SCHEMA]]) {
+for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMPATIBILITY_SCHEMA', prompts.COMPATIBILITY_SCHEMA],
+  ['PREMIUM_SCHEMA', prompts.PREMIUM_SCHEMA]]) {
   const report = [];
   walkSchema(schema, name, report);
   check(name + ' obeys the structured-output rules', report.length === 0, report.slice(0, 4).join('; '));
@@ -731,6 +812,50 @@ check('the hard limits extend the health-condition ban into the bonus section',
 // has to refuse that rather than treat it as permission.
 check('the ban survives the reader having asked for a diagnosis',
   /however the reader has framed what they want/.test(prompts.PROFILE_SYSTEM));
+
+// The paid premium section. Requested, literally, as "what mental illness or
+// disorders to look out for" — declined for the same reason the bonus
+// section's own ban exists a few hundred lines up, and pinned down here the
+// same way: each limit checked separately, because a licence to go deeper on
+// a second, paid pass is exactly the kind of licence the ban could erode
+// under, same as an unsparing register was above.
+const premiumProps = prompts.PREMIUM_SCHEMA.properties;
+check('the premium section carries the two paid fields and nothing else',
+  ['patternsWorthAttention', 'lifeAdvice'].every(k => k in premiumProps) &&
+  Object.keys(premiumProps).length === 2, Object.keys(premiumProps).join(', '));
+check('no model-generated caveat field — the safety line is fixed app copy instead',
+  !('caveat' in premiumProps));
+check('the premium prompt states plainly it is a second pass, not a rewrite of the free report',
+  /a second, paid pass over a digest/.test(prompts.PREMIUM_SYSTEM) &&
+  /do not repeat it, summarise it or re-derive it/.test(prompts.PREMIUM_SYSTEM));
+check('the diagnosis ban is restated in full rather than assumed to carry over from PROFILE_SYSTEM',
+  /never name, imply, predict or gesture at a specific mental or physical health condition/
+    .test(prompts.PREMIUM_SYSTEM));
+check('the clinical vocabulary is named and banned here too, not just cross-referenced',
+  /not depression, not anxiety, not ADHD, not burnout as a clinical state/.test(prompts.PREMIUM_SYSTEM));
+check('the ban survives the reader having asked for exactly this framing',
+  /however directly the reader framed what they wanted/.test(prompts.PREMIUM_SYSTEM));
+check('the section is reframed as patterns worth attention, not a screening result',
+  /a genuinely observant friend would flag after actually looking, not a screening result/
+    .test(prompts.PREMIUM_SYSTEM) &&
+  /never a diagnosis, a condition name or a clinical guess/.test(premiumProps.patternsWorthAttention.description));
+check('a pattern worth a professional is named as exactly that, not diagnosed',
+  /worth raising with someone qualified to actually assess it/.test(prompts.PREMIUM_SYSTEM));
+check('an unsupported pattern is dropped rather than invented to fill the section',
+  /an invented pattern is worse than a short section/.test(prompts.PREMIUM_SYSTEM));
+check('the life-advice half is unproblematic and just asks for something concrete',
+  /Direct, specific advice/.test(prompts.PREMIUM_SYSTEM) &&
+  /No self-help register, no affirmations/.test(prompts.PREMIUM_SYSTEM));
+check('the Google-export search caveat is restated here too',
+  /a searched symptom is never evidence of a health condition/.test(prompts.PREMIUM_SYSTEM));
+
+check('premiumBlocks resends the same digest shape profileBlocks does, not a summary of it', (() => {
+  const digest = { coverage: { sources: ['instagram', 'google'] } };
+  const blocks = prompts.premiumBlocks(digest);
+  return Array.isArray(blocks) && blocks.length === 1 && blocks[0].type === 'text' &&
+    blocks[0].text.includes(JSON.stringify(digest)) &&
+    /Instagram and Google/.test(blocks[0].text) && /second, paid pass/.test(blocks[0].text);
+})());
 
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));

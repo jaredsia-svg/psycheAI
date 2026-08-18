@@ -935,12 +935,21 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .premium-cover p { max-width: 54ch; margin-inline: auto; }
 .premium-unlock { margin: 0; }
 .premium-body h3:first-of-type { margin-top: 0; }
+/* Same treatment as .bonus-caveat above, and the same reason: fixed app copy
+   the reader should see with the writing rather than only on a cover they
+   have already dismissed, in a section with even more reason to carry it. */
+.premium-caveat {
+  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-top: 1.2rem;
+}
 
 /* The payment dialog. Same field/status shape as #mail-dialog, since both ask
    for one thing before letting something through. The button element Stripe
    mounts sizes itself to its container, so this just gives it room to sit
-   apart from the blurb above it and the cancel row below. */
+   apart from the blurb above it and the cancel row below. #premium-retry
+   reuses the mock button's spacing rather than needing its own rule — the
+   two are never shown at once. */
 #premium-payment-request-button { margin: 1rem 0; min-height: 40px; }
+#premium-mock-pay, #premium-retry { margin: 0 0 1rem; }
 .premium-status { margin: .5rem 0 0; font-size: .9rem; }
 .premium-status.is-bad { color: var(--danger); }
 .premium-status.is-good { color: var(--good); }

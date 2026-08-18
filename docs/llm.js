@@ -53,6 +53,11 @@
 
   const analyseProfile = (digest, images) => post('/api/analyse', { digest, images: images || [] });
   const analyseCompatibility = (a, b, mode, stance) => post('/api/compatibility', { a, b, mode, stance });
+  // digest is resent rather than referenced — the server keeps no copy of it
+  // between calls, so this is the same digest the browser already holds
+  // (from psycheai_digest) travelling again, not a second upload of anything
+  // new.
+  const analysePremium = (digest, paymentIntentId) => post('/api/premium-analysis', { digest, paymentIntentId });
 
-  root.PsycheLLM = { status, analyseProfile, analyseCompatibility };
+  root.PsycheLLM = { status, analyseProfile, analyseCompatibility, analysePremium };
 })(typeof window !== 'undefined' ? window : globalThis);

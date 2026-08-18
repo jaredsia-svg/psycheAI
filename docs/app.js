@@ -492,36 +492,46 @@
   // The paid section. Same shape and the same reasoning as the bonus section
   // above it — a cover that has to be opened on purpose rather than a card to
   // scroll past — except this cover opens with a payment instead of a click,
-  // and the price is what is being consented to rather than the content.
+  // and what is behind it is generated fresh from the digest rather than
+  // written into the page ahead of time.
   //
   // Nothing behind the cover is written into the markup here, same rule as
-  // bonusBlock: it ships only once the reader has actually unlocked it, so a
-  // page saved or view-sourced before that point never had it to give away.
-  // Today that content is a placeholder — see copy.js — but the gate is built
-  // for the real writing this section is going to hold, not for the stand-in.
+  // bonusBlock: the server does not even run the paid model call until it has
+  // independently verified a real payment (lib/stripe.js's verifyPaid), so
+  // there is nothing for a page saved or view-sourced before that point to
+  // give away. state.profile.premiumAnalysis holds the result once there is
+  // one — its mere presence *is* "unlocked"; there is no separate boolean
+  // that could drift out of sync with whether real content actually exists.
   function premiumBlock() {
     const title = esc(TEXT.premium) + ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
-    const unlocked = Boolean(state.profile && state.profile.premiumUnlocked);
+    const analysis = state.profile && state.profile.premiumAnalysis;
     return '<div class="card section-card premium-card">' +
       sectionHead('🔒', title, esc(TEXT.premiumSub)) +
-      '<div class="premium-cover"' + (unlocked ? ' hidden' : '') + '>' +
+      '<div class="premium-cover"' + (analysis ? ' hidden' : '') + '>' +
       '<h3>' + esc(TEXT.premiumCoverTitle) + '</h3>' +
       '<p>' + esc(TEXT.premiumCoverBlurb) + '</p>' +
-      '<button class="btn premium-unlock" type="button" aria-expanded="' + unlocked + '">' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(analysis) + '">' +
       esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel) + '</button></div>' +
-      '<div class="premium-body"' + (unlocked ? '' : ' hidden') + '>' +
-      (unlocked ? premiumBodyHtml() : '') + '</div></div>';
+      '<div class="premium-body"' + (analysis ? '' : ' hidden') + '>' +
+      (analysis ? premiumBodyHtml(analysis) : '') + '</div></div>';
   }
 
-  function premiumBodyHtml() {
-    return '<h3>' + esc(TEXT.premiumUnlockedTitle) + '</h3><p>' + esc(TEXT.premiumUnlockedBody) + '</p>';
+  // points() already renders a {title, detail, evidence} list exactly the
+  // way PREMIUM_SCHEMA's two fields are shaped — the same helper the rest of
+  // the report uses for its own evidence-bearing lists. The caveat is fixed
+  // copy shown beside whatever the model returned, not read from it — see
+  // the comment on PREMIUM_SCHEMA in lib/prompts.js for why.
+  function premiumBodyHtml(analysis) {
+    return '<h3>' + esc(TEXT.premiumPatternsTitle) + '</h3>' + points(analysis.patternsWorthAttention) +
+      '<h3>' + esc(TEXT.premiumAdviceTitle) + '</h3>' + points(analysis.lifeAdvice) +
+      '<p class="fineprint premium-caveat">' + esc(TEXT.premiumCaveat) + '</p>';
   }
 
-  /** Fills a cover's sibling body once the payment has actually gone through. */
-  function revealPremium(cover) {
+  /** Fills a cover's sibling body once a real analysis has actually arrived. */
+  function revealPremium(cover, analysis) {
     const card = cover.closest('.premium-card');
     const body = card.querySelector('.premium-body');
-    body.innerHTML = premiumBodyHtml();
+    body.innerHTML = premiumBodyHtml(analysis);
     body.hidden = false;
     cover.hidden = true;
     cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
@@ -2277,17 +2287,39 @@
     status.className = 'premium-status' + (tone ? ' is-' + tone : '');
   }
 
-  /** Marks the report unlocked, persists it, and swaps the cover for the writing. */
-  function finishPremiumUnlock(cover, dialog) {
-    if (state.profile) {
-      state.profile.premiumUnlocked = true;
-      // Best-effort: a browser too full to hold this one extra boolean still
-      // leaves the reader with the unlock they already paid for, on screen,
-      // for the rest of this visit — it just will not survive a reload.
-      store.write(KEYS.profile, state.profile);
+  /**
+   * Runs once a payment has actually cleared — calls the paid route with the
+   * same digest the free report used, and only reveals or persists anything
+   * once that call really succeeds. Payment and generation are deliberately
+   * two separate steps on the server (lib/stripe.js's verifyPaid, then
+   * lib/premiumLedger's usage cap, then the model call), so a generation that
+   * fails after a successful charge is a "try again" here — re-sending the
+   * same paymentIntentId spends one more of the handful of uses the server
+   * allows per payment — never a "pay again".
+   */
+  async function runPremiumAnalysis(paymentIntentId, cover, dialog) {
+    $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-mock-pay').hidden = true;
+    $('#premium-retry').hidden = true;
+    premiumStatus(TEXT.premiumGenerating);
+    try {
+      const result = await LLM.analysePremium(state.digest, paymentIntentId);
+      if (state.profile) {
+        state.profile.premiumAnalysis = result.data;
+        // Best-effort: a browser too full to hold this still leaves the
+        // reader able to read what they paid for, on screen, for the rest of
+        // this visit — it just will not survive a reload.
+        store.write(KEYS.profile, state.profile);
+      }
+      revealPremium(cover, result.data);
+      dialog.close();
+    } catch (error) {
+      premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
+      const retry = $('#premium-retry');
+      retry.textContent = TEXT.premiumRetry;
+      retry.hidden = false;
+      retry.onclick = () => runPremiumAnalysis(paymentIntentId, cover, dialog);
     }
-    revealPremium(cover);
-    dialog.close();
   }
 
   /**
@@ -2337,7 +2369,7 @@
           return;
         }
       }
-      finishPremiumUnlock(cover, dialog);
+      runPremiumAnalysis(intent.id, cover, dialog);
     });
   }
 
@@ -2356,6 +2388,7 @@
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-mock-pay').hidden = true;
+    $('#premium-retry').hidden = true;
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
@@ -2374,7 +2407,7 @@
         const mockButton = $('#premium-mock-pay');
         mockButton.textContent = TEXT.premiumMockPay;
         mockButton.hidden = false;
-        mockButton.onclick = () => finishPremiumUnlock(cover, dialog);
+        mockButton.onclick = () => runPremiumAnalysis(intent.id, cover, dialog);
         return;
       }
 

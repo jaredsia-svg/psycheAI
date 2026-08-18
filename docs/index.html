@@ -350,12 +350,16 @@
      actually presses Unlock, rather than paid for by every visitor on every
      page load. Mock mode never touches it at all: #premium-mock-pay stands
      in for the whole Stripe round trip so the flow can be driven end to end
-     without a real card or a real key. -->
+     without a real card or a real key. Payment and generation are two
+     separate steps server-side — #premium-retry re-runs only the second one,
+     since a payment that already cleared should never need retaking just
+     because the model call after it failed. -->
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
   <div id="premium-payment-request-button"></div>
   <button class="btn" id="premium-mock-pay" type="button" hidden></button>
+  <button class="btn" id="premium-retry" type="button" hidden></button>
   <p class="premium-status" id="premium-status" hidden></p>
   <div class="btn-row">
     <button class="btn btn-ghost" id="premium-cancel" type="button"></button>

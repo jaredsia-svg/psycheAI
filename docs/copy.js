@@ -296,10 +296,20 @@
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: '$1.99',
     premiumUnlockPrefix: 'Unlock — ',
-    premiumUnlockedTitle: 'Unlocked',
-    premiumUnlockedBody: 'Thanks for unlocking Supplementary analysis. There is nothing behind this ' +
-      'cover yet beyond this note — the section exists so the paywall could ship on its own, ahead of ' +
-      'the writing it is going to hold.',
+    // Shown while the paid model call is in flight, after payment has already
+    // cleared — this can take as long as the free report did, for the same
+    // reason: a long structured response with thinking enabled.
+    premiumGenerating: 'Generating your analysis…',
+    premiumPatternsTitle: 'Patterns worth your attention',
+    premiumAdviceTitle: 'How to actually live better',
+    // Static rather than part of what the model returns — see the comment on
+    // PREMIUM_SCHEMA in lib/prompts.js for why this line belongs to the app
+    // rather than to a sampled response. bonusCaveat above made the same
+    // choice for the same reason, in a section with lower stakes than this one.
+    premiumCaveat: 'This is a behavioural read of social-media activity, not a screening tool or a ' +
+      'professional opinion. It cannot see your circumstances, your history or your reasons, and it is ' +
+      'not a diagnosis of anything. If anything above lands somewhere heavier than a passing thought, ' +
+      'the person to talk to about it is a person.',
     premiumDialogTitle: 'Unlock supplementary analysis',
     premiumDialogBlurb: 'A one-time charge, taken on this device — Apple Pay or Google Pay, whichever ' +
       'this browser offers.',
@@ -307,7 +317,13 @@
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',
     premiumFailed: 'The payment did not go through. Nothing was charged.',
+    // The payment can succeed and the analysis call can still fail on its own
+    // — a slow model, a dropped connection — so this says plainly that the
+    // charge itself is not in question, only the writing.
+    premiumGenerationFailed: 'The payment went through, but the analysis could not be generated. Try ' +
+      'again — the same payment can be used a few more times before it needs a new one.',
     premiumCancel: 'Cancel',
+    premiumRetry: 'Try again',
 
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +

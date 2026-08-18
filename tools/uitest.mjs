@@ -2292,7 +2292,12 @@ try {
     (await page.locator('#premium-payment-request-button').innerHTML()) === '');
   if (shots) await page.locator('#premium-dialog').screenshot({ path: join(shotDir, '2b-premium-dialog-crop.png') });
   await page.click('#premium-mock-pay');
+  // Payment and generation are two separate steps — clicking the mock button
+  // only finishes the first, and the (mocked) model call that follows it is
+  // what actually closes the dialog, exactly as it would for the real
+  // analysis the free report already makes the reader wait for.
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+  if (shots) await page.locator('#profile-body .premium-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
   const unlocked = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .premium-card');
     return {
@@ -2301,11 +2306,29 @@ try {
       expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded'),
     };
   });
-  check('a simulated payment closes the dialog and reveals the placeholder',
-    /Thanks for unlocking/i.test(unlocked.text) && unlocked.coverHidden && unlocked.expanded === 'true');
-  check('the unlock is persisted, not just an in-memory flag',
-    (await page.evaluate(() =>
-      JSON.parse(localStorage.getItem('psycheai_profile')).premiumUnlocked)) === true);
+  // Against the mock's own wording (lib/mock.js's analysePremium) rather than
+  // a paraphrase, so this fails if the real content never actually arrived —
+  // and against both section headings, so a reveal that dropped one field
+  // still fails here rather than only in a schema check nobody sees fire.
+  check('a simulated payment closes the dialog and reveals the real (mocked) analysis',
+    /Patterns worth your attention/i.test(unlocked.text) &&
+    /How to actually live better/i.test(unlocked.text) &&
+    /Long quiet stretches between bursts of posting/i.test(unlocked.text) &&
+    /Pick one open loop from the last month/i.test(unlocked.text) &&
+    unlocked.coverHidden && unlocked.expanded === 'true',
+    unlocked.text.slice(0, 200));
+  check('the safety caveat is shown beside the writing, not just on the cover',
+    /not a screening tool/i.test(unlocked.text) && /the person to talk to about it is a person/i.test(unlocked.text));
+  check('no clinical condition is named in the mocked content', await page.evaluate(() => {
+    const text = document.querySelector('#profile-body .premium-card').innerText;
+    return !/\b(depression|anxiety disorder|adhd|bipolar|ptsd|ocd)\b/i.test(text);
+  }));
+  check('the unlock is persisted as the real analysis, not a boolean flag',
+    await page.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis;
+      return Boolean(stored) && Array.isArray(stored.patternsWorthAttention) &&
+        stored.patternsWorthAttention.length > 0 && Array.isArray(stored.lifeAdvice);
+    }));
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
@@ -2313,7 +2336,7 @@ try {
     await page.evaluate(() => {
       const card = document.querySelector('#profile-body .premium-card');
       return Boolean(card) && card.querySelector('.premium-cover').hidden &&
-        /Thanks for unlocking/i.test(card.innerText);
+        /Long quiet stretches between bursts of posting/i.test(card.innerText);
     }));
 
   // Held as an exact list rather than as "contains", so a control cannot

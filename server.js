@@ -14,6 +14,7 @@ const provider = require('./lib/provider');
 const prompts = require('./lib/prompts');
 const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
+const paymentLedger = require('./lib/premiumLedger');
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -151,6 +152,46 @@ async function handleCreatePaymentIntent(response) {
   sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — Supplementary analysis unlock'));
 }
 
+// The paid analysis. Gated on a fresh check with Stripe rather than on
+// anything the client claims — verifyPaid() re-retrieves the PaymentIntent
+// and confirms both that it succeeded and that it was for the real unlock
+// price, and paymentLedger caps how many times one payment can be spent, so
+// this is the one route in the app where "did the reader pay" is actually
+// enforced server-side rather than trusted from a boolean in localStorage.
+//
+// The digest travels in the request body exactly the way it does to
+// /api/analyse — nothing is stored between the two calls, so this is not a
+// second upload, it is the reader's browser resending evidence it already
+// held rather than the server having kept a copy of it.
+async function handlePremiumAnalysis(request, response) {
+  const body = await readJsonBody(request);
+  if (!body || typeof body.digest !== 'object' || body.digest === null) {
+    sendJson(response, 400, { error: 'Expected a "digest" object.' });
+    return;
+  }
+  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  if (!paymentIntentId) {
+    sendJson(response, 400, { error: 'Expected a "paymentIntentId" string.' });
+    return;
+  }
+  if (!payments.hasKey()) {
+    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+    return;
+  }
+  await payments.verifyPaid(paymentIntentId);
+  if (!paymentLedger.canUse(paymentIntentId)) {
+    sendJson(response, 429, {
+      error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
+    });
+    return;
+  }
+  const engine = requireEngine(response);
+  if (!engine) return;
+  const result = await engine.analysePremium(body.digest);
+  paymentLedger.recordUse(paymentIntentId);
+  sendJson(response, 200, result);
+}
+
 // The address list, for whoever runs this server. Refused outright rather than
 // served openly when no token is configured: a list of addresses that answers
 // to anyone who guesses the path is worse than having no route.
@@ -222,7 +263,8 @@ const server = http.createServer((request, response) => {
             : route === '/api/record-email' && request.method === 'POST' ? () => handleRecordEmail(request, response)
               : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
                 : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(response)
-                  : null;
+                  : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
+                    : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });
