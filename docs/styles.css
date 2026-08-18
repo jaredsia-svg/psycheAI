@@ -935,6 +935,21 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .mode-dialog .fineprint { margin: .2rem 0 0; }
 .mode-dialog .btn-row { margin-bottom: .4rem; }
 
+/* The QR code and its actions need more elbow room side by side than the
+   30rem default gives most mode-dialogs, and the close cross needs the
+   dialog itself to be the positioning root rather than the viewport — this
+   box is centred on the page, not pinned full-screen the way .card-dialog is. */
+.compat-dialog { position: relative; width: min(38rem, calc(100vw - 2rem)); }
+.compat-dialog .qr-title { padding-right: 2.2rem; }
+.compat-dialog-close {
+  position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
+  color: var(--ink-soft); font-size: .95rem; line-height: 1; cursor: pointer;
+}
+.compat-dialog-close:hover, .compat-dialog-close:focus-visible {
+  background: var(--accent-soft); color: var(--ink); outline: none;
+}
+
 .mode-options { display: grid; gap: .55rem; margin-bottom: 1rem; }
 .mode-option {
   display: flex; gap: .8rem; align-items: flex-start; text-align: left;
@@ -1184,6 +1199,22 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
   .qr-panel { margin-top: 4mm; }
+  /* The compatibility QR code is a popout on screen now, closed by default —
+     but Ctrl+P should still carry it the way it always did, so printing
+     forces it back into the page rather than leaving a gap where it used to
+     be. The UA stylesheet hides a <dialog> without [open] at the element
+     level; #compat-dialog here outranks that on specificity alone, but
+     !important keeps it that way regardless of load order. Restyled with the
+     same divider .card gave every other printed section, since .card itself
+     was dropped from this element on screen to avoid boxing it twice inside
+     the dialog's own border. */
+  #compat-dialog {
+    display: block !important; position: static; width: auto; max-height: none;
+    box-shadow: none; border: 0; border-top: 1.5pt solid var(--accent);
+    border-radius: 0; padding: 3.5mm 0 5mm; margin: 0 0 4mm; background: transparent;
+    color: inherit;
+  }
+  .compat-dialog-close { display: none; }
 
   .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
   /* The glyph is an emoji on a tinted tile. The tint is what showed up as a

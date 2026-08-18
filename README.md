@@ -1536,16 +1536,26 @@ Codes made before this still scan. `K3` payloads spell their keys out and lack t
 someone may have a code saved as a JPEG or printed on something, and refusing to read it would be a
 worse failure than a slightly thinner comparison.
 
-The profile page ends in four parts, in this order: the report, then **"Test your compatibility"**
-— the QR code, the copy-link and download-QR buttons, and the link to the scan page — then the
-download/delete row, then a line of fineprint naming the model and the time it ran. The
-compatibility panel used to open the page, which asked someone to hand out their code before reading
-a word of what was in it. The action buttons then sat between the report and the code, which put a
-delete button in the middle of the page; they are housekeeping rather than part of the document, so
-they close it instead. The row held a third button, **Re-run the analysis**, which spent a second
-model call on the same export and replaced the report with a differently-worded one; it has been
-removed, and the row is now pinned as an exact list of two so nothing creeps back into it. Its
-handler went with it rather than staying bound to an id that no longer exists.
+The profile page ends in three parts, in this order: the report, then the action row, then a line of
+fineprint naming the model and the time it ran. The action row holds three buttons — **Download full
+report**, **Test compatibility** and **Delete everything** — all housekeeping rather than part of the
+document, so they close the page rather than sitting inside it.
+
+**Test compatibility** opens a popout carrying the QR code, the copy-link and download-QR buttons, and
+the link to the scan page — the same content a whole panel used to hold in the page flow itself,
+always taking up a slab of the page between the report and the buttons whether or not anyone wanted
+it. It is a `<dialog>` now, closed by a cross in its own top-right corner or by clicking outside it,
+and opened only when the reader actually wants to test something — the compatibility panel used to
+open the page before that, which asked someone to hand out their code before reading a word of what
+was in it. Ctrl+P still carries the code onto the printed page regardless: the download route
+(`pdf.js`) never touched this panel either way, but a closed `<dialog>` is `display: none` by default,
+so `#compat-dialog` is forced back to `display: block` under `@media print` — otherwise the printed
+page would have a gap where the code used to be.
+
+The row held a fourth button, once: **Re-run the analysis**, which spent a second model call on the
+same export and replaced the report with a differently-worded one; it has been removed, and the row
+is pinned as an exact list of three so nothing creeps back into it. Its handler went with it rather
+than staying bound to an id that no longer exists.
 
 That leaves one loose end worth naming: `psycheai_digest` in `localStorage` existed only so the
 re-run button had something to re-send, and nothing reads it now. It is still written, and **Delete
@@ -1682,7 +1692,7 @@ npm test           # 563 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 754 checks: drives the real UI in Chromium against a
+npm run test:ui    # 755 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

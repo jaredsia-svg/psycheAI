@@ -353,25 +353,29 @@
 
   <div id="profile-body"></div>
 
-  <div class="qr-panel card">
-    <h2 class="qr-title">Test your compatibility</h2>
-    <div class="qr-holder">
-      <canvas id="qr-canvas" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
-    </div>
-    <div class="qr-actions">
-      <p class="muted">Let someone scan this QR code or send them your QR code / link to understand
-        how compatible you both are.</p>
-      <div class="btn-row">
-        <button class="btn" id="copy-link">Copy my link</button>
-        <button class="btn btn-ghost" id="download-qr">Download QR Code</button>
-        <button class="btn btn-ghost" data-nav="scan">Scan your partner or friend →</button>
+  <dialog id="compat-dialog" class="mode-dialog compat-dialog" aria-labelledby="compat-dialog-title">
+    <button class="compat-dialog-close" id="compat-dialog-close" type="button" aria-label="Close">✕</button>
+    <div class="qr-panel">
+      <h2 class="qr-title" id="compat-dialog-title">Test your compatibility</h2>
+      <div class="qr-holder">
+        <canvas id="qr-canvas" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
       </div>
-      <p class="fineprint" id="payload-size"></p>
+      <div class="qr-actions">
+        <p class="muted">Let someone scan this QR code or send them your QR code / link to understand
+          how compatible you both are.</p>
+        <div class="btn-row">
+          <button class="btn" id="copy-link">Copy my link</button>
+          <button class="btn btn-ghost" id="download-qr">Download QR Code</button>
+          <button class="btn btn-ghost" data-nav="scan">Scan your partner or friend →</button>
+        </div>
+        <p class="fineprint" id="payload-size"></p>
+      </div>
     </div>
-  </div>
+  </dialog>
 
   <div class="cta-row no-print">
     <button class="btn" id="export-pdf-bottom">Download full report</button>
+    <button class="btn btn-ghost" id="test-compat-open" type="button">Test compatibility</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>
 

@@ -1983,6 +1983,13 @@ try {
         !head.querySelector('button');
     }));
 
+  // The QR panel is a popout now, opened from beside the download button —
+  // everything below reads text or geometry from inside it, so the dialog has
+  // to actually be open first: a closed <dialog> is display:none, and
+  // innerText/getBoundingClientRect both read as empty/zero through that.
+  await page.click('#test-compat-open');
+  check('the compatibility popout opens', await page.locator('#compat-dialog').isVisible());
+  await shot('2b-compat-dialog');
   check('the share panel no longer explains the storage model',
     !/There is no account and no database/.test(await page.locator('#view-profile .qr-actions').innerText()));
   check('the share heading sits above the QR code, not beside it', await page.evaluate(() => {
@@ -1997,6 +2004,8 @@ try {
     await page.locator('#view-profile .qr-title').innerText());
   check('it says what scanning is for',
     /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
+  await page.click('#compat-dialog-close');
+  check('the compatibility popout closes', !(await page.locator('#compat-dialog').isVisible()));
 
   check('the personality and compatibility links appear once there is a profile',
     (await visibleNav()).join('|') === 'My Psyche|My Compatibility|FAQ',
@@ -2206,20 +2215,20 @@ try {
   // gone: nothing in the app offers a second model call on the same export
   // any more, so the handler and the button went together rather than
   // leaving a dead listener bound to an id that no longer exists.
-  check('the report closes on exactly the two housekeeping actions',
+  check('the report closes on exactly the three housekeeping actions',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Download full report | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Download full report | Test compatibility | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
-  // The page ends: report, then the code to share, then the two actions,
-  // then the "analysed by" line. "Test your compatibility" opened the page
-  // once, which asked someone to hand out their code before reading a word
-  // of it. The action buttons then sat between the report and the code,
-  // which put a delete button in the middle of the page; they are
-  // housekeeping, so they close it. "Analysed by" is a record of the run
-  // rather than a finding, so it closes the page after even the buttons.
+  // The page ends: report, then the three actions, then the "analysed by"
+  // line. The code to share used to sit in the page flow between the report
+  // and the actions — a slab of the page taken up whether or not anyone
+  // wanted it — and is a popout now instead, opened on demand by "Test
+  // compatibility" sitting among the other two actions rather than always
+  // occupying space of its own. "Analysed by" is a record of the run rather
+  // than a finding, so it closes the page after even the buttons.
   check('the "analysed by" line is the last thing on the page', await page.evaluate(() => {
     const view = document.querySelector('#view-profile');
     const cta = document.querySelector('#view-profile .cta-row');
@@ -2227,18 +2236,9 @@ try {
     const last = view.children[view.children.length - 1];
     return stamp === last && Boolean(cta.compareDocumentPosition(stamp) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
-  check('the action buttons sit below the compatibility panel, not above it',
-    await page.evaluate(() => {
-      const cta = document.querySelector('#view-profile .cta-row').getBoundingClientRect();
-      const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
-      return cta.top >= panel.bottom;
-    }));
-  check('the compatibility panel still comes after the whole report',
-    await page.evaluate(() => {
-      const body = document.querySelector('#profile-body').getBoundingClientRect();
-      const panel = document.querySelector('#view-profile .qr-panel').getBoundingClientRect();
-      return panel.top >= body.bottom;
-    }));
+  check('the compatibility popout takes up no space on the page until it is opened',
+    await page.evaluate(() =>
+      getComputedStyle(document.querySelector('#compat-dialog')).display === 'none'));
   check('the "analysed by" line names the model and is not left empty',
     /Analysed by mock on/.test(await page.locator('#analysed-by').innerText()));
   check('the "analysed by" line is no longer inside the report body',
@@ -4329,6 +4329,7 @@ try {
   // download and decode it rather than trusting the encoder.
   await page.click('[data-nav="profile"]');
   await page.waitForSelector('#view-profile:not([hidden])');
+  await page.click('#test-compat-open');
   const download = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
     page.click('#download-qr'),
@@ -4459,6 +4460,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await page.click('#test-compat-open');
   const [longDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
     page.click('#download-qr'),

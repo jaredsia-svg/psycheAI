@@ -608,6 +608,11 @@
     const nav = event.target.closest('[data-nav]');
     if (!nav) return;
     event.preventDefault();
+    // "Scan your partner or friend" lives inside #compat-dialog now — without
+    // this, navigating away leaves the dialog (and its backdrop) open on top
+    // of the view it just switched to.
+    const openDialog = nav.closest('dialog[open]');
+    if (openDialog) openDialog.close();
     go(nav.dataset.nav);
   });
 
@@ -2181,6 +2186,22 @@
     if (event.target === $('#card-dialog')) $('#card-dialog').close();
   });
   window.addEventListener('resize', layoutPsycheCard);
+
+  // The QR code and its actions were an always-visible panel on the profile
+  // page; they are a popout now, opened on demand from beside the download
+  // button. paintQrCanvas and #payload-size are still filled by renderProfile
+  // regardless of whether the dialog is open — drawing to a canvas does not
+  // need the element to be visible — so the dialog always opens with a code
+  // that is already current.
+  $('#test-compat-open').addEventListener('click', () => {
+    const dialog = $('#compat-dialog');
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+  });
+  $('#compat-dialog-close').addEventListener('click', () => $('#compat-dialog').close());
+  $('#compat-dialog').addEventListener('click', event => {
+    if (event.target === $('#compat-dialog')) $('#compat-dialog').close();
+  });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
 
