@@ -1681,6 +1681,31 @@ try {
       card.classList.remove('pc-narrow');
       return !over;
     }));
+  // The mock's own words ("slight", "clear") are shorter than the worst case
+  // — a real reading can land "moderate" (the longest of the three, per
+  // lib/prompts.js's enum) on three or four axes at once, which is exactly
+  // what overflowed before the letters moved from one row of four to a
+  // two-by-two grid. Forced here rather than relying on the mock happening
+  // to produce it.
+  check('four "moderate" strengths — the worst case — still fit, narrow or not',
+    await page.evaluate(() => {
+      const words = [...document.querySelectorAll('#psyche-card-full .pc-letter i')];
+      const original = words.map(w => w.textContent);
+      words.forEach(w => { w.textContent = 'moderate'; });
+      const card = document.querySelector('#psyche-card-full');
+      const row = card.querySelector('.pc-letters');
+      const wideOver = row.scrollWidth > row.clientWidth + 1;
+      card.classList.add('pc-narrow');
+      const narrowOver = row.scrollWidth > row.clientWidth + 1;
+      card.classList.remove('pc-narrow');
+      words.forEach((w, i) => { w.textContent = original[i]; });
+      return !wideOver && !narrowOver;
+    }));
+  check('the MBTI letters sit two-by-two rather than four in one row',
+    await page.evaluate(() => {
+      const style = getComputedStyle(document.querySelector('#psyche-card-full .pc-letters'));
+      return style.display === 'grid' && style.gridTemplateColumns.split(' ').length === 2;
+    }));
   check('every block on the card is labelled with an icon',
     await page.evaluate(() => {
       const labs = [...document.querySelectorAll('#psyche-card .pc-lab')];

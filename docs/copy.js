@@ -173,7 +173,7 @@
     cardEnneagram: 'Enneagram',
     cardBigFive: 'Big Five',
     cardValues: 'Values',
-    cardBeliefs: 'Believes',
+    cardBeliefs: 'Beliefs',
     cardInterests: 'Interests',
     cardLoveIn: 'Receives love as',
     cardLoveOut: 'Gives love as',

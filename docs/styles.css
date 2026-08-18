@@ -1333,8 +1333,16 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .pc-big { font-size: 46px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .pc-sub { font-size: 24px; color: var(--ink-soft); margin: 6px 0 0; }
-.pc-letters { display: flex; gap: 8px; margin-top: 4px; }
-.pc-letter { display: flex; flex-direction: column; align-items: center; flex: 1; }
+/* Two columns rather than one row of four: "moderate" is the longest of the
+   three strength words, and a reading with three or four of them in a row
+   (not rare — most people are not extreme on every axis) pushed the row
+   wider than the card and spilled past its right edge. Two per row halves
+   the worst case. min-width: 0 is still needed alongside it — a flex or grid
+   item defaults to a content-based minimum width, which "moderate" alone
+   already exceeds at this column's share of the card, and that default wins
+   over the grid track unless it is overridden. */
+.pc-letters { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; margin-top: 4px; }
+.pc-letter { display: flex; flex-direction: column; align-items: center; min-width: 0; }
 .pc-letter b { font-size: 40px; font-weight: 800; letter-spacing: -.01em; }
 .pc-letter i {
   font-style: normal; font-size: 17px; color: var(--ink-soft);
