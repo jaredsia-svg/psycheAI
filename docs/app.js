@@ -597,8 +597,11 @@
   // for a page saved or view-sourced before that point to give away — the
   // cover ships alone, and revealRoast injects the writing once a real
   // result has actually arrived.
+  // Routed through `unlockedSections` rather than reading the field directly,
+  // so the page and the downloaded report answer "is the roast unlocked?" from
+  // the same line of code and cannot drift apart.
   function paidAnalysis() {
-    return (state.profile && state.profile.premiumAnalysis) || null;
+    return unlockedSections(state.profile).bonus || null;
   }
 
   // The badge is unescaped HTML spliced onto an already-escaped title —
@@ -2040,6 +2043,27 @@
   // page, and on mobile often offered no PDF destination at all. pdf.js writes
   // the file directly, so the download is one click and looks the same
   // everywhere.
+  /**
+   * What this profile has actually paid for, keyed by the names
+   * `PAID_SECTIONS` uses in docs/pdf.js. This is the single place the app
+   * decides that, so the page and the downloaded report can never disagree
+   * about what is unlocked.
+   *
+   * There is no separate "paid" boolean anywhere — the presence of the paid
+   * content *is* the unlock, on the page (`paidAnalysis()`) and here alike. A
+   * boolean would be a second thing to keep in step with the content, and a
+   * stale one would either hide something bought or print something that was
+   * not.
+   *
+   * A future paywalled section adds a line here and an entry in
+   * `PAID_SECTIONS`; nothing else in the PDF has to change.
+   */
+  function unlockedSections(profile) {
+    const unlocked = {};
+    if (profile && profile.premiumAnalysis) unlocked.bonus = profile.premiumAnalysis;
+    return unlocked;
+  }
+
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
     return window.PsychePDF.build(profile.report, profile.card, {
@@ -2048,6 +2072,9 @@
       // The page shows a matches section when this device has any, so the
       // report does too.
       history: store.read(KEYS.history, []),
+      // The roast prints only for the reader who bought it. Unpaid, the key is
+      // absent and the section does not exist in the file at all.
+      unlocked: unlockedSections(profile),
     });
   }
 

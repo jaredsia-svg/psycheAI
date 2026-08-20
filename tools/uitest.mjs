@@ -2933,21 +2933,28 @@ try {
   // require the PDF to carry all of them, in the same order. This is what keeps
   // the two from drifting — the first version of this PDF split values from
   // beliefs, renamed half the sections and put behaviour in a different place.
-  // The bonus roast is the deliberate exception to page/PDF parity. It sits
-  // behind a cover somebody has to open (now a paywall rather than a plain
-  // click), and a PDF has no cover, so printing it would hand the harshest
-  // writing in the report to whoever the file reaches. Excluded here and
-  // asserted absent below. Its <h2> reads as title-plus-badge — "Let us
-  // roast you Bonus Section" — since the badge sits inside the same heading
-  // and textContent picks up both.
-  const pageSections = (await page.evaluate(() =>
-    [...document.querySelectorAll('#profile-body .card-head h2')].map(h => h.textContent.trim())))
-    .filter(title => title !== 'Let us roast you Bonus Section');
+  // The roast used to be the one exception to this, excluded from the PDF
+  // outright. It is not any more: it prints for the reader who bought it, and
+  // this walk is run after the unlock above, so it is held to the same parity
+  // and ordering rules as every free section. The unpaid path — no unlock, no
+  // section anywhere in the file — is checked separately below.
+  //
+  // The badge is dropped before comparing because it lives inside the same
+  // <h2> as the title, so textContent reads "Let us roast you Bonus Section"
+  // while the PDF prints the title alone. Stripping `.mode-badge` rather than
+  // matching that one string keeps this working for any future badged section.
+  const pageSections = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .card-head h2')].map(h => {
+      const copy = h.cloneNode(true);
+      copy.querySelectorAll('.mode-badge').forEach(badge => badge.remove());
+      return copy.textContent.trim();
+    }));
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
-  // the compatibility page now — so this is a fixed nine regardless of history.
-  check('the page has all its sections to compare against', pageSections.length >= 9,
+  // the compatibility page now — so this is a fixed nine free sections, plus
+  // the roast now that it has been paid for.
+  check('the page has all its sections to compare against', pageSections.length >= 10,
     pageSections.length + ': ' + pageSections.join(' | '));
 
   const placed = pageSections.map(title => ({
@@ -2977,21 +2984,68 @@ try {
   check('the PDF labels the behaviour facets as the page does',
     pdfText.includes('(WHAT YOU POST)') && pdfText.includes('(WHAT YOU TAKE IN)') &&
     !pdfText.includes('(PUBLISHING VS READING)'));
-  // The PDF is the copy people keep and hand around, so the consumption read
-  // and its advice have to survive into it rather than being screen-only.
-  // A PDF has no cover to open, so the consent gate cannot travel into one.
-  // Printing the section would put the harshest writing in the report into a
-  // file that gets reopened cold and forwarded — including by a reader who
-  // never pressed the button. Every part of it is asserted absent: the
-  // heading, both subheadings, and a phrase from the writing itself, since a
-  // renderer could drop the headings and still lay down the prose.
-  check('the PDF leaves the bonus section out entirely',
-    !pdfText.includes('(Let us roast you)') &&
-    !pdfText.includes('(The least charitable assessment of you)') &&
-    !pdfText.includes('(What an honest friend would tell you)') &&
-    !/not an assessment, not a diagnosis/i.test(pdfText) &&
-    !/uncharitable reading/i.test(pdfText) && !/unsoftened advice/i.test(pdfText),
+  // Every check so far matches a heading, and a heading is drawn as one
+  // string. A sentence is not: the typesetter draws one `(...) Tj` per
+  // wrapped line, so "not an assessment, not a diagnosis" straddles a line
+  // break and is nowhere contiguous in the file. Anything longer than a
+  // heading is matched against the drawn strings joined back into prose —
+  // against the raw bytes it would fail on wrapping alone and read as missing
+  // content, which is exactly the wrong answer for a check about a paywall.
+  const asProse = text => (text.match(/\((?:\\.|[^()\\])*\)\s*Tj/g) || [])
+    .map(token => token.replace(/\)\s*Tj$/, '').slice(1))
+    .join(' ').replace(/\s+/g, ' ');
+  const pdfProse = asProse(pdfText);
+
+  // A paid section belongs to whoever paid for it, and the PDF is the copy
+  // they keep. This `pdfText` was built after the unlock above, so the roast
+  // has to be all the way in: the heading, both subheadings, and the writing
+  // itself, since a renderer could lay down the headings and drop the prose.
+  check('the PDF carries the roast once it has been paid for',
+    pdfText.includes('(Let us roast you)') &&
+    pdfText.includes('(The least charitable assessment of you)') &&
+    pdfText.includes('(What an honest friend would tell you)') &&
+    /uncharitable reading/i.test(pdfProse) && /unsoftened advice/i.test(pdfProse),
     String(pdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
+  // The caveat travels with it. On screen it can be scrolled back to; in a
+  // file that gets reopened cold and forwarded it is the only thing saying
+  // what the writing is, so it has to be in the file rather than beside it.
+  check('and the roast\'s caveat prints with it rather than staying on screen',
+    /not an assessment, not a diagnosis/i.test(pdfProse),
+    (/[^.]*not an assessment[^.]*\./i.exec(pdfProse) || ['not found'])[0].slice(0, 80));
+
+  // The other half of the rule, and the one that actually enforces the
+  // paywall: build the same report with nothing unlocked and the section does
+  // not exist in the file at all. Same report object, same card — the only
+  // difference is the absent `unlocked` key, so a failure here can only mean
+  // the gate is not doing anything. This is the shape any future paid section
+  // gets checked in too.
+  const unpaidPdfText = await page.evaluate(async () => {
+    const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+    const blob = window.PsychePDF.build(saved.report, saved.card,
+      { date: 'today', model: 'mock' });
+    // Byte-for-byte to code points, the way Node's latin1 decode reads the
+    // downloaded file above. TextDecoder's "latin1" is windows-1252, which
+    // rewrites 0x80-0x9F and would not match what the other half of this
+    // comparison sees.
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    return out;
+  });
+  const unpaidProse = asProse(unpaidPdfText);
+  check('an unpaid report has no roast in it anywhere',
+    !unpaidPdfText.includes('(Let us roast you)') &&
+    !unpaidPdfText.includes('(The least charitable assessment of you)') &&
+    !unpaidPdfText.includes('(What an honest friend would tell you)') &&
+    !/not an assessment, not a diagnosis/i.test(unpaidProse) &&
+    !/uncharitable reading/i.test(unpaidProse) && !/unsoftened advice/i.test(unpaidProse),
+    String(unpaidPdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
+  // ...and it is the same report otherwise, so the check above is about the
+  // paywall rather than about a build that quietly failed and returned little.
+  check('the unpaid report is otherwise the same document',
+    unpaidPdfText.includes('(Mental wellness)') && unpaidPdfText.includes('(At work)'));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',

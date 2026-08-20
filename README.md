@@ -1708,12 +1708,49 @@ copies it, a screen reader announces it, view-source hands it over — so `bonus
 alone and `revealRoast()` fills the card's body from the paid call's result, once it actually succeeds.
 A UI check asserts the mock's own wording is absent from the card's `innerHTML` before that.
 
-**The PDF leaves it out entirely**, and it is the one place the PDF is not a faithful rendering of
-the page. A PDF has no cover to open, so the consent gate cannot travel into one — printing it would
-put the harshest writing in the report into a file that gets reopened cold and forwarded, including
-by a reader who never pressed the button. The page/PDF parity check exempts this section by name, and
-a further check asserts every part of it absent: the heading, both subheadings, the caveat, and a
-phrase from the writing itself, since a renderer could drop the headings and still lay down the prose.
+**The PDF carries it if and only if it was paid for.** It used to be excluded outright, as the one
+place the PDF was not a faithful rendering of the page: a PDF has no cover to open, so printing the
+section unconditionally would have put the harshest writing in the report into a file that gets
+reopened cold and forwarded, including by a reader who never pressed the button. Gating on the
+unlock answers that directly — the only way the section reaches the file is that somebody paid $1.99
+or entered a promo code to see this exact writing, and a paid section belongs to whoever paid for
+it. What the gate cannot govern is where the file goes next, which is why the caveat now prints
+*with* the section rather than being left on screen: the PDF is the copy that gets kept and
+forwarded, so it is the copy that most needs to say what the writing is.
+
+### The rule for any paywalled section
+
+The mechanism is deliberately a table rather than an `if` per section, so that "paid sections are
+absent unless unlocked" is one rule in two places rather than a convention each new section has to
+remember:
+
+- **`PAID_SECTIONS` in `docs/pdf.js`** — one entry per paywalled section, `{ key, render }`. `build()`
+  walks it once, printing a section only when `meta.unlocked` carries its key.
+- **`unlockedSections()` in `docs/app.js`** — the single place the app decides what has been bought,
+  keyed by the same names. `paidAnalysis()`, which the page renders from, is routed through it too,
+  so the page and the downloaded file answer "is this unlocked?" from the same line of code and
+  cannot drift apart.
+
+There is no `paid` boolean anywhere. The presence of the paid content **is** the unlock, on the page
+and in the PDF alike — a boolean would be a second thing to keep in step with the content, and a
+stale one would either hide something bought or print something that was not. Paid content is also
+read from `meta` rather than off the report object on purpose: a paid section pulled from
+`source.<field>` would print for anyone whose stored profile happened to contain it.
+
+Both directions are checked and both were fault-injected. With the roast unlocked it is held to the
+same parity and ordering rules as every free section — the page/PDF walk no longer exempts it, it
+just strips the `Bonus Section` badge from the heading before comparing — and its heading, both
+subheadings, the caveat and a phrase from the writing itself all have to be in the file, since a
+renderer could lay down the headings and drop the prose. The same report built with nothing unlocked
+must contain none of it, while still containing everything else. Injecting "never unlock" fails the
+first three; injecting "render regardless of the gate" fails the fourth.
+
+One subtlety worth recording, because getting it wrong would have produced a *false* pass: the
+typesetter draws one `(...) Tj` per wrapped line, so a sentence is nowhere contiguous in the file —
+`not an assessment, not a diagnosis` straddles a line break. Anything longer than a heading is
+matched against the drawn strings joined back into prose. Against the raw bytes it would fail on
+wrapping alone and read as missing content, which is precisely the wrong answer for a check about a
+paywall.
 
 ## Downloading the report
 
@@ -2025,7 +2062,7 @@ npm test           # 637 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 788 checks: drives the real UI in Chromium against a
+npm run test:ui    # 791 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

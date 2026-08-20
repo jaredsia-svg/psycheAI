@@ -900,6 +900,47 @@
     doc.y = bandHeight + 40;
   }
 
+  // ---------- sections that were paid for ----------
+
+  /**
+   * Paywalled sections, and the whole rule for how they reach the PDF: a
+   * section in this table prints if and only if `meta.unlocked` carries its
+   * key, which the app fills from what the reader has actually bought. No
+   * payment, no key, no section — and nothing else in `build()` has to know a
+   * paywall exists.
+   *
+   * The roast used to be excluded from the PDF outright, and the reasoning was
+   * about consent rather than payment: on screen it sits behind a cover
+   * somebody has to open, a PDF has no cover, so printing it unconditionally
+   * would have handed the harshest writing in the report to a reader who never
+   * pressed the button. Gating on the unlock answers that directly — the only
+   * way a key gets here is that somebody paid $1.99 or entered a promo code to
+   * see this exact writing. What the gate cannot govern is where the file goes
+   * next, which is why the caveat prints with the section rather than being
+   * left on screen: the PDF is the copy that gets kept and forwarded, so it is
+   * the copy that most needs to say what it is.
+   *
+   * Adding a paywalled section later means adding an entry here and a key in
+   * `unlockedSections()` in docs/app.js. Do not reach for `source.<field>` in
+   * `build()` for paid content — a paid section read off the report object
+   * would print for anyone whose stored profile happened to contain it.
+   */
+  const PAID_SECTIONS = [{
+    key: 'bonus',
+    render(out, roast) {
+      out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
+      out.fineprint(TEXT.bonusCaveat);
+      if (roast.harsh) {
+        out.h3(TEXT.bonusHarsh);
+        out.body(roast.harsh, { size: 10, leading: 15 });
+      }
+      if (roast.advice) {
+        out.h3(TEXT.bonusAdvice);
+        out.body(roast.advice, { size: 10, leading: 15 });
+      }
+    },
+  }];
+
   // ---------- the report ----------
 
   function build(report, card, meta) {
@@ -1163,12 +1204,15 @@
       }
     }
 
-    // The bonus section is deliberately absent here, and this is the one place
-    // the PDF is not a faithful rendering of the page. On screen it sits behind
-    // a cover somebody has to open, which is what makes it consented to; a PDF
-    // has no cover to open, so printing it would hand the harshest writing in
-    // the report to whoever the file reaches — including the reader who never
-    // pressed the button, and anyone they send it to. A check holds it out.
+    // 9e. Whatever was bought, in the position it holds on the page — after
+    // the career coaching, before matches and the confidence close. The list
+    // is `PAID_SECTIONS`; see the note there for why this is a table rather
+    // than an `if` per section, and why a paid section is read from `meta`
+    // rather than off the report object.
+    const unlocked = stamp.unlocked || {};
+    for (const section of PAID_SECTIONS) {
+      if (unlocked[section.key]) section.render(out, unlocked[section.key]);
+    }
 
     // 10. Matches, when this device has any.
     const history = (stamp.history || []).filter(entry => entry && entry.report);
