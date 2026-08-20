@@ -193,26 +193,6 @@
         "detail": "The Two-with-a-One-wing pattern: generous in the moment, quietly tallying, and inclined to feel unmet without ever having stated the need. Nothing here shows it blowing up, but the ingredients are visible."
       }
     ],
-    "attachment": {
-      "style": "Leans secure with anxious edges (tentative)",
-      "why": "The stability points to secure: the same twelve people for four years, no withdrawal after conflict. The anxious edge is the asymmetry — you initiate far more than you receive, and the quiet fortnights read as self-soothing.",
-      "derivedFrom": [
-        "Same core group engaged with across all four years, no drop-offs",
-        "You initiate 3x more comment threads than you receive",
-        "Recovery gaps follow social peaks rather than conflicts"
-      ],
-      "implications": [
-        {
-          "title": "You are easy to be close to",
-          "detail": "Consistency is the thing most people want and rarely get. You supply it without being asked."
-        },
-        {
-          "title": "You are hard to reciprocate with",
-          "detail": "A partner who wants to give as much as they get will struggle to find the opening, because you rarely leave one."
-        }
-      ],
-      "caveat": "Attachment cannot be measured from social media. This is a guess, shown with its reasoning so you can disagree with it."
-    },
     "loveLanguages": {
       "receiving": [
         {
@@ -239,6 +219,26 @@
       "caveat": "Love languages are a popular framework rather than a validated instrument. Read these as a decent guess at what you reach for, not a diagnosis."
     }
   },
+  "attachment": {
+    "style": "Leans secure with anxious edges (tentative)",
+    "why": "The stability points to secure: the same twelve people for four years, no withdrawal after conflict. The anxious edge is the asymmetry — you initiate far more than you receive, and the quiet fortnights read as self-soothing.",
+    "derivedFrom": [
+      "Same core group engaged with across all four years, no drop-offs",
+      "You initiate 3x more comment threads than you receive",
+      "Recovery gaps follow social peaks rather than conflicts"
+    ],
+    "implications": [
+      {
+        "title": "You are easy to be close to",
+        "detail": "Consistency is the thing most people want and rarely get. You supply it without being asked."
+      },
+      {
+        "title": "You are hard to reciprocate with",
+        "detail": "A partner who wants to give as much as they get will struggle to find the opening, because you rarely leave one."
+      }
+    ],
+    "caveat": "Attachment cannot be measured from social media. This is a guess, shown with its reasoning so you can disagree with it."
+  },
   "career": {
     "strengths": [
       {
@@ -261,11 +261,6 @@
       }
     ],
     "workStyle": "Plans in blocks, announces the plan, delivers to it. High standards applied quietly rather than argued for.",
-    "environments": [
-      "Teams small enough that reliability is visible",
-      "Roles with a clear finish line rather than open-ended remits",
-      "Managers who ask what you want rather than waiting to be told"
-    ],
     "watchOuts": "Somewhere with no natural end to the work, or a culture where credit goes to whoever claims it loudest."
   },
   "wellness": {
@@ -342,6 +337,53 @@
       {
         "title": "Ask one person for something small",
         "detail": "Every request visible in four years is framed as useful to somebody else. Ask for one thing with no justification attached — a specific plan, a specific favour — and let it be for you."
+      }
+    ]
+  },
+  "careerAssessment": {
+    "situation": "You are inferring from work that shows up around the edges of a personal account rather than from a CV, so read this as a sketch. What is visible: you coordinate people for a living or something close to it, you are the one who notices unassigned work and does it, and four years of posts show the same handful of colleagues rather than a churn of teams. Nothing here names your title or your employer, and nothing should be read as though it did.",
+    "edge": {
+      "headline": "You close what other people only announce",
+      "detail": "Follow-through at this rate is genuinely uncommon, and it is worth more than it is currently getting you. Most people who announce 47 things across four years close a fraction of them; you closed 41. That is not diligence, it is a reputation asset — the kind of thing colleagues quietly route work through and managers cannot replace quickly. The catch is that it is invisible in the places that decide promotions, because nobody writes down the plan that did not slip.",
+      "evidence": [
+        "41 of 47 announced plans closed out",
+        "The same twelve colleagues engaged with across four years, no drop-offs",
+        "Training structure unchanged since 2021"
+      ]
+    },
+    "underused": {
+      "headline": "A network you never ask anything of",
+      "detail": "Four years of consistent contact with the same core group is a real professional asset, and the export shows it running almost entirely one way. You turn up for them; there is no visible instance of you asking any of them for an introduction, a reference or an opinion."
+    },
+    "holdingBack": {
+      "headline": "You narrate wins as collective",
+      "detail": "Every visible account of a finished piece of work is framed as something the group did. That reads as generous in a room that already knows what you contributed, and as absence in a room that does not. The cost is not hypothetical — it is the difference between being valued and being promoted."
+    },
+    "actions": [
+      {
+        "horizon": "this week",
+        "title": "Write one sentence in the first person singular",
+        "detail": "Pick the most recent thing you finished and describe your part in it, to one person who has a say in your progression. Not a pitch — one sentence, first person, no 'we'."
+      },
+      {
+        "horizon": "this week",
+        "title": "Ask one person in your network for something",
+        "detail": "An introduction, a read on a decision, half an hour of their time. The specific ask matters less than establishing that the traffic can run the other way."
+      },
+      {
+        "horizon": "this quarter",
+        "title": "Keep a closed-loop log",
+        "detail": "One line per finished commitment, with the date and who it mattered to. Your edge is real and undocumented; at review time the log is the difference between claiming it and asserting it."
+      },
+      {
+        "horizon": "this quarter",
+        "title": "Let one thing visibly not be yours",
+        "detail": "Decline to pick up one piece of unassigned work and watch where it lands. You will learn whether the system depends on you or merely benefits from you, and that answer changes what you should negotiate for."
+      },
+      {
+        "horizon": "this year",
+        "title": "Move toward work where follow-through is the product",
+        "detail": "Delivery, programme or operations roles pay for exactly the thing you already do for free. If you stay where you are, negotiate a title that names it rather than one that describes the function you happen to sit in."
       }
     ]
   },

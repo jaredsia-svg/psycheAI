@@ -781,7 +781,18 @@ The trim loop shrinks whichever list is largest, which is source-blind — so a 
 shaved Instagram captions to make room for a browsing histogram. Instagram is the primary evidence
 and the thing the report is written from; a supplement is an addition, so **additions are trimmed
 first, and further** (floor 10 rather than 20) before any Instagram list is touched. Fault-injected
-by merging the two lists back into one: captions collapse from 1265 to 533.
+by blocking supplement trimming entirely: captions collapse from 299 to 20.
+
+**The guarantee on captions is a bounded one now, and the change is worth being precise about.** It
+used to be that a supplement cost the primary export *no* captions at all, and that held while there
+was budget headroom to hold it with. The wellness and career-coaching prompts took about 19,000
+characters out of the comprehensive ceiling, and the oversized synthetic fixture that tests this now
+fills 98.8% of what remains from Instagram alone — so once every supplement list is at its floor, the
+irreducible remainder (per-service counts, coverage rows, the floored lists themselves) still costs
+one trim step. What is checked is therefore the property the system can actually deliver, which is
+also the more precise one: **every supplement list is driven to its floor before a single caption is
+touched** — 4,000 video titles and 6,000 searches come out at ten apiece — and captions may then lose
+at most one 25% step. A second step means the ordering has stopped working, and that still fails.
 
 Worth keeping in proportion, though: **output dominates the bill.** Worst-case generation alone is
 $0.2458 of a heavy run's $0.33 ceiling, against $0.085 for the entire digest. Both supplements
@@ -1443,10 +1454,59 @@ identically on every run rather than left to a field the model could soften or f
 the PDF too, since that is the copy that gets kept and forwarded.
 
 Cost: about **+$0.012** on a free report — roughly 3,900 extra tokens of prompt and schema, plus the
-output to write it. It also costs the digest ~13,650 characters of budget, since every token reserved
-for the fixed prompt is one the digest cannot spend; real accounts are unaffected because standard's
-per-source caps bind long before the ceiling does, but comprehensive's synthetic oversized fixture
-now trims its follow list further, and the check that noticed moved with it rather than being deleted.
+output to write it. The career coaching section added about 1,300 more on top (net of "where you
+would thrive" coming out), so the fixed reserve now stands at 19,700 tokens against 14,300 before
+either section existed. Every token reserved for the prompt is one the digest cannot spend, which
+cost the comprehensive ceiling about 19,000 characters in total. Real accounts are unaffected —
+standard's per-source caps bind long before the ceiling does — but two budget checks moved with it
+rather than being deleted; see the note on the caption floor under
+["Supplementary sources"](#supplementary-sources-google-takeout-and-facebook).
+
+### Attachment style
+
+Its own section now, between the wellness read and the career one. It spent most of this app's life
+as a callout inside "In relationships", competing with the love languages inside a card that already
+carried strengths and weaknesses — and it is the single most-quoted finding in the report, so it was
+the wrong thing to bury. The schema moved with it: `attachment` is top-level rather than nested under
+`relationship`, because a section rendered three cards away from the object it hangs off is a trap for
+whoever edits this next. The renderers fall back to the old location so a report stored before the
+move still shows it.
+
+The card's own `attachment` and `attachmentWhy` fields are a separate, compressed thing and were not
+touched — those are what travels in the QR code, and a check asserts they survived the move.
+
+### Career assessment
+
+A second career section, after the attachment read: **"At work" describes, "Career assessment"
+advises.** The first says how this person works; the second is a coach deciding what they should do
+about it. Two career headings in one report only earn their place if the second is actionable, so the
+prompt says at length that they must not say the same thing twice — if a sentence would sit
+comfortably in `career.workStyle`, it belongs there instead — and a check pins that instruction.
+
+It carries `situation`, an evidenced `edge`, what is `underused`, what is `holdingBack`, and
+`actions`. The edge is the centre of it: the thing they do reliably that most people do not, stated
+as an advantage rather than a compliment, with real counts behind it. The test in the prompt is that
+an edge which would fit any organised, agreeable or hard-working person is not an edge.
+
+**Actions carry a horizon** — `this week`, `this quarter`, `this year` — and at least one must be
+startable now. An answer with nothing in it before next quarter is a wish list, so the page groups by
+horizon with "this week" first and the PDF orders them the same way. The prompt asks for the first
+move rather than the ambition: *"ask your manager which of the three projects counts at review"*
+beats *"increase your visibility"*.
+
+**The evidence here is the thinnest in the report and the prompt is blunt about it.** An Instagram
+export contains no CV, no job history, no title, no employer, no salary and no performance review.
+That is enough to find an edge and name a pattern that is costing somebody; it is nowhere near enough
+to state what job they hold. The who-is-this-about rule bites hardest here — somebody who photographs
+founders at a demo night is the person who was in the room — and reading a borrowed biography as a
+career is named in the prompt as the single most damaging error available in the section, because
+unlike a wrong trait score it reads as a confident statement of fact about a life they do not have.
+
+**"Where you would thrive" was removed** from "At work" in the same pass. It listed ideal
+environments inferred from an export with no job history, and it was advice sitting in a section that
+is meant to describe. It is gone from the schema, both renderers and the fixtures, and the prompt
+forbids folding it back into `workStyle` or `watchOuts` — checked as an absence in the schema and as a
+ban in the prompt, since that is the shape this would come back in.
 
 ### The psyche card
 
@@ -1949,7 +2009,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 629 checks: synthesises a real ZIP export and runs
+npm test           # 643 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1958,7 +2018,7 @@ npm test           # 629 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 782 checks: drives the real UI in Chromium against a
+npm run test:ui    # 789 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

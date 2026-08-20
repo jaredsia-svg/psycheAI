@@ -676,7 +676,7 @@ check('the sample report satisfies the profile schema exactly', sampleFaults.len
 // flatters would misrepresent what the model actually returns.
 check('the sample report is honest about weaknesses, not an advert',
   sample.relationship.weaknesses.length >= 2 && sample.career.weaknesses.length >= 2 &&
-  sample.confidence.score < 100 && /tentative/i.test(sample.relationship.attachment.style),
+  sample.confidence.score < 100 && /tentative/i.test(sample.attachment.style),
   JSON.stringify({
     relationship: sample.relationship.weaknesses.length,
     career: sample.career.weaknesses.length,
@@ -718,7 +718,10 @@ check('each language is ranked and evidenced',
 check('a language can be marked minor rather than invented',
   loveProps.receiving.items.properties.strength.enum.includes('minor'));
 
-const attachProps = prompts.PROFILE_SCHEMA.properties.relationship.properties.attachment.properties;
+// Top-level now rather than nested under `relationship`: the attachment read
+// became its own section on the page, and the schema followed so the two do
+// not drift apart.
+const attachProps = prompts.PROFILE_SCHEMA.properties.attachment.properties;
 check('attachment shows its working',
   ['style', 'why', 'derivedFrom', 'implications', 'caveat'].every(k => k in attachProps));
 check('attachment names the signals it rests on',
@@ -805,6 +808,70 @@ check('the timing-data ban survived the account list being cut',
   /No source here carries timing data of any kind/.test(prompts.PROFILE_SYSTEM));
 check('the ban on naming private individuals survived it too',
   /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
+// ---------- the career coaching section ----------
+//
+// A second career heading in one report only earns its place if it does a
+// different job from the first, so what is pinned here is mostly the
+// separation: the descriptive section must stay descriptive, this one must
+// stay actionable, and the evidence limits have to survive an edit.
+const coachProps = prompts.PROFILE_SCHEMA.properties.careerAssessment.properties;
+check('the career assessment carries a situation, an edge, two facets and actions',
+  ['situation', 'edge', 'underused', 'holdingBack', 'actions'].every(k => k in coachProps) &&
+  Object.keys(coachProps).length === 5, Object.keys(coachProps).join(', '));
+// The edge is the finding the section exists for, so it is the one field that
+// has to bring evidence rather than assert.
+check('the edge is evidenced rather than asserted',
+  ['headline', 'detail', 'evidence'].every(k => k in coachProps.edge.properties) &&
+  coachProps.edge.properties.evidence.type === 'array');
+check('an edge that would fit anybody is called out as not an edge',
+  /an edge that would fit any organised, agreeable or hard-working person is not an edge/
+    .test(prompts.PROFILE_SYSTEM));
+// Actions without a timeframe are a wish list. At least one must be startable
+// now, and the prompt says so.
+check('actions carry a horizon, and one of them has to be startable this week',
+  JSON.stringify(coachProps.actions.items.properties.horizon.enum) ===
+  JSON.stringify(['this week', 'this quarter', 'this year']) &&
+  /at least one should be `this week`/.test(prompts.PROFILE_SYSTEM));
+check('actions are told to name the first move rather than the ambition',
+  /Name the first move rather than the ambition/.test(prompts.PROFILE_SYSTEM));
+// The two career sections are the likeliest pair in this report to collapse
+// into each other, so the instruction keeping them apart is pinned.
+check('the two career sections are told not to say the same thing twice',
+  /It is a different job from the career section above, and the two must not say the same thing twice/
+    .test(prompts.PROFILE_SYSTEM) &&
+  /\*\*Describe, do not advise\*\*/.test(prompts.PROFILE_SYSTEM));
+// Career evidence is the thinnest in the report — no CV, no title, no salary
+// — and the who-is-this-about rule does the most damage here if it slips.
+check('the prompt is blunt about what a social export cannot show about work',
+  /no CV, no job history, no title, no employer, no salary and no performance review/
+    .test(prompts.PROFILE_SYSTEM));
+check('reading a borrowed biography as a career is named as the worst error here',
+  /Reading a borrowed biography as a career is the single most damaging error/
+    .test(prompts.PROFILE_SYSTEM));
+
+// "Where you would thrive" was cut from the descriptive career section: it
+// listed ideal environments inferred from an export with no job history, and
+// it was advice sitting in a section meant to describe. Checked as an absence
+// in the schema and as a ban in the prompt, so it cannot come back by being
+// folded into a neighbouring field.
+check('the ideal-environments list is gone from the career schema',
+  !('environments' in prompts.PROFILE_SCHEMA.properties.career.properties),
+  Object.keys(prompts.PROFILE_SCHEMA.properties.career.properties).join(', '));
+check('and the prompt forbids smuggling it back into a neighbouring field',
+  /do not smuggle one back into `workStyle` or `watchOuts`/.test(prompts.PROFILE_SYSTEM));
+
+// Attachment moved out of `relationship` and into its own top-level section.
+check('attachment is its own top-level section, not nested under relationship',
+  'attachment' in prompts.PROFILE_SCHEMA.properties &&
+  !('attachment' in prompts.PROFILE_SCHEMA.properties.relationship.properties),
+  Object.keys(prompts.PROFILE_SCHEMA.properties.relationship.properties).join(', '));
+check('the prompt tells it to write attachment as a standalone section',
+  /its own section, not part of the relationship read above/.test(prompts.PROFILE_SYSTEM));
+// The card's own compressed attachment fields are a different thing and must
+// not have been dragged along by the move — they are what travels in the QR.
+check('the card keeps its own compressed attachment fields',
+  ['attachment', 'attachmentWhy'].every(k => k in prompts.PROFILE_SCHEMA.properties.card.properties));
+
 // ---------- the wellness section ----------
 //
 // The section that sits closest to health in the whole app, and therefore the
@@ -2236,10 +2303,39 @@ check('the trim loop really did fire, or the checks below prove nothing',
   crowded.google.googleSearchSample.length < 1000,
   crowded.google.videoTitleSample.length + ' titles, ' +
   crowded.google.googleSearchSample.length + ' searches kept of 3000 allowed');
-check('a huge supplement never costs the primary export its captions',
-  crowded.coverage.sampling.captions.shown === deepAlone.coverage.sampling.captions.shown,
+// The invariant that actually matters, and the one the ordering exists to
+// deliver: **every supplement list is driven to its floor before a single
+// Instagram caption is touched.** 4,000 video titles and 6,000 Google searches
+// come out the other side at ten apiece. This is the strong form of "additions
+// go first", and it is checked directly rather than inferred from the caption
+// count.
+check('every supplement list is trimmed to its floor before Instagram is touched',
+  [crowded.google.videoTitleSample, crowded.google.googleSearchSample,
+    crowded.google.topGoogleSearches, crowded.google.topChannels,
+    crowded.google.topDomains, crowded.google.geminiPromptSample]
+    .every(list => list.length <= 10),
+  JSON.stringify({ titles: crowded.google.videoTitleSample.length,
+    searches: crowded.google.googleSearchSample.length,
+    channels: crowded.google.topChannels.length }));
+
+// Captions used to be checked for *no* loss at all, and that held while there
+// was headroom to hold it with. There is not any more: this fixture is
+// deliberately oversized, and Instagram alone now fills 98.8% of a
+// comprehensive budget that the wellness and career-coaching prompts took
+// about 19,000 characters out of. Once every supplement is at its floor, the
+// irreducible remainder — per-service counts, coverage rows, the floored lists
+// themselves — is still enough to cost one trim step.
+//
+// So the guarantee is stated as what the system can actually deliver rather
+// than as what it happened to manage when there was slack: supplements are
+// exhausted first (checked above), and captions may then lose at most a single
+// 25% step. A second step would mean the ordering had stopped working, and
+// this still fails if it does.
+const captionFloor = Math.floor(deepAlone.coverage.sampling.captions.shown * 0.75);
+check('a huge supplement costs the primary export at most one trim step of captions',
+  crowded.coverage.sampling.captions.shown >= captionFloor,
   crowded.coverage.sampling.captions.shown + ' vs ' + deepAlone.coverage.sampling.captions.shown +
-  ' captions');
+  ' captions (floor ' + captionFloor + ')');
 check('the crowded digest still lands inside the budget',
   crowded.coverage.digestChars <= Digest.DEPTHS.comprehensive.limits.totalChars,
   crowded.coverage.digestChars + ' vs ' + Digest.DEPTHS.comprehensive.limits.totalChars);

@@ -495,6 +495,88 @@
     return html + '</div>';
   }
 
+  // ---------- attachment style ----------
+  //
+  // Its own section now, below the wellness read. It spent most of this app's
+  // life as a callout inside "In relationships", competing with the love
+  // languages for attention in a card that already carried strengths and
+  // weaknesses — and it is the single most-quoted finding in the report, so
+  // it was the wrong thing to bury. The markup is the same callout it always
+  // was, lifted into a card of its own; the style itself still leads the
+  // heading, since that is the part a reader is looking for.
+  function attachmentBlock(attachment) {
+    return '<div class="card section-card attachment-card">' +
+      sectionHead('🔗', esc(TEXT.attachment), esc(TEXT.attachmentSub)) +
+      '<div class="callout"><h3>' + esc(TEXT.attachmentPrefix) + esc(attachment.style) + '</h3>' +
+      '<p>' + esc(attachment.why) + '</p>' +
+      ((attachment.derivedFrom || []).length
+        ? '<p class="essence-label">' + esc(TEXT.readFrom) + '</p>' +
+          '<p class="trait-evidence">' + attachment.derivedFrom
+            .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
+        : '') +
+      ((attachment.implications || []).length
+        ? '<p class="essence-label">' + esc(TEXT.attachmentPractice) + '</p>' + points(attachment.implications)
+        : '') +
+      '<p class="fineprint">' + esc(attachment.caveat) + '</p></div></div>';
+  }
+
+  // ---------- career assessment ----------
+  //
+  // The coach's read, distinct from "At work" higher up: that section
+  // describes how somebody works, this one says what to do about it. Two
+  // career headings in one report only earns its place if the second is
+  // actionable, so the actions carry a horizon and the edge carries evidence
+  // — without those this is just the first section again in the imperative.
+  function careerActions(actions) {
+    const values = (actions || []).filter(Boolean);
+    if (!values.length) return '<p class="muted">' + esc(TEXT.pointsEmpty) + '</p>';
+    // Grouped by horizon rather than shown in whatever order they arrived, so
+    // "this week" is read first — the model is told at least one action must
+    // be startable now, and burying it under a yearly ambition wastes that.
+    const labels = TEXT.careerHorizons;
+    let html = '<dl class="points career-actions">';
+    for (const horizon of Object.keys(labels)) {
+      for (const item of values.filter(a => a.horizon === horizon)) {
+        html += '<dt><span class="pill horizon-pill horizon-' +
+          esc(horizon.replace(/\s+/g, '-')) + '">' + esc(labels[horizon]) + '</span>' +
+          esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>';
+      }
+    }
+    // Anything with an unrecognised horizon still gets shown rather than
+    // silently dropped: a missing action is worse than an unlabelled one.
+    for (const item of values.filter(a => !Object.prototype.hasOwnProperty.call(labels, a.horizon))) {
+      html += '<dt>' + esc(item.title) + '</dt><dd>' + esc(item.detail) + '</dd>';
+    }
+    return html + '</dl>';
+  }
+
+  function careerFacet(label, facet) {
+    if (!facet) return '';
+    return '<div class="career-facet"><span class="career-label">' + esc(label) + '</span>' +
+      '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p>' +
+      evidence(facet.evidence) + '</div>';
+  }
+
+  function careerAssessmentBlock(assessment) {
+    let html = '<div class="card section-card career-card">' +
+      sectionHead('🎯', esc(TEXT.careerAssessment), esc(TEXT.careerAssessmentSub));
+    if (assessment.situation) {
+      html += '<h3>' + esc(TEXT.careerSituation) + '</h3>' + paragraphs(assessment.situation);
+    }
+    // The edge is the finding the section exists for, so it gets the callout
+    // treatment rather than sitting level with the two beside it.
+    if (assessment.edge) {
+      html += '<div class="callout career-edge"><span class="career-label">' + esc(TEXT.careerEdge) + '</span>' +
+        '<h3>' + esc(assessment.edge.headline) + '</h3><p>' + esc(assessment.edge.detail) + '</p>' +
+        evidence(assessment.edge.evidence) + '</div>';
+    }
+    html += '<div class="career-grid">' +
+      careerFacet(TEXT.careerUnderused, assessment.underused) +
+      careerFacet(TEXT.careerHoldingBack, assessment.holdingBack) + '</div>';
+    html += '<h3>' + esc(TEXT.careerActions) + '</h3>' + careerActions(assessment.actions);
+    return html + '</div>';
+  }
+
   // ---------- the roast, behind its $1.99 unlock ----------
   //
   // Used to run free, in the same call as everything else, behind a
@@ -1671,31 +1753,23 @@
       : '<p class="muted">' + esc(TEXT.beliefsEmpty) + '</p>';
     html += '</div>';
 
-    // Relationships.
+    // Relationships. The attachment read used to sit here as a callout and is
+    // its own section further down now, below the wellness read.
     const relationship = report.relationship;
     html += '<div class="card section-card">' + head('💞', esc(TEXT.relationships)) +
       '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(relationship.strengths) + '</div>' +
       '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(relationship.weaknesses) + '</div></div>' +
-      '<div class="callout"><h3>' + esc(TEXT.attachmentPrefix) + esc(relationship.attachment.style) + '</h3>' +
-      '<p>' + esc(relationship.attachment.why) + '</p>' +
-      ((relationship.attachment.derivedFrom || []).length
-        ? '<p class="essence-label">' + esc(TEXT.readFrom) + '</p>' +
-          '<p class="trait-evidence">' + relationship.attachment.derivedFrom
-            .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
-        : '') +
-      ((relationship.attachment.implications || []).length
-        ? '<p class="essence-label">' + esc(TEXT.attachmentPractice) + '</p>' + points(relationship.attachment.implications)
-        : '') +
-      '<p class="fineprint">' + esc(relationship.attachment.caveat) + '</p></div>' +
       loveLanguageBlock(relationship.loveLanguages) + '</div>';
 
-    // Career.
+    // Career, describing rather than advising — the coach's read is its own
+    // section below. "Where you would thrive" was cut from here: it was a list
+    // of ideal environments inferred from an export that contains no job
+    // history, and it read as advice in a section that is meant to describe.
     const career = report.career;
     html += '<div class="card section-card">' + head('💼', esc(TEXT.work)) +
       '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(career.strengths) + '</div>' +
       '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(career.weaknesses) + '</div></div>' +
       '<h3>' + esc(TEXT.howYouWork) + '</h3><p>' + esc(career.workStyle) + '</p>' +
-      '<h3>' + esc(TEXT.thrive) + '</h3>' + list(career.environments, 'ticks') +
       '<h3>' + esc(TEXT.holdBack) + '</h3><p>' + esc(career.watchOuts) + '</p></div>';
 
     // Instagram behaviour: the part of the export nobody reads themselves.
@@ -1717,12 +1791,18 @@
       html += '</div></div>';
     }
 
-    // Mental wellness, directly below the behaviour read that is its evidence
-    // base — the reader meets the rhythms and counts first, then what those
-    // rhythms might be worth their attention for. Guarded on the field so a
-    // report stored before this section existed still renders rather than
-    // throwing on a missing object.
+    // The three reads that follow the behavioural evidence, in the order a
+    // reader should meet them: what the rhythms might mean for them, how they
+    // are to be close to, and what to do about their work. Each is guarded on
+    // its own field so a report stored before these sections existed still
+    // renders rather than throwing on a missing object — attachment falls back
+    // to its old home under `relationship` for exactly that reason.
     if (report.wellness) html += wellnessBlock(report.wellness);
+
+    const attachment = report.attachment || (report.relationship && report.relationship.attachment);
+    if (attachment) html += attachmentBlock(attachment);
+
+    if (report.careerAssessment) html += careerAssessmentBlock(report.careerAssessment);
 
     // Below the behaviour section and above confidence, so the reader meets
     // every fair reading before the unkind one, and the confidence caveat

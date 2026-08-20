@@ -936,6 +936,38 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-top: 1.3rem;
 }
 
+/* ---------- career assessment ---------- */
+
+/* Two facets side by side under the edge callout — what is unused and what is
+   costing them. Same shape as .wellness-grid and .facet-grid above, since all
+   three are "a couple of short reads in a row". */
+.career-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem 1.4rem; margin: 1.2rem 0;
+}
+/* Its own class rather than reusing .facet-label, for the same reason
+   .wellness-label has one: a check counts `.facet-label` across the whole
+   report to assert the behaviour grid is exactly four facets. */
+.career-label {
+  font-size: .76rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.career-facet h4 { margin: .2rem 0 .35rem; }
+.career-facet p { margin: 0 0 .5rem; }
+/* The edge is the finding this section exists to deliver, so it gets the
+   accent border the rest of the card does not. */
+.career-edge { border-left: 3px solid var(--accent); }
+.career-edge h3 { margin: .2rem 0 .4rem; }
+
+/* The horizon pill sits inline before the action title, so "this week" is
+   readable at a glance — the prompt requires at least one action to be
+   startable now, and that is only worth requiring if it is visible. */
+.career-actions dt { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.horizon-pill { border: 1px solid var(--line); background: var(--bg); font-weight: 600; }
+.horizon-this-week { border-color: var(--accent); color: var(--accent); }
+.horizon-this-quarter { color: var(--ink-soft); }
+.horizon-this-year { color: var(--ink-soft); opacity: .8; }
+
 /* The roast's cover — named .premium- rather than .bonus- from when a second
    paid section ("Supplementary analysis") shared this same paywall markup.
    That section is gone; the roast is the one caller left. Greyed and

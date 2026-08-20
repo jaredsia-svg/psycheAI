@@ -95,11 +95,13 @@
   // score; dropped to 14,300 when the roast itself (harsh/advice) moved out of
   // PROFILE_SYSTEM/PROFILE_SCHEMA entirely, into the paid PREMIUM_SYSTEM/
   // PREMIUM_SCHEMA the free report no longer pays to generate; and raised
-  // again here for the wellness section, whose six dimension descriptions and
-  // (much longer) hard limits added about 3,800 tokens between them. The check
-  // below has caught every one of those movements, in both directions, the
-  // same run it happened.
-  const FIXED_INPUT_TOKENS = 18200;
+  // again for the wellness section, whose six dimension descriptions and
+  // (much longer) hard limits added about 3,800 tokens between them; and again
+  // for the career coaching section, which added about 1,300 net after "where
+  // you would thrive" came out of the career section. The check below has
+  // caught every one of those movements, in both directions, the same run it
+  // happened.
+  const FIXED_INPUT_TOKENS = 19700;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

@@ -1026,21 +1026,8 @@
       out.h3(TEXT.weaknesses, WARN);
       out.points(relationship.weaknesses);
 
-      const attachment = relationship.attachment;
-      if (attachment) {
-        out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
-        if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
-        if ((attachment.derivedFrom || []).length) {
-          out.eyebrow(TEXT.readFrom, SOFT);
-          out.tags(attachment.derivedFrom);
-        }
-        if ((attachment.implications || []).length) {
-          out.eyebrow(TEXT.attachmentPractice, SOFT);
-          out.points(attachment.implications);
-        }
-        out.fineprint(attachment.caveat);
-      }
-
+      // The attachment read used to print here, inside "In relationships".
+      // It is its own section further down now, matching the page.
       const love = relationship.loveLanguages;
       if (love) {
         const columns = [
@@ -1075,8 +1062,8 @@
       out.points(career.weaknesses);
       out.h3(TEXT.howYouWork);
       if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
-      out.h3(TEXT.thrive);
-      for (const item of (career.environments || []).filter(Boolean)) out.bullet(item);
+      // "Where you would thrive" printed a list of ideal environments here.
+      // It was cut from both renderings together.
       out.h3(TEXT.holdBack);
       if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
     }
@@ -1121,6 +1108,59 @@
       out.points(wellness.suggestions);
       out.space(4);
       out.body(TEXT.wellnessCaveat, { size: 8.4, leading: 12, color: SOFT });
+    }
+
+    // 9c. Attachment style, its own section here as on the page. Falls back to
+    // its old home under `relationship` so a report stored before the move
+    // still prints it rather than silently losing a section.
+    const attachment = source.attachment ||
+      (source.relationship && source.relationship.attachment);
+    if (attachment) {
+      out.sectionTitle(TEXT.attachment, TEXT.attachmentSub);
+      out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
+      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
+      if ((attachment.derivedFrom || []).length) {
+        out.eyebrow(TEXT.readFrom, SOFT);
+        out.tags(attachment.derivedFrom);
+      }
+      if ((attachment.implications || []).length) {
+        out.eyebrow(TEXT.attachmentPractice, SOFT);
+        out.points(attachment.implications);
+      }
+      out.fineprint(attachment.caveat);
+    }
+
+    // 9d. Career assessment — the coach's read, distinct from "At work"
+    // above. The horizon leads each action here the way the pill does on the
+    // page, so the thing that can be started this week is still the thing
+    // read first.
+    const coaching = source.careerAssessment;
+    if (coaching) {
+      out.sectionTitle(TEXT.careerAssessment, TEXT.careerAssessmentSub);
+      if (coaching.situation) {
+        out.h3(TEXT.careerSituation);
+        out.body(coaching.situation, { size: 10, leading: 15 });
+      }
+      if (coaching.edge) {
+        out.h3(TEXT.careerEdge, ACCENT);
+        if (coaching.edge.headline) out.body(coaching.edge.headline, { size: 11.2, bold: true });
+        if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
+        out.tags(coaching.edge.evidence);
+      }
+      for (const [label, facet] of [[TEXT.careerUnderused, coaching.underused],
+        [TEXT.careerHoldingBack, coaching.holdingBack]]) {
+        if (!facet) continue;
+        out.facet(label, facet.headline, facet.detail);
+      }
+      out.h3(TEXT.careerActions);
+      const actions = (coaching.actions || []).filter(Boolean);
+      const horizons = Object.keys(TEXT.careerHorizons);
+      const ordered = horizons.flatMap(h => actions.filter(a => a.horizon === h))
+        .concat(actions.filter(a => !horizons.includes(a.horizon)));
+      for (const action of ordered) {
+        const label = TEXT.careerHorizons[action.horizon];
+        out.point((label ? label + '  ·  ' : '') + action.title, action.detail);
+      }
     }
 
     // The bonus section is deliberately absent here, and this is the one place

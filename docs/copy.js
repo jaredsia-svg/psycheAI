@@ -247,6 +247,14 @@
     strengths: 'Strengths',
     weaknesses: 'Weaknesses',
     pointsEmpty: 'None identified.',
+    // The attachment read is its own section now rather than a callout inside
+    // "In relationships" — it is the single most-quoted finding in the report
+    // and it was competing with the love languages for attention inside a card
+    // that already carried two other things. `attachmentPrefix` still leads
+    // the heading, so the style itself is what the reader sees first.
+    attachment: 'Attachment style',
+    attachmentSub: 'How you are likely to behave when you are close to someone — a guess from ' +
+      'behaviour, shown with the working.',
     attachmentPrefix: 'Attachment: ',
     readFrom: 'Read from',
     attachmentPractice: 'What it means in practice',
@@ -258,10 +266,29 @@
 
     work: 'At work',
     howYouWork: 'How you work',
-    thrive: 'Where you would thrive',
     holdBack: 'What could hold you back',
 
     activity: 'Your digital footprint',
+
+    // The career coach's section, distinct from "At work" above: that one
+    // describes, this one advises. The sub-line names the difference, because
+    // two career headings in one report is otherwise just confusing.
+    careerAssessment: 'Career assessment',
+    careerAssessmentSub: 'The coach\'s read rather than the description: what actually sets you ' +
+      'apart, and what to do about it.',
+    careerSituation: 'Where you are',
+    careerEdge: 'Your edge',
+    careerUnderused: 'What you are not using',
+    careerHoldingBack: 'What is costing you',
+    careerActions: 'What to do',
+    // Horizon labels for the action list. Kept apart from the enum in
+    // lib/prompts.js on purpose: the model answers in fixed values, the page
+    // decides how to show them, and neither has to move when the other does.
+    careerHorizons: {
+      'this week': 'This week',
+      'this quarter': 'This quarter',
+      'this year': 'This year',
+    },
 
     // The wellness section. Every word the reader meets before the writing
     // itself is doing work here, because this is the section most likely to

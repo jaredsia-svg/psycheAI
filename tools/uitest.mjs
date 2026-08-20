@@ -1969,6 +1969,7 @@ try {
   await shot('2-profile');
   if (shots) await page.locator('#profile-body .bonus-card').screenshot({ path: join(shotDir, '2a-premium-crop.png') });
   if (shots) await page.locator('#profile-body .wellness-card').screenshot({ path: join(shotDir, '2d-wellness-crop.png') });
+  if (shots) await page.locator('#profile-body .career-card').screenshot({ path: join(shotDir, '2e-career-crop.png') });
 
   // The waiting screen speaks as the product, not as whichever model is wired
   // up behind it.
@@ -2100,6 +2101,8 @@ try {
     ['what they take in', /What you take in/i],
     ['the mental wellness section', /Mental wellness/],
     ['all six wellness dimensions', /Sleep and rhythm/i],
+    ['the attachment style section', /Attachment style/],
+    ['the career assessment section', /Career assessment/],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
@@ -2160,16 +2163,21 @@ try {
       return Boolean(card) && !card.querySelector('.premium-cover') &&
         !card.querySelector('.premium-unlock');
     }));
-  check('it sits below the behaviour read that evidences it, and above the roast',
+  // The whole tail of the report in one assertion, by heading, rather than a
+  // chain of pairwise position checks: digital footprint, then the three
+  // reads that follow from it, then the roast. Reading it off the rendered
+  // <h2>s means a section that silently moves fails here rather than in
+  // whichever pairwise check happened to cover that edge.
+  check('the report tail runs footprint → wellness → attachment → career → roast',
     await page.evaluate(() => {
-      const grid = document.querySelector('#profile-body .facet-grid');
-      const behaviour = grid && grid.closest('.section-card');
-      const wellness = document.querySelector('#profile-body .wellness-card');
-      const bonus = document.querySelector('#profile-body .bonus-card');
-      if (!behaviour || !wellness || !bonus) return false;
-      return Boolean(behaviour.compareDocumentPosition(wellness) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(wellness.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING);
-    }));
+      const titles = [...document.querySelectorAll('#profile-body .card-head h2')]
+        .map(h => h.textContent.trim());
+      const at = needle => titles.findIndex(t => t.includes(needle));
+      const order = ['digital footprint', 'Mental wellness', 'Attachment style',
+        'Career assessment', 'Let us roast you'].map(at);
+      return order.every(i => i >= 0) && order.every((v, i) => i === 0 || v > order[i - 1]);
+    }),
+    (await page.locator('#profile-body .card-head h2').allInnerTexts()).map(t => t.trim()).join(' | '));
   const wellnessCard = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .wellness-card');
     return { text: card.innerText, html: card.innerHTML,
@@ -2215,6 +2223,56 @@ try {
   check('the caveat does disclaim a diagnosis, which is why it is excluded above',
     /Nothing here is a diagnosis of anything/i.test(
       await page.locator('#profile-body .wellness-caveat').innerText()));
+
+  // ---- attachment style, and the career coach ----
+  //
+  // The attachment read spent most of this app's life as a callout inside "In
+  // relationships". It is its own card now, so the checks are that it left
+  // the old home and arrived intact in the new one — a move that renders in
+  // both places, or in neither, is the failure worth catching.
+  check('attachment is its own card and no longer inside the relationships one',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .attachment-card');
+      const rel = [...document.querySelectorAll('#profile-body .card-head h2')]
+        .find(h => h.textContent.includes('In relationships'));
+      const relCard = rel && rel.closest('.section-card');
+      return Boolean(card) && Boolean(relCard) &&
+        !/Attachment:/.test(relCard.innerText) && /Attachment:/.test(card.innerText);
+    }));
+  check('it kept its working, its signals and its caveat through the move',
+    await page.evaluate(() => {
+      const text = document.querySelector('#profile-body .attachment-card').innerText;
+      return /Read from/i.test(text) && /What it means in practice/i.test(text) &&
+        /cannot be read reliably/i.test(text);
+    }));
+  // "Where you would thrive" was a list of ideal environments inferred from an
+  // export with no job history. Asserted absent from the page, not just from
+  // the schema.
+  check('"Where you would thrive" is gone from the At work section',
+    !/Where you would thrive/i.test(await page.locator('#profile-body').innerText()));
+
+  const careerCard = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .career-card');
+    return { text: card.innerText, facets: card.querySelectorAll('.career-facet').length,
+      edges: card.querySelectorAll('.career-edge').length,
+      horizons: [...card.querySelectorAll('.horizon-pill')].map(p => p.textContent.trim()) };
+  });
+  check('the career assessment renders its situation, edge and both facets',
+    /Where you are/i.test(careerCard.text) && /Your edge/i.test(careerCard.text) &&
+    careerCard.edges === 1 && careerCard.facets === 2,
+    careerCard.facets + ' facets, ' + careerCard.edges + ' edge');
+  // The horizons are what make this section a coach's read rather than the
+  // "At work" section in the imperative, and "this week" leading is the point
+  // of grouping them — an action list that opens on next year is a wish list.
+  check('actions carry horizons, grouped with "this week" first',
+    careerCard.horizons.length === 3 && careerCard.horizons[0] === 'This week',
+    careerCard.horizons.join(' | '));
+  check('the two career sections are visibly different things',
+    await page.evaluate(() => {
+      const titles = [...document.querySelectorAll('#profile-body .card-head h2')]
+        .map(h => h.textContent.trim());
+      return titles.includes('At work') && titles.includes('Career assessment');
+    }));
 
   // ---- the roast, behind its $1.99 unlock ----
   //
@@ -2527,13 +2585,19 @@ try {
     (await page.locator('.essence-icon').innerText()).codePointAt(0) > 0x2000);
 
   // ---- attachment ----
-  const attachment = await page.locator('.callout').first().innerText();
+  //
+  // Scoped to `.attachment-card` rather than to the first `.callout` on the
+  // page. That worked while attachment was the only callout in the report; the
+  // career assessment's edge is a second one, so "the first callout" stopped
+  // meaning "the attachment read" and these checks have to name what they are
+  // actually about.
+  const attachment = await page.locator('#profile-body .attachment-card').innerText();
   check('attachment names the signals it was read from', /Read from/i.test(attachment));
   check('attachment lists what it means in practice', /What it means in practice/i.test(attachment));
   check('attachment evidence renders as chips',
-    (await page.locator('.callout .ev').count()) >= 2);
+    (await page.locator('#profile-body .attachment-card .ev').count()) >= 2);
   check('attachment implications render as points',
-    (await page.locator('.callout .points dt').count()) >= 2);
+    (await page.locator('#profile-body .attachment-card .points dt').count()) >= 2);
   check('attachment still carries its caveat', /cannot be read reliably/i.test(attachment));
 
   // ---- love languages ----
@@ -2903,7 +2967,7 @@ try {
 
   // Sub-headings and labels the page shows inside those sections.
   for (const label of ['You are most like', 'Values', 'Beliefs', 'Strengths', 'Weaknesses',
-    'How you work', 'Where you would thrive', 'What could hold you back', 'Your love languages',
+    'How you work', 'What could hold you back', 'Your love languages',
     'How you want to be loved', 'How you show love', 'Read from', 'What it means in practice']) {
     check('the PDF carries the ' + JSON.stringify(label) + ' heading',
       pdfText.includes('(' + label + ')') || pdfText.includes('(' + label.toUpperCase() + ')'));
@@ -3186,9 +3250,16 @@ try {
       interests: [{ name: long, intensity: 'core', detail: long, evidence: long }],
       values: [{ value: long, detail: long, evidence: long }],
       beliefs: [{ belief: long, detail: long, evidence: long, confidence: 'low' }],
+      attachment: { style: long, why: long, derivedFrom: [long], implications: [point], caveat: long },
+      careerAssessment: {
+        situation: long,
+        edge: { headline: long, detail: long, evidence: [long, long] },
+        underused: { headline: long, detail: long },
+        holdingBack: { headline: long, detail: long },
+        actions: [{ horizon: 'this week', title: long, detail: long }],
+      },
       relationship: {
         strengths: [point], weaknesses: [point],
-        attachment: { style: long, why: long, derivedFrom: [long], implications: [point], caveat: long },
         loveLanguages: {
           receiving: [{ language: 'Quality time', strength: 'primary', why: long, inPractice: long }],
           giving: [{ language: 'Acts of service', strength: 'minor', why: long, inPractice: long }],
@@ -3197,7 +3268,7 @@ try {
       },
       career: {
         strengths: [point], weaknesses: [point], workStyle: long,
-        environments: [long, 'Small teams'], watchOuts: long,
+        watchOuts: long,
       },
     };
     const meta = { date: '30 July 2026', model: 'claude-opus-5' };
