@@ -16,11 +16,14 @@ const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
 // Required directly rather than reached through provider.active: the premium
-// analysis always runs on Grok, regardless of which provider the free report
-// used. A deployment with only GEMINI_API_KEY set still has no premium
-// engine — see premiumEngine() below — rather than silently falling back to
-// whichever provider happened to win auto-detection.
-const grok = require('./lib/grok');
+// analysis always runs on Gemini, regardless of which provider the free
+// report used. A deployment with only ANTHROPIC_API_KEY or XAI_API_KEY set
+// still has no premium engine — see premiumEngine() below — rather than
+// silently falling back to whichever provider happened to win auto-detection.
+// Gemini specifically (not "whichever provider ran the free report") because
+// its explicit prompt-cache and per-token pricing make it the cheaper choice
+// for this second call — see the cost discussion in this repo's history.
+const gemini = require('./lib/gemini');
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -31,7 +34,7 @@ const PORT = Number(process.env.PORT) || 3000;
 // rather than fabricating a fake PaymentIntent for them to flow through: a
 // promo redemption never touches lib/stripe.js or lib/premiumLedger.js at
 // all, so it works even on a deployment with no Stripe key configured, as
-// long as the premium (Grok) engine itself is set up. Overridable so a real
+// long as the premium (Gemini) engine itself is set up. Overridable so a real
 // deployment is not stuck with a code that shipped in this repo's history.
 const PROMO_CODE = process.env.PSYCHEAI_PROMO_CODE || 'jialatsia';
 function isValidPromoCode(code) {
@@ -97,7 +100,7 @@ async function handleStatus(response) {
   const premium = premiumEngine();
   sendJson(response, 200, {
     ...provider.describe(), payments: payments.describe(),
-    premiumProvider: { name: premium ? premium.name : 'grok', ready: Boolean(premium) },
+    premiumProvider: { name: premium ? premium.name : 'gemini', ready: Boolean(premium) },
   });
 }
 
@@ -113,25 +116,26 @@ function requireEngine(response) {
   return provider.active;
 }
 
-// The premium analysis always runs on Grok — a fixed choice, not whichever
+// The premium analysis always runs on Gemini — a fixed choice, not whichever
 // provider the free report happened to use — so it is resolved independently
 // of provider.active rather than through requireEngine above. Mock mode is
 // the one exception: PSYCHEAI_MOCK=1 (or PSYCHEAI_PROVIDER=mock) already
 // makes provider.active the mock module, and premium follows it there too,
 // the same way a developer testing the free report never needs a real
-// GEMINI_API_KEY. Outside mock mode, a server with GEMINI_API_KEY but no
-// XAI_API_KEY has no premium engine at all — see requirePremiumEngine below,
-// which is what actually enforces this at the route.
+// GEMINI_API_KEY. Outside mock mode, a server with ANTHROPIC_API_KEY or
+// XAI_API_KEY but no GEMINI_API_KEY has no premium engine at all — see
+// requirePremiumEngine below, which is what actually enforces this at the
+// route.
 function premiumEngine() {
   if (provider.active && provider.active.name === 'mock') return provider.active;
-  return grok.hasKey() ? grok : null;
+  return gemini.hasKey() ? gemini : null;
 }
 
 function requirePremiumEngine(response) {
   const engine = premiumEngine();
   if (!engine) {
     sendJson(response, 503, {
-      error: 'The premium analysis always uses Grok, regardless of the main provider, and this server has no XAI_API_KEY configured.',
+      error: 'The premium analysis always uses Gemini, regardless of the main provider, and this server has no GEMINI_API_KEY configured.',
     });
     return null;
   }

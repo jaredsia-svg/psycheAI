@@ -293,7 +293,7 @@ check('no key reports not-ready with a hint',
 check('GEMINI_MODEL overrides the default model',
   selections.customModel.model === 'gemini-3.1-pro-preview', selections.customModel.model);
 
-// The premium analysis is a fixed choice — always Grok — deliberately
+// The premium analysis is a fixed choice — always Gemini — deliberately
 // decoupled from provider.active, so this is exercised the same way as
 // provider selection above: real env combos in a fresh process, since the
 // decision is read from module-level constants at require time. server.js
@@ -310,28 +310,32 @@ async function premiumEngineFor(env) {
 
 const premiumSelections = {
   none: await premiumEngineFor({}),
-  geminiOnly: await premiumEngineFor({ GEMINI_API_KEY: 'x' }),
+  claudeOnly: await premiumEngineFor({ ANTHROPIC_API_KEY: 'x' }),
   xaiOnly: await premiumEngineFor({ XAI_API_KEY: 'x' }),
-  both: await premiumEngineFor({ GEMINI_API_KEY: 'x', XAI_API_KEY: 'x' }),
+  geminiOnly: await premiumEngineFor({ GEMINI_API_KEY: 'x' }),
+  both: await premiumEngineFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x' }),
   mock: await premiumEngineFor({ PSYCHEAI_MOCK: '1' }),
-  mockPlusXai: await premiumEngineFor({ PSYCHEAI_MOCK: '1', XAI_API_KEY: 'x' }),
+  mockPlusGemini: await premiumEngineFor({ PSYCHEAI_MOCK: '1', GEMINI_API_KEY: 'x' }),
 };
 
 check('premium has no engine at all with nothing configured',
   premiumSelections.none.name === null);
-// The one that actually matters: Gemini is what the free report would use
-// here (it wins auto-detection), and premium still refuses rather than
-// quietly falling back to it.
-check('premium refuses even when the MAIN provider (Gemini) is configured, if there is no XAI_API_KEY',
-  premiumSelections.geminiOnly.name === null, JSON.stringify(premiumSelections.geminiOnly));
-check('premium works from an XAI_API_KEY alone, with no main provider configured at all',
-  premiumSelections.xaiOnly.name === 'grok');
-check('premium uses Grok even when Gemini is also configured and would win the main provider slot',
-  premiumSelections.both.name === 'grok');
+// The cases that actually matter: Claude or Grok is what the free report
+// would use here (each wins auto-detection when it is the only key set),
+// and premium still refuses rather than quietly falling back to whichever
+// provider happened to win that slot.
+check('premium refuses even when the MAIN provider (Claude) is configured, if there is no GEMINI_API_KEY',
+  premiumSelections.claudeOnly.name === null, JSON.stringify(premiumSelections.claudeOnly));
+check('premium refuses even when the MAIN provider (Grok) is configured, if there is no GEMINI_API_KEY',
+  premiumSelections.xaiOnly.name === null, JSON.stringify(premiumSelections.xaiOnly));
+check('premium works from a GEMINI_API_KEY alone',
+  premiumSelections.geminiOnly.name === 'gemini');
+check('premium keeps using Gemini when Claude is also configured',
+  premiumSelections.both.name === 'gemini');
 check('mock mode carries premium too, the same way it carries the main provider',
   premiumSelections.mock.name === 'mock');
-check('mock mode wins over a real XAI_API_KEY for premium, same as it does for the main provider',
-  premiumSelections.mockPlusXai.name === 'mock');
+check('mock mode wins over a real GEMINI_API_KEY for premium, same as it does for the main provider',
+  premiumSelections.mockPlusGemini.name === 'mock');
 
 // The promo-code bypass — server.js's isValidPromoCode — checked the same
 // way: a fresh process per env combo, since PSYCHEAI_PROMO_CODE is read into

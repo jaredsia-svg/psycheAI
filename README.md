@@ -89,7 +89,7 @@ export STRIPE_SECRET_KEY=sk_...        # server-side only — creates and verifi
 export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
 export STRIPE_ACCOUNT_COUNTRY=US       # optional — the merchant's country, not the buyer's
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
-export XAI_API_KEY=xai-...             # the roast always runs on Grok — see below
+export GEMINI_API_KEY=...              # the roast always runs on Gemini — see below
 export PSYCHEAI_PROMO_CODE=...         # optional — overrides the default promo code; see below
 npm start
 ```
@@ -101,16 +101,21 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
-**The paid call always runs on Grok, regardless of which provider the free report used.** This is a
+**The paid call always runs on Gemini, regardless of which provider the free report used.** This is a
 fixed choice made in `server.js`'s `premiumEngine()`, not a fallback through the same auto-detection
-`lib/provider.js` uses for the free report — `requirePremiumEngine()` calls `require('./lib/grok')`
-directly, so a deployment with `GEMINI_API_KEY` set but no `XAI_API_KEY` has a working free report and
-no working roast at all, rather than the roast quietly running on Gemini. `GEMINI_API_KEY`,
-`ANTHROPIC_API_KEY` and `XAI_API_KEY` can all be set on the same server at once — `lib/provider.js`
-picks one of them for the free report by its own priority order, and `XAI_API_KEY` is what the paid
-call reads independently of that choice. Mock mode is the one exception: with `PSYCHEAI_MOCK=1`,
+`lib/provider.js` uses for the free report — `requirePremiumEngine()` calls `require('./lib/gemini')`
+directly, so a deployment with `ANTHROPIC_API_KEY` or `XAI_API_KEY` set but no `GEMINI_API_KEY` has a
+working free report and no working roast at all, rather than the roast quietly running on Claude or
+Grok. `GEMINI_API_KEY`, `ANTHROPIC_API_KEY` and `XAI_API_KEY` can all be set on the same server at
+once — `lib/provider.js` picks one of them for the free report by its own priority order (Gemini
+first, so in practice this rarely creates the mismatch), and `GEMINI_API_KEY` is what the paid call
+reads independently of that choice. Mock mode is the one exception: with `PSYCHEAI_MOCK=1`,
 `provider.active` is already the mock module, and `premiumEngine()` follows it there too rather than
-demanding a real Grok key just to click through the flow.
+demanding a real Gemini key just to click through the flow.
+
+Gemini specifically, rather than whichever provider the free report happens to use, because it is the
+cheaper of the two the roast has run on: see ["Cost"](#cost) below for the actual numbers, and why the
+saving is smaller than it first looks.
 
 **A promo code bypasses payment entirely.** The unlock dialog carries a promo-code field at its foot,
 independent of the Stripe flow above it — entering the right code calls `/api/premium-analysis` with a
@@ -118,7 +123,7 @@ independent of the Stripe flow above it — entering the right code calls `/api/
 case-insensitively against `PSYCHEAI_PROMO_CODE` (default `jialatsia`, overridable so this repo's own
 history is not a permanent backdoor into a real deployment). A valid code skips `verifyPaid` and the
 usage ledger both — there is no payment to verify and no use to meter — so it works even on a server
-with no Stripe keys configured at all, as long as the Grok engine itself is set up.
+with no Stripe keys configured at all, as long as the Gemini engine itself is set up.
 
 **Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
 script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
@@ -210,6 +215,43 @@ Unlike the free report, this call receives no photographs — only the digest �
 instructions to draw on a photo when one gave it something worth saying moved out with the rest of the
 free report's photograph handling; `summary` is now the only field in either call that reasons about
 images at all.
+
+#### Cost
+
+Two real API calls happen per unlock: the free report and the roast. Both run on Gemini, but they are
+not the same call — the roast is a second, independent request against the *same* digest, so its
+input cost is not free just because Gemini already saw that data once. Figures below use `gemini-3.6-
+flash`'s pricing at the time of writing ($0.75 / $3.75 per 1M input/output tokens); the `PRICING`
+constants baked into `docs/digest.js` are deliberately set to a higher, future rate ($1.50 / $7.50) as
+a safety margin for `COST_CAP`, so this app's own worst-case guarantee is more conservative than these
+numbers.
+
+| | Free report | Roast |
+|---|---|---|
+| Fixed prompt + schema | 14,300 tok (`PROFILE_SYSTEM`+`PROFILE_SCHEMA`) | 2,605 tok (`PREMIUM_SYSTEM`+`PREMIUM_SCHEMA`) |
+| Digest (heavy account, 159,508 chars) | 45,574 tok | 45,574 tok (same digest, resent) |
+| Images | 14 × 258 = 3,612 tok | none — this call gets no photographs |
+| Output cap | 16,000 tok | 16,000 tok |
+| **Worst case** | **≈ $0.108** | **≈ $0.096** |
+| **Realistic** (~6,000 / ~2,500 output tok) | **≈ $0.07** | **≈ $0.05** |
+
+**Realistic total per unlock: about $0.12.** Worst case (both calls at their full output ceiling):
+about $0.20 — comfortably under the $1.99 charge either way, with room for Stripe's own cut.
+
+**The digest is the one real inefficiency, and it does not go away by switching provider.** It is sent
+in full, twice, and Gemini's own explicit cache (see "Context caching" below) cannot help here: it
+caches only the *system prompt*, keyed by a hash of that exact string, and `PREMIUM_SYSTEM` alone is
+about 1,974 tokens — under the 4,096-token floor Gemini requires before it will cache anything at all.
+So the roast's ~$0.03–0.04 of digest-input cost is paid in full on every unlock, on any provider,
+unless the digest sent to this call is trimmed down from what the (image-aware, far more thorough)
+free report needs.
+
+What running the roast on Gemini instead of Grok actually bought: cheaper per-token rates on both
+sides (Grok 4.6 is $2.00 / $6.00 per 1M at this size), and a shared 16,000-token output ceiling instead
+of Grok's 32,000 — which was never bounded by anything resembling `COST_CAP` in the first place. That
+combination cuts the roast's worst case from about $0.29 to about $0.10 at today's prices, and its
+realistic case from about $0.11 to about $0.05. What it does *not* do is avoid paying for the digest a
+second time — that saving would need the roast's own input trimmed, not just its provider changed.
 
 ### Making the code scannable
 
@@ -1478,7 +1520,7 @@ already-escaped title text rather than a second heading competing with the one n
 
 **It used to run free, in the same call as the rest of the report — it does not any more.** `harsh`
 and `advice` moved out of `PROFILE_SCHEMA`/`PROFILE_SYSTEM` entirely and into `PREMIUM_SCHEMA`/
-`PREMIUM_SYSTEM`, the paid, Grok-only call described in ["The $1.99 unlock"](#the-199-unlock-let-us-roast-you)
+`PREMIUM_SYSTEM`, the paid, Gemini-only call described in ["The $1.99 unlock"](#the-199-unlock-let-us-roast-you)
 above. The prompt instructions below carried over essentially unchanged; only the reader's
 relationship to them changed — one $1.99 unlock (or one promo code) now buys the roast, rather than it
 opening for free on a click. `PREMIUM_SCHEMA` briefly carried two more fields, `patternsWorthAttention`
