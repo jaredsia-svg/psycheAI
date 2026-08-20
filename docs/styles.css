@@ -895,13 +895,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    the three beside it, so it is an ordinary .facet now and needs no rules of
    its own. */
 
-/* The cover shared by both paid sections — the roast and the supplementary
-   analysis, and previously "the premium section's cover" alone until the
-   roast moved behind the same paywall and adopted the same markup. Greyed
-   and inert-looking on purpose: it should read as something switched off
-   rather than as another card to scroll past. The writing is not in the
-   document at all until a real result arrives, because a CSS blur would
-   hide nothing from select-all, a screen reader or view-source. */
+/* The roast's cover — named .premium- rather than .bonus- from when a second
+   paid section ("Supplementary analysis") shared this same paywall markup.
+   That section is gone; the roast is the one caller left. Greyed and
+   inert-looking on purpose: it should read as something switched off rather
+   than as another card to scroll past. The writing is not in the document
+   at all until a real result arrives, because a CSS blur would hide nothing
+   from select-all, a screen reader or view-source. */
 .premium-cover {
   position: relative; overflow: hidden;
   border: 1px dashed var(--line); border-radius: var(--radius);
@@ -918,12 +918,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    dismissed. */
 .bonus-caveat {
   border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-bottom: 1.2rem;
-}
-/* Same treatment as .bonus-caveat above, and the same reason: fixed app copy
-   the reader should see with the writing rather than only on a cover they
-   have already dismissed. */
-.premium-caveat {
-  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-top: 1.2rem;
 }
 
 /* The payment dialog. Same field/status shape as #mail-dialog, since both ask

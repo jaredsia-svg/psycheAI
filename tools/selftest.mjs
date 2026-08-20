@@ -801,19 +801,23 @@ check('the timing-data ban survived the account list being cut',
   /No source here carries timing data of any kind/.test(prompts.PROFILE_SYSTEM));
 check('the ban on naming private individuals survived it too',
   /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
-// The paid premium call now carries four fields, not two: the roast (harsh,
-// advice) moved here from the old free-report bonus section, alongside
-// patternsWorthAttention and lifeAdvice. Its licence is to drop the
-// softening, not to drop the evidence, and above all not to invent a
-// diagnosis — so each limit is pinned separately rather than trusted to one
-// loose match, the same discipline the old PROFILE_SCHEMA checks held the
-// free-report bonus section to.
+// The paid premium call carries the roast (harsh, advice), moved here from
+// the old free-report bonus section. It briefly carried two more fields,
+// patternsWorthAttention and lifeAdvice, for a second paid section
+// ("Supplementary analysis") sold alongside the roast — that section was
+// cut, so this call is the roast and nothing else again. Its licence is to
+// drop the softening, not to drop the evidence, and above all not to invent
+// a diagnosis — so each limit is pinned separately rather than trusted to
+// one loose match, the same discipline the old PROFILE_SCHEMA checks held
+// the free-report bonus section to.
 const premiumProps = prompts.PREMIUM_SCHEMA.properties;
-check('the premium call carries the roast and the two paid lists, and nothing else',
-  ['harsh', 'advice', 'patternsWorthAttention', 'lifeAdvice'].every(k => k in premiumProps) &&
-  Object.keys(premiumProps).length === 4, Object.keys(premiumProps).join(', '));
+check('the premium call carries only the roast\'s two fields',
+  ['harsh', 'advice'].every(k => k in premiumProps) &&
+  Object.keys(premiumProps).length === 2, Object.keys(premiumProps).join(', '));
 check('no model-generated caveat field — the safety line is fixed app copy instead',
   !('caveat' in premiumProps));
+check('the cut supplementary-analysis fields are actually gone, not just unused',
+  !('patternsWorthAttention' in premiumProps) && !('lifeAdvice' in premiumProps));
 check('the premium call no longer receives photographs, and says so',
   /this call receives no photographs/.test(prompts.PREMIUM_SYSTEM));
 check('the premium prompt states plainly it is a second pass, not a rewrite of the free report',
@@ -865,13 +869,10 @@ check('the advice half draws on the whole digest, not just the posting habits th
 // The diagnosis ban, requested literally as "what mental illness or
 // disorders to look out for" and declined — pinned down the same way as
 // every other limit above: each phrase checked separately, because a
-// licence to go deeper on a second, paid pass (or to be harsher, in the
-// roast's case) is exactly the kind of licence a ban like this could erode
-// under.
-check('being unkind is explicitly not a licence to diagnose, stated to cover both paid sections',
-  /Neither the roast nor patterns worth attention is a diagnosis, and being unkind is not a licence to become one/
-    .test(prompts.PREMIUM_SYSTEM) &&
-  /This applies to the roast above exactly as much as to patterns worth attention below/
+// licence to go deeper on a second, paid, deliberately unsparing pass is
+// exactly the kind of licence a ban like this could erode under.
+check('being unkind is explicitly not a licence to diagnose',
+  /This is not a diagnosis, and being unkind is not a licence to become one/
     .test(prompts.PREMIUM_SYSTEM));
 check('the diagnosis ban is restated in full rather than assumed to carry over from PROFILE_SYSTEM',
   /never name, imply, predict or gesture at a specific mental or physical health condition/
@@ -881,17 +882,8 @@ check('the clinical vocabulary is named and banned here too, not just cross-refe
 check('the ban survives the reader having asked for exactly this framing',
   /however directly the reader framed what they wanted/.test(prompts.PREMIUM_SYSTEM) &&
   /requested literally as "what mental illness or disorders to look out for"/.test(prompts.PREMIUM_SYSTEM));
-check('the section is reframed as patterns worth attention, not a screening result',
-  /a genuinely observant friend would flag after actually looking, not a screening result/
-    .test(prompts.PREMIUM_SYSTEM) &&
-  /never a diagnosis, a condition name or a clinical guess/.test(premiumProps.patternsWorthAttention.description));
-check('a pattern worth a professional is named as exactly that, not diagnosed',
+check('something worth a professional is named as exactly that, not diagnosed',
   /worth raising with someone qualified to actually assess it/.test(prompts.PREMIUM_SYSTEM));
-check('an unsupported pattern is dropped rather than invented to fill the section',
-  /an invented pattern is worse than a short section/.test(prompts.PREMIUM_SYSTEM));
-check('the life-advice half is unproblematic and just asks for something concrete',
-  /Direct, specific advice/.test(prompts.PREMIUM_SYSTEM) &&
-  /No self-help register, no affirmations/.test(prompts.PREMIUM_SYSTEM));
 check('the Google-export search caveat is restated here too',
   /a searched symptom is never evidence of a health condition/.test(prompts.PREMIUM_SYSTEM));
 

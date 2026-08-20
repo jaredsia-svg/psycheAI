@@ -256,10 +256,9 @@
     // The unsparing section. Everything the reader is told before they open it
     // is here, because a cover that undersells what is behind it is not
     // consent — they should be able to decide not to look. It used to run
-    // free, behind a click-to-reveal cover; it now sits behind the same
-    // $1.99 unlock as the supplementary analysis and the report download, so
-    // the cover reads as a paywall rather than a content warning — the price
-    // and the register both belong on it.
+    // free, behind a click-to-reveal cover; it now sits behind a $1.99
+    // unlock, so the cover reads as a paywall rather than a content warning
+    // — the price and the register both belong on it.
     bonus: 'Let us roast you',
     // Sits beside the title as a small badge, the same way "Coming soon"
     // does on the comprehensive depth option — a label for what this section
@@ -267,8 +266,8 @@
     bonusBadge: 'Bonus Section',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusCoverBlurb: 'Unlock it once for $1.99 — the same unlock that opens the supplementary analysis ' +
-      'below and the report download, and it stays open on this device for as long as this report does.',
+    bonusCoverBlurb: 'Unlock it once for $1.99 — no account, no subscription, and it stays open on ' +
+      'this device for as long as this report does.',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen beside the writing rather than only appearing on the
@@ -279,18 +278,8 @@
       'It cannot see your circumstances, your history or your reasons. Treat it as a provocation to ' +
       'argue with, not a verdict — and if any of it lands somewhere heavier than that, the person to ' +
       'talk to about it is a person.',
-
-    // The paid section. Same shape as the roast above — a badge beside the
-    // title, a cover that has to be opened on purpose, a paywall rather than
-    // a content warning.
-    premium: 'Supplementary analysis',
-    premiumBadge: 'Premium users only',
-    premiumSub: 'A second pass the standard report does not run, priced and sold separately from it.',
-    premiumCoverTitle: 'This part of the report is locked',
-    premiumCoverBlurb: 'Unlock it once for $1.99 — the same unlock that opens the roast above and the ' +
-      'report download, and it stays open on this device for as long as this report does.',
-    // The button on each card is drawn before anything has been fetched from
-    // the server, so it carries this static label; the dialog it opens
+    // The section's own button is drawn before anything has been fetched
+    // from the server, so it carries this static label; the dialog it opens
     // fetches a real PaymentIntent and shows *that* amount once it has one,
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
@@ -303,23 +292,9 @@
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
     premiumGenerating: 'Generating your analysis…',
-    premiumPatternsTitle: 'Patterns worth your attention',
-    premiumAdviceTitle: 'How to actually live better',
-    // Static rather than part of what the model returns — see the comment on
-    // PREMIUM_SCHEMA in lib/prompts.js for why this line belongs to the app
-    // rather than to a sampled response. bonusCaveat above made the same
-    // choice for the same reason, in a section with lower stakes than this one.
-    premiumCaveat: 'This is a behavioural read of social-media activity, not a screening tool or a ' +
-      'professional opinion. It cannot see your circumstances, your history or your reasons, and it is ' +
-      'not a diagnosis of anything. If anything above lands somewhere heavier than a passing thought, ' +
-      'the person to talk to about it is a person.',
-    // Shared by all three triggers — either cover's Unlock button, or the
-    // download button below — since one unlock now covers all three, this
-    // dialog no longer names just one of them.
-    premiumDialogTitle: 'Unlock the full report',
+    premiumDialogTitle: 'Unlock the roast',
     premiumDialogBlurb: 'A one-time charge, taken on this device — Apple Pay or Google Pay, whichever ' +
-      'this browser offers. It unlocks the roast, the supplementary analysis and the report download ' +
-      'together.',
+      'this browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',

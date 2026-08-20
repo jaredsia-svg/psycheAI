@@ -191,26 +191,23 @@ async function handleRecordEmail(request, response) {
 // The amount is fixed in lib/stripe.js and never taken from the request — a
 // client is not trusted with what it pays. There is nothing else for the body
 // to carry: this route creates a PaymentIntent for exactly one product, the
-// single unlock that covers the roast, the supplementary analysis and the
-// report download, and nothing report-shaped is anywhere near its signature
-// — same discipline as handleRecordEmail above.
+// "Let us roast you" unlock, and nothing report-shaped is anywhere near its
+// signature — same discipline as handleRecordEmail above.
 async function handleCreatePaymentIntent(response) {
   if (!payments.hasKey()) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
     return;
   }
-  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — full report unlock'));
+  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — roast unlock'));
 }
 
-// The paid analysis — the one call that unlocks the roast, the supplementary
-// analysis and (client-side) the report download all at once, since all
-// three now sit behind the same single $1.99 unlock rather than three
-// separate ones. Gated on a fresh check with Stripe rather than on anything
-// the client claims — verifyPaid() re-retrieves the PaymentIntent and
-// confirms both that it succeeded and that it was for the real unlock price,
-// and paymentLedger caps how many times one payment can be spent, so this is
-// the one route in the app where "did the reader pay" is actually enforced
-// server-side rather than trusted from a boolean in localStorage.
+// The paid analysis — the roast. Gated on a fresh check with Stripe rather
+// than on anything the client claims — verifyPaid() re-retrieves the
+// PaymentIntent and confirms both that it succeeded and that it was for the
+// real unlock price, and paymentLedger caps how many times one payment can
+// be spent, so this is the one route in the app where "did the reader pay"
+// is actually enforced server-side rather than trusted from a boolean in
+// localStorage.
 //
 // A valid promoCode skips all of that — verifyPaid, hasKey, the ledger —
 // rather than routing through them with a fabricated identity, because there

@@ -343,15 +343,14 @@
   </div>
 </dialog>
 
-<!-- The unlock flow shared by the roast, the supplementary analysis and the
-     report download — one payment (or one promo code) unlocks all three.
-     Stripe.js itself is not loaded here — it is the one script in this app
-     fetched from a CDN rather than vendored, since Stripe does not support a
-     pinned local copy, and it is injected on demand from app.js only once a
-     reader actually presses Unlock, rather than paid for by every visitor on
-     every page load. Mock mode never touches it at all: #premium-mock-pay
-     stands in for the whole Stripe round trip so the flow can be driven end
-     to end without a real card or a real key. Payment and generation are two
+<!-- The unlock flow for the paid "Let us roast you" section. Stripe.js
+     itself is not loaded here — it is the one script in this app fetched
+     from a CDN rather than vendored, since Stripe does not support a pinned
+     local copy, and it is injected on demand from app.js only once a reader
+     actually presses Unlock, rather than paid for by every visitor on every
+     page load. Mock mode never touches it at all: #premium-mock-pay stands
+     in for the whole Stripe round trip so the flow can be driven end to end
+     without a real card or a real key. Payment and generation are two
      separate steps server-side — #premium-retry re-runs only the second one,
      since a payment that already cleared should never need retaking just
      because the model call after it failed. #premium-progress shows a live
