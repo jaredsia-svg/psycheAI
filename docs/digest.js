@@ -102,7 +102,15 @@
   // you would thrive" came out of the career section. The check below has
   // caught every one of those movements, in both directions, the same run it
   // happened.
-  const FIXED_INPUT_TOKENS = 19700;
+  //
+  // Dropped to 14,200 when the wellness read, the attachment read and the
+  // career coaching all moved behind the paywall alongside the roast. That is
+  // about 5,600 tokens of prompt and schema the *free* call no longer carries,
+  // and the whole of it goes back to the digest: the ceiling this buys rose by
+  // roughly 19,800 characters. The paid call carries them instead, which is
+  // the point — the reader paying for those sections is the one paying to
+  // generate them.
+  const FIXED_INPUT_TOKENS = 14200;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

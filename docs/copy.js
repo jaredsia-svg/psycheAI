@@ -329,9 +329,27 @@
     // The unsparing section. Everything the reader is told before they open it
     // is here, because a cover that undersells what is behind it is not
     // consent — they should be able to decide not to look. It used to run
-    // free, behind a click-to-reveal cover; it now sits behind a $1.99
-    // unlock, so the cover reads as a paywall rather than a content warning
-    // — the price and the register both belong on it.
+    // free, behind a click-to-reveal cover; it now sits behind an S$1.99
+    // unlock — shared with the wellness, attachment and career sections —
+    // so the cover reads as a paywall rather than a content warning: the
+    // price and the register both belong on it.
+    // Cover copy for the three sections that moved behind the paywall with
+    // the roast. Each says specifically what is behind it rather than
+    // gesturing at "more analysis": a reader deciding whether to pay is owed
+    // the same honesty as a reader deciding whether to look at the roast, and
+    // a vague cover is the version that sells worst *and* informs least.
+    wellnessCoverTitle: 'Six dimensions, read from your behaviour',
+    wellnessCoverBlurb: 'Sleep and rhythm, cognitive load, social connection, physical activity, ' +
+      'emotional processing and meaning — each with the evidence behind it, an honest confidence ' +
+      'level, and concrete suggestions. A behavioural read, never a health assessment.',
+    attachmentCoverTitle: 'How you are to be close to',
+    attachmentCoverBlurb: 'Your likely attachment style with the working shown — which traces point ' +
+      'there, which style was considered and rejected, and what it means in practice for you and for ' +
+      'whoever is close to you.',
+    careerCoverTitle: 'A career coach on your edge',
+    careerCoverBlurb: 'Where you appear to be, the thing you do reliably that most people do not, ' +
+      'what you are visibly not using, the pattern most likely to cost you — and actions to take ' +
+      'this week, this quarter and this year.',
     bonus: 'Let us roast you',
     // Sits beside the title as a small badge, the same way "Coming soon"
     // does on the comprehensive depth option — a label for what this section
@@ -339,8 +357,8 @@
     bonusBadge: 'Bonus Section',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusCoverBlurb: 'Unlock it once for $1.99 — no account, no subscription, and it stays open on ' +
-      'this device for as long as this report does.',
+    bonusCoverBlurb: 'One S$1.99 unlock opens this and the three sections above it — no account, no ' +
+      'subscription, and it stays open on this device for as long as this report does.',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen beside the writing rather than only appearing on the
@@ -356,7 +374,7 @@
     // fetches a real PaymentIntent and shows *that* amount once it has one,
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
-    premiumPriceLabel: '$1.99',
+    premiumPriceLabel: 'S$1.99',
     premiumUnlockPrefix: 'Unlock — ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
@@ -365,9 +383,10 @@
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
     premiumGenerating: 'Generating your analysis…',
-    premiumDialogTitle: 'Unlock the roast',
-    premiumDialogBlurb: 'A one-time charge, taken on this device — Apple Pay or Google Pay, whichever ' +
-      'this browser offers.',
+    premiumDialogTitle: 'Unlock all four sections',
+    premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
+      'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +
+      'browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',

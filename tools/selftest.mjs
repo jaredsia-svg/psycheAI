@@ -315,7 +315,7 @@ const premiumSelections = {
   geminiOnly: await premiumEngineFor({ GEMINI_API_KEY: 'x' }),
   both: await premiumEngineFor({ GEMINI_API_KEY: 'x', ANTHROPIC_API_KEY: 'x' }),
   mock: await premiumEngineFor({ PSYCHEAI_MOCK: '1' }),
-  mockPlusGemini: await premiumEngineFor({ PSYCHEAI_MOCK: '1', GEMINI_API_KEY: 'x' }),
+  mockPlusClaude: await premiumEngineFor({ PSYCHEAI_MOCK: '1', ANTHROPIC_API_KEY: 'x' }),
 };
 
 check('premium has no engine at all with nothing configured',
@@ -324,18 +324,18 @@ check('premium has no engine at all with nothing configured',
 // would use here (each wins auto-detection when it is the only key set),
 // and premium still refuses rather than quietly falling back to whichever
 // provider happened to win that slot.
-check('premium refuses even when the MAIN provider (Claude) is configured, if there is no GEMINI_API_KEY',
-  premiumSelections.claudeOnly.name === null, JSON.stringify(premiumSelections.claudeOnly));
-check('premium refuses even when the MAIN provider (Grok) is configured, if there is no GEMINI_API_KEY',
+check('premium refuses even when the MAIN provider (Gemini) is configured, if there is no ANTHROPIC_API_KEY',
+  premiumSelections.geminiOnly.name === null, JSON.stringify(premiumSelections.geminiOnly));
+check('premium refuses even when the MAIN provider (Grok) is configured, if there is no ANTHROPIC_API_KEY',
   premiumSelections.xaiOnly.name === null, JSON.stringify(premiumSelections.xaiOnly));
-check('premium works from a GEMINI_API_KEY alone',
-  premiumSelections.geminiOnly.name === 'gemini');
-check('premium keeps using Gemini when Claude is also configured',
-  premiumSelections.both.name === 'gemini');
+check('premium works from an ANTHROPIC_API_KEY alone',
+  premiumSelections.claudeOnly.name === 'anthropic', JSON.stringify(premiumSelections.claudeOnly));
+check('premium keeps using Claude when Gemini is also configured',
+  premiumSelections.both.name === 'anthropic', JSON.stringify(premiumSelections.both));
 check('mock mode carries premium too, the same way it carries the main provider',
   premiumSelections.mock.name === 'mock');
-check('mock mode wins over a real GEMINI_API_KEY for premium, same as it does for the main provider',
-  premiumSelections.mockPlusGemini.name === 'mock');
+check('mock mode wins over a real ANTHROPIC_API_KEY for premium, same as it does for the main provider',
+  premiumSelections.mockPlusClaude.name === 'mock');
 
 // The promo-code bypass — server.js's isValidPromoCode — checked the same
 // way: a fresh process per env combo, since PSYCHEAI_PROMO_CODE is read into
@@ -405,11 +405,12 @@ check('a secret key alone is not enough to be ready — the browser needs the pu
   paymentSelections.secretOnly.ready === false, JSON.stringify(paymentSelections.secretOnly));
 check('both keys together are ready, and the publishable key is exposed for the browser',
   paymentSelections.both.ready === true && paymentSelections.both.publishableKey === 'pk_test_x');
-check('the default merchant country is US', paymentSelections.mock.country === 'US', paymentSelections.mock.country);
+check('the default merchant country is SG, matching the currency',
+  paymentSelections.mock.country === 'SG', paymentSelections.mock.country);
 check('STRIPE_ACCOUNT_COUNTRY overrides the default',
   paymentSelections.customCountry.country === 'GB', paymentSelections.customCountry.country);
-check('the unlock price is $1.99 in cents, in USD',
-  paymentSelections.mock.priceCents === 199 && paymentSelections.mock.currency === 'usd',
+check('the unlock price is S$1.99, expressed as 199 cents of SGD',
+  paymentSelections.mock.priceCents === 199 && paymentSelections.mock.currency === 'sgd',
   paymentSelections.mock.priceCents + ' ' + paymentSelections.mock.currency);
 
 const intents = {
@@ -418,7 +419,7 @@ const intents = {
 };
 check('mock mode creates a fake PaymentIntent without touching a real Stripe account',
   intents.mock.ok === true && intents.mock.mock === true && /^pi_mock_/.test(intents.mock.id) &&
-  intents.mock.amount === 199 && intents.mock.currency === 'usd',
+  intents.mock.amount === 199 && intents.mock.currency === 'sgd',
   JSON.stringify(intents.mock));
 check('with no key and no mock mode, creating a PaymentIntent fails with a clear 503',
   intents.unconfigured.ok === false && intents.unconfigured.status === 503 &&
@@ -491,7 +492,7 @@ async function mockVerifyFlow() {
 const verifyFlow = await mockVerifyFlow();
 check('verifyPaid succeeds for a PaymentIntent this process actually created',
   verifyFlow.verified.ok === true && verifyFlow.verified.status === 'succeeded' &&
-  verifyFlow.verified.amount === 199 && verifyFlow.verified.currency === 'usd',
+  verifyFlow.verified.amount === 199 && verifyFlow.verified.currency === 'sgd',
   JSON.stringify(verifyFlow.verified));
 check('verifyPaid rejects a fabricated id that was never created, even shaped like a real one',
   verifyFlow.fabricated.ok === false && verifyFlow.fabricated.status === 402,
@@ -524,9 +525,20 @@ check('verifyPaid rejects a succeeded PaymentIntent for the wrong amount',
   wrongAmount.ok === false && wrongAmount.status === 402 && /does not match/i.test(wrongAmount.message),
   JSON.stringify(wrongAmount));
 
-const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "usd" }');
+const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "sgd" }');
 check('verifyPaid accepts a genuinely succeeded PaymentIntent for the right amount',
   genuine.ok === true && genuine.status === 'succeeded', JSON.stringify(genuine));
+
+// The currency half of the price check, which the move to SGD turned from a
+// formality into a real gate: 199 of the wrong currency is a different price.
+// At the old USD/SGD rate 199 SGD cents is worth appreciably less than 199 USD
+// cents, so a check that only compared the number would unlock the paid
+// sections for whichever currency was cheapest that day.
+const wrongCurrency = await verifyPaidWithStub(
+  '{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "usd" }');
+check('verifyPaid rejects the right number of cents in the wrong currency',
+  wrongCurrency.ok === false && wrongCurrency.status === 402 &&
+  /does not match/i.test(wrongCurrency.message), JSON.stringify(wrongCurrency));
 
 // ---------- payment ledger (lib/premiumLedger.js) ----------
 //
@@ -676,23 +688,33 @@ check('the sample report satisfies the profile schema exactly', sampleFaults.len
 // flatters would misrepresent what the model actually returns.
 check('the sample report is honest about weaknesses, not an advert',
   sample.relationship.weaknesses.length >= 2 && sample.career.weaknesses.length >= 2 &&
-  sample.confidence.score < 100 && /tentative/i.test(sample.attachment.style),
+  sample.confidence.score < 100 && /tentative/i.test(sample.card.attachment),
   JSON.stringify({
     relationship: sample.relationship.weaknesses.length,
     career: sample.career.weaknesses.length,
     confidence: sample.confidence.score,
+    attachment: sample.card.attachment,
   }));
 check('the sample report is named as a sample rather than as a person',
   sample.card.name === 'Sample', sample.card.name);
 
-// The roast moved out of the free schema and into the paid one (see the
-// PREMIUM_SCHEMA checks further down), so it is no longer part of the sample
-// report at all — the sample explicitly excludes it in the UI
-// (reportSectionsHtml's `{ bonus: false }`) the same way it excludes the
-// paid supplementary analysis, and now there is nothing in the schema for it
-// to violate by being absent from the fixture either.
-check('the sample report has no bonus field, since the roast is paid content now',
-  !('bonus' in sample));
+// Four sections moved out of the free schema and into the paid one (see the
+// PREMIUM_SCHEMA checks further down), so none of them is part of the sample
+// report any more. The sample excludes them in the UI too
+// (reportSectionsHtml's `{ paid: false }`), and there is now nothing in the
+// free schema for the fixture to violate by leaving them out.
+//
+// `card.attachment` is deliberately not in this list: the compressed
+// attachment phrase still travels in the QR card, which is free, and the
+// compatibility read leans on it. What moved behind the paywall is the
+// attachment *section*, not the card field.
+check('the sample report carries none of the four paid sections',
+  !('bonus' in sample) && !('wellness' in sample) &&
+  !('attachment' in sample) && !('careerAssessment' in sample),
+  Object.keys(sample).join(','));
+check('but the card still carries the compressed attachment read the QR code needs',
+  typeof sample.card.attachment === 'string' && sample.card.attachment.length > 0 &&
+  typeof sample.card.attachmentWhy === 'string' && sample.card.attachmentWhy.length > 0);
 
 // Love languages replaced "how to love you" and "who fits".
 const relProps = prompts.PROFILE_SCHEMA.properties.relationship.properties;
@@ -721,7 +743,7 @@ check('a language can be marked minor rather than invented',
 // Top-level now rather than nested under `relationship`: the attachment read
 // became its own section on the page, and the schema followed so the two do
 // not drift apart.
-const attachProps = prompts.PROFILE_SCHEMA.properties.attachment.properties;
+const attachProps = prompts.PREMIUM_SCHEMA.properties.attachment.properties;
 check('attachment shows its working',
   ['style', 'why', 'derivedFrom', 'implications', 'caveat'].every(k => k in attachProps));
 check('attachment names the signals it rests on',
@@ -814,7 +836,7 @@ check('the ban on naming private individuals survived it too',
 // different job from the first, so what is pinned here is mostly the
 // separation: the descriptive section must stay descriptive, this one must
 // stay actionable, and the evidence limits have to survive an edit.
-const coachProps = prompts.PROFILE_SCHEMA.properties.careerAssessment.properties;
+const coachProps = prompts.PREMIUM_SCHEMA.properties.careerAssessment.properties;
 check('the career assessment carries a situation, an edge, two facets and actions',
   ['situation', 'edge', 'underused', 'holdingBack', 'actions'].every(k => k in coachProps) &&
   Object.keys(coachProps).length === 5, Object.keys(coachProps).join(', '));
@@ -825,29 +847,29 @@ check('the edge is evidenced rather than asserted',
   coachProps.edge.properties.evidence.type === 'array');
 check('an edge that would fit anybody is called out as not an edge',
   /an edge that would fit any organised, agreeable or hard-working person is not an edge/
-    .test(prompts.PROFILE_SYSTEM));
+    .test(prompts.PREMIUM_SYSTEM));
 // Actions without a timeframe are a wish list. At least one must be startable
 // now, and the prompt says so.
 check('actions carry a horizon, and one of them has to be startable this week',
   JSON.stringify(coachProps.actions.items.properties.horizon.enum) ===
   JSON.stringify(['this week', 'this quarter', 'this year']) &&
-  /at least one should be `this week`/.test(prompts.PROFILE_SYSTEM));
+  /at least one should be `this week`/.test(prompts.PREMIUM_SYSTEM));
 check('actions are told to name the first move rather than the ambition',
-  /Name the first move rather than the ambition/.test(prompts.PROFILE_SYSTEM));
+  /Name the first move rather than the ambition/.test(prompts.PREMIUM_SYSTEM));
 // The two career sections are the likeliest pair in this report to collapse
 // into each other, so the instruction keeping them apart is pinned.
 check('the two career sections are told not to say the same thing twice',
   /It is a different job from the career section above, and the two must not say the same thing twice/
-    .test(prompts.PROFILE_SYSTEM) &&
+    .test(prompts.PREMIUM_SYSTEM) &&
   /\*\*Describe, do not advise\*\*/.test(prompts.PROFILE_SYSTEM));
 // Career evidence is the thinnest in the report — no CV, no title, no salary
 // — and the who-is-this-about rule does the most damage here if it slips.
 check('the prompt is blunt about what a social export cannot show about work',
   /no CV, no job history, no title, no employer, no salary and no performance review/
-    .test(prompts.PROFILE_SYSTEM));
+    .test(prompts.PREMIUM_SYSTEM));
 check('reading a borrowed biography as a career is named as the worst error here',
   /Reading a borrowed biography as a career is the single most damaging error/
-    .test(prompts.PROFILE_SYSTEM));
+    .test(prompts.PREMIUM_SYSTEM));
 
 // "Where you would thrive" was cut from the descriptive career section: it
 // listed ideal environments inferred from an export with no job history, and
@@ -862,11 +884,11 @@ check('and the prompt forbids smuggling it back into a neighbouring field',
 
 // Attachment moved out of `relationship` and into its own top-level section.
 check('attachment is its own top-level section, not nested under relationship',
-  'attachment' in prompts.PROFILE_SCHEMA.properties &&
+  'attachment' in prompts.PREMIUM_SCHEMA.properties &&
   !('attachment' in prompts.PROFILE_SCHEMA.properties.relationship.properties),
   Object.keys(prompts.PROFILE_SCHEMA.properties.relationship.properties).join(', '));
 check('the prompt tells it to write attachment as a standalone section',
-  /its own section, not part of the relationship read above/.test(prompts.PROFILE_SYSTEM));
+  /its own section, not part of the relationship read above/.test(prompts.PREMIUM_SYSTEM));
 // The card's own compressed attachment fields are a different thing and must
 // not have been dragged along by the move — they are what travels in the QR.
 check('the card keeps its own compressed attachment fields',
@@ -880,8 +902,8 @@ check('the card keeps its own compressed attachment fields',
 // The failure mode here is not a single bad edit; it is accretion, where each
 // addition looks reasonable and three releases later the section is a
 // screening tool nobody decided to build.
-const wellnessProps = prompts.PROFILE_SCHEMA.properties.wellness.properties;
-const wellnessText = JSON.stringify(prompts.PROFILE_SCHEMA.properties.wellness);
+const wellnessProps = prompts.PREMIUM_SCHEMA.properties.wellness.properties;
+const wellnessText = JSON.stringify(prompts.PREMIUM_SCHEMA.properties.wellness);
 
 check('wellness carries the six dimensions, an overall read and suggestions',
   ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
@@ -918,7 +940,7 @@ check('the bands describe a pattern rather than grading the person',
 // silent here" that does not read to a reader as a low score.
 check('"not enough evidence" is an available band, and the prompt tells it to use it',
   wellnessProps.meaning.properties.band.enum.includes('not enough evidence') &&
-  /`not enough evidence` is a real answer and you should use it/.test(prompts.PROFILE_SYSTEM));
+  /`not enough evidence` is a real answer and you should use it/.test(prompts.PREMIUM_SYSTEM));
 
 // `overall` is the obvious place a composite score would reappear, so it is
 // checked from both directions: it must be a string, and the prompt must
@@ -928,8 +950,8 @@ check('the overall read is prose, not a composite score',
   wellnessProps.overall.type);
 check('the prompt forbids a composite score in so many words',
   /Do not produce a score, index, grade, percentage, letter, rating or star count/
-    .test(prompts.PROFILE_SYSTEM) &&
-  /do not average the bands/.test(prompts.PROFILE_SYSTEM));
+    .test(prompts.PREMIUM_SYSTEM) &&
+  /do not average the bands/.test(prompts.PREMIUM_SYSTEM));
 check('no model-generated caveat field — the safety line is fixed app copy instead',
   !('caveat' in wellnessProps));
 
@@ -956,17 +978,22 @@ for (const [label, needle] of [
   ['tells it not to counsel or reassure',
     /Do not counsel, do not reassure/],
 ]) {
-  check('the wellness hard limits ' + label, needle.test(prompts.PROFILE_SYSTEM));
+  check('the wellness hard limits ' + label, needle.test(prompts.PREMIUM_SYSTEM));
 }
 
 check('the suggestions are framed as practical, never as treatment',
-  /never treatment, never therapy, never a care plan/.test(prompts.PROFILE_SYSTEM) &&
+  /never treatment, never therapy, never a care plan/.test(prompts.PREMIUM_SYSTEM) &&
   /never treatment, therapy or a care plan/.test(wellnessProps.suggestions.description));
 
 // The sample is the shop window for this section too, so it has to demonstrate
 // the rules rather than only be governed by them: no clinical vocabulary, and
 // a real "not enough evidence"-shaped honesty about a thin dimension.
-const sampleWellness = JSON.stringify(sample.wellness);
+// The wellness read is paid content now, so it is no longer in sample.json.
+// These checks run against the mock provider's own premium payload instead —
+// which is the right fixture anyway: it is what the paid path actually
+// renders, and mock.js is where a careless edit to this section would land.
+const mockPaid = (await mock.analysePremium({ counts: {} })).data;
+const sampleWellness = JSON.stringify(mockPaid.wellness);
 const wellnessClinicalWords = ['depression', 'depressed', 'anxiety disorder', 'bipolar', 'ADHD',
   'autism', 'personality disorder', 'PTSD', 'OCD', 'diagnos', 'mental illness', 'clinically',
   'disorder', 'burnout syndrome', 'at risk of developing'];
@@ -976,8 +1003,8 @@ check('the sample wellness section names no condition, since it is a behavioural
 check('the sample wellness section carries no number masquerading as a score',
   !/"score"/.test(sampleWellness) && !/\b\d+\s*\/\s*(?:10|100)\b/.test(sampleWellness));
 check('every sample dimension cites real evidence rather than asserting',
-  wellnessDimensions.every(k => Array.isArray(sample.wellness[k].evidence) &&
-    sample.wellness[k].evidence.length >= 2));
+  wellnessDimensions.every(k => Array.isArray(mockPaid.wellness[k].evidence) &&
+    mockPaid.wellness[k].evidence.length >= 2));
 
 // The paid premium call carries the roast (harsh, advice), moved here from
 // the old free-report bonus section. It briefly carried two more fields,
@@ -989,18 +1016,38 @@ check('every sample dimension cites real evidence rather than asserting',
 // one loose match, the same discipline the old PROFILE_SCHEMA checks held
 // the free-report bonus section to.
 const premiumProps = prompts.PREMIUM_SCHEMA.properties;
-check('the premium call carries only the roast\'s two fields',
-  ['harsh', 'advice'].every(k => k in premiumProps) &&
-  Object.keys(premiumProps).length === 2, Object.keys(premiumProps).join(', '));
+check('the premium call carries exactly the four paid sections, in report order',
+  JSON.stringify(Object.keys(premiumProps)) ===
+  JSON.stringify(['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']),
+  Object.keys(premiumProps).join(', '));
+// The free schema must not still be asking for them. A field left in both
+// places would be paid for twice and rendered from whichever the UI happened
+// to read, which is the failure mode this pair exists to catch.
+check('and none of them is still in the free schema',
+  ['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']
+    .every(k => !(k in prompts.PROFILE_SCHEMA.properties)),
+  Object.keys(prompts.PROFILE_SCHEMA.properties).join(', '));
 check('no model-generated caveat field — the safety line is fixed app copy instead',
   !('caveat' in premiumProps));
 check('the cut supplementary-analysis fields are actually gone, not just unused',
   !('patternsWorthAttention' in premiumProps) && !('lifeAdvice' in premiumProps));
+check('the paid prompt still refuses a bare attachment label',
+  /A named style with no reasoning is worthless/.test(prompts.PREMIUM_SYSTEM));
 check('the premium call no longer receives photographs, and says so',
   /this call receives no photographs/.test(prompts.PREMIUM_SYSTEM));
-check('the premium prompt states plainly it is a second pass, not a rewrite of the free report',
-  /a second, paid pass over a digest/.test(prompts.PREMIUM_SYSTEM) &&
+check('the premium prompt states plainly it is the paid half, not a rewrite of the free report',
+  /the paid half of a report whose free half is already written/.test(prompts.PREMIUM_SYSTEM) &&
   /do not repeat it, summarise it or re-derive it/.test(prompts.PREMIUM_SYSTEM));
+// Four sections in one call, and three of them are written in the free
+// report's voice. The roast's register bleeding into the wellness read is the
+// specific failure this pins — it is the section with the tightest limits and
+// the one a reader is least well served by being roasted inside.
+check('the prompt names all four sections and warns the registers apart',
+  /You write four sections/.test(prompts.PREMIUM_SYSTEM) &&
+  /the roast's\s+tone leaking into the wellness read/.test(prompts.PREMIUM_SYSTEM));
+check('the three considered sections are told they are not harsh by association',
+  /They are behind a paywall because they are the most valuable/.test(prompts.PREMIUM_SYSTEM) &&
+  /nothing about being paid for changes how\s+carefully they are written/.test(prompts.PREMIUM_SYSTEM));
 
 // The register is stated outright rather than left implied by "accurate
 // without being kind" — the page calls it a roast, so the prompt has to ask
@@ -1070,7 +1117,7 @@ check('premiumBlocks resends the same digest shape profileBlocks does, not a sum
   const blocks = prompts.premiumBlocks(digest);
   return Array.isArray(blocks) && blocks.length === 1 && blocks[0].type === 'text' &&
     blocks[0].text.includes(JSON.stringify(digest)) &&
-    /Instagram and Google/.test(blocks[0].text) && /second, paid pass/.test(blocks[0].text);
+    /Instagram and Google/.test(blocks[0].text) && /the four sections the free report does not carry/.test(blocks[0].text);
 })());
 
 // The roast is gone from the free schema and prompt entirely — moved, not
@@ -1306,7 +1353,6 @@ for (const [label, needle] of [
   ['rejects a compliment dressed as a character', /a compliment in a costume/],
   ['rejects a character only a fandom would know', /nobody outside a fandom could name/],
   ['forbids matching a character on appearance', /never on how they or anyone else looks/],
-  ['refuses a bare attachment label', /A named style with no reasoning is worthless/],
   // The consumption read is the one section that names third-party accounts
   // and the one that gives advice, so both of its ways of going wrong are
   // pinned rather than trusted to the schema alone.

@@ -909,16 +909,20 @@
    * payment, no key, no section — and nothing else in `build()` has to know a
    * paywall exists.
    *
+   * Four sections live here — the wellness read, the attachment read, the
+   * career coaching and the roast — and one S$1.99 unlock fills all four.
+   *
    * The roast used to be excluded from the PDF outright, and the reasoning was
    * about consent rather than payment: on screen it sits behind a cover
    * somebody has to open, a PDF has no cover, so printing it unconditionally
    * would have handed the harshest writing in the report to a reader who never
    * pressed the button. Gating on the unlock answers that directly — the only
-   * way a key gets here is that somebody paid $1.99 or entered a promo code to
-   * see this exact writing. What the gate cannot govern is where the file goes
-   * next, which is why the caveat prints with the section rather than being
-   * left on screen: the PDF is the copy that gets kept and forwarded, so it is
-   * the copy that most needs to say what it is.
+   * way a key gets here is that somebody paid or entered a promo code to see
+   * this exact writing. What the gate cannot govern is where the file goes
+   * next, which is why both caveats — the roast's and the wellness section's —
+   * print with their sections rather than being left on screen: the PDF is the
+   * copy that gets kept and forwarded, so it is the copy that most needs to
+   * say what it is.
    *
    * Adding a paywalled section later means adding an entry here and a key in
    * `unlockedSections()` in docs/app.js. Do not reach for `source.<field>` in
@@ -926,6 +930,81 @@
    * would print for anyone whose stored profile happened to contain it.
    */
   const PAID_SECTIONS = [{
+    // `facet()` takes the band where a behaviour facet takes a headline — and
+    // no `bar()`, deliberately: the page draws no progress bar for these
+    // dimensions and neither does the PDF, because a filled bar under
+    // "Emotional processing" would read as a measurement this section does
+    // not make. See the wellness schema comment in lib/prompts.js.
+    //
+    // The caveat prints with the section rather than being left on screen,
+    // for the same reason the roast's does.
+    key: 'wellness',
+    render(out, wellness) {
+      out.sectionTitle(TEXT.wellness, TEXT.wellnessSub);
+      for (const [label, key] of Copy.WELLNESS_FACETS) {
+        const part = wellness[key];
+        if (!part) continue;
+        out.facet(label, part.band, part.reading);
+        out.tags(part.evidence);
+      }
+      if (wellness.overall) {
+        out.h3(TEXT.wellnessOverall);
+        out.body(wellness.overall, { size: 10, leading: 14.6 });
+      }
+      out.h3(TEXT.wellnessSuggestions);
+      out.points(wellness.suggestions);
+      out.space(4);
+      out.body(TEXT.wellnessCaveat, { size: 8.4, leading: 12, color: SOFT });
+    },
+  }, {
+    key: 'attachment',
+    render(out, attachment) {
+      out.sectionTitle(TEXT.attachment, TEXT.attachmentSub);
+      out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
+      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
+      if ((attachment.derivedFrom || []).length) {
+        out.eyebrow(TEXT.readFrom, SOFT);
+        out.tags(attachment.derivedFrom);
+      }
+      if ((attachment.implications || []).length) {
+        out.eyebrow(TEXT.attachmentPractice, SOFT);
+        out.points(attachment.implications);
+      }
+      if (attachment.caveat) out.fineprint(attachment.caveat);
+    },
+  }, {
+    // The coach's read, distinct from "At work" above. The horizon leads each
+    // action here the way the pill does on the page, so the thing that can be
+    // started this week is still the thing read first.
+    key: 'careerAssessment',
+    render(out, coaching) {
+      out.sectionTitle(TEXT.careerAssessment, TEXT.careerAssessmentSub);
+      if (coaching.situation) {
+        out.h3(TEXT.careerSituation);
+        out.body(coaching.situation, { size: 10, leading: 15 });
+      }
+      if (coaching.edge) {
+        out.h3(TEXT.careerEdge, ACCENT);
+        out.h3(coaching.edge.headline);
+        if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
+        out.tags(coaching.edge.evidence);
+      }
+      for (const [label, facet] of [[TEXT.careerUnderused, coaching.underused],
+        [TEXT.careerHoldingBack, coaching.holdingBack]]) {
+        if (!facet) continue;
+        out.facet(label, facet.headline, facet.detail);
+      }
+      out.h3(TEXT.careerActions);
+      const actions = (coaching.actions || []).filter(Boolean);
+      const horizons = Object.keys(TEXT.careerHorizons);
+      const ordered = horizons.flatMap(h => actions.filter(a => a.horizon === h))
+        .concat(actions.filter(a => !horizons.includes(a.horizon)));
+      for (const action of ordered) {
+        const label = TEXT.careerHorizons[action.horizon];
+        out.point((label ? label + '  ·  ' : '') + action.title, action.detail);
+      }
+    },
+  }, {
     key: 'bonus',
     render(out, roast) {
       out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
@@ -1121,94 +1200,11 @@
       }
     }
 
-    // 9b. Mental wellness, directly under the behaviour read that evidences
-    // it, exactly as on the page. `facet()` takes the band where a behaviour
-    // facet takes a headline — no `bar()` here, deliberately: the page draws
-    // no progress bar for these dimensions and neither does the PDF, because
-    // a filled bar under "Emotional processing" would read as a measurement
-    // this section does not make. See the wellness schema comment in
-    // lib/prompts.js.
-    //
-    // The caveat is printed with the section rather than left on screen. A
-    // PDF is the copy that gets kept and forwarded, so it is the copy that
-    // most needs to say what this is not.
-    const wellness = source.wellness;
-    if (wellness) {
-      out.sectionTitle(TEXT.wellness, TEXT.wellnessSub);
-      for (const [label, key] of Copy.WELLNESS_FACETS) {
-        const part = wellness[key];
-        if (!part) continue;
-        out.facet(label, part.band, part.reading);
-        out.tags(part.evidence);
-      }
-      if (wellness.overall) {
-        out.h3(TEXT.wellnessOverall);
-        out.body(wellness.overall, { size: 10, leading: 14.6 });
-      }
-      out.h3(TEXT.wellnessSuggestions);
-      out.points(wellness.suggestions);
-      out.space(4);
-      out.body(TEXT.wellnessCaveat, { size: 8.4, leading: 12, color: SOFT });
-    }
-
-    // 9c. Attachment style, its own section here as on the page. Falls back to
-    // its old home under `relationship` so a report stored before the move
-    // still prints it rather than silently losing a section.
-    const attachment = source.attachment ||
-      (source.relationship && source.relationship.attachment);
-    if (attachment) {
-      out.sectionTitle(TEXT.attachment, TEXT.attachmentSub);
-      out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
-      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
-      if ((attachment.derivedFrom || []).length) {
-        out.eyebrow(TEXT.readFrom, SOFT);
-        out.tags(attachment.derivedFrom);
-      }
-      if ((attachment.implications || []).length) {
-        out.eyebrow(TEXT.attachmentPractice, SOFT);
-        out.points(attachment.implications);
-      }
-      out.fineprint(attachment.caveat);
-    }
-
-    // 9d. Career assessment — the coach's read, distinct from "At work"
-    // above. The horizon leads each action here the way the pill does on the
-    // page, so the thing that can be started this week is still the thing
-    // read first.
-    const coaching = source.careerAssessment;
-    if (coaching) {
-      out.sectionTitle(TEXT.careerAssessment, TEXT.careerAssessmentSub);
-      if (coaching.situation) {
-        out.h3(TEXT.careerSituation);
-        out.body(coaching.situation, { size: 10, leading: 15 });
-      }
-      if (coaching.edge) {
-        out.h3(TEXT.careerEdge, ACCENT);
-        if (coaching.edge.headline) out.body(coaching.edge.headline, { size: 11.2, bold: true });
-        if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
-        out.tags(coaching.edge.evidence);
-      }
-      for (const [label, facet] of [[TEXT.careerUnderused, coaching.underused],
-        [TEXT.careerHoldingBack, coaching.holdingBack]]) {
-        if (!facet) continue;
-        out.facet(label, facet.headline, facet.detail);
-      }
-      out.h3(TEXT.careerActions);
-      const actions = (coaching.actions || []).filter(Boolean);
-      const horizons = Object.keys(TEXT.careerHorizons);
-      const ordered = horizons.flatMap(h => actions.filter(a => a.horizon === h))
-        .concat(actions.filter(a => !horizons.includes(a.horizon)));
-      for (const action of ordered) {
-        const label = TEXT.careerHorizons[action.horizon];
-        out.point((label ? label + '  ·  ' : '') + action.title, action.detail);
-      }
-    }
-
-    // 9e. Whatever was bought, in the position it holds on the page — after
-    // the career coaching, before matches and the confidence close. The list
-    // is `PAID_SECTIONS`; see the note there for why this is a table rather
-    // than an `if` per section, and why a paid section is read from `meta`
-    // rather than off the report object.
+    // 9b. Whatever was bought, in the position it holds on the page — after
+    // the behaviour read, before matches and the confidence close. The list is
+    // `PAID_SECTIONS`; see the note there for why this is a table rather than
+    // an `if` per section, and why a paid section is read from `meta` rather
+    // than off the report object.
     const unlocked = stamp.unlocked || {};
     for (const section of PAID_SECTIONS) {
       if (unlocked[section.key]) section.render(out, unlocked[section.key]);
