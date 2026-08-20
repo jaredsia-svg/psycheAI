@@ -1391,6 +1391,63 @@ it:
   since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
   hand to somebody else drags in a person who never agreed to any of this.
 
+### Mental wellness
+
+Six behavioural dimensions, free, in the main report, sitting directly under the behaviour read that
+evidences them: **sleep and rhythm**, **cognitive load**, **social connection**, **emotional
+processing**, **physical activity**, and **meaning**. Each gets a band, its own confidence, a couple
+of sentences and the evidence behind them; then a prose overall read and three to five concrete
+suggestions.
+
+**It has no score, and that is the design rather than an omission.** Every other scored thing in this
+report draws a 0–100 — the Big Five, the compatibility dimensions. This one bands instead, because
+the notation is most of what makes a claim read as a measurement. "Emotional processing: 41/100" is a
+mental health score in all but name; a reader screenshots the number and forgets the caveat, and a
+validated instrument earns its number by being tested against real outcomes with known error rates,
+which nothing derived from posting timestamps has. `overall` is prose for the same reason — averaging
+six bands into a "wellbeing index" would rebuild the health rating through the back door with a
+veneer of arithmetic. Two checks pin this: no `integer` may appear anywhere under the wellness
+schema, and the rendered section may contain no bar, meter, `n/100` or percentage.
+
+**Two dimensions were narrowed on the way in.** The request was for "physical health" and "emotional
+processing and health". The export carries neither — it has activity somebody chose to post about and
+words they chose to write — so the fields are `physicalActivity` and `emotionalProcessing`, in both
+the schema and the UI labels. A heading promising health is a claim the section underneath it cannot
+keep, and the narrower names are what stop the field descriptions drifting back toward the wider one.
+A check asserts the narrowed names are present *and* that the health-claiming ones have not returned.
+
+**The bands are descriptions, not grades:** `steady`, `mixed`, `under strain`, `not enough evidence`.
+Deliberately not a red/amber/green ramp and deliberately not good/bad, because "under strain"
+describes a rhythm where "poor" would be a verdict on a life. `not enough evidence` is load-bearing
+rather than a formality — the six are evidenced very unevenly. Hour-of-day and day-of-week histograms
+are complete, so sleep and rhythm almost always has something real; physical activity rests entirely
+on whether somebody happened to post about exercise, and plenty of active people never do. It is
+styled as the most neutral of the four rather than the worst, so "we could not tell" does not read as
+"you scored badly", and the mock puts it on physical activity in every run so that path is always
+exercised.
+
+The hard limits get their own subsection in `PROFILE_SYSTEM` and ten individually-pinned checks,
+because the failure mode here is not one bad edit — it is accretion, where each addition looks
+reasonable and three releases later the section is a screening tool nobody decided to build. No
+condition may be named or implied; no health score under any label; posting timestamps are **not a
+sleep record** (somebody active at 3am reached for their phone at 3am); nothing about anyone's body,
+and an absence of exercise posts is silence rather than a finding; no mood read off the writing. Where
+something genuinely looks heavier than a behavioural pattern the model is told to say it is worth
+raising with someone qualified to actually assess it, in those words, and stop — not counsel, not
+reassure, not work out what it is.
+
+The caveat is **fixed app copy** (`wellnessCaveat` in `docs/copy.js`), not a schema field — the same
+choice the roast's caveat makes, in the section with the most reason to make it. It says what the
+section is not, names a GP as the person who can actually assess what this cannot, and is worded
+identically on every run rather than left to a field the model could soften or forget. It prints with
+the PDF too, since that is the copy that gets kept and forwarded.
+
+Cost: about **+$0.012** on a free report — roughly 3,900 extra tokens of prompt and schema, plus the
+output to write it. It also costs the digest ~13,650 characters of budget, since every token reserved
+for the fixed prompt is one the digest cannot spend; real accounts are unaffected because standard's
+per-source caps bind long before the ceiling does, but comprehensive's synthetic oversized fixture
+now trims its follow list further, and the check that noticed moved with it rather than being deleted.
+
 ### The psyche card
 
 The report opens with the whole of itself on one card, above the writing. It is real elements rather
@@ -1892,7 +1949,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 605 checks: synthesises a real ZIP export and runs
+npm test           # 629 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -1901,7 +1958,7 @@ npm test           # 605 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 768 checks: drives the real UI in Chromium against a
+npm run test:ui    # 782 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

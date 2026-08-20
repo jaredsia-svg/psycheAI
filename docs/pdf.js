@@ -1093,6 +1093,36 @@
       }
     }
 
+    // 9b. Mental wellness, directly under the behaviour read that evidences
+    // it, exactly as on the page. `facet()` takes the band where a behaviour
+    // facet takes a headline — no `bar()` here, deliberately: the page draws
+    // no progress bar for these dimensions and neither does the PDF, because
+    // a filled bar under "Emotional processing" would read as a measurement
+    // this section does not make. See the wellness schema comment in
+    // lib/prompts.js.
+    //
+    // The caveat is printed with the section rather than left on screen. A
+    // PDF is the copy that gets kept and forwarded, so it is the copy that
+    // most needs to say what this is not.
+    const wellness = source.wellness;
+    if (wellness) {
+      out.sectionTitle(TEXT.wellness, TEXT.wellnessSub);
+      for (const [label, key] of Copy.WELLNESS_FACETS) {
+        const part = wellness[key];
+        if (!part) continue;
+        out.facet(label, part.band, part.reading);
+        out.tags(part.evidence);
+      }
+      if (wellness.overall) {
+        out.h3(TEXT.wellnessOverall);
+        out.body(wellness.overall, { size: 10, leading: 14.6 });
+      }
+      out.h3(TEXT.wellnessSuggestions);
+      out.points(wellness.suggestions);
+      out.space(4);
+      out.body(TEXT.wellnessCaveat, { size: 8.4, leading: 12, color: SOFT });
+    }
+
     // The bonus section is deliberately absent here, and this is the one place
     // the PDF is not a faithful rendering of the page. On screen it sits behind
     // a cover somebody has to open, which is what makes it consented to; a PDF

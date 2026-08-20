@@ -1027,6 +1027,14 @@ try {
     (await page.locator('#sample-body .bonus-card').count()) === 0 &&
     !/deliberately unkind/i.test(await page.locator('#sample-body').innerText()) &&
     !/Unlock it once for/i.test(await page.locator('#sample-body').innerText()));
+  // The wellness section, by contrast, *is* in the sample — it is free, so
+  // there is nothing to gate and nothing to sell, and it is one of the more
+  // interesting things a first-time visitor can see the shape of. Checked
+  // alongside the roast's absence so the two cannot drift into each other.
+  check('the sample does show the free wellness section, with its caveat',
+    (await page.locator('#sample-body .wellness-card').count()) === 1 &&
+    /Mental wellness/i.test(await page.locator('#sample-body').innerText()) &&
+    /not a measurement of your mental health/i.test(await page.locator('#sample-body').innerText()));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.
@@ -1960,6 +1968,7 @@ try {
     (await page.locator('.hero-mark').count()) <= 1);
   await shot('2-profile');
   if (shots) await page.locator('#profile-body .bonus-card').screenshot({ path: join(shotDir, '2a-premium-crop.png') });
+  if (shots) await page.locator('#profile-body .wellness-card').screenshot({ path: join(shotDir, '2d-wellness-crop.png') });
 
   // The waiting screen speaks as the product, not as whichever model is wired
   // up behind it.
@@ -2089,6 +2098,8 @@ try {
     ['when they are active', /When you are here/i],
     ['how their use changed', /How it changed/i],
     ['what they take in', /What you take in/i],
+    ['the mental wellness section', /Mental wellness/],
+    ['all six wellness dimensions', /Sleep and rhythm/i],
   ]) {
     check('profile shows ' + label, needle.test(profileText), profileText.slice(0, 120));
   }
@@ -2135,6 +2146,75 @@ try {
   }));
   check('the confidence meter came with it',
     await page.locator('.confidence-card .confidence-fill').isVisible());
+
+  // ---- mental wellness ----
+  //
+  // Free, in the main report, and the section closest to health in the app —
+  // so what is checked here is mostly what it must *not* do. The structural
+  // guarantee is that it carries no number: a progress bar or a score under
+  // "Emotional processing" would read as a measurement of something that was
+  // never measured, which is the whole reason this section bands instead.
+  check('the wellness section is free — it renders with no cover and no unlock button',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .wellness-card');
+      return Boolean(card) && !card.querySelector('.premium-cover') &&
+        !card.querySelector('.premium-unlock');
+    }));
+  check('it sits below the behaviour read that evidences it, and above the roast',
+    await page.evaluate(() => {
+      const grid = document.querySelector('#profile-body .facet-grid');
+      const behaviour = grid && grid.closest('.section-card');
+      const wellness = document.querySelector('#profile-body .wellness-card');
+      const bonus = document.querySelector('#profile-body .bonus-card');
+      if (!behaviour || !wellness || !bonus) return false;
+      return Boolean(behaviour.compareDocumentPosition(wellness) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(wellness.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  const wellnessCard = await page.evaluate(() => {
+    const card = document.querySelector('#profile-body .wellness-card');
+    return { text: card.innerText, html: card.innerHTML,
+      facets: card.querySelectorAll('.wellness-facet').length,
+      bars: card.querySelectorAll('.bar, .progress, .confidence-meter').length };
+  });
+  check('all six dimensions render', wellnessCard.facets === 6, String(wellnessCard.facets));
+  // The one that matters most. Every other scored section draws `bar()`; this
+  // one must not, and no "62/100" or "7/10" may appear in the rendered text.
+  check('no bar, meter or score is drawn anywhere in the section',
+    wellnessCard.bars === 0 && !/\b\d+\s*\/\s*(?:10|100)\b/.test(wellnessCard.text) &&
+    !/\b\d{1,3}\s*%/.test(wellnessCard.text),
+    String(wellnessCard.bars) + ' bars');
+  check('the sub-line says plainly it is a behavioural read rather than a health assessment',
+    /behavioural read, not a health assessment/i.test(wellnessCard.text));
+  check('each dimension shows a band and its own confidence',
+    /steady|mixed|under strain|not enough evidence/i.test(wellnessCard.text) &&
+    (await page.locator('#profile-body .wellness-card .wellness-confidence').count()) === 6);
+  // "Not enough evidence" is the honest answer on a thin dimension and must
+  // not be styled as a low score — the mock puts it on physical activity
+  // precisely so this path renders in every run.
+  check('a "not enough evidence" band renders as its own neutral state',
+    (await page.locator('#profile-body .wellness-card .wellness-not-enough-evidence').count()) === 1);
+  check('the overall read and the suggestions both render',
+    /Taken together/i.test(wellnessCard.text) && /What might actually help/i.test(wellnessCard.text));
+  check('the static caveat is shown with the writing, not buried',
+    /not a measurement of your mental health/i.test(wellnessCard.text) &&
+    /the person to talk to about it is a person/i.test(wellnessCard.text) &&
+    (await page.locator('#profile-body .wellness-caveat').isVisible()));
+  // Scoped to the model's own output, with the caveat excluded — the caveat
+  // is the one part of this card that is *supposed* to contain the word
+  // "diagnosis", because saying "this is not a diagnosis of anything" is its
+  // entire job. Scanning the whole card made the app's own safety copy trip
+  // the safety check, which is the wrong thing to catch.
+  check('no clinical condition is named in the writing (the caveat may say "not a diagnosis")',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .wellness-card').cloneNode(true);
+      const caveat = card.querySelector('.wellness-caveat');
+      if (caveat) caveat.remove();
+      return !/\b(depression|anxiety disorder|adhd|bipolar|ptsd|ocd|insomnia|diagnos)/i
+        .test(card.textContent);
+    }));
+  check('the caveat does disclaim a diagnosis, which is why it is excluded above',
+    /Nothing here is a diagnosis of anything/i.test(
+      await page.locator('#profile-body .wellness-caveat').innerText()));
 
   // ---- the roast, behind its $1.99 unlock ----
   //

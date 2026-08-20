@@ -268,6 +268,83 @@
     ],
     "watchOuts": "Somewhere with no natural end to the work, or a culture where credit goes to whoever claims it loudest."
   },
+  "wellness": {
+    "sleepAndRhythm": {
+      "band": "steady",
+      "confidence": "high",
+      "reading": "Your activity sits in a narrow, consistent window — most of it between 6 and 8am on weekdays, a little later at weekends, and almost nothing after 11pm across four years. That is one of the most regular patterns in this data, and it has not drifted later over time the way most accounts do.",
+      "evidence": [
+        "78% of posts fall between 06:00 and 08:00 on weekdays",
+        "Fewer than 20 posts after 23:00 across four years",
+        "The weekday window has moved by under 40 minutes since 2021"
+      ]
+    },
+    "cognitiveLoad": {
+      "band": "mixed",
+      "confidence": "moderate",
+      "reading": "You are carrying a lot of separate threads at once — 47 announced plans over four years, most of them involving other people's schedules — and you close the large majority of them. The load is real, but so is the follow-through, which is a different picture from someone accumulating things they never finish.",
+      "evidence": [
+        "41 of 47 announced plans closed out",
+        "Organising activity spans three distinct groups without overlap"
+      ]
+    },
+    "socialConnection": {
+      "band": "mixed",
+      "confidence": "high",
+      "reading": "The depth is unusual: the same twelve people across four years with no drop-offs, which very few accounts show. The asymmetry is the part worth noticing — you start roughly three times as many conversations as you receive, and you show up for events more often than people show up for yours.",
+      "evidence": [
+        "Same 12 people engaged with across all four years",
+        "You initiate 3x more comment threads than you receive",
+        "You attend more announced events than you are invited to"
+      ]
+    },
+    "emotionalProcessing": {
+      "band": "under strain",
+      "confidence": "low",
+      "reading": "Almost everything you write is about somebody else's news. Four years of captions contain barely a sentence about your own, including across two stretches where the surrounding activity suggests something demanding was going on. You go quiet for about a fortnight after each event you run, and that gap is the only time the account shows nothing being managed for anyone.",
+      "evidence": [
+        "Under 2% of captions are about the writer rather than someone else",
+        "Two 3-week gaps with no posts and no comments, both following heavy organising months"
+      ]
+    },
+    "physicalActivity": {
+      "band": "steady",
+      "confidence": "moderate",
+      "reading": "Running shows up consistently rather than seasonally — the same three trailheads, the same training structure since 2021, and posts spread across all four years rather than clustering in January. Whatever else changes, this does not.",
+      "evidence": [
+        "Trail posts appear in every quarter since 2021",
+        "The same three locations account for most of them"
+      ]
+    },
+    "meaning": {
+      "band": "steady",
+      "confidence": "high",
+      "reading": "This is the strongest of the six. What you say you value and what you actually spend four years doing are the same thing — you turn up for the same people, arrange what nobody asked you to arrange, and do it consistently enough that it reads as a commitment rather than a mood. There is no gap here between the stated and the done.",
+      "evidence": [
+        "Four years of unprompted organising for the same core group",
+        "Stated values and observed behaviour agree across every year sampled"
+      ]
+    },
+    "overall": "The structural side of your life is in good order — the rhythm is regular, the follow-through is genuinely rare, and what you care about is visible in what you actually do rather than only in what you say.\n\nThe two worth your attention both point the same way: you are the one holding everything, and the account contains almost no evidence of anyone holding you. The asymmetry in who starts conversations and the near-absence of your own news are the same pattern seen from two angles.",
+    "suggestions": [
+      {
+        "title": "Post one thing that is about you",
+        "detail": "Not a milestone — an ordinary one. Four years of captions are about other people's news, and the people around you have never been given anything of yours to respond to. Pick one thing this week and write it as yours."
+      },
+      {
+        "title": "Let someone else arrange the next one",
+        "detail": "You have organised 47 plans. Skip organising the next one and see whether it happens anyway. If it does, that is worth knowing; if it does not, that is worth knowing too, and it is a fact about the group rather than about you."
+      },
+      {
+        "title": "Take the quiet fortnight before you have earned it",
+        "detail": "The recovery gaps always follow something you ran, which means rest is currently something you get for delivering. Take one this month that does not follow an event and see whether it feels available."
+      },
+      {
+        "title": "Ask one person for something small",
+        "detail": "Every request visible in four years is framed as useful to somebody else. Ask for one thing with no justification attached — a specific plan, a specific favour — and let it be for you."
+      }
+    ]
+  },
   "card": {
     "name": "Sample",
     "headline": "Organiser with a warm centre and a quiet battery",

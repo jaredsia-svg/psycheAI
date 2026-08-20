@@ -92,12 +92,14 @@
   // Raised from 15,000 when `summary` and `harsh` gained their instructions to
   // draw on the photographs, again when the roast gained the test it has to put
   // every hard line through, and again when E/I was tied to the extraversion
-  // score — then dropped back down here when the roast itself (harsh/advice)
-  // moved out of PROFILE_SYSTEM/PROFILE_SCHEMA entirely, into the paid
-  // PREMIUM_SYSTEM/PREMIUM_SCHEMA the free report no longer pays to generate.
-  // The check below caught the shrink the same run it happened, the same way
-  // it caught every growth before it.
-  const FIXED_INPUT_TOKENS = 14300;
+  // score; dropped to 14,300 when the roast itself (harsh/advice) moved out of
+  // PROFILE_SYSTEM/PROFILE_SCHEMA entirely, into the paid PREMIUM_SYSTEM/
+  // PREMIUM_SCHEMA the free report no longer pays to generate; and raised
+  // again here for the wellness section, whose six dimension descriptions and
+  // (much longer) hard limits added about 3,800 tokens between them. The check
+  // below has caught every one of those movements, in both directions, the
+  // same run it happened.
+  const FIXED_INPUT_TOKENS = 18200;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

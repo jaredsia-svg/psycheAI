@@ -805,6 +805,113 @@ check('the timing-data ban survived the account list being cut',
   /No source here carries timing data of any kind/.test(prompts.PROFILE_SYSTEM));
 check('the ban on naming private individuals survived it too',
   /do not name private individuals/i.test(prompts.PROFILE_SYSTEM));
+// ---------- the wellness section ----------
+//
+// The section that sits closest to health in the whole app, and therefore the
+// one whose limits are pinned individually rather than trusted to one loose
+// match — the same discipline the roast's own no-diagnosis ban gets below.
+// The failure mode here is not a single bad edit; it is accretion, where each
+// addition looks reasonable and three releases later the section is a
+// screening tool nobody decided to build.
+const wellnessProps = prompts.PROFILE_SCHEMA.properties.wellness.properties;
+const wellnessText = JSON.stringify(prompts.PROFILE_SCHEMA.properties.wellness);
+
+check('wellness carries the six dimensions, an overall read and suggestions',
+  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
+    'emotionalProcessing', 'meaning', 'overall', 'suggestions'].every(k => k in wellnessProps) &&
+  Object.keys(wellnessProps).length === 8, Object.keys(wellnessProps).join(', '));
+
+// The two that were narrowed on the way in. "Physical health" and "emotional
+// health" are claims this data cannot support; "physical activity" and
+// "emotional processing" are what it actually carries. Checked as an absence
+// as well as a presence, because the risk is somebody renaming them back.
+check('the two health-claiming field names were narrowed, and stayed narrowed',
+  'physicalActivity' in wellnessProps && 'emotionalProcessing' in wellnessProps &&
+  !('physicalHealth' in wellnessProps) && !('emotionalHealth' in wellnessProps),
+  Object.keys(wellnessProps).join(', '));
+
+// The load-bearing structural choice: no numbers anywhere in this section.
+// Every other scored thing in this schema carries a 0-100 integer; this one
+// bands instead, because the notation is most of what makes a claim read as a
+// measurement. A single `integer` appearing anywhere under wellness is the
+// regression this catches.
+const wellnessDimensions = ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection',
+  'physicalActivity', 'emotionalProcessing', 'meaning'];
+check('no wellness dimension carries a numeric score, unlike every other scored section',
+  wellnessDimensions.every(k => !('score' in wellnessProps[k].properties)) &&
+  !/"type":"integer"/.test(wellnessText), wellnessText.slice(0, 160));
+check('every dimension carries a band, its own confidence, a reading and evidence',
+  wellnessDimensions.every(k =>
+    ['band', 'confidence', 'reading', 'evidence'].every(f => f in wellnessProps[k].properties)));
+check('the bands describe a pattern rather than grading the person',
+  JSON.stringify(wellnessProps.sleepAndRhythm.properties.band.enum) ===
+  JSON.stringify(['steady', 'mixed', 'under strain', 'not enough evidence']),
+  JSON.stringify(wellnessProps.sleepAndRhythm.properties.band.enum));
+// The escape hatch. Without it the model has no way to say "the export is
+// silent here" that does not read to a reader as a low score.
+check('"not enough evidence" is an available band, and the prompt tells it to use it',
+  wellnessProps.meaning.properties.band.enum.includes('not enough evidence') &&
+  /`not enough evidence` is a real answer and you should use it/.test(prompts.PROFILE_SYSTEM));
+
+// `overall` is the obvious place a composite score would reappear, so it is
+// checked from both directions: it must be a string, and the prompt must
+// forbid the arithmetic that would turn six bands into one number.
+check('the overall read is prose, not a composite score',
+  wellnessProps.overall.type === 'string' && !('score' in wellnessProps),
+  wellnessProps.overall.type);
+check('the prompt forbids a composite score in so many words',
+  /Do not produce a score, index, grade, percentage, letter, rating or star count/
+    .test(prompts.PROFILE_SYSTEM) &&
+  /do not average the bands/.test(prompts.PROFILE_SYSTEM));
+check('no model-generated caveat field — the safety line is fixed app copy instead',
+  !('caveat' in wellnessProps));
+
+// The hard limits, each pinned separately.
+for (const [label, needle] of [
+  ['says outright that this is not a health assessment',
+    /The wellness section is a behavioural read, not a health assessment/],
+  ['bans naming a condition, with the vocabulary spelled out',
+    /Not depression, not anxiety, not ADHD, not insomnia or any sleep disorder/],
+  ['bans the health score under any label',
+    /Do not produce a mental health score, rating, index, grade or percentage/],
+  ['refuses to treat posting times as a sleep record',
+    /You have posting timestamps, not a sleep record/],
+  ['keeps the duration ban in this section too',
+    /never write minutes, hours or "time spent" in this section/],
+  ['bans any statement about the reader\'s body',
+    /Say nothing about their body/],
+  ['treats an absence of exercise posts as silence rather than a finding',
+    /an absence of exercise posts is silence rather than a finding/],
+  ['bans reading a mood off the writing',
+    /Do not read a mood/],
+  ['hands off rather than counselling when something looks heavier',
+    /worth raising with someone qualified to actually assess it/],
+  ['tells it not to counsel or reassure',
+    /Do not counsel, do not reassure/],
+]) {
+  check('the wellness hard limits ' + label, needle.test(prompts.PROFILE_SYSTEM));
+}
+
+check('the suggestions are framed as practical, never as treatment',
+  /never treatment, never therapy, never a care plan/.test(prompts.PROFILE_SYSTEM) &&
+  /never treatment, therapy or a care plan/.test(wellnessProps.suggestions.description));
+
+// The sample is the shop window for this section too, so it has to demonstrate
+// the rules rather than only be governed by them: no clinical vocabulary, and
+// a real "not enough evidence"-shaped honesty about a thin dimension.
+const sampleWellness = JSON.stringify(sample.wellness);
+const wellnessClinicalWords = ['depression', 'depressed', 'anxiety disorder', 'bipolar', 'ADHD',
+  'autism', 'personality disorder', 'PTSD', 'OCD', 'diagnos', 'mental illness', 'clinically',
+  'disorder', 'burnout syndrome', 'at risk of developing'];
+const wellnessClinicalHits = wellnessClinicalWords.filter(w => new RegExp(w, 'i').test(sampleWellness));
+check('the sample wellness section names no condition, since it is a behavioural read',
+  wellnessClinicalHits.length === 0, wellnessClinicalHits.join(', '));
+check('the sample wellness section carries no number masquerading as a score',
+  !/"score"/.test(sampleWellness) && !/\b\d+\s*\/\s*(?:10|100)\b/.test(sampleWellness));
+check('every sample dimension cites real evidence rather than asserting',
+  wellnessDimensions.every(k => Array.isArray(sample.wellness[k].evidence) &&
+    sample.wellness[k].evidence.length >= 2));
+
 // The paid premium call carries the roast (harsh, advice), moved here from
 // the old free-report bonus section. It briefly carried two more fields,
 // patternsWorthAttention and lifeAdvice, for a second paid section
@@ -2191,10 +2298,23 @@ check('comprehensive sends more than standard',
 // $0.25 the budget is tight enough that the trim loop reaches follows too. The
 // per-source *cap* is still lifted far past standard's regardless of price —
 // that part of "comprehensive" does not depend on COST_CAP at all.
+//
+// The follow-list threshold has moved once since, and the reason is worth
+// recording rather than quietly re-tuning: the wellness section added about
+// 3,900 tokens of prompt and schema, and every token reserved for the fixed
+// prompt is a token the digest cannot spend. Comprehensive's ceiling went
+// from 235,223 to 221,573 characters — a 5.8% cut — and on this deliberately
+// oversized account that is enough to take follows from just over 2,000 to
+// just under 1,700. Real accounts are untouched: the heavy fixture is 159,508
+// characters and is bound by standard's per-source caps long before the
+// budget, which is why the digest-size line at the top of this run did not
+// move. The check still proves what it exists to prove — that the trim loop
+// *shrinks* the follow list rather than dropping it — so the threshold moved
+// with the budget instead of the check being deleted.
 check('comprehensive configures a far higher per-source cap on captions than standard',
   DEEP.captions > Digest.LIMITS.captions * 50, DEEP.captions + ' vs ' + Digest.LIMITS.captions);
-check('comprehensive still sends most of a 4,000-account follow list despite the tighter budget',
-  deep.following.length > 2000, deep.following.length + ' of 4000');
+check('comprehensive still sends a large slice of a 4,000-account follow list despite the tighter budget',
+  deep.following.length > 1500, deep.following.length + ' of 4000');
 check('comprehensive stays inside its own budget on an oversized account',
   deep.coverage.digestChars <= DEEP.totalChars,
   deep.coverage.digestChars + ' of ' + DEEP.totalChars);

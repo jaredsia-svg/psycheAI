@@ -106,6 +106,29 @@
     ['How it changed', 'trajectory'],
   ];
 
+  // The six wellness dimensions, in the order the reader meets them: label,
+  // then the key it reads from the wellness object.
+  //
+  // Two labels are narrower than the dimensions were first described as.
+  // "Physical health" became "Physical activity" and "Emotional processing
+  // and health" became "Emotional processing", because the export carries
+  // activity somebody chose to post about and words they chose to write, and
+  // carries no health data at all — a heading promising otherwise is a claim
+  // the section below it cannot keep. The schema field names in
+  // lib/prompts.js match these narrower labels for the same reason.
+  //
+  // Sleep and rhythm leads because it is the best-evidenced of the six: the
+  // hour-of-day and day-of-week histograms are complete rather than sampled.
+  // Physical activity sits late because it is the thinnest.
+  const WELLNESS_FACETS = [
+    ['Sleep and rhythm', 'sleepAndRhythm'],
+    ['Cognitive load', 'cognitiveLoad'],
+    ['Social connection', 'socialConnection'],
+    ['Emotional processing', 'emotionalProcessing'],
+    ['Physical activity', 'physicalActivity'],
+    ['Meaning', 'meaning'],
+  ];
+
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
   // PDF strokes these same paths and the QR label's canvas parses them with
   // Path2D, so the logo is one shape in four places rather than a drawing that
@@ -239,6 +262,29 @@
     holdBack: 'What could hold you back',
 
     activity: 'Your digital footprint',
+
+    // The wellness section. Every word the reader meets before the writing
+    // itself is doing work here, because this is the section most likely to
+    // be misread as something it is not: the sub-line says "behaviour" and
+    // "not a health assessment" before a single dimension is shown.
+    wellness: 'Mental wellness',
+    wellnessSub: 'Six dimensions read from how you actually use these accounts. This is a behavioural ' +
+      'read, not a health assessment — there is no score here, and there is not meant to be.',
+    wellnessOverall: 'Taken together',
+    wellnessSuggestions: 'What might actually help',
+    wellnessConfidence: 'Confidence: ',
+    // Static rather than part of what the model returns — the same choice, for
+    // the same reason, as bonusCaveat above. This is the "not an assessment,
+    // talk to a person" line for the section that sits closest to health in
+    // the whole app, so it is worded identically on every run rather than
+    // being left to a field the model could soften, shorten or forget. See
+    // the comment on the wellness schema in lib/prompts.js.
+    wellnessCaveat: 'This reads patterns in social-media behaviour — when you post, who you talk to, ' +
+      'what you write about. It is not a measurement of your mental health, not a screening tool and ' +
+      'not a professional opinion, and it cannot see your circumstances, your history or your reasons. ' +
+      'Nothing here is a diagnosis of anything. If something above lands heavier than a passing thought, ' +
+      'the person to talk to about it is a person — a GP or a qualified professional can actually assess ' +
+      'what this cannot.',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',
@@ -380,6 +426,6 @@
 
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, ENNEAGRAM_DESCRIPTIONS, LOVE_LANGUAGE_ICONS, CARD_ICONS,
-    ACTIVITY_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
+    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

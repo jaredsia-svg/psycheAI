@@ -895,6 +895,47 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    the three beside it, so it is an ordinary .facet now and needs no rules of
    its own. */
 
+/* ---------- mental wellness ---------- */
+
+/* Two columns on a laptop, one on a phone — the same shape as .facet-grid
+   above, which this sits directly beneath and reads as a continuation of. */
+.wellness-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 1rem 1.4rem; margin-bottom: 1.2rem;
+}
+.wellness-facet { border-top: 1px solid var(--line); padding-top: .7rem; }
+/* Same treatment as .facet-label above, deliberately as its own class rather
+   than by reusing that one: a check counts `.facet-label` across the whole
+   report to assert the behaviour grid is exactly four facets, so sharing the
+   class would make this section quietly break it. */
+.wellness-label {
+  font-size: .76rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.wellness-facet p { margin: .35rem 0; }
+.wellness-head { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .2rem; }
+.wellness-confidence { font-size: .8rem; color: var(--ink-soft); margin-top: .4rem; }
+
+/* Deliberately not a red/amber/green ramp. These are descriptions of a
+   pattern, not grades, and traffic lights would turn "under strain" into a
+   failure and "steady" into a pass — which is exactly the health-verdict
+   reading the whole section is built to avoid. "Not enough evidence" is
+   styled as the most neutral of the four rather than the worst, because on a
+   thin dimension it is the honest answer and should not look like a low
+   score. */
+.wellness-pill { border: 1px solid var(--line); background: var(--bg); }
+.wellness-steady { border-color: var(--accent); color: var(--accent); }
+.wellness-mixed { color: var(--ink-soft); }
+.wellness-under-strain { border-color: var(--warn); color: var(--warn); }
+.wellness-not-enough-evidence { color: var(--ink-soft); opacity: .75; font-style: italic; }
+
+/* Same treatment as .bonus-caveat, and the same reason: fixed app copy the
+   reader should meet with the writing rather than only in fine print they
+   have already scrolled past. */
+.wellness-caveat {
+  border-left: 3px solid var(--warn); padding: .1rem 0 .1rem .8rem; margin-top: 1.3rem;
+}
+
 /* The roast's cover — named .premium- rather than .bonus- from when a second
    paid section ("Supplementary analysis") shared this same paywall markup.
    That section is gone; the roast is the one caller left. Greyed and

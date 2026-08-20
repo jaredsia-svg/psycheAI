@@ -438,6 +438,63 @@
       '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
   }
 
+  // ---------- mental wellness ----------
+  //
+  // Free, in the main report, rendered from `report.wellness`. Six
+  // behavioural dimensions, a prose overall read and some suggestions.
+  //
+  // What this deliberately does not draw: a number. Every other scored thing
+  // in this report gets `bar()` and a 0-100, and this one gets a word from a
+  // four-value band instead — because a progress bar under "Emotional
+  // processing" would read as a measurement of something that was never
+  // measured, and the notation is most of what makes a claim look
+  // authoritative. There is no composite either: `overall` is a paragraph,
+  // not an average. See the comment on the wellness schema in
+  // lib/prompts.js.
+  //
+  // `not enough evidence` is styled as a neutral state rather than a low one
+  // for the same reason it exists in the enum at all: on a dimension like
+  // physical activity it is the honest and frequent answer, and a reader
+  // should not read "we could not tell" as "you scored badly".
+  function wellnessBand(band) {
+    const value = String(band || '');
+    return '<span class="pill wellness-pill wellness-' +
+      esc(value.replace(/\s+/g, '-').toLowerCase()) + '">' + esc(value) + '</span>';
+  }
+
+  function wellnessBlock(wellness) {
+    let html = '<div class="card section-card wellness-card">' +
+      sectionHead('🌱', esc(TEXT.wellness), esc(TEXT.wellnessSub));
+
+    html += '<div class="wellness-grid">';
+    for (const [label, key] of Copy.WELLNESS_FACETS) {
+      const facet = wellness[key];
+      if (!facet) continue;
+      // `.wellness-label` rather than reusing `.facet-label`: that class
+      // belongs to the behaviour grid above, and a check counts it across the
+      // whole of #profile-body to assert that section is exactly four facets.
+      // Sharing the class made this section silently break that check.
+      html += '<div class="wellness-facet">' +
+        '<div class="wellness-head"><span class="wellness-label">' + label + '</span>' +
+        wellnessBand(facet.band) + '</div>' +
+        '<p>' + esc(facet.reading) + '</p>' +
+        evidence(facet.evidence) +
+        '<p class="wellness-confidence">' + esc(TEXT.wellnessConfidence) + esc(facet.confidence) + '</p>' +
+        '</div>';
+    }
+    html += '</div>';
+
+    if (wellness.overall) {
+      html += '<div class="callout"><h3>' + esc(TEXT.wellnessOverall) + '</h3>' +
+        paragraphs(wellness.overall) + '</div>';
+    }
+    html += '<h3>' + esc(TEXT.wellnessSuggestions) + '</h3>' + points(wellness.suggestions);
+    // Fixed app copy, never read from the model — same rule as the roast's
+    // caveat, and the section with the most reason to carry it.
+    html += '<p class="fineprint wellness-caveat">' + esc(TEXT.wellnessCaveat) + '</p>';
+    return html + '</div>';
+  }
+
   // ---------- the roast, behind its $1.99 unlock ----------
   //
   // Used to run free, in the same call as everything else, behind a
@@ -1659,6 +1716,13 @@
       }
       html += '</div></div>';
     }
+
+    // Mental wellness, directly below the behaviour read that is its evidence
+    // base — the reader meets the rhythms and counts first, then what those
+    // rhythms might be worth their attention for. Guarded on the field so a
+    // report stored before this section existed still renders rather than
+    // throwing on a missing object.
+    if (report.wellness) html += wellnessBlock(report.wellness);
 
     // Below the behaviour section and above confidence, so the reader meets
     // every fair reading before the unkind one, and the confidence caveat
