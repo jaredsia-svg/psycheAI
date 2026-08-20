@@ -1077,13 +1077,13 @@
     });
   }
 
-  // Every run is Standard. The depth picker that used to sit here asked a
-  // question with one available answer — Comprehensive has never been on sale
-  // — so it cost a click and a decision to arrive back where the reader
-  // started. The comprehensive *machinery* is untouched in digest.js and still
-  // covered by the unit suite; only the UI that offered it is gone, and
-  // Digest.build still records which depth built a digest.
-  const DEPTH = 'standard';
+  // There is one kind of run. A depth picker used to sit here offering
+  // Standard and Comprehensive, which was a question with one available
+  // answer since Comprehensive never went on sale — so it cost a click and a
+  // decision to arrive back where the reader started. The picker went first;
+  // the second set of caps and the second budget followed it out of
+  // digest.js once it was clear an unreachable budget was a number everyone
+  // still had to reason about. `Digest.IMAGES` is the one image count.
 
   /** One togglable row: checked and enabled when there is something to send, disabled when there is not. */
   function reviewSwitch(id, count, onLabel, offLabel, detail) {
@@ -1487,13 +1487,13 @@
         // is cheap, and the reader has not yet said photos may be sent at all.
         // The slow part — decoding and downscaling — waits for that answer,
         // below, so declining costs nothing beyond this pick.
-        chosenImages = Images.select(signals, { count: Digest.DEPTHS[DEPTH].images });
+        chosenImages = Images.select(signals, { count: Digest.IMAGES });
 
         setProgress(80, 'Building your evidence summary…');
         await new Promise(resolve => setTimeout(resolve, 30));
         digest = Digest.build(signals, {
           includeMessages: true, includeImages: true,
-          imageCount: chosenImages.length, depth: DEPTH,
+          imageCount: chosenImages.length,
         });
 
         // Decode once at most, whoever asks first. The review's download

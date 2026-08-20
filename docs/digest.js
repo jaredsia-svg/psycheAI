@@ -54,16 +54,17 @@
 
   // ---------- how much to send ----------
   //
-  // Standard is the sampling above: the counts and histograms complete, the
-  // text a subset. On a heavy account it sends about 156,000 characters, which
-  // is 560 captions out of 4,000 — the recent half and the longest half, on
-  // the reasoning that a random sample of captions is mostly one-word ones.
+  // The caps above are the sampling: the counts and histograms complete, the
+  // text a subset. On a heavy account that sends about 160,000 characters,
+  // which is 560 captions out of 4,000 — the recent half and the longest
+  // half, on the reasoning that a random sample of captions is mostly
+  // one-word ones.
   //
-  // Comprehensive raises every per-source cap far past what any real account
-  // reaches, so the binding constraint becomes the character budget below
-  // rather than the caps. Its `totalChars` is not a guess: it is derived from
-  // a price ceiling, and the derivation is written out so it can be re-run
-  // when a price or a model changes.
+  // Those caps bind first in practice, and the character ceiling below is the
+  // backstop rather than the usual constraint: a heavy account plus both
+  // supplements still lands about 20,000 characters under it. The ceiling is
+  // not a guess — it is derived from a price, and the derivation is written
+  // out so it can be re-run when a price or a model changes.
   const PRICING = {
     // gemini-3.6-flash, the default model. Thinking is billed as output.
     inputPerToken: 1.50 / 1e6,
@@ -131,50 +132,29 @@
   }
 
   const COST_CAP = 0.25;
-  const COMPREHENSIVE_IMAGES = 20;
-  const STANDARD_IMAGES = 14;
 
-  // Both depths now derive their ceiling from the same price, differing only
-  // in how many images they reserve room for. Comprehensive already did this;
-  // standard was carrying a hand-typed number that quietly exceeded it.
-  LIMITS.totalChars = charBudget(COST_CAP, STANDARD_IMAGES);
+  // How many photographs a run reserves room for. One number, because there
+  // is one kind of run.
+  const IMAGES = 14;
 
-  const DEPTHS = {
-    standard: { images: STANDARD_IMAGES, limits: LIMITS },
-    comprehensive: {
-      images: COMPREHENSIVE_IMAGES,
-      limits: {
-        // Set past the largest real export rather than to a round number, so
-        // that what actually bounds the digest is the price, in one place,
-        // instead of ten caps that each have to be reasoned about separately.
-        captions: 100000,
-        comments: 100000,
-        messages: 100000,
-        following: 50000,
-        likedAuthors: 20000,
-        savedAuthors: 20000,
-        searches: 20000,
-        topics: 5000,
-        adInterests: 5000,
-        textChars: 1200,
-        youtubeChannels: 2000,
-        youtubeTitles: 3000,
-        youtubeSearches: 2000,
-        googleSearchTerms: 3000,
-        googleSearches: 3000,
-        chromeDomains: 2000,
-        geminiPrompts: 1000,
-        fbPosts: 3000,
-        fbComments: 3000,
-        fbFriends: 5000,
-        fbSearches: 2000,
-        fbMessages: 3000,
-        totalChars: charBudget(COST_CAP, COMPREHENSIVE_IMAGES),
-      },
-    },
-  };
-
-  const depthOf = name => DEPTHS[name] || DEPTHS.standard;
+  // One digest, one ceiling, derived from the price rather than typed.
+  //
+  // This used to be a `DEPTHS` map with `standard` and `comprehensive`
+  // entries — two sets of per-source caps and two `totalChars` values, chosen
+  // by a depth picker between the supplement offer and the review. The picker
+  // was removed (comprehensive had never gone on sale, so it was a question
+  // with one available answer), and for a while the second set of caps was
+  // kept on the reasoning that putting the feature on sale should mean adding
+  // a way to choose it rather than rebuilding it.
+  //
+  // That reasoning did not survive contact with the cost work: an unreachable
+  // second budget is a second number everyone has to reason about, and it was
+  // actively misleading — two budget checks fired against `comprehensive`
+  // during the wellness and career-coaching changes, describing headroom on a
+  // path no reader can reach while the real one had 28% to spare. So there is
+  // one budget now. Restoring a paid deeper tier means adding caps and a way
+  // to choose them, which was always the honest version of that promise.
+  LIMITS.totalChars = charBudget(COST_CAP, IMAGES);
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -326,10 +306,14 @@
   function build(signals, options) {
     const opts = options || {};
     const messages = signals.messages || {};
-    // Which set of caps this run uses. Standard keeps the sampling; the
-    // comprehensive set is bounded by a price rather than by per-source caps.
-    const depth = depthOf(opts.depth);
-    const LIMITS = depth.limits;
+    // `maxChars` exists for the trim-loop tests and nothing else: production
+    // passes nothing and gets the one derived ceiling. The loop only fires on
+    // a digest that exceeds its budget, and with the per-source caps binding
+    // first that never happens on a real export — so a test either lowers the
+    // ceiling or cannot exercise the loop at all. Lowering it is the honest
+    // half of that choice, since raising the caps would be re-inventing the
+    // depth concept that was just removed.
+    const maxChars = opts.maxChars || LIMITS.totalChars;
 
     // Counted once, read twice: the histogram itself and, below, how many
     // distinct terms there were to begin with. That second number is the point
@@ -405,12 +389,10 @@
           note: 'Attached images are a spread across the whole account history, not the latest few. ' +
             'They are downscaled stills; videos are never sent.',
         },
-        depth: opts.depth === 'comprehensive' ? 'comprehensive' : 'standard',
-        // The standard note tells the model it is reading a subset. On a
-        // comprehensive run that is usually untrue, and leaving it in place
-        // would have the model hedge a confidence figure it has no reason to
-        // hedge — so the note is written from what the numbers below actually
-        // say rather than from the setting that was chosen.
+        // Written from what the numbers below actually say rather than
+        // asserting "this is a subset": on an ordinary account nothing is
+        // sampled away, and a note claiming otherwise would have the model
+        // hedge a confidence figure it has no reason to hedge.
         samplingNote: 'The counts and histograms above are complete. "sampling" says how much of ' +
           'each text source you are seeing: where shown equals available you are reading ' +
           'everything that source had, and where it is lower you are reading a subset and should ' +
@@ -571,7 +553,7 @@
     const SUPPLEMENT_FLOOR = 10;
 
     let encoded = JSON.stringify(digest);
-    while (encoded.length > LIMITS.totalChars) {
+    while (encoded.length > maxChars) {
       let worst = null;
       let worstCost = 0;
       // Two passes, not one list: any supplement still above its floor is
@@ -745,7 +727,7 @@
   }
 
   root.PsycheDigest = {
-    build, LIMITS, DEPTHS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
+    build, LIMITS, IMAGES, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,

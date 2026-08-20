@@ -1872,7 +1872,6 @@ check('digest passes through Instagram\'s own topics', digest.instagramTopics.in
 check('digest ranks most-liked accounts', digest.mostLikedAccounts.length > 0 && digest.mostLikedAccounts[0].count > 0);
 check('digest tells the model how to read its own coverage numbers',
   /where shown equals available you are reading\s+everything/.test(digest.coverage.samplingNote));
-check('digest records which depth produced it', digest.coverage.depth === 'standard');
 check('digest omits DMs when the user opts out', digest.directMessages === undefined);
 check('the opt-out is recorded for the model to see', digest.coverage.directMessagesIncluded === false);
 check('digest stays inside its size budget',
@@ -2269,8 +2268,8 @@ check('a heavy account plus both supplements still fits the price ceiling',
 // Standard's ceiling used to be a hand-typed 600000, which is 49,516 chars
 // past what COST_CAP actually buys. Derived now, so the two cannot drift.
 check('standard\'s character ceiling never exceeds what its own cost cap buys',
-  Digest.LIMITS.totalChars <= Digest.charBudget(Digest.COST_CAP, Digest.DEPTHS.standard.images),
-  Digest.LIMITS.totalChars + ' vs ' + Digest.charBudget(Digest.COST_CAP, Digest.DEPTHS.standard.images));
+  Digest.LIMITS.totalChars <= Digest.charBudget(Digest.COST_CAP, Digest.IMAGES),
+  Digest.LIMITS.totalChars + ' vs ' + Digest.charBudget(Digest.COST_CAP, Digest.IMAGES));
 check('and it is no longer the old hardcoded number', Digest.LIMITS.totalChars !== 600000,
   String(Digest.LIMITS.totalChars));
 
@@ -2278,11 +2277,14 @@ check('and it is no longer the old hardcoded number', Digest.LIMITS.totalChars !
 // supplement-first pass a large Takeout would shave Instagram captions to make
 // room for a browsing histogram. Instagram is the primary evidence.
 //
-// Run at comprehensive depth deliberately: standard's per-source caps are small
-// enough that a built digest never reaches the ceiling, so the loop never fires
-// and a check written against standard would pass whatever the loop did.
-// Comprehensive is where the caps stop binding and the price binds instead —
-// which is exactly the case this ordering exists for.
+// Driven with an explicit `maxChars` rather than by feeding more data: the
+// per-source caps bind long before the real ceiling does — a heavy account
+// plus a maxed-out Takeout still lands about 20,000 characters under it — so
+// no amount of input makes the loop fire on the real budget. Lowering the
+// ceiling for the test is the only way to exercise the loop at all, and it is
+// the honest half of the choice: raising the caps instead would be rebuilding
+// the `comprehensive` depth that was just removed for being unreachable.
+const TRIM_BUDGET = 150000;
 const hugeGoogle = {
   ...google,
   videoTitles: Array.from({ length: 4000 }, (_, i) =>
@@ -2291,13 +2293,13 @@ const hugeGoogle = {
     'a search phrase long enough to matter for the budget and then some more words, number ' + i),
 };
 const deepAlone = Digest.build(heavySignals(),
-  { includeMessages: false, includeImages: true, imageCount: 20, depth: 'comprehensive' });
+  { includeMessages: false, includeImages: true, imageCount: 14, maxChars: TRIM_BUDGET });
 const crowded = Digest.build({ ...heavySignals(), supplements: { google: hugeGoogle } },
-  { includeMessages: false, includeImages: true, imageCount: 20, depth: 'comprehensive' });
+  { includeMessages: false, includeImages: true, imageCount: 14, maxChars: TRIM_BUDGET });
 
 // The trim loop must actually have run, or everything below is vacuous. The
 // direct evidence is that the supplement lists came out far under their own
-// comprehensive cap of 3,000 — nothing but the loop does that.
+// per-source caps — nothing but the loop does that.
 check('the trim loop really did fire, or the checks below prove nothing',
   crowded.google.videoTitleSample.length < 1000 &&
   crowded.google.googleSearchSample.length < 1000,
@@ -2320,9 +2322,9 @@ check('every supplement list is trimmed to its floor before Instagram is touched
 
 // Captions used to be checked for *no* loss at all, and that held while there
 // was headroom to hold it with. There is not any more: this fixture is
-// deliberately oversized, and Instagram alone now fills 98.8% of a
-// comprehensive budget that the wellness and career-coaching prompts took
-// about 19,000 characters out of. Once every supplement is at its floor, the
+// deliberately oversized and run against a deliberately lowered ceiling, so
+// Instagram alone very nearly fills it. Once every supplement is at its floor,
+// the
 // irreducible remainder — per-service counts, coverage rows, the floored lists
 // themselves — is still enough to cost one trim step.
 //
@@ -2337,8 +2339,8 @@ check('a huge supplement costs the primary export at most one trim step of capti
   crowded.coverage.sampling.captions.shown + ' vs ' + deepAlone.coverage.sampling.captions.shown +
   ' captions (floor ' + captionFloor + ')');
 check('the crowded digest still lands inside the budget',
-  crowded.coverage.digestChars <= Digest.DEPTHS.comprehensive.limits.totalChars,
-  crowded.coverage.digestChars + ' vs ' + Digest.DEPTHS.comprehensive.limits.totalChars);
+  crowded.coverage.digestChars <= TRIM_BUDGET,
+  crowded.coverage.digestChars + ' vs ' + TRIM_BUDGET);
 
 // ---------- supplementary omit functions ----------
 
@@ -2372,89 +2374,110 @@ check('a supplementary omit is safe on a digest that has no supplements at all',
     return bare.google === undefined && bare.facebook === undefined;
   })());
 
-// ---------- comprehensive depth ----------
+// ---------- the one budget, and the trim loop that backs it ----------
 //
-// The point of the second depth is that the price, not a row of per-source
-// caps, is what bounds it. So the checks are: it really does send everything
-// a normal account has, and it really does stop at the budget when an account
-// is large enough to blow through it.
+// There used to be two depths here — `standard` and a `comprehensive` that
+// lifted every per-source cap so the price became the only bound — and this
+// block tested the second one. The depth picker had already been removed, so
+// nothing a reader could click ever reached it, and an unreachable second
+// budget turned out to be worse than dead weight: two budget checks fired
+// against `comprehensive` during the wellness and career-coaching work,
+// reporting pressure on a path nobody can take while the real one had 28% of
+// its ceiling spare. The depths are gone; what these checks are for now is
+// the trim loop itself, which is the safety net that stops a future cap
+// change or a new source quietly buying a digest the cost cap does not cover.
 
-const deep = Digest.build(heavySignals(), { includeMessages: false, depth: 'comprehensive' });
-const DEEP = Digest.DEPTHS.comprehensive.limits;
+// The real ceiling and the real headroom, stated as a check so the "the caps
+// bind first" claim in digest.js cannot rot into a comment that used to be
+// true. This is also why every trim test below passes an explicit maxChars.
+check('the per-source caps bind well before the character ceiling does',
+  heavy.coverage.digestChars < Digest.LIMITS.totalChars * 0.8,
+  heavy.coverage.digestChars + ' of ' + Digest.LIMITS.totalChars);
+check('a heavy account plus a maxed-out supplement still fits the real budget', (() => {
+  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+  const full = Digest.build({ ...heavySignals(), supplements: { google: {
+    ...google,
+    videoTitles: many(4000, i => 'A long video title to fill the sample, number ' + i),
+    googleSearches: many(6000, i => 'a google search phrase of some length, number ' + i),
+  } } }, { includeMessages: false, includeImages: true, imageCount: Digest.IMAGES });
+  return full.coverage.digestChars <= Digest.LIMITS.totalChars;
+})());
 
-check('comprehensive records its own depth', deep.coverage.depth === 'comprehensive');
-check('comprehensive sends more than standard',
-  deep.coverage.digestChars > heavy.coverage.digestChars * 1.3,
-  deep.coverage.digestChars + ' vs ' + heavy.coverage.digestChars + ' chars');
-// This synthetic account is deliberately past what the cap can hold — 4,000
-// captions of ~150 characters is 600,000 on its own, well past DEEP.totalChars
-// — so comprehensive is bound by the price here rather than sending
-// everything. At the $0.50 cap this was true only of captions, the single
-// costliest list, and every other list (follows included) survived intact; at
-// $0.25 the budget is tight enough that the trim loop reaches follows too. The
-// per-source *cap* is still lifted far past standard's regardless of price —
-// that part of "comprehensive" does not depend on COST_CAP at all.
-//
-// The follow-list threshold has moved once since, and the reason is worth
-// recording rather than quietly re-tuning: the wellness section added about
-// 3,900 tokens of prompt and schema, and every token reserved for the fixed
-// prompt is a token the digest cannot spend. Comprehensive's ceiling went
-// from 235,223 to 221,573 characters — a 5.8% cut — and on this deliberately
-// oversized account that is enough to take follows from just over 2,000 to
-// just under 1,700. Real accounts are untouched: the heavy fixture is 159,508
-// characters and is bound by standard's per-source caps long before the
-// budget, which is why the digest-size line at the top of this run did not
-// move. The check still proves what it exists to prove — that the trim loop
-// *shrinks* the follow list rather than dropping it — so the threshold moved
-// with the budget instead of the check being deleted.
-check('comprehensive configures a far higher per-source cap on captions than standard',
-  DEEP.captions > Digest.LIMITS.captions * 50, DEEP.captions + ' vs ' + Digest.LIMITS.captions);
-check('comprehensive still sends a large slice of a 4,000-account follow list despite the tighter budget',
-  deep.following.length > 1500, deep.following.length + ' of 4000');
-check('comprehensive stays inside its own budget on an oversized account',
-  deep.coverage.digestChars <= DEEP.totalChars,
-  deep.coverage.digestChars + ' of ' + DEEP.totalChars);
-check('comprehensive reports the fraction honestly when it cannot send it all',
-  deep.coverage.sampling.captions.shown === deep.samples.captions.length &&
-  deep.coverage.sampling.captions.available === 4000);
+// The loop only runs on a digest that exceeds its ceiling, which the caps
+// make unreachable on real input — so these lower the ceiling instead. That
+// is the whole reason `maxChars` exists on build().
+{
+  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
+  const squeezed = Digest.build(heavySignals(),
+    { includeMessages: false, maxChars: TRIM_BUDGET });
+  check('a digest over its ceiling is trimmed back inside it',
+    squeezed.coverage.digestChars <= TRIM_BUDGET,
+    squeezed.coverage.digestChars + ' of ' + TRIM_BUDGET);
+  check('trimming shrinks the oversized list rather than dropping it',
+    squeezed.samples.captions.length > 0 &&
+    squeezed.samples.captions.length < heavy.samples.captions.length,
+    squeezed.samples.captions.length + ' vs ' + heavy.samples.captions.length + ' captions');
+  check('coverage numbers are restated after trimming, not left stale',
+    squeezed.coverage.sampling.captions.shown === squeezed.samples.captions.length);
+  // Untouched at the real ceiling — the same signals, no maxChars — so the
+  // check above is provably about the loop rather than about the caps.
+  check('and the same account is untrimmed at the real ceiling',
+    heavy.coverage.digestChars <= Digest.LIMITS.totalChars &&
+    heavy.samples.captions.length === Digest.LIMITS.captions,
+    heavy.samples.captions.length + ' of ' + Digest.LIMITS.captions);
 
-// An account of ordinary size is the case the feature is really for, and there
-// it should send literally everything and say so.
+  // The loop has to reach whichever list is actually large. It used to touch
+  // captions and comments only, which was safe while every other cap was in
+  // the low hundreds and is not safe now that they are not.
+  const monstrous = Digest.build({
+    ...heavySignals(),
+    captions: many(200, i => 'Short caption ' + i),
+    comments: many(200, i => 'Short comment ' + i),
+    following: many(120000, i => ({ name: 'an_account_with_a_fairly_long_handle_' + i, ts: 0 })),
+  }, { includeMessages: false, maxChars: 60000 });
+
+  check('the trimming reaches the list that is actually oversized',
+    monstrous.following.length < Digest.LIMITS.following,
+    monstrous.following.length + ' follows kept');
+  check('trimming does not gut the short lists to spare the long one',
+    monstrous.samples.captions.length === 200 && monstrous.samples.comments.length === 200,
+    monstrous.samples.captions.length + ' captions, ' + monstrous.samples.comments.length + ' comments');
+}
+
+// An ordinary account is under every cap, so nothing is sampled away and the
+// coverage should say so rather than reporting a fraction of itself.
 {
   const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
   const ordinary = Digest.build({
     ...heavySignals(),
-    captions: many(700, i => 'Caption number ' + i + '. A sentence about the day.'),
-    comments: many(600, i => 'Comment number ' + i + ', a reply to somebody.'),
+    captions: many(300, i => 'Caption number ' + i + '. A sentence about the day.'),
+    comments: many(200, i => 'Comment number ' + i + ', a reply to somebody.'),
     following: many(900, i => ({ name: 'account_number_' + i, ts: 0 })),
-  }, { includeMessages: false, depth: 'comprehensive' });
+  }, { includeMessages: false });
 
-  check('an ordinary account gets every caption under comprehensive',
-    ordinary.samples.captions.length === 700, ordinary.samples.captions.length + ' of 700');
-  check('an ordinary account gets every comment and follow',
-    ordinary.samples.comments.length === 600 && ordinary.following.length === 900);
-  check('and comprehensive then reports full coverage, not a fraction',
+  check('an ordinary account gets every caption, comment and follow',
+    ordinary.samples.captions.length === 300 && ordinary.samples.comments.length === 200 &&
+    ordinary.following.length === 900,
+    ordinary.samples.captions.length + '/' + ordinary.samples.comments.length + '/' +
+    ordinary.following.length);
+  check('and coverage then reports the whole of it, not a fraction',
     ordinary.coverage.sampling.captions.shown === ordinary.coverage.sampling.captions.available &&
     ordinary.coverage.sampling.following.shown === ordinary.coverage.sampling.following.available);
-  check('the same account under standard would have been sampled instead',
-    Digest.build({ ...heavySignals(),
-      captions: many(700, i => 'Caption number ' + i + '. A sentence about the day.'),
-    }, { includeMessages: false }).samples.captions.length === Digest.LIMITS.captions);
 }
 
 // The budget is the cost ceiling expressed in characters, so the arithmetic
 // that produces it is worth pinning down rather than trusting.
 {
   const CHARS_PER_TOKEN = 3.5;
-  const images = Digest.DEPTHS.comprehensive.images;
+  const images = Digest.IMAGES;
   // Reads the module's own constant rather than repeating the literal. The
   // repeated `8600` here is why this check sat green through the drift below:
   // it was holding the arithmetic against the same stale number the
   // implementation used, so the two agreed with each other and neither agreed
   // with the prompt actually being sent.
-  const worstCost = ((DEEP.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS +
+  const worstCost = ((Digest.LIMITS.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS +
     images * 258) * (1.50 / 1e6) + Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6);
-  check('a full comprehensive digest plus maximum output stays under the cap',
+  check('a full digest plus maximum output stays under the cap',
     worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
   // digest.js cannot require() lib/gemini.js — it runs in the browser — so its
   // copy of the real generation cap is a duplicated literal, same as
@@ -2478,43 +2501,14 @@ check('comprehensive reports the fraction honestly when it cannot send it all',
     Digest.FIXED_INPUT_TOKENS + ' reserved vs ' + fixedActual + ' real');
   check('the budget is not needlessly conservative either',
     worstCost > Digest.COST_CAP - 0.01, '$' + worstCost.toFixed(4));
-  check('a tighter cap buys a smaller digest', Digest.charBudget(0.25, 20) < Digest.charBudget(0.50, 20));
-  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10, 20) === 0);
+  check('a tighter cap buys a smaller digest', Digest.charBudget(0.25, 14) < Digest.charBudget(0.50, 14));
+  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10, 14) === 0);
   check('images are charged against the same budget',
-    Digest.charBudget(0.50, 0) > Digest.charBudget(0.50, 20));
+    Digest.charBudget(0.50, 0) > Digest.charBudget(0.50, 14));
 }
 
-// An export big enough to blow the budget has to be trimmed back to it, and
-// the trimming has to be able to reach whichever list is actually large. The
-// loop used to touch captions and comments only, which was safe while every
-// other cap was in the low hundreds and is not safe now that they are not:
-// this account's follow list alone would overrun the budget.
-{
-  const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
-  const monstrous = Digest.build({
-    ...heavySignals(),
-    captions: many(200, i => 'Short caption ' + i),
-    comments: many(200, i => 'Short comment ' + i),
-    following: many(120000, i => ({ name: 'an_account_with_a_fairly_long_handle_' + i, ts: 0 })),
-  }, { includeMessages: false, depth: 'comprehensive' });
-
-  check('an export that overruns the budget is trimmed back inside it',
-    monstrous.coverage.digestChars <= DEEP.totalChars,
-    monstrous.coverage.digestChars + ' of ' + DEEP.totalChars);
-  check('the trimming reaches the list that is actually oversized',
-    monstrous.following.length < 120000, monstrous.following.length + ' follows kept');
-  check('trimming does not gut the short lists to spare the long one',
-    monstrous.samples.captions.length === 200 && monstrous.samples.comments.length === 200,
-    monstrous.samples.captions.length + ' captions, ' + monstrous.samples.comments.length + ' comments');
-  check('coverage numbers are restated after trimming, not left stale',
-    monstrous.coverage.sampling.following.shown === monstrous.following.length &&
-    monstrous.coverage.sampling.captions.shown === monstrous.samples.captions.length);
-}
-
-check('an unknown depth falls back to standard rather than throwing',
-  Digest.build(signals, { includeMessages: false, depth: 'nonsense' }).coverage.depth === 'standard');
-check('standard still sends 14 images and comprehensive 20',
-  Digest.DEPTHS.standard.images === 14 && Digest.DEPTHS.comprehensive.images === 20);
+check('there is one image count, and it is the one the app asks for',
+  Digest.IMAGES === 14, String(Digest.IMAGES));
 check('the prompt tells the model to use the sampling coverage',
   /coverage\.sampling/.test(prompts.PROFILE_SYSTEM));
 

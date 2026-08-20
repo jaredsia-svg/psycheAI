@@ -1194,7 +1194,7 @@ try {
   // The machinery still records a depth even with nothing left to pick, and
   // standard is what every run must now be.
   check('every run is standard now that there is nothing to choose',
-    await page.evaluate(() => window.PsycheDigest.DEPTHS.standard.images === 14));
+    await page.evaluate(() => window.PsycheDigest.IMAGES === 14));
 
   // ---- the pre-send review ----
   // The one dialog in this app whose entire content is generated fresh on
@@ -1278,7 +1278,7 @@ try {
   check('the photos switch states the real number selected for standard depth',
     await page.evaluate(() => {
       const said = document.querySelector('#review-images ~ span .muted').textContent;
-      const sends = window.PsycheDigest.DEPTHS.standard.images;
+      const sends = window.PsycheDigest.IMAGES;
       return new RegExp('^' + sends + ' of your own photos').test(said);
     }),
     await page.locator('#review-images ~ span .muted').innerText());
@@ -1426,8 +1426,6 @@ try {
       const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
       return Boolean(digest.directMessages) && digest.coverage.images.included && digest.coverage.images.attached > 0;
     })));
-  check('choosing standard records standard in the digest',
-    (await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')).coverage.depth)) === 'standard');
   check('profile is titled with the name from the export',
     (await page.locator('#profile-title').innerText()).includes('Aleç'),
     await page.locator('#profile-title').innerText());

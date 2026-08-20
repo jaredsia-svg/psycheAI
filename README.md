@@ -641,7 +641,7 @@ progress label itself, reported from `docs/instagram.js` as each batch of files 
 say it once. `runAnalysis` still replaces the working screen's title and note with the actual
 send-in-progress copy the instant a request is about to go out, so the claim is never left on screen
 past the point where it would become a lie. Because the label moves fast against the mock and the
-depth dialog opens once reading finishes, the check records every value the label takes rather than
+supplement dialog opens once reading finishes, the check records every value the label takes rather than
 trying to catch it mid-flight, then confirms the claim appeared at least once during reading.
 
 ### Recognising the archive at all
@@ -766,16 +766,14 @@ Google Takeout, when added — every one of these is a cap on an **aggregate**, 
 Facebook, when added: 200 posts, 150 comments, 300 friends sampled evenly, 80 repeated searches,
 and 200 of the reader's own Messenger messages — never the other side, exactly as Instagram DMs work.
 
-(Those are the Standard caps; see below for Comprehensive.)
-
 **Two things about the budget that supplements exposed.**
 
-The character ceiling is now *derived* for both depths. Standard carried a hand-typed
-`totalChars: 600000`, which is 49,516 characters past what `COST_CAP` actually buys — a digest that
-filled it would have cost **$0.5212 against a $0.50 cap**. That was dormant while Instagram was the
-only source, because a heavy account reaches 156k and never approached it; supplements make it
-reachable. It is `charBudget(COST_CAP, 14)` now, the way Comprehensive already was, and a check
-holds the two together.
+The character ceiling is *derived*, not typed. It used to be a hand-written `totalChars: 600000`,
+which was 49,516 characters past what `COST_CAP` actually buys — a digest that filled it would have
+cost **$0.5212 against a $0.50 cap**. That was dormant while Instagram was the only source, because
+a heavy account reaches 156k and never approached it; supplements make it reachable. It is
+`charBudget(COST_CAP, IMAGES)` now, so the price is the thing being set and the character count
+falls out of it, and a check holds the two together.
 
 The trim loop shrinks whichever list is largest, which is source-blind — so a big Takeout would have
 shaved Instagram captions to make room for a browsing histogram. Instagram is the primary evidence
@@ -783,16 +781,16 @@ and the thing the report is written from; a supplement is an addition, so **addi
 first, and further** (floor 10 rather than 20) before any Instagram list is touched. Fault-injected
 by blocking supplement trimming entirely: captions collapse from 299 to 20.
 
-**The guarantee on captions is a bounded one now, and the change is worth being precise about.** It
-used to be that a supplement cost the primary export *no* captions at all, and that held while there
-was budget headroom to hold it with. The wellness and career-coaching prompts took about 19,000
-characters out of the comprehensive ceiling, and the oversized synthetic fixture that tests this now
-fills 98.8% of what remains from Instagram alone — so once every supplement list is at its floor, the
-irreducible remainder (per-service counts, coverage rows, the floored lists themselves) still costs
-one trim step. What is checked is therefore the property the system can actually deliver, which is
-also the more precise one: **every supplement list is driven to its floor before a single caption is
-touched** — 4,000 video titles and 6,000 searches come out at ten apiece — and captions may then lose
-at most one 25% step. A second step means the ordering has stopped working, and that still fails.
+**The guarantee on captions is a bounded one, and the change is worth being precise about.** It used
+to be that a supplement cost the primary export *no* captions at all, and that held while the test
+fixture had headroom to hold it with. It does not now: the fixture is deliberately oversized and run
+against a deliberately lowered ceiling, so Instagram alone very nearly fills it, and once every
+supplement list is at its floor the irreducible remainder (per-service counts, coverage rows, the
+floored lists themselves) still costs one trim step. What is checked is therefore the property the
+system can actually deliver, which is also the more precise one: **every supplement list is driven to
+its floor before a single caption is touched** — 4,000 video titles and 6,000 searches come out at ten
+apiece — and captions may then lose at most one 25% step. A second step means the ordering has
+stopped working, and that still fails.
 
 Worth keeping in proportion, though: **output dominates the bill.** Worst-case generation alone is
 $0.2458 of a heavy run's $0.33 ceiling, against $0.085 for the entire digest. Both supplements
@@ -820,33 +818,46 @@ silently. Fault-injected in both directions — floor ignored, and floor applied
 each direction fails its own check.
 
 A small account sends about 6KB; a heavy one with thousands of posts lands around **150KB**, well
-inside the 600KB ceiling and a small fraction of either provider's 1M-token context. The digest
+inside the ~222KB ceiling and a small fraction of either provider's 1M-token context. The digest
 carries a `coverage.sampling` field saying what fraction of each source the model is seeing, and the
 prompt tells it to factor that into its confidence score rather than treating the sample as the
 whole picture.
 
-### Standard and Comprehensive
+### One budget, not two
 
-Those caps are the **Standard** depth, and Standard is what every run now uses.
+There used to be two depths. **Standard** was the caps above; **Comprehensive** lifted every
+per-source cap far past what any real export reaches, so that the thing bounding the digest was a
+price rather than ten separately-reasoned caps, and sent 20 photographs instead of 14. A depth
+picker sat between the supplement offer and the review, asking which to run.
 
-**Comprehensive** lifts every per-source cap far past what any real export reaches, so that the
-thing bounding the digest is a **price**, in one place, rather than ten caps that each have to be
-reasoned about separately. It also sends 20 photographs instead of 14.
-
-**The depth picker is gone.** It used to sit between the supplement offer and the review, asking
-which depth to run — but Comprehensive has never been on sale, so it was a question with one
+**The picker went first.** Comprehensive had never been on sale, so it was a question with one
 available answer, costing a click and a decision to arrive exactly where the reader started. A
 disabled row naming a future price is worth showing on a page somebody chose to read; it is not
-worth an interruption in a flow. `app.js` holds a single `DEPTH = 'standard'` now, and
-`askDepth`, `#depth-dialog` and the synthetic-click guard that protected the disabled row all went
-with it.
+worth an interruption in a flow. `askDepth`, `#depth-dialog` and the synthetic-click guard that
+protected the disabled row all went with it.
 
-The comprehensive **machinery is untouched** — `DEPTHS.comprehensive`, the lifted caps, the derived
-budget and `coverage.depth` are all still in `digest.js` and still work. What changed is that no
-click can reach them, so the coverage moved with the reachability: the browser suite no longer
-drives it (there is no dialog to drive), and `tools/selftest.mjs` carries it — depth recorded, caps
-lifted, budget respected on an oversized account, coverage reported honestly. Putting the feature on
-sale means adding a way to choose it, not rebuilding it.
+**The second budget followed, and the reason is worth recording.** It was kept for a while on the
+reasoning that putting the feature on sale should mean adding a way to choose it rather than
+rebuilding it. That did not survive contact with the cost work. An unreachable second budget is a
+second number everyone has to reason about, and it was actively misleading: during the wellness and
+career-coaching changes, two budget checks fired against `comprehensive` and reported pressure on a
+ceiling no reader can reach, while the real one had 28% of itself spare. Both were being read as
+warnings about the shipping path. They were not about it at all.
+
+So `DEPTHS`, `depthOf()`, the lifted caps and `coverage.depth` are gone. `digest.js` holds one
+`LIMITS`, one `IMAGES = 14`, and `LIMITS.totalChars = charBudget(COST_CAP, IMAGES)` — **221,741
+characters**, derived from the price rather than typed. Restoring a paid deeper tier means adding
+caps and a way to choose them, which was always the honest version of that promise.
+
+The one thing that had to survive the removal is **trim-loop coverage**, since the loop was the only
+part of `comprehensive` doing real work: it is the safety net that stops a future cap change or a new
+source quietly buying a digest the cost cap does not cover. On real input the per-source caps bind
+first and the loop never fires — a heavy account is 156k against a 221k ceiling — so it cannot be
+driven by feeding it more data. `build()` therefore takes an optional `maxChars`, which exists for
+those tests and nothing else: production passes nothing and gets the derived ceiling, and the tests
+lower the ceiling instead of inflating the account. A check pins the headroom that makes this
+necessary (`digestChars < totalChars * 0.8`), so the "the caps bind first" claim cannot rot into a
+comment that used to be true.
 
 The budget is derived rather than picked, in `charBudget()`:
 
@@ -923,29 +934,26 @@ being hit produce identical reports, so `usage.cachedTokens` reports what was ac
 cache, and `tools/livetest.mjs` runs the analysis twice and prints whether the second call hit — the
 only place the arrangement can be confirmed against the real API rather than against a stub.
 
-For most accounts comprehensive sends **everything**, and `coverage.sampling` then reports shown
-equal to available. For a very heavy account it does not: 4,000 captions at ~150 characters is
-600,000 on its own, past the budget, so the digest is trimmed back to fit and reports the fraction
-honestly. The feature is "as much as $0.25 buys", which is usually all of it and sometimes is not —
-on the self-test's heavy fixture that is 299 captions against standard's 560, since the trim loop
-targets whichever list is costing the most and a tighter cap now reaches follows and comments too,
-not just captions.
+For most accounts the per-source caps are never reached, and `coverage.sampling` then reports shown
+equal to available. What the caps are protecting against is the tail: 4,000 captions at ~150
+characters is 600,000 on its own, nearly three times the whole budget. The promise is "as much as
+$0.25 buys", which is usually all of it and sometimes is not, and the digest says which.
 
 Trimming is what actually enforces the ceiling, so it repeatedly shrinks whichever sample list is
 currently costing the most. It used to touch captions and comments only, which was safe while every
-other cap was in the low hundreds and stopped being safe the moment comprehensive lifted them: an
-account with a very long follow list would have sailed past the budget with nothing the loop was
-willing to touch. The self-test pins this down with a 120,000-follow export — against the old loop
-it produced a **2.3-million-character** digest, four times the budget and about $1.35 a run, while
-gutting captions to 20 to spare a list of account names.
+other cap was in the low hundreds and would stop being safe the moment any of them was raised: an
+account with a very long follow list would sail past the budget with nothing the loop was willing to
+touch. The self-test pins this down with a 120,000-follow export — against the old loop it produced a
+**2.3-million-character** digest, four times the budget and about $1.35 a run, while gutting captions
+to 20 to spare a list of account names.
 
-The `samplingNote` is written from what the coverage numbers say rather than from the setting that
-was chosen, so a comprehensive run that did send everything does not tell the model it is reading a
-subset and hedge a confidence figure it has no reason to hedge.
+The `samplingNote` is written from what the coverage numbers say rather than from what the caps
+would permit, so a run that did send everything does not tell the model it is reading a subset and
+hedge a confidence figure it has no reason to hedge.
 
 ### Reviewing what actually gets sent
 
-Once depth is chosen, and before anything reaches the model, a second dialog shows the reader the
+Once the digest is built, and before anything reaches the model, a second dialog shows the reader the
 real digest that was just built — real counts, not a description of what the app generally does —
 as seven checkboxes, one per category: captions & comments, activity & timing, accounts followed and
 engaged with, Instagram's own inferred topics, searches, direct messages, and photos. All seven are
@@ -1456,11 +1464,10 @@ the PDF too, since that is the copy that gets kept and forwarded.
 Cost: about **+$0.012** on a free report — roughly 3,900 extra tokens of prompt and schema, plus the
 output to write it. The career coaching section added about 1,300 more on top (net of "where you
 would thrive" coming out), so the fixed reserve now stands at 19,700 tokens against 14,300 before
-either section existed. Every token reserved for the prompt is one the digest cannot spend, which
-cost the comprehensive ceiling about 19,000 characters in total. Real accounts are unaffected —
-standard's per-source caps bind long before the ceiling does — but two budget checks moved with it
-rather than being deleted; see the note on the caption floor under
-["Supplementary sources"](#supplementary-sources-google-takeout-and-facebook).
+either section existed. Every token reserved for the prompt is one the digest cannot spend, which cost
+the character ceiling about 19,000 characters in total. Real accounts are unaffected — the per-source
+caps bind long before the ceiling does — but chasing where those 19,000 characters showed up is what
+uncovered the second, unreachable budget and led to [collapsing it](#one-budget-not-two).
 
 ### Attachment style
 
@@ -1887,8 +1894,8 @@ That leaves one loose end worth naming: `psycheai_digest` in `localStorage` exis
 re-run button had something to re-send, and nothing reads it now. It is still written, and **Delete
 everything** still clears it. It is not a leak — it never leaves the device, and it is the reduced
 summary rather than the archive — but it is a copy of somebody's evidence digest kept for no
-purpose, and it should come out. It has not been removed here because four UI checks read it as
-their observation point for what was actually sent (the chosen depth, the image coverage, the
+purpose, and it should come out. It has not been removed here because three UI checks read it as
+their observation point for what was actually sent (the digest size, the image coverage, the
 opt-out), so removing it is a test change as much as a code one. The "analysed by" line used to sit inside the report body, right after
 confidence — it now has its own fixed element after the buttons, since it is a record of the run
 rather than a finding and stays true regardless of what else gets added above it. It is unchanged in
@@ -2009,7 +2016,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 643 checks: synthesises a real ZIP export and runs
+npm test           # 637 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -2018,7 +2025,7 @@ npm test           # 643 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 789 checks: drives the real UI in Chromium against a
+npm run test:ui    # 788 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
