@@ -370,8 +370,6 @@
     // sell the rest would be a lie about what somebody already has.
     premiumTierTitle: 'Four more sections',
     premiumTierBlurb: 'These four sections are a deeper analysis using Claude\'s latest model Opus:',
-    premiumTierNote: 'One payment, on the device you read it on. No account, no subscription, and ' +
-      'nothing recurring.',
     // The free half's own line, shown once above the four free branches — the
     // parallel statement to premiumTierBlurb above, so a reader sees what each
     // half costs and which model writes it before choosing to upload anything.

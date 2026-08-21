@@ -652,6 +652,11 @@ try {
     await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent.trim() ===
       window.PsycheCopy.TEXT.premiumTierBlurb),
     await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent));
+  // The "one payment, nothing recurring" line used to close this block; it
+  // was removed as redundant with the price already shown above it, in both
+  // slots the block is mounted in, since they share the same markup.
+  check('the block no longer closes with the removed "nothing recurring" note',
+    await page.evaluate(() => document.querySelectorAll('.premium-tier-note').length === 0));
 
   // ---- the free half's own label ----
   //

@@ -522,6 +522,13 @@ are a deeper analysis using Claude's latest model Opus." Pairing a price with a 
 actually distinguishes the paid tier from the free one on the page — a reader can see not just what
 they get, but who writes it, before deciding whether that is worth the difference.
 
+**The block used to close with a line about payment terms** — "One payment, on the device you read
+it on. No account, no subscription, and nothing recurring" — under the price and the section list.
+It was cut as redundant with the price already shown two lines above it, in both places the block
+mounts (the welcome page's insight diagram and the FAQ's "What you can expect?"), since the two share
+one function and cannot say different things. A check asserts no `.premium-tier-note` element
+survives in either slot; fault-injecting the paragraph back in confirmed it fails.
+
 **The free half earned the same statement rather than being left implicit.** Right above the insight
 diagram, a small **"Free"** badge and a line — *"These four sections come with every report, analysed
 by Gemini"* — makes the parallel explicit: what does this cost, and which model writes it, is now
@@ -2339,7 +2346,7 @@ npm test           # 656 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 827 checks: drives the real UI in Chromium against a
+npm run test:ui    # 828 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

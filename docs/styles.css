@@ -355,10 +355,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .premium-tier-text { display: flex; flex-direction: column; min-width: 0; }
 .premium-tier-text strong { font-size: .92rem; line-height: 1.45; }
 .premium-tier-text span { font-size: .84rem; color: var(--ink-soft); line-height: 1.4; }
-.premium-tier-note {
-  margin: .85rem 0 0; padding-top: .7rem; border-top: 1px solid var(--line);
-  font-size: .82rem; color: var(--ink-soft);
-}
 
 /* The sample dialog. The head is pinned and only the report scrolls, so the
    cross is on screen the whole way down — a reader four sections deep should

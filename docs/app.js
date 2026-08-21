@@ -779,7 +779,6 @@
       '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></div>' +
       '<p class="premium-tier-blurb">' + esc(TEXT.premiumTierBlurb) + '</p>' +
       '<ul class="premium-tier-list">' + items + '</ul>' +
-      '<p class="premium-tier-note">' + esc(TEXT.premiumTierNote) + '</p>' +
       '</div>';
   }
 
