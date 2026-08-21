@@ -12,11 +12,9 @@
 //
 // PSYCHEAI_LIVETEST=premium runs only the paid call — the cheap way to check
 // that the paid schema still compiles, which is the failure this file exists
-// to catch early. The paid call always uses Gemini regardless of which
-// provider above is configured for the free report, so this needs
-// GEMINI_API_KEY specifically:
+// to catch early:
 //
-//   GEMINI_API_KEY=... PSYCHEAI_LIVETEST=premium node tools/livetest.mjs
+//   ANTHROPIC_API_KEY=... PSYCHEAI_LIVETEST=premium node tools/livetest.mjs
 //
 // `free` runs only the profile and compatibility calls; the default runs all
 // three.
@@ -263,26 +261,24 @@ if (runFree) {
 
 // ---------- the paid call ----------
 //
-// The gap this closes: the paid analysis is fixed to one provider regardless
-// of which one the free report uses, and until now it was the only call with
-// no live coverage at all. It broke in production while that provider was
-// Claude — the schema's compiled sampling grammar was refused with a 400 on
-// every paid run, after the reader had been charged — and nothing in either
-// mocked suite could have seen it, because neither talks to the real API.
+// The gap this closes: the paid analysis is the only call that always runs on
+// Claude, and until now it was the only one with no live coverage at all. It
+// broke in production the day it moved there — the schema's compiled sampling
+// grammar was refused with a 400 on every paid run, after the reader had been
+// charged — and nothing in either mocked suite could have seen it, because
+// neither talks to the API that compiles the grammar.
 //
-// `constrained` is the check that matters most on a provider that reports it.
-// lib/claude.js falls back to an unconstrained call when its compiled grammar
-// is refused, which rescues the reader but silently drops the API's guarantee
-// that the shape is right, so a green run that fell back is not the same as a
-// green run and is reported either way rather than inferred from the absence
-// of an error. lib/gemini.js — the paid call's current provider — has no such
-// fallback and never sets this field; see the guard below.
+// `constrained` is the check that matters most here. lib/claude.js falls back
+// to an unconstrained call when the grammar is refused, which rescues the
+// reader but silently drops the API's guarantee that the shape is right. A
+// green run that fell back is not the same as a green run, so it is reported
+// either way rather than inferred from the absence of an error.
 let premium = null;
 let paidWasConstrained = null;
 if (runPaid) {
   const paidEngine = server.premiumEngine();
   if (!paidEngine) {
-    console.log('\nPremium call skipped — no GEMINI_API_KEY set (the paid call always uses Gemini).');
+    console.log('\nPremium call skipped — no ANTHROPIC_API_KEY set (the paid call always uses Claude).');
   } else {
     console.log('\nSending the same digest to the paid call (' + paidEngine.MODEL + ')…');
     const paidStarted = Date.now();
@@ -295,24 +291,11 @@ if (runPaid) {
     // The headline result. `false` means the schema was refused and the prompt
     // carried it instead — the report is still usable, but the paid schema has
     // grown past what the API will compile and wants deduplicating again.
-    //
-    // Only asserted when the provider actually reports it: this ladder is
-    // lib/claude.js's own fallback for a compiled-grammar refusal, which is
-    // where `constrained` comes from, and lib/gemini.js has no equivalent —
-    // its `responseJsonSchema` either compiles or the call fails outright, so
-    // it never sets the field at all. `result.constrained !== false` would
-    // read `undefined` as "compiled" and pass on Gemini regardless of what
-    // actually happened, which is a check that cannot fail rather than one
-    // that is currently green — so it is skipped rather than asserted for a
-    // provider that does not report it, matching what the print line below
-    // already says.
-    if (result.constrained !== undefined) {
-      check('the paid schema compiled — the API enforced it rather than falling back',
-        result.constrained !== false,
-        result.constrained === false
-          ? 'FELL BACK: the compiled grammar was refused, so nothing enforced the shape'
-          : 'enforced');
-    }
+    check('the paid schema compiled — the API enforced it rather than falling back',
+      result.constrained !== false,
+      result.constrained === false
+        ? 'FELL BACK: the compiled grammar was refused, so nothing enforced the shape'
+        : 'enforced');
 
     check('every paid section came back',
       Object.keys(prompts.PREMIUM_SCHEMA.properties).every(key => key in premium),

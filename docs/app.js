@@ -2693,7 +2693,7 @@
       revealPaid(result.data);
       // After revealPaid, not before: if injecting the sections themselves
       // ever threw, the footer would otherwise have already started claiming
-      // the provider wrote sections the page does not show.
+      // Claude wrote sections the page does not show.
       if (state.profile) renderAnalysedBy(state.profile);
       dialog.close();
     } catch (error) {

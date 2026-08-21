@@ -379,7 +379,7 @@
     // because the free report is a whole report and calling it partial to
     // sell the rest would be a lie about what somebody already has.
     premiumTierTitle: 'Four more sections',
-    premiumTierBlurb: 'These four sections are a deeper analysis using Gemini:',
+    premiumTierBlurb: 'These four sections are a deeper analysis using Claude\'s Sonnet model:',
     // The free half's own line, shown once above the four free branches — the
     // parallel statement to premiumTierBlurb above, so a reader sees what each
     // half costs and which model writes it before choosing to upload anything.
