@@ -2592,6 +2592,90 @@ try {
         /uncharitable reading/i.test(card.innerText);
     }));
 
+  // ---- losing the tab mid-generation ----
+  //
+  // The paid call takes minutes, and everything about it used to live in one
+  // page's memory: close the tab while it ran and the payment was real, the
+  // analysis was gone, and the cover went back to asking for S$1.99. The
+  // server has always allowed a handful of generations per PaymentIntent
+  // (lib/premiumLedger.js) for exactly this; the browser had no way to know it
+  // was entitled to one.
+  //
+  // Simulated by keeping the receipt and dropping the analysis — which is
+  // precisely the state a closed tab leaves behind, and cheaper to arrange
+  // than actually killing the page mid-call.
+  check('paying writes a receipt that survives the page',
+    await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('psycheai_unlock') || 'null');
+      return Boolean(saved) && typeof saved.paymentIntentId === 'string' &&
+        /^pi_mock_/.test(saved.paymentIntentId);
+    }),
+    await page.evaluate(() => localStorage.getItem('psycheai_unlock')));
+  // The receipt holds the authorisation and nothing else. Storing the report
+  // here as well would put a second copy of somebody's roast on their disk for
+  // no reason, and this is the check that stops that happening by accident.
+  check('and the receipt carries the authorisation only, never the writing',
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('psycheai_unlock') || '';
+      return !/uncharitable|unsoftened|wellness|attachment/i.test(raw) && raw.length < 200;
+    }),
+    await page.evaluate(() => (localStorage.getItem('psycheai_unlock') || '').slice(0, 120)));
+
+  await page.evaluate(() => {
+    const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
+    delete profile.premiumAnalysis;
+    localStorage.setItem('psycheai_profile', JSON.stringify(profile));
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+
+  check('a reader who paid but lost the analysis is not shown a price again',
+    await page.evaluate(() => {
+      const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
+      return buttons.length === 4 && buttons.every(b => !/1\.99/.test(b.textContent));
+    }),
+    (await page.locator('#profile-body .premium-unlock').allInnerTexts()).join(' | '));
+  check('the covers offer to fetch what was already bought',
+    (await page.locator('#profile-body .premium-unlock').allInnerTexts())
+      .every(text => /paid for/i.test(text)),
+    (await page.locator('#profile-body .premium-unlock').allInnerTexts())[0]);
+
+  // The one that actually protects money: opening the dialog in this state
+  // must not ask Stripe for a second PaymentIntent. Counted against the real
+  // request, not inferred from the UI.
+  let intentRequests = 0;
+  const countIntents = request => {
+    if (request.url().includes('create-payment-intent')) intentRequests++;
+  };
+  page.on('request', countIntents);
+  await clickClear(page, '#profile-body .bonus-card .premium-unlock');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  await page.waitForTimeout(400);
+  check('resuming does not create a second PaymentIntent',
+    intentRequests === 0, intentRequests + ' create-payment-intent requests');
+  check('and the dialog leads with the fact that they already paid',
+    /already paid/i.test(await page.locator('#premium-dialog-title').innerText()),
+    await page.locator('#premium-dialog-title').innerText());
+  check('no price and no wallet button are offered on the resume path',
+    !/1\.99/.test(await page.locator('#premium-dialog').innerText()) &&
+    !(await page.locator('#premium-mock-pay').isVisible()),
+    await page.locator('#premium-dialog').innerText());
+
+  await page.click('#premium-retry');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 20000 });
+  page.off('request', countIntents);
+  check('fetching again recovers all four sections without a second charge',
+    await page.evaluate(() => {
+      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      return keys.every(key => {
+        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
+        return card && card.querySelector('.premium-cover').hidden &&
+          card.querySelector('.premium-body').innerHTML.length > 0;
+      });
+    }) && intentRequests === 0,
+    intentRequests + ' create-payment-intent requests during recovery');
+
+
   // ---- the promo-code bypass, against the running server directly ----
   //
   // Exercised with Node's own fetch rather than through the browser — see
@@ -5436,9 +5520,24 @@ try {
 
   // ---- deleting everything puts the links away again ----
   await page.setViewportSize({ width: 1100, height: 900 });
+  // The unlock receipt is proof of purchase, so it has to go with everything
+  // else — left behind, it would offer to fetch a paid analysis for a profile
+  // the reader asked to be rid of. Asserted present first, or the check below
+  // would pass on a key that was never there.
+  // Seeded rather than carried down from the unlock above: the suite clears
+  // storage many times between here and there for other scenarios, so the real
+  // receipt is long gone. What is under test is that `clearAll()` covers this
+  // key at all, which a seeded one proves exactly as well.
+  await page.evaluate(() =>
+    localStorage.setItem('psycheai_unlock', JSON.stringify({ paymentIntentId: 'pi_mock_probe' })));
+  check('there is a receipt to delete before Delete everything runs',
+    (await page.evaluate(() => localStorage.getItem('psycheai_unlock'))) !== null);
   page.once('dialog', dialog => dialog.accept());
   await page.click('#delete-profile');
   await page.waitForSelector('#view-welcome:not([hidden])');
+  check('deleting everything takes the unlock receipt with it',
+    (await page.evaluate(() => localStorage.getItem('psycheai_unlock'))) === null,
+    await page.evaluate(() => localStorage.getItem('psycheai_unlock')));
   check('deleting the profile returns you to the upload page',
     await page.locator('#view-welcome').isVisible());
   check('deleting the profile hides the links again',

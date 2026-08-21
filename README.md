@@ -238,6 +238,63 @@ instructions to draw on a photo when one gave it something worth saying moved ou
 free report's photograph handling; `summary` is now the only field in either call that reasons about
 images at all.
 
+#### Waiting for it, and not losing it
+
+The paid call is slow. Four sections written from a ~45,000-token digest with adaptive thinking on
+measured **past five minutes** of wall clock — and unlike the free report, the reader is watching that
+having already paid, which is the worst place in the app to make somebody wait.
+
+**Effort is the lever, and it is now configurable.** `high` is the API's own default and what the free
+report still uses; the paid call runs at `medium`. Thinking tokens are most of that time and most of
+the output bill, so it cuts both. `PSYCHEAI_PREMIUM_EFFORT` puts it back (or takes it lower);
+`PSYCHEAI_EFFORT` is the free report's own. An unrecognised level throws at boot rather than reaching
+the API as a 400 on a call somebody has already paid for.
+
+Three bigger levers exist and are deliberately *not* taken by default, because each costs something
+the reader or the operator would notice: **fast mode** (`speed: 'fast'`, Opus 5 only) is up to 2.5×
+the output rate at $10/$50 per MTok instead of $5/$25 — it roughly doubles the paid call's cost, which
+against ~US$1.05 net is most of the margin; **Sonnet 5** is faster and about 40% cheaper, at a real
+quality cost on the section with the tightest hard limits in the app; and **splitting the one call
+into two parallel ones** — the three considered sections, and the roast — would make wall clock
+`max(a, b)` instead of one long generation, and halve each compiled grammar as a side effect, at the
+price of sending the digest twice (about +$0.22 on a heavy Opus run) and doubling the failure surface
+on a route that handles money.
+
+**The dialog now says so.** It reads "this usually takes a few minutes, and can pass five. Keep this
+tab open — if you do lose it, you will not be charged again", beside the live seconds counter that was
+already there. A `beforeunload` guard asks before the tab closes mid-call; browsers have ignored
+custom wording there since about 2016, so it only decides *whether* to ask.
+
+**And losing the tab no longer loses the purchase.** This is the part that was actually broken: every
+trace of a paid run lived in one page's memory, so closing the tab at minute four meant the payment
+was real, the analysis was gone, and the cover went back to asking for S$1.99. The server has always
+allowed a handful of generations per PaymentIntent (`lib/premiumLedger.js`, `MAX_USES = 5`) for
+exactly this — the browser simply had no way to know it was entitled to one.
+
+It does now. A **receipt** is written to `psycheai_unlock` the moment payment clears and *before* the
+analysis is asked for — written on success it would arrive exactly when it is no longer needed. On
+the next visit the covers read **"Get the sections you paid for"** instead of a price, and the dialog
+leads with "You have already paid" and returns before `create-payment-intent` is ever reached. That
+last part is the one that protects money: asking Stripe for a second PaymentIntent there is how a
+reader ends up charged twice for one unlock, and a check counts the real requests rather than
+inferring it from the UI.
+
+The receipt holds **the authorisation and nothing else** — a PaymentIntent id or a promo code, both
+re-verified server-side on every use. Not the report: that lives in `psycheai_profile` with the rest
+of it, and a second copy of somebody's roast on their disk buys nothing. A check asserts the stored
+blob contains none of the writing.
+
+**A server-side cache of the finished analysis would have been faster, and is deliberately not what
+this does.** It would survive a closed tab with no regeneration at all — but this app's whole shape is
+that the server keeps no reader's data, and holding generated reports there to cover a lost tab trades
+that promise for a convenience the ledger already covers. The cost of the choice is that resuming
+re-runs the model call. That cost falls on whoever runs the server, which is the right person to carry
+it.
+
+Fault-injected both ways: writing the receipt *after* the call instead of before reproduces the
+original symptom exactly — a reader who paid, shown "Unlock — S$1.99" — and letting the resume path
+fall through to `create-payment-intent` fails the double-charge check.
+
 #### The compiled grammar, and the 400 it returned
 
 **This broke in production the day the paid call moved to Claude, and it is worth recording why.**
@@ -2190,7 +2247,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 652 checks: synthesises a real ZIP export and runs
+npm test           # 656 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -2199,7 +2256,7 @@ npm test           # 652 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 805 checks: drives the real UI in Chromium against a
+npm run test:ui    # 815 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

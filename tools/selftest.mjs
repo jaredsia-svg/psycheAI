@@ -2880,6 +2880,38 @@ check('the schema requires evidence on strengths and frictions',
     prompts.COMPATIBILITY_MODES.platonic.dimensions.every(d => blocks[0].text.includes(d)));
 }
 
+// ---------- how hard the paid call thinks ----------
+//
+// The paid call measured past five minutes of wall clock at `high` effort —
+// four sections, a ~45,000-token digest, adaptive thinking — and the reader is
+// watching that having already paid. It runs at `medium` now. Read in a fresh
+// process per case, since both are module-level constants resolved at require
+// time, the same way GEMINI_MODEL and the promo code are.
+{
+  const effortFor = env => JSON.parse(execFileSync(process.execPath,
+    ['-e', 'const c = require("' + join(root, 'lib', 'claude.js') + '"); ' +
+      'process.stdout.write(JSON.stringify({ free: c.EFFORT, paid: c.PREMIUM_EFFORT }));'],
+    { env: { PATH: process.env.PATH, ...env } }).toString());
+
+  const byDefault = effortFor({});
+  check('the paid call thinks less hard than the free one, because the reader is waiting on it',
+    byDefault.paid === 'medium' && byDefault.free === 'high', JSON.stringify(byDefault));
+  const raised = effortFor({ PSYCHEAI_PREMIUM_EFFORT: 'xhigh' });
+  check('and that is one env var to put back',
+    raised.paid === 'xhigh' && raised.free === 'high', JSON.stringify(raised));
+  check('the two are set independently',
+    effortFor({ PSYCHEAI_EFFORT: 'low' }).paid === 'medium');
+  // A typo here would otherwise reach the API as a 400 on a call somebody has
+  // already paid for, which is the worst place to discover it.
+  let rejected = false;
+  try {
+    effortFor({ PSYCHEAI_PREMIUM_EFFORT: 'maximum' });
+  } catch (error) {
+    rejected = /must be one of/.test((error.stderr || '').toString());
+  }
+  check('an effort level that is not a real one is refused at boot, not at the API', rejected);
+}
+
 // ---------- provider retry behaviour ----------
 //
 // Runs in its own process against fake SDKs (tools/fixtures/retry-behaviour.cjs),

@@ -404,7 +404,17 @@
     // also shows a live seconds count beside it (see #premium-progress) for
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
-    premiumGenerating: 'Generating your analysis…',
+    premiumGenerating: 'Writing your four sections… this usually takes a few minutes, and can pass ' +
+      'five. Keep this tab open — if you do lose it, you will not be charged again.',
+    // The three states of coming back to an unlock that never arrived. Not one
+    // string, because "you already paid" is the part that has to land first
+    // and a reader skimming a dialog reads the title.
+    premiumResumeLabel: 'Get the sections you paid for',
+    premiumResumeTitle: 'You have already paid',
+    premiumResumeBlurb: 'Your payment went through but the analysis did not reach this device — the ' +
+      'tab closed, the connection dropped, or the device slept while it was being written. Fetching ' +
+      'it again costs nothing.',
+    premiumResumeAction: 'Fetch my analysis',
     premiumDialogTitle: 'Unlock premium sections',
     premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
       'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +

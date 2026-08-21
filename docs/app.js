@@ -24,6 +24,13 @@
     profile: 'psycheai_profile',
     digest: 'psycheai_digest',
     history: 'psycheai_history',
+    // Written the moment a payment clears and before the analysis is asked
+    // for, so a reader who closes the tab, loses signal or runs out of battery
+    // mid-generation comes back to "fetch what you paid for" rather than to a
+    // price. It holds the authorisation, never the report: see the note on
+    // `unlockReceipt` below. Listed here so `clearAll()` covers it — Delete
+    // everything has to take the receipt with the report.
+    unlock: 'psycheai_unlock',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -650,6 +657,48 @@
     return unlocked;
   }
 
+  /**
+   * The reader's proof that they already paid, kept on their device.
+   *
+   * The paid call takes minutes, and until now everything about it lived in
+   * one page's memory: close the tab while it ran and the payment was real,
+   * the analysis was gone, and the cover was back to asking for S$1.99. The
+   * server has always allowed a handful of generations per PaymentIntent
+   * (lib/premiumLedger.js) for exactly this, but the browser had no way to
+   * know it was entitled to one.
+   *
+   * What is stored is the authorisation and nothing else — a PaymentIntent id
+   * or a promo code, both of which the server re-verifies on every use. Not
+   * the report: the report belongs in `psycheai_profile` with the rest of it,
+   * and duplicating it here would be a second copy of somebody's roast on
+   * their disk for no reason.
+   *
+   * Deliberately *not* a server-side cache of the finished analysis, which
+   * would be the faster answer. This app's whole shape is that the server
+   * keeps no reader's data; holding generated reports there to survive a
+   * closed tab would trade that promise for a convenience the ledger already
+   * covers. The cost is that resuming re-runs the model call. That cost falls
+   * on whoever runs the server, which is the right person to carry it.
+   */
+  function unlockReceipt() {
+    const saved = store.read(KEYS.unlock, null);
+    if (!saved || typeof saved !== 'object') return null;
+    if (typeof saved.paymentIntentId === 'string' && saved.paymentIntentId) {
+      return { paymentIntentId: saved.paymentIntentId };
+    }
+    if (typeof saved.promoCode === 'string' && saved.promoCode) return { promoCode: saved.promoCode };
+    return null;
+  }
+
+  function rememberUnlock(auth) {
+    store.write(KEYS.unlock, { ...auth, at: Date.now() });
+  }
+
+  /** True once there is something to fetch but nothing fetched yet. */
+  function hasUnfetchedUnlock() {
+    return Boolean(unlockReceipt()) && !Object.keys(paidAnalysis()).length;
+  }
+
   function paidAnalysis() {
     return unlockedSections(state.profile);
   }
@@ -670,7 +719,13 @@
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '">' +
-      esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel) + '</button></div>' +
+      // A reader who already paid is never shown the price again. The receipt
+      // is the difference between "buy this" and "collect what you bought",
+      // and showing S$1.99 to somebody mid-resume reads as being charged
+      // twice — which is the single worst thing this dialog could imply.
+      (hasUnfetchedUnlock()
+        ? esc(TEXT.premiumResumeLabel)
+        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel)) + '</button></div>' +
       '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
       (data ? section.body(data) : '') + '</div></div>';
   }
@@ -2499,6 +2554,27 @@
     tick();
     progressTimer = setInterval(tick, 1000);
   }
+  /**
+   * Warns before the tab closes while a paid call is in flight. The browser
+   * shows its own generic wording — a custom message has been ignored since
+   * about 2016 — so this only decides *whether* to ask, not what it says.
+   *
+   * Worth the interruption precisely because this call is slow: closing at
+   * minute four is the difference between reading what you bought and coming
+   * back to fetch it again. The receipt makes that recoverable rather than
+   * lost, so this is a nudge, not the safety net.
+   */
+  let unloadGuard = null;
+  function guardUnload(on) {
+    if (on && !unloadGuard) {
+      unloadGuard = event => { event.preventDefault(); event.returnValue = ''; };
+      window.addEventListener('beforeunload', unloadGuard);
+    } else if (!on && unloadGuard) {
+      window.removeEventListener('beforeunload', unloadGuard);
+      unloadGuard = null;
+    }
+  }
+
   function stopProgress() {
     if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
     $('#premium-progress').hidden = true;
@@ -2528,8 +2604,13 @@
     $('#premium-retry').hidden = true;
     $('#premium-promo-input').disabled = true;
     $('#premium-promo-apply').disabled = true;
+    // Before the call, not after it. The whole point is to survive the tab
+    // closing *during* the minutes this takes, so a receipt written on success
+    // would be written exactly when it is no longer needed.
+    rememberUnlock(auth);
     premiumStatus(TEXT.premiumGenerating);
     startProgress();
+    guardUnload(true);
     try {
       const result = await LLM.analysePremium(state.digest, auth);
       if (state.profile) {
@@ -2540,10 +2621,8 @@
         store.write(KEYS.profile, state.profile);
       }
       revealPaid(result.data);
-      stopProgress();
       dialog.close();
     } catch (error) {
-      stopProgress();
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
       $('#premium-promo-input').disabled = false;
       $('#premium-promo-apply').disabled = false;
@@ -2551,6 +2630,14 @@
       retry.textContent = TEXT.premiumRetry;
       retry.hidden = false;
       retry.onclick = () => runPremiumAnalysis(auth, dialog);
+    } finally {
+      // In `finally` rather than once per branch: a throw inside revealPaid
+      // would otherwise leave the ticking counter running and the page
+      // refusing to close, which is a worse failure than the one that caused
+      // it. Teardown belongs on every exit, including the ones not written
+      // down yet.
+      stopProgress();
+      guardUnload(false);
     }
   }
 
@@ -2639,6 +2726,22 @@
     // focus() overrides that: the dialog itself takes focus, and the keyboard
     // only appears once the reader actually taps the promo input.
     dialog.focus();
+
+    // Already paid, and the analysis never arrived — because the tab closed
+    // mid-generation, the device slept, or the call failed. Fetching is all
+    // that is left to do, so this returns before `create-payment-intent` is
+    // ever reached: asking Stripe for a second PaymentIntent here is how a
+    // reader ends up charged twice for one unlock.
+    const receipt = unlockReceipt();
+    if (receipt && !Object.keys(paidAnalysis()).length) {
+      $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
+      $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
+      const resume = $('#premium-retry');
+      resume.textContent = TEXT.premiumResumeAction;
+      resume.hidden = false;
+      resume.onclick = () => runPremiumAnalysis(receipt, dialog);
+      return;
+    }
 
     button.disabled = true;
     try {
