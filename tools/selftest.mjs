@@ -293,7 +293,7 @@ check('no key reports not-ready with a hint',
 check('GEMINI_MODEL overrides the default model',
   selections.customModel.model === 'gemini-3.1-pro-preview', selections.customModel.model);
 
-// The premium analysis is a fixed choice — always Gemini — deliberately
+// The premium analysis is a fixed choice — always Claude — deliberately
 // decoupled from provider.active, so this is exercised the same way as
 // provider selection above: real env combos in a fresh process, since the
 // decision is read from module-level constants at require time. server.js
@@ -336,6 +336,35 @@ check('mock mode carries premium too, the same way it carries the main provider'
   premiumSelections.mock.name === 'mock');
 check('mock mode wins over a real ANTHROPIC_API_KEY for premium, same as it does for the main provider',
   premiumSelections.mockPlusClaude.name === 'mock');
+
+// ---------- the keep-alive timeouts the reverse proxy assumes ----------
+//
+// Node closes an idle keep-alive socket after 5s by default; the proxy in
+// front of this server holds connections open longer than that to reuse them,
+// and the mismatch surfaces as intermittent resets rather than as anything
+// that names itself. Pinned here because it is exactly the kind of two-line
+// config that reads as inert and gets deleted — the defaults it falls back to
+// are silent, not loud.
+async function timeoutsFor(env) {
+  const out = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'server.js') + '"); ' +
+      'process.stdout.write(JSON.stringify({ keepAlive: s.server.keepAliveTimeout, ' +
+      'headers: s.server.headersTimeout }));'],
+    { env: { PATH: process.env.PATH, ...env } });
+  return JSON.parse(out.toString());
+}
+
+const timeouts = await timeoutsFor({});
+check('idle keep-alive sockets outlive the proxy\'s own reuse window, not Node\'s 5-second default',
+  timeouts.keepAlive === 120000, JSON.stringify(timeouts));
+// The ordering is the part worth pinning rather than the arithmetic: inverted,
+// the header timer expires while keep-alive still considers the socket healthy.
+check('and the header timeout stays above it, so the two never expire out of order',
+  timeouts.headers > timeouts.keepAlive, JSON.stringify(timeouts));
+check('both move together when the keep-alive window is overridden',
+  JSON.stringify(await timeoutsFor({ PSYCHEAI_KEEPALIVE_MS: '30000' })) ===
+  JSON.stringify({ keepAlive: 30000, headers: 35000 }),
+  JSON.stringify(await timeoutsFor({ PSYCHEAI_KEEPALIVE_MS: '30000' })));
 
 // The promo-code bypass — server.js's isValidPromoCode — checked the same
 // way: a fresh process per env combo, since PSYCHEAI_PROMO_CODE is read into

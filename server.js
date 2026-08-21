@@ -39,7 +39,7 @@ const PORT = Number(process.env.PORT) || 3000;
 // rather than fabricating a fake PaymentIntent for them to flow through: a
 // promo redemption never touches lib/stripe.js or lib/premiumLedger.js at
 // all, so it works even on a deployment with no Stripe key configured, as
-// long as the premium (Gemini) engine itself is set up. Overridable so a real
+// long as the premium (Claude) engine itself is set up. Overridable so a real
 // deployment is not stuck with a code that shipped in this repo's history.
 const PROMO_CODE = process.env.PSYCHEAI_PROMO_CODE || 'jialatsia';
 function isValidPromoCode(code) {
@@ -365,6 +365,27 @@ const server = http.createServer((request, response) => {
   serveStatic(route, response);
 });
 
+// Node closes an idle keep-alive socket after 5 seconds by default, which is
+// shorter than the reverse proxy in front of this server assumes when it holds
+// connections open to reuse them. Render's own troubleshooting docs name that
+// mismatch as the cause of intermittent timeouts and "Connection reset by
+// peer" on Node services specifically, and recommend raising both of these.
+//
+// headersTimeout must stay *above* keepAliveTimeout: they run as one sequence
+// per socket, and inverting them leaves the header timer expiring while the
+// keep-alive timer still considers the socket healthy — an ambiguous state
+// that closes sockets mid-handshake rather than idle. The gap is deliberate,
+// not decorative.
+//
+// This does not govern how long a response may take to produce. That timer
+// (`requestTimeout`, 5 minutes by default) measures receiving the *request*
+// and stops once the body is in, so the paid call's minutes of generation
+// afterwards are not on any of these clocks. What this fixes is the socket
+// being reused between requests, which is where the resets actually came from.
+const KEEP_ALIVE_MS = Number(process.env.PSYCHEAI_KEEPALIVE_MS) || 120000;
+server.keepAliveTimeout = KEEP_ALIVE_MS;
+server.headersTimeout = KEEP_ALIVE_MS + 5000;
+
 // Guarded so tools/selftest.mjs can require() this file to reach
 // premiumEngine() directly — the fastest, most deterministic way to prove
 // which provider premium actually resolves to under a given env, with no
@@ -379,4 +400,7 @@ if (require.main === module) {
   });
 }
 
-module.exports = { premiumEngine, isValidPromoCode };
+// `server` is exported unlistened — requiring this file never binds a port
+// (see the require.main guard above), so a test can read the timeouts off it
+// without a round trip or a socket left open behind the check.
+module.exports = { premiumEngine, isValidPromoCode, server };

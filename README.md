@@ -319,6 +319,21 @@ compiled grammar as a side effect, at the price of sending the digest twice (abo
 run at Sonnet's input rate, down from +$0.22 when this call ran on Opus) and doubling the failure
 surface on a route that handles money.
 
+**The socket underneath it needed its own fix, unrelated to how long the call takes.** Node closes an
+idle keep-alive socket after **5 seconds** by default. The reverse proxy in front of this server holds
+connections open longer than that to reuse them, and Render's own troubleshooting docs name that exact
+mismatch as the cause of intermittent timeouts and "Connection reset by peer" on Node services.
+`server.js` now sets `keepAliveTimeout` to 120s (`PSYCHEAI_KEEPALIVE_MS`) and `headersTimeout` five
+seconds above it — the ordering matters, since inverted, the header timer expires while keep-alive
+still considers the socket healthy. Three checks pin it, because a two-line config like this reads as
+inert and the defaults it falls back to are silent rather than loud.
+
+Worth being precise about what this does *not* fix: it governs sockets **between** requests, not a
+single response that takes minutes to produce. Node's `requestTimeout` (5 minutes, default) measures
+receiving the *request* and stops once the body is in, so the paid call's generation time afterwards
+is not on any of these clocks. If a reader still sees "Could not reach the PsycheAI server" mid-wait,
+this was not the cause and the next suspect is the client, not the socket — see the mobile note below.
+
 **The dialog now says so.** It reads "this usually takes a few minutes, and can pass five. Keep this
 tab open — if you do lose it, you will not be charged again", beside the live seconds counter that was
 already there. A `beforeunload` guard asks before the tab closes mid-call; browsers have ignored
@@ -2413,7 +2428,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 658 checks: synthesises a real ZIP export and runs
+npm test           # 661 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
