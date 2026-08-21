@@ -2229,28 +2229,42 @@ try {
     }));
   // The badge is a label for what the section is, not a second title — it
   // has to be a small pill beside the card's own title, not text that reads
-  // as part of the sentence.
-  check('the roast card reads "Let us roast you", with a "Bonus Section" badge beside it',
+  // as part of the sentence. Shared across all four paid sections rather than
+  // specific to the roast, which is what "Premium" says and "Bonus Section"
+  // did not: the wellness read is not a bonus, it is one of the four things
+  // the reader paid for.
+  check('the roast card reads "Let us roast you", with a "Premium" badge beside it',
     await page.evaluate(() => {
       const h2 = document.querySelector('#profile-body .bonus-card .card-head h2');
       const badge = h2 && h2.querySelector('.mode-badge');
-      return Boolean(badge) && badge.textContent.trim() === 'Bonus Section' &&
-        h2.textContent.replace(/\s+/g, ' ').trim() === 'Let us roast you Bonus Section';
+      return Boolean(badge) && badge.textContent.trim() === 'Premium' &&
+        h2.textContent.replace(/\s+/g, ' ').trim() === 'Let us roast you Premium';
     }),
     await page.evaluate(() =>
       (document.querySelector('#profile-body .bonus-card .card-head h2') || {}).innerHTML));
-  // Two words in a pill this narrow have room to break between themselves —
-  // "BONUS" over "SECTION" — on a phone-width title line that is already
-  // fighting the heading text for space. The badge as a whole may still drop
-  // to its own line; what it may not do is split internally. An inline
-  // element that wraps reports one ClientRect per visual line, so more than
-  // one means the two words broke apart rather than moving together.
+  // The other three moved behind the same paywall and carry the same label —
+  // checked as a set rather than one at a time, so a future paid section
+  // missing the badge fails here rather than needing its own copy of this
+  // check written in.
+  check('every paid section carries the same "Premium" badge, not just the roast',
+    await page.evaluate(() => {
+      const cardClasses = ['wellness-card', 'attachment-card', 'career-card', 'bonus-card'];
+      return cardClasses.every(cls => {
+        const badge = document.querySelector('#profile-body .' + cls + ' .card-head h2 .mode-badge');
+        return Boolean(badge) && badge.textContent.trim() === 'Premium';
+      });
+    }));
+  // A pill this narrow has room to break "Premium" mid-word on a phone-width
+  // title line that is already fighting the heading text for space. The
+  // badge as a whole may still drop to its own line; what it may not do is
+  // split internally. An inline element that wraps reports one ClientRect per
+  // visual line, so more than one means the word broke apart.
   await page.setViewportSize({ width: 375, height: 800 });
   const badgeLineFragments = await page.evaluate(() =>
     document.querySelector('#profile-body .bonus-card .card-head h2 .mode-badge')
       .getClientRects().length);
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('the badge never breaks its own two words across two lines, even at phone width',
+  check('the badge never breaks its own word across two lines, even at phone width',
     badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
 
   check('the roast cover reads as switched off — dashed border, striped background',
@@ -2481,8 +2495,14 @@ try {
     careerCard.horizons.join(' | '));
   check('the two career sections are visibly different things',
     await page.evaluate(() => {
-      const titles = [...document.querySelectorAll('#profile-body .card-head h2')]
-        .map(h => h.textContent.trim());
+      // "Career assessment" carries the "Premium" badge inside the same <h2>
+      // now, so this checks the title text with the badge stripped rather
+      // than an exact match against the whole heading.
+      const titles = [...document.querySelectorAll('#profile-body .card-head h2')].map(h => {
+        const copy = h.cloneNode(true);
+        copy.querySelectorAll('.mode-badge').forEach(badge => badge.remove());
+        return copy.textContent.trim();
+      });
       return titles.includes('At work') && titles.includes('Career assessment');
     }));
 

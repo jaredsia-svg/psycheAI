@@ -90,6 +90,11 @@ server bills once. That is also why the roast's register is called out explicitl
 — three of the four sections are written in the free report's careful voice and the fourth is
 deliberately not, and one call writing both has to be told where the line is.
 
+All four carry the same small **"Premium"** badge beside their title, on the page and on the sample —
+one label for "this is one of the things you paid for", rather than a badge worded per-section that
+would suggest four different offers. `PAID_SECTIONS` in `docs/app.js` applies it uniformly rather than
+each entry supplying its own text, so a fifth paid section gets the badge for free.
+
 ```bash
 export STRIPE_SECRET_KEY=sk_...        # server-side only — creates and verifies PaymentIntents
 export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
@@ -1678,7 +1683,8 @@ Everything above it is written to be fair. This one is a roast — accurate with
 least charitable reading the evidence still supports, and the advice a friend gives when they have
 stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
 meets every fair section first and the confidence caveat still gets the last word over all of it. A
-small "Bonus Section" badge sits beside the title — a label for what the section is, spliced onto the
+small "Premium" badge sits beside the title — the same badge every paid section carries (see
+["The S$1.99 unlock"](#the-s199-unlock-four-sections-behind-one-paywall)), spliced onto the
 already-escaped title text rather than a second heading competing with the one next to it.
 
 **It used to run free, in the same call as the rest of the report — it does not any more.** `harsh`
@@ -1778,7 +1784,8 @@ read from `meta` rather than off the report object on purpose: a paid section pu
 
 Both directions are checked and both were fault-injected. With the roast unlocked it is held to the
 same parity and ordering rules as every free section — the page/PDF walk no longer exempts it, it
-just strips the `Bonus Section` badge from the heading before comparing — and its heading, both
+just strips the `Premium` badge from the heading before comparing (the PDF has no badge on any
+section) — and its heading, both
 subheadings, the caveat and a phrase from the writing itself all have to be in the file, since a
 renderer could lay down the headings and drop the prose. The same report built with nothing unlocked
 must contain none of it, while still containing everything else. Injecting "never unlock" fails the
@@ -2101,7 +2108,7 @@ npm test           # 642 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 797 checks: drives the real UI in Chromium against a
+npm run test:ui    # 798 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

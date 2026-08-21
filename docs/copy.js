@@ -354,7 +354,10 @@
     // Sits beside the title as a small badge, the same way "Coming soon"
     // does on the comprehensive depth option — a label for what this section
     // is, not a second title competing with the one it sits next to.
-    bonusBadge: 'Bonus Section',
+    // Shared by all four paid sections, not just this one — see
+    // `PAID_SECTIONS` in docs/app.js. A label for what the section is,
+    // matching the one already used for "Coming soon" on the depth option.
+    premiumBadge: 'Premium',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
     bonusCoverBlurb: 'One S$1.99 unlock opens this and the three sections above it — no account, no ' +

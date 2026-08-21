@@ -622,7 +622,7 @@
     },
     {
       key: 'bonus', icon: '🕳️', cardClass: 'bonus-card',
-      title: () => TEXT.bonus, sub: () => TEXT.bonusSub, badge: () => TEXT.bonusBadge,
+      title: () => TEXT.bonus, sub: () => TEXT.bonusSub,
       coverTitle: () => TEXT.bonusCoverTitle, coverBlurb: () => TEXT.bonusCoverBlurb,
       body: bonusBodyHtml,
     },
@@ -654,15 +654,15 @@
     return unlockedSections(state.profile);
   }
 
+  // Every paid section carries the same "Premium" badge — it is what marks a
+  // section as behind the paywall, not a label specific to any one of them.
   // The badge is unescaped HTML spliced onto an already-escaped title —
   // sectionHead just concatenates whatever it is handed into the <h2>, so
   // this is the one call site that hands it a title with markup in it rather
   // than plain text, same trick .mode-title uses beside "Coming soon".
   function paidCard(section, unlocked) {
     const data = unlocked[section.key];
-    const badge = section.badge
-      ? ' <span class="mode-badge">' + esc(section.badge()) + '</span>'
-      : '';
+    const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
       sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub())) +
