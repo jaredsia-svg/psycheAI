@@ -783,6 +783,24 @@
   }
 
   /**
+   * The free half's own label, shown once above the four free branches — the
+   * parallel statement to the premium tier block below it, reusing the same
+   * badge shape (`.mode-badge`) in a different colour (`.is-free`) so the two
+   * read as one system rather than two different UI languages for "what does
+   * this cost and who writes it".
+   */
+  function freeTierNoteHtml() {
+    return '<span class="mode-badge is-free">' + esc(TEXT.insightFreeBadge) + '</span> ' +
+      esc(TEXT.insightFreeNote);
+  }
+
+  function mountFreeTierNotes() {
+    for (const slot of document.querySelectorAll('[data-free-tier-note]')) {
+      slot.innerHTML = freeTierNoteHtml();
+    }
+  }
+
+  /**
    * Fills every paid card's body once a real result has arrived, in place
    * rather than by re-rendering the report — a reader who has just paid is
    * looking at one of these cards, and rebuilding #profile-body would throw
@@ -1985,6 +2003,32 @@
     return html;
   }
 
+  /**
+   * The "Analysed by" line at the foot of the report. Two lines once a paid
+   * unlock exists, since two different providers wrote different parts of the
+   * document a reader is about to save or forward — printing only the free
+   * report's model would misdescribe who wrote the roast they are reading.
+   *
+   * Called both from `renderProfile` (the report as first loaded) and from the
+   * premium success handler (the moment a payment turns one provider's
+   * document into two providers' document) — one function, so the two call
+   * sites cannot say different things about the same profile.
+   *
+   * Guarded on `premiumModel`/`premiumAt` existing, not just on
+   * `premiumAnalysis`: a profile unlocked before this pair existed still has
+   * the writing but not the record of who wrote it or when, and falls back to
+   * the one-line form rather than printing "undefined".
+   */
+  function renderAnalysedBy(profile) {
+    const lines = ['Analysed by ' + esc(profile.model || 'the model') + ' on ' +
+      esc(new Date(profile.createdAt).toLocaleString()) + '.'];
+    if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
+      lines.push('Premium sections analysed by ' + esc(profile.premiumModel) + ' on ' +
+        esc(new Date(profile.premiumAt).toLocaleString()) + '.');
+    }
+    $('#analysed-by').innerHTML = lines.join('<br>');
+  }
+
   function renderProfile() {
     const profile = state.profile;
     if (!profile) return;
@@ -2021,8 +2065,7 @@
     // record of the run, not a finding, and closing the page with it means
     // it stays true no matter what gets added between the report and the
     // buttons above it.
-    $('#analysed-by').textContent = 'Analysed by ' + (profile.model || 'the model') + ' on ' +
-      new Date(profile.createdAt).toLocaleString() + '.';
+    renderAnalysedBy(profile);
   }
 
   function historyTable(history) {
@@ -2204,9 +2247,19 @@
   // everywhere.
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
+    // Same date-only granularity the free line already used — kept rather
+    // than upgraded to match the page's full date-and-time, so the two
+    // "Analysed by" lines in one PDF read as one convention rather than two.
+    const premiumStamp = profile.premiumAt ? new Date(profile.premiumAt) : null;
     return window.PsychePDF.build(profile.report, profile.card, {
       date: stamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
       model: profile.model || '',
+      // The provider and date that wrote the paid sections, when there are
+      // any — see renderAnalysedBy on the page for why this is a separate
+      // pair rather than overwriting model/date above.
+      premiumModel: profile.premiumModel || '',
+      premiumDate: premiumStamp
+        ? premiumStamp.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '',
       // The page shows a matches section when this device has any, so the
       // report does too.
       history: store.read(KEYS.history, []),
@@ -2615,12 +2668,21 @@
       const result = await LLM.analysePremium(state.digest, auth);
       if (state.profile) {
         state.profile.premiumAnalysis = result.data;
+        // The provider and moment that wrote the paid sections, kept apart
+        // from the free report's own `model`/`createdAt` because a different
+        // call, on a different provider, wrote them — see renderAnalysedBy.
+        state.profile.premiumModel = result.model || '';
+        state.profile.premiumAt = new Date().toISOString();
         // Best-effort: a browser too full to hold this still leaves the
         // reader able to read what they paid for, on screen, for the rest of
         // this visit — it just will not survive a reload.
         store.write(KEYS.profile, state.profile);
       }
       revealPaid(result.data);
+      // After revealPaid, not before: if injecting the sections themselves
+      // ever threw, the footer would otherwise have already started claiming
+      // Claude wrote sections the page does not show.
+      if (state.profile) renderAnalysedBy(state.profile);
       dialog.close();
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
@@ -3416,5 +3478,6 @@
   }
 
   mountPremiumTiers();
+  mountFreeTierNotes();
   boot();
 })();

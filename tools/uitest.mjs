@@ -641,6 +641,52 @@ try {
   check('and it carries the same "Premium" badge the report sections do',
     await page.evaluate(() => [...document.querySelectorAll('.premium-tier-head .mode-badge')]
       .every(node => node.textContent.trim() === window.PsycheCopy.TEXT.premiumBadge)));
+  // The blurb is what tells a reader *why* to pay rather than just *what* —
+  // it names the model doing the deeper read, so the badge and the price are
+  // not the only things distinguishing this from the free half.
+  check('the premium blurb says which model writes the deeper read',
+    await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent.trim() ===
+      window.PsycheCopy.TEXT.premiumTierBlurb),
+    await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent));
+
+  // ---- the free half's own label ----
+  //
+  // The parallel statement to the premium tier block below it: what the four
+  // free branches cost (nothing) and which model writes them (Gemini), read
+  // from copy.js the same way the premium tier is, so a rename moves both.
+  check('the free branches carry their own "Free" badge and name Gemini',
+    await page.evaluate(() => {
+      const T = window.PsycheCopy.TEXT;
+      const note = document.querySelector('#view-welcome .insight-free-note');
+      const badge = note && note.querySelector('.mode-badge.is-free');
+      return Boolean(badge) && badge.textContent.trim() === T.insightFreeBadge &&
+        note.textContent.includes(T.insightFreeNote) && /gemini/i.test(note.textContent);
+    }),
+    await page.evaluate(() =>
+      (document.querySelector('#view-welcome .insight-free-note') || {}).innerHTML));
+  // Above the diagram, not inside it — `.insight-map`'s own child count is
+  // pinned elsewhere as exactly the hub, the rail and the branches, and this
+  // note would break that count if it ever moved inside.
+  check('the free note sits above the diagram rather than inside it',
+    await page.evaluate(() => {
+      const note = document.querySelector('#view-welcome .insight-free-note');
+      const map = document.querySelector('#view-welcome .insight-map');
+      return Boolean(note) && Boolean(map) && !map.contains(note) &&
+        Boolean(note.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  // The two badges read as one system — same shape, different colour — rather
+  // than two different UI languages for "what does this section cost".
+  check('the free badge and the premium badge share their shape and differ only in colour',
+    await page.evaluate(() => {
+      const free = document.querySelector('#view-welcome .insight-free-note .mode-badge');
+      const premium = document.querySelector('#view-welcome .premium-tier-head .mode-badge');
+      if (!free || !premium) return false;
+      const freeStyle = getComputedStyle(free);
+      const premiumStyle = getComputedStyle(premium);
+      return freeStyle.borderRadius === premiumStyle.borderRadius &&
+        freeStyle.fontSize === premiumStyle.fontSize &&
+        freeStyle.color !== premiumStyle.color;
+    }));
   // The diagram is the hub and its branches, nothing else. It used to carry a
   // confidence footnote across the bottom; that came out, and the check that
   // held it in place came out with it rather than being loosened into one that
@@ -1291,8 +1337,8 @@ try {
     /\d+ captions?, \d+ comments?/.test(reviewText), reviewText.slice(0, 400));
   check('the review names the accounts you follow, with a real count',
     /\d+ followed accounts/.test(reviewText), reviewText.slice(0, 400));
-  check('the review names all three providers and says nothing else can access the data',
-    /Choose which data gets analysed by Grok, Gemini or Claude/i.test(reviewText) &&
+  check('the review names both providers and says nothing else can access the data',
+    /Choose which data gets analysed by Gemini or Claude/i.test(reviewText) &&
     /None of this data or the results can be accessed by PsycheAI or others/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
@@ -2479,6 +2525,27 @@ try {
     }),
     String(await page.locator('#profile-body .paid-card .premium-cover[hidden]').count()) + ' opened');
 
+  // ---- the "analysed by" footer grows a second line once paid content exists ----
+  //
+  // Two different providers wrote different parts of the document a reader is
+  // about to save or forward, so a single line naming only the free report's
+  // model would misdescribe who wrote the roast they are now reading.
+  check('unlocking stores which provider wrote the paid sections, and when',
+    await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+      return typeof saved.premiumModel === 'string' && saved.premiumModel.length > 0 &&
+        typeof saved.premiumAt === 'string' && !Number.isNaN(Date.parse(saved.premiumAt));
+    }),
+    await page.evaluate(() => localStorage.getItem('psycheai_profile')).then(s => {
+      const p = JSON.parse(s); return JSON.stringify({ premiumModel: p.premiumModel, premiumAt: p.premiumAt });
+    }));
+  check('the footer grows a second line the moment the unlock succeeds, with no reload needed',
+    /^Analysed by mock on .+\nPremium sections analysed by mock on .+\.$/
+      .test((await page.locator('#analysed-by').innerText()).trim()),
+    await page.locator('#analysed-by').innerText());
+  check('the two lines are visually separate, not one run-on sentence',
+    (await page.locator('#analysed-by br').count()) === 1);
+
   // ---- what the three considered sections actually render, now unlocked ----
   const wellnessCard = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .wellness-card');
@@ -2591,6 +2658,10 @@ try {
       return Boolean(card) && card.querySelector('.premium-cover').hidden &&
         /uncharitable reading/i.test(card.innerText);
     }));
+  check('and the two-line footer survives the reload with it',
+    /^Analysed by mock on .+\nPremium sections analysed by mock on .+\.$/
+      .test((await page.locator('#analysed-by').innerText()).trim()),
+    await page.locator('#analysed-by').innerText());
 
   // ---- losing the tab mid-generation ----
   //
@@ -3257,6 +3328,12 @@ try {
   check('and the roast\'s caveat prints with it rather than staying on screen',
     /not an assessment, not a diagnosis/i.test(pdfProse),
     (/[^.]*not an assessment[^.]*\./i.exec(pdfProse) || ['not found'])[0].slice(0, 80));
+  // The downloaded file is the copy that gets kept and forwarded, so it needs
+  // the same two-provider record the page grew once paid content existed —
+  // otherwise a reader who saves the PDF loses the one place that says a
+  // second provider wrote the sections they paid for.
+  check('the downloaded PDF also names both providers, not just the free one',
+    /Analysed by mock on/i.test(pdfProse) && /Premium sections analysed by mock on/i.test(pdfProse));
 
   // The other half of the rule, and the one that actually enforces the
   // paywall: build the same report with nothing unlocked and the section does
@@ -4626,8 +4703,12 @@ try {
   // A page that only reassures is not trustworthy. The device-readability and
   // self-hosting notes were cut as clutter; the one that remains is the one a
   // reader cannot check for themselves, so it has to stay named.
-  check('the page names all three model providers as the party that reads the summary',
-    /Grok, Gemini or Claude/.test(about));
+  check('the page names both model providers as the party that reads the summary',
+    /Gemini or Claude/.test(about) && !/Grok/i.test(about));
+  // The heading used to just say "Sent to be read" — accurate but ambiguous
+  // about *who* reads it, next to a list of items a human never sees.
+  check('the "sent" column names who actually reads it',
+    /Sent to be read by AI model/i.test(about));
   check('the page admits their terms govern that, once it reaches them',
     /their\s+terms apply/i.test(about));
   // The paid-API/no-training claim carries its own hedge — "not ours to
@@ -4671,8 +4752,11 @@ try {
     () => document.querySelectorAll('#view-welcome .step-card')[1].textContent))
     .replace(/\s+/g, ' ').trim();
   const providerSource = readFileSync(join(root, 'lib', 'provider.js'), 'utf8');
-  check('step two names all three providers the loader can actually reach',
-    /Grok/.test(stepTwoClaim) && /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) &&
+  // The page names only the two providers a reader is meant to know about;
+  // Grok stays a real, working option in lib/provider.js — this just checks
+  // the copy does not surface it, not that the loader stopped supporting it.
+  check('step two names the two providers shown to a reader, and not Grok',
+    /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) && !/Grok/i.test(stepTwoClaim) &&
     /'\.\/grok'/.test(providerSource) && /'\.\/gemini'/.test(providerSource) && /'\.\/claude'/.test(providerSource),
     stepTwoClaim);
   check('step two repeats that nothing is stored here',

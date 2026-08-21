@@ -75,7 +75,7 @@
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
       <p>Download your data from Instagram (Google and Facebook data are optional). See below for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
-      <p>Your data is analysed by Grok, Gemini or Claude, which creates a report for you. No data is stored by PsycheAI.</p></div>
+      <p>Your data is analysed by Gemini or Claude, which creates a report for you. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Test compatibility</h3>
@@ -87,6 +87,10 @@
        this page advertising a section the report no longer calls that. -->
   <div class="card insight-card">
     <h2>What insights will I get?</h2>
+    <!-- The free half's own label, parallel to the premium tier block below
+         it — filled by app.js's mountFreeTierNotes from copy.js, so a rename
+         there moves this line with it. -->
+    <p class="insight-free-note" data-free-tier-note></p>
 
     <div class="insight-map">
       <p class="insight-hub">Your report</p>
@@ -510,7 +514,7 @@
     <h3>Your data stays with you</h3>
     <p>After you drop your Instagram data onto the PsycheAI website, your device will summarize the
       contents locally to a ~100kb file, which you can review the contents of, before sending it off
-      for analysis. The summary file is sent to Grok, Gemini or Claude for analysis and is only held
+      for analysis. The summary file is sent to Gemini or Claude for analysis and is only held
       for the few seconds the request takes, and is never saved, stored or logged.</p>
 
     <p><strong>You do not have to take our word for any of this.</strong> The whole thing is open
@@ -529,7 +533,7 @@
         </ul>
       </div>
       <div>
-        <h3 class="h-warn">Sent to be read</h3>
+        <h3 class="h-warn">Sent to be read by AI model</h3>
         <ul class="sends">
           <li>A short summary: how often you post, when you post, and some of your own words</li>
           <li>Up to 14 of your own photos, reduced in size — or none, if you switch it off</li>
@@ -563,8 +567,8 @@
       behind it to break into.</p>
 
     <h3>What this page will not promise you</h3>
-    <p>Your summary is read by <strong>Grok, Gemini or Claude</strong> through paid API access, and once
-      it reaches them their terms apply. All three providers' terms for paid API use state that
+    <p>Your summary is read by <strong>Gemini or Claude</strong> through paid API access, and once
+      it reaches them their terms apply. Both providers' terms for paid API use state that
       customer inputs are excluded from model training, but that is their policy to keep, not ours to
       guarantee.</p>
   </div>
@@ -767,7 +771,7 @@
      not an informed one. -->
 <dialog id="review-dialog" class="mode-dialog review-dialog" aria-labelledby="review-dialog-title">
   <h2 id="review-dialog-title">Review what gets sent</h2>
-  <p class="muted">Choose which data gets analysed by Grok, Gemini or Claude. None of this data or the
+  <p class="muted">Choose which data gets analysed by Gemini or Claude. None of this data or the
     results can be accessed by PsycheAI or others.</p>
   <!-- The download row is written into #review-list itself, as its last
        child, rather than placed here as static markup — it has to sit below

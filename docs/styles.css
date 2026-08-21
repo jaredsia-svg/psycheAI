@@ -1176,7 +1176,19 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   color: var(--accent); background: var(--accent-soft); white-space: nowrap;
   border: 1px solid var(--line); border-radius: 999px; padding: .1rem .45rem;
 }
+/* Same shape as "Premium" (.mode-badge), a different colour — so the two read
+   as one system for "what does this cost", rather than two different visual
+   languages for the free half and the paid one. */
+.mode-badge.is-free { color: var(--good); background: var(--good-soft); }
 .mode-price { display: block; margin-top: .35rem; font-size: .85rem; font-weight: 600; }
+
+/* The free half's own line, above the insight diagram — the parallel
+   statement to .premium-tier below it. Plain text rather than a bordered
+   block: it is not asking for anything, so it does not need the box that
+   draws the eye to the paid offer. */
+.insight-free-note {
+  margin: .4rem 0 0; font-size: .88rem; color: var(--ink-soft);
+}
 
 /* The supplement dialog's one live region: progress while a second archive is
    read, "✓ Added …" once it is, or the error when it will not parse. It sits

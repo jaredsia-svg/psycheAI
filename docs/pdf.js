@@ -1230,6 +1230,13 @@
     if (confidence.rationale) out.body(confidence.rationale, { size: 10, leading: 15 });
 
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
+    // A second line only once the paid sections are actually in this file \u2014
+    // guarded on both fields together, the same way the page is, so a report
+    // that unlocked before this pair existed prints the one line it always
+    // had rather than a line naming a model with no date, or vice versa.
+    if (stamp.premiumModel && stamp.premiumDate) {
+      out.fineprint('Premium sections analysed by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
+    }
 
     return serialise(doc, (who.name || 'Your') + '\u2019s psyche',
       'Personality analysis from an Instagram data export');

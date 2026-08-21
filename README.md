@@ -505,6 +505,58 @@ sibling of `#sample-body` rather than inside it, since `showSample()` replaces t
 scrolls to the end of the sample still learns four sections are missing from it. A check scrolls the
 body to the bottom and asserts the footer has not moved.
 
+**The blurb names the model doing the deeper read**, not just what it covers: "These four sections
+are a deeper analysis using Claude's latest model Opus." Pairing a price with a model name is what
+actually distinguishes the paid tier from the free one on the page — a reader can see not just what
+they get, but who writes it, before deciding whether that is worth the difference.
+
+**The free half earned the same statement rather than being left implicit.** Right above the insight
+diagram, a small **"Free"** badge and a line — *"These four sections come with every report, analysed
+by Gemini"* — makes the parallel explicit: what does this cost, and which model writes it, is now
+answered for both halves of the report in the same place, in the same visual language. The badge
+reuses `.mode-badge`'s exact shape (same radius, same size) with a colour swap (`.is-free`, green
+against the premium badge's purple) rather than inventing a second pill design — the two are meant to
+read as one system, not as two different UI languages for "what does this section cost." Built from
+`docs/copy.js`'s `insightFreeBadge`/`insightFreeNote` the same way the premium tier block is, and
+mounted outside `.insight-map` so it cannot disturb the check that counts that element's children as
+exactly the hub, the rail and the branches.
+
+### The "analysed by" footer grows a second provider
+
+The report's final line used to name one provider and one timestamp — true when one call wrote the
+whole thing, false the moment a paid unlock adds four sections a different provider wrote. Printing
+only "Analysed by gemini-3.6-flash" under a report that also contains Claude's roast would misdescribe
+who actually wrote the paragraph the reader is reading.
+
+**`renderAnalysedBy()` in `docs/app.js` is the one function both moments call.** The free report's
+render (`renderProfile()`) and the premium success handler both go through it, so the two call sites
+cannot say different things about the same profile. It prints one line normally — "Analysed by
+gemini-3.6-flash on 8/21/2026, 11:53:22 AM." — and grows a second the moment `premiumAnalysis`,
+`premiumModel` and `premiumAt` are all present: "Premium sections analysed by claude-opus-5 on
+\<date\>." All three fields have to be there together, not just the analysis — a profile unlocked
+before this pair existed still has the writing but not the record of who wrote it, and falls back to
+the one-line form rather than printing `undefined`.
+
+**The two fields are recorded separately from the free report's `model`/`createdAt`**, in
+`runPremiumAnalysis()`, at the moment the paid call actually returns — `premiumModel: result.model`,
+`premiumAt: new Date().toISOString()` — rather than reusing the free report's fields, which would
+have overwritten the record of who wrote the *first* nine sections with whoever wrote the last four.
+The footer is refreshed immediately after `revealPaid()` inserts the sections, not before it and not
+only on the next full render — a reader who has just paid sees the correct footer without a reload,
+which is exactly the moment they are most likely to check it.
+
+**Page/PDF parity holds here too.** `docs/pdf.js`'s report builder takes the same `premiumModel` and
+a `premiumDate` (day-only, matching the granularity the free line already used in the PDF, rather than
+upgrading to the page's full date-and-time and making the two "Analysed by" lines in one file read as
+two different conventions) and prints a second `fineprint` line under the same guard. The downloaded
+file is the copy a reader keeps and forwards, so it is the copy that most needs to say a second
+provider wrote part of it.
+
+Checks pin both providers appearing in the live footer immediately after unlock, the two lines
+surviving a reload, and both providers appearing in the downloaded PDF. Fault-injected by removing the
+two field writes entirely: every one of those checks fails, reproducing a report that (correctly, for
+the fault) claims only one provider wrote a document two providers actually wrote.
+
 ### The landing page's outline, and its motion
 
 Two things a sighted reader scrolling past would never notice, and the suite now holds:
@@ -741,6 +793,18 @@ This is the part worth reading carefully.
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
 | Direct messages, if you untick them in the pre-send review | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
 
+The right column's own heading used to just say "Sent to be read" — accurate, but silent on *who*
+reads it, sitting directly beside a list a human never sees. It says "Sent to be read by AI model"
+now, which is the fact that actually matters to somebody deciding whether to untick a row.
+
+**The website names Gemini and Claude, and stops there.** `lib/grok.js` is a real, working provider —
+a deployment can still set `XAI_API_KEY` and run on Grok exactly as before, and `lib/provider.js`'s
+own tests still cover it. What changed is only the copy a reader meets: naming a third provider that
+only some deployments run would be explaining this repository's configuration options rather than
+answering the question the reader actually has, which is what happens to *their* upload. Grok's own
+paid-API terms carry the same no-training clause the page states for the other two, so this is a
+decision about what the reader needs told, not a narrower guarantee for anyone who does run it.
+
 ### The FAQ says exactly this, and is held to it
 
 The in-app FAQ has to get somebody comfortable uploading their DMs and their search history, which
@@ -750,7 +814,7 @@ code has to keep:
 - **The archive is reduced before anything is sent.** Unzipping and digest-building happen in the
   browser; the summary is what is posted, and the reader can review it themselves in the pre-send
   dialog before it goes anywhere.
-- **The summary reaches Grok, Gemini or Claude, and only for as long as the request takes.** It is held for
+- **The summary reaches Gemini or Claude, and only for as long as the request takes.** It is held for
   the few seconds the analysis takes and never saved, stored or logged — the claim the page actually
   makes now. It does not name PsycheAI's own server as the hop in between, on the reasoning that the
   device-to-model story is what a reader needs; what it must not do is claim the opposite, that the
@@ -782,7 +846,7 @@ caveat is a product call rather than an accuracy one, so the checks for them wen
 also dropped its one remaining explicit mention of the relay — "The summary goes to PsycheAI, which
 passes it straight on" — in favour of shorter copy that just names the destination model. That
 sentence's check was removed rather than repointed, since there is no wording left on the page for it
-to hold; what survives is the disclosure that Grok, Gemini or Claude read the summary under their own
+to hold; what survives is the disclosure that Gemini or Claude read the summary under their own
 terms, and the negative guard below.
 
 A tempting claim — that the summary never reaches the PsycheAI server at all, or reaches the model
@@ -813,15 +877,22 @@ its box, so a future rewording that lengthens the claim again cannot silently br
 The **paid-API-access** paragraph is the one place this page states something about a third party's
 policy rather than only its own, so it stays hedged even after being trimmed to one sentence: "that
 is their policy to keep, not ours to guarantee," rather than asserted as this app's own promise —
-not a claim PsycheAI is in a position to make on xAI's, Google's or Anthropic's behalf. The claim
-itself is narrow and true — Grok, Gemini and Claude are all reached through paid API access, and paid
-API terms from all three providers exclude customer inputs from training, as of when this was
-written. That second half
+not a claim PsycheAI is in a position to make on Google's or Anthropic's behalf. The claim itself is
+narrow and true — Gemini and Claude are both reached through paid API access, and paid API terms from
+both providers exclude customer inputs from training, as of when this was written. That second half
 is exactly why it stays phrased as their policy rather than restated as fact: it is the one claim on
 this page that could become false without this app changing anything at all. An earlier version also
 named the free consumer chat apps as the contrast and pointed readers at the providers' own terms to
 verify it; both were cut as the paragraph was tightened to what a reader actually needs on first
 read, not as a change to what is being claimed.
+
+**Grok is not named on this page**, even though `lib/grok.js` is a real, working provider a
+deployment can still choose. The page describes what a reader's own upload will actually meet, and
+naming a third provider only some deployments run would be explaining this repository's options
+rather than answering the question a reader actually has. Grok's own paid-API terms carry the same
+no-training clause as the other two, so the underlying claim is unaffected by which providers the
+page happens to name — this is a decision about what the reader needs told, not a narrower privacy
+guarantee for anyone running Grok themselves.
 
 The unpacking screen carried this same claim as a fineprint line under the progress bar — "Reading
 your data on this device… (nothing has been sent yet)" — set once, at the point where it is true,
@@ -2256,7 +2327,7 @@ npm test           # 656 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 815 checks: drives the real UI in Chromium against a
+npm run test:ui    # 825 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
