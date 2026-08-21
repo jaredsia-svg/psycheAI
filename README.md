@@ -2210,8 +2210,11 @@ npm run test:ui    # 805 checks: drives the real UI in Chromium against a
                    # against: the code is redrawn at 450px and 300px and sat
                    # inside 480p and 720p camera frames, and has to decode in
                    # every one
-npm run test:live  # 24 checks: two real model calls against whichever provider
-                   # is configured. Skips cleanly without a key.
+npm run test:live  # three real model calls: the free report and a
+                   # compatibility read on whichever provider is configured,
+                   # then the paid analysis on Claude. Skips cleanly without a
+                   # key. PSYCHEAI_LIVETEST=premium runs only the paid call;
+                   # =free runs only the other two.
 ```
 
 `test:ui` needs Playwright (installed by `npm install`); add `--shots` to write screenshots to
@@ -2220,6 +2223,29 @@ npm run test:live  # 24 checks: two real model calls against whichever provider
 Only `test:live` exercises the actual model call — everything else runs against `lib/mock.js`, which
 returns schema-shaped canned data so the rest of the pipeline can be tested without tokens. Run
 `test:live` once against your own key before trusting the app end to end.
+
+**The paid call is covered there now, and it was not before** — which is the whole reason the
+compiled-grammar 400 above reached production. It was the only call that always runs on Claude and
+the only one with no live coverage at all, so the schema that broke was the schema nothing ever sent
+to the API that compiles it. `test:live` now sends it, checks all six wellness dimensions came back
+with real bands, that no score or clinical condition appears in either the wellness read or the
+roast, that the career actions carry real horizons with one startable this week, and — the line worth
+reading — whether the schema **compiled** or the fallback carried it:
+
+```
+paid schema   : compiled and enforced by the API
+paid schema   : REFUSED — the fallback generated this, nothing enforced the shape
+```
+
+A green run showing the second line is not the same as a green run. `PSYCHEAI_LIVETEST=premium` makes
+that one call and nothing else, which is the cheap way to check after touching the paid schema.
+
+Wiring this up surfaced a second thing worth naming: the compatibility half of `test:live` had been
+broken since the basis picker landed. It called `analyseCompatibility(card, other)` with no mode and
+then read `compat.romantic.score` and `compat.platonic.score` — a two-mode shape `COMPATIBILITY_SCHEMA`
+stopped producing when the reader started choosing one basis up front. It threw on every run, before
+reaching anything after it. Nobody noticed, because a live test that costs real tokens is one nobody
+runs casually, which is exactly the argument for keeping it honest.
 
 ## Layout
 
