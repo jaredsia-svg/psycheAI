@@ -2663,6 +2663,7 @@
     // closing and reopening the dialog.
     if (auth.paymentIntentId) {
       $('#premium-payment-request-button').innerHTML = '';
+      $('#premium-card-fallback').hidden = true;
       $('#premium-mock-pay').hidden = true;
     }
     $('#premium-retry').hidden = true;
@@ -2724,10 +2725,18 @@
    * itself documents for this exact button — most cards clear on the first
    * pass, and the second only ever runs for the ones that come back
    * `requires_action`.
+   *
+   * `canMakePayment()` resolving falsy is not rare and not necessarily wrong:
+   * it means this device has no wallet-eligible card, not that anything is
+   * broken (a domain Stripe has not been told to trust for Apple Pay reads
+   * the same way to this call as a phone with nothing in its Wallet app).
+   * Either way a reader here still wants to pay, so `mountCardFallback` is
+   * the other half of this function's job, not a separate feature bolted on.
    */
   async function mountPaymentRequestButton(intent, dialog) {
     const Stripe = await loadStripeJs();
     const stripe = Stripe(intent.publishableKey);
+    const elements = stripe.elements();
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
@@ -2739,10 +2748,11 @@
     const canPay = await paymentRequest.canMakePayment();
     if (!canPay) {
       premiumStatus(TEXT.premiumNoWallet, 'bad');
+      mountCardFallback(stripe, elements, intent, dialog);
       return;
     }
 
-    const prButton = stripe.elements().create('paymentRequestButton', { paymentRequest });
+    const prButton = elements.create('paymentRequestButton', { paymentRequest });
     prButton.mount('#premium-payment-request-button');
 
     paymentRequest.on('paymentmethod', async event => {
@@ -2766,6 +2776,57 @@
   }
 
   /**
+   * The fallback for a browser `canMakePayment()` says cannot use a wallet:
+   * a plain Stripe Card Element, so the promo code field below it is never
+   * the only way left to pay. Mounted immediately rather than behind a
+   * second click — Unlock already failed once for this reader, and asking
+   * them to press something else to be offered another way to pay would
+   * read as the dialog not knowing what it just told them.
+   *
+   * `confirmCardPayment` alone (no `handleActions: false`) is enough here,
+   * unlike the wallet path above: it already walks a card through 3D Secure
+   * itself when a card asks for it, since there is no separate "payment
+   * method" event to complete first the way the wallet flow has.
+   */
+  function mountCardFallback(stripe, elements, intent, dialog) {
+    const wrap = $('#premium-card-fallback');
+    const errorEl = $('#premium-card-error');
+    const payButton = $('#premium-card-pay');
+    $('#premium-card-label').textContent = TEXT.premiumCardLabel;
+    payButton.textContent = esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel);
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+    wrap.hidden = false;
+
+    const card = elements.create('card');
+    card.mount('#premium-card-element');
+    // Stripe's own inline validation (a card number that fails Luhn, an
+    // expiry already past) rather than waiting for a submit that was always
+    // going to fail — the same reason the promo input does not wait for
+    // Apply to tell a reader their code was empty.
+    card.on('change', event => {
+      errorEl.textContent = event.error ? event.error.message : '';
+      errorEl.hidden = !event.error;
+    });
+
+    payButton.onclick = async () => {
+      payButton.disabled = true;
+      errorEl.hidden = true;
+      try {
+        const confirmation = await stripe.confirmCardPayment(intent.clientSecret, { payment_method: { card } });
+        if (confirmation.error) {
+          errorEl.textContent = confirmation.error.message || TEXT.premiumFailed;
+          errorEl.hidden = false;
+          return;
+        }
+        runPremiumAnalysis({ paymentIntentId: intent.id }, dialog);
+      } finally {
+        payButton.disabled = false;
+      }
+    };
+  }
+
+  /**
    * Opens the dialog, then asks the server for a PaymentIntent. The button
    * that triggered this is disabled for the round trip so a second click
    * cannot open a second one, and re-enabled in `finally` regardless of how
@@ -2779,6 +2840,10 @@
     $('#premium-dialog-blurb').textContent = TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-card-fallback').hidden = true;
+    $('#premium-card-element').innerHTML = '';
+    $('#premium-card-error').hidden = true;
+    $('#premium-card-error').textContent = '';
     $('#premium-mock-pay').hidden = true;
     $('#premium-retry').hidden = true;
     $('#premium-promo-label').textContent = TEXT.premiumPromoLabel;

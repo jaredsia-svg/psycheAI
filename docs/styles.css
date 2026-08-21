@@ -1043,6 +1043,19 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    two are never shown at once. */
 #premium-payment-request-button { margin: 1rem 0; min-height: 40px; }
 #premium-mock-pay, #premium-retry { margin: 0 0 1rem; }
+
+/* The card fallback, mounted only when this browser cannot use a wallet (see
+   mountCardFallback in app.js). #premium-card-element is where Stripe mounts
+   its own iframe, boxed the same way input[type=text] is elsewhere on this
+   page so it reads as one more field rather than a foreign widget. */
+.premium-card-fallback { margin: 1rem 0; }
+.premium-card-label { font-size: .85rem; color: var(--ink-soft); margin: 0 0 .4rem; }
+#premium-card-element {
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px;
+  padding: .7rem .75rem;
+}
+.premium-card-error { margin: .5rem 0 0; font-size: .85rem; color: var(--danger); }
+#premium-card-pay { margin: .8rem 0 0; }
 .premium-status { margin: .5rem 0 0; font-size: .9rem; }
 .premium-status.is-bad { color: var(--danger); }
 .premium-status.is-good { color: var(--good); }

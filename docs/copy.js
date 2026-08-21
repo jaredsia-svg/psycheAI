@@ -425,7 +425,17 @@
       'browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
-    premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it.',
+    // Followed immediately by the card fallback mounting itself (see
+    // mountCardFallback in docs/app.js), so this now describes what changed
+    // rather than leaving a reader stuck with only a promo code they do not
+    // have.
+    premiumNoWallet: 'This browser does not have Apple Pay or Google Pay available to it. Pay by ' +
+      'card below instead.',
+    // The card form's own label, shown above it once it mounts — "Or" reads
+    // correctly whether it follows the wallet message just above (most of
+    // the time) or stands alone as the only option this dialog ever offered
+    // this browser.
+    premiumCardLabel: 'Or pay by card',
     premiumFailed: 'The payment did not go through. Nothing was charged.',
     // The payment can succeed and the analysis call can still fail on its own
     // — a slow model, a dropped connection — so this says plainly that the

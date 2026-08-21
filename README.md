@@ -153,6 +153,56 @@ script here is a local file, on the reasoning that nothing should reach a CDN th
 fraud-detection updates, and it is loaded on demand from `app.js` only once a reader actually presses
 Unlock rather than fetched by every visitor whether or not they ever reach this section.
 
+#### The card fallback, for a browser with no wallet
+
+Stripe's Payment Request Button decides which wallet, if either, a browser offers by calling
+`paymentRequest.canMakePayment()` — and it resolving falsy is not rare. It happens whenever a device
+has no card actually added to Apple Wallet or Google Pay for web use, and just as often when the
+*site's own domain* has never been registered with Stripe for Apple Pay (Stripe Dashboard → Payment
+methods → Apple Pay → Add a new domain, plus hosting the verification file Apple's side of that
+handshake expects) or the page is not served over HTTPS — both of which read to `canMakePayment()`
+exactly like a phone with an empty Wallet does. Before this, a reader in any of those situations saw
+"This browser does not have Apple Pay or Google Pay available to it" and then nothing: the only other
+way to authorise the same call was the promo-code field, which an ordinary paying customer does not
+have. A real customer, on a real iPhone, with Apple Pay switched on at the OS level, could reach
+Unlock and simply have no way to pay.
+
+**`mountCardFallback` in `docs/app.js` is the other half of what `canMakePayment()` resolving false
+means**, not a separate feature bolted beside it: a plain Stripe Card Element, mounted into
+`#premium-card-fallback` the moment the wallet button reports it cannot be used, right there in the
+same dialog rather than behind a second click. `#premium-status` was moved a few lines up in
+`index.html` to sit above the card form rather than below it (its long-standing spot, from before
+there was anything after the wallet button worth reading in sequence) — the "no wallet" message is
+what the form is answering, so it has to read before the form, not underneath a button the reader has
+already pressed by the time they reach it.
+
+Confirming with `stripe.confirmCardPayment(intent.clientSecret, { payment_method: { card } })` is
+simpler than the wallet path just above it in the file: a single call walks a card through 3D Secure
+itself if one asks for it, where the wallet flow needs `handleActions: false` on a first pass and an
+explicit second `confirmCardPayment()` only for the cards that come back `requires_action` — that
+two-step exists because the wallet flow has its own `paymentmethod` event to complete first, which the
+card form has no equivalent of. A decline surfaces Stripe's own message beside the form and leaves the
+dialog open with the section still locked, so trying again — a typo fixed, a different card — reuses
+the same mounted form rather than reopening the dialog from nothing.
+
+**Genuinely testing this needed its own page.** `canMakePayment()`'s real answer depends on the actual
+device, which is exactly why the rest of this suite drives the unlock through `#premium-mock-pay`
+rather than the real Stripe path at all — and that stand-in never reaches `mountCardFallback` either. A
+fake `window.Stripe`, injected before the dialog opens, stands in for the real script the same way
+`#premium-mock-pay` stands in for the whole flow elsewhere; the one thing neither mock mode nor a real
+device in CI can supply is a browser that genuinely owns a wallet-eligible card. It runs on its own
+`browser.newPage()` — its own browser context, its own `localStorage` — seeded directly with a profile
+built from `docs/sample.json` (skipping the upload wizard entirely) so that page's real unlock, run
+against this same mock-mode server, cannot affect the shared page every other check in this file
+depends on finding locked. The PaymentIntent itself is not faked: the interception only overwrites
+`mock`/`publishableKey` in the response after letting the real request register the id in the server's
+own `mockIntents` set, so a fabricated `confirmCardPayment` result still drives a real,
+server-verified `/api/premium-analysis` call rather than every layer being a fake talking to another
+fake. Fault-injecting the `mountCardFallback` call away, and separately injecting a bug that called
+`runPremiumAnalysis` regardless of `confirmation.error`, both reproduced the exact failures the checks
+exist to catch — a browser with no wallet left staring at a dead end, and a declined card silently
+treated as a successful one.
+
 #### What actually gates the content
 
 An earlier version of this feature had a real problem: "unlocked" was a boolean the *browser* set on
@@ -2346,7 +2396,7 @@ npm test           # 656 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 828 checks: drives the real UI in Chromium against a
+npm run test:ui    # 834 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

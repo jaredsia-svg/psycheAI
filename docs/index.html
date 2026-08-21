@@ -370,18 +370,35 @@
      structured call with nothing else on screen reads as stalled otherwise.
      The promo row at the bottom is a second, independent way to authorise
      the same call — see server.js's handlePremiumAnalysis — for anyone who
-     should not need to pay at all. -->
+     should not need to pay at all.
+
+     #premium-card-fallback is the other one: a plain Stripe Card Element,
+     mounted only when canMakePayment() reports this browser has no
+     wallet-eligible card at all — no Apple Pay device, no Google Pay card
+     saved, or a domain Stripe has not been told to trust for either. Without
+     it a reader in that position had no way to pay at all short of a promo
+     code they do not have. See docs/app.js's mountCardFallback. -->
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
   <div id="premium-payment-request-button"></div>
+  <!-- Sits here, above the card fallback, rather than in its long-standing
+       spot after #premium-progress: the "no wallet" message is what the card
+       form is answering, so it has to read before the form does, not below
+       the button a reader has already pressed by the time they reach it. -->
+  <p class="premium-status" id="premium-status" hidden></p>
+  <div class="premium-card-fallback" id="premium-card-fallback" hidden>
+    <p class="premium-card-label" id="premium-card-label"></p>
+    <div id="premium-card-element"></div>
+    <p class="premium-card-error" id="premium-card-error" hidden></p>
+    <button class="btn" id="premium-card-pay" type="button"></button>
+  </div>
   <button class="btn" id="premium-mock-pay" type="button" hidden></button>
   <button class="btn" id="premium-retry" type="button" hidden></button>
   <div class="premium-progress" id="premium-progress" hidden>
     <div class="progress"><div class="progress-bar indeterminate"></div></div>
     <p class="premium-progress-time" id="premium-progress-time"></p>
   </div>
-  <p class="premium-status" id="premium-status" hidden></p>
   <div class="premium-promo">
     <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
     <div class="premium-promo-row">

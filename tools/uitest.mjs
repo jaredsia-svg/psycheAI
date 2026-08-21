@@ -2465,6 +2465,119 @@ try {
     (await page.locator('#premium-promo-input').inputValue()) === '' &&
     (await page.locator('#premium-promo-label').innerText()).length > 0);
 
+  // ---- the card fallback for a browser with no wallet ----
+  //
+  // canMakePayment() depends on the device, which is exactly why the rest of
+  // this suite drives the unlock through #premium-mock-pay rather than the
+  // real Stripe path at all. That leaves the fallback itself untested unless
+  // it gets its own way in: a fake `window.Stripe`, injected before the
+  // dialog opens, standing in for the real script the same way #premium-
+  // mock-pay stands in for the whole flow — the one thing neither mock mode
+  // nor a real device in CI can supply is a browser that genuinely owns a
+  // wallet-eligible card.
+  //
+  // This needs its own page rather than the shared one everywhere else in
+  // this file runs on: browser.newPage() gets its own browser context — its
+  // own localStorage — so seeding a profile onto it directly (skipping the
+  // whole upload wizard) and completing a real unlock on it cannot affect
+  // the shared page's state, which the mock-pay flow just below this still
+  // needs to find locked.
+  //
+  // The PaymentIntent itself is real, not faked: intercepting the request
+  // lets it reach this same mock-mode server, which registers the id in its
+  // own mockIntents set exactly as it would for #premium-mock-pay, and the
+  // interception only overwrites `mock`/`publishableKey` in the response so
+  // the client takes the non-mock branch. That is what lets a fabricated
+  // confirmCardPayment result still drive a real, server-verified
+  // /api/premium-analysis call, rather than every layer of this test being a
+  // fake talking to another fake.
+  {
+    const cardPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    await cardPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+    // The digest only has to be an object the mock engine will accept — mock
+    // mode's analysePremium (lib/mock.js) never reads it — so {} is enough,
+    // and skips reconstructing a real one from a fixture just for this.
+    await cardPage.evaluate(async () => {
+      const report = await fetch('sample.json').then(r => r.json());
+      const card = window.PsycheCard.shape(report.card);
+      const payload = await window.PsycheCard.encodeCard(report.card);
+      localStorage.setItem('psycheai_profile', JSON.stringify({
+        report, card, payload, model: 'gemini-3.6-flash', createdAt: new Date().toISOString(),
+      }));
+      localStorage.setItem('psycheai_digest', JSON.stringify({}));
+    });
+    await cardPage.reload({ waitUntil: 'load' });
+    await cardPage.waitForSelector('#profile-body .bonus-card .premium-unlock');
+
+    await cardPage.route('**/api/create-payment-intent', async route => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.mock = false;
+      body.publishableKey = 'pk_test_fake_for_ui_suite';
+      await route.fulfill({ response, json: body });
+    });
+    // The decline case runs first, deliberately, since it leaves the section
+    // locked — running the success case first would mean undoing a real
+    // unlock afterward just to get back to the state the decline case wants.
+    await cardPage.evaluate(() => {
+      window.__cardConfirmResult = { error: { message: 'Your card was declined.' } };
+      window.Stripe = function () {
+        return {
+          paymentRequest: () => ({ canMakePayment: () => Promise.resolve(null) }),
+          // Real Stripe replaces the mount target's contents with its own
+          // iframe; this fake writes a marker instead, so the mounting itself
+          // — not just the function call — is what the check below confirms.
+          elements: () => ({
+            create: () => ({ mount: sel => { document.querySelector(sel).textContent = '[fake card element]'; }, on() {} }),
+          }),
+          confirmCardPayment: () => Promise.resolve(window.__cardConfirmResult),
+        };
+      };
+    });
+
+    await clickClear(cardPage, '#profile-body .bonus-card .premium-unlock');
+    await cardPage.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+    await cardPage.waitForSelector('#premium-card-fallback:not([hidden])', { timeout: 10000 });
+
+    check('a browser with no wallet is told so, and offered a card form rather than a dead end',
+      /does not have Apple Pay or Google Pay/.test(await cardPage.locator('#premium-status').innerText()) &&
+      /pay by card/i.test(await cardPage.locator('#premium-status').innerText()) &&
+      (await cardPage.locator('#premium-payment-request-button').innerHTML()) === '',
+      await cardPage.locator('#premium-status').innerText());
+    check('the card form mounts, with its button carrying the same price the wallet button would have',
+      (await cardPage.locator('#premium-card-element').innerHTML()).length > 0 &&
+      (await cardPage.locator('#premium-card-pay').innerText()).includes('$1.99'));
+
+    await cardPage.click('#premium-card-pay');
+    await cardPage.waitForSelector('#premium-card-error:not([hidden])', { timeout: 10000 });
+    check('a declined card surfaces Stripe\'s own message rather than a generic one',
+      (await cardPage.locator('#premium-card-error').innerText()) === 'Your card was declined.');
+    check('a decline leaves the dialog open and the section locked, so the reader can just try again',
+      (await cardPage.locator('#premium-dialog').isVisible()) &&
+      !(await cardPage.locator('#profile-body .bonus-card .premium-body').isVisible()));
+
+    // Same mounted card, same button, only the confirm result changes — a
+    // reader who fixes a typo or swaps cards after a decline retries on the
+    // very form already in front of them, not a freshly reopened dialog.
+    await cardPage.evaluate(() => {
+      window.__cardConfirmResult = { paymentIntent: { status: 'succeeded' } };
+    });
+    await cardPage.click('#premium-card-pay');
+    await cardPage.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
+    const cardUnlocked = await cardPage.evaluate(() => {
+      const el = document.querySelector('#profile-body .bonus-card');
+      return { text: el.innerText, coverHidden: el.querySelector('.premium-cover').hidden };
+    });
+    check('a successful card payment reveals the paid sections exactly as a wallet payment would',
+      /uncharitable reading/i.test(cardUnlocked.text) && cardUnlocked.coverHidden,
+      cardUnlocked.text.slice(0, 200));
+    check('and it is persisted as the real analysis, on this isolated page\'s own storage only',
+      await cardPage.evaluate(() =>
+        Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis)));
+
+    await cardPage.close();
+  }
+
   // The suite runs the server with PSYCHEAI_MOCK=1, so lib/stripe.js never
   // touches a real Stripe account and app.js never loads Stripe.js at all —
   // #premium-mock-pay stands in for the whole wallet round trip, the same
