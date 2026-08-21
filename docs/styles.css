@@ -314,6 +314,69 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .insight-branch li::marker { color: var(--accent); }
 .insight-actions { margin: 1.1rem 0 0; }
 
+/* ---------- the premium tier block ---------- */
+
+/* Shown on the welcome page under the insight diagram, in "What you can
+   expect?" under the free tiles, and as the sample dialog's footer. Built by
+   app.js's premiumTierHtml from PAID_SECTIONS.
+
+   Solid accent border and a tinted fill, against the plain --line borders of
+   everything around it: this is the one block on the page asking for money,
+   and it should read as a distinct offer rather than as another list of
+   features. The dashed border used on the in-report covers would be wrong
+   here — dashed says "switched off", and nothing on this page is. */
+.premium-tier {
+  margin-top: 1.2rem; padding: 1rem clamp(.9rem, 3vw, 1.15rem);
+  border: 1px solid var(--accent); border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent-soft) 55%, var(--bg));
+}
+/* The price is pushed to the far end of the head rather than trailing the
+   title, so it lands in the same place at every width and a reader scanning
+   for "what does this cost" finds it without reading the sentence. */
+.premium-tier-head {
+  display: flex; align-items: center; gap: .55rem; flex-wrap: wrap;
+}
+.premium-tier-head h3 { margin: 0; font-size: 1.02rem; flex: 1 1 auto; }
+.premium-tier-price {
+  flex: none; font-size: 1.05rem; font-weight: 700; color: var(--accent);
+  white-space: nowrap;
+}
+.premium-tier-blurb { margin: .5rem 0 0; font-size: .9rem; color: var(--ink-soft); }
+
+/* Two columns where there is room for them, one where there is not. Four
+   items in a single column is a tall block for something that is not the
+   point of the page. */
+.premium-tier-list {
+  list-style: none; margin: .8rem 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .55rem .9rem;
+}
+.premium-tier-item { display: flex; align-items: flex-start; gap: .55rem; }
+.premium-tier-icon { font-size: 1.05rem; line-height: 1.45; flex: none; }
+.premium-tier-text { display: flex; flex-direction: column; min-width: 0; }
+.premium-tier-text strong { font-size: .92rem; line-height: 1.45; }
+.premium-tier-text span { font-size: .84rem; color: var(--ink-soft); line-height: 1.4; }
+.premium-tier-note {
+  margin: .85rem 0 0; padding-top: .7rem; border-top: 1px solid var(--line);
+  font-size: .82rem; color: var(--ink-soft);
+}
+
+/* The sample dialog's footer: one line of context and four names, with the
+   per-section blurbs dropped. It sits outside the scroll area under a report
+   that is deliberately missing these four, so it has to fit in the height a
+   footer can spend — which is why `is-compact` exists rather than a second
+   block written separately. */
+.premium-tier.is-compact {
+  margin: 0; border: 0; border-radius: 0;
+  padding: .8rem clamp(1rem, 3vw, 1.5rem);
+}
+.premium-tier.is-compact .premium-tier-blurb { margin-top: .35rem; }
+/* Narrower minimum than the full block's, so all four names fit on one row in
+   a dialog this wide and fall to two rows on a phone rather than three. */
+.premium-tier.is-compact .premium-tier-list {
+  margin-top: .55rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .3rem .8rem;
+}
+.premium-tier.is-compact .premium-tier-text strong { font-size: .86rem; }
+
 /* The sample dialog. The head is pinned and only the report scrolls, so the
    cross is on screen the whole way down — a reader four sections deep should
    never have to scroll back up to leave. */
@@ -354,6 +417,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .sample-dialog-body {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
   padding: 1rem clamp(1rem, 3vw, 1.5rem) 1.2rem;
+}
+/* Pinned like the head, for the same reason: the sample is missing four
+   sections by design, and a reader who never scrolls to the bottom of it
+   should still be told that rather than being left to assume they have seen
+   everything. `flex: none` keeps it off the scroll area's share of the
+   height. */
+.sample-dialog-foot {
+  flex: none; border-top: 1px solid var(--line); background: var(--bg-alt);
 }
 /* Inside the dialog the sections are already on a panel, so the page-level
    card treatment would be a box in a box. */

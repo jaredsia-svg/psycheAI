@@ -682,6 +682,52 @@
   }
 
   /**
+   * The premium tier block the welcome page and the sample dialog show, built
+   * from `PAID_SECTIONS` rather than written out in index.html three times.
+   *
+   * That matters more than it looks: this is marketing copy naming four
+   * sections by title and price, and marketing copy that has drifted from the
+   * product is the kind of wrong nobody notices for months. Reading the same
+   * table the report renders from means a rename in copy.js moves the landing
+   * page with it, and `coverTitle` doubles as the one-line hook here because
+   * that is exactly the job it already does on the cover itself.
+   *
+   * `compact` drops the per-section blurbs — used in the sample dialog, where
+   * this sits under a scrolling report as a footer rather than as a section of
+   * its own and has one line of room, not four.
+   */
+  function premiumTierHtml(options) {
+    const compact = Boolean(options && options.compact);
+    const items = PAID_SECTIONS.map(section =>
+      '<li class="premium-tier-item">' +
+      '<span class="premium-tier-icon" aria-hidden="true">' + section.icon + '</span>' +
+      '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
+      (compact ? '' : '<span>' + esc(section.coverTitle()) + '</span>') +
+      '</span></li>').join('');
+    return '<div class="premium-tier' + (compact ? ' is-compact' : '') + '">' +
+      '<div class="premium-tier-head">' +
+      '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
+      '<h3>' + esc(TEXT.premiumTierTitle) + '</h3>' +
+      '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></div>' +
+      '<p class="premium-tier-blurb">' +
+      esc(compact ? TEXT.premiumTierSampleNote : TEXT.premiumTierBlurb) + '</p>' +
+      '<ul class="premium-tier-list">' + items + '</ul>' +
+      (compact ? '' : '<p class="premium-tier-note">' + esc(TEXT.premiumTierNote) + '</p>') +
+      '</div>';
+  }
+
+  /**
+   * Mounted synchronously at start-up rather than inside `boot()`, which
+   * awaits the server status call — the welcome page is the first thing a
+   * reader sees and should not have a block of it arrive after a round trip.
+   */
+  function mountPremiumTiers() {
+    for (const slot of document.querySelectorAll('[data-premium-tier]')) {
+      slot.innerHTML = premiumTierHtml({ compact: slot.dataset.premiumTier === 'compact' });
+    }
+  }
+
+  /**
    * Fills every paid card's body once a real result has arrived, in place
    * rather than by re-rendering the report — a reader who has just paid is
    * looking at one of these cards, and rebuilding #profile-body would throw
@@ -3266,5 +3312,6 @@
     show('welcome');
   }
 
+  mountPremiumTiers();
   boot();
 })();

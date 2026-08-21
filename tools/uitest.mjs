@@ -590,6 +590,57 @@ try {
     (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | ') ===
       'Posting activity | App usage | How it changed over time',
     (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | '));
+  // The four branches describe the FREE report, so nothing behind the paywall
+  // may be listed in them. Both of these were: "Your attachment style" sat
+  // under relationships and "Where you would thrive" under work, the first
+  // because attachment used to be part of that section and the second because
+  // the subsection existed at all. A landing page promising a section the
+  // free report does not produce is the exact failure this pins.
+  check('no branch advertises a section that is actually behind the paywall',
+    await page.evaluate(() => {
+      const T = window.PsycheCopy.TEXT;
+      const text = document.querySelector('.insight-branches').textContent;
+      return ![T.wellness, T.attachment, T.careerAssessment, T.bonus]
+        .some(title => text.includes(title)) &&
+        !/attachment style/i.test(text) && !/where you would thrive/i.test(text);
+    }),
+    await page.evaluate(() => document.querySelector('.insight-branches').textContent.replace(/\s+/g, ' ')));
+
+  // ---- the premium tier block ----
+  //
+  // Shown in three places on the way in and built once from PAID_SECTIONS, so
+  // what it advertises cannot drift from what the report renders. That is the
+  // whole reason it is generated rather than written into index.html three
+  // times, and it is what these checks are really testing.
+  check('the premium tier is mounted in every slot that asks for one',
+    (await page.locator('[data-premium-tier] .premium-tier').count()) ===
+    (await page.locator('[data-premium-tier]').count()) &&
+    (await page.locator('[data-premium-tier]').count()) >= 3,
+    (await page.locator('[data-premium-tier] .premium-tier').count()) + ' of ' +
+    (await page.locator('[data-premium-tier]').count()) + ' slots filled');
+  check('it names the four paid sections, by the titles the report uses',
+    await page.evaluate(() => {
+      const T = window.PsycheCopy.TEXT;
+      const want = [T.wellness, T.attachment, T.careerAssessment, T.bonus];
+      const got = [...document.querySelectorAll('#view-welcome .premium-tier-item strong')]
+        .map(node => node.textContent.trim());
+      return want.length === got.length && want.every((title, i) => title === got[i]);
+    }),
+    (await page.locator('#view-welcome .premium-tier-item strong').allInnerTexts()).join(' | '));
+  // The price is the one number on this page a reader makes a decision on, so
+  // it is pinned against the same string the unlock button renders rather than
+  // against a literal — two places showing different prices is worse than
+  // either being wrong on its own.
+  check('the price shown is the one the unlock button charges',
+    await page.evaluate(() => {
+      const label = window.PsycheCopy.TEXT.premiumPriceLabel;
+      return [...document.querySelectorAll('.premium-tier-price')]
+        .every(node => node.textContent.trim() === label) && /S\$1\.99/.test(label);
+    }),
+    (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
+  check('and it carries the same "Premium" badge the report sections do',
+    await page.evaluate(() => [...document.querySelectorAll('.premium-tier-head .mode-badge')]
+      .every(node => node.textContent.trim() === window.PsycheCopy.TEXT.premiumBadge)));
   // The diagram is the hub and its branches, nothing else. It used to carry a
   // confidence footnote across the bottom; that came out, and the check that
   // held it in place came out with it rather than being loosened into one that
@@ -1036,6 +1087,31 @@ try {
     (await page.locator('#sample-body .paid-card').count()) === 0 &&
     (await page.locator('#sample-body .premium-unlock').count()) === 0,
     String(await page.locator('#sample-body .paid-card').count()));
+  // ...but it says so, rather than letting the sample read as the whole
+  // report. The footer is a sibling of #sample-body, not inside it, so it
+  // survives showSample() replacing that element's innerHTML — checked after
+  // an open for exactly that reason.
+  check('the sample says which four sections it is missing, and what they cost',
+    await page.evaluate(() => {
+      const T = window.PsycheCopy.TEXT;
+      const foot = document.querySelector('.sample-dialog-foot');
+      if (!foot || !foot.querySelector('.premium-tier.is-compact')) return false;
+      const text = foot.textContent;
+      return [T.wellness, T.attachment, T.careerAssessment, T.bonus]
+        .every(title => text.includes(title)) && text.includes(T.premiumPriceLabel);
+    }),
+    (await page.locator('.sample-dialog-foot').innerText()).replace(/\s+/g, ' '));
+  // Pinned rather than left to the eye: the footer is outside the scroll area
+  // precisely so a reader who never reaches the end of the sample still sees
+  // it, and a stylesheet edit that let it scroll away would look fine here.
+  check('the footer stays put while the sample scrolls',
+    await page.evaluate(() => {
+      const foot = document.querySelector('.sample-dialog-foot');
+      const body = document.querySelector('.sample-dialog-body');
+      const before = foot.getBoundingClientRect().top;
+      body.scrollTop = body.scrollHeight;
+      return Math.abs(foot.getBoundingClientRect().top - before) < 1 && body.scrollTop > 0;
+    }));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.

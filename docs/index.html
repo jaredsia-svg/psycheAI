@@ -110,9 +110,9 @@
             <h3>In relationships</h3>
           </div>
           <ul>
-            <li>Your attachment style</li>
             <li>Your love languages</li>
             <li>Strengths and weaknesses</li>
+            <li>How you'd be to date</li>
           </ul>
         </div>
         <div class="insight-branch">
@@ -122,7 +122,7 @@
           </div>
           <ul>
             <li>How you work</li>
-            <li>Where you would thrive</li>
+            <li>Your strengths at work</li>
             <li>What could hold you back</li>
           </ul>
         </div>
@@ -139,6 +139,14 @@
         </div>
       </div>
     </div>
+
+    <!-- Below the diagram rather than a fifth branch in it: the four above are
+         what everyone gets, these four are what a payment adds, and folding
+         them into the same rail would say they were the same thing. Filled by
+         app.js's mountPremiumTiers from PAID_SECTIONS, so the section names
+         and the price here are the ones the report and the unlock button
+         actually use. -->
+    <div data-premium-tier></div>
 
     <!-- The diagram describes the report; this shows it. Anyone still reading
          this far down is asking what it actually looks like. -->
@@ -572,13 +580,19 @@
       <div class="tile"><h4>Big Five</h4><p>Five scores out of 100, each with what in your data put it there.</p></div>
       <div class="tile"><h4>MBTI &amp; Enneagram</h4><p>Your type and how strongly each letter leans, plus a second lens on what drives you.</p></div>
       <div class="tile"><h4>Values &amp; beliefs</h4><p>What you seem to hold to — and how firmly the data actually says so.</p></div>
-      <div class="tile"><h4>In relationships</h4><p>How you'd be to be close to, your attachment style, and your love languages — giving and receiving.</p></div>
-      <div class="tile"><h4>At work</h4><p>Where you'd thrive, how you work, and what tends to hold you back.</p></div>
+      <div class="tile"><h4>In relationships</h4><p>How you'd be to be close to, and your love languages — giving and receiving.</p></div>
+      <div class="tile"><h4>At work</h4><p>How you work, what you're good at, and what tends to hold you back.</p></div>
       <div class="tile"><h4>Your Instagram habits</h4><p>When you post, how that changed over the years, and whether you publish more than you read.</p></div>
       <div class="tile"><h4>A confidence score</h4><p>How much of the above to believe, and why.</p></div>
     </div>
 
-    <p class="fineprint">Save the whole thing as a PDF from the button on your profile.</p>
+    <!-- Under the free tiles rather than mixed in among them, so the line
+         between "what you get" and "what you can buy" is where a reader can
+         see it. Same block as the one on the welcome page. -->
+    <div data-premium-tier></div>
+
+    <p class="fineprint">Save the whole thing as a PDF from the button on your profile. Anything you
+      unlocked prints with it; anything you did not is simply absent from the file.</p>
   </div>
 
   <div class="card section-card">
@@ -648,6 +662,12 @@
     </button>
   </header>
   <div class="sample-dialog-body" id="sample-body"></div>
+  <!-- A sibling of #sample-body, not inside it: showSample() replaces that
+       element's innerHTML on every open, so a footer written into it would be
+       wiped. It sits outside the scroll area too, which is the point — a
+       reader who never scrolls to the end of the sample still sees that four
+       sections are missing from it and why. -->
+  <footer class="sample-dialog-foot" data-premium-tier="compact"></footer>
 </dialog>
 
 <!-- Offered once the Instagram archive has already parsed, so a reader who

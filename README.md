@@ -357,6 +357,45 @@ phone under 320px still loses it. The footer kept saying "how it works" for seve
 that rename, which made one destination look like two; a check now reads both labels and requires
 them to match, so the next rename fails rather than half-lands.
 
+### Advertising the paid sections without duplicating them
+
+The four premium sections are named in three places on the way in: under the insight diagram on the
+welcome page, as a pinned footer inside the sample dialog, and under the free tiles in "What you can
+expect?". All three are the same block, built once by `premiumTierHtml()` in `docs/app.js` from
+**`PAID_SECTIONS`** — the same table the report renders those sections from and the PDF gates them on
+— and mounted into `[data-premium-tier]` slots.
+
+That is not tidiness. This is marketing copy naming four sections by title and quoting a price, and
+marketing copy that has silently drifted from the product is the kind of wrong nobody notices for
+months. Reading the same table means a rename in `docs/copy.js` moves the landing page with it, and
+`coverTitle` doubles as the one-line hook here because that is precisely the job it already does on
+the cover itself. The price is `premiumPriceLabel`, so the number on the welcome page and the number
+on the unlock button are one string — two places showing different prices is worse than either being
+wrong alone. Checks pin the section list, the price and the badge; fault-injecting a hardcoded
+`$0.99` and a dropped fourth section fails them.
+
+**Writing this exposed two stale claims that had been on the page for a while.** The relationships
+branch listed "Your attachment style" and the work branch listed "Where you would thrive" — the first
+because attachment used to be part of that section before it became its own paid one, the second
+because that subsection was cut from the report entirely and the landing page was never updated with
+it. Both were advertising, on the free tier, something the free report does not produce. There is a
+check now that no branch may name any of the four paid sections, so the next one fails on the way in
+rather than being found by a reader who paid attention.
+
+The tier block sits *below* the diagram rather than becoming a fifth branch in it, and below the free
+tiles rather than mixed among them. Folding it into either would say the paid sections and the free
+ones are the same kind of thing. Its border is solid accent where the in-report covers are dashed —
+dashed reads as "switched off", which is right for a locked section on your own report and wrong for
+an offer on a page selling it.
+
+The sample dialog's copy is the one that needed the most care: it says *"This sample is the free
+report"* rather than implying the sample is partial. The free report is a whole report, and calling it
+incomplete in order to sell the rest would be a lie about what somebody already has. The footer is a
+sibling of `#sample-body` rather than inside it, since `showSample()` replaces that element's
+`innerHTML` on every open — and it sits outside the scroll area on purpose, so a reader who never
+scrolls to the end of the sample still learns four sections are missing from it. A check scrolls the
+body to the bottom and asserts the footer has not moved.
+
 ### The landing page's outline, and its motion
 
 Two things a sighted reader scrolling past would never notice, and the suite now holds:
@@ -2108,7 +2147,7 @@ npm test           # 642 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 798 checks: drives the real UI in Chromium against a
+npm run test:ui    # 805 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

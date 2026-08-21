@@ -352,12 +352,31 @@
       'this week, this quarter and this year.',
     bonus: 'Let us roast you',
     // Sits beside the title as a small badge, the same way "Coming soon"
-    // does on the comprehensive depth option — a label for what this section
-    // is, not a second title competing with the one it sits next to.
-    // Shared by all four paid sections, not just this one — see
-    // `PAID_SECTIONS` in docs/app.js. A label for what the section is,
-    // matching the one already used for "Coming soon" on the depth option.
+    // does on the comprehensive depth option — a label for what the section
+    // is, not a second title competing with the one it sits next to. Shared
+    // by all four paid sections, not just the roast: see `PAID_SECTIONS` in
+    // docs/app.js, which applies it uniformly.
     premiumBadge: 'Premium',
+
+    // The premium tier block, shown in three places on the way in — the
+    // insight diagram, the sample dialog and "What you can expect?" — and
+    // built once in docs/app.js from `PAID_SECTIONS` so the section names it
+    // advertises are the section names the report actually renders. The price
+    // is `premiumPriceLabel` for the same reason: one string, so the landing
+    // page cannot drift from the unlock button.
+    //
+    // Stated as "four more sections" rather than "unlock the full report",
+    // because the free report is a whole report and calling it partial to
+    // sell the rest would be a lie about what somebody already has.
+    premiumTierTitle: 'Four more sections',
+    premiumTierBlurb: 'The free report is the whole of what is above. These four are the deeper ' +
+      'read, and they come together for one payment:',
+    premiumTierNote: 'One payment, on the device you read it on. No account, no subscription, and ' +
+      'nothing recurring — it stays unlocked on that device for as long as the report does.',
+    // The sample dialog's own line. It is shown under a report that is
+    // deliberately missing these four, so it says which they are rather than
+    // leaving a reader to wonder whether the sample is the whole thing.
+    premiumTierSampleNote: 'This sample is the free report. Four more sections come with the unlock.',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
     bonusCoverBlurb: 'One S$1.99 unlock opens this and the three sections above it — no account, no ' +
