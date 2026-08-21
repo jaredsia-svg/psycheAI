@@ -109,24 +109,27 @@
   // The six wellness dimensions, in the order the reader meets them: label,
   // then the key it reads from the wellness object.
   //
-  // Two labels are narrower than the dimensions were first described as.
-  // "Physical health" became "Physical activity" and "Emotional processing
-  // and health" became "Emotional processing", because the export carries
-  // activity somebody chose to post about and words they chose to write, and
-  // carries no health data at all — a heading promising otherwise is a claim
-  // the section below it cannot keep. The schema field names in
+  // Labels are deliberately narrower than the thing a reader might hope the
+  // section measures. The export carries activity somebody chose to post
+  // about and words they chose to write, and carries no health data at all —
+  // a heading promising otherwise is a claim the section below it cannot
+  // keep. "Outlook" is the clearest case: it heads a reading of how somebody
+  // writes about their own life, not of how they feel, and a label like
+  // "Hope" or "Mood" would promise the second. The schema field names in
   // lib/prompts.js match these narrower labels for the same reason.
   //
-  // Sleep and rhythm leads because it is the best-evidenced of the six: the
-  // hour-of-day and day-of-week histograms are complete rather than sampled.
-  // Physical activity sits late because it is the thinnest.
+  // Order is the report's own, not an evidence ranking: life trajectory opens
+  // because it is the widest lens and sets up everything under it, and rhythm
+  // and activity closes because it is the most granular. Sleep and physical
+  // activity used to be two of the six and are one card now — two readings of
+  // when somebody is up and about, which never earned separate headings.
   const WELLNESS_FACETS = [
-    ['Sleep and rhythm', 'sleepAndRhythm'],
-    ['Cognitive load', 'cognitiveLoad'],
+    ['Life trajectory', 'lifeTrajectory'],
+    ['Outlook', 'outlook'],
     ['Social connection', 'socialConnection'],
-    ['Emotional processing', 'emotionalProcessing'],
-    ['Physical activity', 'physicalActivity'],
+    ['Cognitive load', 'cognitiveLoad'],
     ['Meaning', 'meaning'],
+    ['Rhythm and activity', 'rhythmAndActivity'],
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
@@ -408,8 +411,20 @@
     // also shows a live seconds count beside it (see #premium-progress) for
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
-    premiumGenerating: 'Writing your four sections… this usually takes a few minutes, and can pass ' +
-      'five. Keep this tab open — if you do lose it, you will not be charged again.',
+    // The four sections are written as three calls running at once, and each
+    // appears behind this dialog the moment it lands — so this says sections
+    // will appear rather than asking for a flat wait, which is both true and
+    // the thing most likely to keep somebody on the tab instead of switching
+    // away from a bar that never moves.
+    premiumGenerating: 'Writing your four sections… they appear behind this box as each one finishes, ' +
+      'usually within a couple of minutes. Keep this tab open — if you do lose it, you will not be ' +
+      'charged again.',
+    // Shown when some groups landed and others did not. Deliberately does not
+    // say which section is missing by name: the ones that arrived are already
+    // on the page behind the dialog, so "some of it" is checkable at a glance,
+    // and naming a section here would need this string to know the grouping.
+    premiumPartial: 'Some of your sections came through and are on the page behind this box, but {n} ' +
+      'did not. Try again for the rest — you will not be charged again.',
     // The three states of coming back to an unlock that never arrived. Not one
     // string, because "you already paid" is the part that has to land first
     // and a reader skimming a dialog reads the title.

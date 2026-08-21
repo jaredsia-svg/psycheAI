@@ -240,7 +240,7 @@ async function handlePremiumAnalysis(request, response) {
     }
     const engine = requirePremiumEngine(response);
     if (!engine) return;
-    sendJson(response, 200, await engine.analysePremium(body.digest));
+    await streamPremiumGroups(response, engine, body.digest, null);
     return;
   }
 
@@ -262,9 +262,66 @@ async function handlePremiumAnalysis(request, response) {
   }
   const engine = requirePremiumEngine(response);
   if (!engine) return;
-  const result = await engine.analysePremium(body.digest);
-  paymentLedger.recordUse(paymentIntentId);
-  sendJson(response, 200, result);
+  await streamPremiumGroups(response, engine, body.digest, paymentIntentId);
+}
+
+/**
+ * Runs the paid pass as three concurrent calls (see PREMIUM_GROUPS in
+ * lib/prompts.js) and writes each one out the moment it lands, as newline-
+ * delimited JSON.
+ *
+ * **Every refusal has already happened before this is called.** Once the first
+ * byte goes out the status line is spent — a 402 or a 429 cannot be sent
+ * afterwards — so payment verification, the ledger check and the engine check
+ * all run above, and nothing in here can decide the reader was not entitled
+ * after all. What *can* still fail here is a model call, and that is reported
+ * in-band as an `error` line against the group it belongs to.
+ *
+ * Streaming also happens to fix a second problem it was not chosen for: the
+ * connection now carries bytes from the first moment instead of sitting idle
+ * for minutes, so nothing in the path between browser and server can mistake a
+ * slow generation for an abandoned request.
+ *
+ * NDJSON rather than SSE because this is a POST — EventSource only does GET,
+ * so the client is reading the body stream by hand either way, and one JSON
+ * object per line is less framing to agree on than SSE's.
+ */
+async function streamPremiumGroups(response, engine, digest, paymentIntentId) {
+  const groups = prompts.PREMIUM_GROUPS;
+  response.writeHead(200, {
+    'Content-Type': 'application/x-ndjson; charset=utf-8',
+    'Cache-Control': 'no-store',
+    // Named for nginx, which buffers proxied responses by default and would
+    // hold every line until the last group finished — turning a progressive
+    // stream back into the single slow response this replaces. Ignored by
+    // proxies that do not know it, which is the point of sending it blind.
+    'X-Accel-Buffering': 'no',
+  });
+  const write = event => response.write(JSON.stringify(event) + '\n');
+  write({ type: 'start', groups: groups.map(group => group.key) });
+
+  let delivered = 0;
+  await Promise.all(groups.map(async group => {
+    try {
+      const result = await engine.analysePremiumGroup(digest, group);
+      delivered += 1;
+      write({ type: 'section', key: group.key, data: result.data, model: result.model });
+    } catch (error) {
+      // One group failing does not cancel the others: three sections and a
+      // named gap is a far better outcome for somebody who has already paid
+      // than nothing at all, and the receipt lets them refetch the rest.
+      const described = engine.describeError(error);
+      console.error('[/api/premium-analysis:' + group.key + ']', described.message);
+      write({ type: 'error', key: group.key, message: described.message });
+    }
+  }));
+
+  // Spent only if something was actually generated. A pass where every group
+  // failed has cost the reader nothing and must not cost them one of the five
+  // uses their payment allows.
+  if (paymentIntentId && delivered > 0) paymentLedger.recordUse(paymentIntentId);
+  write({ type: 'done', delivered, expected: groups.length });
+  response.end();
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -357,7 +414,12 @@ const server = http.createServer((request, response) => {
         // report, and an error handler that logs bodies would put it in the
         // server log — which is exactly the thing the design is built to avoid.
         console.error('[' + route + ']', error && error.message ? error.message : error);
-        sendJson(response, described.status, { error: described.message });
+        // A streaming route (see streamPremiumGroups) has already spent its
+        // status line, and writeHead a second time throws over the top of the
+        // original failure. Anything that far along reports its own errors
+        // in-band; all that is left here is to stop cleanly.
+        if (response.headersSent) response.end();
+        else sendJson(response, described.status, { error: described.message });
       });
     return;
   }

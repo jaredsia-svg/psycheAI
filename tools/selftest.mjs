@@ -939,21 +939,30 @@ const wellnessProps = prompts.PREMIUM_SCHEMA.properties.wellness.properties;
 // The six dimensions are one shared definition referenced six times now (see
 // the note on `$defs` in lib/prompts.js), so a check that wants the actual
 // shape has to follow the reference to reach it.
-const wellnessDim = key => prompts.deref(prompts.PREMIUM_SCHEMA, wellnessProps[key]);
+// Falls back to an empty shape rather than undefined for a key that is not
+// there. The checks below name the six dimensions literally — that is the
+// point of them — so a renamed or dropped dimension makes several of these
+// look up nothing at all, and without this the first one to do so throws and
+// takes the whole suite down before the check that would have *explained* the
+// failure gets to run.
+const wellnessDim = key => prompts.deref(prompts.PREMIUM_SCHEMA, wellnessProps[key]) || { properties: {} };
 const wellnessText = JSON.stringify(prompts.PREMIUM_SCHEMA.properties.wellness);
 
 check('wellness carries the six dimensions, an overall read and suggestions',
-  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
-    'emotionalProcessing', 'meaning', 'overall', 'suggestions'].every(k => k in wellnessProps) &&
+  ['lifeTrajectory', 'outlook', 'socialConnection', 'cognitiveLoad',
+    'meaning', 'rhythmAndActivity', 'overall', 'suggestions'].every(k => k in wellnessProps) &&
   Object.keys(wellnessProps).length === 8, Object.keys(wellnessProps).join(', '));
 
-// The two that were narrowed on the way in. "Physical health" and "emotional
-// health" are claims this data cannot support; "physical activity" and
-// "emotional processing" are what it actually carries. Checked as an absence
-// as well as a presence, because the risk is somebody renaming them back.
-check('the two health-claiming field names were narrowed, and stayed narrowed',
-  'physicalActivity' in wellnessProps && 'emotionalProcessing' in wellnessProps &&
-  !('physicalHealth' in wellnessProps) && !('emotionalHealth' in wellnessProps),
+// Field names are narrower than what a reader might hope the section
+// measures, and deliberately so: the export carries what somebody posted and
+// wrote, and no health data at all. Held as an absence as well as a presence,
+// because the pressure here is always towards the wider word — the section
+// was asked for as "physical health", "emotional health", and most recently
+// as satisfaction, low periods and despair. `outlook` names the writing;
+// `mood`, `hope` and `despair` would name the person.
+check('no dimension is named for a thing the data cannot carry',
+  ['physicalHealth', 'emotionalHealth', 'mentalHealth', 'mood', 'hope', 'despair',
+    'depression', 'satisfaction'].every(k => !(k in wellnessProps)),
   Object.keys(wellnessProps).join(', '));
 
 // The load-bearing structural choice: no numbers anywhere in this section.
@@ -961,8 +970,8 @@ check('the two health-claiming field names were narrowed, and stayed narrowed',
 // bands instead, because the notation is most of what makes a claim read as a
 // measurement. A single `integer` appearing anywhere under wellness is the
 // regression this catches.
-const wellnessDimensions = ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection',
-  'physicalActivity', 'emotionalProcessing', 'meaning'];
+const wellnessDimensions = ['lifeTrajectory', 'outlook', 'socialConnection',
+  'cognitiveLoad', 'meaning', 'rhythmAndActivity'];
 check('no wellness dimension carries a numeric score, unlike every other scored section',
   wellnessDimensions.every(k => !('score' in wellnessDim(k).properties)) &&
   !/"type":"integer"/.test(wellnessText), wellnessText.slice(0, 160));
@@ -970,9 +979,9 @@ check('every dimension carries a band, its own confidence, a reading and evidenc
   wellnessDimensions.every(k =>
     ['band', 'confidence', 'reading', 'evidence'].every(f => f in wellnessDim(k).properties)));
 check('the bands describe a pattern rather than grading the person',
-  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum) ===
+  JSON.stringify(wellnessDim('rhythmAndActivity').properties.band.enum) ===
   JSON.stringify(['steady', 'mixed', 'under strain', 'not enough evidence']),
-  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum));
+  JSON.stringify(wellnessDim('rhythmAndActivity').properties.band.enum));
 // The escape hatch. Without it the model has no way to say "the export is
 // silent here" that does not read to a reader as a low score.
 check('"not enough evidence" is an available band, and the prompt tells it to use it',
@@ -1069,9 +1078,9 @@ const premiumProps = prompts.PREMIUM_SCHEMA.properties;
 // reader rather than by `npm test`.
 check('the six wellness dimensions share one definition rather than six copies',
   Object.keys(prompts.PREMIUM_SCHEMA.$defs || {}).includes('wellnessDimension') &&
-  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
-    'emotionalProcessing', 'meaning']
-    .every(key => premiumProps.wellness.properties[key].$ref === '#/$defs/wellnessDimension'),
+  ['lifeTrajectory', 'outlook', 'socialConnection', 'cognitiveLoad',
+    'meaning', 'rhythmAndActivity']
+    .every(key => (premiumProps.wellness.properties[key] || {}).$ref === '#/$defs/wellnessDimension'),
   JSON.stringify(Object.keys(prompts.PREMIUM_SCHEMA.$defs || {})));
 // Following the reference still has to arrive at a real, complete dimension —
 // a $ref pointing at nothing would satisfy the check above and produce a
@@ -1110,6 +1119,57 @@ check('the premium call carries exactly the four paid sections, in report order'
   JSON.stringify(Object.keys(premiumProps)) ===
   JSON.stringify(['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']),
   Object.keys(premiumProps).join(', '));
+
+// ---------- the paid pass, split into concurrent groups ----------
+//
+// Three calls running at once instead of one long generation, so the reader
+// waits for the longest section rather than the sum of four. The risk the
+// checks below exist for is not that the split fails loudly — it is that a
+// group quietly stops carrying a field, and the reader is left with a cover
+// that never opens on a section they paid for.
+{
+  const groups = prompts.PREMIUM_GROUPS;
+  const grouped = groups.flatMap(group => group.fields);
+  check('every paid field belongs to exactly one group — none dropped, none written twice',
+    JSON.stringify([...grouped].sort()) === JSON.stringify(Object.keys(premiumProps).sort()) &&
+    new Set(grouped).size === grouped.length,
+    grouped.join(', '));
+  // Carved from PREMIUM_SCHEMA rather than redefined beside it: a second copy
+  // of these field definitions is exactly the drift the rest of this file
+  // spends its time preventing.
+  check('each group\'s fields are the same definitions the whole schema carries, not copies of them',
+    groups.every(group => group.fields.every(field =>
+      JSON.stringify(group.schema.properties[field]) === JSON.stringify(premiumProps[field]))));
+  check('each group requires everything it declares, so a half-filled group fails rather than renders',
+    groups.every(group =>
+      JSON.stringify(group.schema.required.sort()) === JSON.stringify([...group.fields].sort())));
+  // The hard limits are the reason the whole system prompt travels with every
+  // group rather than a trimmed slice of it. The roast group is the one with
+  // the most reason to lose them and the least excuse for doing so.
+  check('every group carries the no-diagnosis limit, including the roast',
+    groups.every(group => /never name, imply, predict or gesture at a specific mental or physical health/i
+      .test(group.system)));
+  check('and every group is told which sections are its own, so none narrates the others',
+    groups.every(group => /# This call/.test(group.system)));
+  // An unused $def still compiles into the grammar. Carrying all three
+  // everywhere would rebuild a smaller version of the size problem that
+  // forced $defs into this schema in the first place.
+  check('a group carries only the $defs it actually references',
+    groups.every(group => {
+      const declared = Object.keys(group.schema.$defs || {});
+      const used = new Set(JSON.stringify(group.schema.properties)
+        .match(/#\/\$defs\/(\w+)/g)?.map(ref => ref.replace('#/$defs/', '')) || []);
+      return declared.length === used.size && declared.every(name => used.has(name));
+    }),
+    groups.map(g => g.key + ':' + Object.keys(g.schema.$defs || {}).join('+')).join(' '));
+  // Splitting on the register boundary is the reason there are three groups
+  // and not two: the roast is the one section written to be accurate rather
+  // than kind, and mixing it into a call with the careful sections is what
+  // the prompt spends a paragraph warning against.
+  check('the roast is a group of its own rather than mixed in with the careful sections',
+    JSON.stringify(groups.find(group => group.key === 'roast').fields.sort()) ===
+    JSON.stringify(['advice', 'harsh']));
+}
 // The free schema must not still be asking for them. A field left in both
 // places would be paid for twice and rendered from whichever the UI happened
 // to read, which is the failure mode this pair exists to catch.

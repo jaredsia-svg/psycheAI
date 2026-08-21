@@ -124,8 +124,15 @@ async function answerReview(page, options) {
 }
 
 // Mock mode: every part of the pipeline runs for real except the model call.
+//
+// PSYCHEAI_MOCK_GROUP_MS staggers the three paid groups so the progressive
+// reveal is observable. The real call staggers by itself — the groups
+// genuinely finish at different moments — but the mock answers instantly, and
+// against an instant mock a progressive reveal and a batched one look exactly
+// alike. Small enough not to slow the suite, large enough for one poll to land
+// between the first group and the last.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
-  env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1' },
+  env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1', PSYCHEAI_MOCK_GROUP_MS: '350' },
   stdio: 'ignore',
 });
 const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } };
@@ -2600,6 +2607,18 @@ try {
     await new Promise(resolve => setTimeout(resolve, 700));
     await route.continue();
   });
+  // Samples how many paid bodies are open, from inside the page, for the whole
+  // stretch the call is in flight. Sampling rather than polling from the test
+  // side because the interesting state is transient by design: the assertion
+  // is that the count passed through something between "none" and "all", which
+  // is only observable while it is happening.
+  await page.evaluate(() => {
+    window.__revealCounts = [];
+    window.__revealTimer = setInterval(() => {
+      window.__revealCounts.push(
+        document.querySelectorAll('#profile-body .paid-card .premium-body:not([hidden])').length);
+    }, 60);
+  });
   await page.click('#premium-mock-pay');
   // Payment and generation are two separate steps — clicking the mock button
   // only finishes the first, and the (mocked) model call that follows it is
@@ -2615,6 +2634,34 @@ try {
   await page.unroute('**/api/premium-analysis');
   check('the progress bar is gone once the dialog closes',
     !(await page.locator('#premium-progress').isVisible()));
+
+  // ---- sections appear as they land, not all at once at the end ----
+  //
+  // The whole point of splitting the paid pass into three concurrent calls is
+  // that the reader stops waiting on the sum of four sections. That only pays
+  // off if the page actually shows each group on arrival, and the difference
+  // between "shows them progressively" and "shows them all at the end" is
+  // invisible in the finished state — both end with four open cards. What
+  // separates them is whether the count was ever partway.
+  const revealCounts = await page.evaluate(() => {
+    clearInterval(window.__revealTimer);
+    // One last sample after stopping, so the settled state is always the final
+    // element. Without it the last reveal can land between the final tick and
+    // this call, and the sequence ends at 3 of 4 through nothing but sampling
+    // luck — a flake that would read as a real regression.
+    window.__revealCounts.push(
+      document.querySelectorAll('#profile-body .paid-card .premium-body:not([hidden])').length);
+    return window.__revealCounts;
+  });
+  check('the paid sections open as each group lands rather than all together at the end',
+    revealCounts.some(count => count > 0 && count < 4) &&
+    revealCounts[revealCounts.length - 1] === 4,
+    'observed sequence: ' + revealCounts.join(','));
+  // Ordering, not just presence: a sequence that went 4 → 1 → 4 would satisfy
+  // the check above while describing something badly wrong.
+  check('and the count only ever grows, so nothing that arrived is taken away again',
+    revealCounts.every((count, i) => i === 0 || count >= revealCounts[i - 1]),
+    'observed sequence: ' + revealCounts.join(','));
   if (shots) await page.locator('#profile-body .bonus-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
   const unlocked = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .bonus-card');
@@ -2891,12 +2938,26 @@ try {
   // the same route behaviour without a page involved to log anything.
   const premiumUrl = 'http://localhost:' + PORT + '/api/premium-analysis';
   const minimalDigest = { coverage: { sources: ['instagram'] } };
+  //
+  // A success is a stream now, not one JSON object: the paid pass runs as
+  // three concurrent groups and each is written out as it lands. Refusals
+  // still arrive as ordinary JSON, because every one of them is decided
+  // before the first byte of the stream goes out — which is the property
+  // that makes a 402 possible at all here, and is checked directly below.
   async function tryPromo(promoCode) {
     const response = await fetch(premiumUrl, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ digest: minimalDigest, promoCode }),
     });
-    return { status: response.status, body: await response.json().catch(() => ({})) };
+    const text = await response.text();
+    if (response.status !== 200) {
+      let body = {};
+      try { body = JSON.parse(text); } catch (error) { /* leave it empty */ }
+      return { status: response.status, body, events: [] };
+    }
+    const events = text.split('\n').filter(line => line.trim()).map(line => JSON.parse(line));
+    const data = Object.assign({}, ...events.filter(e => e.type === 'section').map(e => e.data));
+    return { status: response.status, body: { data }, events };
   }
   const wrongPromo = await tryPromo('not-the-code');
   check('a wrong promo code is refused with a 402 and no analysis',
@@ -2906,7 +2967,77 @@ try {
   check('the correct promo code unlocks the analysis with no payment at all',
     rightPromo.status === 200 && typeof rightPromo.body.data.harsh === 'string' &&
     typeof rightPromo.body.data.advice === 'string',
-    JSON.stringify(rightPromo).slice(0, 200));
+    JSON.stringify(rightPromo.body).slice(0, 200));
+  // ---- the paid pass arrives as three concurrent groups ----
+  check('the paid pass streams as a run of NDJSON events rather than one response',
+    rightPromo.events.length >= 5 &&
+    rightPromo.events[0].type === 'start' &&
+    rightPromo.events[rightPromo.events.length - 1].type === 'done',
+    rightPromo.events.map(e => e.type + (e.key ? ':' + e.key : '')).join(' '));
+  check('every one of the three groups arrives as its own section event',
+    JSON.stringify(rightPromo.events.filter(e => e.type === 'section').map(e => e.key).sort()) ===
+    JSON.stringify(['relational', 'roast', 'wellness']),
+    JSON.stringify(rightPromo.events.filter(e => e.type === 'section').map(e => e.key)));
+  // The union across groups has to be exactly the four paid sections' fields:
+  // a group quietly dropping one would still stream, still say `done`, and
+  // leave the reader a cover that never opens.
+  check('and between them the groups carry every field the whole schema does',
+    JSON.stringify(Object.keys(rightPromo.body.data).sort()) ===
+    JSON.stringify(['advice', 'attachment', 'careerAssessment', 'harsh', 'wellness']),
+    JSON.stringify(Object.keys(rightPromo.body.data)));
+  check('the closing event counts what actually arrived, not what was hoped for',
+    rightPromo.events[rightPromo.events.length - 1].delivered === 3 &&
+    rightPromo.events[rightPromo.events.length - 1].expected === 3,
+    JSON.stringify(rightPromo.events[rightPromo.events.length - 1]));
+  // No section may appear twice: the client merges events into one object as
+  // they arrive, so a duplicated group would silently overwrite the first copy
+  // rather than erroring, and nothing downstream would notice.
+  check('no group is streamed twice',
+    new Set(rightPromo.events.filter(e => e.type === 'section').map(e => e.key)).size ===
+    rightPromo.events.filter(e => e.type === 'section').length);
+
+  // ---- one group failing does not take the other two down with it ----
+  //
+  // The case this exists for is somebody who has already paid. Before the
+  // split, one failed generation meant nothing at all; now two thirds of the
+  // report can still arrive, and the question is whether the route actually
+  // delivers them rather than abandoning the request at the first throw.
+  //
+  // Its own server on its own port, because the failure is injected through
+  // the environment and the suite's main server is shared by every other
+  // check in this file.
+  {
+    const failPort = PORT + 1;
+    const failServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(failPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_MOCK_FAIL_GROUP: 'relational',
+      },
+      stdio: 'ignore',
+    });
+    await new Promise(resolve => setTimeout(resolve, 600));
+    try {
+      const response = await fetch('http://localhost:' + failPort + '/api/premium-analysis', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ digest: minimalDigest, promoCode: 'jialatsia' }),
+      });
+      const events = (await response.text()).split('\n').filter(l => l.trim()).map(l => JSON.parse(l));
+      const sections = events.filter(e => e.type === 'section').map(e => e.key);
+      const errors = events.filter(e => e.type === 'error');
+      const done = events[events.length - 1];
+      check('a failed group is still a 200, because the refusals all happen before the stream starts',
+        response.status === 200, String(response.status));
+      check('the two groups that worked are delivered rather than discarded with the one that did not',
+        JSON.stringify(sections.sort()) === JSON.stringify(['roast', 'wellness']), sections.join(','));
+      check('the group that failed is named in its own error event rather than passed off as missing',
+        errors.length === 1 && errors[0].key === 'relational' && /mock failure/i.test(errors[0].message),
+        JSON.stringify(errors));
+      check('and the closing count reports the shortfall instead of claiming a full pass',
+        done.type === 'done' && done.delivered === 2 && done.expected === 3, JSON.stringify(done));
+    } finally {
+      try { failServer.kill(); } catch (error) { /* already gone */ }
+    }
+  }
   const caseInsensitivePromo = await tryPromo('  JiaLatSia  ');
   check('the promo code is case-insensitive and tolerates surrounding whitespace',
     caseInsensitivePromo.status === 200);

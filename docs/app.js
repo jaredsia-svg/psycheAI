@@ -2677,24 +2677,51 @@
     startProgress();
     guardUnload(true);
     try {
-      const result = await LLM.analysePremium(state.digest, auth);
-      if (state.profile) {
-        state.profile.premiumAnalysis = result.data;
-        // The provider and moment that wrote the paid sections, kept apart
-        // from the free report's own `model`/`createdAt` because a different
-        // call, on a different provider, wrote them — see renderAnalysedBy.
-        state.profile.premiumModel = result.model || '';
-        state.profile.premiumAt = new Date().toISOString();
-        // Best-effort: a browser too full to hold this still leaves the
-        // reader able to read what they paid for, on screen, for the rest of
-        // this visit — it just will not survive a reload.
-        store.write(KEYS.profile, state.profile);
-      }
+      // Each group lands on its own — the server runs the three concurrently
+      // and writes each out as it finishes — so sections appear behind the
+      // dialog as they arrive rather than all at once at the end. Everything
+      // is persisted and revealed per arrival, which is also what makes a
+      // half-finished pass worth something: whatever got here is on the page
+      // and in storage before the rest of it is known to have failed.
+      const result = await LLM.analysePremium(state.digest, auth, (key, data, model) => {
+        if (state.profile) {
+          state.profile.premiumAnalysis = Object.assign({}, state.profile.premiumAnalysis, data);
+          // The provider and moment that wrote the paid sections, kept apart
+          // from the free report's own `model`/`createdAt` because a different
+          // call, on a different provider, wrote them — see renderAnalysedBy.
+          state.profile.premiumModel = model || state.profile.premiumModel || '';
+          state.profile.premiumAt = new Date().toISOString();
+          // Best-effort: a browser too full to hold this still leaves the
+          // reader able to read what they paid for, on screen, for the rest of
+          // this visit — it just will not survive a reload.
+          store.write(KEYS.profile, state.profile);
+          revealPaid(state.profile.premiumAnalysis);
+          // After revealPaid, not before: if injecting the sections themselves
+          // ever threw, the footer would otherwise have already started
+          // claiming Claude wrote sections the page does not show.
+          renderAnalysedBy(state.profile);
+        }
+      });
+      // Reveal once more from the merged result rather than trusting the
+      // per-section pass above to have covered everything: a reader with no
+      // `state.profile` at all gets nothing from the callback, and this is
+      // the one line that still puts what they paid for on the page.
       revealPaid(result.data);
-      // After revealPaid, not before: if injecting the sections themselves
-      // ever threw, the footer would otherwise have already started claiming
-      // Claude wrote sections the page does not show.
-      if (state.profile) renderAnalysedBy(state.profile);
+
+      // A group that failed leaves the dialog open naming which one, rather
+      // than closing over a gap the reader would find later by scrolling. The
+      // sections that did arrive are already revealed and saved by this point,
+      // so retrying costs them nothing they had.
+      if (result.failures && result.failures.length) {
+        premiumStatus(TEXT.premiumPartial.replace('{n}', String(result.failures.length)), 'bad');
+        const retry = $('#premium-retry');
+        retry.textContent = TEXT.premiumRetry;
+        retry.hidden = false;
+        retry.onclick = () => runPremiumAnalysis(auth, dialog);
+        $('#premium-promo-input').disabled = false;
+        $('#premium-promo-apply').disabled = false;
+        return;
+      }
       dialog.close();
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');

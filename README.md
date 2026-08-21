@@ -1801,19 +1801,39 @@ six bands into a "wellbeing index" would rebuild the health rating through the b
 veneer of arithmetic. Two checks pin this: no `integer` may appear anywhere under the wellness
 schema, and the rendered section may contain no bar, meter, `n/100` or percentage.
 
-**Two dimensions were narrowed on the way in.** The request was for "physical health" and "emotional
-processing and health". The export carries neither — it has activity somebody chose to post about and
-words they chose to write — so the fields are `physicalActivity` and `emotionalProcessing`, in both
-the schema and the UI labels. A heading promising health is a claim the section underneath it cannot
-keep, and the narrower names are what stop the field descriptions drifting back toward the wider one.
-A check asserts the narrowed names are present *and* that the health-claiming ones have not returned.
+**The six have been reshaped once, and every reshape has pulled the names narrower than the request.**
+The section was first asked for as "physical health" and "emotional processing and health"; the export
+carries neither, so those became `physicalActivity` and `emotionalProcessing`. The current six are
+`lifeTrajectory`, `outlook`, `socialConnection`, `cognitiveLoad`, `meaning` and `rhythmAndActivity`.
+Sleep and physical activity merged: they were always two readings of the same thing — when somebody is
+up and about — and the weaker half now sits beside the strongest evidence in the section instead of
+standing alone as a dimension that is silent for most people.
+
+**The two newest are the closest this app has come to the line it will not cross.** They were asked
+for as "where is he in his life, what is his life satisfaction like, and any low periods" and "is he
+hopeful or in despair" — which are, worded slightly differently, a request for an episode history and
+a mood reading. What an export can actually support is narrower, and that is what the fields ask for:
+an arc across years, a stretch where the posting visibly thinned, and how somebody writes about their
+own future. `outlook` is named for the writing rather than the feeling for exactly the reason
+`physicalActivity` was, and the hard limits grew to match rather than being assumed to carry over.
+Two of them are new and specific: **"despair", "hopeless", "spiralling", "in a dark place" and their
+synonyms are unavailable to the model** — they read as clinical claims however they are meant — and
+**a low stretch is a stretch, not an episode**: `lifeTrajectory` may name a gap the export actually
+shows, must say plainly that its cause is not visible, and may never call it a depressive episode, a
+breakdown or a crisis. People go quiet for as many good reasons as bad, and an export cannot tell
+which. A check asserts no dimension is named for something the data cannot carry — `mood`, `hope`,
+`despair`, `satisfaction` and the old health-claiming pair are all held out by name, because the
+pressure on this section has always been towards the wider word.
 
 **The bands are descriptions, not grades:** `steady`, `mixed`, `under strain`, `not enough evidence`.
 Deliberately not a red/amber/green ramp and deliberately not good/bad, because "under strain"
 describes a rhythm where "poor" would be a verdict on a life. `not enough evidence` is load-bearing
 rather than a formality — the six are evidenced very unevenly. Hour-of-day and day-of-week histograms
-are complete, so sleep and rhythm almost always has something real; physical activity rests entirely
-on whether somebody happened to post about exercise, and plenty of active people never do. It is
+are complete, so the rhythm half of `rhythmAndActivity` almost always has something real; the activity
+half of the same dimension rests entirely on whether somebody happened to post about exercise, and
+plenty of active people never do. `lifeTrajectory` needs years to say anything at all, and on a thin
+or recent export it is often genuinely unreadable — saying so beats narrating an arc out of a handful
+of months. It is
 styled as the most neutral of the four rather than the worst, so "we could not tell" does not read as
 "you scored badly", and the mock puts it on physical activity in every run so that path is always
 exercised.
