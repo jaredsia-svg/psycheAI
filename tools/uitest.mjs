@@ -4574,35 +4574,46 @@ try {
 
   // ---- "Re-run analysis with additional data" from the report page ----
   //
-  // Offered only while this session still holds the parsed Instagram export
-  // in memory (state.signals) and no supplement has been added to it yet —
-  // exactly the state the ordinary upload just above leaves behind. Reuses
-  // the same supplement→review dialogs the first upload does, with Skip
-  // never offered: the reader pressed this button specifically to add a
-  // source, so there is nothing truthful "skip" could say here.
+  // Offered whenever the stored digest was written from Instagram alone —
+  // a fact about the report, not about the tab, so it has to survive a
+  // reload. Reuses the same supplement→review dialogs the first upload does,
+  // with Skip never offered: the reader pressed this button specifically to
+  // add a source, so there is nothing truthful "skip" could say here.
   check('the button is offered after an Instagram-only upload',
     await page.locator('#rerun-with-data').isVisible());
 
-  // state.signals is memory-only by design — see handleFiles — so a reload
-  // has to lose the button along with it, same as it already loses the
-  // photographs. Checked before anything else in this section touches the
-  // session, so this is really testing "signals gone", not "a supplement was
-  // already added" (which would also hide it, for a different reason).
+  // The regression this section exists to prevent. Keying the button to the
+  // in-memory export (state.signals) made it vanish on reload — which is
+  // exactly when a reader coming back to a saved report would look for it.
+  // It is the digest that decides now, and the digest is persisted.
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
-  check('a reload loses the button, since state.signals cannot survive one',
-    await page.evaluate(() => document.querySelector('#rerun-with-data').hidden));
+  check('the button survives a reload, since the digest it reads is persisted',
+    await page.locator('#rerun-with-data').isVisible(),
+    'hidden=' + (await page.evaluate(() => document.querySelector('#rerun-with-data').hidden)));
 
-  // Re-establish a live session — the rest of this section needs
-  // state.signals actually present to exercise the dialog at all.
-  await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: 'load' });
-  await page.setInputFiles('#file-input', {
+  // And it is genuinely usable there, not just visible: state.signals is gone
+  // after a reload, so pressing it has to ask for the Instagram export again
+  // rather than doing nothing. Driven through the real file chooser, because
+  // the picker only opens from inside the click's own gesture task — poking
+  // the input directly would pass even if the button were wired to nothing.
+  const [rerunChooser] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 15000 }),
+    clickClear(page, '#rerun-with-data'),
+  ]);
+  check('pressing it after a reload asks for the Instagram export again', true);
+  await rerunChooser.setFiles({
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await chooseDepth(page);
-  await answerReview(page);
-  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  // Re-reading lands straight in the supplement offer, with the report still
+  // behind it rather than a stranded progress bar.
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 60000 });
+  check('re-reading the export goes straight on to the supplement offer',
+    await page.locator('#supplement-dialog').isVisible());
+  check('and the report is what sits behind that dialog, not the working screen',
+    await page.locator('#view-profile').isVisible());
+  await page.click('#supplement-back');
+  await page.waitForTimeout(200);
 
   await clickClear(page, '#rerun-with-data');
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 10000 });

@@ -1800,9 +1800,74 @@
   // a source, so there is nothing truthful "skip" could say here), and
   // stepping all the way back abandons the rerun rather than the report:
   // the profile on screen is untouched until Send actually resolves below.
-  async function rerunWithAdditionalData() {
-    if (!state.signals) return;
-    const signals = state.signals;
+  /**
+   * The button's click handler, and the one place that deals with the gap
+   * between "this report can still be deepened" and "this tab still has what
+   * it would take to deepen it".
+   *
+   * Must stay synchronous down to `input.click()`. A file picker opens only
+   * inside a user-gesture task, and an `await` before it loses that gesture —
+   * the same constraint that shapes askSupplement, noted there too.
+   */
+  function startRerun() {
+    flash('#profile-alert', '');
+    // Same session as the upload: the parsed export is still in memory.
+    if (state.signals) { rerunWithAdditionalData(state.signals); return; }
+    // A saved report opened in a new tab or after a reload. `state.signals`
+    // is memory-only by design — see the note on it — so the Instagram export
+    // has to be handed over again before anything can be added to it. It is
+    // asked for here rather than the button being hidden, because "you can no
+    // longer improve this report, ever" is not true and should not be implied.
+    const input = $('#rerun-input');
+    input.value = '';
+    input.click();
+  }
+
+  /**
+   * Re-read the Instagram archive for a returning reader, then hand off to
+   * the ordinary rerun flow. Deliberately does not touch the stored profile
+   * or digest: until Send resolves at the very end, a reader who picks the
+   * wrong file still has the report they arrived with.
+   */
+  async function rerunFromFiles(files) {
+    const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
+    if (!chosen.length) return;
+    if (!state.server.ready) {
+      flash('#profile-alert', 'The server is not ready to analyse yet.');
+      return;
+    }
+
+    $('#working-title').textContent = 'Loading';
+    $('#working-note').textContent = '';
+    setProgress(0, 'Opening the archive…');
+    show('working');
+
+    let signals;
+    try {
+      signals = await IG.readExports(chosen, {
+        includeMessages: true, includeImages: true,
+        onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
+      });
+    } catch (error) {
+      // Back to the report, not to the welcome page: this reader has a
+      // finished profile and picking the wrong zip must not look like losing
+      // it. The same reasoning as askSupplement's catch, one level up.
+      renderProfile();
+      show('profile');
+      flash('#profile-alert', (error && error.message) || 'Could not read that archive.');
+      return;
+    }
+
+    state.signals = signals;
+    // Put the report back under the dialogs before they open, so Back lands
+    // on the report rather than on a stranded progress bar.
+    renderProfile();
+    show('profile');
+    await rerunWithAdditionalData(signals);
+  }
+
+  async function rerunWithAdditionalData(signals) {
+    if (!signals) return;
     let digest;
     let decision = null;
     let chosenImages = [];
@@ -1831,7 +1896,9 @@
         if (decision !== REVIEW_BACK) break;
       }
     } catch (error) {
-      showUploadError((error && error.message) || 'Could not rebuild your evidence summary.');
+      // Stays on the report for the same reason rerunFromFiles does: a failed
+      // attempt to *add* to a report must never read as having lost it.
+      flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
       return;
     }
 
@@ -1848,7 +1915,7 @@
         });
         digest.coverage.images.attached = images.length;
       } catch (error) {
-        showUploadError((error && error.message) || 'Could not prepare your photos.');
+        flash('#profile-alert', (error && error.message) || 'Could not prepare your photos.');
         return;
       }
     } else {
@@ -2187,13 +2254,19 @@
 
     $('#profile-body').innerHTML = reportSectionsHtml(report);
 
-    // Only while this session still holds the parsed Instagram export in
-    // memory (see state.signals) and neither supplement has been added to it
-    // yet — both are things a page reload throws away, so the button simply
-    // is not offered after one; a fresh upload is the only way back to it.
-    const supplements = state.signals && state.signals.supplements;
+    // Read off the *stored digest*, not off `state.signals`. Whether this
+    // report could still be deepened is a fact about the report — it was
+    // written from Instagram alone — and stays true across a reload, a new
+    // tab, or a visit next week. Keying it to the in-memory export instead
+    // made the button vanish the moment the page was reloaded, which is
+    // precisely when a returning reader would come looking for it.
+    //
+    // Having the button and having the material behind it are two different
+    // questions: startRerun() below deals with a session that no longer holds
+    // the Instagram export by asking for it again.
+    const digest = state.digest;
     $('#rerun-with-data').hidden =
-      !state.signals || Boolean(supplements && (supplements.google || supplements.facebook));
+      !digest || Boolean(digest.google) || Boolean(digest.facebook);
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -3050,7 +3123,8 @@
   });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
-  $('#rerun-with-data').addEventListener('click', rerunWithAdditionalData);
+  $('#rerun-with-data').addEventListener('click', startRerun);
+  $('#rerun-input').addEventListener('change', () => rerunFromFiles($('#rerun-input').files));
 
   /**
    * The same download for a comparison. Built from `state.lastReport`, which

@@ -1461,15 +1461,26 @@ analysis with additional data" sits in the report's own action row, right of "Do
 and offers exactly what the name says: add a Google or Facebook export now, and get a new free report
 written from the enlarged digest — without giving up the Instagram export a second time.
 
-**The button is conditional, on purpose, and the condition is memory, not the report itself.**
-`state.signals` — the parsed Instagram export `handleFiles` already read — is kept in memory for the
-rest of the session on the same terms as `state.images`: never written to `localStorage`, gone the
-moment the tab reloads. `renderProfile()` shows the button only while that object is still there and
-neither `signals.supplements.google` nor `.facebook` is set yet — a reader who already added a source,
-on this run or a previous one, has had the offer; a reader who reloaded the page has nothing left in
-memory for the button to add to, so it simply is not offered rather than being shown and then failing.
-This is the same trade-off the photographs already made: real convenience within a session, no promise
-of surviving a reload, and no server-side cache anywhere to make up the difference.
+**The button is conditional, and the condition is the stored digest — not what happens to be in
+memory.** `renderProfile()` shows it whenever `state.digest` exists and carries neither a `google` nor
+a `facebook` block: this report was written from Instagram alone, so there is something left to add.
+That is a fact about the *report*, and it survives a reload, a new tab, and coming back next week,
+because the digest is in `localStorage`.
+
+It was keyed to `state.signals` first — the parsed export held in memory — and that was wrong in a way
+worth recording. `state.signals` is memory-only by design, on the same terms as `state.images`: never
+written to disk, gone the moment the tab reloads. Keying the button to it meant the button vanished on
+reload, which is precisely when a reader coming back to a saved report would go looking for it. The
+in-session case passed every check while the case that actually matters did not exist.
+
+**Whether the button is offered and whether this tab can act on it are two separate questions**, and
+`startRerun()` is where they meet. If `state.signals` is still there — same session as the upload — it
+goes straight to the supplement offer. If not, it asks for the Instagram export again through
+`#rerun-input`, re-reads it with `IG.readExports`, and then joins the identical flow. Hiding the button
+instead would have implied "this report can never be improved", which is not true; asking for one file
+again is the honest cost of not keeping anybody's archive on disk. The picker is opened synchronously
+inside the click handler for the same reason `askSupplement` does it — a file picker only opens inside
+a user-gesture task, and an `await` before it loses that gesture.
 
 **It reuses the first upload's own two dialogs — the supplement offer and the review — with one
 deliberate difference.** `askSupplement()` gained an `opts.requireAtLeastOne` mode: Skip is never
@@ -1486,7 +1497,10 @@ contains.
 once a source has been added, resolves the whole rerun to a no-op: the digest, the profile and
 `localStorage` are all untouched, because nothing is written until Send genuinely resolves at the very
 end. The report a reader is looking at was likely worth several minutes of generation; an attempt to
-add to it must never risk it.
+add to it must never risk it. The same reasoning governs the failure paths: a zip that will not parse,
+or photographs that will not decode, write their message to `#profile-alert` and leave the reader on
+their report — rather than calling `showUploadError()`, which drops back to the welcome page and would
+look for all the world like the report had been lost.
 
 **A paid unlock from before the rerun does not quietly survive under a report that moved on without
 it.** `runAnalysis()` replaces `state.profile` wholesale on success, which is what actually clears any
@@ -1497,15 +1511,19 @@ lost: the receipt in `psycheai_unlock` is written independently of the report an
 you paid for" — the existing lost-tab recovery path, reused here for a different reason — rather than
 asking to pay again.
 
-`tools/uitest.mjs` drives all of this for real: the button appearing after an ordinary upload and
-disappearing after a reload; Skip absent and Escape refused in the forced dialog; Back leaving the
-digest, the profile and the request count exactly where they were; adding a Google Takeout and
-completing the rerun sending exactly one more request and landing a digest that actually carries the
-new block; and a promo-unlocked report whose paid sections are cleared by the rerun while the receipt
-and the "already paid" cover survive it. Each of those was fault-injected while this shipped —
-dropping `requireAtLeastOne`, inverting the button's visibility condition, and reintroducing the old
-`premiumAnalysis` after a rerun — and each broke a different, specific check rather than passing
-unnoticed.
+`tools/uitest.mjs` drives all of this for real: the button appearing after an ordinary upload **and
+surviving a reload**; pressing it on a reloaded page opening a real file chooser, re-reading the
+archive, and landing on the supplement offer with the report still behind it; Skip absent and Escape
+refused in the forced dialog; Back leaving the digest, the profile and the request count exactly where
+they were; adding a Google Takeout and completing the rerun sending exactly one more request and
+landing a digest that actually carries the new block; and a promo-unlocked report whose paid sections
+are cleared by the rerun while the receipt and the "already paid" cover survive it.
+
+Each was fault-injected — dropping `requireAtLeastOne`, inverting the button's visibility condition,
+and reintroducing the old `premiumAnalysis` after a rerun — and each broke a different, specific check.
+The reload check was fault-injected against the original `state.signals` condition specifically, since
+that is the bug it exists to prevent: it fails with `hidden=true`, and the file-chooser check behind it
+times out, which is exactly what the reader saw.
 
 ### The photographs
 
@@ -2536,7 +2554,7 @@ npm test           # 665 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 848 checks: drives the real UI in Chromium against a
+npm run test:ui    # 851 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -434,12 +434,23 @@
     </div>
   </dialog>
 
+  <!-- Anything that goes wrong while re-running belongs here rather than on
+       the welcome page's #upload-error: this reader already has a report on
+       screen, and throwing them back to the upload page to read an error
+       message would look like they had lost it. -->
+  <div id="profile-alert" class="alert no-print" hidden></div>
+
   <div class="cta-row no-print">
     <button class="btn" id="export-pdf-bottom">Download full report</button>
     <button class="btn btn-ghost" id="rerun-with-data" type="button" hidden>Re-run analysis with additional data</button>
     <button class="btn" id="test-compat-open" type="button">Test compatibility</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>
+
+  <!-- Only used when the reader comes back to a saved report in a new tab:
+       state.signals is memory-only by design, so the Instagram export has to
+       be handed over again before a supplement can be added to it. -->
+  <input type="file" id="rerun-input" accept=".zip,application/zip" multiple hidden>
 
   <p class="fineprint" id="analysed-by"></p>
 
