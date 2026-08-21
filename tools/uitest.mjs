@@ -2275,8 +2275,22 @@ try {
 
   await clickClear(page, '#profile-body .bonus-card .premium-unlock');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  // showModal() focuses the first focusable descendant when nothing has
+  // `autofocus` — which is the promo input here, since the wallet button and
+  // the mock/retry buttons are all empty or hidden at this point. On a phone
+  // that pulls the keyboard up over a dialog whose whole point is the wallet
+  // button, before the reader has touched the promo field at all. The dialog
+  // itself is `tabindex="-1"` and explicitly focused instead (docs/app.js), so
+  // the promo input must not be the active element on open.
+  check('opening the unlock dialog does not focus the promo input (no surprise keyboard)',
+    await page.evaluate(() => document.activeElement !== document.querySelector('#premium-promo-input')));
+  check('clicking the promo input does focus it, since that is the reader\'s own action',
+    await page.evaluate(async () => {
+      document.querySelector('#premium-promo-input').focus();
+      return document.activeElement === document.querySelector('#premium-promo-input');
+    }));
   check('the unlock dialog opens with a title and a blurb naming all four sections',
-    /Unlock all four sections/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Unlock premium sections/.test(await page.locator('#premium-dialog-title').innerText()) &&
     /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /mental wellness read, your attachment style, the career/i
       .test(await page.locator('#premium-dialog-blurb').innerText()),

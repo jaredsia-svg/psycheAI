@@ -1025,6 +1025,11 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .premium-promo-row { display: flex; gap: .5rem; }
 .premium-promo-input { flex: 1; min-width: 0; }
 .premium-promo-row .btn { flex: none; margin: 0; }
+/* The dialog itself is given `tabindex="-1"` and focused programmatically
+   (docs/app.js's openPremiumDialog) so opening it does not land focus on the
+   promo input and pull up a keyboard nobody asked for. That focus is parked
+   rather than chosen by the reader, so it should not draw an outline either. */
+#premium-dialog:focus { outline: none; }
 
 
 

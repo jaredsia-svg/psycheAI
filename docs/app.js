@@ -2584,6 +2584,15 @@
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
+    // showModal() focuses the first focusable descendant when nothing carries
+    // `autofocus` — which, at this point, is the promo code input, since the
+    // wallet button and the mock/retry buttons are all still empty or hidden.
+    // On a phone that pulls the keyboard up over a dialog whose entire point
+    // is to offer Apple Pay / Google Pay first, before anyone has touched the
+    // promo field at all. `tabindex="-1"` on the dialog plus this explicit
+    // focus() overrides that: the dialog itself takes focus, and the keyboard
+    // only appears once the reader actually taps the promo input.
+    dialog.focus();
 
     button.disabled = true;
     try {

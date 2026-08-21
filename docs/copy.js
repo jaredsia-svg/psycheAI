@@ -383,7 +383,7 @@
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
     premiumGenerating: 'Generating your analysis…',
-    premiumDialogTitle: 'Unlock all four sections',
+    premiumDialogTitle: 'Unlock premium sections',
     premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
       'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +
       'browser offers.',
