@@ -290,25 +290,34 @@ images at all.
 
 #### Waiting for it, and not losing it
 
-The paid call is slow. Four sections written from a ~45,000-token digest with adaptive thinking on
-measured **past five minutes** of wall clock — and unlike the free report, the reader is watching that
-having already paid, which is the worst place in the app to make somebody wait.
+The paid call is slow by nature: four sections from a ~45,000-token digest with adaptive thinking on,
+and unlike the free report, the reader is watching it having already paid — the worst place in the app
+to make somebody wait. Four sections written on Opus with thinking at `high` measured **past five
+minutes** of wall clock, which is what first forced a choice between latency and quality on this call.
 
-**Effort is the lever, and it is now configurable.** `high` is the API's own default and what the free
-report still uses; the paid call runs at `medium`. Thinking tokens are most of that time and most of
-the output bill, so it cuts both. `PSYCHEAI_PREMIUM_EFFORT` puts it back (or takes it lower);
-`PSYCHEAI_EFFORT` is the free report's own. An unrecognised level throws at boot rather than reaching
-the API as a 400 on a call somebody has already paid for.
+**The choice made twice, in opposite directions, and the second one is the one that stuck.** The first
+fix dropped effort to `medium` on Opus — cutting thinking tokens cuts both the wait and the bill, but
+at a real quality cost on the section with the tightest hard limits in the app. The second, current fix
+instead moved the *model*: the paid call now runs on **Sonnet 5** (`PREMIUM_MODEL` in `lib/claude.js`,
+independent of `MODEL`, which is still what the free report's own Claude fallback uses), with effort
+put back to `high`. Sonnet runs at roughly 60% of Opus's rate on both input and output at the same
+effort, which is enough of a gap that `high` on Sonnet is expected to cost no more than `medium` did on
+Opus — full effort, for close to what a reduced one cost before. `PSYCHEAI_PREMIUM_EFFORT` still trades
+some of that back for latency if the wait matters more than the quality on a given deployment;
+`PSYCHEAI_PREMIUM_MODEL` overrides the model choice the same way; `PSYCHEAI_EFFORT`/`PSYCHEAI_MODEL`
+are the free report's own, unaffected by either. An unrecognised effort level throws at boot rather
+than reaching the API as a 400 on a call somebody has already paid for.
 
-Three bigger levers exist and are deliberately *not* taken by default, because each costs something
-the reader or the operator would notice: **fast mode** (`speed: 'fast'`, Opus 5 only) is up to 2.5×
-the output rate at $10/$50 per MTok instead of $5/$25 — it roughly doubles the paid call's cost, which
-against ~US$1.05 net is most of the margin; **Sonnet 5** is faster and about 40% cheaper, at a real
-quality cost on the section with the tightest hard limits in the app; and **splitting the one call
-into two parallel ones** — the three considered sections, and the roast — would make wall clock
-`max(a, b)` instead of one long generation, and halve each compiled grammar as a side effect, at the
-price of sending the digest twice (about +$0.22 on a heavy Opus run) and doubling the failure surface
-on a route that handles money.
+Sonnet's own speed does not fully cancel `high` costing more wall clock than `medium` did — the reader
+may still wait several minutes, and the dialog's copy is written to that expectation rather than a
+shorter one. Two more levers exist and are deliberately not taken by default: **fast mode**
+(`speed: 'fast'`) is up to 2.5× the output rate — Anthropic's docs describe it as tuned for Opus 5, so
+it is a lever this call left behind when it left Opus, not one available to reach for on Sonnet without
+its own testing; and **splitting the one call into two parallel ones** — the three considered sections,
+and the roast — would make wall clock `max(a, b)` instead of one long generation, and halve each
+compiled grammar as a side effect, at the price of sending the digest twice (about +$0.13 on a heavy
+run at Sonnet's input rate, down from +$0.22 when this call ran on Opus) and doubling the failure
+surface on a route that handles money.
 
 **The dialog now says so.** It reads "this usually takes a few minutes, and can pass five. Keep this
 tab open — if you do lose it, you will not be charged again", beside the live seconds counter that was
@@ -423,37 +432,52 @@ output column is where the spread lives.
 
 | Model | Input $/1M | Output $/1M | Typical | Heavy | Worst case |
 |---|---|---|---|---|---|
-| **Claude Opus 5** (`claude-opus-5`, current) | $5 | $25 | **$0.33** | **$0.49** | **$1.19** |
+| **Claude Sonnet 5** (`claude-sonnet-5`, current, list rate) | $3 | $15 | **$0.20** | **$0.30** | **$0.71** |
+| Claude Sonnet 5 (intro rate, if it applies) | $2 | $10 | $0.13 | $0.20 | $0.48 |
+| Claude Opus 5 (previous default, still available via `PSYCHEAI_PREMIUM_MODEL`) | $5 | $25 | $0.33 | $0.49 | $1.19 |
 | Claude Opus 4.8 / 4.7 | $5 | $25 | $0.33 | $0.49 | $1.19 |
-| Claude Sonnet 5 (list) | $3 | $15 | $0.20 | $0.30 | $0.71 |
-| Claude Sonnet 5 (intro rate) | $2 | $10 | $0.13 | $0.20 | $0.48 |
 | Claude Haiku 4.5 | $1 | $5 | $0.07 | $0.10 | $0.24 |
 | Claude Fable 5 | $10 | $50 | $0.65 | $0.99 | $2.38 |
 
+**The difference the model switch made, holding effort at `high` on both sides:** typical drops from
+$0.33 to $0.20 (about **39% less**), heavy from $0.49 to $0.30 (about **39% less**), worst case from
+$1.19 to $0.71 (about **40% less**) — matching Sonnet's list-rate discount against Opus almost exactly,
+since both are the same digest and (by assumption) close to the same output length at the same effort.
+That is *before* accounting for `medium` effort's own token savings on the old Opus configuration this
+replaces — the actual before/after gap in production is probably smaller than 39%, since the thing
+being replaced was Opus at reduced effort, not Opus at `high`. Anthropic does not publish a fixed
+token-budget ratio between named effort levels, so that narrower comparison cannot be computed exactly
+without a real measured run; what is certain is the direction — Sonnet at `high` costs meaningfully
+less than Opus did at `high`, and is expected to cost no more than Opus did at `medium`, while restoring
+the effort the reduction had traded away.
+
 **What that leaves.** S$1.99 gross is roughly **US$1.48**. Stripe Singapore takes about 3.4% + S$0.50,
-so net is about **S$1.42 ≈ US$1.05** per unlock. Against that:
+so net is about **S$1.42 ≈ US$1.05** per unlock. Against that, at the current Sonnet 5 list rate:
 
-- **Typical Opus 5 run: ~$0.33, about 31% of net.** Healthy.
-- **Heavy account: ~$0.49, about 47% of net.** Still fine.
-- **Worst case: ~$1.19, about 113% of net — a loss.** This needs saying plainly rather than being
-  left in a table. It requires both a ceiling-filling digest *and* the full 32,000-token output, and
-  the per-source caps make the first unreachable on real input (a heavy real account is 156KB against
-  a 241KB ceiling). But the output half is reachable on its own: `lib/claude.js` runs adaptive
-  thinking at `effort: 'high'`, thinking bills as output, and this is now a four-section report rather
-  than a two-field roast.
+- **Typical run: ~$0.20, about 19% of net.** Healthy, and lower than Opus's own 31% was.
+- **Heavy account: ~$0.30, about 29% of net.** Still comfortably fine.
+- **Worst case: ~$0.71, about 68% of net.** Thinner than Opus's worst case (113%, an outright loss),
+  but still worth naming plainly: it requires both a ceiling-filling digest *and* the full
+  32,000-token output, and the per-source caps make the first unreachable on real input (a heavy real
+  account is 156KB against a 241KB ceiling). The output half stays reachable on its own with effort at
+  `high` — thinking bills as output, and this is a four-section report rather than a two-field roast —
+  but landing there no longer means a loss the way it did on Opus.
 
-**Three levers, if the margin gets uncomfortable**, in the order worth reaching for them: drop the
-paid call's `effort` to `medium`, which cuts thinking tokens without touching the schema; lower
-`MAX_TOKENS` in `lib/claude.js` from 32,000, which bounds the worst case directly (the free report's
-own cap is 16,000); or move the paid call to Sonnet 5, which halves every column. Nothing here needs
-the price to change.
+**Two levers remain, if the margin gets uncomfortable again**, in the order worth reaching for them:
+drop the paid call's `effort` back to `medium` via `PSYCHEAI_PREMIUM_EFFORT`, which cuts thinking
+tokens without touching the schema (the same trade this call already made once, on the model it has
+since moved off); or lower `MAX_TOKENS` in `lib/claude.js` from 32,000, which bounds the worst case
+directly (the free report's own cap is 16,000). Moving to a cheaper model again is no longer free —
+Sonnet is already the cheaper move taken; only Haiku is left below it, at a real quality cost on the
+section with the tightest hard limits in the app. Nothing here needs the price to change.
 
-**The digest is still sent twice, and switching to Claude does not fix that.** It is sent in full to
-both calls. Claude's prompt caching (`cache_control: { type: 'ephemeral' }` in `lib/claude.js`) caches
-the system prompt, not the digest — and even if it covered the digest, the two calls use different
-system prompts on different providers, so there is no shared prefix to hit. The ~$0.22 of digest input
-on a heavy Opus 5 run is paid in full on every unlock. Trimming what the paid call receives is the
-only real saving available, and it would need its own budget rather than reusing the free report's.
+**The digest is still sent twice, and switching models does not fix that.** It is sent in full to both
+calls. Claude's prompt caching (`cache_control: { type: 'ephemeral' }` in `lib/claude.js`) caches the
+system prompt, not the digest — and even if it covered the digest, the two calls use different system
+prompts on different providers, so there is no shared prefix to hit. The ~$0.13 of digest input on a
+heavy run at Sonnet's list rate (down from ~$0.22 when this call ran on Opus) is paid in full on every
+unlock. Trimming what the paid call receives is the only real saving available, and it would need its
+own budget rather than reusing the free report's.
 
 ### Making the code scannable
 
@@ -568,9 +592,9 @@ was caught the same way, by the check that the sample's `.premium-body` elements
 the reader has a real, paid, unlocked profile of their own open in the same tab.
 
 **The blurb names the model doing the deeper read**, not just what it covers: "These four sections
-are a deeper analysis using Claude's latest model Opus." Pairing a price with a model name is what
-actually distinguishes the paid tier from the free one on the page — a reader can see not just what
-they get, but who writes it, before deciding whether that is worth the difference.
+are a deeper analysis using Claude's Sonnet model." Pairing a price with a model name is what actually
+distinguishes the paid tier from the free one on the page — a reader can see not just what they get,
+but who writes it, before deciding whether that is worth the difference.
 
 **The block used to close with a line about payment terms** — "One payment, on the device you read
 it on. No account, no subscription, and nothing recurring" — under the price and the section list.
@@ -601,7 +625,7 @@ who actually wrote the paragraph the reader is reading.
 render (`renderProfile()`) and the premium success handler both go through it, so the two call sites
 cannot say different things about the same profile. It prints one line normally — "Analysed by
 gemini-3.6-flash on 8/21/2026, 11:53:22 AM." — and grows a second the moment `premiumAnalysis`,
-`premiumModel` and `premiumAt` are all present: "Premium sections analysed by claude-opus-5 on
+`premiumModel` and `premiumAt` are all present: "Premium sections analysed by claude-sonnet-5 on
 \<date\>." All three fields have to be there together, not just the analysis — a profile unlocked
 before this pair existed still has the writing but not the record of who wrote it, and falls back to
 the one-line form rather than printing `undefined`.
@@ -750,7 +774,9 @@ catch its siblings across all 40 versions.
 | `XAI_API_KEY` | Uses Grok, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` when you have more than one key. |
 | `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
-| `PSYCHEAI_MODEL` | Claude model ID. Default `claude-opus-5`. |
+| `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
+| `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid four-section call specifically, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
+| `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
 | `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 
@@ -2387,7 +2413,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 656 checks: synthesises a real ZIP export and runs
+npm test           # 658 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

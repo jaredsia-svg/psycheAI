@@ -2880,32 +2880,43 @@ check('the schema requires evidence on strengths and frictions',
     prompts.COMPATIBILITY_MODES.platonic.dimensions.every(d => blocks[0].text.includes(d)));
 }
 
-// ---------- how hard the paid call thinks ----------
+// ---------- how hard the paid call thinks, and on which model ----------
 //
-// The paid call measured past five minutes of wall clock at `high` effort —
-// four sections, a ~45,000-token digest, adaptive thinking — and the reader is
-// watching that having already paid. It runs at `medium` now. Read in a fresh
-// process per case, since both are module-level constants resolved at require
-// time, the same way GEMINI_MODEL and the promo code are.
+// The paid call measured past five minutes of wall clock at `high` effort on
+// Opus — four sections, a ~45,000-token digest, adaptive thinking — and the
+// reader is watching that having already paid, so it ran at `medium` for a
+// while purely to cut that wait. It is on Sonnet 5 now instead of Opus, which
+// is what makes affording `high` again reasonable: Sonnet runs meaningfully
+// cheaper than Opus at the same effort (see the Cost section), enough that
+// `high` on Sonnet is not expected to cost more than `medium` did on Opus.
+// Read in a fresh process per case, since all four are module-level constants
+// resolved at require time, the same way GEMINI_MODEL and the promo code are.
 {
-  const effortFor = env => JSON.parse(execFileSync(process.execPath,
+  const configFor = env => JSON.parse(execFileSync(process.execPath,
     ['-e', 'const c = require("' + join(root, 'lib', 'claude.js') + '"); ' +
-      'process.stdout.write(JSON.stringify({ free: c.EFFORT, paid: c.PREMIUM_EFFORT }));'],
+      'process.stdout.write(JSON.stringify({ ' +
+      'freeEffort: c.EFFORT, paidEffort: c.PREMIUM_EFFORT, freeModel: c.MODEL, paidModel: c.PREMIUM_MODEL }));'],
     { env: { PATH: process.env.PATH, ...env } }).toString());
 
-  const byDefault = effortFor({});
-  check('the paid call thinks less hard than the free one, because the reader is waiting on it',
-    byDefault.paid === 'medium' && byDefault.free === 'high', JSON.stringify(byDefault));
-  const raised = effortFor({ PSYCHEAI_PREMIUM_EFFORT: 'xhigh' });
-  check('and that is one env var to put back',
-    raised.paid === 'xhigh' && raised.free === 'high', JSON.stringify(raised));
-  check('the two are set independently',
-    effortFor({ PSYCHEAI_EFFORT: 'low' }).paid === 'medium');
+  const byDefault = configFor({});
+  check('the paid call now thinks as hard as the free one, on a cheaper model rather than a lesser effort',
+    byDefault.paidEffort === 'high' && byDefault.freeEffort === 'high', JSON.stringify(byDefault));
+  check('and it runs on Sonnet 5, independently of whatever the free report\'s own Claude fallback uses',
+    byDefault.paidModel === 'claude-sonnet-5' && byDefault.freeModel === 'claude-opus-5',
+    JSON.stringify(byDefault));
+  const lowered = configFor({ PSYCHEAI_PREMIUM_EFFORT: 'medium' });
+  check('and that is one env var to put back, to trade the quality back for latency again',
+    lowered.paidEffort === 'medium' && lowered.freeEffort === 'high', JSON.stringify(lowered));
+  check('the two efforts are set independently',
+    configFor({ PSYCHEAI_EFFORT: 'low' }).paidEffort === 'high');
+  const rehomed = configFor({ PSYCHEAI_PREMIUM_MODEL: 'claude-opus-5' });
+  check('the paid model is overridable independently of the free one too',
+    rehomed.paidModel === 'claude-opus-5' && rehomed.freeModel === 'claude-opus-5', JSON.stringify(rehomed));
   // A typo here would otherwise reach the API as a 400 on a call somebody has
   // already paid for, which is the worst place to discover it.
   let rejected = false;
   try {
-    effortFor({ PSYCHEAI_PREMIUM_EFFORT: 'maximum' });
+    configFor({ PSYCHEAI_PREMIUM_EFFORT: 'maximum' });
   } catch (error) {
     rejected = /must be one of/.test((error.stderr || '').toString());
   }
