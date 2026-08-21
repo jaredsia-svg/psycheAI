@@ -9,6 +9,10 @@
 // needing a separate command anyone has to remember to run.
 'use strict';
 
+// Verbatim from the API, because lib/claude.js matches on this text — there
+// is no error code that distinguishes it from any other invalid request.
+const GRAMMAR_TOO_LARGE = 'The compiled grammar is too large, which would cause performance issues. Simplify your tool schemas or reduce the number of strict tools.';
+
 const results = [];
 function check(label, ok, detail) {
   results.push({ label, ok: Boolean(ok), detail });
@@ -287,6 +291,87 @@ async function main() {
     check('Claude: an unclassified API error is still reported, not swallowed',
       Boolean(described) && described.status === 502 && /418/.test(described.message),
       described && JSON.stringify(described));
+  }
+
+  // ---------- Claude: the structured-output grammar ----------
+  //
+  // The failure this covers reached production: the paid schema grew until its
+  // compiled sampling grammar was refused, and every paid run 400'd *after*
+  // the reader had been charged. Nothing else in the suite talks to the real
+  // API, so this is the only place the behaviour is pinned.
+
+  {
+    // Refused at both constrained stages, then accepted unconstrained. Three
+    // calls: betas+grammar, no-betas+grammar, no-grammar.
+    const { engine, counter } = loadClaude([
+      { throw: new FakeBadRequestError(GRAMMAR_TOO_LARGE, 400) },
+      { throw: new FakeBadRequestError(GRAMMAR_TOO_LARGE, 400) },
+      { data: { ok: true } },
+    ]);
+    const outcome = await attempt(engine);
+    check('Claude: a grammar-too-large refusal falls back to an unconstrained call',
+      Boolean(outcome.data && outcome.data.ok === true), JSON.stringify(outcome));
+    check('Claude: the fallback takes exactly three attempts', counter.calls === 3, counter.calls + ' calls');
+  }
+
+  {
+    // A model asked for bare JSON often wraps it anyway. On the fallback path
+    // nothing enforces the shape, so the parser has to cope rather than fail a
+    // reader who has already paid over a fence and a lead-in sentence.
+    const { engine } = loadClaude([
+      { throw: new FakeBadRequestError(GRAMMAR_TOO_LARGE, 400) },
+      { throw: new FakeBadRequestError(GRAMMAR_TOO_LARGE, 400) },
+      { message: {
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'Here is the analysis:\n\n```json\n{"ok":true}\n```\n\nHope it helps.' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+        model: 'fake-model',
+      } },
+    ]);
+    const outcome = await attempt(engine);
+    check('Claude: fenced JSON with prose around it is still read on the fallback path',
+      Boolean(outcome.data && outcome.data.ok === true), JSON.stringify(outcome));
+  }
+
+  {
+    // The constrained path must stay strict. The grammar guarantees bare JSON
+    // there, so tolerating prose would hide a real break rather than rescue a
+    // reader — and would make the loose parser impossible to test honestly.
+    const { engine } = loadClaude([
+      { message: {
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'Here is the analysis: {"ok":true}' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+        model: 'fake-model',
+      } },
+    ]);
+    const outcome = await attempt(engine);
+    check('Claude: prose around JSON is NOT tolerated when the grammar was in force',
+      Boolean(outcome.error), outcome.error ? outcome.error.message : JSON.stringify(outcome.data));
+  }
+
+  {
+    // A 400 that is not about the grammar must not reach the unconstrained
+    // stage — retrying an actually-malformed request without its schema would
+    // turn a clear error into a confusing one.
+    const { engine, counter } = loadClaude([
+      { throw: new FakeBadRequestError('messages.0: unexpected field', 400) },
+      { throw: new FakeBadRequestError('messages.0: unexpected field', 400) },
+      { data: { ok: true } },
+    ]);
+    const outcome = await attempt(engine);
+    check('Claude: an unrelated 400 stops at the second attempt rather than dropping the schema',
+      Boolean(outcome.error) && counter.calls === 2, counter.calls + ' calls, ' +
+      (outcome.error ? outcome.error.message : 'no error'));
+  }
+
+  {
+    // Reported rather than silent: a run that lost the schema guarantee should
+    // be distinguishable from one that kept it.
+    const { engine } = loadClaude([{ data: { ok: true } }]);
+    const result = await engine.analyseProfile({ coverage: {} }, []);
+    check('Claude: a normal run reports that the schema was actually enforced',
+      result.constrained === true, String(result.constrained));
   }
 
   // ---------- Grok ----------

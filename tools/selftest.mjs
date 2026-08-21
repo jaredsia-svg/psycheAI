@@ -566,7 +566,8 @@ check('a PaymentIntent nobody has used yet has a usage count of zero',
 
 const UNSUPPORTED = ['minimum', 'maximum', 'multipleOf', 'minLength', 'maxLength', 'minItems', 'maxItems', 'pattern'];
 
-function walkSchema(node, path, report) {
+function walkSchema(node, path, report, root) {
+  node = prompts.deref(root || node, node);
   if (!node || typeof node !== 'object') return;
   for (const key of UNSUPPORTED) {
     if (key in node) report.push(path + ' uses unsupported constraint "' + key + '"');
@@ -577,13 +578,13 @@ function walkSchema(node, path, report) {
     const required = node.required || [];
     for (const property of properties) {
       if (!required.includes(property)) report.push(path + '.' + property + ' is not in required');
-      walkSchema(node.properties[property], path + '.' + property, report);
+      walkSchema(node.properties[property], path + '.' + property, report, root);
     }
     for (const name of required) {
       if (!properties.includes(name)) report.push(path + ' requires "' + name + '" which it does not define');
     }
   }
-  if (node.type === 'array') walkSchema(node.items, path + '[]', report);
+  if (node.type === 'array') walkSchema(node.items, path + '[]', report, root);
 }
 
 // Gemini's responseJsonSchema takes real JSON Schema but honours only a
@@ -593,23 +594,26 @@ const GEMINI_SUPPORTED = new Set(['$id', '$defs', '$ref', '$anchor', 'type', 'fo
   'description', 'enum', 'items', 'prefixItems', 'minItems', 'maxItems', 'minimum', 'maximum',
   'anyOf', 'oneOf', 'properties', 'additionalProperties', 'required', 'propertyOrdering']);
 
-function walkKeywords(node, path, report) {
+function walkKeywords(node, path, report, root) {
   if (!node || typeof node !== 'object' || Array.isArray(node)) return;
   for (const key of Object.keys(node)) {
     if (!GEMINI_SUPPORTED.has(key)) report.push(path + ' uses "' + key + '"');
   }
-  for (const key of Object.keys(node.properties || {})) walkKeywords(node.properties[key], path + '.' + key, report);
-  if (node.items) walkKeywords(node.items, path + '[]', report);
+  // Definitions are walked from the root rather than at each use site, so the
+  // shared shape is keyword-checked once instead of once per reference.
+  for (const key of Object.keys(node.$defs || {})) walkKeywords(node.$defs[key], path + '.$defs.' + key, report, root);
+  for (const key of Object.keys(node.properties || {})) walkKeywords(node.properties[key], path + '.' + key, report, root);
+  if (node.items) walkKeywords(node.items, path + '[]', report, root);
 }
 
 for (const [name, schema] of [['PROFILE_SCHEMA', prompts.PROFILE_SCHEMA], ['COMPATIBILITY_SCHEMA', prompts.COMPATIBILITY_SCHEMA],
   ['PREMIUM_SCHEMA', prompts.PREMIUM_SCHEMA]]) {
   const report = [];
-  walkSchema(schema, name, report);
+  walkSchema(schema, name, report, schema);
   check(name + ' obeys the structured-output rules', report.length === 0, report.slice(0, 4).join('; '));
 
   const keywords = [];
-  walkKeywords(schema, name, keywords);
+  walkKeywords(schema, name, keywords, schema);
   check(name + ' stays inside the keywords Gemini supports', keywords.length === 0, keywords.slice(0, 4).join('; '));
 }
 
@@ -903,6 +907,10 @@ check('the card keeps its own compressed attachment fields',
 // addition looks reasonable and three releases later the section is a
 // screening tool nobody decided to build.
 const wellnessProps = prompts.PREMIUM_SCHEMA.properties.wellness.properties;
+// The six dimensions are one shared definition referenced six times now (see
+// the note on `$defs` in lib/prompts.js), so a check that wants the actual
+// shape has to follow the reference to reach it.
+const wellnessDim = key => prompts.deref(prompts.PREMIUM_SCHEMA, wellnessProps[key]);
 const wellnessText = JSON.stringify(prompts.PREMIUM_SCHEMA.properties.wellness);
 
 check('wellness carries the six dimensions, an overall read and suggestions',
@@ -927,19 +935,19 @@ check('the two health-claiming field names were narrowed, and stayed narrowed',
 const wellnessDimensions = ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection',
   'physicalActivity', 'emotionalProcessing', 'meaning'];
 check('no wellness dimension carries a numeric score, unlike every other scored section',
-  wellnessDimensions.every(k => !('score' in wellnessProps[k].properties)) &&
+  wellnessDimensions.every(k => !('score' in wellnessDim(k).properties)) &&
   !/"type":"integer"/.test(wellnessText), wellnessText.slice(0, 160));
 check('every dimension carries a band, its own confidence, a reading and evidence',
   wellnessDimensions.every(k =>
-    ['band', 'confidence', 'reading', 'evidence'].every(f => f in wellnessProps[k].properties)));
+    ['band', 'confidence', 'reading', 'evidence'].every(f => f in wellnessDim(k).properties)));
 check('the bands describe a pattern rather than grading the person',
-  JSON.stringify(wellnessProps.sleepAndRhythm.properties.band.enum) ===
+  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum) ===
   JSON.stringify(['steady', 'mixed', 'under strain', 'not enough evidence']),
-  JSON.stringify(wellnessProps.sleepAndRhythm.properties.band.enum));
+  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum));
 // The escape hatch. Without it the model has no way to say "the export is
 // silent here" that does not read to a reader as a low score.
 check('"not enough evidence" is an available band, and the prompt tells it to use it',
-  wellnessProps.meaning.properties.band.enum.includes('not enough evidence') &&
+  wellnessDim('meaning').properties.band.enum.includes('not enough evidence') &&
   /`not enough evidence` is a real answer and you should use it/.test(prompts.PREMIUM_SYSTEM));
 
 // `overall` is the obvious place a composite score would reappear, so it is
@@ -1016,6 +1024,59 @@ check('every sample dimension cites real evidence rather than asserting',
 // one loose match, the same discipline the old PROFILE_SCHEMA checks held
 // the free-report bonus section to.
 const premiumProps = prompts.PREMIUM_SCHEMA.properties;
+
+// ---------- the compiled grammar this schema has to fit into ----------
+//
+// Anthropic turns a structured-output schema into a sampling grammar, and a
+// schema whose grammar compiles too large is refused outright with a 400 —
+// "The compiled grammar is too large". The limit is undocumented; the only
+// documented cause is that repeated sub-schemas compound it.
+//
+// This call hit that in production, on every paid run, because `wellness`
+// inlined six structurally identical dimension objects. It is one definition
+// under `$defs` referenced six times now. These checks hold that shape,
+// because the failure it prevents is invisible from here: nothing in this
+// suite talks to the real API, so a regression would be found by a paying
+// reader rather than by `npm test`.
+check('the six wellness dimensions share one definition rather than six copies',
+  Object.keys(prompts.PREMIUM_SCHEMA.$defs || {}).includes('wellnessDimension') &&
+  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
+    'emotionalProcessing', 'meaning']
+    .every(key => premiumProps.wellness.properties[key].$ref === '#/$defs/wellnessDimension'),
+  JSON.stringify(Object.keys(prompts.PREMIUM_SCHEMA.$defs || {})));
+// Following the reference still has to arrive at a real, complete dimension —
+// a $ref pointing at nothing would satisfy the check above and produce a
+// schema the API rejects for a different reason.
+check('and the shared definition is a complete dimension, not a dangling reference',
+  ['band', 'confidence', 'reading', 'evidence']
+    .every(field => field in prompts.PREMIUM_SCHEMA.$defs.wellnessDimension.properties));
+// No sub-schema may be pasted twice anywhere in this schema. Stated as the
+// general rule rather than as "wellness specifically", since the next section
+// added here would otherwise reintroduce the same failure in a new place.
+check('no sub-schema is inlined more than once anywhere in the premium schema', (() => {
+  const seen = new Map();
+  const walk = node => {
+    if (!node || typeof node !== 'object') return;
+    if (node.$ref) return;
+    if (node.type === 'object' && node.properties) {
+      const shape = JSON.stringify(node, (key, value) => (key === 'description' ? undefined : value));
+      seen.set(shape, (seen.get(shape) || 0) + 1);
+      for (const key of Object.keys(node.properties)) walk(node.properties[key]);
+    }
+    if (node.type === 'array') walk(node.items);
+  };
+  for (const key of Object.keys(prompts.PREMIUM_SCHEMA.properties)) {
+    walk(prompts.PREMIUM_SCHEMA.properties[key]);
+  }
+  return [...seen.values()].every(count => count === 1);
+})());
+// The per-dimension guidance moved into the system prompt when the six schema
+// descriptions collapsed into one. It has to actually be there, or the model
+// is told nothing about what separates the dimensions.
+check('the system prompt carries what to read for each of the six dimensions',
+  prompts.WELLNESS_DIMENSIONS.every(([key]) =>
+    new RegExp('\\*\\*' + key + '\\*\\*').test(prompts.PREMIUM_SYSTEM)),
+  prompts.WELLNESS_DIMENSIONS.map(([k]) => k).join(', '));
 check('the premium call carries exactly the four paid sections, in report order',
   JSON.stringify(Object.keys(premiumProps)) ===
   JSON.stringify(['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']),

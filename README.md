@@ -238,6 +238,58 @@ instructions to draw on a photo when one gave it something worth saying moved ou
 free report's photograph handling; `summary` is now the only field in either call that reasons about
 images at all.
 
+#### The compiled grammar, and the 400 it returned
+
+**This broke in production the day the paid call moved to Claude, and it is worth recording why.**
+Structured outputs compile the schema into a sampling grammar, and a schema whose grammar compiles
+too large is refused outright:
+
+```
+400 invalid_request_error: The compiled grammar is too large, which would cause
+performance issues. Simplify your tool schemas or reduce the number of strict tools.
+```
+
+The limit is undocumented — [it is only findable by hitting
+it](https://github.com/anthropics/anthropic-sdk-python/issues/1185) — and the one documented cause is
+that **repeated sub-schemas compound grammar size**. That is exactly what `wellness` was: six
+structurally identical dimension objects, each `{enum, enum, string, string[]}`, inlined six times.
+`description` is not part of the grammar (changing one does not even invalidate Anthropic's grammar
+cache), so the schema's bulk was never the issue — its *repetition* was.
+
+**Every repeated shape is now one definition under `$defs`, referenced.** Six dimension copies became
+one; `{title, detail}` and `{headline, detail}` went the same way. A check states the rule generally
+rather than naming `wellness` — *no sub-schema is inlined more than once* — so the next section added
+here cannot quietly reintroduce it. The per-dimension guidance that lived in six schema descriptions
+moved into `PREMIUM_SYSTEM`, rendered from the same `WELLNESS_DIMENSIONS` array the schema references
+are built from, so the two cannot drift and the guidance survives whether or not a provider honours a
+`description` sitting beside a `$ref`.
+
+**But the real fix is that a grammar refusal can no longer strand a paying reader.** `lib/claude.js`
+now runs three attempts, each reached for a reason narrow enough to name: betas + grammar; no betas,
+still grammar (a 400 at step one is almost always the fallback beta not being enabled); and — only
+when the message says the grammar is too large — no grammar at all, with the schema moved into the
+prompt and the response parsed. An unrelated 400 stops at step two rather than silently dropping the
+schema, which would turn a clear error into a confusing one.
+
+That third stage exists because of *where* this call sits. It runs after the money has been taken.
+Hard-failing there and showing somebody a raw JSON 400 — which is what happened — is the worst
+outcome in the app, and worse than a report the API did not shape-check. The parse is tolerant only
+on that path: with the grammar in force the body is bare JSON and anything else is a real break worth
+surfacing, so prose around JSON is accepted on the fallback and rejected on the normal path. The
+result carries `constrained`, so a run that lost the guarantee is distinguishable from one that kept
+it.
+
+**None of this was caught by the suite, because nothing in the suite talks to the real API.** The
+fake-SDK fixture now pins the whole ladder — the fallback, the three-call count, fenced JSON with
+prose around it, strictness on the constrained path, and an unrelated 400 not reaching stage three.
+Fault-injecting the third stage away reproduces the production failure exactly.
+
+**`PROFILE_SCHEMA` is very likely over the same line** — 401 inlined nodes against the premium
+schema's 185, with four repeated sub-schemas still in it. It has never hit this because the free
+report runs on Gemini. A deployment with only `ANTHROPIC_API_KEY` set would run it on Claude, and
+should expect the fallback to carry it. It has been left alone rather than refactored blind: it works
+on the provider it actually uses, and the fallback covers the case where it does not.
+
 #### Cost
 
 Two real API calls happen per unlock, and they now run on **different providers**: the free report on
@@ -2138,7 +2190,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 642 checks: synthesises a real ZIP export and runs
+npm test           # 652 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
