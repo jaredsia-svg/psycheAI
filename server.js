@@ -16,19 +16,25 @@ const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
 // Required directly rather than reached through provider.active: the paid
-// analysis always runs on Claude, regardless of which provider the free
-// report used. A deployment with only GEMINI_API_KEY or XAI_API_KEY set still
-// has no premium engine — see premiumEngine() below — rather than silently
+// analysis is a fixed choice of its own, independent of whichever provider
+// the free report used, so a deployment with only XAI_API_KEY set still has
+// no premium engine — see premiumEngine() below — rather than silently
 // falling back to whichever provider happened to win auto-detection.
 //
-// Claude specifically, and it is a deliberate reversal: this call ran on
-// Gemini while it was the roast alone, chosen on price for a section nobody
-// had to buy. It is now four sections and the whole of what the $1.99 buys,
-// including the wellness read — the section with the tightest hard limits in
-// the app and the most to lose from a model that follows them loosely. The
-// paid pass is the one call where instruction-following is worth paying for,
-// and the reader is paying for it.
+// Both engines are required unconditionally (not just the chosen one) so
+// PSYCHEAI_PREMIUM_PROVIDER below can flip between them with no code change —
+// see the constant just below for how to revert.
 const claude = require('./lib/claude');
+const gemini = require('./lib/gemini');
+
+// Which engine the paid pass runs on. Gemini 3.7 Flash is the current choice,
+// on price — the same four sections cost a fraction as much to generate.
+// Set PSYCHEAI_PREMIUM_PROVIDER=anthropic to put it back on Claude Sonnet 5,
+// which is what this ran on before: that model is more expensive but follows
+// the wellness section's hard limits more reliably, which is worth revisiting
+// if Gemini's output quality on the paid sections turns out not to hold up.
+const PREMIUM_PROVIDER = process.env.PSYCHEAI_PREMIUM_PROVIDER || 'gemini';
+const PREMIUM_ENGINES = { anthropic: claude, gemini };
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
@@ -105,7 +111,7 @@ async function handleStatus(response) {
   const premium = premiumEngine();
   sendJson(response, 200, {
     ...provider.describe(), payments: payments.describe(),
-    premiumProvider: { name: premium ? premium.name : 'anthropic', ready: Boolean(premium) },
+    premiumProvider: { name: premium ? premium.name : PREMIUM_PROVIDER, ready: Boolean(premium) },
   });
 }
 
@@ -121,26 +127,31 @@ function requireEngine(response) {
   return provider.active;
 }
 
-// The paid analysis always runs on Claude — a fixed choice, not whichever
-// provider the free report happened to use — so it is resolved independently
-// of provider.active rather than through requireEngine above. Mock mode is
-// the one exception: PSYCHEAI_MOCK=1 (or PSYCHEAI_PROVIDER=mock) already
-// makes provider.active the mock module, and premium follows it there too,
-// the same way a developer testing the free report never needs a real
-// ANTHROPIC_API_KEY. Outside mock mode, a server with GEMINI_API_KEY or
-// XAI_API_KEY but no ANTHROPIC_API_KEY has no premium engine at all — see
-// requirePremiumEngine below, which is what actually enforces this at the
-// route.
+// The paid analysis runs on PREMIUM_PROVIDER's engine — a fixed choice, not
+// whichever provider the free report happened to use — so it is resolved
+// independently of provider.active rather than through requireEngine above.
+// Mock mode is the one exception: PSYCHEAI_MOCK=1 (or PSYCHEAI_PROVIDER=mock)
+// already makes provider.active the mock module, and premium follows it
+// there too, the same way a developer testing the free report never needs a
+// real API key. Outside mock mode, PREMIUM_PROVIDER's engine needs its own
+// key regardless of what the main provider is running on — a server with
+// only ANTHROPIC_API_KEY set has no premium engine while PREMIUM_PROVIDER is
+// still 'gemini', for instance — see requirePremiumEngine below, which is
+// what actually enforces this at the route.
 function premiumEngine() {
   if (provider.active && provider.active.name === 'mock') return provider.active;
-  return claude.hasKey() ? claude : null;
+  const engine = PREMIUM_ENGINES[PREMIUM_PROVIDER];
+  return engine && engine.hasKey() ? engine : null;
 }
 
 function requirePremiumEngine(response) {
   const engine = premiumEngine();
   if (!engine) {
+    const named = PREMIUM_PROVIDER === 'anthropic'
+      ? 'Claude, and needs ANTHROPIC_API_KEY'
+      : 'Gemini, and needs GEMINI_API_KEY';
     sendJson(response, 503, {
-      error: 'The paid analysis always uses Claude, regardless of the main provider, and this server has no ANTHROPIC_API_KEY configured.',
+      error: 'The paid analysis always uses ' + named + ' configured — set PSYCHEAI_PREMIUM_PROVIDER to switch which engine it uses.',
     });
     return null;
   }

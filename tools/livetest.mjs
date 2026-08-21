@@ -14,10 +14,12 @@
 // that the paid schema still compiles, which is the failure this file exists
 // to catch early:
 //
-//   ANTHROPIC_API_KEY=... PSYCHEAI_LIVETEST=premium node tools/livetest.mjs
+//   GEMINI_API_KEY=... PSYCHEAI_LIVETEST=premium node tools/livetest.mjs
 //
-// `free` runs only the profile and compatibility calls; the default runs all
-// three.
+// The paid call needs a key for whichever engine PSYCHEAI_PREMIUM_PROVIDER
+// names (default gemini, so GEMINI_API_KEY; ANTHROPIC_API_KEY if reverted to
+// anthropic) — see server.js's premiumEngine(). `free` runs only the profile
+// and compatibility calls; the default runs all three.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -278,7 +280,8 @@ let paidWasConstrained = null;
 if (runPaid) {
   const paidEngine = server.premiumEngine();
   if (!paidEngine) {
-    console.log('\nPremium call skipped — no ANTHROPIC_API_KEY set (the paid call always uses Claude).');
+    console.log('\nPremium call skipped — no key set for whichever engine PSYCHEAI_PREMIUM_PROVIDER names ' +
+      '(default gemini, needs GEMINI_API_KEY; anthropic needs ANTHROPIC_API_KEY).');
   } else {
     console.log('\nSending the same digest to the paid call (' + paidEngine.MODEL + ')…');
     const paidStarted = Date.now();
