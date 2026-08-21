@@ -633,13 +633,13 @@ exactly the hub, the rail and the branches.
 
 The report's final line used to name one provider and one timestamp — true when one call wrote the
 whole thing, false the moment a paid unlock adds four sections a different provider wrote. Printing
-only "Analysed by gemini-3.6-flash" under a report that also contains Claude's roast would misdescribe
+only "Analysed by gemini-3.7-flash" under a report that also contains Claude's roast would misdescribe
 who actually wrote the paragraph the reader is reading.
 
 **`renderAnalysedBy()` in `docs/app.js` is the one function both moments call.** The free report's
 render (`renderProfile()`) and the premium success handler both go through it, so the two call sites
 cannot say different things about the same profile. It prints one line normally — "Analysed by
-gemini-3.6-flash on 8/21/2026, 11:53:22 AM." — and grows a second the moment `premiumAnalysis`,
+gemini-3.7-flash on 8/21/2026, 11:53:22 AM." — and grows a second the moment `premiumAnalysis`,
 `premiumModel` and `premiumAt` are all present: "Premium sections analysed by claude-sonnet-5 on
 \<date\>." All three fields have to be there together, not just the analysis — a profile unlocked
 before this pair existed still has the writing but not the record of who wrote it, and falls back to
@@ -788,7 +788,7 @@ catch its siblings across all 40 versions.
 | `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set — and **always** runs the four paid sections, whatever the free report uses. |
 | `XAI_API_KEY` | Uses Grok, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` when you have more than one key. |
-| `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
+| `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.7-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid four-section call specifically, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
@@ -803,7 +803,7 @@ npm run models:grok       # needs XAI_API_KEY
 npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
-`gemini-3.6-flash` is the default because it is generally available and cheap enough to re-run
+`gemini-3.7-flash` is the default because it is generally available and cheap enough to re-run
 freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
 

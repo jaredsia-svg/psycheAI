@@ -66,7 +66,7 @@
   // not a guess — it is derived from a price, and the derivation is written
   // out so it can be re-run when a price or a model changes.
   const PRICING = {
-    // gemini-3.6-flash, the default model. Thinking is billed as output.
+    // gemini-3.7-flash, the default model. Thinking is billed as output.
     inputPerToken: 1.50 / 1e6,
     outputPerToken: 7.50 / 1e6,
   };

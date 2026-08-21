@@ -2502,7 +2502,7 @@ try {
       const card = window.PsycheCard.shape(report.card);
       const payload = await window.PsycheCard.encodeCard(report.card);
       localStorage.setItem('psycheai_profile', JSON.stringify({
-        report, card, payload, model: 'gemini-3.6-flash', createdAt: new Date().toISOString(),
+        report, card, payload, model: 'gemini-3.7-flash', createdAt: new Date().toISOString(),
       }));
       localStorage.setItem('psycheai_digest', JSON.stringify({}));
     });
