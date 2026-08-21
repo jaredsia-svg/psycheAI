@@ -939,30 +939,52 @@ const wellnessProps = prompts.PREMIUM_SCHEMA.properties.wellness.properties;
 // The six dimensions are one shared definition referenced six times now (see
 // the note on `$defs` in lib/prompts.js), so a check that wants the actual
 // shape has to follow the reference to reach it.
-const wellnessDim = key => prompts.deref(prompts.PREMIUM_SCHEMA, wellnessProps[key]);
+// Falls back to an empty shape rather than undefined for a key that is not
+// there. The checks below name the six dimensions literally — that is the
+// point of them — so a renamed or dropped dimension makes several of these
+// look up nothing at all, and without this the first one to do so throws and
+// takes the whole suite down before the check that would have *explained* the
+// failure gets to run.
+const wellnessDim = key => prompts.deref(prompts.PREMIUM_SCHEMA, wellnessProps[key]) || { properties: {} };
 const wellnessText = JSON.stringify(prompts.PREMIUM_SCHEMA.properties.wellness);
 
 check('wellness carries the six dimensions, an overall read and suggestions',
-  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
-    'emotionalProcessing', 'meaning', 'overall', 'suggestions'].every(k => k in wellnessProps) &&
+  ['lifeTrajectory', 'outlook', 'socialConnection', 'cognitiveLoad',
+    'meaning', 'rhythmAndActivity', 'overall', 'suggestions'].every(k => k in wellnessProps) &&
   Object.keys(wellnessProps).length === 8, Object.keys(wellnessProps).join(', '));
 
-// The two that were narrowed on the way in. "Physical health" and "emotional
-// health" are claims this data cannot support; "physical activity" and
-// "emotional processing" are what it actually carries. Checked as an absence
-// as well as a presence, because the risk is somebody renaming them back.
-check('the two health-claiming field names were narrowed, and stayed narrowed',
-  'physicalActivity' in wellnessProps && 'emotionalProcessing' in wellnessProps &&
-  !('physicalHealth' in wellnessProps) && !('emotionalHealth' in wellnessProps),
+// The section's *writing* is deliberately blunt — "bleak", "despair" and
+// "depressing" are vocabulary the prompt hands the model on purpose. Its
+// field names are a different matter: a name is a standing claim about what
+// the dimension measures on every run, and the export measures behaviour and
+// writing, never health. So the ban here is narrow and specific — no
+// dimension may be named for a clinical condition or for a health
+// measurement, which is the one claim this section cannot make regardless of
+// how directly it is written.
+check('no dimension is named for a clinical condition or a health measurement',
+  ['physicalHealth', 'emotionalHealth', 'mentalHealth', 'depression', 'anxiety', 'burnout']
+    .every(k => !(k in wellnessProps)),
   Object.keys(wellnessProps).join(', '));
+
+// The directness is load-bearing and easy to lose: the natural drift on a
+// section like this is back towards hedging, one careful rewrite at a time.
+// Pinned against the prompt so a softened version fails here rather than
+// quietly shipping to the people most affected by it.
+check('the prompt hands the model plain words for a hard stretch rather than banning them',
+  /"[Dd]ifficult", "depressing", "bleak", "despair"/.test(prompts.PREMIUM_SYSTEM) &&
+  /[Hh]edging is the failure mode/.test(prompts.PREMIUM_SYSTEM));
+// And the one line that does not move with it.
+check('and still refuses diagnosis, drawing the distinction rather than banning a vocabulary',
+  /you appear to have been depressed/.test(prompts.PREMIUM_SYSTEM) &&
+  /worth taking to somebody who can actually assess it/.test(prompts.PREMIUM_SYSTEM));
 
 // The load-bearing structural choice: no numbers anywhere in this section.
 // Every other scored thing in this schema carries a 0-100 integer; this one
 // bands instead, because the notation is most of what makes a claim read as a
 // measurement. A single `integer` appearing anywhere under wellness is the
 // regression this catches.
-const wellnessDimensions = ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection',
-  'physicalActivity', 'emotionalProcessing', 'meaning'];
+const wellnessDimensions = ['lifeTrajectory', 'outlook', 'socialConnection',
+  'cognitiveLoad', 'meaning', 'rhythmAndActivity'];
 check('no wellness dimension carries a numeric score, unlike every other scored section',
   wellnessDimensions.every(k => !('score' in wellnessDim(k).properties)) &&
   !/"type":"integer"/.test(wellnessText), wellnessText.slice(0, 160));
@@ -970,9 +992,9 @@ check('every dimension carries a band, its own confidence, a reading and evidenc
   wellnessDimensions.every(k =>
     ['band', 'confidence', 'reading', 'evidence'].every(f => f in wellnessDim(k).properties)));
 check('the bands describe a pattern rather than grading the person',
-  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum) ===
+  JSON.stringify(wellnessDim('rhythmAndActivity').properties.band.enum) ===
   JSON.stringify(['steady', 'mixed', 'under strain', 'not enough evidence']),
-  JSON.stringify(wellnessDim('sleepAndRhythm').properties.band.enum));
+  JSON.stringify(wellnessDim('rhythmAndActivity').properties.band.enum));
 // The escape hatch. Without it the model has no way to say "the export is
 // silent here" that does not read to a reader as a low score.
 check('"not enough evidence" is an available band, and the prompt tells it to use it',
@@ -1008,10 +1030,14 @@ for (const [label, needle] of [
     /Say nothing about their body/],
   ['treats an absence of exercise posts as silence rather than a finding',
     /an absence of exercise posts is silence rather than a finding/],
-  ['bans reading a mood off the writing',
-    /Do not read a mood/],
+  // Was "bans reading a mood off the writing". The ban has been deliberately
+  // lifted: this section is written for reflection, and hedging a hard period
+  // into a "quieter chapter" fails the reader who paid for it. What replaced
+  // the ban is a line drawn at diagnosis rather than at vocabulary.
+  ['refuses diagnosis without refusing plain language',
+    /The one line that does not move is diagnosis/],
   ['hands off rather than counselling when something looks heavier',
-    /worth raising with someone qualified to actually assess it/],
+    /worth taking to somebody who can actually assess it/],
   ['tells it not to counsel or reassure',
     /Do not counsel, do not reassure/],
 ]) {
@@ -1069,9 +1095,9 @@ const premiumProps = prompts.PREMIUM_SCHEMA.properties;
 // reader rather than by `npm test`.
 check('the six wellness dimensions share one definition rather than six copies',
   Object.keys(prompts.PREMIUM_SCHEMA.$defs || {}).includes('wellnessDimension') &&
-  ['sleepAndRhythm', 'cognitiveLoad', 'socialConnection', 'physicalActivity',
-    'emotionalProcessing', 'meaning']
-    .every(key => premiumProps.wellness.properties[key].$ref === '#/$defs/wellnessDimension'),
+  ['lifeTrajectory', 'outlook', 'socialConnection', 'cognitiveLoad',
+    'meaning', 'rhythmAndActivity']
+    .every(key => (premiumProps.wellness.properties[key] || {}).$ref === '#/$defs/wellnessDimension'),
   JSON.stringify(Object.keys(prompts.PREMIUM_SCHEMA.$defs || {})));
 // Following the reference still has to arrive at a real, complete dimension —
 // a $ref pointing at nothing would satisfy the check above and produce a
@@ -1110,6 +1136,7 @@ check('the premium call carries exactly the four paid sections, in report order'
   JSON.stringify(Object.keys(premiumProps)) ===
   JSON.stringify(['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']),
   Object.keys(premiumProps).join(', '));
+
 // The free schema must not still be asking for them. A field left in both
 // places would be paid for twice and rendered from whichever the UI happened
 // to read, which is the failure mode this pair exists to catch.

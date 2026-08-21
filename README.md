@@ -1801,19 +1801,49 @@ six bands into a "wellbeing index" would rebuild the health rating through the b
 veneer of arithmetic. Two checks pin this: no `integer` may appear anywhere under the wellness
 schema, and the rendered section may contain no bar, meter, `n/100` or percentage.
 
-**Two dimensions were narrowed on the way in.** The request was for "physical health" and "emotional
-processing and health". The export carries neither — it has activity somebody chose to post about and
-words they chose to write — so the fields are `physicalActivity` and `emotionalProcessing`, in both
-the schema and the UI labels. A heading promising health is a claim the section underneath it cannot
-keep, and the narrower names are what stop the field descriptions drifting back toward the wider one.
-A check asserts the narrowed names are present *and* that the health-claiming ones have not returned.
+**The six have been reshaped once, and every reshape has pulled the names narrower than the request.**
+The section was first asked for as "physical health" and "emotional processing and health"; the export
+carries neither, so those became `physicalActivity` and `emotionalProcessing`. The current six are
+`lifeTrajectory`, `outlook`, `socialConnection`, `cognitiveLoad`, `meaning` and `rhythmAndActivity`.
+Sleep and physical activity merged: they were always two readings of the same thing — when somebody is
+up and about — and the weaker half now sits beside the strongest evidence in the section instead of
+standing alone as a dimension that is silent for most people.
+
+**This section is deliberately blunt, and that is the considered position rather than an oversight.**
+It exists for reflection, and it is read by people in a vulnerable frame of mind who paid for it. The
+first version of the two newest dimensions hedged hard — it banned "despair", "hopeless" and their
+synonyms outright, and required a difficult year to be described only as a "stretch" whose cause was
+not visible. That was the wrong trade. Somebody genuinely in a dark place who reads four paragraphs of
+careful euphemism about their "quieter chapter" has been failed twice: once by the softening, and once
+by paying for it. **The prompt now hands the model the plain words on purpose** — "difficult",
+"depressing", "bleak", "despair", "grim", "lonely", "stuck", "exhausted" — and says in as many words
+that hedging is the failure mode here, not the safe option.
+
+**The one line that does not move is diagnosis, and it is drawn as a distinction rather than as a
+banned vocabulary.** The prompt states both halves next to each other, because the difference is real
+and easy to blur: *"this reads as a genuinely depressing stretch and you sound worn down by it"* is an
+honest description of evidence and is exactly what the section is for; *"you appear to have been
+depressed"* is a medical claim about a person, made from posting timestamps, by something with no
+clinical training, in a document they keep and may show other people. Where something looks like it
+warrants a professional, the instruction is to say so directly rather than to hint. The field names
+hold the same line — `outlook` names the writing, where `mood` would name an inner state the data
+cannot reach — and a check refuses any dimension named for a clinical condition or a health
+measurement. Two further checks pin the directness itself, because the natural drift on a section like
+this is back towards hedging one careful rewrite at a time, and the people that costs most are the
+ones least likely to complain about it. The reader is also told up front, in the section's own
+sub-line, that it is "written to be honest rather than gentle, including about the harder stretches" —
+which lets somebody choose when to read it, a kinder thing to offer than a softened section they were
+never warned about.
 
 **The bands are descriptions, not grades:** `steady`, `mixed`, `under strain`, `not enough evidence`.
 Deliberately not a red/amber/green ramp and deliberately not good/bad, because "under strain"
 describes a rhythm where "poor" would be a verdict on a life. `not enough evidence` is load-bearing
 rather than a formality — the six are evidenced very unevenly. Hour-of-day and day-of-week histograms
-are complete, so sleep and rhythm almost always has something real; physical activity rests entirely
-on whether somebody happened to post about exercise, and plenty of active people never do. It is
+are complete, so the rhythm half of `rhythmAndActivity` almost always has something real; the activity
+half of the same dimension rests entirely on whether somebody happened to post about exercise, and
+plenty of active people never do. `lifeTrajectory` needs years to say anything at all, and on a thin
+or recent export it is often genuinely unreadable — saying so beats narrating an arc out of a handful
+of months. It is
 styled as the most neutral of the four rather than the worst, so "we could not tell" does not read as
 "you scored badly", and the mock puts it on physical activity in every run so that path is always
 exercised.
@@ -2428,7 +2458,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 661 checks: synthesises a real ZIP export and runs
+npm test           # 663 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

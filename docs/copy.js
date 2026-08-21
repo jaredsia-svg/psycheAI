@@ -109,24 +109,27 @@
   // The six wellness dimensions, in the order the reader meets them: label,
   // then the key it reads from the wellness object.
   //
-  // Two labels are narrower than the dimensions were first described as.
-  // "Physical health" became "Physical activity" and "Emotional processing
-  // and health" became "Emotional processing", because the export carries
-  // activity somebody chose to post about and words they chose to write, and
-  // carries no health data at all — a heading promising otherwise is a claim
-  // the section below it cannot keep. The schema field names in
+  // Labels are deliberately narrower than the thing a reader might hope the
+  // section measures. The export carries activity somebody chose to post
+  // about and words they chose to write, and carries no health data at all —
+  // a heading promising otherwise is a claim the section below it cannot
+  // keep. "Outlook" is the clearest case: it heads a reading of how somebody
+  // writes about their own life, not of how they feel, and a label like
+  // "Hope" or "Mood" would promise the second. The schema field names in
   // lib/prompts.js match these narrower labels for the same reason.
   //
-  // Sleep and rhythm leads because it is the best-evidenced of the six: the
-  // hour-of-day and day-of-week histograms are complete rather than sampled.
-  // Physical activity sits late because it is the thinnest.
+  // Order is the report's own, not an evidence ranking: life trajectory opens
+  // because it is the widest lens and sets up everything under it, and rhythm
+  // and activity closes because it is the most granular. Sleep and physical
+  // activity used to be two of the six and are one card now — two readings of
+  // when somebody is up and about, which never earned separate headings.
   const WELLNESS_FACETS = [
-    ['Sleep and rhythm', 'sleepAndRhythm'],
-    ['Cognitive load', 'cognitiveLoad'],
+    ['Life trajectory', 'lifeTrajectory'],
+    ['Outlook', 'outlook'],
     ['Social connection', 'socialConnection'],
-    ['Emotional processing', 'emotionalProcessing'],
-    ['Physical activity', 'physicalActivity'],
+    ['Cognitive load', 'cognitiveLoad'],
     ['Meaning', 'meaning'],
+    ['Rhythm and activity', 'rhythmAndActivity'],
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
@@ -294,9 +297,16 @@
     // itself is doing work here, because this is the section most likely to
     // be misread as something it is not: the sub-line says "behaviour" and
     // "not a health assessment" before a single dimension is shown.
+    //
+    // It also sets the expectation that this one is blunt. The section is
+    // written to be direct about difficult periods rather than to euphemise
+    // them (see PREMIUM_SYSTEM), and a reader who is told that up front can
+    // decide when to read it — which is a kinder thing to offer than a
+    // softened section they were not warned about.
     wellness: 'Mental wellness',
     wellnessSub: 'Six dimensions read from how you actually use these accounts. This is a behavioural ' +
-      'read, not a health assessment — there is no score here, and there is not meant to be.',
+      'read, not a health assessment — there is no score here, and there is not meant to be. It is ' +
+      'written to be honest rather than gentle, including about the harder stretches.',
     wellnessOverall: 'Taken together',
     wellnessSuggestions: 'What might actually help',
     wellnessConfidence: 'Confidence: ',
@@ -402,6 +412,12 @@
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: 'S$1.99',
     premiumUnlockPrefix: 'Unlock — ',
+    // Shown while the paid model call is in flight, after payment has already
+    // cleared — this can take as long as the free report did, for the same
+    // reason: a long structured response with thinking enabled. The dialog
+    // also shows a live seconds count beside it (see #premium-progress) for
+    // the same reason app.js shows elapsed time on the free analysis: a
+    // still sentence next to a spinning bar reads as stalled.
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
     // reason: a long structured response with thinking enabled. The dialog
