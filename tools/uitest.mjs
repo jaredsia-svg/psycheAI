@@ -2916,13 +2916,18 @@ try {
     JSON.stringify(emptyPromo));
 
   // Held as an exact list rather than as "contains", so a control cannot
-  // reappear here unnoticed. "Re-run the analysis" was one of three and is
-  // gone: nothing in the app offers a second model call on the same export
-  // any more, so the handler and the button went together rather than
-  // leaving a dead listener bound to an id that no longer exists.
-  check('the report closes on exactly the three housekeeping actions',
+  // reappear here unnoticed. A flat "re-run the analysis" button was once one
+  // of three and was removed outright — nothing offered a second model call
+  // on the *same* export. #rerun-with-data is not that button back: it only
+  // ever appears when this session still holds the Instagram export in
+  // memory and no supplement has been added yet (see renderProfile), and it
+  // exists specifically to add a Google or Facebook export before rerunning —
+  // see the "…with additional data" checks further down for that path. This
+  // real Instagram-only upload is exactly the case where it is expected.
+  check('the report closes on exactly the four housekeeping actions, including the conditional rerun button',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Download full report | Test compatibility | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Download full report | Re-run analysis with additional data | ' +
+        'Test compatibility | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
@@ -4558,6 +4563,138 @@ try {
   // produces are a real result of the test above, not a shape the rest of the
   // suite should have to render around — reset to an ordinary upload with
   // nothing declined before continuing.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+
+  // ---- "Re-run analysis with additional data" from the report page ----
+  //
+  // Offered only while this session still holds the parsed Instagram export
+  // in memory (state.signals) and no supplement has been added to it yet —
+  // exactly the state the ordinary upload just above leaves behind. Reuses
+  // the same supplement→review dialogs the first upload does, with Skip
+  // never offered: the reader pressed this button specifically to add a
+  // source, so there is nothing truthful "skip" could say here.
+  check('the button is offered after an Instagram-only upload',
+    await page.locator('#rerun-with-data').isVisible());
+
+  // state.signals is memory-only by design — see handleFiles — so a reload
+  // has to lose the button along with it, same as it already loses the
+  // photographs. Checked before anything else in this section touches the
+  // session, so this is really testing "signals gone", not "a supplement was
+  // already added" (which would also hide it, for a different reason).
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  check('a reload loses the button, since state.signals cannot survive one',
+    await page.evaluate(() => document.querySelector('#rerun-with-data').hidden));
+
+  // Re-establish a live session — the rest of this section needs
+  // state.signals actually present to exercise the dialog at all.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+
+  await clickClear(page, '#rerun-with-data');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 10000 });
+  check('Skip is never offered on this path, unlike the first-upload offer',
+    !(await page.locator('#supplement-skip').isVisible()));
+
+  // Escape is the one path Skip being hidden does not already close off — a
+  // <dialog> still closes on it natively unless something stops that.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  check('Escape does not dismiss the dialog while nothing has been added yet',
+    await page.evaluate(() => document.querySelector('#supplement-dialog').open));
+
+  // Back is still the one way out, and it must cost nothing: the report on
+  // screen was already paid for (in generation time, at least) and must
+  // survive a reader changing their mind here.
+  const digestBeforeBack = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
+  const analysesBeforeBack = analyseBodies.length;
+  await page.click('#supplement-back');
+  await page.waitForTimeout(200);
+  check('Back leaves the report and its digest exactly as they were',
+    (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeBack &&
+    (await page.locator('#view-profile').isVisible()) &&
+    analyseBodies.length === analysesBeforeBack);
+  check('the button is offered again after cancelling, rather than being spent by the attempt',
+    await page.locator('#rerun-with-data').isVisible());
+
+  // Unlock premium first, with the promo code — mock mode's cash-free path,
+  // used elsewhere in this suite — so the rerun below has a real paid unlock
+  // to carry (or not carry) forward.
+  await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
+  await page.locator('.premium-unlock').first().click();
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.click('#premium-promo-apply');
+  await page.waitForFunction(() => {
+    const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+    return Boolean(p && p.premiumAnalysis);
+  }, { timeout: 30000 });
+  const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
+
+  // Now actually add a source and follow it through to a real rerun.
+  await clickClear(page, '#rerun-with-data');
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  check('once something is added, Continue appears and Skip stays out of the way',
+    (await page.locator('#supplement-continue').isVisible()) &&
+    !(await page.locator('#supplement-skip').isVisible()));
+
+  await page.click('#supplement-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 10000 });
+  const rerunReviewRows = await page.locator('#review-list input[type="checkbox"]').count();
+  check('the rebuilt digest carries the Google rows into the review',
+    rerunReviewRows > 7, rerunReviewRows + ' rows');
+
+  const analysesBeforeSend = analyseBodies.length;
+  await page.click('#review-send');
+  // The view never actually leaves #view-profile for this path — unlike a
+  // first upload, there is no working screen in between — so waiting on it
+  // proves nothing here; wait on the dialog closing and the digest actually
+  // changing instead.
+  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 10000 });
+  await page.waitForFunction(() => {
+    const d = localStorage.getItem('psycheai_digest');
+    return d && Boolean(JSON.parse(d).google);
+  }, { timeout: 60000 });
+  check('rerunning sends exactly one more request, against the enriched digest',
+    analyseBodies.length === analysesBeforeSend + 1,
+    (analyseBodies.length - analysesBeforeSend) + ' new requests');
+  check('the stored digest now actually carries the Google block',
+    await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google)));
+  check('the button disappears once a supplement has been added, having done its one job',
+    await page.evaluate(() => document.querySelector('#rerun-with-data').hidden));
+
+  // The paid sections that were unlocked before this rerun were read from the
+  // smaller, Instagram-only digest. Carrying them forward under a report
+  // that moved on without them would misdescribe what they are about; losing
+  // the reader's payment over it would be worse — check both halves.
+  const afterRerun = await page.evaluate(() => ({
+    hasPremiumAnalysis: Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis),
+    unlockReceipt: localStorage.getItem('psycheai_unlock'),
+  }));
+  check('a stale paid unlock is cleared by the rerun rather than left describing the old digest',
+    !afterRerun.hasPremiumAnalysis);
+  check('the payment receipt itself survives — this is a refresh, not a lost purchase',
+    afterRerun.unlockReceipt === receiptBeforeRerun && Boolean(afterRerun.unlockReceipt));
+  check('the paid card offers to fetch what was already paid for, not a second price',
+    (await page.locator('.premium-unlock').first().innerText()).trim() === 'Get the sections you paid for',
+    await page.locator('.premium-unlock').first().innerText());
+
+  // Reset to an ordinary upload again — same reasoning as the reset above
+  // this section: the sections below must not inherit this section's
+  // Google+Facebook-enriched digest or its spent unlock.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
   await page.setInputFiles('#file-input', {

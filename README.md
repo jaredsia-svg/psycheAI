@@ -1454,6 +1454,59 @@ list does once the window is genuinely short. Removing the fix entirely was trie
 checks fail, and the diagnostic shows the outer dialog scrolling at 560 and 650px while the list does
 not — the exact shape of the original bug — while 900px alone reports nothing wrong.
 
+### Re-running with additional data, from the report page
+
+A reader who uploaded Instagram alone the first time is not stuck with that choice forever. "Re-run
+analysis with additional data" sits in the report's own action row, right of "Download full report",
+and offers exactly what the name says: add a Google or Facebook export now, and get a new free report
+written from the enlarged digest — without giving up the Instagram export a second time.
+
+**The button is conditional, on purpose, and the condition is memory, not the report itself.**
+`state.signals` — the parsed Instagram export `handleFiles` already read — is kept in memory for the
+rest of the session on the same terms as `state.images`: never written to `localStorage`, gone the
+moment the tab reloads. `renderProfile()` shows the button only while that object is still there and
+neither `signals.supplements.google` nor `.facebook` is set yet — a reader who already added a source,
+on this run or a previous one, has had the offer; a reader who reloaded the page has nothing left in
+memory for the button to add to, so it simply is not offered rather than being shown and then failing.
+This is the same trade-off the photographs already made: real convenience within a session, no promise
+of surviving a reload, and no server-side cache anywhere to make up the difference.
+
+**It reuses the first upload's own two dialogs — the supplement offer and the review — with one
+deliberate difference.** `askSupplement()` gained an `opts.requireAtLeastOne` mode: Skip is never
+shown, and the dialog's native Escape path is refused for as long as nothing has been added yet (a
+`<dialog>` fires a cancelable `cancel` event just before closing on Escape, which is what makes this
+enforceable rather than cosmetic — hiding the button alone would not have stopped Escape from doing the
+same job). Once a source is in, Escape is allowed again and resolves the same way Continue does,
+exactly as it already did outside this mode. Back is untouched in both modes: "I changed my mind" always
+has to stay available, only "leave with nothing, some other way" is what this mode closes off. The
+review dialog needs no changes at all — it is already driven entirely off whatever the digest actually
+contains.
+
+**A cancelled attempt costs nothing.** Pressing Back at the supplement offer, or Escape at the review
+once a source has been added, resolves the whole rerun to a no-op: the digest, the profile and
+`localStorage` are all untouched, because nothing is written until Send genuinely resolves at the very
+end. The report a reader is looking at was likely worth several minutes of generation; an attempt to
+add to it must never risk it.
+
+**A paid unlock from before the rerun does not quietly survive under a report that moved on without
+it.** `runAnalysis()` replaces `state.profile` wholesale on success, which is what actually clears any
+`premiumAnalysis` left over from before — the paid sections read the *old*, smaller digest, and
+carrying them forward under a new one would misdescribe what they are about. The payment itself is not
+lost: the receipt in `psycheai_unlock` is written independently of the report and is left alone, so
+`hasUnfetchedUnlock()` picks the gap up on its own and the paid cards fall back to "Get the sections
+you paid for" — the existing lost-tab recovery path, reused here for a different reason — rather than
+asking to pay again.
+
+`tools/uitest.mjs` drives all of this for real: the button appearing after an ordinary upload and
+disappearing after a reload; Skip absent and Escape refused in the forced dialog; Back leaving the
+digest, the profile and the request count exactly where they were; adding a Google Takeout and
+completing the rerun sending exactly one more request and landing a digest that actually carries the
+new block; and a promo-unlocked report whose paid sections are cleared by the rerun while the receipt
+and the "already paid" cover survive it. Each of those was fault-injected while this shipped —
+dropping `requireAtLeastOne`, inverting the button's visibility condition, and reintroducing the old
+`premiumAnalysis` after a rerun — and each broke a different, specific check rather than passing
+unnoticed.
+
 ### The photographs
 
 Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
@@ -2474,7 +2527,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 663 checks: synthesises a real ZIP export and runs
+npm test           # 665 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -2483,7 +2536,7 @@ npm test           # 663 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 834 checks: drives the real UI in Chromium against a
+npm run test:ui    # 848 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

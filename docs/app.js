@@ -62,6 +62,14 @@
     digest: store.read(KEYS.digest, null),
     // In memory only, and only for as long as this page lives — see handleFiles.
     images: [],
+    // The parsed Instagram export itself, kept for the same reason and on the
+    // same terms as `images`: it is what "Re-run analysis with additional
+    // data" needs to add a Google or Facebook export without asking for the
+    // Instagram one again, and it is exactly the raw material this app's
+    // privacy story says never touches a disk. A reload loses it, same as the
+    // photographs — the button that needs it simply does not appear after
+    // one; see renderProfile and rerunWithAdditionalData.
+    signals: null,
     server: { ready: false, mock: false, model: null },
   };
 
@@ -1081,7 +1089,17 @@
   // the archives still added: re-reading a Takeout is slow, and silently
   // discarding one because the reader wanted to change a checkbox upstream
   // would be the dialog undoing their work.
-  function askSupplement(existing) {
+  //
+  // `opts.requireAtLeastOne` is what "Re-run analysis with additional data"
+  // needs and the first-upload path does not: Skip stays hidden regardless of
+  // whether anything has been added yet (rather than only once something
+  // has), and Escape is refused while `added` is still empty, so the one
+  // dialog that exists specifically because the reader chose to add a source
+  // cannot be dismissed without one. Back is untouched by this — it still
+  // always resolves null — because "I changed my mind" has to stay available
+  // even in this mode; only "leave with nothing, some other way" is blocked.
+  function askSupplement(existing, opts) {
+    const requireAtLeastOne = Boolean(opts && opts.requireAtLeastOne);
     const dialog = $('#supplement-dialog');
     const status = $('#supplement-status');
     const input = $('#supplement-input');
@@ -1103,10 +1121,13 @@
     // archive is in — or is being read — the right-hand slot belongs to
     // Continue, so the two swap rather than sitting side by side. Back is
     // untouched by this and stays available throughout, including mid-read.
+    // In requireAtLeastOne mode Skip never gets its turn at all: there is
+    // nothing truthful it could say, since this dialog only opens because the
+    // reader chose to add a source.
     const showActions = () => {
       const has = Object.keys(added).length > 0;
       $('#supplement-continue').hidden = !has;
-      $('#supplement-skip').hidden = has || busy;
+      $('#supplement-skip').hidden = requireAtLeastOne || has || busy;
     };
 
     const setBusy = state => {
@@ -1227,12 +1248,23 @@
 
       const done = () => dialog.close();
       const goBack = () => { cancelled = true; dialog.close(); };
+      // The native Escape path: a <dialog> fires a cancelable 'cancel' event
+      // just before it closes itself. Refusing it while nothing has been
+      // added yet is what actually makes requireAtLeastOne a requirement
+      // rather than a suggestion — otherwise Escape would still let a reader
+      // leave with nothing, same as Skip would have. Once something is in,
+      // Escape is allowed again and resolves the same way Continue does,
+      // exactly as it already does outside this mode.
+      const blockEscape = event => {
+        if (requireAtLeastOne && Object.keys(added).length === 0) event.preventDefault();
+      };
 
       for (const button of buttons) button.addEventListener('click', choose);
       input.addEventListener('change', read);
       $('#supplement-skip').addEventListener('click', done);
       $('#supplement-continue').addEventListener('click', done);
       $('#supplement-back').addEventListener('click', goBack);
+      dialog.addEventListener('cancel', blockEscape);
 
       dialog.addEventListener('close', () => {
         for (const button of buttons) {
@@ -1249,6 +1281,7 @@
         $('#supplement-skip').removeEventListener('click', done);
         $('#supplement-continue').removeEventListener('click', done);
         $('#supplement-back').removeEventListener('click', goBack);
+        dialog.removeEventListener('cancel', blockEscape);
         resolve(cancelled ? null : added);
       }, { once: true });
 
@@ -1749,7 +1782,89 @@
     // something to do as a side effect. A retry after a reload runs on the
     // digest alone.
     state.images = images;
+    // Kept for the same reason and on the same terms — see state.signals —
+    // so "Re-run analysis with additional data" on the report page can add a
+    // Google or Facebook export to this one later in the session without
+    // asking for the Instagram export again.
+    state.signals = signals;
     store.write(KEYS.digest, digest);
+    await runAnalysis(digest, images);
+  }
+
+  // Offered on the report page — see renderProfile — only while this session
+  // still holds the Instagram export in memory and no supplement has been
+  // added to it yet. Runs the same supplement→review loop handleFiles does
+  // on a first upload, reusing the Instagram signals already read rather than
+  // asking for that archive a second time, with two differences: Skip is
+  // never offered (requireAtLeastOne — the reader pressed this button to add
+  // a source, so there is nothing truthful "skip" could say here), and
+  // stepping all the way back abandons the rerun rather than the report:
+  // the profile on screen is untouched until Send actually resolves below.
+  async function rerunWithAdditionalData() {
+    if (!state.signals) return;
+    const signals = state.signals;
+    let digest;
+    let decision = null;
+    let chosenImages = [];
+    let extractedImages = null;
+    const getExtractedImages = async (forSignals, forChosen, onProgress) => {
+      if (extractedImages) return extractedImages;
+      extractedImages = await Images.extract(forSignals, forChosen, onProgress || function () {});
+      return extractedImages;
+    };
+
+    try {
+      for (;;) {
+        const supplements = await askSupplement(signals.supplements, { requireAtLeastOne: true });
+        if (!supplements) return; // Back — the report on screen is untouched.
+        signals.supplements = supplements;
+
+        chosenImages = Images.select(signals, { count: Digest.IMAGES });
+        digest = Digest.build(signals, {
+          includeMessages: true, includeImages: true,
+          imageCount: chosenImages.length,
+        });
+
+        extractedImages = null;
+        decision = await askReview(digest, chosenImages.length, onProgress =>
+          getExtractedImages(signals, chosenImages, onProgress));
+        if (decision !== REVIEW_BACK) break;
+      }
+    } catch (error) {
+      showUploadError((error && error.message) || 'Could not rebuild your evidence summary.');
+      return;
+    }
+
+    if (!decision) return; // Escape at the review — the report on screen is untouched.
+
+    applyReviewDecision(digest, decision);
+
+    let images = [];
+    if (decision.includeImages && chosenImages.length) {
+      try {
+        images = await getExtractedImages(signals, chosenImages, (done, total) => {
+          setProgress(80 + Math.round((done / Math.max(1, total)) * 15),
+            'Preparing image ' + done + ' of ' + total + '…');
+        });
+        digest.coverage.images.attached = images.length;
+      } catch (error) {
+        showUploadError((error && error.message) || 'Could not prepare your photos.');
+        return;
+      }
+    } else {
+      digest.coverage.images.included = false;
+      digest.coverage.images.attached = 0;
+    }
+
+    state.digest = digest;
+    state.images = images;
+    store.write(KEYS.digest, digest);
+    // runAnalysis replaces state.profile wholesale on success, which is what
+    // actually clears any premiumAnalysis from before this rerun — a paid
+    // read of the old, smaller digest would otherwise sit under a report that
+    // moved on without it. hasUnfetchedUnlock() picks that up on its own: the
+    // receipt in psycheai_unlock is untouched, so the paid cards fall back to
+    // "Get the sections you paid for" rather than losing the payment.
     await runAnalysis(digest, images);
   }
 
@@ -2071,6 +2186,14 @@
     layoutPsycheCard();
 
     $('#profile-body').innerHTML = reportSectionsHtml(report);
+
+    // Only while this session still holds the parsed Instagram export in
+    // memory (see state.signals) and neither supplement has been added to it
+    // yet — both are things a page reload throws away, so the button simply
+    // is not offered after one; a fresh upload is the only way back to it.
+    const supplements = state.signals && state.signals.supplements;
+    $('#rerun-with-data').hidden =
+      !state.signals || Boolean(supplements && (supplements.google || supplements.facebook));
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -2927,6 +3050,7 @@
   });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
+  $('#rerun-with-data').addEventListener('click', rerunWithAdditionalData);
 
   /**
    * The same download for a comparison. Built from `state.lastReport`, which
@@ -2974,6 +3098,7 @@
     state.profile = null;
     state.digest = null;
     state.images = [];
+    state.signals = null;
     show('welcome');
   });
 
