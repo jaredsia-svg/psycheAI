@@ -666,12 +666,6 @@
     </button>
   </header>
   <div class="sample-dialog-body" id="sample-body"></div>
-  <!-- A sibling of #sample-body, not inside it: showSample() replaces that
-       element's innerHTML on every open, so a footer written into it would be
-       wiped. It sits outside the scroll area too, which is the point — a
-       reader who never scrolls to the end of the sample still sees that four
-       sections are missing from it and why. -->
-  <footer class="sample-dialog-foot" data-premium-tier="compact"></footer>
 </dialog>
 
 <!-- Offered once the Instagram archive has already parsed, so a reader who

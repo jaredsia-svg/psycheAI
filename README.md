@@ -468,11 +468,10 @@ them to match, so the next rename fails rather than half-lands.
 
 ### Advertising the paid sections without duplicating them
 
-The four premium sections are named in three places on the way in: under the insight diagram on the
-welcome page, as a pinned footer inside the sample dialog, and under the free tiles in "What you can
-expect?". All three are the same block, built once by `premiumTierHtml()` in `docs/app.js` from
-**`PAID_SECTIONS`** — the same table the report renders those sections from and the PDF gates them on
-— and mounted into `[data-premium-tier]` slots.
+The four premium sections are named in two places on the way in: under the insight diagram on the
+welcome page, and under the free tiles in "What you can expect?". Both are the same block, built once
+by `premiumTierHtml()` in `docs/app.js` from **`PAID_SECTIONS`** — the same table the report renders
+those sections from and the PDF gates them on — and mounted into `[data-premium-tier]` slots.
 
 That is not tidiness. This is marketing copy naming four sections by title and quoting a price, and
 marketing copy that has silently drifted from the product is the kind of wrong nobody notices for
@@ -499,11 +498,24 @@ an offer on a page selling it.
 
 The sample dialog's copy is the one that needed the most care: it says *"This sample is the free
 report"* rather than implying the sample is partial. The free report is a whole report, and calling it
-incomplete in order to sell the rest would be a lie about what somebody already has. The footer is a
-sibling of `#sample-body` rather than inside it, since `showSample()` replaces that element's
-`innerHTML` on every open — and it sits outside the scroll area on purpose, so a reader who never
-scrolls to the end of the sample still learns four sections are missing from it. A check scrolls the
-body to the bottom and asserts the footer has not moved.
+incomplete in order to sell the rest would be a lie about what somebody already has.
+
+**The four paid sections used to be summarised in a footer pinned under the sample; now they render
+inline, as real covers, in the sample body itself.** `showSample()` calls the same
+`reportSectionsHtml()` the real profile page uses, passing `{ sample: true }` instead of excluding
+paid sections outright. That option does two things inside `reportSectionsHtml()` and `paidCard()`:
+it forces `unlocked = {}` regardless of the reader's own `paidAnalysis()` — this report belongs to
+nobody, so it must never leak *their* real unlock state into a page meant to show what a stranger's
+report looks like — and it renders each cover's `Unlock` button with a plain, disabled label
+(`premiumSampleUnlockLabel`) instead of the real priced or resume-labelled one. A native `disabled`
+attribute, not a script-side guard, is what keeps a click on one of these buttons from ever reaching
+the delegated `.premium-unlock` listener that opens the real payment dialog — browsers never dispatch
+a `click` event on a disabled button in the first place. Fault-injecting the `disabled` attribute away
+confirmed this: the check on the button's state failed as expected, and the click genuinely opened
+`#premium-dialog` underneath the sample, which is exactly the failure this option exists to prevent.
+Fault-injecting the `unlocked = {}` guard away (falling back to the reader's real `paidAnalysis()`)
+was caught the same way, by the check that the sample's `.premium-body` elements stay empty even when
+the reader has a real, paid, unlocked profile of their own open in the same tab.
 
 **The blurb names the model doing the deeper read**, not just what it covers: "These four sections
 are a deeper analysis using Claude's latest model Opus." Pairing a price with a model name is what
@@ -2327,7 +2339,7 @@ npm test           # 656 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 825 checks: drives the real UI in Chromium against a
+npm run test:ui    # 827 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

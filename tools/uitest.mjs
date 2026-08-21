@@ -608,14 +608,18 @@ try {
 
   // ---- the premium tier block ----
   //
-  // Shown in three places on the way in and built once from PAID_SECTIONS, so
+  // Shown in two places on the way in and built once from PAID_SECTIONS, so
   // what it advertises cannot drift from what the report renders. That is the
-  // whole reason it is generated rather than written into index.html three
-  // times, and it is what these checks are really testing.
+  // whole reason it is generated rather than written into index.html twice.
+  // A third mount used to sit as the sample dialog's own pinned footer; the
+  // paid sections render inline in the sample body now (their own covers,
+  // same as a real report), so that mount — and the compact variant of this
+  // block that existed only for it — is gone rather than kept beside a cover
+  // that already says the same thing.
   check('the premium tier is mounted in every slot that asks for one',
     (await page.locator('[data-premium-tier] .premium-tier').count()) ===
     (await page.locator('[data-premium-tier]').count()) &&
-    (await page.locator('[data-premium-tier]').count()) >= 3,
+    (await page.locator('[data-premium-tier]').count()) === 2,
     (await page.locator('[data-premium-tier] .premium-tier').count()) + ' of ' +
     (await page.locator('[data-premium-tier]').count()) + ' slots filled');
   check('it names the four paid sections, by the titles the report uses',
@@ -1114,49 +1118,54 @@ try {
     (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
     (await page.locator('#sample-dialog button:not(#sample-body button)').allInnerTexts()).join('|'));
-  // Written about a made-up account for a stranger who has not asked to see
-  // it, a roast reads as just an insult rather than the thing it is on a real
-  // report — so it is left out of the sample rather than shown covered. No
-  // profile exists yet at this point in the suite to compare against (the
-  // real report's own .bonus-card is asserted further down, once one does),
-  // so this only checks the negative — that the sample never renders it.
-  check('the sample does not offer the bonus roast at all',
-    (await page.locator('#sample-body .bonus-card').count()) === 0 &&
-    !/deliberately unkind/i.test(await page.locator('#sample-body').innerText()) &&
-    !/Unlock it once for/i.test(await page.locator('#sample-body').innerText()));
-  // The other three paid sections are left out for the same reason, and for a
-  // second one that is really a bug guard: the unlock button is bound by a
-  // delegated listener with no scope of its own, so a cover rendered into
-  // #sample-body would open a real payment dialog against a report that is
-  // not the reader's. `{ paid: false }` excludes them by construction.
-  check('the sample offers none of the four paid sections',
-    (await page.locator('#sample-body .paid-card').count()) === 0 &&
-    (await page.locator('#sample-body .premium-unlock').count()) === 0,
-    String(await page.locator('#sample-body .paid-card').count()));
-  // ...but it says so, rather than letting the sample read as the whole
-  // report. The footer is a sibling of #sample-body, not inside it, so it
-  // survives showSample() replacing that element's innerHTML — checked after
-  // an open for exactly that reason.
-  check('the sample says which four sections it is missing, and what they cost',
+  // The four paid sections render inline in the sample now, as real covers —
+  // same title, same badge, same blurb a real report shows — rather than
+  // being excluded and summarised in a footer. A reader sees exactly what
+  // they would meet on their own report, including the roast's, before ever
+  // uploading anything.
+  check('all four paid sections render as covers in the sample, same as a real report',
     await page.evaluate(() => {
-      const T = window.PsycheCopy.TEXT;
-      const foot = document.querySelector('.sample-dialog-foot');
-      if (!foot || !foot.querySelector('.premium-tier.is-compact')) return false;
-      const text = foot.textContent;
-      return [T.wellness, T.attachment, T.careerAssessment, T.bonus]
-        .every(title => text.includes(title)) && text.includes(T.premiumPriceLabel);
+      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      return keys.every(key =>
+        document.querySelector('#sample-body .paid-card[data-paid="' + key + '"] .premium-cover'));
     }),
-    (await page.locator('.sample-dialog-foot').innerText()).replace(/\s+/g, ' '));
-  // Pinned rather than left to the eye: the footer is outside the scroll area
-  // precisely so a reader who never reaches the end of the sample still sees
-  // it, and a stylesheet edit that let it scroll away would look fine here.
-  check('the footer stays put while the sample scrolls',
+    String(await page.locator('#sample-body .paid-card').count()) + ' paid cards');
+  check('the roast\'s cover reads the same way it does on a real report',
+    /deliberately unkind/i.test(await page.locator('#sample-body .bonus-card').innerText()));
+  // What must not happen: the sample is a made-up account nobody paid to
+  // analyse, so none of the writing behind any of the four covers may be in
+  // the document, in any form — rendered, hidden, or sitting in an attribute.
+  check('none of the four sections\' actual writing is in the sample, only their covers',
     await page.evaluate(() => {
-      const foot = document.querySelector('.sample-dialog-foot');
-      const body = document.querySelector('.sample-dialog-body');
-      const before = foot.getBoundingClientRect().top;
-      body.scrollTop = body.scrollHeight;
-      return Math.abs(foot.getBoundingClientRect().top - before) < 1 && body.scrollTop > 0;
+      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      return keys.every(key => {
+        const card = document.querySelector('#sample-body .paid-card[data-paid="' + key + '"]');
+        const body = card && card.querySelector('.premium-body');
+        return card && !card.querySelector('.premium-cover').hidden && body && body.hidden &&
+          body.innerHTML === '';
+      });
+    }));
+  // The one thing that would turn "here is what this looks like" into "click
+  // here to pay": the button has to be genuinely inert, not just plain-looking.
+  // A native `disabled` attribute is what stops it dispatching a click event
+  // at all — checked directly, since a visual-only "looks disabled" style
+  // would still let a click through to the real payment dialog.
+  check('every unlock button in the sample is disabled, not just relabelled',
+    (await page.locator('#sample-body .premium-unlock').count()) === 4 &&
+    (await page.locator('#sample-body .premium-unlock:disabled').count()) === 4);
+  check('and reads as a plain "Unlock" rather than a price or a resume label',
+    (await page.locator('#sample-body .premium-unlock').allInnerTexts())
+      .every(text => text.trim() === 'Unlock'),
+    (await page.locator('#sample-body .premium-unlock').allInnerTexts()).join(' | '));
+  // Clicking it anyway must genuinely do nothing — a disabled button should
+  // make this impossible, but the delegated listener that opens the payment
+  // dialog has no scope of its own, so this is the check that would actually
+  // catch a regression if `disabled` were ever dropped from the markup.
+  check('clicking a sample unlock button does not open the payment dialog',
+    await page.evaluate(async () => {
+      document.querySelector('#sample-body .premium-unlock').click();
+      await new Promise(resolve => setTimeout(resolve, 150));
+      return !document.querySelector('#premium-dialog').open;
     }));
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,

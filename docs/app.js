@@ -709,23 +709,34 @@
   // sectionHead just concatenates whatever it is handed into the <h2>, so
   // this is the one call site that hands it a title with markup in it rather
   // than plain text, same trick .mode-title uses beside "Coming soon".
-  function paidCard(section, unlocked) {
+  //
+  // `options.sample` renders the same cover a real report shows — same title,
+  // same blurb — but with a plain "Unlock" button that is `disabled` rather
+  // than priced or wired to anything. A disabled button never dispatches a
+  // click event at all, in any browser, so the delegated `.premium-unlock`
+  // listener never sees it fire; that is what actually keeps a demo report
+  // from opening a real payment dialog, not a scope check on the listener.
+  function paidCard(section, unlocked, options) {
+    const sample = Boolean(options && options.sample);
     const data = unlocked[section.key];
     const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    const label = sample
+      ? esc(TEXT.premiumSampleUnlockLabel)
+      // A reader who already paid is never shown the price again. The receipt
+      // is the difference between "buy this" and "collect what you bought",
+      // and showing S$1.99 to somebody mid-resume reads as being charged
+      // twice — which is the single worst thing this dialog could imply.
+      : (hasUnfetchedUnlock()
+        ? esc(TEXT.premiumResumeLabel)
+        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel));
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
       sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub())) +
       '<div class="premium-cover"' + (data ? ' hidden' : '') + '>' +
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
-      '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '">' +
-      // A reader who already paid is never shown the price again. The receipt
-      // is the difference between "buy this" and "collect what you bought",
-      // and showing S$1.99 to somebody mid-resume reads as being charged
-      // twice — which is the single worst thing this dialog could imply.
-      (hasUnfetchedUnlock()
-        ? esc(TEXT.premiumResumeLabel)
-        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel)) + '</button></div>' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '"' +
+      (sample ? ' disabled' : '') + '>' + label + '</button></div>' +
       '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
       (data ? section.body(data) : '') + '</div></div>';
   }
@@ -747,27 +758,28 @@
    * page with it, and `coverTitle` doubles as the one-line hook here because
    * that is exactly the job it already does on the cover itself.
    *
-   * `compact` drops the per-section blurbs — used in the sample dialog, where
-   * this sits under a scrolling report as a footer rather than as a section of
-   * its own and has one line of room, not four.
+   * The sample dialog used to get its own compact variant of this block,
+   * pinned as a footer below a report with the four paid sections stripped
+   * out of it. The sections are rendered inline in the sample body now (see
+   * `paidCard`'s `sample` option), so the footer — and the compact mode that
+   * existed only for it — is gone rather than kept beside a cover that
+   * already says the same thing.
    */
-  function premiumTierHtml(options) {
-    const compact = Boolean(options && options.compact);
+  function premiumTierHtml() {
     const items = PAID_SECTIONS.map(section =>
       '<li class="premium-tier-item">' +
       '<span class="premium-tier-icon" aria-hidden="true">' + section.icon + '</span>' +
       '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
-      (compact ? '' : '<span>' + esc(section.coverTitle()) + '</span>') +
+      '<span>' + esc(section.coverTitle()) + '</span>' +
       '</span></li>').join('');
-    return '<div class="premium-tier' + (compact ? ' is-compact' : '') + '">' +
+    return '<div class="premium-tier">' +
       '<div class="premium-tier-head">' +
       '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
       '<h3>' + esc(TEXT.premiumTierTitle) + '</h3>' +
       '<span class="premium-tier-price">' + esc(TEXT.premiumPriceLabel) + '</span></div>' +
-      '<p class="premium-tier-blurb">' +
-      esc(compact ? TEXT.premiumTierSampleNote : TEXT.premiumTierBlurb) + '</p>' +
+      '<p class="premium-tier-blurb">' + esc(TEXT.premiumTierBlurb) + '</p>' +
       '<ul class="premium-tier-list">' + items + '</ul>' +
-      (compact ? '' : '<p class="premium-tier-note">' + esc(TEXT.premiumTierNote) + '</p>') +
+      '<p class="premium-tier-note">' + esc(TEXT.premiumTierNote) + '</p>' +
       '</div>';
   }
 
@@ -778,7 +790,7 @@
    */
   function mountPremiumTiers() {
     for (const slot of document.querySelectorAll('[data-premium-tier]')) {
-      slot.innerHTML = premiumTierHtml({ compact: slot.dataset.premiumTier === 'compact' });
+      slot.innerHTML = premiumTierHtml();
     }
   }
 
@@ -882,7 +894,7 @@
         if (!response.ok) throw new Error('The sample could not be loaded.');
         return response.json();
       });
-      $('#sample-body').innerHTML = reportSectionsHtml(report, { paid: false });
+      $('#sample-body').innerHTML = reportSectionsHtml(report, { sample: true });
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -1001,9 +1013,12 @@
   $('#insight-sample').addEventListener('click', event => showSample(event.currentTarget));
   $('#sample-close').addEventListener('click', closeSample);
 
-  // Delegated, because the cover is written by innerHTML — the sample never
-  // renders the roast at all, so a `.premium-unlock` here can only belong to
-  // the reader's own report.
+  // Delegated, because the cover is written by innerHTML. The sample renders
+  // its own `.premium-unlock` buttons now, same as a real report — what keeps
+  // one of them from ever reaching here is the `disabled` attribute paidCard
+  // sets in sample mode: a disabled button dispatches no click event in any
+  // browser, so this listener simply never fires for it, with no scope check
+  // needed against #sample-body.
   document.addEventListener('click', event => {
     const unlock = event.target.closest('.premium-unlock');
     if (unlock) openPremiumDialog(unlock);
@@ -1839,14 +1854,15 @@
    * index.html, so building only this excludes them by construction rather
    * than by a list of things to hide that someone has to remember to update.
    *
-   * The four paid sections are the exception, since they are part of
-   * #profile-body rather than sitting outside it: `{ paid: false }` leaves
-   * them out of the string entirely, the same "excluded by construction"
-   * reasoning as the controls above, rather than a real report's writing
-   * merely being hidden from view.
+   * The four paid sections render in the sample too, as covers — `{ sample:
+   * true }` forces every one of them locked regardless of what the reader's
+   * own profile has actually unlocked, and swaps the button for an inert,
+   * disabled "Unlock" (see `paidCard`). A sample that read the reader's real
+   * unlock state would show their own paid roast inside a stranger's fake
+   * report the moment they had ever unlocked one.
    */
   function reportSectionsHtml(report, options) {
-    const includePaid = !options || options.paid !== false;
+    const sample = Boolean(options && options.sample);
     const head = sectionHead;
 
     let html = '';
@@ -1981,15 +1997,11 @@
     // they have bought anything, and `paidCard` is the only place that
     // decides between a cover and a body.
     //
-    // `options.paid` exists for the sample dialog, which passes `false` to
-    // omit the paid sections entirely rather than advertise them: the unlock
-    // button is bound by a delegated listener with no scope of its own, so a
-    // cover rendered into #sample-body would open a payment dialog for a
-    // report that is not the reader's.
-    if (includePaid) {
-      const unlocked = options && options.paid === false ? {} : paidAnalysis();
-      for (const section of PAID_SECTIONS) html += paidCard(section, unlocked);
-    }
+    // The sample forces every section locked (`unlocked = {}`) rather than
+    // reading the reader's own `paidAnalysis()` — this report belongs to
+    // nobody, so it must never show *their* unlock state, paid or not.
+    const unlocked = sample ? {} : paidAnalysis();
+    for (const section of PAID_SECTIONS) html += paidCard(section, unlocked, { sample });
 
 
     // Confidence closes the report rather than opening it: read after the

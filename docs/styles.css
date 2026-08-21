@@ -360,23 +360,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   font-size: .82rem; color: var(--ink-soft);
 }
 
-/* The sample dialog's footer: one line of context and four names, with the
-   per-section blurbs dropped. It sits outside the scroll area under a report
-   that is deliberately missing these four, so it has to fit in the height a
-   footer can spend — which is why `is-compact` exists rather than a second
-   block written separately. */
-.premium-tier.is-compact {
-  margin: 0; border: 0; border-radius: 0;
-  padding: .8rem clamp(1rem, 3vw, 1.5rem);
-}
-.premium-tier.is-compact .premium-tier-blurb { margin-top: .35rem; }
-/* Narrower minimum than the full block's, so all four names fit on one row in
-   a dialog this wide and fall to two rows on a phone rather than three. */
-.premium-tier.is-compact .premium-tier-list {
-  margin-top: .55rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .3rem .8rem;
-}
-.premium-tier.is-compact .premium-tier-text strong { font-size: .86rem; }
-
 /* The sample dialog. The head is pinned and only the report scrolls, so the
    cross is on screen the whole way down — a reader four sections deep should
    never have to scroll back up to leave. */
@@ -417,14 +400,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .sample-dialog-body {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
   padding: 1rem clamp(1rem, 3vw, 1.5rem) 1.2rem;
-}
-/* Pinned like the head, for the same reason: the sample is missing four
-   sections by design, and a reader who never scrolls to the bottom of it
-   should still be told that rather than being left to assume they have seen
-   everything. `flex: none` keeps it off the scroll area's share of the
-   height. */
-.sample-dialog-foot {
-  flex: none; border-top: 1px solid var(--line); background: var(--bg-alt);
 }
 /* Inside the dialog the sections are already on a panel, so the page-level
    card treatment would be a box in a box. */
