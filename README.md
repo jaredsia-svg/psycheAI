@@ -100,7 +100,7 @@ export STRIPE_SECRET_KEY=sk_...        # server-side only — creates and verifi
 export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
 export STRIPE_ACCOUNT_COUNTRY=SG       # optional — the merchant's country, not the buyer's
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
-export ANTHROPIC_API_KEY=...           # the paid call always runs on Claude — see below
+export GEMINI_API_KEY=...              # the paid call always runs on Gemini — see below
 export PSYCHEAI_PROMO_CODE=...         # optional — overrides the default promo code; see below
 npm start
 ```
@@ -121,23 +121,33 @@ paid sections for whichever currency happened to be cheapest that day. A selftes
 direction. Note that Stripe settles SGD only if the account supports it; a country/currency mismatch
 surfaces as an error at PaymentIntent creation rather than silently at capture.
 
-**The paid call always runs on Claude, regardless of which provider the free report used.** This is a
+**The paid call always runs on Gemini, regardless of which provider the free report used.** This is a
 fixed choice made in `server.js`'s `premiumEngine()`, not a fallback through the same auto-detection
-`lib/provider.js` uses for the free report — it calls `require('./lib/claude')` directly, so a
-deployment with `GEMINI_API_KEY` or `XAI_API_KEY` set but no `ANTHROPIC_API_KEY` has a working free
-report and no working paid sections at all, rather than them quietly running on Gemini or Grok. All
+`lib/provider.js` uses for the free report — it calls `require('./lib/gemini')` directly, so a
+deployment with `ANTHROPIC_API_KEY` or `XAI_API_KEY` set but no `GEMINI_API_KEY` has a working free
+report and no working paid sections at all, rather than them quietly running on Claude or Grok. All
 three keys can be set on the same server at once: `lib/provider.js` picks one for the free report by
-its own priority order (Gemini first), and `ANTHROPIC_API_KEY` is what the paid call reads
-independently of that choice. Mock mode is the one exception: with `PSYCHEAI_MOCK=1`,
-`provider.active` is already the mock module and `premiumEngine()` follows it there rather than
-demanding a real Anthropic key just to click through the flow.
+its own priority order (Gemini first anyway, so the common case has both calls on the same provider
+without anyone arranging it), and `GEMINI_API_KEY` is what the paid call reads independently of that
+choice. Mock mode is the one exception: with `PSYCHEAI_MOCK=1`, `provider.active` is already the mock
+module and `premiumEngine()` follows it there rather than demanding a real Gemini key just to click
+through the flow.
 
-**Claude specifically, and it is a deliberate reversal.** This call ran on Gemini while it was the
-roast alone — chosen on price, for a section nobody had to buy. It is four sections now and the whole
-of what the S$1.99 buys, including the wellness read, which carries the tightest hard limits in the
-app and has the most to lose from a model that follows them loosely. The paid pass is the one call
-where instruction-following is worth paying for, and it is the call the reader is paying for. See
-["Cost"](#cost) for what that actually costs per run and where the margin goes.
+**This has moved once already, and moved back.** The roast ran on Gemini alone at first, chosen on
+price for a section nobody had to buy. It moved to Claude when the section grew to four sections and
+the whole of what the S$1.99 buys — the stated reasoning at the time was that the wellness read carries
+the tightest hard limits in the app and has the most to lose from a model that follows them loosely,
+and that instruction-following was worth paying for on the one call where a reader is directly paying
+for it. It has since moved back to Gemini. That reasoning was not wrong, and moving back does not
+retract it — it is a real trade being made again in the other direction, not a free improvement, and
+worth naming plainly rather than leaving buried in git history: **the wellness read has the least
+margin for a model that drifts on its hard limits, and that section is now on the model this file
+previously argued against using for exactly that reason.** The prompt's hard limits did not get any
+lighter to compensate — see the wellness section's own note on this — so the honest position is that
+this trade should be watched rather than assumed settled. `lib/gemini.js` already carried a working
+`analysePremium` from before the Claude move, current with `PREMIUM_SYSTEM`/`PREMIUM_SCHEMA` the whole
+time even while unused, which is why this move was a re-wire in `server.js` rather than new model code.
+See ["Cost"](#cost) for what a run actually costs on each provider.
 
 **A promo code bypasses payment entirely.** The unlock dialog carries a promo-code field at its foot,
 independent of the Stripe flow above it — entering the right code calls `/api/premium-analysis` with a
@@ -145,7 +155,7 @@ independent of the Stripe flow above it — entering the right code calls `/api/
 case-insensitively against `PSYCHEAI_PROMO_CODE` (default `jialatsia`, overridable so this repo's own
 history is not a permanent backdoor into a real deployment). A valid code skips `verifyPaid` and the
 usage ledger both — there is no payment to verify and no use to meter — so it works even on a server
-with no Stripe keys configured at all, as long as the Gemini engine itself is set up.
+with no Stripe keys configured at all, as long as the premium engine itself is set up.
 
 **Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
 script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
@@ -423,76 +433,79 @@ on the provider it actually uses, and the fallback covers the case where it does
 
 #### Cost
 
-Two real API calls happen per unlock, and they now run on **different providers**: the free report on
-Gemini (or whichever provider `lib/provider.js` picks), the four paid sections on Claude. They are not
-the same call — the paid pass is an independent request against the *same* digest, so its input cost
-is not free just because the first call already saw that data.
+Two real API calls happen per unlock. Both now run on **Gemini** in the common case — the free report
+picks Gemini first when `GEMINI_API_KEY` is set, per `lib/provider.js`'s own priority order, and the
+paid pass is now fixed to Gemini too (see the note above on this moving back from Claude). They are
+still not the same call: the paid pass is an independent request against the *same* digest, so its
+input cost is not free just because the first call already saw that data, and running on the same
+provider does not change that — see the caching note at the end of this section for why.
 
-**The free report got cheaper.** Moving `wellness`, `attachment` and `careerAssessment` out of
-`PROFILE_SCHEMA`/`PROFILE_SYSTEM` took about **5,600 tokens** of prompt and schema off every free run
-— `FIXED_INPUT_TOKENS` dropped from 19,700 to 14,200, which is also 19,800 more characters of digest
-that `COST_CAP` now buys (the ceiling went from 221,741 to 240,991).
+**The free report got cheaper a while back, and that is unrelated to the provider move.** Moving
+`wellness`, `attachment` and `careerAssessment` out of `PROFILE_SCHEMA`/`PROFILE_SYSTEM` took about
+**5,600 tokens** of prompt and schema off every free run — `FIXED_INPUT_TOKENS` dropped from 19,700 to
+14,200, which is also 19,800 more characters of digest that `COST_CAP` now buys (the ceiling went from
+221,741 to 240,991).
 
-| | Free report (Gemini) | Paid sections (Claude) |
+| | Free report | Paid sections |
 |---|---|---|
-| Fixed prompt + schema | 13,852 tok | 8,798 tok (`PREMIUM_SYSTEM`+`PREMIUM_SCHEMA`) |
+| Fixed prompt + schema | 13,852 tok | ~10,600 tok (`PREMIUM_SYSTEM`+`PREMIUM_SCHEMA`) |
 | Digest, heavy account (156k chars) | 44,706 tok | 44,706 tok (same digest, resent) |
 | Images | 14 × 258 = 3,612 tok | none — this call gets no photographs |
-| Output cap | 16,000 tok | 32,000 tok (`lib/claude.js`'s `MAX_TOKENS`) |
+| Output cap | 16,000 tok (`lib/gemini.js`'s `MAX_OUTPUT_TOKENS`) | 16,000 tok (same constant, same file — there is no separate premium cap on this provider) |
 
-**Per paid run, by model.** Input is the fixed prompt plus the digest; "typical" is a ~40KB digest
-with ~9,000 output tokens, "heavy" is the 156KB fixture at the same output, "worst" is a
-ceiling-filling digest at the full 32,000-token output cap. Adaptive thinking bills as output, so the
-output column is where the spread lives.
+The paid prompt has grown past the 8,798 tokens once quoted here, mostly from the wellness section's
+hard limits growing to hold a directness the section did not use to have — see the wellness section's
+own note on that trade. `FIXED_INPUT_TOKENS` above governs the *free* report's budget only, so this
+growth has not moved `COST_CAP`'s digest ceiling; it only changes what the paid call itself costs.
 
-| Model | Input $/1M | Output $/1M | Typical | Heavy | Worst case |
-|---|---|---|---|---|---|
-| **Claude Sonnet 5** (`claude-sonnet-5`, current, list rate) | $3 | $15 | **$0.20** | **$0.30** | **$0.71** |
-| Claude Sonnet 5 (intro rate, if it applies) | $2 | $10 | $0.13 | $0.20 | $0.48 |
-| Claude Opus 5 (previous default, still available via `PSYCHEAI_PREMIUM_MODEL`) | $5 | $25 | $0.33 | $0.49 | $1.19 |
-| Claude Opus 4.8 / 4.7 | $5 | $25 | $0.33 | $0.49 | $1.19 |
-| Claude Haiku 4.5 | $1 | $5 | $0.07 | $0.10 | $0.24 |
-| Claude Fable 5 | $10 | $50 | $0.65 | $0.99 | $2.38 |
+**Per paid run, at Gemini's `gemini-3.6-flash` rates** ($1.50/1M input, $7.50/1M output — the same
+rates the free report's own cost budgeting in `docs/digest.js` uses). "Typical" is a ~40KB digest with
+an assumed ~9,000 output tokens, "heavy" is the 156KB fixture at the same output, "worst" is the same
+ceiling-filling digest `COST_CAP` derives (240,991 chars, ≈68,855 tokens) at the full 16,000-token
+output cap:
 
-**The difference the model switch made, holding effort at `high` on both sides:** typical drops from
-$0.33 to $0.20 (about **39% less**), heavy from $0.49 to $0.30 (about **39% less**), worst case from
-$1.19 to $0.71 (about **40% less**) — matching Sonnet's list-rate discount against Opus almost exactly,
-since both are the same digest and (by assumption) close to the same output length at the same effort.
-That is *before* accounting for `medium` effort's own token savings on the old Opus configuration this
-replaces — the actual before/after gap in production is probably smaller than 39%, since the thing
-being replaced was Opus at reduced effort, not Opus at `high`. Anthropic does not publish a fixed
-token-budget ratio between named effort levels, so that narrower comparison cannot be computed exactly
-without a real measured run; what is certain is the direction — Sonnet at `high` costs meaningfully
-less than Opus did at `high`, and is expected to cost no more than Opus did at `medium`, while restoring
-the effort the reduction had traded away.
+| | Typical | Heavy | Worst case |
+|---|---|---|---|
+| Input | 22,029 tok → $0.033 | 55,306 tok → $0.083 | ~79,455 tok → $0.119 |
+| Output (assumed) | 9,000 tok → $0.068 | 9,000 tok → $0.068 | 16,000 tok → $0.120 |
+| **Total** | **~$0.10** | **~$0.15** | **~$0.24** |
+
+**One honesty caveat, in the same register as the one this section carried through the Claude move:**
+the ~9,000-output-token assumption for typical and heavy was originally calibrated against measured
+Claude behaviour at high thinking effort, carried forward here for lack of anything better, not
+re-measured against Gemini's own `thinkingLevel: 'HIGH'`. The two providers' thinking implementations
+are not the same mechanism and there is no published ratio between them, so treat typical and heavy as
+a reasoned estimate rather than a measured one. The worst-case figure needs no such hedge: it is bound
+by `MAX_OUTPUT_TOKENS`, a hard cap rather than an assumption, the same way it always has been for the
+free report.
 
 **What that leaves.** S$1.99 gross is roughly **US$1.48**. Stripe Singapore takes about 3.4% + S$0.50,
-so net is about **S$1.42 ≈ US$1.05** per unlock. Against that, at the current Sonnet 5 list rate:
+so net is about **S$1.42 ≈ US$1.05** per unlock. Against that:
 
-- **Typical run: ~$0.20, about 19% of net.** Healthy, and lower than Opus's own 31% was.
-- **Heavy account: ~$0.30, about 29% of net.** Still comfortably fine.
-- **Worst case: ~$0.71, about 68% of net.** Thinner than Opus's worst case (113%, an outright loss),
-  but still worth naming plainly: it requires both a ceiling-filling digest *and* the full
-  32,000-token output, and the per-source caps make the first unreachable on real input (a heavy real
-  account is 156KB against a 241KB ceiling). The output half stays reachable on its own with effort at
-  `high` — thinking bills as output, and this is a four-section report rather than a two-field roast —
-  but landing there no longer means a loss the way it did on Opus.
+- **Typical run: ~$0.10, about 10% of net.**
+- **Heavy account: ~$0.15, about 14% of net.**
+- **Worst case: ~$0.24, about 23% of net.**
 
-**Two levers remain, if the margin gets uncomfortable again**, in the order worth reaching for them:
-drop the paid call's `effort` back to `medium` via `PSYCHEAI_PREMIUM_EFFORT`, which cuts thinking
-tokens without touching the schema (the same trade this call already made once, on the model it has
-since moved off); or lower `MAX_TOKENS` in `lib/claude.js` from 32,000, which bounds the worst case
-directly (the free report's own cap is 16,000). Moving to a cheaper model again is no longer free —
-Sonnet is already the cheaper move taken; only Haiku is left below it, at a real quality cost on the
-section with the tightest hard limits in the app. Nothing here needs the price to change.
+All three sit well inside the margin every configuration this call has run under has occupied,
+including Sonnet's ~19–68% and Opus's ~31–113% (an outright loss at the ceiling). That is the direct,
+uncomplicated upside of the provider move, and it is real. It is not, on its own, a verdict on whether
+the move was right — see the note above this section on why the wellness read specifically is worth
+watching rather than assuming settled, because none of this table speaks to instruction-following.
 
-**The digest is still sent twice, and switching models does not fix that.** It is sent in full to both
-calls. Claude's prompt caching (`cache_control: { type: 'ephemeral' }` in `lib/claude.js`) caches the
-system prompt, not the digest — and even if it covered the digest, the two calls use different system
-prompts on different providers, so there is no shared prefix to hit. The ~$0.13 of digest input on a
-heavy run at Sonnet's list rate (down from ~$0.22 when this call ran on Opus) is paid in full on every
-unlock. Trimming what the paid call receives is the only real saving available, and it would need its
-own budget rather than reusing the free report's.
+**If the margin ever needs revisiting in the other direction** — because the Gemini output turns out to
+run longer than assumed above, or because the quality trade argues for moving back — `PSYCHEAI_PROVIDER`
+plus the relevant key still lets an operator force the paid call elsewhere entirely, and `lib/claude.js`
+still carries `PREMIUM_MODEL`/`PREMIUM_EFFORT` from when this call ran there, unused rather than deleted,
+in case that path is needed again.
+
+**The digest is still sent twice, and running both calls on the same provider does not fix that.** It is
+sent in full to both calls, as part of the user turn rather than the system instruction. Gemini's
+prompt caching (`cachedContentFor()` in `lib/gemini.js`) only ever caches the *system* prompt, keyed by
+a hash of its text — and `PROFILE_SYSTEM` and `PREMIUM_SYSTEM` hash to different keys regardless of
+running on the same provider, so there is still no shared prefix for the digest to ride in on. The
+~$0.033–$0.083 of digest input on a typical-to-heavy run is paid in full on every unlock, same as
+before the move. Trimming what the paid call receives remains the only real saving available, and it
+would still need its own budget rather than reusing the free report's.
 
 ### Making the code scannable
 
@@ -633,17 +646,27 @@ exactly the hub, the rail and the branches.
 
 The report's final line used to name one provider and one timestamp — true when one call wrote the
 whole thing, false the moment a paid unlock adds four sections a different provider wrote. Printing
-only "Analysed by gemini-3.6-flash" under a report that also contains Claude's roast would misdescribe
-who actually wrote the paragraph the reader is reading.
+only "Analysed by gemini-3.6-flash" under a report that also contains sections a different call wrote
+would misdescribe who actually wrote the paragraph the reader is reading.
+
+**This used to be the default case, and is now the narrower one.** While the paid call was fixed to
+Claude and the free report auto-detected Gemini first, most deployments landed on two different
+providers without anyone arranging it. Now that the paid call is fixed to Gemini too, and Gemini is
+also what `lib/provider.js` picks first for the free report when its key is present, the common
+deployment has *both* calls on the same provider — the two lines below can literally name the same
+model. The mechanism this section describes still matters, just for a narrower set of deployments: any
+server that forces the free report elsewhere with `PSYCHEAI_PROVIDER` (say, `anthropic`, for Claude's
+prose on the free half) while still keeping `GEMINI_API_KEY` set for the paid call to use.
 
 **`renderAnalysedBy()` in `docs/app.js` is the one function both moments call.** The free report's
 render (`renderProfile()`) and the premium success handler both go through it, so the two call sites
 cannot say different things about the same profile. It prints one line normally — "Analysed by
 gemini-3.6-flash on 8/21/2026, 11:53:22 AM." — and grows a second the moment `premiumAnalysis`,
-`premiumModel` and `premiumAt` are all present: "Premium sections analysed by claude-sonnet-5 on
-\<date\>." All three fields have to be there together, not just the analysis — a profile unlocked
-before this pair existed still has the writing but not the record of who wrote it, and falls back to
-the one-line form rather than printing `undefined`.
+`premiumModel` and `premiumAt` are all present: "Premium sections analysed by gemini-3.6-flash on
+\<date\>," or, on a server forcing the free half to Claude, "Premium sections analysed by
+gemini-3.6-flash" under a first line naming Claude instead. All three fields have to be there together,
+not just the analysis — a profile unlocked before this pair existed still has the writing but not the
+record of who wrote it, and falls back to the one-line form rather than printing `undefined`.
 
 **The two fields are recorded separately from the free report's `model`/`createdAt`**, in
 `runPremiumAnalysis()`, at the moment the paid call actually returns — `premiumModel: result.model`,
@@ -784,14 +807,13 @@ catch its siblings across all 40 versions.
 
 | Variable | Effect |
 |---|---|
-| `GEMINI_API_KEY` | Uses Gemini. Takes priority if more than one key is set. |
-| `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set — and **always** runs the four paid sections, whatever the free report uses. |
-| `XAI_API_KEY` | Uses Grok, if neither of the above is set. Fully supported, just not the default. |
-| `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` when you have more than one key. |
-| `GEMINI_MODEL` | Gemini model ID. Default `gemini-3.6-flash`. |
-| `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
-| `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid four-section call specifically, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
-| `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
+| `GEMINI_API_KEY` | Uses Gemini for the free report. Takes priority if more than one key is set. Also required for the paid four-section call regardless of what the free report ends up using. |
+| `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set. Does **not** enable the paid sections on its own — those need `GEMINI_API_KEY` specifically, whatever the free report uses. |
+| `XAI_API_KEY` | Uses Grok, if neither of the above is set. Fully supported, just not the default. Same as Claude above: does not enable the paid call by itself. |
+| `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` for the *free report only*. The paid call ignores this and always resolves through `GEMINI_API_KEY` — see `server.js`'s `premiumEngine()`. |
+| `GEMINI_MODEL` | Gemini model ID, used by both the free report and (via `lib/gemini.js`'s shared `MODEL`) the paid call. Default `gemini-3.6-flash`. |
+| `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback only. Default `claude-opus-5`. Unused by the paid call while it runs on Gemini. |
+| `PSYCHEAI_PREMIUM_MODEL` / `PSYCHEAI_PREMIUM_EFFORT` | Claude model ID and thinking effort `lib/claude.js` still carries from when the paid call ran there. Not read by anything while the paid call is on Gemini — kept rather than deleted in case that path is needed again; see the Cost section. |
 | `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 
@@ -1835,6 +1857,14 @@ sub-line, that it is "written to be honest rather than gentle, including about t
 which lets somebody choose when to read it, a kinder thing to offer than a softened section they were
 never warned about.
 
+**This directness is also the reason the paid call's provider deserves ongoing attention rather than a
+settled assumption.** See ["The S$1.99 unlock"](#the-s199-unlock-four-sections-behind-one-paywall) for
+the history: this call ran on Claude for a period specifically because the wellness read has the least
+margin for a model that follows hard limits loosely, and it has since moved back to Gemini. Nothing
+about the limits got lighter to make that move easier — if anything this section is a harder one to
+hold now that it is explicitly licensed to be blunt rather than to hedge — so whichever provider serves
+this call is worth checking against real output periodically, not just at the moment the choice is made.
+
 **The bands are descriptions, not grades:** `steady`, `mixed`, `under strain`, `not enough evidence`.
 Deliberately not a red/amber/green ramp and deliberately not good/bad, because "under strain"
 describes a rhythm where "poor" would be a verdict on a life. `not enough evidence` is load-bearing
@@ -2048,7 +2078,8 @@ already-escaped title text rather than a second heading competing with the one n
 
 **It used to run free, in the same call as the rest of the report — it does not any more.** `harsh`
 and `advice` moved out of `PROFILE_SCHEMA`/`PROFILE_SYSTEM` entirely and into `PREMIUM_SCHEMA`/
-`PREMIUM_SYSTEM`, the paid, Claude-only call described in ["The S$1.99 unlock"](#the-s199-unlock-four-sections-behind-one-paywall)
+`PREMIUM_SYSTEM`, the paid call fixed to one provider regardless of the free report's own, described in
+["The S$1.99 unlock"](#the-s199-unlock-four-sections-behind-one-paywall)
 above. The prompt instructions below carried over essentially unchanged; only the reader's
 relationship to them changed — one S$1.99 unlock (or one promo code) now buys the roast, rather than it
 opening for free on a click. `PREMIUM_SCHEMA` briefly carried two more fields, `patternsWorthAttention`
@@ -2480,9 +2511,10 @@ npm run test:ui    # 834 checks: drives the real UI in Chromium against a
                    # every one
 npm run test:live  # three real model calls: the free report and a
                    # compatibility read on whichever provider is configured,
-                   # then the paid analysis on Claude. Skips cleanly without a
-                   # key. PSYCHEAI_LIVETEST=premium runs only the paid call;
-                   # =free runs only the other two.
+                   # then the paid analysis on whichever provider it is fixed
+                   # to (Gemini — see "The S$1.99 unlock"). Skips cleanly
+                   # without a key. PSYCHEAI_LIVETEST=premium runs only the
+                   # paid call; =free runs only the other two.
 ```
 
 `test:ui` needs Playwright (installed by `npm install`); add `--shots` to write screenshots to
@@ -2493,20 +2525,27 @@ returns schema-shaped canned data so the rest of the pipeline can be tested with
 `test:live` once against your own key before trusting the app end to end.
 
 **The paid call is covered there now, and it was not before** — which is the whole reason the
-compiled-grammar 400 above reached production. It was the only call that always runs on Claude and
-the only one with no live coverage at all, so the schema that broke was the schema nothing ever sent
-to the API that compiles it. `test:live` now sends it, checks all six wellness dimensions came back
-with real bands, that no score or clinical condition appears in either the wellness read or the
-roast, that the career actions carry real horizons with one startable this week, and — the line worth
-reading — whether the schema **compiled** or the fallback carried it:
+compiled-grammar 400 above reached production. It was, at the time, the only call fixed to a single
+provider and the only one with no live coverage at all, so the schema that broke was the schema
+nothing ever sent to the API that compiles it. `test:live` now sends it, checks all six wellness
+dimensions came back with real bands, that no score or clinical condition appears in either the
+wellness read or the roast, that the career actions carry real horizons with one startable this week,
+and — the line worth reading — whether the schema **compiled** or the fallback carried it:
 
 ```
 paid schema   : compiled and enforced by the API
 paid schema   : REFUSED — the fallback generated this, nothing enforced the shape
+paid schema   : not reported by this provider
 ```
 
-A green run showing the second line is not the same as a green run. `PSYCHEAI_LIVETEST=premium` makes
-that one call and nothing else, which is the cheap way to check after touching the paid schema.
+The third line is the current one in the common case: Gemini's structured output either compiles or the
+call fails outright, with no unconstrained fallback in between, so `lib/gemini.js` never sets this field
+at all — `tools/livetest.mjs` skips the assertion entirely there rather than reading the absence of a
+value as a pass. The first two lines are what a run shows if `PSYCHEAI_PROVIDER`/the relevant key routes
+the paid call to Claude instead, which is still where the fallback ladder — and the risk it exists to
+catch — actually lives. A green run showing the second line is not the same as a green run.
+`PSYCHEAI_LIVETEST=premium` makes that one call and nothing else, which is the cheap way to check after
+touching the paid schema.
 
 Wiring this up surfaced a second thing worth naming: the compatibility half of `test:live` had been
 broken since the basis picker landed. It called `analyseCompatibility(card, other)` with no mode and
