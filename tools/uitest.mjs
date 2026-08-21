@@ -582,9 +582,15 @@ try {
   // score used to get its own line each for Big Five, MBTI and Enneagram;
   // they are one line now, so this also stands as the record of that being
   // deliberate rather than a bullet quietly lost in an edit.
+  //
+  // The character match leads the list rather than closing it — it is the
+  // most immediately graspable of the three, the one a reader can picture
+  // before the frameworks underneath it — and names a superhero alongside a
+  // character generally, since "character" alone reads as fictional-book-or-
+  // film by default and this widens what a reader should expect to be told.
   check('the trait bullet covers all three frameworks in one line',
     (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts())
-      .join(' | ') === 'Big Five, MBTI and Enneagram | Values and beliefs | The character you are most like',
+      .join(' | ') === 'The superhero / character you are most like | Big Five, MBTI and Enneagram | Values and beliefs',
     (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts()).join(' | '));
   check('the behaviour branch uses the shorter bullet wording',
     (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | ') ===
