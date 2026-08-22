@@ -1746,18 +1746,6 @@
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
 
-      // Money is asked for here, and deliberately not one line earlier. Every
-      // check above this point can still reject the upload — the wrong archive
-      // entirely, an HTML-format export, too few recognisable routes — and a
-      // reader who is shown a payment sheet and *then* told their file was
-      // never usable has been asked to pay for nothing. Reading first costs
-      // them a wait; asking first would cost them their trust.
-      uploadAuth = await authoriseAnalysis();
-      if (uploadAuth === false) {
-        showUploadError(TEXT.analysisDeclined);
-        return;
-      }
-
       // The supplement offer and the review are one loop, because Back on the
       // review steps upstream to the offer rather than abandoning the upload.
       // The digest is rebuilt on each pass rather than reused: going back is
@@ -1804,6 +1792,23 @@
 
     if (!decision) {
       show('welcome');
+      return;
+    }
+
+    // Money last, and only once the reader has seen what they are buying.
+    //
+    // Two things had to be true before this line could be reached at all, and
+    // both are reasons it is not one line earlier: the archive has parsed, so
+    // nobody is charged for a file that turns out to be unusable; and the
+    // review has been agreed, so nobody is charged before seeing exactly what
+    // will be sent. It also sits ahead of the photo decode below — the
+    // slowest thing this app does — so declining costs no wasted work.
+    //
+    // Nothing is persisted above this point, so declining leaves the browser
+    // exactly as it was.
+    uploadAuth = await authoriseAnalysis();
+    if (uploadAuth === false) {
+      showUploadError(TEXT.analysisDeclined);
       return;
     }
 
@@ -1941,6 +1946,12 @@
 
     if (!decision) return; // Escape at the review — the report on screen is untouched.
 
+    // Money last, in the same place the first upload asks: after the review,
+    // before the photo decode. Declining costs nothing — the report and
+    // digest the reader arrived with are untouched.
+    const auth = await authoriseAnalysis();
+    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
+
     applyReviewDecision(digest, decision);
 
     let images = [];
@@ -1959,13 +1970,6 @@
       digest.coverage.images.included = false;
       digest.coverage.images.attached = 0;
     }
-
-    // Money last: the reader has loaded their extra data and seen exactly
-    // what will be sent, and only now is asked to pay for the run. Declining
-    // costs them nothing — nothing below this line has happened yet, so the
-    // report and digest they arrived with are untouched.
-    const auth = await authoriseAnalysis();
-    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
 
     state.digest = digest;
     state.images = images;

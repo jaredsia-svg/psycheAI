@@ -4911,21 +4911,31 @@ try {
     /0\.99/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
-  // Route one to a second analysis: re-running with additional data.
+  // Route one to a second analysis: re-running with additional data. The data
+  // and the review come first here too, so the payment sheet is reached by
+  // going through them rather than instead of them.
   await clickClear(page, '#rerun-with-data');
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  check('re-running with more data asks for payment rather than just running',
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
+  check('the re-run asks for data before it asks for money',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.click('#supplement-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  await page.click('#review-send');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+  check('re-running with more data is charged, at the end rather than the start',
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis',
     await page.locator('#premium-dialog-title').innerText());
-  check('the supplement popout waits behind the payment sheet, not in front of it',
-    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
   const beforeDecline = analyseBodies.length;
+  const digestBeforeDecline = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
   await page.click('#premium-cancel');
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
   check('declining costs nothing and leaves the existing report alone',
     analyseBodies.length === beforeDecline &&
     (await page.locator('#view-profile').isVisible()) &&
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
+  check('and the data loaded for it is not kept, since it bought nothing',
+    (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeDecline);
 
   // An archive that will be refused must be refused *before* any money is
   // asked for. Reading first costs a wait; asking first would mean charging
@@ -4959,7 +4969,19 @@ try {
   await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+  // Read and review first, money last — the same order the unlock and the
+  // re-run use. A second upload is charged, but not before the reader has
+  // seen what it will send.
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  check('a second upload reads the archive before asking for anything',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  await page.click('#supplement-skip');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('and reviews it before asking for anything',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  await page.click('#review-send');
+
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 25000 });
   check('so deleting and re-uploading is charged too, rather than being a free reset',
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis');
   check('and nothing was sent to the model while that sheet was up',
@@ -4968,8 +4990,6 @@ try {
   // Paying goes through, and the payment reaches the server with the request.
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
-  await chooseDepth(page);
-  await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   const paidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('paying runs the analysis, with the payment attached for the server to verify',
