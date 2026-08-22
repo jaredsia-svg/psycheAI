@@ -4592,28 +4592,79 @@ try {
     await page.locator('#rerun-with-data').isVisible(),
     'hidden=' + (await page.evaluate(() => document.querySelector('#rerun-with-data').hidden)));
 
-  // And it is genuinely usable there, not just visible: state.signals is gone
-  // after a reload, so pressing it has to ask for the Instagram export again
-  // rather than doing nothing. Driven through the real file chooser, because
-  // the picker only opens from inside the click's own gesture task — poking
-  // the input directly would pass even if the button were wired to nothing.
-  const [rerunChooser] = await Promise.all([
-    page.waitForEvent('filechooser', { timeout: 15000 }),
-    clickClear(page, '#rerun-with-data'),
-  ]);
-  check('pressing it after a reload asks for the Instagram export again', true);
-  await rerunChooser.setFiles({
+  // And it is genuinely usable there, not just visible. This is the shape the
+  // reader actually asked for and the regression worth pinning: pressing it
+  // opens the Google/Facebook popout *immediately*, with the same two sources
+  // and the same instructions a first upload offers. An earlier version asked
+  // for the Instagram archive through an OS file picker first, which reads as
+  // a broken button — so the absence of that picker is asserted too, not just
+  // the presence of the dialog.
+  let rerunPickerOpened = false;
+  const noteChooser = () => { rerunPickerOpened = true; };
+  page.on('filechooser', noteChooser);
+  await clickClear(page, '#rerun-with-data');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
+  await page.waitForTimeout(300);
+  page.off('filechooser', noteChooser);
+  check('pressing it after a reload opens the supplement popout straight away',
+    await page.locator('#supplement-dialog').isVisible());
+  check('and does not demand the Instagram export again first',
+    !rerunPickerOpened);
+  check('the blurb does not offer to skip, since there is no Skip button here',
+    !/skip/i.test(await page.locator('#supplement-dialog-blurb').innerText()),
+    await page.locator('#supplement-dialog-blurb').innerText());
+  check('the popout offers both sources, exactly as a first upload does',
+    (await page.locator('#supplement-dialog .mode-option').count()) === 2 &&
+    (await page.evaluate(() => [...document.querySelectorAll('#supplement-dialog .mode-option')]
+      .map(b => b.dataset.supplement).join(','))) === 'google,facebook');
+  // textContent, not innerText: the instructions sit inside a collapsed
+  // <details>, so innerText would return the summary line alone and this would
+  // fail for a reason that has nothing to do with the instructions being there.
+  check('with the download instructions along with them',
+    (await page.locator('#supplement-dialog .supplement-help').count()) === 1 &&
+    /takeout\.google\.com/i.test(await page.evaluate(() =>
+      document.querySelector('#supplement-dialog .supplement-help').textContent)));
+
+  // Adding a source to a saved report has to work without the archive, by
+  // merging into the stored digest — the whole reason the Instagram re-ask
+  // could be dropped. Checked end to end, against the real request body.
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.click('#supplement-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('the merged digest brings the Google rows into the review',
+    (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
+  check('and the photos row explains why it is empty rather than looking like an export with none',
+    /cannot be included when adding data to a saved report/i.test(
+      await page.locator('#review-images').locator('xpath=../..').innerText()),
+    await page.locator('#review-images').locator('xpath=../..').innerText());
+  const beforeMergedSend = analyseBodies.length;
+  await page.click('#review-send');
+  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const d = localStorage.getItem('psycheai_digest');
+    return d && Boolean(JSON.parse(d).google);
+  }, { timeout: 60000 });
+  const mergedBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  check('the request carries a digest with both the Instagram evidence and the new Google block',
+    Boolean(mergedBody.digest.google) && mergedBody.digest.samples.captions.length > 0 &&
+    mergedBody.digest.coverage.sources.join(',') === 'instagram,google',
+    JSON.stringify({ sources: mergedBody.digest.coverage.sources,
+      captions: mergedBody.digest.samples.captions.length }));
+  check('exactly one analysis was sent for it', analyseBodies.length === beforeMergedSend + 1);
+  check('and the merged digest still respects the character budget',
+    mergedBody.digest.coverage.digestChars <= 240991,
+    mergedBody.digest.coverage.digestChars + ' chars');
+
+  // Back to an Instagram-only session for the rest of this block, which
+  // exercises the in-memory path (photographs and all).
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  // Re-reading lands straight in the supplement offer, with the report still
-  // behind it rather than a stranded progress bar.
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 60000 });
-  check('re-reading the export goes straight on to the supplement offer',
-    await page.locator('#supplement-dialog').isVisible());
-  check('and the report is what sits behind that dialog, not the working screen',
-    await page.locator('#view-profile').isVisible());
-  await page.click('#supplement-back');
-  await page.waitForTimeout(200);
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
   await clickClear(page, '#rerun-with-data');
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 10000 });

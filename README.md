@@ -1473,14 +1473,33 @@ written to disk, gone the moment the tab reloads. Keying the button to it meant 
 reload, which is precisely when a reader coming back to a saved report would go looking for it. The
 in-session case passed every check while the case that actually matters did not exist.
 
-**Whether the button is offered and whether this tab can act on it are two separate questions**, and
-`startRerun()` is where they meet. If `state.signals` is still there — same session as the upload — it
-goes straight to the supplement offer. If not, it asks for the Instagram export again through
-`#rerun-input`, re-reads it with `IG.readExports`, and then joins the identical flow. Hiding the button
-instead would have implied "this report can never be improved", which is not true; asking for one file
-again is the honest cost of not keeping anybody's archive on disk. The picker is opened synchronously
-inside the click handler for the same reason `askSupplement` does it — a file picker only opens inside
-a user-gesture task, and an `await` before it loses that gesture.
+**Pressing it opens the Google/Facebook popout immediately** — the same dialog, the same two sources,
+the same collapsed download instructions a first-time upload gets. There was an intermediate version
+that checked for `state.signals` first and, on a reloaded page, opened an OS file picker for the
+*Instagram* export before showing anything. That was wrong twice over: being asked for the archive you
+already handed over reads as a broken button, and cancelling the picker left nothing on screen at all,
+so the button appeared to do nothing.
+
+**The Instagram archive is not needed here at all**, which is what let that step go. Every field a
+supplement contributes — `digest.google`, `digest.facebook`, their `coverage.sampling` entries — is
+derived from `signals.supplements` alone; none of it reads the Instagram signals. So `build()`'s
+supplement half and its trim loop were lifted into `applySupplements()` and `trimToBudget()`, and
+`Digest.addSupplements(digest, supplements)` merges a source into an **already-built, stored** digest
+and re-applies the budget. The branch that remains is small and honest:
+
+- **Same session:** rebuild from the archive via `Digest.build`, so the photographs come too.
+- **After a reload:** merge into a copy of the stored digest. No re-upload, no lost Instagram evidence.
+
+The budget is re-applied rather than assumed to still hold — the stored digest was trimmed against its
+own contents and this one is larger — and `trimToBudget` prefers supplement lists over Instagram ones,
+so the report's primary evidence is not quietly shaved to make room for a browsing histogram.
+
+**The one real cost of the merge path is the photographs**, and the review says so rather than hiding
+it. They live in the archive this tab no longer has, so a rerun from a saved report sends none, and the
+Photos row reads "your photos stay on your device and were never saved… upload your Instagram export
+again to include them" instead of the ordinary "none selected", which would wrongly suggest the export
+never had any. The dialog's own subtitle is swapped too: "…or skip straight to it" is true of the
+first-upload offer and false here, where Skip is not shown at all.
 
 **It reuses the first upload's own two dialogs — the supplement offer and the review — with one
 deliberate difference.** `askSupplement()` gained an `opts.requireAtLeastOne` mode: Skip is never
@@ -1512,8 +1531,10 @@ you paid for" — the existing lost-tab recovery path, reused here for a differe
 asking to pay again.
 
 `tools/uitest.mjs` drives all of this for real: the button appearing after an ordinary upload **and
-surviving a reload**; pressing it on a reloaded page opening a real file chooser, re-reading the
-archive, and landing on the supplement offer with the report still behind it; Skip absent and Escape
+surviving a reload**; pressing it on a reloaded page opening the popout straight away, with both
+sources and their instructions, and **without** demanding the Instagram export (the file-chooser event
+is asserted not to fire); the merge path sending a digest that carries both the Instagram evidence and
+the new Google block, inside budget, in one request; Skip absent and Escape
 refused in the forced dialog; Back leaving the digest, the profile and the request count exactly where
 they were; adding a Google Takeout and completing the rerun sending exactly one more request and
 landing a digest that actually carries the new block; and a promo-unlocked report whose paid sections
@@ -2554,7 +2575,7 @@ npm test           # 665 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 851 checks: drives the real UI in Chromium against a
+npm run test:ui    # 858 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

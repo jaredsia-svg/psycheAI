@@ -453,19 +453,29 @@
       };
     }
 
-    // ---------- supplementary sources ----------
-    //
-    // Both blocks are built only when their fragment is present, so a digest
-    // from an Instagram export alone is byte-identical to what this produced
-    // before supplements existed.
-    //
-    // Every field here is an aggregate or a bounded sample. `topKeys` on a
-    // counting Map is the same move `mostLikedAccounts` has always used, and
-    // it is what makes a decade of watch history affordable: 940 records
-    // become a histogram of 8 channels, not 940 strings.
-    const supplements = signals.supplements || {};
+    applySupplements(digest, signals.supplements || {});
+    trimToBudget(digest, maxChars);
+    return digest;
+  }
 
-    if (supplements.google) {
+  // ---------- supplementary sources ----------
+  //
+  // Both blocks are built only when their fragment is present, so a digest
+  // from an Instagram export alone is byte-identical to what this produced
+  // before supplements existed.
+  //
+  // Every field here is an aggregate or a bounded sample. `topKeys` on a
+  // counting Map is the same move `mostLikedAccounts` has always used, and
+  // it is what makes a decade of watch history affordable: 940 records
+  // become a histogram of 8 channels, not 940 strings.
+  //
+  // Lifted out of `build()` so `addSupplements()` below can reuse it against a
+  // digest that has already been built and stored. Nothing here reads the
+  // Instagram signals — only `signals.supplements` — which is exactly what
+  // makes adding a source to a saved report possible without the original
+  // archive.
+  function applySupplements(digest, supplements) {
+    if (supplements.google && !digest.google) {
       const g = supplements.google;
       digest.coverage.sources.push('google');
       digest.google = {
@@ -492,7 +502,7 @@
       };
     }
 
-    if (supplements.facebook) {
+    if (supplements.facebook && !digest.facebook) {
       const f = supplements.facebook;
       digest.coverage.sources.push('facebook');
       digest.facebook = {
@@ -513,18 +523,44 @@
         shown: digest.facebook.friends.length, available: f.counts.friends,
       };
     }
+    return digest;
+  }
 
-    // The bound that actually holds the cost ceiling, so it has to survive a
-    // pathological export rather than a typical one.
-    //
-    // It used to shrink captions and comments only, which was enough while
-    // every other list had a cap in the low hundreds. Comprehensive lifts those
-    // caps deliberately — the price is meant to be the one constraint — and
-    // that turned the old loop into a hole: an account with a very long follow
-    // or search list could sail past the budget with nothing the loop was
-    // willing to touch. So it now trims whichever sample list is currently
-    // costing the most, repeatedly, which also keeps the trimming proportional
-    // instead of gutting captions to spare a list of account names.
+  /**
+   * Add a supplement to an already-built digest, in place, and re-trim.
+   *
+   * The reason this exists: `state.signals` — the parsed Instagram export — is
+   * never persisted, so a reader who comes back to a saved report in a new tab
+   * has the digest but not the archive it came from. Rebuilding from scratch
+   * would mean asking for the Instagram export again for no reason, since
+   * every field a supplement contributes is derived from the supplement alone.
+   * So the stored digest is merged into rather than regenerated.
+   *
+   * The budget is re-applied afterwards rather than assumed still to hold: the
+   * stored digest was trimmed against its own contents, and this one is larger.
+   * `trimToBudget` prefers supplement lists over Instagram ones, so the report's
+   * primary evidence is not quietly shaved to make room for a browsing
+   * histogram — the same ordering a first-time upload gets.
+   */
+  function addSupplements(digest, supplements, options) {
+    const opts = options || {};
+    applySupplements(digest, supplements || {});
+    trimToBudget(digest, opts.maxChars || LIMITS.totalChars);
+    return digest;
+  }
+
+  // The bound that actually holds the cost ceiling, so it has to survive a
+  // pathological export rather than a typical one.
+  //
+  // It used to shrink captions and comments only, which was enough while
+  // every other list had a cap in the low hundreds. Comprehensive lifted those
+  // caps deliberately — the price is meant to be the one constraint — and
+  // that turned the old loop into a hole: an account with a very long follow
+  // or search list could sail past the budget with nothing the loop was
+  // willing to touch. So it now trims whichever sample list is currently
+  // costing the most, repeatedly, which also keeps the trimming proportional
+  // instead of gutting captions to spare a list of account names.
+  function trimToBudget(digest, maxChars) {
     const trimmable = [
       ['captions', () => digest.samples.captions, v => { digest.samples.captions = v; }],
       ['comments', () => digest.samples.comments, v => { digest.samples.comments = v; }],
@@ -735,7 +771,8 @@
   }
 
   root.PsycheDigest = {
-    build, LIMITS, IMAGES, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
+    build, addSupplements,
+    LIMITS, IMAGES, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,
