@@ -74,6 +74,73 @@ downloading it — and pulled back out for now, since it needs a verified sendin
 doesn't have yet. It may return once one exists; nothing about the current design forecloses it, since
 the address collection this section describes is exactly the piece such a feature would reuse.
 
+### One free analysis, then S$0.99 — and what actually stops a runaway bill
+
+Every free report is a real, metered call to a model, and until recently
+`/api/analyse` was completely open: no payment, no limit, nothing stopping a
+loop. Two separate things now bound that, and it matters which does what,
+because only one of them is enforcement.
+
+**The daily ceiling is the enforcement** (`lib/budget.js`). A server-wide count
+of free calls per UTC day, refusing past `PSYCHEAI_DAILY_FREE_LIMIT` (default
+200 — sized against `COST_CAP`, so roughly US$50/day even if every run were
+pathological). It applies to `/api/analyse` and `/api/compatibility`, and paid
+calls skip it entirely: a busy day must not take away a run somebody has
+already been charged for. Recorded *after* the model returns, so a provider
+outage does not spend the budget on responses nobody received — the cost of
+that ordering is a small overshoot under concurrency, which is the safe
+direction to be wrong in.
+
+Crucially, **what it records identifies nobody**: a date, a kind, a timestamp.
+That is deliberate and checked. `docs/index.html` promises "no analytics, no
+trackers, no cookies… no visitor count", and a tally keyed to anything about
+the caller would make that false. A selftest check asserts the written row has
+exactly three fields and that nothing in it resembles an address, a device or a
+digest — so the ceiling cannot quietly grow into the visitor log the FAQ says
+does not exist.
+
+**The per-device allowance is a fair-use nudge, not a wall.** One analysis is
+free per browser; each one after is S$0.99, whether it is a re-run with Google
+or Facebook data added or a fresh Instagram upload. The count lives in
+`psycheai_runs`, and the single most important thing about it is that it is
+**deliberately not in `KEYS`** — `store.clearAll()` iterates `KEYS`, so anything
+listed there is wiped by "Delete everything", which was exactly the free way
+round the allowance. It is kept apart with a comment saying so, and the delete
+confirmation now names it: *"Your count of analyses already run is kept, so this
+does not restore a free analysis."* That is both honest — the button does say
+"everything" — and the better deterrent, since it tells a reader the trick does
+not work rather than letting them find out.
+
+**Be clear about the limit of that.** Clearing site data, a private window or a
+different browser all reset the count, and the server cannot tell: it has no
+idea whose first run this is, and giving it one would mean recognising a
+returning device, which is the thing the FAQ promises it never does. So what
+the server enforces is narrower and honest — a payment presented for a re-run
+must be real, must be for the *right product*, and must not already have been
+spent. It cannot tell a first run from a fifth. The allowance stops casual
+repeat use; the daily ceiling is what bounds the bill.
+
+**Two products through one pipeline.** `lib/stripe.js` carries `PRODUCTS` —
+`unlock` at 199 and `analysis` at 99 — and every amount is read from there
+rather than from the request, because an amount a client can influence is one it
+can set to zero. `verifyPaid(id, product)` checks the retrieved PaymentIntent
+against *that* product's price, so a S$0.99 re-run payment cannot be
+re-presented to unlock S$1.99 of report; both directions are checked. The
+ledger gained a `kind` for the same reason, with its own allowance per kind (5
+for `premium`, 3 for `analysis`), so spending a payment on one leaves the other
+untouched. Rows written before `kind` existed read as `premium`, which is what
+every one of them was.
+
+**The payment dialog serves both**, with one variable — `onPaymentAuthorised` —
+deciding what happens once the money clears, rather than a second copy of the
+wallet button, card fallback, promo field and mock-pay path. It is restored on
+`close`, in the handler every exit passes through, because getting that restore
+wrong would send a reader's S$1.99 down the analysis path. Moving it also fixed
+a real bug: it used to live inside `#view-profile`, which carries `[hidden]`
+whenever another view is showing, so the upload page could not display it at all
+— a `<dialog>` inside a `display:none` ancestor has no box to paint however open
+it claims to be.
+
 ### The S$1.99 unlock: four sections behind one paywall
 
 **Mental wellness, Attachment style, Career assessment and Let us roast you** sit behind a single
@@ -803,6 +870,9 @@ catch its siblings across all 40 versions.
 | `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set. |
 | `XAI_API_KEY` | Uses Grok for the free report, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` for the free report when you have more than one key. |
+| `PSYCHEAI_FREE_ANALYSES` | How many analyses a browser gets before being asked to pay. Default `1`. A fair-use allowance held in the browser, not enforcement — see ["One free analysis, then S$0.99"](#one-free-analysis-then-s099--and-what-actually-stops-a-runaway-bill). |
+| `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
+| `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.7-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |

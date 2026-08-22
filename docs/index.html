@@ -372,38 +372,6 @@
      saved, or a domain Stripe has not been told to trust for either. Without
      it a reader in that position had no way to pay at all short of a promo
      code they do not have. See docs/app.js's mountCardFallback. -->
-<dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
-  <h2 id="premium-dialog-title"></h2>
-  <p class="muted" id="premium-dialog-blurb"></p>
-  <div id="premium-payment-request-button"></div>
-  <!-- Sits here, above the card fallback, rather than in its long-standing
-       spot after #premium-progress: the "no wallet" message is what the card
-       form is answering, so it has to read before the form does, not below
-       the button a reader has already pressed by the time they reach it. -->
-  <p class="premium-status" id="premium-status" hidden></p>
-  <div class="premium-card-fallback" id="premium-card-fallback" hidden>
-    <p class="premium-card-label" id="premium-card-label"></p>
-    <div id="premium-card-element"></div>
-    <p class="premium-card-error" id="premium-card-error" hidden></p>
-    <button class="btn" id="premium-card-pay" type="button"></button>
-  </div>
-  <button class="btn" id="premium-mock-pay" type="button" hidden></button>
-  <button class="btn" id="premium-retry" type="button" hidden></button>
-  <div class="premium-progress" id="premium-progress" hidden>
-    <div class="progress"><div class="progress-bar indeterminate"></div></div>
-    <p class="premium-progress-time" id="premium-progress-time"></p>
-  </div>
-  <div class="premium-promo">
-    <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
-    <div class="premium-promo-row">
-      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false">
-      <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
-    </div>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
-  </div>
-</dialog>
 
 <dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
     <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
@@ -439,6 +407,10 @@
        screen, and throwing them back to the upload page to read an error
        message would look like they had lost it. -->
   <div id="profile-alert" class="alert no-print" hidden></div>
+
+  <!-- Filled by renderProfile only once the free analysis is spent, so a
+       first-time reader is never shown a price for something still free. -->
+  <p class="fineprint no-print" id="rerun-price-note" hidden></p>
 
   <div class="cta-row no-print">
     <button class="btn" id="export-pdf-bottom">Download full report</button>
@@ -662,6 +634,47 @@
     <p class="fineprint" id="about-status"></p>
   </div>
 </section>
+
+<!-- Outside every .view section on purpose. It was nested inside
+     #view-profile, which meant the upload page could not show it at all:
+     that section carries [hidden] whenever another view is on screen, and a
+     <dialog> inside a display:none ancestor has no box to paint however
+     open it claims to be. It serves two flows now — the premium unlock from
+     the report, and paying for an analysis from the upload page — so it
+     belongs to neither of them. Modal dialogs render in the top layer, so
+     where it sits in the document does not affect how it looks.               -->
+<dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
+  <h2 id="premium-dialog-title"></h2>
+  <p class="muted" id="premium-dialog-blurb"></p>
+  <div id="premium-payment-request-button"></div>
+  <!-- Sits here, above the card fallback, rather than in its long-standing
+       spot after #premium-progress: the "no wallet" message is what the card
+       form is answering, so it has to read before the form does, not below
+       the button a reader has already pressed by the time they reach it. -->
+  <p class="premium-status" id="premium-status" hidden></p>
+  <div class="premium-card-fallback" id="premium-card-fallback" hidden>
+    <p class="premium-card-label" id="premium-card-label"></p>
+    <div id="premium-card-element"></div>
+    <p class="premium-card-error" id="premium-card-error" hidden></p>
+    <button class="btn" id="premium-card-pay" type="button"></button>
+  </div>
+  <button class="btn" id="premium-mock-pay" type="button" hidden></button>
+  <button class="btn" id="premium-retry" type="button" hidden></button>
+  <div class="premium-progress" id="premium-progress" hidden>
+    <div class="progress"><div class="progress-bar indeterminate"></div></div>
+    <p class="premium-progress-time" id="premium-progress-time"></p>
+  </div>
+  <div class="premium-promo">
+    <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
+    <div class="premium-promo-row">
+      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false">
+      <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
+  </div>
+</dialog>
 
 </main>
 

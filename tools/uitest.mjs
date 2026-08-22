@@ -5,6 +5,7 @@
 // Run with: node tools/uitest.mjs [--shots]
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -37,6 +38,24 @@ async function clickClear(page, selector) {
     window.scrollBy(0, box.top - window.innerHeight / 2);
   }, selector);
   await page.click(selector);
+}
+
+// Most of this suite is about what the app *does*, not what it charges for,
+// and every analysis after the first now costs S$0.99 — so a flow that runs
+// two would stop at a payment sheet it was never written to expect. Clearing
+// the browser's own run count models a reader who has not used their free
+// analysis yet, which is the state nearly every check here means to be in.
+// The paywall's own behaviour is checked deliberately, further down, by NOT
+// calling this.
+async function clearRunCount(page) {
+  await page.evaluate(() => localStorage.removeItem('psycheai_runs'));
+}
+
+// The re-run button, pressed with a free analysis in hand so it goes straight
+// to the supplement offer rather than to the payment sheet.
+async function startFreeRerun(page) {
+  await clearRunCount(page);
+  await startFreeRerun(page);
 }
 
 // Every upload now stops first at the supplement offer. Skipping is the
@@ -125,7 +144,16 @@ async function answerReview(page, options) {
 
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
-  env: { ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1' },
+  env: {
+    ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1',
+    // Its own budget ledger, and a ceiling far above what one run spends.
+    // Sharing data/budget.jsonl would mean a long suite eating the real
+    // deployment's daily allowance — and, worse, a suite that exhausted it
+    // mid-run would 503 every upload after that point and report the damage
+    // as a pile of unrelated selector timeouts.
+    PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-budget.jsonl'),
+    PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+  },
   stdio: 'ignore',
 });
 const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } };
@@ -4602,7 +4630,7 @@ try {
   let rerunPickerOpened = false;
   const noteChooser = () => { rerunPickerOpened = true; };
   page.on('filechooser', noteChooser);
-  await clickClear(page, '#rerun-with-data');
+  await startFreeRerun(page);
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
   await page.waitForTimeout(300);
   page.off('filechooser', noteChooser);
@@ -4666,7 +4694,7 @@ try {
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
-  await clickClear(page, '#rerun-with-data');
+  await startFreeRerun(page);
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 10000 });
   check('Skip is never offered on this path, unlike the first-upload offer',
     !(await page.locator('#supplement-skip').isVisible()));
@@ -4707,7 +4735,7 @@ try {
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
 
   // Now actually add a source and follow it through to a real rerun.
-  await clickClear(page, '#rerun-with-data');
+  await startFreeRerun(page);
   await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
   check('once something is added, Continue appears and Skip stays out of the way',
     (await page.locator('#supplement-continue').isVisible()) &&
@@ -4753,6 +4781,101 @@ try {
   check('the paid card offers to fetch what was already paid for, not a second price',
     (await page.locator('.premium-unlock').first().innerText()).trim() === 'Get the sections you paid for',
     await page.locator('.premium-unlock').first().innerText());
+
+  // ---- the free allowance, and paying past it ----
+  //
+  // One analysis is free per browser; every one after it costs S$0.99. The
+  // counter behind that lives outside store.clearAll() on purpose, because
+  // "Delete everything, then upload again" was the free way round it — so
+  // both halves are checked here: that the first run is free, and that the
+  // two ways of asking for a second one both reach a payment sheet.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  const beforeFirstFree = analyseBodies.length;
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await page.waitForFunction(() => localStorage.getItem('psycheai_runs') !== null, { timeout: 30000 });
+  const firstFreeBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  check('the first analysis is free — no payment is attached to it',
+    !firstFreeBody.paymentIntentId && !firstFreeBody.promoCode &&
+    analyseBodies.length === beforeFirstFree + 1);
+  check('and the browser records that the free run has been used',
+    (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
+  check('the price of the next one is shown before anything is pressed',
+    (await page.locator('#rerun-price-note').isVisible()) &&
+    /0\.99/.test(await page.locator('#rerun-price-note').innerText()),
+    await page.locator('#rerun-price-note').innerText());
+
+  // Route one to a second analysis: re-running with additional data.
+  await clickClear(page, '#rerun-with-data');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  check('re-running with more data asks for payment rather than just running',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis',
+    await page.locator('#premium-dialog-title').innerText());
+  check('the supplement popout waits behind the payment sheet, not in front of it',
+    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
+  const beforeDecline = analyseBodies.length;
+  await page.click('#premium-cancel');
+  await page.waitForTimeout(300);
+  check('declining costs nothing and leaves the existing report alone',
+    analyseBodies.length === beforeDecline &&
+    (await page.locator('#view-profile').isVisible()) &&
+    (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
+
+  // An archive that will be refused must be refused *before* any money is
+  // asked for. Reading first costs a wait; asking first would mean charging
+  // somebody and then telling them their file was never usable.
+  const beforeBadUpload = analyseBodies.length;
+  await page.setInputFiles('#file-input', {
+    name: 'facebook-export.zip', mimeType: 'application/zip', buffer: buildForeignExportZip(),
+  });
+  const badOutcome = await Promise.race([
+    page.waitForSelector('#upload-error:not([hidden])', { timeout: 30000 }).then(() => 'refused'),
+    page.waitForSelector('#premium-dialog[open]', { timeout: 30000 }).then(() => 'asked for money'),
+  ]);
+  check('an unusable archive is refused rather than charged for',
+    badOutcome === 'refused', badOutcome);
+  check('and nothing was sent for it either', analyseBodies.length === beforeBadUpload);
+  if (await page.locator('#premium-dialog[open]').count()) {
+    await page.evaluate(() => document.querySelector('#premium-dialog').close());
+  }
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+
+  // Route two, and the one actually asked about: wipe everything, upload again.
+  await page.evaluate(() => {
+    window.confirm = () => true;
+    document.querySelector('#delete-profile').click();
+  });
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+  check('"Delete everything" clears the report but not the count of runs already had',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null &&
+    (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
+  const beforeReupload = analyseBodies.length;
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+  check('so deleting and re-uploading is charged too, rather than being a free reset',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis');
+  check('and nothing was sent to the model while that sheet was up',
+    analyseBodies.length === beforeReupload);
+
+  // Paying goes through, and the payment reaches the server with the request.
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await page.click('#premium-mock-pay');
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  const paidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  check('paying runs the analysis, with the payment attached for the server to verify',
+    typeof paidBody.paymentIntentId === 'string' && paidBody.paymentIntentId.length > 0,
+    JSON.stringify(paidBody.paymentIntentId));
+  check('and the run count climbs, so the one after this is charged as well',
+    (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '2');
 
   // Reset to an ordinary upload again — same reasoning as the reset above
   // this section: the sections below must not inherit this section's

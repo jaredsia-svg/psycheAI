@@ -333,6 +333,100 @@ check('premium refuses an ANTHROPIC_API_KEY alone while the default premium prov
   premiumSelections.claudeOnly.name === null, JSON.stringify(premiumSelections.claudeOnly));
 check('premium works from a GEMINI_API_KEY alone, since Gemini is the default premium provider',
   premiumSelections.geminiOnly.name === 'gemini', JSON.stringify(premiumSelections.geminiOnly));
+// ---------- the free allowance, the two products, and the daily ceiling ----------
+//
+// The device-level allowance is the browser's business (docs/app.js) and is
+// checked in the UI suite. What is checkable here is the half that a client
+// cannot talk its way past: that a payment is verified against the price of
+// the thing it is being spent on, that one payment cannot be spent twice, and
+// that the server-wide daily ceiling is real.
+{
+  const budgetFile = join(root, 'tools', 'screenshots', 'budget-selftest.jsonl');
+  const budgetFor = env => execFileSync(process.execPath,
+    ['-e', 'const b = require("' + join(root, 'lib', 'budget.js') + '"); ' +
+      'process.stdout.write(JSON.stringify(b.describe()));'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_BUDGET_FILE: budgetFile, ...env } });
+
+  try { rmSync(budgetFile, { force: true }); } catch (error) { /* nothing to clear */ }
+  const fresh = JSON.parse(budgetFor({}).toString());
+  check('the daily ceiling starts empty and is not exhausted',
+    fresh.used === 0 && fresh.exhausted === false, JSON.stringify(fresh));
+  check('the ceiling is a real number, sized against COST_CAP rather than left open',
+    fresh.limit > 0 && Number.isInteger(fresh.limit), String(fresh.limit));
+
+  const lowered = JSON.parse(budgetFor({ PSYCHEAI_DAILY_FREE_LIMIT: '7' }).toString());
+  check('PSYCHEAI_DAILY_FREE_LIMIT overrides it', lowered.limit === 7, String(lowered.limit));
+
+  // A ceiling that silently accepted nonsense would fail open — the one
+  // direction a spend cap must never fail.
+  let refused = '';
+  try {
+    execFileSync(process.execPath, ['-e', 'require("' + join(root, 'lib', 'budget.js') + '")'],
+      { env: { PATH: process.env.PATH, PSYCHEAI_DAILY_FREE_LIMIT: 'lots' }, stdio: 'pipe' });
+  } catch (error) { refused = String(error.stderr || ''); }
+  check('a nonsense ceiling throws at boot rather than failing open',
+    /must be a positive whole number/.test(refused), refused.slice(0, 80));
+
+  // What is recorded, and — more to the point — what is not. The FAQ promises
+  // no visitor count, so a row that carried anything about the caller would
+  // make the page a lie. Asserted on the real written line, not on intent.
+  execFileSync(process.execPath,
+    ['-e', 'const b = require("' + join(root, 'lib', 'budget.js') + '"); b.record("analyse");'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_BUDGET_FILE: budgetFile } });
+  const row = JSON.parse(readFileSync(budgetFile, 'utf8').trim().split('\n').pop());
+  check('a recorded call carries only a date, a kind and a timestamp',
+    JSON.stringify(Object.keys(row).sort()) === JSON.stringify(['at', 'day', 'kind']),
+    Object.keys(row).join(','));
+  check('and nothing in it could identify who made the call',
+    !/ip|addr|host|agent|device|digest|hash|user/i.test(JSON.stringify(row)), JSON.stringify(row));
+  const after = JSON.parse(budgetFor({}).toString());
+  check('recording moves the count', after.used === 1, JSON.stringify(after));
+  try { rmSync(budgetFile, { force: true }); } catch (error) { /* leave no litter */ }
+}
+
+// The two products are separately priced, and a payment for one must not buy
+// the other — the check that stops a S$0.99 re-run unlocking S$1.99 of report.
+{
+  const priced = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'lib', 'stripe.js') + '");' +
+      '(async () => {' +
+      '  const a = await s.createPaymentIntent(null, "analysis");' +
+      '  const u = await s.createPaymentIntent(null, "unlock");' +
+      '  const out = { analysis: a.amount, unlock: u.amount, cross: [] };' +
+      '  try { await s.verifyPaid(a.id, "unlock"); out.cross.push("0.99 bought the unlock"); }' +
+      '  catch (e) { out.cross.push("refused"); }' +
+      '  try { await s.verifyPaid(u.id, "analysis"); out.cross.push("1.99 bought an analysis"); }' +
+      '  catch (e) { out.cross.push("refused"); }' +
+      '  process.stdout.write(JSON.stringify(out));' +
+      '})();'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
+  const money = JSON.parse(priced.toString());
+  check('an extra analysis costs less than the premium unlock, and both are real prices',
+    money.analysis === 99 && money.unlock === 199, JSON.stringify(money));
+  check('neither payment can be spent on the other product',
+    JSON.stringify(money.cross) === JSON.stringify(['refused', 'refused']), JSON.stringify(money.cross));
+}
+
+// The ledger separates them too, so the same id spent on one still has its
+// own allowance on the other rather than sharing one pool.
+{
+  const ledgerFile = join(root, 'tools', 'screenshots', 'ledger-selftest.jsonl');
+  try { rmSync(ledgerFile, { force: true }); } catch (error) { /* nothing to clear */ }
+  const out = execFileSync(process.execPath,
+    ['-e', 'const l = require("' + join(root, 'lib', 'premiumLedger.js') + '");' +
+      'l.recordUse("pi_x", "analysis");' +
+      'process.stdout.write(JSON.stringify({' +
+      '  analysis: l.usageCount("pi_x", "analysis"), premium: l.usageCount("pi_x", "premium"),' +
+      '  allowedAnalysis: l.usesAllowed("analysis"), allowedPremium: l.usesAllowed("premium") }));'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_PAYMENTS_FILE: ledgerFile } });
+  const spent = JSON.parse(out.toString());
+  check('spending a payment on an analysis does not spend it on the premium sections',
+    spent.analysis === 1 && spent.premium === 0, JSON.stringify(spent));
+  check('and each kind carries its own allowance',
+    spent.allowedAnalysis > 0 && spent.allowedPremium > spent.allowedAnalysis, JSON.stringify(spent));
+  try { rmSync(ledgerFile, { force: true }); } catch (error) { /* leave no litter */ }
+}
+
 check('premium keeps using Gemini when Claude is also configured, with no override',
   premiumSelections.both.name === 'gemini', JSON.stringify(premiumSelections.both));
 check('mock mode carries premium too, the same way it carries the main provider',

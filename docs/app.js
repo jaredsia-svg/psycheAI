@@ -57,6 +57,40 @@
     clearAll() { for (const key of Object.values(KEYS)) localStorage.removeItem(key); },
   };
 
+  // ---------- how many analyses this browser has already had ----------
+  //
+  // Deliberately NOT in KEYS, which is the whole point of it: `clearAll()`
+  // iterates KEYS, so anything listed there is wiped by "Delete everything" —
+  // and "delete everything, then upload again" was exactly the free way round
+  // the allowance. Kept apart, with this comment, so nobody tidies it into
+  // KEYS later and quietly reopens that door.
+  //
+  // What it is not: enforcement. Clearing site data, a private window or a
+  // different browser all reset it, and nothing on the server can tell. The
+  // real ceiling on spend is server-side and global — lib/budget.js — and this
+  // is a fair-use allowance that keeps honest readers honest and tells them
+  // plainly what the next run costs. The README says so in the same words.
+  const RUNS_KEY = 'psycheai_runs';
+  // Overridden by /api/status so the number here and the number the server
+  // reasons about cannot drift; this is only the value used before status
+  // lands, and on a server too old to report one.
+  let freeAnalyses = 1;
+
+  function runCount() {
+    const raw = store.read(RUNS_KEY, 0);
+    const count = typeof raw === 'number' ? raw : Number(raw && raw.count);
+    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  }
+
+  function recordRun() {
+    store.write(RUNS_KEY, runCount() + 1);
+  }
+
+  /** True when the next analysis is past this browser's free allowance. */
+  function mustPayForAnalysis() {
+    return runCount() >= freeAnalyses;
+  }
+
   const state = {
     profile: store.read(KEYS.profile, null),
     digest: store.read(KEYS.digest, null),
@@ -1028,7 +1062,7 @@
   // needed against #sample-body.
   document.addEventListener('click', event => {
     const unlock = event.target.closest('.premium-unlock');
-    if (unlock) openPremiumDialog(unlock);
+    if (unlock) openPremiumDialog(unlock, 'unlock');
   });
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -1690,6 +1724,7 @@
     let digest;
     let decision = null;
     let signals;
+    let uploadAuth = null;
     let chosenImages = [];
     // Set by whichever caller decodes the photographs first — the review's
     // download button, or the send itself. See getExtractedImages.
@@ -1710,6 +1745,18 @@
         includeImages: true,
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
+
+      // Money is asked for here, and deliberately not one line earlier. Every
+      // check above this point can still reject the upload — the wrong archive
+      // entirely, an HTML-format export, too few recognisable routes — and a
+      // reader who is shown a payment sheet and *then* told their file was
+      // never usable has been asked to pay for nothing. Reading first costs
+      // them a wait; asking first would cost them their trust.
+      uploadAuth = await authoriseAnalysis();
+      if (uploadAuth === false) {
+        showUploadError(TEXT.analysisDeclined);
+        return;
+      }
 
       // The supplement offer and the review are one loop, because Back on the
       // review steps upstream to the offer rather than abandoning the upload.
@@ -1802,7 +1849,7 @@
     // asking for the Instagram export again.
     state.signals = signals;
     store.write(KEYS.digest, digest);
-    await runAnalysis(digest, images);
+    await runAnalysis(digest, images, uploadAuth);
   }
 
   // Offered on the report page — see renderProfile — only while this session
@@ -1832,6 +1879,13 @@
   }
 
   async function rerunWithAdditionalData() {
+    // The re-run is an analysis like any other and is charged like one — this
+    // is the "re-run with Google data" case the price note on the button
+    // warns about. Asked before the supplement popout so nobody hands over an
+    // archive and is only then told it costs something.
+    const auth = await authoriseAnalysis();
+    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
+
     // Present only in the same session as the upload. Its absence is not a
     // problem to solve any more, just a branch: with it, the digest is rebuilt
     // from the archive and can carry photographs; without it, the supplement
@@ -1922,7 +1976,7 @@
     // moved on without it. hasUnfetchedUnlock() picks that up on its own: the
     // receipt in psycheai_unlock is untouched, so the paid cards fall back to
     // "Get the sections you paid for" rather than losing the payment.
-    await runAnalysis(digest, images);
+    await runAnalysis(digest, images, auth);
   }
 
   // The waiting screen speaks as the product, not as whichever model the
@@ -1932,7 +1986,7 @@
     return 'PsycheAI';
   }
 
-  async function runAnalysis(digest, images) {
+  async function runAnalysis(digest, images, auth) {
     const sent = (images || []).length;
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
@@ -1944,7 +1998,7 @@
     show('working');
 
     try {
-      const result = await LLM.analyseProfile(digest, images);
+      const result = await LLM.analyseProfile(digest, images, auth || undefined);
       const payload = await Card.encodeCard(result.data.card);
       state.profile = {
         report: result.data,
@@ -1953,6 +2007,10 @@
         model: result.model,
         createdAt: new Date().toISOString(),
       };
+      // Counted only once the report is really in hand, so a provider outage
+      // never spends somebody's free run. Kept outside KEYS on purpose — see
+      // RUNS_KEY — so "Delete everything" cannot roll it back to zero.
+      recordRun();
       if (!store.write(KEYS.profile, state.profile)) {
         flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
       }
@@ -2257,6 +2315,11 @@
     const digest = state.digest;
     $('#rerun-with-data').hidden =
       !digest || Boolean(digest.google) || Boolean(digest.facebook);
+    // Says what the next run costs before it is pressed. A button that opens
+    // a payment sheet without having mentioned money reads as a trick, and
+    // this is the one place a reader meets that price on the report page.
+    $('#rerun-price-note').textContent = mustPayForAnalysis() ? TEXT.analysisPriceNote : '';
+    $('#rerun-price-note').hidden = $('#rerun-with-data').hidden || !mustPayForAnalysis();
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -2841,6 +2904,13 @@
    * auth spends one more of the handful of uses the server allows per
    * payment (promo codes carry no such cap) — never a "pay again".
    */
+  // Which purchase the payment dialog is currently collecting for. The dialog
+  // markup, the wallet button, the promo field and the mock-pay button are all
+  // shared between the S$1.99 premium unlock and the S$0.99 extra analysis;
+  // the only thing that differs is what happens once the money clears, so that
+  // is the only thing held in a variable rather than duplicated.
+  let onPaymentAuthorised = runPremiumAnalysis;
+
   async function runPremiumAnalysis(auth, dialog) {
     // Only clear the payment controls for an actual payment attempt. A promo
     // attempt is a wholly separate authorisation path — hiding the wallet or
@@ -2957,7 +3027,7 @@
           return;
         }
       }
-      runPremiumAnalysis({ paymentIntentId: intent.id }, dialog);
+      onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
     });
   }
 
@@ -3005,7 +3075,7 @@
           errorEl.hidden = false;
           return;
         }
-        runPremiumAnalysis({ paymentIntentId: intent.id }, dialog);
+        onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
       } finally {
         payButton.disabled = false;
       }
@@ -3019,11 +3089,14 @@
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
    */
-  async function openPremiumDialog(button) {
+  async function openPremiumDialog(button, product) {
+    const kind = product === 'analysis' ? 'analysis' : 'unlock';
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
-    $('#premium-dialog-title').textContent = TEXT.premiumDialogTitle;
-    $('#premium-dialog-blurb').textContent = TEXT.premiumDialogBlurb;
+    $('#premium-dialog-title').textContent =
+      kind === 'analysis' ? TEXT.analysisDialogTitle : TEXT.premiumDialogTitle;
+    $('#premium-dialog-blurb').textContent =
+      kind === 'analysis' ? TEXT.analysisDialogBlurb : TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-card-fallback').hidden = true;
@@ -3056,7 +3129,7 @@
     // that is left to do, so this returns before `create-payment-intent` is
     // ever reached: asking Stripe for a second PaymentIntent here is how a
     // reader ends up charged twice for one unlock.
-    const receipt = unlockReceipt();
+    const receipt = kind === 'unlock' ? unlockReceipt() : null;
     if (receipt && !Object.keys(paidAnalysis()).length) {
       $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
       $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
@@ -3069,7 +3142,11 @@
 
     button.disabled = true;
     try {
-      const response = await fetch('api/create-payment-intent', { method: 'POST' });
+      const response = await fetch('api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: kind }),
+      });
       const intent = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error((intent && intent.error) || TEXT.premiumNotConfigured);
 
@@ -3080,7 +3157,7 @@
         const mockButton = $('#premium-mock-pay');
         mockButton.textContent = TEXT.premiumMockPay;
         mockButton.hidden = false;
-        mockButton.onclick = () => runPremiumAnalysis({ paymentIntentId: intent.id }, dialog);
+        mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
         return;
       }
 
@@ -3092,6 +3169,54 @@
     }
   }
 
+  /**
+   * Collects payment for one extra analysis, resolving the authorisation to
+   * pass to the model call — or null if the reader closed the dialog.
+   *
+   * Reuses the premium dialog wholesale rather than building a second one:
+   * the wallet button, the card fallback, the promo field and the mock-pay
+   * button are the same machinery whichever of the two products is being
+   * bought. `onPaymentAuthorised` is the only thing swapped, and it is put
+   * back on close so a later premium unlock still finishes as an unlock —
+   * getting that restore wrong would send a reader's S$1.99 down the analysis
+   * path, so it is done in the `close` handler where every exit passes.
+   */
+  function askAnalysisPayment() {
+    return new Promise(resolve => {
+      const dialog = $('#premium-dialog');
+      if (dialog.open) { resolve(null); return; }
+      let settled = false;
+      onPaymentAuthorised = (auth, dlg) => {
+        settled = true;
+        dlg.close();
+        resolve(auth);
+      };
+      dialog.addEventListener('close', () => {
+        onPaymentAuthorised = runPremiumAnalysis;
+        if (!settled) resolve(null);
+      }, { once: true });
+      openPremiumDialog($('#rerun-with-data'), 'analysis');
+    });
+  }
+
+  /**
+   * The gate every analysis passes through, free or paid.
+   *
+   * Resolves the `auth` to hand to the model call: `null` for a free run, an
+   * object for a paid one, and `false` when the reader declined to pay — which
+   * the callers treat as "stop", not as "run it free anyway".
+   */
+  async function authoriseAnalysis() {
+    if (!mustPayForAnalysis()) return null;
+    const auth = await askAnalysisPayment();
+    // Deliberately says nothing itself. The two callers are on different
+    // screens — the upload page and the report — and each has its own place
+    // to put the message. Flashing #profile-alert from here left the upload
+    // path writing into an element nobody could see yet, which then appeared
+    // on the report page later as a message about something long finished.
+    return auth || false;
+  }
+
   // The promo path never touches Stripe or create-payment-intent at all — it
   // goes straight to the same paid route a real payment reaches, with a code
   // instead of a paymentIntentId, so it works even mid-dialog while a wallet
@@ -3100,7 +3225,7 @@
     const input = $('#premium-promo-input');
     const code = input.value.trim();
     if (!code) return;
-    runPremiumAnalysis({ promoCode: code }, $('#premium-dialog'));
+    onPaymentAuthorised({ promoCode: code }, $('#premium-dialog'));
   }
   $('#premium-promo-apply').addEventListener('click', applyPromoCode);
   $('#premium-promo-input').addEventListener('keydown', event => {
@@ -3156,7 +3281,13 @@
   $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
 
   $('#delete-profile').addEventListener('click', () => {
-    if (!window.confirm('Delete your profile, your evidence summary and all saved match reports from this browser?')) return;
+    // Names the one thing this deliberately does not delete. Saying so is
+    // both honest — the button says "everything" — and the better deterrent:
+    // it tells a reader the trick does not work rather than letting them
+    // discover it by trying. See RUNS_KEY for why the count is kept apart.
+    if (!window.confirm('Delete your profile, your evidence summary and all saved match reports from ' +
+      'this browser?\n\nYour count of analyses already run is kept, so this does not restore a ' +
+      'free analysis.')) return;
     store.clearAll();
     state.profile = null;
     state.digest = null;
@@ -3734,6 +3865,11 @@
 
   async function boot() {
     state.server = await LLM.status();
+    // The server owns this number; the constant above is only what applies
+    // before status lands. Guarded rather than assigned blindly so an older
+    // server that does not report it leaves the default in place instead of
+    // setting the allowance to undefined and making every run look free.
+    if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
     renderServerStatus();
 
     if (await consumeIncomingLink()) return;

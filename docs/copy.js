@@ -434,6 +434,23 @@
       'tab closed, the connection dropped, or the device slept while it was being written. Fetching ' +
       'it again costs nothing.',
     premiumResumeAction: 'Fetch my analysis',
+    // The second thing this app sells, and the reason its copy is separate
+    // from the unlock's: they buy different things, and a dialog that says
+    // "unlock premium sections" while charging S$0.99 for a re-run would be
+    // describing the wrong purchase.
+    analysisDialogTitle: 'Run another analysis',
+    analysisDialogBlurb: 'Your first analysis is free. Each one after that — including re-running ' +
+      'with Google or Facebook data added — is S$0.99, because every run is a fresh call to the AI ' +
+      'model and costs real money to produce.',
+    // Shown on the upload page and beside the re-run button once the free run
+    // is spent, so the price is never a surprise sprung at the last moment.
+    analysisPriceNote: 'Your next analysis costs S$0.99.',
+    analysisFreeNote: 'Your first analysis is free.',
+    analysisDeclined: 'No charge was made. Your existing report is untouched.',
+    // The daily server-wide ceiling, which is nobody's fault and not something
+    // paying can always fix — so it says what it is rather than blaming them.
+    analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
+      'again tomorrow.',
     premiumDialogTitle: 'Unlock premium sections',
     premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
       'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +

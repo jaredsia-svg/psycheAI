@@ -15,6 +15,7 @@ const prompts = require('./lib/prompts');
 const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
+const budget = require('./lib/budget');
 // Required directly rather than reached through provider.active: the paid
 // analysis is a fixed choice of its own, independent of whichever provider
 // the free report used, so a deployment with only XAI_API_KEY set still has
@@ -38,6 +39,12 @@ const PREMIUM_ENGINES = { anthropic: claude, gemini };
 
 const ROOT = path.join(__dirname, 'docs');
 const PORT = Number(process.env.PORT) || 3000;
+
+// How many free-report generations a reader gets before the app asks them to
+// pay for the next one. Enforced in the browser, not here — see handleAnalyse
+// for why the server cannot tell whose first run it is, and the README for
+// what that split does and does not buy.
+const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
 
 // A single backdoor around the whole payment flow, for the people who should
 // not need to pay — friends, reviewers, whoever this server's operator wants
@@ -112,6 +119,10 @@ async function handleStatus(response) {
   sendJson(response, 200, {
     ...provider.describe(), payments: payments.describe(),
     premiumProvider: { name: premium ? premium.name : PREMIUM_PROVIDER, ready: Boolean(premium) },
+    // How many analyses a reader gets before being asked to pay, and what one
+    // costs after that. Served rather than hard-coded in docs/app.js so the
+    // price on the button and the price Stripe charges cannot drift apart.
+    freeAnalyses: FREE_ANALYSES,
   });
 }
 
@@ -181,15 +192,74 @@ function cleanImages(raw) {
   return out;
 }
 
+// The free report, and the one route with two ways in.
+//
+// Without payment it is free, and bounded only by the server-wide daily
+// ceiling in lib/budget.js. With a paymentIntentId or a promo code it is a
+// purchased re-run, verified against Stripe the same way the premium route
+// verifies its own, and it does *not* count against the free ceiling — the
+// reader has paid for that call, so a busy day must not take it away from
+// them after the charge cleared.
+//
+// What this deliberately does NOT do is decide whose first run it is. That
+// would need the server to recognise a returning device, which is exactly
+// what docs/index.html promises it never does ("no visitor count"). So the
+// per-device allowance is the browser's own claim, made in docs/app.js, and
+// what the server enforces is narrower and honest: a payment presented here
+// must be real, must be for the right product, and must not already have been
+// spent. See the README for the limits of that split.
 async function handleAnalyse(request, response) {
   const body = await readJsonBody(request);
   if (!body || typeof body.digest !== 'object' || body.digest === null) {
     sendJson(response, 400, { error: 'Expected a "digest" object.' });
     return;
   }
+
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  const paying = Boolean(promoCode || paymentIntentId);
+
+  if (promoCode && !isValidPromoCode(promoCode)) {
+    sendJson(response, 402, { error: 'That code is not valid.' });
+    return;
+  }
+  if (paymentIntentId && !promoCode) {
+    if (!payments.hasKey()) {
+      sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+      return;
+    }
+    await payments.verifyPaid(paymentIntentId, 'analysis');
+    if (!paymentLedger.canUse(paymentIntentId, 'analysis')) {
+      sendJson(response, 429, {
+        error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
+      });
+      return;
+    }
+  }
+
+  // Checked before the model call, so a day that is already over budget costs
+  // nothing rather than one more analysis. Paid calls skip the gate entirely.
+  if (!paying && !budget.canSpend()) {
+    sendJson(response, 503, {
+      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC — ' +
+        'or you can run one now for a small fee.',
+      budgetExhausted: true,
+    });
+    return;
+  }
+
   const engine = requireEngine(response);
   if (!engine) return;
-  sendJson(response, 200, await engine.analyseProfile(body.digest, cleanImages(body.images)));
+  const result = await engine.analyseProfile(body.digest, cleanImages(body.images));
+
+  // Both recorded only after the call actually came back, so a provider
+  // outage neither spends the day's budget nor burns the reader's payment.
+  if (paying) {
+    if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, 'analysis');
+  } else {
+    budget.record('analyse');
+  }
+  sendJson(response, 200, result);
 }
 
 // The report is typeset and downloaded entirely client-side and never reaches
@@ -213,12 +283,20 @@ async function handleRecordEmail(request, response) {
 // to carry: this route creates a PaymentIntent for exactly one product, the
 // "Let us roast you" unlock, and nothing report-shaped is anywhere near its
 // signature — same discipline as handleRecordEmail above.
-async function handleCreatePaymentIntent(response) {
+async function handleCreatePaymentIntent(request, response) {
   if (!payments.hasKey()) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
     return;
   }
-  sendJson(response, 200, await payments.createPaymentIntent('PsycheAI — roast unlock'));
+  // Which of the two products, and nothing else — never an amount. The price
+  // of each lives in lib/stripe.js's PRODUCTS and is read from there, so the
+  // only thing a client can influence here is *what* it is buying, not what
+  // that costs. An unknown name is a 400 from productOf rather than a silent
+  // fallback to the cheaper one.
+  const body = await readJsonBody(request).catch(() => null);
+  const product = body && typeof body.product === 'string' ? body.product : 'unlock';
+  const label = product === 'analysis' ? 'PsycheAI — additional analysis' : 'PsycheAI — roast unlock';
+  sendJson(response, 200, await payments.createPaymentIntent(label, product));
 }
 
 // The paid analysis — the roast. Gated on a fresh check with Stripe rather
@@ -264,8 +342,8 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
     return;
   }
-  await payments.verifyPaid(paymentIntentId);
-  if (!paymentLedger.canUse(paymentIntentId)) {
+  await payments.verifyPaid(paymentIntentId, 'unlock');
+  if (!paymentLedger.canUse(paymentIntentId, 'premium')) {
     sendJson(response, 429, {
       error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
     });
@@ -274,7 +352,7 @@ async function handlePremiumAnalysis(request, response) {
   const engine = requirePremiumEngine(response);
   if (!engine) return;
   const result = await engine.analysePremium(body.digest);
-  paymentLedger.recordUse(paymentIntentId);
+  paymentLedger.recordUse(paymentIntentId, 'premium');
   sendJson(response, 200, result);
 }
 
@@ -304,14 +382,26 @@ async function handleCompatibility(request, response) {
     sendJson(response, 400, { error: 'Expected two profile cards, "a" and "b".' });
     return;
   }
+  // A compatibility read is a free model call like any other, so it draws on
+  // the same daily ceiling. It is not separately purchasable — there is no
+  // product for it — so an exhausted day simply says come back tomorrow.
+  if (!budget.canSpend()) {
+    sendJson(response, 503, {
+      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC.',
+      budgetExhausted: true,
+    });
+    return;
+  }
   const engine = requireEngine(response);
   if (!engine) return;
   // An unknown mode or stance falls back rather than 400ing — the basis is a
   // presentation choice, not something worth failing a paid call over. The
   // stance only means anything for a professional run; the resolver defaults
   // it either way, so the engines never see an unexpected value.
-  sendJson(response, 200, await engine.analyseCompatibility(
-    a, b, prompts.resolveMode(body.mode), prompts.resolveStance(body.stance)));
+  const result = await engine.analyseCompatibility(
+    a, b, prompts.resolveMode(body.mode), prompts.resolveStance(body.stance));
+  budget.record('compatibility');
+  sendJson(response, 200, result);
 }
 
 function serveStatic(requestedPath, response) {
@@ -348,7 +438,7 @@ const server = http.createServer((request, response) => {
           : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
             : route === '/api/record-email' && request.method === 'POST' ? () => handleRecordEmail(request, response)
               : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
-                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(response)
+                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                   : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                     : null;
 
