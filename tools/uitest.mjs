@@ -58,6 +58,15 @@ async function startFreeRerun(page) {
   await startFreeRerun(page);
 }
 
+// A cleared payment now opens the Google/Facebook offer before the paid
+// sections are written — see offerDataBeforePremium. Every unlock in this
+// suite that is not specifically about that offer skips it, which is also
+// what the ordinary reader does.
+async function skipPremiumDataOffer(page) {
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
+  await page.click('#supplement-skip');
+}
+
 // Every upload now stops first at the supplement offer. Skipping is the
 // ordinary path — most flows in this suite are about what Instagram alone
 // produces — so this is what nearly every caller wants.
@@ -2629,6 +2638,27 @@ try {
     await route.continue();
   });
   await page.click('#premium-mock-pay');
+  // ---- a cleared payment offers to widen the data first ----
+  //
+  // Between the money clearing and the sections being written, a reader who
+  // has only ever given Instagram is offered the chance to add Google or
+  // Facebook. Skipping is the ordinary path and must behave exactly as it
+  // always did, which is what the rest of this block goes on to check.
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
+  check('a cleared payment offers to add more data before writing the sections',
+    await page.locator('#supplement-dialog').isVisible());
+  check('Skip is offered here, unlike the forced re-run offer',
+    await page.locator('#supplement-skip').isVisible());
+  // The payment sheet must not be left underneath still showing a wallet
+  // button for a charge that has already gone through.
+  check('the payment sheet is put away while that offer is up',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  // The receipt has to exist before this dialog does: it sits between a real
+  // charge and the generation it bought, so a reader who closes the tab here
+  // must still be able to come back and collect what they paid for.
+  check('the receipt is already written, so closing the tab here is recoverable',
+    Boolean(await page.evaluate(() => localStorage.getItem('psycheai_unlock'))));
+  await skipPremiumDataOffer(page);
   // Payment and generation are two separate steps — clicking the mock button
   // only finishes the first, and the (mocked) model call that follows it is
   // what actually closes the dialog, exactly as it would for the real
@@ -4728,6 +4758,7 @@ try {
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
   await page.fill('#premium-promo-input', 'jialatsia');
   await page.click('#premium-promo-apply');
+  await skipPremiumDataOffer(page);
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
     return Boolean(p && p.premiumAnalysis);
@@ -4781,6 +4812,61 @@ try {
   check('the paid card offers to fetch what was already paid for, not a second price',
     (await page.locator('.premium-unlock').first().innerText()).trim() === 'Get the sections you paid for',
     await page.locator('.premium-unlock').first().innerText());
+
+  // ---- adding data at the paid unlock actually enriches the paid call ----
+  //
+  // The other half of the offer above: taking it up has to reach the model,
+  // not just tick a row. Driven end to end and asserted against the real
+  // /api/premium-analysis body.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+
+  const premiumBodies = [];
+  const notePremium = request => {
+    if (request.url().endsWith('/api/premium-analysis')) premiumBodies.push(JSON.parse(request.postData()));
+  };
+  page.on('request', notePremium);
+
+  await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
+  await page.locator('.premium-unlock').first().click();
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.click('#premium-promo-apply');
+  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.click('#supplement-continue');
+  // Adding genuinely new data goes through the review, exactly as the first
+  // upload does. Skipping does not, because skipping sends nothing new — but
+  // Chrome history and Gemini prompts must never reach a model unreviewed
+  // just because the reader happened to be inside a payment flow.
+  await page.waitForSelector('#review-dialog[open]', { timeout: 20000 });
+  check('data added at the paid unlock still goes through the review first',
+    (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
+  await page.click('#review-send');
+  await page.waitForFunction(() => {
+    const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+    return Boolean(p && p.premiumAnalysis);
+  }, { timeout: 40000 });
+  page.off('request', notePremium);
+
+  const enrichedPaidBody = premiumBodies[premiumBodies.length - 1];
+  check('the paid call is made against the enriched digest',
+    Boolean(enrichedPaidBody.digest.google),
+    JSON.stringify(Object.keys(enrichedPaidBody.digest)));
+  check('and still carries the Instagram evidence alongside it',
+    enrichedPaidBody.digest.samples.captions.length > 0,
+    String(enrichedPaidBody.digest.samples.captions.length));
+  check('the authorisation rides along unchanged',
+    enrichedPaidBody.promoCode === 'jialatsia', JSON.stringify(enrichedPaidBody.promoCode));
+  check('the reader gets the sections they paid for',
+    (await page.evaluate(() => Object.keys(
+      JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis).sort().join(','))) ===
+      'advice,attachment,careerAssessment,harsh,wellness');
 
   // ---- the free allowance, and paying past it ----
   //

@@ -2894,6 +2894,98 @@
   }
 
   /**
+   * Offered once a paid unlock is authorised, before the paid sections are
+   * written: a chance to add Google or Facebook data so the four sections are
+   * read from more than Instagram alone.
+   *
+   * Skipped silently when this reader has already added a source — the offer
+   * only makes sense while there is something left to add.
+   *
+   * Two things about the ordering matter more than they look:
+   *
+   * 1. The receipt is written by the caller *before* this runs. This dialog
+   *    sits between a cleared payment and the generation it paid for, so a
+   *    reader who opens it and then closes the tab has been charged for
+   *    something that never ran. The receipt is what makes that recoverable
+   *    ("Get the sections you paid for"), and it has to exist before anything
+   *    here can be walked away from.
+   * 2. The premium dialog is closed first and reopened after. Stacking a
+   *    second modal on top of it would leave the payment sheet visible
+   *    underneath, still showing a wallet button for a charge that has
+   *    already gone through.
+   *
+   * Adding data goes through the review dialog, exactly as the first upload
+   * does. Skipping does not — that path sends the same digest it always
+   * would, so there is nothing new to review. This is deliberate rather than
+   * belt-and-braces: Chrome history and Gemini prompts are the most sensitive
+   * things this app can carry, and sending them unreviewed because the reader
+   * happened to be inside a payment flow would break the one promise the
+   * review dialog exists to keep.
+   *
+   * Returns the digest the paid call should use — the enriched one when
+   * something was added, the existing one otherwise.
+   */
+  let premiumDataOffered = false;
+
+  async function offerDataBeforePremium(dialog) {
+    const current = state.digest;
+    if (!current || current.google || current.facebook) return current;
+    // Once per unlock, not once per attempt. runPremiumAnalysis re-enters
+    // itself on "try again" after a failed generation, and a reader who
+    // already said no does not want to be asked again every time the model
+    // times out.
+    if (premiumDataOffered) return current;
+    premiumDataOffered = true;
+
+    const reopen = () => {
+      if (!dialog.open) {
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      }
+    };
+
+    dialog.close();
+    let supplements = null;
+    try {
+      supplements = await askSupplement(state.signals && state.signals.supplements);
+    } catch (error) {
+      reopen();
+      return current;
+    }
+    // Skip, Back and Escape all land here with nothing added, and all mean the
+    // same thing at this point: get on with what was paid for.
+    if (!supplements || (!supplements.google && !supplements.facebook)) {
+      reopen();
+      return current;
+    }
+
+    // Merged rather than rebuilt from the archive: the paid call takes no
+    // photographs, so nothing here needs the Instagram export to still be in
+    // memory — see Digest.addSupplements.
+    let enriched;
+    try {
+      enriched = Digest.addSupplements(JSON.parse(JSON.stringify(current)), supplements);
+    } catch (error) {
+      reopen();
+      return current;
+    }
+
+    const decision = await askReview(enriched, 0, null, { photosUnavailable: true });
+    reopen();
+    // Back or Escape at the review is not "cancel the unlock" — the payment
+    // has cleared. It means "send what you were going to send anyway".
+    if (!decision || decision === REVIEW_BACK) return current;
+
+    applyReviewDecision(enriched, decision);
+    enriched.coverage.images.included = false;
+    enriched.coverage.images.attached = 0;
+    if (state.signals) state.signals.supplements = supplements;
+    state.digest = enriched;
+    store.write(KEYS.digest, enriched);
+    return enriched;
+  }
+
+  /**
    * Runs once a payment has actually cleared, or a valid promo code has been
    * entered — calls the paid route with the same digest the free report
    * used, and only reveals or persists anything once that call really
@@ -2927,13 +3019,22 @@
     $('#premium-promo-apply').disabled = true;
     // Before the call, not after it. The whole point is to survive the tab
     // closing *during* the minutes this takes, so a receipt written on success
-    // would be written exactly when it is no longer needed.
+    // would be written exactly when it is no longer needed. It also has to be
+    // written before offerDataBeforePremium below, which puts a dialog — and
+    // therefore a chance to close the tab — between the cleared payment and
+    // the generation it bought.
     rememberUnlock(auth);
+
+    // The one chance to widen what the paid sections are read from. Returns
+    // the digest to use: enriched if the reader added a source, unchanged if
+    // they skipped, which is the ordinary path.
+    const paidDigest = await offerDataBeforePremium(dialog);
+
     premiumStatus(TEXT.premiumGenerating);
     startProgress();
     guardUnload(true);
     try {
-      const result = await LLM.analysePremium(state.digest, auth);
+      const result = await LLM.analysePremium(paidDigest || state.digest, auth);
       if (state.profile) {
         state.profile.premiumAnalysis = result.data;
         // The provider and moment that wrote the paid sections, kept apart
@@ -3112,6 +3213,7 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     premiumStatus('');
+    premiumDataOffered = false;
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     // showModal() focuses the first focusable descendant when nothing carries
