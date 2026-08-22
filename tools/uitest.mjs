@@ -58,13 +58,23 @@ async function startFreeRerun(page) {
   await startFreeRerun(page);
 }
 
-// A cleared payment now opens the Google/Facebook offer before the paid
-// sections are written — see offerDataBeforePremium. Every unlock in this
-// suite that is not specifically about that offer skips it, which is also
-// what the ordinary reader does.
+// Pressing the unlock button now opens the Google/Facebook offer FIRST, and
+// the payment sheet only after it — data, then review, then money. Every
+// unlock in this suite that is not specifically about that offer skips
+// straight past it, which is also what the ordinary reader does.
 async function skipPremiumDataOffer(page) {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
   await page.click('#supplement-skip');
+}
+
+// The whole opening move of an unlock: press the button, skip the data offer,
+// and land on the payment sheet.
+async function openUnlockPayment(page, target) {
+  const locator = page.locator(target || '.premium-unlock').first();
+  await locator.scrollIntoViewIfNeeded();
+  await locator.click();
+  await skipPremiumDataOffer(page);
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
 }
 
 // Every upload now stops first at the supplement offer. Skipping is the
@@ -2467,6 +2477,7 @@ try {
     !/uncharitable reading/i.test(roastCovered.html) && !/unsoftened advice/i.test(roastCovered.html));
 
   await clickClear(page, '#profile-body .bonus-card .premium-unlock');
+  await skipPremiumDataOffer(page);
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
   // showModal() focuses the first focusable descendant when nothing has
   // `autofocus` — which is the promo input here, since the wallet button and
@@ -2573,6 +2584,7 @@ try {
     });
 
     await clickClear(cardPage, '#profile-body .bonus-card .premium-unlock');
+    await skipPremiumDataOffer(cardPage);
     await cardPage.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
     await cardPage.waitForSelector('#premium-card-fallback:not([hidden])', { timeout: 10000 });
 
@@ -2600,10 +2612,6 @@ try {
       window.__cardConfirmResult = { paymentIntent: { status: 'succeeded' } };
     });
     await cardPage.click('#premium-card-pay');
-    // A cleared card payment reaches the same data offer a wallet payment
-    // does — see offerDataBeforePremium. This check is about the card path,
-    // not the offer, so it skips through exactly as a reader would.
-    await skipPremiumDataOffer(cardPage);
     await cardPage.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
     const cardUnlocked = await cardPage.evaluate(() => {
       const el = document.querySelector('#profile-body .bonus-card');
@@ -2642,27 +2650,13 @@ try {
     await route.continue();
   });
   await page.click('#premium-mock-pay');
-  // ---- a cleared payment offers to widen the data first ----
+  // ---- (the data offer is checked before payment now — see above) ----
   //
   // Between the money clearing and the sections being written, a reader who
   // has only ever given Instagram is offered the chance to add Google or
   // Facebook. Skipping is the ordinary path and must behave exactly as it
   // always did, which is what the rest of this block goes on to check.
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
-  check('a cleared payment offers to add more data before writing the sections',
-    await page.locator('#supplement-dialog').isVisible());
-  check('Skip is offered here, unlike the forced re-run offer',
-    await page.locator('#supplement-skip').isVisible());
-  // The payment sheet must not be left underneath still showing a wallet
-  // button for a charge that has already gone through.
-  check('the payment sheet is put away while that offer is up',
-    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
-  // The receipt has to exist before this dialog does: it sits between a real
-  // charge and the generation it bought, so a reader who closes the tab here
-  // must still be able to come back and collect what they paid for.
-  check('the receipt is already written, so closing the tab here is recoverable',
-    Boolean(await page.evaluate(() => localStorage.getItem('psycheai_unlock'))));
-  await skipPremiumDataOffer(page);
+
   // Payment and generation are two separate steps — clicking the mock button
   // only finishes the first, and the (mocked) model call that follows it is
   // what actually closes the dialog, exactly as it would for the real
@@ -2915,6 +2909,8 @@ try {
   };
   page.on('request', countIntents);
   await clickClear(page, '#profile-body .bonus-card .premium-unlock');
+  // No data offer on this path: the receipt already exists, so this reader is
+  // collecting sections they paid for rather than starting a new unlock.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
   await page.waitForTimeout(400);
   check('resuming does not create a second PaymentIntent',
@@ -4757,12 +4753,9 @@ try {
   // Unlock premium first, with the promo code — mock mode's cash-free path,
   // used elsewhere in this suite — so the rerun below has a real paid unlock
   // to carry (or not carry) forward.
-  await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
-  await page.locator('.premium-unlock').first().click();
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
+  await openUnlockPayment(page);
   await page.fill('#premium-promo-input', 'jialatsia');
   await page.click('#premium-promo-apply');
-  await skipPremiumDataOffer(page);
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
     return Boolean(p && p.premiumAnalysis);
@@ -4837,21 +4830,39 @@ try {
   };
   page.on('request', notePremium);
 
+  // Data, then review, then money — the order the unlock now runs in, driven
+  // here exactly as a reader would.
   await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
   await page.locator('.premium-unlock').first().click();
-  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  await page.fill('#premium-promo-input', 'jialatsia');
-  await page.click('#premium-promo-apply');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
+  check('the unlock button opens the data offer before asking for any money',
+    (await page.locator('#supplement-dialog').isVisible()) &&
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  check('Skip is offered here, unlike the forced re-run offer',
+    await page.locator('#supplement-skip').isVisible());
+
   await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
   await page.click('#supplement-continue');
   // Adding genuinely new data goes through the review, exactly as the first
   // upload does. Skipping does not, because skipping sends nothing new — but
   // Chrome history and Gemini prompts must never reach a model unreviewed
-  // just because the reader happened to be inside a payment flow.
+  // just because the reader is inside an unlock flow.
   await page.waitForSelector('#review-dialog[open]', { timeout: 20000 });
-  check('data added at the paid unlock still goes through the review first',
+  check('data added at the unlock still goes through the review first',
     (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
+  check('and still no payment sheet has been shown',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
   await page.click('#review-send');
+
+  // Only now is the reader asked to pay.
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+  check('the payment sheet is the last step, after the data and the review',
+    await page.locator('#premium-dialog').isVisible());
+  const digestBeforePaying = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
+  check('and the added data is not kept until it has actually bought something',
+    !JSON.parse(digestBeforePaying).google);
+  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
     return Boolean(p && p.premiumAnalysis);

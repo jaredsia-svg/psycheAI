@@ -1879,13 +1879,6 @@
   }
 
   async function rerunWithAdditionalData() {
-    // The re-run is an analysis like any other and is charged like one — this
-    // is the "re-run with Google data" case the price note on the button
-    // warns about. Asked before the supplement popout so nobody hands over an
-    // archive and is only then told it costs something.
-    const auth = await authoriseAnalysis();
-    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
-
     // Present only in the same session as the upload. Its absence is not a
     // problem to solve any more, just a branch: with it, the digest is rebuilt
     // from the archive and can carry photographs; without it, the supplement
@@ -1966,6 +1959,13 @@
       digest.coverage.images.included = false;
       digest.coverage.images.attached = 0;
     }
+
+    // Money last: the reader has loaded their extra data and seen exactly
+    // what will be sent, and only now is asked to pay for the run. Declining
+    // costs them nothing — nothing below this line has happened yet, so the
+    // report and digest they arrived with are untouched.
+    const auth = await authoriseAnalysis();
+    if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
 
     state.digest = digest;
     state.images = images;
@@ -2925,63 +2925,69 @@
    * Returns the digest the paid call should use — the enriched one when
    * something was added, the existing one otherwise.
    */
-  let premiumDataOffered = false;
+  // Holds the enriched digest between "the reader added data and reviewed it"
+  // and "the payment for it actually cleared". Deliberately not persisted
+  // until the paid call succeeds: a reader who adds a Takeout and then
+  // abandons the payment sheet has bought nothing, and should not find their
+  // stored digest quietly changed — nor the re-run button gone, which is what
+  // persisting early would do.
+  let pendingPremiumDigest = null;
 
-  async function offerDataBeforePremium(dialog) {
+  /**
+   * Offered when the unlock button is pressed and this reader has only ever
+   * given Instagram: a chance to add Google or Facebook so the four paid
+   * sections are read from more than one source.
+   *
+   * Runs BEFORE any payment UI is mounted, which is the whole point of its
+   * placement — the reader loads their data and sees exactly what will be
+   * sent, and only then is asked for money. That ordering also removes a
+   * hazard the earlier arrangement had: with payment first, this dialog sat
+   * between a cleared charge and the generation it bought, so closing the tab
+   * here meant paying for nothing.
+   *
+   * Adding data goes through the review; skipping does not, because skipping
+   * sends nothing new. Chrome history and Gemini prompts must not reach a
+   * model unreviewed just because the reader is inside an unlock flow.
+   *
+   * Returns the digest the paid call should use, or null to abandon the
+   * unlock entirely (Back at the supplement offer).
+   */
+  async function collectExtraDataForPremium() {
     const current = state.digest;
     if (!current || current.google || current.facebook) return current;
-    // Once per unlock, not once per attempt. runPremiumAnalysis re-enters
-    // itself on "try again" after a failed generation, and a reader who
-    // already said no does not want to be asked again every time the model
-    // times out.
-    if (premiumDataOffered) return current;
-    premiumDataOffered = true;
 
-    const reopen = () => {
-      if (!dialog.open) {
-        if (typeof dialog.showModal === 'function') dialog.showModal();
-        else dialog.setAttribute('open', '');
-      }
-    };
-
-    dialog.close();
     let supplements = null;
     try {
       supplements = await askSupplement(state.signals && state.signals.supplements);
     } catch (error) {
-      reopen();
       return current;
     }
-    // Skip, Back and Escape all land here with nothing added, and all mean the
-    // same thing at this point: get on with what was paid for.
-    if (!supplements || (!supplements.google && !supplements.facebook)) {
-      reopen();
-      return current;
-    }
+    // Back resolves null and means "I have changed my mind about all of this",
+    // which is worth honouring now that nothing has been charged yet. Skip
+    // resolves an empty object and means "get on with the unlock".
+    if (!supplements) return null;
+    if (!supplements.google && !supplements.facebook) return current;
 
     // Merged rather than rebuilt from the archive: the paid call takes no
-    // photographs, so nothing here needs the Instagram export to still be in
+    // photographs, so nothing here needs the Instagram export still to be in
     // memory — see Digest.addSupplements.
     let enriched;
     try {
       enriched = Digest.addSupplements(JSON.parse(JSON.stringify(current)), supplements);
     } catch (error) {
-      reopen();
       return current;
     }
 
     const decision = await askReview(enriched, 0, null, { photosUnavailable: true });
-    reopen();
-    // Back or Escape at the review is not "cancel the unlock" — the payment
-    // has cleared. It means "send what you were going to send anyway".
+    // Escape or Back at the review drops the addition rather than the unlock:
+    // they have seen what the extra data contains and declined to send it, so
+    // the paid call proceeds on the digest it would have used anyway.
     if (!decision || decision === REVIEW_BACK) return current;
 
     applyReviewDecision(enriched, decision);
     enriched.coverage.images.included = false;
     enriched.coverage.images.attached = 0;
-    if (state.signals) state.signals.supplements = supplements;
-    state.digest = enriched;
-    store.write(KEYS.digest, enriched);
+    enriched.__addedSupplements = supplements;
     return enriched;
   }
 
@@ -3025,17 +3031,10 @@
     // the generation it bought.
     rememberUnlock(auth);
 
-    // The one chance to widen what the paid sections are read from. Returns
-    // the digest to use: enriched if the reader added a source, unchanged if
-    // they skipped, which is the ordinary path.
-    //
-    // Not offered on the resume path. That reader paid on some earlier visit
-    // and is here to collect sections that never arrived; the moment to add
-    // data was at the purchase, and putting an upload dialog in front of an
-    // error-recovery flow is the wrong place to ask.
-    const paidDigest = options && options.offerData === false
-      ? state.digest
-      : await offerDataBeforePremium(dialog);
+    // Whatever openPremiumDialog collected before the payment sheet went up.
+    // By the time a charge clears, the reader has already loaded their extra
+    // data and reviewed it, so there is nothing left to ask here.
+    const paidDigest = pendingPremiumDigest || state.digest;
 
     premiumStatus(TEXT.premiumGenerating);
     startProgress();
@@ -3053,6 +3052,16 @@
         // reader able to read what they paid for, on screen, for the rest of
         // this visit — it just will not survive a reload.
         store.write(KEYS.profile, state.profile);
+      }
+      // The extra data is kept only now, because only now has it bought
+      // anything. Abandoning the payment sheet leaves the stored digest — and
+      // the re-run button that reads it — exactly as they were.
+      if (pendingPremiumDigest && pendingPremiumDigest !== state.digest) {
+        const added = pendingPremiumDigest.__addedSupplements;
+        delete pendingPremiumDigest.__addedSupplements;
+        if (added && state.signals) state.signals.supplements = added;
+        state.digest = pendingPremiumDigest;
+        store.write(KEYS.digest, pendingPremiumDigest);
       }
       revealPaid(result.data);
       // After revealPaid, not before: if injecting the sections themselves
@@ -3201,6 +3210,20 @@
     const kind = product === 'analysis' ? 'analysis' : 'unlock';
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
+
+    // Data first, review second, money last.
+    //
+    // Only for a fresh unlock: the resume path already has a receipt and is
+    // here to collect sections that were paid for on an earlier visit, so it
+    // is neither charged nor asked for anything.
+    pendingPremiumDigest = null;
+    if (kind === 'unlock' && !unlockReceipt()) {
+      const collected = await collectExtraDataForPremium();
+      // Back at the supplement offer abandons the unlock. Nothing has been
+      // charged and no dialog has been opened, so this simply returns.
+      if (!collected) return;
+      pendingPremiumDigest = collected;
+    }
     $('#premium-dialog-title').textContent =
       kind === 'analysis' ? TEXT.analysisDialogTitle : TEXT.premiumDialogTitle;
     $('#premium-dialog-blurb').textContent =
@@ -3220,7 +3243,6 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     premiumStatus('');
-    premiumDataOffered = false;
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     // showModal() focuses the first focusable descendant when nothing carries
