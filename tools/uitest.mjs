@@ -2600,6 +2600,10 @@ try {
       window.__cardConfirmResult = { paymentIntent: { status: 'succeeded' } };
     });
     await cardPage.click('#premium-card-pay');
+    // A cleared card payment reaches the same data offer a wallet payment
+    // does — see offerDataBeforePremium. This check is about the card path,
+    // not the offer, so it skips through exactly as a reader would.
+    await skipPremiumDataOffer(cardPage);
     await cardPage.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
     const cardUnlocked = await cardPage.evaluate(() => {
       const el = document.querySelector('#profile-body .bonus-card');

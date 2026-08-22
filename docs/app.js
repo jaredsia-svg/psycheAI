@@ -3003,7 +3003,7 @@
   // is the only thing held in a variable rather than duplicated.
   let onPaymentAuthorised = runPremiumAnalysis;
 
-  async function runPremiumAnalysis(auth, dialog) {
+  async function runPremiumAnalysis(auth, dialog, options) {
     // Only clear the payment controls for an actual payment attempt. A promo
     // attempt is a wholly separate authorisation path — hiding the wallet or
     // mock-pay button while it runs would strand a reader whose code turns
@@ -3028,7 +3028,14 @@
     // The one chance to widen what the paid sections are read from. Returns
     // the digest to use: enriched if the reader added a source, unchanged if
     // they skipped, which is the ordinary path.
-    const paidDigest = await offerDataBeforePremium(dialog);
+    //
+    // Not offered on the resume path. That reader paid on some earlier visit
+    // and is here to collect sections that never arrived; the moment to add
+    // data was at the purchase, and putting an upload dialog in front of an
+    // error-recovery flow is the wrong place to ask.
+    const paidDigest = options && options.offerData === false
+      ? state.digest
+      : await offerDataBeforePremium(dialog);
 
     premiumStatus(TEXT.premiumGenerating);
     startProgress();
@@ -3060,7 +3067,7 @@
       const retry = $('#premium-retry');
       retry.textContent = TEXT.premiumRetry;
       retry.hidden = false;
-      retry.onclick = () => runPremiumAnalysis(auth, dialog);
+      retry.onclick = () => runPremiumAnalysis(auth, dialog, options);
     } finally {
       // In `finally` rather than once per branch: a throw inside revealPaid
       // would otherwise leave the ticking counter running and the page
@@ -3238,7 +3245,7 @@
       const resume = $('#premium-retry');
       resume.textContent = TEXT.premiumResumeAction;
       resume.hidden = false;
-      resume.onclick = () => runPremiumAnalysis(receipt, dialog);
+      resume.onclick = () => runPremiumAnalysis(receipt, dialog, { offerData: false });
       return;
     }
 
