@@ -1600,6 +1600,12 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   font-size: 21px; letter-spacing: .18em; text-transform: uppercase;
   color: var(--ink-soft); margin: 0 0 12px; font-weight: 600;
 }
+/* The label text is a flex item, which defaults to a content-based minimum
+   width and refuses to shrink below it — so "ENNEAGRAM" at this uppercase
+   letter-spacing simply overflowed the box rather than wrapping, on a narrow
+   card's three-column stat row. Same fix as .pc-trait-label: let it shrink
+   and break instead. */
+.pc-lab-text { min-width: 0; overflow-wrap: break-word; }
 .pc-big { font-size: 46px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .pc-sub { font-size: 24px; color: var(--ink-soft); margin: 6px 0 0; }
 /* The type's own one-line definition, under the nickname — smaller and
@@ -1644,8 +1650,14 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    width and overflow the card rather than wrapping. The bullet lives on this
    span rather than on .pc-trait itself, so it travels with the label as one
    flex item instead of becoming a third item that space-between would push
-   away from it. */
-.pc-trait-label { min-width: 0; }
+   away from it.
+   min-width: 0 alone only lets the box shrink — it does not let one-word
+   labels like "Conscientiousness" or "Agreeableness" break. With no space to
+   wrap at, normal text wrapping leaves the word intact and it overflows
+   straight past its own box into the score sitting beside it, which is
+   exactly what the narrow card's three-column stat row does at its width.
+   overflow-wrap lets the browser break inside the word once it has to. */
+.pc-trait-label { min-width: 0; overflow-wrap: break-word; }
 .pc-trait-label::before { content: '•'; color: var(--accent); font-weight: 700; margin-right: 10px; }
 .pc-trait b { font-variant-numeric: tabular-nums; }
 
@@ -1665,6 +1677,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-col,
 .psyche-card.pc-narrow .pc-half { padding: 15px 17px; }
 .psyche-card.pc-narrow .pc-lab { margin-bottom: 8px; }
+/* Three equal columns on a narrow card leave each stat label about a sixth
+   of the card's width. "Enneagram" is one word and, at the label's usual
+   letter-spacing, needs more than that — .pc-lab-text's overflow-wrap keeps
+   it from spilling into the box beside it, but breaking wherever the browser
+   likes reads worse than the labels beside it. Tightening the spacing here
+   is enough for it to fit on its own line instead. */
+.psyche-card.pc-narrow .pc-stats .pc-lab { font-size: 16px; letter-spacing: .06em; }
 /* "Agreeableness" is one unbreakable word, so at the narrow card's column width
    it pushed its own score past the card edge and the frame clipped it. Smaller
    type in this mode only, and grid children allowed to shrink below their
@@ -1673,19 +1692,15 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-desc { font-size: 17px; margin-top: 6px; }
 /* Four strength words across one narrow column: "moderate" twice will not fit
    at full size, and the last one ran into the block beside it. */
-/* Two stat columns rather than three on a narrow card. Three left the TYPE
-   block about a third of 700px, which is not enough for four strength words
-   side by side — and a narrower card is what lets the whole thing be drawn
-   larger on a phone, so the column count gives way rather than the width. */
-.psyche-card.pc-narrow .pc-stats { grid-template-columns: 1fr 1fr; }
-/* With three stat boxes (type, Enneagram, Big Five) that leaves Big Five as
-   the odd one, orphaned alone on row two at half the card's width. Span it
-   across both columns instead so it reads as its own full-width row rather
-   than a box that lost its neighbour. Scoped to :nth-child(3) so the two-box
-   case (no Enneagram) is untouched — there Big Five is the second child and
-   already sits correctly beside type. */
-.psyche-card.pc-narrow .pc-stat-bigfive:nth-child(3) { grid-column: 1 / -1; }
-.psyche-card.pc-narrow .pc-letters { gap: 4px; }
+/* Big Five stays in the same row as type and Enneagram on a narrow card too —
+   dropping to two columns left it orphaned alone at half width on its own
+   row, which read as broken rather than intentional. Three narrow columns
+   squeeze the TYPE block's letter pair, so the letters stack one per row
+   below instead of 2x2: the box grows taller to hold them rather than the
+   row losing a column to make them wider. */
+.psyche-card.pc-narrow .pc-letters {
+  grid-template-columns: 1fr; gap: 4px;
+}
 .psyche-card.pc-narrow .pc-letter b { font-size: 34px; }
 .psyche-card.pc-narrow .pc-letter i { font-size: 13px; }
 .psyche-card.pc-narrow .pc-lab-icon { font-size: 20px; }

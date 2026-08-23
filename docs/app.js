@@ -233,7 +233,7 @@
 
   const cardLab = (icon, label) =>
     '<p class="pc-lab"><span class="pc-lab-icon" aria-hidden="true">' + esc(icon) + '</span>' +
-    esc(label) + '</p>';
+    '<span class="pc-lab-text">' + esc(label) + '</span></p>';
 
   function cardChipRow(icon, label, items) {
     const list = (items || []).filter(Boolean);

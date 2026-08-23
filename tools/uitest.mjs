@@ -2037,15 +2037,33 @@ try {
   // With three stat boxes, the narrow card's two-column grid otherwise leaves
   // Big Five as the odd one, orphaned alone at half the card's width on row
   // two — reported from a real phone. It should span the full row instead.
-  check('Big Five spans the full row on a narrow card rather than sitting orphaned at half width',
+  // Reported from a real phone: on a narrow card, Big Five used to drop to
+  // its own row at half the card's width. All three now stay three-across,
+  // with each box free to grow taller instead of the row losing a column.
+  check('type, Enneagram and Big Five stay in one row on a narrow card',
     await page.evaluate(() => {
       const card = document.querySelector('#psyche-card-full');
       card.classList.add('pc-narrow');
       const stats = [...card.querySelectorAll('.pc-stats .pc-stat')];
-      const bigfive = card.querySelector('.pc-stat-bigfive');
-      const ok = stats.length === 3 && bigfive &&
-        Math.round(bigfive.getBoundingClientRect().width) >
-          Math.round(stats[0].getBoundingClientRect().width) * 1.5;
+      const tops = stats.map(s => Math.round(s.getBoundingClientRect().top));
+      const ok = stats.length === 3 && tops.every(t => Math.abs(t - tops[0]) <= 1);
+      card.classList.remove('pc-narrow');
+      return ok;
+    }));
+  // Long single words ("Enneagram" in the label, "Conscientiousness" and
+  // "Agreeableness" among the trait names) have nowhere to wrap at a
+  // three-narrow-column width unless they can break inside the word — without
+  // that they overflowed straight past their own box into the score or the
+  // stat beside them.
+  check('long one-word labels and trait names wrap instead of overflowing on a narrow card',
+    await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-full');
+      card.classList.add('pc-narrow');
+      const nodes = [
+        ...card.querySelectorAll('.pc-stats .pc-lab-text'),
+        ...card.querySelectorAll('.pc-trait-label'),
+      ];
+      const ok = nodes.length > 0 && nodes.every(n => n.scrollWidth <= n.clientWidth + 1);
       card.classList.remove('pc-narrow');
       return ok;
     }));
