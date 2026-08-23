@@ -1873,6 +1873,39 @@ the dialog and silently continues into the review — which then cascades into a
 suite, when a subsequent step collides with a review dialog a prior step's "cancellation" had actually
 left open behind it.
 
+**The carry-forward note then needed to catch up to its own fix.** `#datasources-instagram-note`
+("Replacing Instagram starts your Google and Facebook data fresh too — reload them here as well if
+you want them included in this run.") used to appear the instant Instagram was replaced, full stop,
+with no regard for whether there was actually anything at risk of being lost. Before
+`pendingDataSourceReads` existed, that blanket rule was at least never *wrong* in the case that
+mattered: a Google or Facebook row ticked only because `state.digest` already carried it
+(`added.google === true`, the seeded boolean) genuinely would not survive a `Digest.build()` rebuild
+from a fresh Instagram export, because a stored digest keeps only the sampled, capped view, not the
+raw fragment the rebuild needs. But a row ticked because it was *just read in this same popout* —
+which was always possible within one open dialog, and now also possible across a Back thanks to
+`pendingDataSourceReads` — carries the real fragment, and rides forward into the rebuild exactly as
+if it had been read again. Warning about losing something that was not actually going to be lost is
+its own kind of wrong, and became more common the moment reads started surviving Back.
+
+The fix folds the note's visibility into `markAdded()`, which already runs every time `added` changes
+shape: `hidden = !(replacedInstagram && (added.google === true || added.facebook === true))`. Only the
+seeded boolean trips it — an object, whichever way it got there, does not. Recomputing it in
+`markAdded()` rather than only at the moment Instagram is read also means reading Google or Facebook
+*afterwards*, in the same dialog session, correctly clears a note that was showing a moment before.
+
+`tools/uitest.mjs` covers both directions with the fixture already built for the persistence checks
+above: reopening the popout on the Back-preserved Google tick and then replacing Instagram confirms
+the note stays hidden (the real fragment carries forward), while the pre-existing "replacing Instagram
+shows the note" check — now backed by a genuinely committed `digest.google` from an in-memory session
+rather than a fresh read — still expects it to appear, and does. The wait condition needed care here:
+Instagram's own row carries `.is-added` from the moment the dialog opens (it is always "already
+loaded"), so waiting on that class proves nothing about a fresh read actually finishing — the fix
+waits on the row going busy and then idle again instead, the same caution the pre-existing "shows the
+note" check next to it already took by waiting on the note itself rather than the row. Fault-injected
+in both directions: forcing the note to always follow `replacedInstagram` alone reproduces the false
+positive directly; forcing it permanently hidden times out the older check that proves the warning
+still fires when it should.
+
 **A related question turned out to already be answered correctly, and just untested:** does the
 "Data sources" subsection's tick for Google or Facebook also update when that data was added through
 the *premium unlock's own* data offer (`collectExtraDataForPremium`, a different dialog entirely —
@@ -2943,7 +2976,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 940 checks: drives the real UI in Chromium against a
+npm run test:ui    # 941 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

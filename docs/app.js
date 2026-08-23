@@ -2108,6 +2108,17 @@
           tick.remove();
         }
       }
+      // The warning only means something when a row is ticked *without* a
+      // real fragment behind it — `added[source] === true`, the seeded
+      // "already in state.digest" mark, rather than an object. An object
+      // there — whether just read, or carried forward from an earlier
+      // attempt via pendingDataSourceReads — is exactly the "reload it here"
+      // the note asks for, already done, so warning about it would be noise.
+      // Recomputed on every call rather than fixed the moment Instagram is
+      // replaced, so reading Google or Facebook afterwards can still resolve
+      // the very risk this note exists to name.
+      $('#datasources-instagram-note').hidden = !(replacedInstagram &&
+        (added.google === true || added.facebook === true));
     };
 
     return new Promise(resolve => {
@@ -2136,7 +2147,6 @@
                 Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
             });
             replacedInstagram = true;
-            $('#datasources-instagram-note').hidden = false;
           } else {
             const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
             added[source] = await reader(files, {

@@ -5083,6 +5083,36 @@ try {
       const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]');
       return row.classList.contains('is-added');
     }) && !backTickPickerOpened);
+
+  // The carry-forward note exists to warn about a real risk: a tick with no
+  // fragment behind it, which replacing Instagram would then lose. A tick
+  // carried forward from a prior read via pendingDataSourceReads is not that
+  // — Google will ride along with the replacement exactly as if it had just
+  // been read fresh — so the note must stay hidden here, unlike the later
+  // case (a committed, in-memory-session digest.google) where it is correct
+  // to show it.
+  const [chooserReplaceAfterBack] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 15000 }),
+    page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+  ]);
+  await chooserReplaceAfterBack.setFiles(
+    { name: 'instagram-replace.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+  // Instagram's row carries .is-added from the moment the dialog opens —
+  // it is always "already loaded" — so that class becoming true proves
+  // nothing about this read finishing (see the identical caution a few lines
+  // below, on the case this same row's tick already could not be trusted
+  // for). Waiting on the row actually going busy and then idle again is the
+  // one signal that brackets the real read.
+  await page.waitForFunction(() => {
+    const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+    return row && row.disabled;
+  }, { timeout: 15000 });
+  await page.waitForFunction(() => {
+    const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+    return row && !row.disabled;
+  }, { timeout: 30000 });
+  check('replacing Instagram does not warn about losing Google when it was really carried forward',
+    await page.evaluate(() => document.querySelector('#datasources-instagram-note').hidden));
   await page.click('#datasources-back');
   await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
 
