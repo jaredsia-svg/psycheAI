@@ -455,6 +455,14 @@
     premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
       'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +
       'browser offers.',
+    // Shown instead of the above when the reader added a Google or Facebook
+    // export on the way here. The same S$1.99 now also rewrites the free
+    // sections against that data, so the price is doing more and says so
+    // before it is agreed to rather than after.
+    premiumDialogBlurbWithData: 'One charge opens the mental wellness read, your attachment style, the ' +
+      'career assessment and the roast — and, because you added more data, rewrites the rest of your ' +
+      'report with it at no extra cost. Taken on this device — Apple Pay or Google Pay, whichever this ' +
+      'browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     // Followed immediately by the card fallback mounting itself (see
@@ -476,6 +484,10 @@
     // "went through" is true of either kind of authorisation.
     premiumGenerationFailed: 'That went through, but the analysis could not be generated. Try again — ' +
       'the same payment can be used a few more times before it needs a new one.',
+    // Shown between the two calls an unlock-with-added-data makes. Says
+    // plainly that the second one is not another charge, because a second
+    // progress bar after a payment otherwise reads like one.
+    premiumRefreshingFree: 'Paid sections are ready. Rewriting the rest of your report with the new data — no extra charge…',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',

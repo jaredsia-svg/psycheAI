@@ -219,6 +219,21 @@ async function handleAnalyse(request, response) {
   const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
   const paying = Boolean(promoCode || paymentIntentId);
 
+  // Which purchase is being spent here. 'analysis' is the ordinary S$0.99
+  // re-run. 'unlock' is the S$1.99 premium purchase paying for the free
+  // report as well, which it does in exactly one case: the reader added a
+  // Google or Facebook export inside the unlock flow, so the paid sections
+  // are about to describe evidence the free ones above them have never seen.
+  // Refreshing them together is what that S$1.99 now buys.
+  //
+  // Naming the product cannot be used to pay less for more: verifyPaid checks
+  // the retrieved PaymentIntent's amount against *this* product's price, so
+  // an 'analysis' intent claiming to be an 'unlock' simply fails to verify.
+  // The two are ledgered under different kinds so neither eats the other's
+  // retries.
+  const product = body.product === 'unlock' ? 'unlock' : 'analysis';
+  const ledgerKind = product === 'unlock' ? 'bundled' : 'analysis';
+
   if (promoCode && !isValidPromoCode(promoCode)) {
     sendJson(response, 402, { error: 'That code is not valid.' });
     return;
@@ -228,8 +243,8 @@ async function handleAnalyse(request, response) {
       sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
       return;
     }
-    await payments.verifyPaid(paymentIntentId, 'analysis');
-    if (!paymentLedger.canUse(paymentIntentId, 'analysis')) {
+    await payments.verifyPaid(paymentIntentId, product);
+    if (!paymentLedger.canUse(paymentIntentId, ledgerKind)) {
       sendJson(response, 429, {
         error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
       });
@@ -255,7 +270,7 @@ async function handleAnalyse(request, response) {
   // Both recorded only after the call actually came back, so a provider
   // outage neither spends the day's budget nor burns the reader's payment.
   if (paying) {
-    if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, 'analysis');
+    if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, ledgerKind);
   } else {
     budget.record('analyse');
   }

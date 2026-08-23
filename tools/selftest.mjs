@@ -691,6 +691,32 @@ check('a PaymentIntent nobody has used yet has a usage count of zero',
   check('a different PaymentIntent is unaffected by another one\'s usage',
     paymentLedger.canUse('pi_selftest_unrelated_' + Date.now()));
 }
+// One S$1.99 unlock now buys two different things: the premium sections, and
+// — when the reader added a Google or Facebook export on the way to it — a
+// rewrite of the free report as well. They are ledgered under separate kinds
+// precisely so that exhausting the retries on one cannot take the other's
+// with it, which is the property worth pinning here.
+{
+  const id = 'pi_selftest_bundled_' + Date.now();
+  check('the bundled free report has its own allowance, separate from premium\'s',
+    paymentLedger.MAX_USES_BY_KIND.bundled > 0 &&
+    paymentLedger.MAX_USES_BY_KIND.bundled < paymentLedger.MAX_USES_BY_KIND.premium,
+    JSON.stringify(paymentLedger.MAX_USES_BY_KIND));
+  for (let i = 0; i < paymentLedger.MAX_USES_BY_KIND.bundled; i++) {
+    paymentLedger.recordUse(id, 'bundled');
+  }
+  check('spending the bundled allowance right down stops further bundled runs',
+    !paymentLedger.canUse(id, 'bundled'));
+  check('but the premium sections that same payment bought are still collectable',
+    paymentLedger.canUse(id, 'premium'));
+  check('and the S$0.99 re-run kind is untouched by either of them',
+    paymentLedger.canUse(id, 'analysis') && paymentLedger.usageCount(id, 'analysis') === 0);
+  check('each kind counts only its own rows',
+    paymentLedger.usageCount(id, 'bundled') === paymentLedger.MAX_USES_BY_KIND.bundled &&
+    paymentLedger.usageCount(id, 'premium') === 0,
+    JSON.stringify({ bundled: paymentLedger.usageCount(id, 'bundled'),
+      premium: paymentLedger.usageCount(id, 'premium') }));
+}
 
 // ---------- schema validation ----------
 //

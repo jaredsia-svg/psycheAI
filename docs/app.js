@@ -3080,6 +3080,21 @@
   // is the only thing held in a variable rather than duplicated.
   let onPaymentAuthorised = runPremiumAnalysis;
 
+  /**
+   * The same authorisation, aimed at /api/analyse instead of
+   * /api/premium-analysis. `product: 'unlock'` is what tells the server this
+   * S$1.99 PaymentIntent is paying for a free report as well — it verifies
+   * the intent against the unlock price and ledgers the use under its own
+   * kind, so spending it here cannot eat the premium retries it also covers.
+   *
+   * A promo code needs none of that: it is not a product, and the analyse
+   * route already accepts one on its own terms.
+   */
+  function bundledAuth(auth) {
+    if (auth.promoCode) return { promoCode: auth.promoCode };
+    return { paymentIntentId: auth.paymentIntentId, product: 'unlock' };
+  }
+
   async function runPremiumAnalysis(auth, dialog, options) {
     // Only clear the payment controls for an actual payment attempt. A promo
     // attempt is a wholly separate authorisation path — hiding the wallet or
@@ -3106,12 +3121,63 @@
     // By the time a charge clears, the reader has already loaded their extra
     // data and reviewed it, so there is nothing left to ask here.
     const paidDigest = pendingPremiumDigest || state.digest;
+    // Data was added on the way to this unlock, so the free sections above
+    // are about to be describing less evidence than the paid ones below
+    // them. This S$1.99 refreshes both rather than leaving that gap and
+    // charging S$0.99 to close it.
+    const needsFreeRefresh = Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
+    let refreshedFree = false;
 
-    premiumStatus(TEXT.premiumGenerating);
     startProgress();
     guardUnload(true);
     try {
-      const result = await LLM.analysePremium(paidDigest || state.digest, auth);
+      // The free report goes first, deliberately. Whichever call runs second
+      // can fail with the first already delivered and nothing owed; if this
+      // order were reversed, a failure here would leave a paid-for free
+      // report undelivered and no honest way to retry it — the re-run button
+      // charges, and charging to recover something already paid for is the
+      // exact unfairness this whole branch exists to remove. Failing here
+      // instead delivers nothing yet and the retry below covers both.
+      if (needsFreeRefresh) {
+        premiumStatus(TEXT.premiumRefreshingFree);
+        // No images: the unlock path never holds the archive open, which is
+        // why collectExtraDataForPremium marks photographs unavailable.
+        const refreshed = await LLM.analyseProfile(paidDigest, [], bundledAuth(auth));
+
+        // Committed the moment the call comes back, before the paid sections
+        // are even asked for. The extra data has bought something now — this
+        // report — so both it and the digest behind it are kept whatever
+        // happens next, and a retry sees the work already done rather than
+        // paying for it twice.
+        const added = pendingPremiumDigest.__addedSupplements;
+        delete pendingPremiumDigest.__addedSupplements;
+        if (added && state.signals) state.signals.supplements = added;
+        state.digest = pendingPremiumDigest;
+        store.write(KEYS.digest, pendingPremiumDigest);
+        pendingPremiumDigest = null;
+
+        if (state.profile) {
+          state.profile.report = refreshed.data;
+          state.profile.card = Card.shape(refreshed.data.card);
+          state.profile.payload = await Card.encodeCard(refreshed.data.card);
+          state.profile.model = refreshed.model;
+          state.profile.createdAt = new Date().toISOString();
+          store.write(KEYS.profile, state.profile);
+        }
+        // A free report really was generated, so it counts like any other —
+        // see RUNS_KEY. It costs this reader nothing either way: they cannot
+        // reach an unlock without having run one already.
+        recordRun();
+        refreshedFree = true;
+      }
+
+      premiumStatus(TEXT.premiumGenerating);
+      // The same rule as `paidDigest` above, re-evaluated rather than reused:
+      // a refresh that ran has since promoted the enriched digest into
+      // state.digest and cleared pendingPremiumDigest, so this picks it up
+      // either way. Reading state.digest directly would be wrong the moment
+      // a caller reached here with an unpromoted digest still pending.
+      const result = await LLM.analysePremium(pendingPremiumDigest || state.digest, auth);
       if (state.profile) {
         state.profile.premiumAnalysis = result.data;
         // The provider and moment that wrote the paid sections, kept apart
@@ -3126,7 +3192,8 @@
       }
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
-      // the re-run button that reads it — exactly as they were.
+      // the re-run button that reads it — exactly as they were. Skipped when
+      // the refresh above already promoted it.
       if (pendingPremiumDigest && pendingPremiumDigest !== state.digest) {
         const added = pendingPremiumDigest.__addedSupplements;
         delete pendingPremiumDigest.__addedSupplements;
@@ -3134,11 +3201,20 @@
         state.digest = pendingPremiumDigest;
         store.write(KEYS.digest, pendingPremiumDigest);
       }
-      revealPaid(result.data);
-      // After revealPaid, not before: if injecting the sections themselves
-      // ever threw, the footer would otherwise have already started claiming
-      // Claude wrote sections the page does not show.
-      if (state.profile) renderAnalysedBy(state.profile);
+      if (refreshedFree) {
+        // Every section changed, not just the paid ones, so the whole report
+        // is redrawn rather than having the paid bodies spliced into a page
+        // still showing the pre-refresh free sections. renderProfile renders
+        // the paid cards from state.profile.premiumAnalysis, which is set
+        // above, and calls renderAnalysedBy itself.
+        renderProfile();
+      } else {
+        revealPaid(result.data);
+        // After revealPaid, not before: if injecting the sections themselves
+        // ever threw, the footer would otherwise have already started claiming
+        // Claude wrote sections the page does not show.
+        if (state.profile) renderAnalysedBy(state.profile);
+      }
       dialog.close();
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
@@ -3297,8 +3373,17 @@
     }
     $('#premium-dialog-title').textContent =
       kind === 'analysis' ? TEXT.analysisDialogTitle : TEXT.premiumDialogTitle;
+    // By the time this sheet opens, the data offer has already been through,
+    // so the dialog knows whether this S$1.99 is about to buy a rewrite of
+    // the free sections as well — and says so. A reader agreeing to a price
+    // should be told everything it covers at the moment they agree to it,
+    // not discover the extra afterwards.
+    const buysFreeRefresh = kind === 'unlock' &&
+      Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
     $('#premium-dialog-blurb').textContent =
-      kind === 'analysis' ? TEXT.analysisDialogBlurb : TEXT.premiumDialogBlurb;
+      kind === 'analysis' ? TEXT.analysisDialogBlurb
+        : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
+        : TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-card-fallback').hidden = true;

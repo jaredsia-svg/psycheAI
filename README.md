@@ -127,9 +127,24 @@ can set to zero. `verifyPaid(id, product)` checks the retrieved PaymentIntent
 against *that* product's price, so a S$0.99 re-run payment cannot be
 re-presented to unlock S$1.99 of report; both directions are checked. The
 ledger gained a `kind` for the same reason, with its own allowance per kind (5
-for `premium`, 3 for `analysis`), so spending a payment on one leaves the other
-untouched. Rows written before `kind` existed read as `premium`, which is what
-every one of them was.
+for `premium`, 3 each for `analysis` and `bundled`), so spending a payment on
+one leaves the others untouched. Rows written before `kind` existed read as
+`premium`, which is what every one of them was.
+
+**One unlock can buy two calls.** A reader who adds a Google or Facebook export
+inside the unlock flow would otherwise end up with paid sections that had read
+that export and free sections above them that had not — a gap only a further
+S$0.99 could close, which is charging twice over for one decision to hand over
+more data. So the S$1.99 covers both: `/api/analyse` accepts `product:
+'unlock'`, verifies the intent against the *unlock* price, and ledgers the use
+under `bundled` rather than `analysis`. Naming the product buys nothing on its
+own — `verifyPaid` still checks the real amount, so an `analysis` intent
+claiming to be an `unlock` fails to verify exactly as it did before. The free
+report is generated **first**, deliberately: whichever call runs second can
+fail with the first already delivered and nothing owed, whereas the reverse
+order would leave a paid-for free report undelivered and no honest way to
+retry it. The payment sheet says which of the two it is buying before the
+charge, not after.
 
 **The payment dialog serves both**, with one variable — `onPaymentAuthorised` —
 deciding what happens once the money clears, rather than a second copy of the
@@ -2636,7 +2651,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 665 checks: synthesises a real ZIP export and runs
+npm test           # 681 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -2645,7 +2660,7 @@ npm test           # 665 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 858 checks: drives the real UI in Chromium against a
+npm run test:ui    # 907 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

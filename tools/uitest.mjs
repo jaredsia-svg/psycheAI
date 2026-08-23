@@ -5030,9 +5030,19 @@ try {
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
   check('the payment sheet is the last step, after the data and the review',
     await page.locator('#premium-dialog').isVisible());
+  // The price is buying more than usual here, and the sheet has to say so
+  // before it is agreed to — finding out afterwards that a charge covered
+  // extra is fine; finding out afterwards that it was needed is not.
+  check('the sheet says this charge also rewrites the free sections with the new data',
+    /rewrites the rest of your report/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
+    /no extra cost/i.test(await page.locator('#premium-dialog-blurb').innerText()),
+    await page.locator('#premium-dialog-blurb').innerText());
   const digestBeforePaying = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
   check('and the added data is not kept until it has actually bought something',
     !JSON.parse(digestBeforePaying).google);
+  const reportBeforeUnlock = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
+  const analysesBeforeUnlock = analyseBodies.length;
   await page.fill('#premium-promo-input', 'jialatsia');
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
@@ -5054,6 +5064,72 @@ try {
     (await page.evaluate(() => Object.keys(
       JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis).sort().join(','))) ===
       'advice,attachment,careerAssessment,harsh,wellness');
+
+  // ---- the unlock pays for the free sections too, when data was added ----
+  //
+  // Otherwise the paid sections below would be describing a Google export the
+  // free ones above them had never seen, and closing that gap would cost a
+  // further S$0.99 — charging twice over for one decision to hand over more
+  // data. So the same authorisation runs both calls.
+  await waitForLength(analyseBodies, analysesBeforeUnlock + 1, 40000);
+  check('adding data at the unlock also rewrites the free sections, on the same authorisation',
+    analyseBodies.length === analysesBeforeUnlock + 1,
+    (analyseBodies.length - analysesBeforeUnlock) + ' free analyses');
+  const bundledBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  check('the bundled free run is made against the enriched digest as well',
+    Boolean(bundledBody.digest.google) && bundledBody.digest.samples.captions.length > 0,
+    JSON.stringify({ google: Boolean(bundledBody.digest.google),
+      captions: bundledBody.digest.samples.captions.length }));
+  check('and it is authorised by the unlock, never by a second charge',
+    bundledBody.promoCode === 'jialatsia' && !bundledBody.paymentIntentId,
+    JSON.stringify({ promo: bundledBody.promoCode, intent: bundledBody.paymentIntentId }));
+  check('the stored report really is the rewritten one, not the pre-unlock one',
+    (await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).createdAt)) !==
+      reportBeforeUnlock);
+  // The whole point of the rewrite: both halves of the page now describe the
+  // same evidence, and the reader is not being asked to pay again to get there.
+  check('the report and the digest agree on what was read, with nothing left to buy',
+    await page.evaluate(() => {
+      const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+      const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
+      return Boolean(digest.google) && Boolean(profile.premiumAnalysis) &&
+        digest.coverage.sources.join(',') === 'instagram,google';
+    }));
+  check('every paid section is on screen alongside the rewritten free ones',
+    await page.evaluate(() =>
+      [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
+        .filter(body => !body.hidden).length) === 4);
+
+  // A paid unlock with nothing added changes no evidence, so it must not
+  // spend a free-report generation on rewriting sections that would come
+  // back the same.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await chooseDepth(page);
+  await answerReview(page);
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  const analysesBeforeBareUnlock = analyseBodies.length;
+  await openUnlockPayment(page);
+  // The inverse of the promise above: with nothing added there is nothing to
+  // rewrite, so the sheet must not claim otherwise. A blurb that advertised
+  // a rewrite on every unlock would be the easy way to make the check above
+  // pass while telling most readers something untrue.
+  check('with no data added the sheet makes no claim about rewriting anything',
+    !/rewrites the rest of your report/i.test(await page.locator('#premium-dialog-blurb').innerText()),
+    await page.locator('#premium-dialog-blurb').innerText());
+  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.click('#premium-promo-apply');
+  await page.waitForFunction(() => {
+    const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+    return Boolean(p && p.premiumAnalysis);
+  }, { timeout: 40000 });
+  await page.waitForTimeout(500);
+  check('an unlock with no data added rewrites nothing and sends no free analysis',
+    analyseBodies.length === analysesBeforeBareUnlock,
+    (analyseBodies.length - analysesBeforeBareUnlock) + ' free analyses');
 
   // ---- the free allowance, and paying past it ----
   //
