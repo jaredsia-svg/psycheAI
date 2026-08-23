@@ -286,8 +286,61 @@ try {
     /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen));
   check('it names the HTML default and the JSON fix, which Takeout hides two menus deep',
     /Multiple formats/.test(optionalOpen) && /JSON/.test(optionalOpen) &&
-    /cannot\s+read the HTML version/.test(optionalOpen) && /HTML is the default/.test(optionalOpen),
+    /Takeout ships HTML by default/.test(optionalOpen) &&
+    /cannot be read at all/.test(optionalOpen),
     optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
+
+  // ---- the format trap, drawn rather than described ----
+  //
+  // Choosing HTML is the one mistake that costs a reader their afternoon: the
+  // export takes hours to arrive and is refused on sight when it does. As
+  // prose it sat mid-sentence in step five, which is where skimming happens,
+  // so it is drawn as the two options with the wrong one struck through.
+  const traps = await page.locator('.format-trap').count();
+  check('the JSON trap is shown as well as written, in both sets of instructions',
+    traps >= 2, traps + ' format-trap blocks');
+  const trapText = await page.evaluate(() =>
+    document.querySelector('.optional-card .format-trap').textContent.replace(/\s+/g, ' ').trim());
+  check('it puts the wrong option and the right one side by side',
+    /HTML/.test(trapText) && /JSON/.test(trapText) &&
+    /cannot be read/.test(trapText) && /choose this one/.test(trapText), trapText);
+  check('the wrong one is struck through rather than only being labelled',
+    await page.evaluate(() => {
+      const pill = document.querySelector('.format-trap-row.is-wrong .format-trap-pill');
+      return /line-through/.test(getComputedStyle(pill).textDecorationLine);
+    }));
+  // Drawn from real text, so it survives zoom and reads correctly aloud — but
+  // only if the container carries the whole meaning as one label, or a screen
+  // reader gets "cross HTML the default cannot be read tick JSON choose this".
+  check('it reads as one labelled image rather than a jumble of loose words',
+    await page.evaluate(() => {
+      const trap = document.querySelector('.optional-card .format-trap');
+      return trap.getAttribute('role') === 'img' &&
+        /JSON/.test(trap.getAttribute('aria-label') || '');
+    }));
+  check('and the marks themselves are hidden from screen readers, being decoration',
+    await page.evaluate(() => [...document.querySelectorAll('.format-trap-mark')]
+      .every(n => n.getAttribute('aria-hidden') === 'true')));
+
+  // ---- deep links, with the long way round kept underneath ----
+  //
+  // These skip the two clunkiest steps, but they are somebody else's URLs and
+  // Meta and Google move them. A dead link mid-flow is worse than a longer
+  // instruction, so each one carries the manual route as a fallback and the
+  // pair is checked together — the link alone is not allowed to be the only
+  // way through.
+  check('the Takeout deep link pre-selects My Activity',
+    await page.evaluate(() => {
+      const a = [...document.querySelectorAll('.optional-card a')]
+        .find(x => /custom\/my_activity/.test(x.href));
+      return Boolean(a) && a.target === '_blank' && /noopener/.test(a.rel);
+    }));
+  check('and the manual route survives underneath it, for when that URL moves',
+    await page.evaluate(() => {
+      const note = document.querySelector('.optional-card .step-fallback');
+      const text = note ? note.textContent.replace(/\s+/g, ' ') : '';
+      return /Deselect all/.test(text) && /My Activity/.test(text);
+    }));
   check('it covers Facebook too, in JSON',
     /Download your information/.test(optionalOpen) && /Facebook/.test(optionalOpen));
   // Closed again so the rest of the suite meets the page as a reader first
@@ -577,7 +630,7 @@ try {
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['Deselect all', 'My Activity', 'Multiple formats', 'JSON', 'Next Step', 'Export once',
+    ['Deselect all', 'My Activity', 'Multiple formats', 'Next Step', 'Export once',
       'Create Export', 'Settings & privacy', 'Accounts Centre', 'Your information and permissions',
       'Download your information', 'All time', 'JSON'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
