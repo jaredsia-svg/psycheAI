@@ -204,14 +204,19 @@
     // and a check in the UI suite fails if app.js types any of them itself.
     cardSection: 'Summary card',
     cardHint: 'Tap to open full screen',
-    // Both buttons are icon-only now — download on the left, share on the
-    // right, the order a reader meets them reading left to right — so these
-    // two strings live on as their aria-labels rather than as visible text.
+    // Download sits on the left, share on the right — the order a reader
+    // meets them reading left to right. Each carries a small visible label
+    // beside its icon (`cardDownloadLabel`/`cardShareLabel`) plus a fuller
+    // aria-label (`cardDownload`/`cardShare`) for a screen reader — the two
+    // do not have to say the same thing, and the aria-label is the one that
+    // still spells out what the download actually produces.
     cardDownload: 'Download as image',
+    cardDownloadLabel: 'Download',
     cardShare: 'Share',
-    // One shared status line under both icon buttons rather than each
-    // swallowing its own label on failure, since neither button has visible
-    // text left to borrow for an error message.
+    cardShareLabel: 'Share',
+    // One shared status line under both buttons rather than each swallowing
+    // its own label on failure, since the visible label is a fixed word
+    // ("Download"/"Share") rather than a place an error could borrow.
     cardImageError: 'Could not build the image',
 
     // The report still downloads straight to the reader's device; the dialog

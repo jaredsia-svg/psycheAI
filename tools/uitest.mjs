@@ -2179,16 +2179,16 @@ try {
   check('the full-screen view offers a download and a share button',
     (await page.locator('#card-download').isVisible()) &&
     (await page.locator('#card-share').isVisible()));
-  check('both are icon-only, labelled for a screen reader rather than in visible words',
-    !/[a-zA-Z]/.test(await page.locator('#card-download').innerText()) &&
-    !/[a-zA-Z]/.test(await page.locator('#card-share').innerText()) &&
+  check('each carries a small visible label beside its icon, plus a fuller aria-label',
+    (await page.locator('#card-download-label').innerText()).trim() === 'Download' &&
+    (await page.locator('#card-share-label').innerText()).trim() === 'Share' &&
     (await page.locator('#card-download').getAttribute('aria-label')) === 'Download as image' &&
     (await page.locator('#card-share').getAttribute('aria-label')) === 'Share');
-  check('download sits to the left of share, the order a reader meets them',
+  check('download sits to the left of share, with a visible gap between them',
     await page.evaluate(() => {
       const dl = document.querySelector('#card-download').getBoundingClientRect();
       const sh = document.querySelector('#card-share').getBoundingClientRect();
-      return dl.left < sh.left;
+      return dl.left < sh.left && sh.left - dl.right >= 8;
     }));
   check('the shared status line under both buttons starts out hidden',
     await page.evaluate(() => document.querySelector('#card-dialog-status').hidden));

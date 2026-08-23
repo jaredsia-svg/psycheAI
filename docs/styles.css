@@ -1850,26 +1850,29 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 
 /* Download and share, pinned under the card in the full-screen view. Download
    sits left and share sits right — the order a reader meets them left to
-   right — inside a row capped at a sensible hand's-width rather than
-   stretched to the full viewport, so "left" and "right" read as a deliberate
-   pair rather than two buttons stranded at the screen's edges. The status
-   line below is shared by both: neither button carries visible text of its
-   own any more for an error to borrow, so a failure from either one shows up
-   there instead of inside the button. */
+   right — with a visible gap between them rather than the pair being spread
+   to the edges of a shared row, so each reads as its own control. The status
+   line below is shared by both: neither carries an error-specific label of
+   its own, so a failure from either one shows up there instead of inside
+   the button. */
 .card-dialog-bar {
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
   padding: 14px 0 22px;
 }
 .card-dialog-actions {
-  display: flex; justify-content: space-between; align-items: center;
-  width: 100%; max-width: 280px; padding: 0 24px;
+  display: flex; justify-content: center; align-items: center;
+  gap: 20px; width: 100%; padding: 0 24px;
 }
 .card-dialog-bar .btn { box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
-.btn-icon {
-  width: 52px; height: 52px; padding: 0; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1.35rem; line-height: 1;
+/* Icon plus a small label, in a pill rather than a plain circle — a bare
+   glyph with no text reads as unfinished, and the label is what actually
+   tells a reader what each button does before they tap it. */
+.btn-icon-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: .68rem 1.3rem .68rem 1.1rem; border-radius: 999px;
+  font-size: .92rem; font-weight: 600; letter-spacing: .01em;
 }
+.btn-icon-glyph { font-size: 1.15rem; line-height: 1; }
 .card-dialog-status { margin: 0; color: #fff; font-size: .85rem; text-align: center; }
 
 /* ---------- the report-by-mail dialog ---------- */

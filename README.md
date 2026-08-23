@@ -2310,15 +2310,21 @@ that live in `index.html` — is not the culprit. The file's *comments* mention 
 Reading `cssText` off the CSSOM sidesteps it for free, because the parser has already stripped every
 comment.
 
-**Download sits on the left, share on the right, both icon-only.** The full-screen bar used to carry
-one button, centred, with a visible label — "Download as image". A share button joined it, and with
-two buttons a visible label each would have doubled the bar's width for no real gain, so both became
-icon-only, keeping their old copy as `aria-label` (`cardDownload`, plus a new `cardShare`) rather than
-dropping it. `docs/app.js` still sets both from `docs/copy.js` at render time, the same as every other
-label in the app — the icon glyphs themselves are the one exception, hardcoded in `index.html`
-directly, since they are not language-dependent copy. A shared status line under the pair
-(`#card-dialog-status`) carries a failure from either button now, since neither one has visible text
-left of its own for an error to borrow the way the old download button once did.
+**Download sits on the left, share on the right, each a rounded pill with an icon and a small label
+beside it, with a real gap between the two.** The full-screen bar used to carry one button, centred,
+with a visible label — "Download as image". A share button joined it, and the pair went through an
+icon-only phase — two bare glyphs, no visible words — that read as unfinished rather than deliberate:
+a button with nothing beside its icon does not look like a control so much as a stray symbol. Each now
+carries a short visible label (`cardDownloadLabel`/`cardShareLabel`, "Download"/"Share") next to the
+icon inside the same pill, plus a fuller `aria-label` (`cardDownload`/`cardShare`) for a screen reader,
+which does not have to say the same thing as the short visible word. `docs/app.js` sets both the label
+text and the aria-label from `docs/copy.js` at render time, the same as every other label in the app —
+the icon glyphs themselves are the one exception, hardcoded in `index.html` directly, since they are
+not language-dependent copy. The two buttons sit in a flex row with an explicit `gap` between them
+rather than being spread to the edges of a shared container, so the space between them reads as
+deliberate rather than as the pair having drifted apart on a wide screen. A shared status line under
+the pair (`#card-dialog-status`) still carries a failure from either button, since the visible label is
+a fixed word rather than a place an error could borrow.
 
 Sharing reuses `cardImageBlob()` outright — the same rasterised PNG the download button already
 built — wrapped in a `File`, and calls the Web Share API only where `navigator.canShare({ files })`

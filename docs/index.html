@@ -411,11 +411,17 @@
 <dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
     <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
     <div class="card-dialog-bar">
-      <!-- Download on the left, share on the right — icons only, aria-labels
-           set from docs/copy.js at render time like every other label here. -->
+      <!-- Download on the left, share on the right, with a visible label
+           beside each icon — the label text and the fuller aria-label are
+           both set from docs/copy.js at render time; only the icon glyphs
+           are hardcoded here, since they are not language-dependent copy. -->
       <div class="card-dialog-actions">
-        <button class="btn btn-icon" id="card-download" type="button">⬇</button>
-        <button class="btn btn-icon" id="card-share" type="button">⤴</button>
+        <button class="btn btn-icon-label" id="card-download" type="button">
+          <span class="btn-icon-glyph" aria-hidden="true">⬇</span><span class="btn-icon-text" id="card-download-label"></span>
+        </button>
+        <button class="btn btn-icon-label" id="card-share" type="button">
+          <span class="btn-icon-glyph" aria-hidden="true">⤴</span><span class="btn-icon-text" id="card-share-label"></span>
+        </button>
       </div>
       <p class="card-dialog-status" id="card-dialog-status" hidden></p>
     </div>

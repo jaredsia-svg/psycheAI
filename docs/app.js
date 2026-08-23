@@ -2693,11 +2693,12 @@
     $('#psyche-card-section').hidden = !cardHtml;
     $('#psyche-card-title').textContent = TEXT.cardSection;
     $('#psyche-card-hint').textContent = TEXT.cardHint;
-    // Icon-only buttons: the label lives in aria-label rather than in text a
-    // sighted reader would see, so this still has to be set from copy.js
-    // rather than hardcoded in index.html like the icon glyphs themselves.
+    // Visible label plus a fuller aria-label — both set from copy.js rather
+    // than hardcoded in index.html like the icon glyphs themselves.
     $('#card-download').setAttribute('aria-label', TEXT.cardDownload);
+    $('#card-download-label').textContent = TEXT.cardDownloadLabel;
     $('#card-share').setAttribute('aria-label', TEXT.cardShare);
+    $('#card-share-label').textContent = TEXT.cardShareLabel;
     layoutPsycheCard();
 
     // The sources subsection and the re-run button are built into this HTML
