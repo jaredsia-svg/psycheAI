@@ -1791,22 +1791,98 @@ be one future caller away from the same crash if only the trigger were closed of
   what the function already did *before* its own `await` calls. A local snapshot cannot be reset by
   code running somewhere else while this call is suspended, whatever that other code turns out to
   be — this one change makes the specific crash structurally impossible regardless of the trigger.
-- **The trigger.** A new `premiumRunInFlight` flag, set for the same span `guardUnload(true)`
-  already covers, does two things: a second `runPremiumAnalysis` call returns immediately instead of
-  racing the first for `pendingPremiumDigest`/`state.digest` and spending an extra retry for
-  nothing, and the dialog's Cancel button, backdrop click, and `cancel` event (Escape) all refuse to
-  close it while a fetch is genuinely running. The reader cannot get back to a state that resets
-  `pendingPremiumDigest` until the call they are waiting on has actually finished.
+- **The trigger.** A `premiumRunInFlight` flag, set for the same span `guardUnload(true)` already
+  covers, stops a second `runPremiumAnalysis` call from starting while one is already spending this
+  reader's retry budget.
 
-`tools/uitest.mjs` reproduces the race directly rather than only asserting the two symptoms
+**The dialog itself was then closed off from Escape and a backdrop click entirely, not only while a
+run is in flight — a separate, later request.** This sheet is either entering or authorising a real
+charge, so a reader should only ever leave it by pressing Cancel, or by a run finishing on its own;
+losing the whole sheet to a stray tap was never the intended behaviour, in flight or not. A native
+`<dialog>`'s backdrop click actually targets the dialog element itself — no different, as far as the
+DOM is concerned, from a click landing on the dialog's own padding, which is why "clicking any part
+of the box" and "clicking outside it" were reported as the same complaint and fixed the same way: the
+backdrop-click listener was removed outright, and the `cancel` event Escape fires is unconditionally
+prevented. Cancel remains the one door that is always open, including mid-fetch — closing it there
+no longer risks the crash above, since the read-side fix already made `runPremiumAnalysis` immune to
+whatever happens to `pendingPremiumDigest` after it has captured its own `paidDigest`.
+
+`tools/uitest.mjs` reproduces the original race directly rather than only asserting its symptoms
 separately: it slows `/api/premium-analysis` down (the same technique the mock-payment check above
 already uses to make a transient state observable), presses "fetch my analysis" on the resume
-dialog, and while that request is still pending tries Escape, a synthetic backdrop click, and
-Cancel in turn — checking after each that the dialog is still open. It then lets the delayed
-response land and checks the console never logged `__addedSupplements` and the analysis actually
-completed. Fault-injected by reverting the fix: the first two closes now succeed, and the third
-check throws outright — the suite's own click on the now-hidden Cancel button times out, since nothing
-was left open to receive it.
+dialog, and while that request is still pending tries Escape and a synthetic backdrop click — checking
+after each that the dialog is still open — before pressing Cancel and checking that this one **does**
+close it, immediately, even with the fetch still running. It then lets the delayed response land and
+checks the console never logged `__addedSupplements` and the analysis actually completed regardless.
+Fault-injected by reverting to the old backdrop-click-closes listener (which also meant dropping the
+`cancel` prevention, since both lived in the same edit): Escape then closes the dialog on its own
+native default, the first check catches that directly, and the cascade that follows — a synthetic
+backdrop click and then Cancel both aimed at a dialog that Escape had already closed a moment before —
+is exactly the shape of failure the original bug produced, not an artefact of the test.
+
+### A read inside "Add or change your data" survives Back
+
+A reader opened "Add / change data & re-run analysis", picked Google Takeout, watched it read
+successfully — the row ticked — and then pressed Back, or hit Escape. Reopening the same popout
+afterwards showed Google unticked again, as if nothing had happened, and reading the same archive a
+second time was the only way forward.
+
+`askDataSources()` is called fresh every time the button is pressed; nothing carried state between
+calls. Its own `added` map seeded Google and Facebook only from what `state.digest` already
+permanently held (`Boolean(digest && digest.google)`), which is correct for anything already
+committed but blind to a read this same popout had *just* done, in this same call, if that call then
+resolved `null` on Back rather than reaching Continue. The read itself was real: `Supplement.readGoogle`
+had genuinely parsed the archive and `added.google` briefly held the fragment — it just was not kept
+anywhere once the promise resolved, because Back's whole contract is "resolve `null`, touch nothing".
+That contract is right for `state.digest` and the stored report, which must not change on a whim, but
+it was quietly also erasing work the reader had already done, which is a different thing entirely:
+Back means "not right now", not "throw that away".
+
+The fix adds one piece of state scoped to *this popout's own attempts*, not to the report:
+`pendingDataSourceReads`, a plain object keyed by source, holding the same fragment `read()` produces.
+It is written the moment a Google or Facebook read succeeds — regardless of what happens to the
+dialog afterwards — and folded into `added`'s seed alongside the `state.digest` check
+(`Boolean(digest && digest.google) || pendingDataSourceReads.google || undefined`), so a fragment read
+in an earlier, abandoned attempt still shows loaded, and — since the caller's own
+`typeof value === 'object'` test still sees a real fragment rather than a bare `true` — is still ready
+to send the moment Continue actually is pressed, without asking the reader to pick the file again.
+It is cleared in exactly the two places that make it stale: a fresh Instagram upload in `handleFiles`
+(a new report owes nothing to the last one's abandoned attempts), and the point in
+`rerunWithAdditionalData` where a rerun actually commits — at which point `state.digest` already
+carries the fragment permanently, so keeping a second copy here would be pure dead weight.
+
+**Escape needed its own fix alongside it, and not a cosmetic one.** `askDataSources()` had no
+`cancel` listener at all, unlike `askSupplement()`'s own `blockEscape` a few hundred lines above it.
+A native `<dialog>` closes on Escape by default, `cancelled` stayed `false` because only `goBack` ever
+set it, and the `close` handler resolves `cancelled ? null : added` — so Escape used to resolve
+exactly as if Continue had been pressed, silently sending whatever was loaded into the review dialog
+that follows. A reader reaching for the universal "get me out of this" key got the opposite of an
+exit. The fix is a `cancel` listener that sets `cancelled = true` and otherwise does nothing — Escape
+should still close the dialog, it just now means what Back means rather than what Continue means.
+
+`tools/uitest.mjs` extends the existing "Back discards a source loaded inside the popout" check
+rather than replacing it — that check's own claim (nothing sent, nothing in `state.digest` or
+`localStorage` changes) is still exactly true and stays as its own assertion. Immediately after it,
+the popout is reopened — with a `filechooser` listener attached to prove no picker fires — and Google
+is checked still ticked. The same shape is repeated for Escape: open the popout, press Escape, confirm
+nothing was sent and the review dialog never opened, then reopen once more and confirm the tick
+survived that path too. Fault-injected by reverting each half independently: dropping the
+`pendingDataSourceReads` seed fails both "still shows loaded on reopen" checks directly; dropping the
+`cancel` listener (restoring the old no-op) reproduces the original bug's own trigger — Escape closes
+the dialog and silently continues into the review — which then cascades into a timeout later in the
+suite, when a subsequent step collides with a review dialog a prior step's "cancellation" had actually
+left open behind it.
+
+**A related question turned out to already be answered correctly, and just untested:** does the
+"Data sources" subsection's tick for Google or Facebook also update when that data was added through
+the *premium unlock's own* data offer (`collectExtraDataForPremium`, a different dialog entirely —
+`askSupplement`, not `askDataSources`) rather than through this rerun popout? It does — `sourcesUsedHtml()`
+reads `state.digest` directly, and the bundled free-report refresh that runs alongside a paid unlock
+(see "One consolidated block before unlock, four cards after") already writes the enriched digest into
+`state.digest` and calls `renderProfile()`, which redraws this subsection along with everything else.
+Verified directly rather than assumed: a check now confirms the Google row ticks in Data sources
+after that exact bundled-refresh path, alongside the existing checks for the digest and the paid
+sections themselves — a gap in coverage, not a gap in behaviour.
 
 ### The photographs
 
@@ -2867,7 +2943,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 936 checks: drives the real UI in Chromium against a
+npm run test:ui    # 940 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

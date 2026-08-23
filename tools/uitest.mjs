@@ -3226,12 +3226,14 @@ try {
 
   // Regression: a reader once hit "Cannot read properties of null (reading
   // '__addedSupplements')" right here, after leaving this resume fetch running
-  // for a while. It reproduces as a race — close this same dialog while the
-  // fetch is genuinely still in flight (Escape, the backdrop, or Cancel all
-  // used to manage it) and a reopen reset pendingPremiumDigest to null before
-  // the original call got back to reading it. The fix is refusing to close at
-  // all while a fetch is running, so this proves that refusal holds for all
-  // three ways of trying.
+  // for a while. It reproduced as a race — close this same dialog while the
+  // fetch is genuinely still in flight and a reopen reset pendingPremiumDigest
+  // to null before the original call got back to reading it. Escape and a
+  // backdrop click both used to close it that way; now neither ever does, at
+  // any time, by design (see the listeners this pins) — only Cancel, or the
+  // run finishing, may close this sheet at all. Cancel closing mid-flight
+  // must still not resurrect the crash, so this also proves the call finishes
+  // safely even when the one door that is still open gets used.
   const consoleErrors = [];
   const captureError = message => { if (message.type() === 'error') consoleErrors.push(message.text()); };
   page.on('console', captureError);
@@ -3243,22 +3245,25 @@ try {
   await page.waitForTimeout(150);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(50);
-  check('escape cannot close the dialog while its fetch is genuinely in flight',
+  check('escape never closes the payment sheet, in flight or not',
     await page.locator('#premium-dialog').isVisible());
   await page.evaluate(() =>
     document.querySelector('#premium-dialog').dispatchEvent(new MouseEvent('click', { bubbles: true })));
   await page.waitForTimeout(50);
-  check('nor can a backdrop click',
+  check('nor does a backdrop click',
     await page.locator('#premium-dialog').isVisible());
   await page.click('#premium-cancel');
   await page.waitForTimeout(50);
-  check('nor can the Cancel button',
-    await page.locator('#premium-dialog').isVisible());
+  check('only Cancel closes it, even with its fetch still genuinely in flight',
+    !(await page.locator('#premium-dialog').isVisible()));
 
-  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 20000 });
+  await page.waitForFunction(() => {
+    const profile = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+    return Boolean(profile && profile.premiumAnalysis);
+  }, { timeout: 20000 });
   page.off('console', captureError);
   await page.unroute('**/api/premium-analysis');
-  check('the in-flight call still completes cleanly afterwards, with no null-dereference crash',
+  check('the call Cancel closed the sheet on still completes cleanly afterwards, with no null-dereference crash',
     !consoleErrors.some(text => /__addedSupplements/.test(text)) &&
     await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis)),
     JSON.stringify(consoleErrors));
@@ -5059,10 +5064,47 @@ try {
   }, { timeout: 30000 });
   await page.click('#datasources-back');
   await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
-  check('Back discards a source loaded inside the popout — nothing is kept, nothing sent',
+  check('Back sends nothing on and changes no stored state',
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeBack &&
     !(await page.evaluate(() => document.querySelector('#review-dialog').open)) &&
     analyseBodies.length === analysesBeforeBack);
+
+  // But Back must not cost the reader the read itself — they did real work
+  // opening and parsing that archive, and "not right now" is a different
+  // decision from "throw that away". Reopening the same popout should still
+  // show Google loaded, with no picker required a second time.
+  let backTickPickerOpened = false;
+  const noteBackTickChooser = () => { backTickPickerOpened = true; };
+  page.on('filechooser', noteBackTickChooser);
+  await openDataSourcesPopout(page);
+  page.off('filechooser', noteBackTickChooser);
+  check('Google still shows loaded on reopen, after a Back that followed a successful read',
+    await page.evaluate(() => {
+      const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]');
+      return row.classList.contains('is-added');
+    }) && !backTickPickerOpened);
+  await page.click('#datasources-back');
+  await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
+
+  // Escape has to mean the same "not right now" Back does, not a silent
+  // Continue — a native <dialog> fires no button's own handler on Escape, so
+  // without its own listener this dialog used to resolve as if Continue had
+  // been pressed, sending whatever was loaded straight to the review.
+  await openDataSourcesPopout(page);
+  const digestBeforeEscape = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
+  const analysesBeforeEscape = analyseBodies.length;
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
+  check('Escape also sends nothing on and changes no stored state',
+    (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeEscape &&
+    !(await page.evaluate(() => document.querySelector('#review-dialog').open)) &&
+    analyseBodies.length === analysesBeforeEscape);
+  await openDataSourcesPopout(page);
+  check('and Google still shows loaded on reopen after it, the same as Back',
+    await page.evaluate(() => document.querySelector(
+      '#datasources-dialog .mode-option[data-datasource="google"]').classList.contains('is-added')));
+  await page.click('#datasources-back');
+  await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
 
   // Loading Google for real, all the way through to a paid re-run: the
   // popout, Continue, review, payment, and the enriched digest landing in
@@ -5386,6 +5428,17 @@ try {
     await page.evaluate(() =>
       [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
         .filter(body => !body.hidden).length) === 4);
+  // Coverage this path never had before, unlike the free-standing rerun's own
+  // equivalent check above (the "Google row now ticks" one) — the data
+  // sources subsection reads state.digest directly (see sourcesUsedHtml), so
+  // the same renderProfile() call that redraws the paid cards above must also
+  // leave this row correctly ticked, not just the stored digest.
+  check('the Google row also ticks in Data sources after the bundled unlock refresh',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
+      const google = rows.find(r => r.querySelector('.source-name').textContent.includes('Google'));
+      return Boolean(google && google.querySelector('.source-tick') && !google.querySelector('.source-cross'));
+    }));
 
   // A paid unlock with nothing added changes no evidence, so it must not
   // spend a free-report generation on rewriting sections that would come

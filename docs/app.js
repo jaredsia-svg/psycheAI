@@ -1986,6 +1986,10 @@
     }
 
     state.digest = digest;
+    // A Google or Facebook read stashed by an earlier report's own rerun
+    // popout belongs to that report, not this fresh upload — see
+    // pendingDataSourceReads' own declaration.
+    pendingDataSourceReads = {};
     // The images are deliberately not persisted: a dozen JPEGs would blow the
     // localStorage quota, and keeping the user's photographs on disk is not
     // something to do as a side effect. A retry after a reload runs on the
@@ -2010,6 +2014,20 @@
   // this opens has always offered both Google and Facebook together (see
   // askSupplement), and a reader who came here for one may as well add the
   // other while the picker is up rather than opening this twice.
+  // A Google or Facebook export read inside askDataSources() but never
+  // carried through to a completed rerun — Back was pressed, or the popout
+  // was otherwise closed before Continue. Reading an archive is real work a
+  // reader already did; losing the tick the moment they step back from
+  // *continuing* the rerun would make Back read as "throw away what I just
+  // read" rather than its actual meaning, "not right now". Keyed by source,
+  // holding the same fragment `read()` produced so a later Continue can still
+  // send it. Cleared only when a genuinely new report replaces this one
+  // (handleFiles) or once a rerun actually commits the fragment into
+  // state.digest (rerunWithAdditionalData) — at that point state.digest
+  // already carries it permanently, so holding onto a second copy here would
+  // only be dead weight.
+  let pendingDataSourceReads = {};
+
   /**
    * Driven by the "Add / change data & re-run analysis" button — see
    * sourcesUsedHtml() and startRerun below. Shows Instagram, Google Takeout
@@ -2017,11 +2035,15 @@
    * clickable, so any of the three — Instagram included — can be replaced
    * with a fresh export rather than only ever being added once.
    *
-   * Resolves `null` on Back (nothing touched). Otherwise resolves an object
-   * keyed by source: `true` for a row that was already loaded and left
+   * Resolves `null` on Back (nothing sent onward). Otherwise resolves an
+   * object keyed by source: `true` for a row that was already loaded and left
    * alone, or the freshly read result (Instagram's full `signals`, or a
    * Google/Facebook supplement fragment) for one that was just picked. The
-   * caller tells the two apart with `typeof value === 'object'`.
+   * caller tells the two apart with `typeof value === 'object'`. A Google or
+   * Facebook row read successfully in an earlier call to this same function —
+   * even one that ended in Back — still resolves as that same fragment here,
+   * via pendingDataSourceReads; Instagram carries no such memory, since
+   * re-reading it is cheap and every call already reflects state.digest.
    *
    * Nothing here touches state.digest, localStorage, or authoriseAnalysis —
    * reading an export is free, and Continue only hands the results back to
@@ -2035,8 +2057,8 @@
     const digest = state.digest;
     const added = {
       instagram: true,
-      google: Boolean(digest && digest.google) || undefined,
-      facebook: Boolean(digest && digest.facebook) || undefined,
+      google: Boolean(digest && digest.google) || pendingDataSourceReads.google || undefined,
+      facebook: Boolean(digest && digest.facebook) || pendingDataSourceReads.facebook || undefined,
     };
     let pending = '';
     let busy = false;
@@ -2126,6 +2148,9 @@
                 setSourceProgress(source, percent, p.label);
               },
             });
+            // Kept even if this call ends in Back — see
+            // pendingDataSourceReads' own declaration.
+            pendingDataSourceReads[source] = added[source];
           }
           setBusy(false);
           setSourceProgress(source, null, '');
@@ -2144,11 +2169,18 @@
 
       const done = () => dialog.close();
       const goBack = () => { cancelled = true; dialog.close(); };
+      // Escape has no button of its own to route through goBack, but it must
+      // still mean the same thing Back does — "not right now", never a silent
+      // Continue. Without this, a <dialog>'s native Escape fires no listener
+      // here at all, cancelled stays false, and the close handler below would
+      // resolve `added` exactly as if Continue had been pressed.
+      const onNativeCancel = () => { cancelled = true; };
 
       for (const button of buttons) button.addEventListener('click', choose);
       input.addEventListener('change', read);
       $('#datasources-continue').addEventListener('click', done);
       $('#datasources-back').addEventListener('click', goBack);
+      dialog.addEventListener('cancel', onNativeCancel);
 
       dialog.addEventListener('close', () => {
         for (const button of buttons) {
@@ -2161,6 +2193,7 @@
         input.removeEventListener('change', read);
         $('#datasources-continue').removeEventListener('click', done);
         $('#datasources-back').removeEventListener('click', goBack);
+        dialog.removeEventListener('cancel', onNativeCancel);
         resolve(cancelled ? null : added);
       }, { once: true });
 
@@ -2300,6 +2333,9 @@
     state.digest = digest;
     state.images = images;
     store.write(KEYS.digest, digest);
+    // Whatever was pending is now either committed into digest above or
+    // superseded by it — see pendingDataSourceReads' own declaration.
+    pendingDataSourceReads = {};
     // runAnalysis replaces state.profile wholesale on success, which is what
     // actually clears any premiumAnalysis from before this rerun — a paid
     // read of the old, smaller digest would otherwise sit under a report that
@@ -3371,12 +3407,14 @@
   // persisting early would do.
   let pendingPremiumDigest = null;
   // True for the whole span between a payment/promo clearing and the paid
-  // sections either landing or failing. Guards two things at once: a second
-  // runPremiumAnalysis call cannot start while one is already spending this
-  // reader's retry budget, and the dialog cannot be closed and reopened out
-  // from under a call that is still awaiting its network response — which
-  // used to reset pendingPremiumDigest to null mid-flight and crash the
-  // original call once it finally resolved (see runPremiumAnalysis).
+  // sections either landing or failing. A second runPremiumAnalysis call
+  // cannot start while one is already spending this reader's retry budget —
+  // see the guard at its own top. The dialog itself can still be closed via
+  // Cancel during that span (see the #premium-cancel listener), which is why
+  // runPremiumAnalysis reads its own paidDigest snapshot rather than
+  // the live pendingPremiumDigest after an await: a reopened dialog resets
+  // that shared variable, and reading it again here used to crash the
+  // original call once its network response finally arrived.
   let premiumRunInFlight = false;
 
   /**
@@ -3914,20 +3952,25 @@
     if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }
   });
 
-  // Closeable at any other time, but not while runPremiumAnalysis actually
-  // has money or a promo code in flight: closing here doesn't cancel that
-  // call, and reopening this same dialog would reset pendingPremiumDigest
-  // out from under it (see premiumRunInFlight's declaration) and leave it to
-  // crash once its response finally arrives. None of these three paths —
-  // Cancel, clicking the backdrop, or Escape — should get past that.
-  $('#premium-cancel').addEventListener('click', () => {
-    if (!premiumRunInFlight) $('#premium-dialog').close();
-  });
-  $('#premium-dialog').addEventListener('click', event => {
-    if (event.target === $('#premium-dialog') && !premiumRunInFlight) $('#premium-dialog').close();
-  });
+  // This sheet is either entering or authorising a real charge, so it must
+  // never close by accident: only the reader's own explicit Cancel, or a
+  // successful run finishing (dialog.close() at the end of
+  // runPremiumAnalysis), are allowed to close it. A stray click landing on
+  // the dialog's own padding — which reads as "clicking the box" as much as
+  // clicking outside it does, since a native <dialog>'s backdrop click also
+  // targets the dialog element itself — used to close it just the same as
+  // clicking genuinely outside, and Escape closed it too. Both are refused
+  // unconditionally now, not only while a run is in flight: reopening this
+  // same dialog after an accidental close is also what used to reset
+  // pendingPremiumDigest out from under a run still awaiting its response
+  // (see premiumRunInFlight's declaration) — refusing the close in the first
+  // place removes that trigger entirely, rather than only guarding against it
+  // once payment has cleared.
+  $('#premium-cancel').addEventListener('click', () => $('#premium-dialog').close());
+  // Deliberately no backdrop-click-to-close listener at all — the dialog's own
+  // clicks are otherwise left alone rather than closing it.
   $('#premium-dialog').addEventListener('cancel', event => {
-    if (premiumRunInFlight) event.preventDefault();
+    event.preventDefault();
   });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);
