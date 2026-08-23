@@ -862,23 +862,34 @@ check('the sample report is honest about weaknesses, not an advert',
 check('the sample report is named as a sample rather than as a person',
   sample.card.name === 'Sample', sample.card.name);
 
-// Four sections moved out of the free schema and into the paid one (see the
-// PREMIUM_SCHEMA checks further down), so none of them is part of the sample
-// report any more. The sample excludes them in the UI too
-// (reportSectionsHtml's `{ paid: false }`), and there is now nothing in the
-// free schema for the fixture to violate by leaving them out.
+// Three sections live in the paid schema only (see the PREMIUM_SCHEMA checks
+// further down), so none of them is part of the sample report. The sample
+// excludes them in the UI too (reportSectionsHtml's `{ paid: false }`), and
+// there is now nothing in the free schema for the fixture to violate by
+// leaving them out.
 //
-// `card.attachment` is deliberately not in this list: the compressed
+// `bonus` is deliberately not in this list any more — the roast moved back
+// into the free schema, so the sample has to carry it, and the check below
+// this one holds that directly rather than by omission here.
+//
+// `card.attachment` is deliberately not in this list either: the compressed
 // attachment phrase still travels in the QR card, which is free, and the
-// compatibility read leans on it. What moved behind the paywall is the
+// compatibility read leans on it. What is behind the paywall is the
 // attachment *section*, not the card field.
-check('the sample report carries none of the four paid sections',
-  !('bonus' in sample) && !('wellness' in sample) &&
-  !('attachment' in sample) && !('careerAssessment' in sample),
+check('the sample report carries none of the three paid-only sections',
+  !('wellness' in sample) && !('attachment' in sample) &&
+  !('idealPartner' in sample) && !('careerAssessment' in sample),
   Object.keys(sample).join(','));
 check('but the card still carries the compressed attachment read the QR code needs',
   typeof sample.card.attachment === 'string' && sample.card.attachment.length > 0 &&
   typeof sample.card.attachmentWhy === 'string' && sample.card.attachmentWhy.length > 0);
+// The roast is free again, so the sample — the one report every visitor
+// reads before uploading anything — has to carry real harsh/advice writing
+// for it, not just satisfy the schema's presence check above.
+check('the sample report carries the free roast',
+  typeof sample.bonus === 'object' && sample.bonus &&
+  typeof sample.bonus.harsh === 'string' && sample.bonus.harsh.length > 40 &&
+  typeof sample.bonus.advice === 'string' && sample.bonus.advice.length > 40);
 
 // Love languages replaced "how to love you" and "who fits".
 const relProps = prompts.PROFILE_SCHEMA.properties.relationship.properties;
@@ -1200,15 +1211,13 @@ check('every sample dimension cites real evidence rather than asserting',
   wellnessDimensions.every(k => Array.isArray(mockPaid.wellness[k].evidence) &&
     mockPaid.wellness[k].evidence.length >= 2));
 
-// The paid premium call carries the roast (harsh, advice), moved here from
-// the old free-report bonus section. It briefly carried two more fields,
-// patternsWorthAttention and lifeAdvice, for a second paid section
-// ("Supplementary analysis") sold alongside the roast — that section was
-// cut, so this call is the roast and nothing else again. Its licence is to
-// drop the softening, not to drop the evidence, and above all not to invent
-// a diagnosis — so each limit is pinned separately rather than trusted to
-// one loose match, the same discipline the old PROFILE_SCHEMA checks held
-// the free-report bonus section to.
+// The paid premium call carries wellness, attachment, idealPartner and
+// careerAssessment. It briefly carried two more fields, patternsWorthAttention
+// and lifeAdvice, for a second paid section ("Supplementary analysis") sold
+// alongside the roast — that section was cut. The roast itself has moved
+// back into the free schema, twice now: out to premium once, and back to
+// free for good this time. Its own checks sit further down, against
+// PROFILE_SCHEMA and PROFILE_SYSTEM rather than the premium pair.
 const premiumProps = prompts.PREMIUM_SCHEMA.properties;
 
 // ---------- the compiled grammar this schema has to fit into ----------
@@ -1265,16 +1274,39 @@ check('the system prompt carries what to read for each of the six dimensions',
   prompts.WELLNESS_DIMENSIONS.map(([k]) => k).join(', '));
 check('the premium call carries exactly the four paid sections, in report order',
   JSON.stringify(Object.keys(premiumProps)) ===
-  JSON.stringify(['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']),
+  JSON.stringify(['wellness', 'attachment', 'idealPartner', 'careerAssessment']),
   Object.keys(premiumProps).join(', '));
 
 // The free schema must not still be asking for them. A field left in both
 // places would be paid for twice and rendered from whichever the UI happened
 // to read, which is the failure mode this pair exists to catch.
 check('and none of them is still in the free schema',
-  ['wellness', 'attachment', 'careerAssessment', 'harsh', 'advice']
+  ['wellness', 'attachment', 'idealPartner', 'careerAssessment']
     .every(k => !(k in prompts.PROFILE_SCHEMA.properties)),
   Object.keys(prompts.PROFILE_SCHEMA.properties).join(', '));
+
+// idealPartner sits between attachment and careerAssessment because it
+// argues directly off the attachment read immediately above it, not off a
+// fresh pass over the digest — the prompt says so, and the schema's own
+// field descriptions have to point back at attachment's fields by name for
+// that instruction to mean anything concrete.
+const idealPartnerProps = premiumProps.idealPartner.properties;
+check('idealPartner asks for what they need, what to be careful of, and a verdict',
+  ['needs', 'carefulOf', 'summary'].every(k => k in idealPartnerProps));
+check('needs and carefulOf are lists, drawing on the shared point definition',
+  idealPartnerProps.needs.type === 'array' && idealPartnerProps.needs.items.$ref === '#/$defs/point' &&
+  idealPartnerProps.carefulOf.type === 'array' && idealPartnerProps.carefulOf.items.$ref === '#/$defs/point');
+check('idealPartner is explicitly told to argue off the attachment read, not a fresh one',
+  /directly off that same attachment read/.test(prompts.PREMIUM_SYSTEM) &&
+  /argued directly from the attachment section immediately above/.test(prompts.PREMIUM_SYSTEM));
+check('needs is told what it is not — a wishlist of adjectives',
+  /not a list of pleasant adjectives/.test(idealPartnerProps.needs.description) &&
+  /not adjectives a magazine quiz would produce/.test(prompts.PREMIUM_SYSTEM));
+check('carefulOf is told what it is not — universal red flags',
+  /a list of universal red flags/i.test(idealPartnerProps.carefulOf.description));
+check('the section names its own test for whether it actually used the attachment read',
+  /would make just as much sense bolted onto a stranger with a different attachment style/
+    .test(prompts.PREMIUM_SYSTEM));
 check('no model-generated caveat field — the safety line is fixed app copy instead',
   !('caveat' in premiumProps));
 check('the cut supplementary-analysis fields are actually gone, not just unused',
@@ -1285,80 +1317,24 @@ check('the premium call no longer receives photographs, and says so',
   /this call receives no photographs/.test(prompts.PREMIUM_SYSTEM));
 check('the premium prompt states plainly it is the paid half, not a rewrite of the free report',
   /the paid half of a report whose free half is already written/.test(prompts.PREMIUM_SYSTEM) &&
-  /do not repeat it, summarise it or re-derive it/.test(prompts.PREMIUM_SYSTEM));
-// Four sections in one call, and three of them are written in the free
-// report's voice. The roast's register bleeding into the wellness read is the
-// specific failure this pins — it is the section with the tightest limits and
-// the one a reader is least well served by being roasted inside.
-check('the prompt names all four sections and warns the registers apart',
+  /do not repeat, summarise or re-derive any of it/.test(prompts.PREMIUM_SYSTEM));
+// Four sections in one call now, all written in the free report's voice —
+// there is no register clash to warn about any more, since the roast (the
+// one section that was ever written differently) moved back out. The old
+// version of this check tested for a warning about the roast's tone
+// bleeding into wellness; that sentence is gone on purpose; see the check
+// below confirming it stayed gone rather than drifting back in unnoticed.
+check('the prompt names all four sections, none of them written to be unkind',
   /You write four sections/.test(prompts.PREMIUM_SYSTEM) &&
-  /the roast's\s+tone leaking into the wellness read/.test(prompts.PREMIUM_SYSTEM));
-check('the three considered sections are told they are not harsh by association',
-  /They are behind a paywall because they are the most valuable/.test(prompts.PREMIUM_SYSTEM) &&
-  /nothing about being paid for changes how\s+carefully they are written/.test(prompts.PREMIUM_SYSTEM));
-
-// The register is stated outright rather than left implied by "accurate
-// without being kind" — the page calls it a roast, so the prompt has to ask
-// for one or the two drift apart.
-check('the roast is asked for as a roast, not just as an unkind read',
-  /This is a roast/.test(prompts.PREMIUM_SYSTEM) &&
-  /Roast them/.test(premiumProps.harsh.description));
-// The load-bearing half of that instruction. A roast that stops being
-// evidence-bound is abuse from a stranger who read somebody's captions, and
-// the licence to be funny is exactly where that would slip.
-check('the roast is still held to the evidence, and told why that matters',
-  /a licence to drop the softening, not a licence to make things up/.test(prompts.PREMIUM_SYSTEM) &&
-  /the target recognising themselves/.test(prompts.PREMIUM_SYSTEM) &&
-  /Generic insults are not roasting/.test(prompts.PREMIUM_SYSTEM));
-// Three named seams rather than "be harsh and see what turns up". They are
-// the things the export shows unusually clearly, so pointing the model at them
-// is the difference between a roast about this person and a roast about
-// anybody: announced plans against finished ones, what they take against what
-// they give back, and whatever else is plainly going badly.
-check('the roast is pointed at follow-through, reciprocity and the rest',
-  /the distance between what they announced and what they finished/.test(prompts.PREMIUM_SYSTEM) &&
-  /who shows up for them against who they show up for/.test(prompts.PREMIUM_SYSTEM) &&
-  /anything else they are plainly doing badly/.test(prompts.PREMIUM_SYSTEM));
-check('those seams are named in the field the writing comes out of, too',
-  /plans announced and never closed out, things saved and never acted on/
-    .test(premiumProps.harsh.description) &&
-  /what they take and do not give back/.test(premiumProps.harsh.description));
-// The seams are an instruction to look, not permission to assert. A roast
-// about a follow-through problem the data does not show is the invented
-// insult the rest of this section exists to prevent.
-check('a seam with no evidence behind it is dropped rather than filled in',
-  /Where the evidence is not there, drop the seam rather than inventing a case for it/
-    .test(prompts.PREMIUM_SYSTEM));
-check('the harsh read stays inside what the evidence supports',
-  /the least charitable reading of this person that the evidence still fully supports/i
-    .test(premiumProps.harsh.description) &&
-  /an invented insult is worse than a short section/.test(premiumProps.harsh.description));
-check('the harsh read goes after patterns rather than the person',
-  /nothing about their appearance, body, intelligence, worth or anything they cannot change/
-    .test(premiumProps.harsh.description));
-check('the advice half draws on the whole digest, not just the posting habits the roast covers',
-  /Draw on the whole digest/.test(premiumProps.advice.description));
-
-// The diagnosis ban, requested literally as "what mental illness or
-// disorders to look out for" and declined — pinned down the same way as
-// every other limit above: each phrase checked separately, because a
-// licence to go deeper on a second, paid, deliberately unsparing pass is
-// exactly the kind of licence a ban like this could erode under.
-check('being unkind is explicitly not a licence to diagnose',
-  /This is not a diagnosis, and being unkind is not a licence to become one/
-    .test(prompts.PREMIUM_SYSTEM));
-check('the diagnosis ban is restated in full rather than assumed to carry over from PROFILE_SYSTEM',
-  /never name, imply, predict or gesture at a specific mental or physical health condition/
-    .test(prompts.PREMIUM_SYSTEM));
-check('the clinical vocabulary is named and banned here too, not just cross-referenced',
-  /not depression, not anxiety, not ADHD, not burnout as a clinical state/.test(prompts.PREMIUM_SYSTEM));
-check('the ban survives the reader having asked for exactly this framing',
-  /however directly the reader framed what they wanted/.test(prompts.PREMIUM_SYSTEM) &&
-  /requested literally as "what mental illness or disorders to look out for"/.test(prompts.PREMIUM_SYSTEM));
-check('something worth a professional is named as exactly that, not diagnosed',
-  /worth raising with someone qualified to actually assess it/.test(prompts.PREMIUM_SYSTEM));
-check('the Google-export search caveat is restated here too',
-  /a searched symptom is never evidence of a health condition/.test(prompts.PREMIUM_SYSTEM));
+  /not because any of them is harsh/.test(prompts.PREMIUM_SYSTEM));
+// The prompt still has to mention the roast once, in passing — telling this
+// call not to repeat or re-derive it, the same way it is told not to repeat
+// the free report's other findings. What must be gone is the old warning
+// that the roast's *tone* could bleed into wellness, since none of the four
+// sections generated here is written to be unkind any more.
+check('the premium prompt carries no register-clash warning, since nothing here is unkind any more',
+  !/tone leaking into the wellness read/.test(prompts.PREMIUM_SYSTEM) &&
+  !/This is a roast/.test(prompts.PREMIUM_SYSTEM));
 
 check('premiumBlocks resends the same digest shape profileBlocks does, not a summary of it', (() => {
   const digest = { coverage: { sources: ['instagram', 'google'] } };
@@ -1368,14 +1344,83 @@ check('premiumBlocks resends the same digest shape profileBlocks does, not a sum
     /Instagram and Google/.test(blocks[0].text) && /the four sections the free report does not carry/.test(blocks[0].text);
 })());
 
-// The roast is gone from the free schema and prompt entirely — moved, not
-// duplicated. A stray copy left behind in PROFILE_SYSTEM would mean the free
-// call still spends output tokens writing content nobody is paying for.
-check('the roast is gone from the free report schema',
-  !('bonus' in prompts.PROFILE_SCHEMA.properties));
-check('the roast is gone from the free report prompt',
-  !/This section is a roast/.test(prompts.PROFILE_SYSTEM) &&
-  !/bonus section/i.test(prompts.PROFILE_SYSTEM));
+// The roast is back in the free schema and prompt, and gone from the paid
+// pair — moved, not duplicated. A stray copy left in PREMIUM_SCHEMA would be
+// paid for twice and rendered from whichever the UI happened to read, the
+// same failure mode the wellness/attachment/idealPartner/careerAssessment
+// pair is held to above.
+const bonusProps = prompts.PROFILE_SCHEMA.properties.bonus.properties;
+check('the roast is in the free report schema, not the paid one',
+  ['harsh', 'advice'].every(k => k in bonusProps) &&
+  !('harsh' in premiumProps) && !('advice' in premiumProps) && !('bonus' in premiumProps));
+
+// The register is stated outright rather than left implied by "accurate
+// without being kind" — the page calls it a roast, so the prompt has to ask
+// for one or the two drift apart.
+check('the roast is asked for as a roast, not just as an unkind read',
+  /`bonus` is a roast: written to be accurate without being kind/.test(prompts.PROFILE_SYSTEM) &&
+  /Roast them/.test(bonusProps.harsh.description));
+// The register change has to be named explicitly: everything else in
+// PROFILE_SYSTEM is written to be fair, and a report that drifted toward the
+// roast's tone before the reader ever clicked the cover open would be
+// showing them the unkind version without their consent.
+check('the register change is named both ways — the roast must not leak backward either',
+  /The register change has to be real, and it has to be contained/.test(prompts.PROFILE_SYSTEM) &&
+  /nothing written above this point should anticipate or lean toward the roast's tone/.test(prompts.PROFILE_SYSTEM));
+// The load-bearing half of that instruction. A roast that stops being
+// evidence-bound is abuse from a stranger who read somebody's captions, and
+// the licence to be funny is exactly where that would slip.
+check('the roast is still held to the evidence, and told why that matters',
+  /a licence to drop the softening, not a licence to make things up/.test(prompts.PROFILE_SYSTEM) &&
+  /the target recognising themselves/.test(prompts.PROFILE_SYSTEM) &&
+  /Generic insults are not roasting/.test(prompts.PROFILE_SYSTEM));
+// Three named seams rather than "be harsh and see what turns up". They are
+// the things the export shows unusually clearly, so pointing the model at them
+// is the difference between a roast about this person and a roast about
+// anybody: announced plans against finished ones, what they take against what
+// they give back, and whatever else is plainly going badly.
+check('the roast is pointed at follow-through, reciprocity and the rest',
+  /the distance between what they announced and what they finished/.test(prompts.PROFILE_SYSTEM) &&
+  /who shows up for them against who they show up for/.test(prompts.PROFILE_SYSTEM) &&
+  /anything else they are plainly doing badly/.test(prompts.PROFILE_SYSTEM));
+check('those seams are named in the field the writing comes out of, too',
+  /plans announced and never closed out, things saved and never acted on/
+    .test(bonusProps.harsh.description) &&
+  /what they take and do not give back/.test(bonusProps.harsh.description));
+// The seams are an instruction to look, not permission to assert. A roast
+// about a follow-through problem the data does not show is the invented
+// insult the rest of this section exists to prevent.
+check('a seam with no evidence behind it is dropped rather than filled in',
+  /Where the evidence is not there, drop the seam rather than inventing a case for it/
+    .test(prompts.PROFILE_SYSTEM));
+check('the harsh read stays inside what the evidence supports',
+  /the least charitable reading of this person that the evidence still fully supports/i
+    .test(bonusProps.harsh.description) &&
+  /an invented insult is worse than a short section/.test(bonusProps.harsh.description));
+check('the harsh read goes after patterns rather than the person',
+  /nothing about their appearance, body, intelligence, worth or anything they cannot change/
+    .test(bonusProps.harsh.description));
+check('the advice half draws on the whole digest, not just the posting habits the roast covers',
+  /Draw on the whole digest/.test(bonusProps.advice.description));
+
+// The diagnosis ban, requested literally as "what mental illness or
+// disorders to look out for" and declined — pinned down the same way as
+// every other limit above: each phrase checked separately, because a
+// licence to go deeper on a deliberately unsparing section is exactly the
+// kind of licence a ban like this could erode under.
+check('being unkind is explicitly not a licence to diagnose',
+  /This holds in the roast too, and it holds hardest there/.test(prompts.PROFILE_SYSTEM) &&
+  /being unkind is not a licence to become one/.test(prompts.PROFILE_SYSTEM));
+check('the diagnosis ban covers the roast by name, not just by inheriting the general one above it',
+  /never name, imply, predict or gesture at a specific mental or physical health condition/
+    .test(prompts.PROFILE_SYSTEM));
+check('the clinical vocabulary is named and banned for the roast specifically',
+  /not depression, not anxiety, not ADHD, not burnout as a clinical state/.test(prompts.PROFILE_SYSTEM));
+check('the ban survives the reader having asked for exactly this framing',
+  /however directly the reader framed what they wanted/.test(prompts.PROFILE_SYSTEM) &&
+  /requested literally as "what mental illness or disorders to look out for"/.test(prompts.PROFILE_SYSTEM));
+check('something worth a professional is named as exactly that, not diagnosed',
+  /worth raising with someone qualified to actually assess it/.test(prompts.PROFILE_SYSTEM));
 
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
@@ -1726,11 +1771,12 @@ for (const [label, needle] of [
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
 
-// The roast's logic test, now against PREMIUM_SYSTEM since the roast moved
-// there. Its failure mode is not the invented insult the rules above already
-// cover — the facts are true — it is two unrelated ones joined by a "yet"
-// that implies a hypocrisy neither supports, which reads as a compilation of
-// odd details rather than a reading of anybody.
+// The roast's logic test, against PROFILE_SYSTEM — the roast moved to
+// premium once and has moved back to the free report for good. Its failure
+// mode is not the invented insult the rules above already cover — the facts
+// are true — it is two unrelated ones joined by a "yet" that implies a
+// hypocrisy neither supports, which reads as a compilation of odd details
+// rather than a reading of anybody.
 for (const [label, needle] of [
   ['makes the roast state the contradiction before writing it',
     /say what the contradiction actually is/],
@@ -1746,7 +1792,7 @@ for (const [label, needle] of [
   ['prefers a defensible few to an undefendable pile',
     /a pile of odd details is not an argument/],
 ]) {
-  check('premium prompt ' + label, needle.test(prompts.PREMIUM_SYSTEM));
+  check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
 
 for (const [label, needle] of [
@@ -1781,16 +1827,15 @@ for (const [label, needle] of [
   check('profile schema ' + label, needle.test(profileSchemaText));
 }
 
-// The nameable-contradiction rule, now pinned on the roast field within
-// PREMIUM_SCHEMA rather than PROFILE_SCHEMA.
-const premiumSchemaText = JSON.stringify(prompts.PREMIUM_SCHEMA);
+// The nameable-contradiction rule, pinned on the roast field within
+// PROFILE_SCHEMA — back where the roast itself lives now.
 for (const [label, needle] of [
   ['makes the roast field itself demand a nameable contradiction',
     /Every hard line must name a contradiction you could state plainly/],
   ['rates a hollow contradiction as the worst of the three failures',
     /a hollow contradiction is worse than both/],
 ]) {
-  check('premium schema ' + label, needle.test(premiumSchemaText));
+  check('profile schema ' + label, needle.test(profileSchemaText));
 }
 
 // ---------- parse the synthetic export ----------

@@ -910,19 +910,12 @@
    * paywall exists.
    *
    * Four sections live here — the wellness read, the attachment read, the
-   * career coaching and the roast — and one S$1.99 unlock fills all four.
-   *
-   * The roast used to be excluded from the PDF outright, and the reasoning was
-   * about consent rather than payment: on screen it sits behind a cover
-   * somebody has to open, a PDF has no cover, so printing it unconditionally
-   * would have handed the harshest writing in the report to a reader who never
-   * pressed the button. Gating on the unlock answers that directly — the only
-   * way a key gets here is that somebody paid or entered a promo code to see
-   * this exact writing. What the gate cannot govern is where the file goes
-   * next, which is why both caveats — the roast's and the wellness section's —
-   * print with their sections rather than being left on screen: the PDF is the
-   * copy that gets kept and forwarded, so it is the copy that most needs to
-   * say what it is.
+   * ideal-partner read and the career coaching — and one S$1.99 unlock fills
+   * all four. The roast used to be one of them; it is free now, printed
+   * unconditionally from `source.bonus` alongside the other free sections
+   * below rather than gated through this table — see "9a. The roast" further
+   * down for why it still needs its own consent reasoning even off the
+   * paywall.
    *
    * Adding a paywalled section later means adding an entry here and a key in
    * `unlockedSections()` in docs/app.js. Do not reach for `source.<field>` in
@@ -973,6 +966,21 @@
       if (attachment.caveat) out.fineprint(attachment.caveat);
     },
   }, {
+    // Argues directly off the attachment read immediately above, both on
+    // the page and here — see docs/app.js's idealPartnerBodyHtml.
+    key: 'idealPartner',
+    render(out, idealPartner) {
+      out.sectionTitle(TEXT.idealPartner, TEXT.idealPartnerSub);
+      out.h3(TEXT.idealPartnerNeeds);
+      out.points(idealPartner.needs);
+      out.h3(TEXT.idealPartnerCarefulOf);
+      out.points(idealPartner.carefulOf);
+      if (idealPartner.summary) {
+        out.h3(TEXT.idealPartnerSummary);
+        out.body(idealPartner.summary, { size: 10, leading: 15 });
+      }
+    },
+  }, {
     // The coach's read, distinct from "At work" above. The horizon leads each
     // action here the way the pill does on the page, so the thing that can be
     // started this week is still the thing read first.
@@ -1004,21 +1012,25 @@
         out.point((label ? label + '  ·  ' : '') + action.title, action.detail);
       }
     },
-  }, {
-    key: 'bonus',
-    render(out, roast) {
-      out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
-      out.fineprint(TEXT.bonusCaveat);
-      if (roast.harsh) {
-        out.h3(TEXT.bonusHarsh);
-        out.body(roast.harsh, { size: 10, leading: 15 });
-      }
-      if (roast.advice) {
-        out.h3(TEXT.bonusAdvice);
-        out.body(roast.advice, { size: 10, leading: 15 });
-      }
-    },
   }];
+
+  // Free, printed unconditionally from `source.bonus` — see "9a. The roast"
+  // in `build()` below. Kept as its own function rather than folded into
+  // PAID_SECTIONS: it is read straight off the report object, not off
+  // `meta.unlocked`, which is exactly the shortcut the comment above
+  // PAID_SECTIONS warns against for anything paid.
+  function renderRoast(out, roast) {
+    out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
+    out.fineprint(TEXT.bonusCaveat);
+    if (roast.harsh) {
+      out.h3(TEXT.bonusHarsh);
+      out.body(roast.harsh, { size: 10, leading: 15 });
+    }
+    if (roast.advice) {
+      out.h3(TEXT.bonusAdvice);
+      out.body(roast.advice, { size: 10, leading: 15 });
+    }
+  }
 
   // ---------- the report ----------
 
@@ -1199,6 +1211,14 @@
         out.facet(label, part.headline, part.detail);
       }
     }
+
+    // 9a. The roast. Free, printed unconditionally, right after the digital
+    // footprint it draws on — matching the page, which puts it there for
+    // the same reason. Unlike the paid sections below, there is no gate to
+    // check: on screen it sits behind a cover the reader clicks through,
+    // and a PDF has no cover, so the print simply carries what the reader
+    // already has, the same way every other free section here does.
+    if (source.bonus) renderRoast(out, source.bonus);
 
     // 9b. Whatever was bought, in the position it holds on the page — after
     // the behaviour read, before matches and the confidence close. The list is

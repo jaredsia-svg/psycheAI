@@ -103,14 +103,19 @@
   // caught every one of those movements, in both directions, the same run it
   // happened.
   //
-  // Dropped to 14,200 when the wellness read, the attachment read and the
-  // career coaching all moved behind the paywall alongside the roast. That is
+  // Dropped to 14,200 when the wellness read, the attachment read, the
+  // career coaching and the roast all moved behind the paywall. That is
   // about 5,600 tokens of prompt and schema the *free* call no longer carries,
   // and the whole of it goes back to the digest: the ceiling this buys rose by
   // roughly 19,800 characters. The paid call carries them instead, which is
   // the point — the reader paying for those sections is the one paying to
   // generate them.
-  const FIXED_INPUT_TOKENS = 14200;
+  //
+  // Raised back to 16,600 when the roast moved back to the free call for
+  // good — a reader now sees it without paying anything, so the free prompt
+  // and schema carry its full instructions and hard limits again, and the
+  // digest budget has to shrink to leave room for them.
+  const FIXED_INPUT_TOKENS = 16600;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

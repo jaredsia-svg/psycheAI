@@ -1092,13 +1092,11 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .horizon-this-quarter { color: var(--ink-soft); }
 .horizon-this-year { color: var(--ink-soft); opacity: .8; }
 
-/* The roast's cover — named .premium- rather than .bonus- from when a second
-   paid section ("Supplementary analysis") shared this same paywall markup.
-   That section is gone; the roast is the one caller left. Greyed and
-   inert-looking on purpose: it should read as something switched off rather
-   than as another card to scroll past. The writing is not in the document
-   at all until a real result arrives, because a CSS blur would hide nothing
-   from select-all, a screen reader or view-source. */
+/* The four paid sections' cover, shown while nothing is unlocked yet. Greyed
+   and inert-looking on purpose: it should read as something switched off
+   rather than as another card to scroll past. The writing is not in the
+   document at all until a real result arrives, because a CSS blur would
+   hide nothing from select-all, a screen reader or view-source. */
 .premium-cover {
   position: relative; overflow: hidden;
   border: 1px dashed var(--line); border-radius: var(--radius);
@@ -1110,6 +1108,23 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .premium-cover p { max-width: 54ch; margin-inline: auto; }
 .premium-unlock { margin: 0; }
 .premium-body h3:first-of-type { margin-top: 0; }
+
+/* The roast's own cover — a consent gate, not a paywall, so it reuses
+   .premium-cover's look (same reasoning: greyed, inert, and the writing
+   genuinely absent until clicked open) under its own class rather than the
+   paid one, so nothing here is mistaken for something behind the S$1.99
+   unlock. See roastBlock()/revealRoast()/hideRoast() in docs/app.js. */
+.bonus-cover {
+  position: relative; overflow: hidden;
+  border: 1px dashed var(--line); border-radius: var(--radius);
+  background: repeating-linear-gradient(
+    135deg, var(--bg) 0 10px, color-mix(in srgb, var(--ink-soft) 7%, var(--bg)) 10px 20px);
+  padding: 1.4rem clamp(1rem, 4vw, 1.8rem); text-align: center;
+}
+.bonus-cover h3 { margin-top: 0; color: var(--ink-soft); }
+.bonus-cover p { max-width: 54ch; margin-inline: auto; }
+.bonus-reveal { margin: 0; }
+.bonus-body h3:first-of-type { margin-top: 0; }
 /* Sits above the writing it belongs to, and stays there — it is most needed
    while the section is being read, not on a cover the reader has already
    dismissed. */

@@ -792,6 +792,58 @@ premium-unlock click in the same test correctly skips the data-offer popout enti
 `collectExtraDataForPremium()`'s own short-circuit on an existing `current.google`/`.facebook` — which
 the test now asserts explicitly rather than assuming the popout always appears.
 
+### The roast moves back to the free report, and "Ideal partner traits" takes its old place
+
+The roast has moved between the free report and the paid one twice now. It started free, behind a
+click-to-reveal cover; moved behind the S$1.99 unlock so a reader would not have to hand over their
+evidence a second time or wait through a second call for something the app was charging for; and has
+now moved back to free, for good — a new user can read it without paying anything. The mechanism is
+old code brought back rather than reinvented: `roastBlock()`, `revealRoast()` and `hideRoast()` in
+`docs/app.js` are close to the original `bonusBlock()`/`revealBonus()`/`hideBonus()` from the first
+time this section existed, and the reasoning is identical — the writing is never in the markup until
+the reader clicks through, because a CSS blur protects nothing against select-all, a screen reader or
+view-source. It sits right after "Your digital footprint", the section its evidence actually comes
+from, rather than at the tail of the report where the four paid sections happen to end.
+
+`bonus: { harsh, advice }` moved from `PREMIUM_SCHEMA` to `PROFILE_SCHEMA` with its field names and
+descriptions unchanged, and the whole "roast is a different register" section of the prompt — the
+three seams worth digging for (follow-through, reciprocity, whatever else is plainly going badly), the
+rule against a hollow "X, yet Y" contradiction, and the diagnosis ban restated in full — moved from
+`PREMIUM_SYSTEM` to `PROFILE_SYSTEM` alongside it. What is new is a paragraph making the register
+change explicit in both directions: the roast must not soften toward the rest of the report's warmer
+voice, and the rest of the report must not anticipate or lean toward the roast's tone before the
+reader has chosen to open it. That risk barely existed when the roast was a separate paid call with
+no other content in the response to bleed into; back in the same call as everything else, it is real,
+so the prompt says so.
+
+**"Ideal partner traits" fills the slot the roast left in `PREMIUM_SCHEMA`**, between the attachment
+read and the career assessment — both in the schema's key order and on the page, checked by the same
+"four paid sections, in report order" assertion the wellness/attachment/career trio was already held
+to. It answers what the user asked for in three parts: `needs` (three to five things this person
+actually requires in a partner to be well, argued from the attachment section immediately above rather
+than from a fresh read of the digest), `carefulOf` (two to four honest warnings about partner types or
+dynamics that would predictably go wrong for *this* person specifically, not a list of universal red
+flags), and `summary` (an honest verdict in two or three sentences). The prompt is explicit that this
+section has to *use* the attachment read rather than just sit beside it: the test it gives the model is
+whether a need or a caution here would make just as much sense bolted onto a stranger with a different
+attachment style — if so, it has not done its job.
+
+Both changes together left the shape of the paid unlock untouched: it was four sections before and it
+is four sections now, just with a different fourth one, so the "consolidated block, one Unlock button"
+UI from the previous change needed no rework at all — only the section identities inside it moved.
+`docs/pdf.js` follows the same split: the four paid sections stay gated on `meta.unlocked` exactly as
+before (with `idealPartner` swapped in for the roast in that table), while the roast prints
+unconditionally from `source.bonus` right after the digital footprint section, matching the page.
+
+Fault-injecting the roast's position (moving `roastBlock()`'s call site to after the four paid
+sections instead of before them) was caught two ways at once: the app-level position check, and,
+separately, the PDF's own "sections run in the page's order" walk — which builds its expected order
+by reading the page's actual `<h2>`s rather than a hardcoded list, so it needed no changes of its own
+to catch a section moving, only the surrounding commentary explaining why the roast is now part of
+that walk rather than excluded from the PDF outright. Fault-injecting a renamed `carefulOf` field
+was caught immediately and loudly: the self-test crashes rather than failing quietly, because the
+check dereferences the field directly rather than testing for its absence.
+
 ### The "analysed by" footer grows a second provider
 
 The report's final line used to name one provider and one timestamp — true when one call wrote the
@@ -2741,7 +2793,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 681 checks: synthesises a real ZIP export and runs
+npm test           # 687 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -2750,7 +2802,7 @@ npm test           # 681 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 922 checks: drives the real UI in Chromium against a
+npm run test:ui    # 930 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -772,7 +772,7 @@ try {
     await page.evaluate(() => {
       const T = window.PsycheCopy.TEXT;
       const text = document.querySelector('.insight-branches').textContent;
-      return ![T.wellness, T.attachment, T.careerAssessment, T.bonus]
+      return ![T.wellness, T.attachment, T.careerAssessment, T.idealPartner]
         .some(title => text.includes(title)) &&
         !/attachment style/i.test(text) && !/where you would thrive/i.test(text);
     }),
@@ -797,7 +797,7 @@ try {
   check('it names the four paid sections, by the titles the report uses',
     await page.evaluate(() => {
       const T = window.PsycheCopy.TEXT;
-      const want = [T.wellness, T.attachment, T.careerAssessment, T.bonus];
+      const want = [T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
       const got = [...document.querySelectorAll('#view-welcome .premium-tier-item strong')]
         .map(node => node.textContent.trim());
       return want.length === got.length && want.every((title, i) => title === got[i]);
@@ -1289,8 +1289,8 @@ try {
   // The cross is the only way out that is always on screen, so it carries the
   // whole burden now that the dialog has no footer action of its own. Scoped
   // to the dialog's own chrome: buttons inside #sample-body belong to the
-  // report being displayed, not to the dialog, and the bonus section's cover
-  // puts one there.
+  // report being displayed, not to the dialog — the roast's own cover and
+  // the consolidated premium block's unlock button both put one there.
   check('the cross is the one control the dialog itself offers',
     (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
@@ -1299,24 +1299,29 @@ try {
   // single consolidated block a real un-unlocked report shows — see
   // paidSectionsLockedHtml — rather than four separate covers or a footer of
   // their own. A reader sees exactly what they would meet on their own
-  // report before ever uploading anything, including the roast's blurb.
+  // report before ever uploading anything.
   check('the sample shows the same consolidated premium block a real report does, not four covers',
     (await page.locator('#sample-body .paid-consolidated').count()) === 1 &&
     (await page.locator('#sample-body .paid-card').count()) === 0);
-  check('all four sections are named and explained inside it',
+  check('all four paid sections are named and explained inside it',
     await page.evaluate(() => {
       const text = document.querySelector('#sample-body .paid-consolidated').textContent;
-      return ['Mental wellness', 'Attachment style', 'Career assessment', 'Let us roast you']
+      return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
         .every(name => text.includes(name));
     }));
-  check('the roast\'s blurb reads the same way it does on a real report',
-    /deliberately unkind/i.test(await page.locator('#sample-body .paid-consolidated').innerText()));
   // What must not happen: the sample is a made-up account nobody paid to
-  // analyse, so none of the four sections' actual writing may be in the
+  // analyse, so none of the four paid sections' actual writing may be in the
   // document, in any form — the consolidated block has no body content at
   // all to leak, which this confirms rather than assumes.
-  check('none of the four sections\' actual writing is in the sample',
+  check('none of the four paid sections\' actual writing is in the sample',
     !(await page.locator('#sample-body .premium-body').count()));
+  // The roast is free, so the sample carries it in full — same cover, same
+  // reveal mechanic — outside the paid consolidated block entirely.
+  check('the sample also carries the free roast, with its own cover',
+    (await page.locator('#sample-body .bonus-cover').count()) === 1 &&
+    /deliberately unkind/i.test(await page.locator('#sample-body .bonus-cover').innerText()));
+  check('and its writing is not in the sample until the cover is opened',
+    !(await page.locator('#sample-body .bonus-body').innerText()).trim());
   // The one thing that would turn "here is what this looks like" into "click
   // here to pay": the button has to be genuinely inert, not just plain-looking.
   // A native `disabled` attribute is what stops it dispatching a click event
@@ -2551,17 +2556,20 @@ try {
     (await page.locator('#profile-body .paid-card').count()) === 0 &&
     await page.evaluate(() => {
       const text = document.querySelector('#profile-body .paid-consolidated').textContent;
-      return ['Mental wellness', 'Attachment style', 'Career assessment', 'Let us roast you']
+      return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
         .every(name => text.includes(name));
     }));
   check('and there is exactly one button asking for the S$1.99 unlock, not one per section',
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
     (await page.locator('#profile-body .premium-unlock').innerText()).includes('S$1.99'),
     await page.locator('#profile-body .premium-unlock').innerText());
-  // The specific thing a paywall must not do: ship the writing and hide it.
-  // Checked against the mock's own wording, so it fails if the free call ever
-  // starts returning paid content again.
-  check('none of the paid writing is in the document before payment',
+  // The specific thing a paywall — or a consent gate — must not do: ship
+  // the writing and hide it. Checked against the mock's own wording, so it
+  // fails if either call ever starts leaking its content early. The roast's
+  // "uncharitable reading" is free content now, gated by its own
+  // click-to-reveal cover rather than by payment, but the same rule holds:
+  // nothing is in the document until the reader actually asks for it.
+  check('none of the paid writing, or the roast, is in the document before it is asked for',
     await page.evaluate(() => {
       const html = document.querySelector('#profile-body').innerHTML;
       return !/Mock overall wellness read/i.test(html) &&
@@ -2570,44 +2578,50 @@ try {
         !/uncharitable reading/i.test(html);
     }));
   // The whole tail of the report in one assertion, by heading, rather than a
-  // chain of pairwise position checks: digital footprint, then the three
-  // reads that follow from it, then the roast. Reading it off the rendered
-  // <h2>s means a section that silently moves fails here rather than in
-  // whichever pairwise check happened to cover that edge.
+  // chain of pairwise position checks: digital footprint, then the roast
+  // (free, right after the evidence it draws on), then the four paid reads.
+  // Reading it off the rendered DOM means a section that silently moves
+  // fails here rather than in whichever pairwise check happened to cover
+  // that edge.
   // Before anything is paid for, the four paid sections are list items inside
   // the one consolidated block rather than their own <h2> cards — see
   // paidSectionsLockedHtml — so what is checked here is the footprint card's
-  // position ahead of that block, and the list's own item order, rather than
-  // four separate headings. The consolidated block's position relative to
-  // confidence is covered separately below.
-  check('the report tail runs footprint → consolidated block, listing wellness → attachment → career → roast',
+  // and the roast's positions ahead of that block, and the list's own item
+  // order, rather than four separate headings. The consolidated block's
+  // position relative to confidence is covered separately below.
+  check('the report tail runs footprint → roast → consolidated block, listing wellness → attachment → ideal partner → career',
     await page.evaluate(() => {
       const footprint = [...document.querySelectorAll('#profile-body .card-head h2')]
         .find(h => h.textContent.includes('digital footprint'));
+      const roast = document.querySelector('#profile-body .bonus-card');
       const consolidated = document.querySelector('#profile-body .paid-consolidated');
-      if (!footprint || !consolidated) return false;
-      const inOrder = Boolean(footprint.closest('.section-card')
-        .compareDocumentPosition(consolidated) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if (!footprint || !roast || !consolidated) return false;
+      const footprintBeforeRoast = Boolean(footprint.closest('.section-card')
+        .compareDocumentPosition(roast) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const roastBeforeConsolidated = Boolean(roast.compareDocumentPosition(consolidated) &
+        Node.DOCUMENT_POSITION_FOLLOWING);
       const T = window.PsycheCopy.TEXT;
-      const want = [T.wellness, T.attachment, T.careerAssessment, T.bonus];
+      const want = [T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
       const got = [...consolidated.querySelectorAll('.premium-tier-item strong')]
         .map(node => node.textContent.trim());
-      return inOrder && want.length === got.length && want.every((title, i) => title === got[i]);
+      return footprintBeforeRoast && roastBeforeConsolidated &&
+        want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('#profile-body .paid-consolidated .premium-tier-item strong').allInnerTexts()).join(' | '));
-  // ---- the roast, and the other three, behind one $1.99 unlock ----
+  // ---- wellness, attachment, ideal partner and career, behind one $1.99 unlock ----
   //
-  // Used to run free, in the same call as everything else, behind a
-  // click-to-reveal cover. It is generated by its own paid call to Gemini
-  // now, so the cover reads as a paywall rather than a content warning. The
-  // download button below is not gated on this — it goes straight to the
-  // email dialog regardless of whether the roast has been unlocked, see
-  // "the downloadable report" further down. The cover is the consent gate,
-  // so what matters is that it really gates. A CSS blur would look identical
-  // and protect nothing — select-all copies it, a screen reader announces
-  // it, view-source hands it over — so the writing must genuinely not be in
-  // the document until a real result has arrived. This checks the DOM, not
-  // the pixels.
+  // The roast used to be the fourth of these, generated by the same paid call
+  // — it has moved back to the free report, right after the digital
+  // footprint it draws its evidence from, and its own checks now live beside
+  // that block rather than here. `idealPartner` took its place among the four
+  // paid sections instead. The download button below is not gated on any of
+  // this — it goes straight to the email dialog regardless of what has been
+  // unlocked, see "the downloadable report" further down. The cover is the
+  // consent gate, so what matters is that it really gates. A CSS blur would
+  // look identical and protect nothing — select-all copies it, a screen
+  // reader announces it, view-source hands it over — so the writing must
+  // genuinely not be in the document until a real result has arrived. This
+  // checks the DOM, not the pixels.
   //
   // The per-card badge and word-wrap checks that only make sense once each
   // section has its own card again are pinned further down, right after the
@@ -2659,15 +2673,55 @@ try {
     const el = document.querySelector('#profile-body .paid-consolidated');
     return { html: el.innerHTML, text: el.innerText };
   });
-  check('the roast\'s warning about what is behind it is included in the consolidated block',
-    /deliberately unkind/i.test(consolidatedBefore.text));
   // Against the mock's own wording, so this fails if the writing is present
   // in any form — rendered, hidden, or sitting in an attribute — before a
-  // real result has arrived.
-  check('none of the four sections\' writing is in the page until the report is unlocked',
-    !/uncharitable reading/i.test(consolidatedBefore.html) &&
-    !/unsoftened advice/i.test(consolidatedBefore.html) &&
+  // real result has arrived. The roast's own "uncharitable reading"/
+  // "unsoftened advice" are not part of this — they are free content behind
+  // their own cover now, checked separately below.
+  check('none of the four paid sections\' writing is in the page until the report is unlocked',
     !/Mock overall wellness read/i.test(consolidatedBefore.html));
+  // The roast's own free cover, checked here rather than folded into the
+  // consolidated block above: it is a separate section now, with its own
+  // consent gate rather than a shared paywall.
+  const roastBefore = await page.evaluate(() => {
+    const el = document.querySelector('#profile-body .bonus-card');
+    return { html: el.innerHTML, text: el.innerText };
+  });
+  check('the roast\'s own warning about what is behind it is on its cover',
+    /deliberately unkind/i.test(roastBefore.text));
+  check('the roast\'s writing is not in the page until its own cover is opened',
+    !/uncharitable reading/i.test(roastBefore.html) &&
+    !/unsoftened advice/i.test(roastBefore.html));
+
+  // The roast's own reveal, free and unrelated to payment — clicking it must
+  // never reach the delegated .premium-unlock listener or open a payment
+  // dialog, since .bonus-reveal is a distinct class from .premium-unlock.
+  await page.click('#profile-body .bonus-reveal');
+  check('clicking "read it anyway" reveals the roast without opening any payment dialog',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)) &&
+    /uncharitable reading/i.test(await page.locator('#profile-body .bonus-card').innerText()) &&
+    /unsoftened advice/i.test(await page.locator('#profile-body .bonus-card').innerText()));
+  check('the cover hides once the writing is shown, and the reveal button records it',
+    !(await page.locator('#profile-body .bonus-cover').isVisible()) &&
+    (await page.locator('#profile-body .bonus-reveal').getAttribute('aria-expanded')) === 'true');
+  check('the caveat travels with the writing, not left behind on the dismissed cover',
+    await page.locator('#profile-body .bonus-caveat').isVisible());
+  check('a "hide this again" control is offered once open',
+    await page.locator('#profile-body .bonus-hide').isVisible());
+
+  await page.click('#profile-body .bonus-hide');
+  check('hiding puts the cover back and takes the writing out of the page with it',
+    (await page.locator('#profile-body .bonus-cover').isVisible()) &&
+    !/uncharitable reading/i.test(await page.locator('#profile-body .bonus-card').innerHTML()) &&
+    (await page.locator('#profile-body .bonus-reveal').getAttribute('aria-expanded')) === 'false');
+  // Covering it back up and opening it again proves the gate holds more than
+  // once — a naive version that only cleared innerHTML on the way in, not on
+  // the way out, would still show blank the second time but leak on a third
+  // reveal without ever failing this specific check if it only ran once.
+  await page.click('#profile-body .bonus-reveal');
+  check('opening it a second time reveals the writing again, proving the gate is not a one-shot',
+    /uncharitable reading/i.test(await page.locator('#profile-body .bonus-card').innerText()));
+  await page.click('#profile-body .bonus-hide');
 
   await clickClear(page, '#profile-body .premium-unlock');
   await skipPremiumDataOffer(page);
@@ -2689,7 +2743,7 @@ try {
   check('the unlock dialog opens with a title and a blurb naming all four sections',
     /Unlock premium sections/.test(await page.locator('#premium-dialog-title').innerText()) &&
     /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
-    /mental wellness read, your attachment style, the career/i
+    /mental wellness read, your attachment style, what partner truly suits you/i
       .test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
   // A second, independent way to authorise the same call. Only its presence
@@ -2808,11 +2862,11 @@ try {
     await cardPage.click('#premium-card-pay');
     await cardPage.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
     const cardUnlocked = await cardPage.evaluate(() => {
-      const el = document.querySelector('#profile-body .bonus-card');
+      const el = document.querySelector('#profile-body .ideal-partner-card');
       return { text: el.innerText, coverHidden: el.querySelector('.premium-cover').hidden };
     });
     check('a successful card payment reveals the paid sections exactly as a wallet payment would',
-      /uncharitable reading/i.test(cardUnlocked.text) && cardUnlocked.coverHidden,
+      /honest verdict on what kind of partner/i.test(cardUnlocked.text) && cardUnlocked.coverHidden,
       cardUnlocked.text.slice(0, 200));
     check('and it is persisted as the real analysis, on this isolated page\'s own storage only',
       await cardPage.evaluate(() =>
@@ -2865,40 +2919,45 @@ try {
   await page.unroute('**/api/premium-analysis');
   check('the progress bar is gone once the dialog closes',
     !(await page.locator('#premium-progress').isVisible()));
-  if (shots) await page.locator('#profile-body .bonus-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
+  if (shots) await page.locator('#profile-body .ideal-partner-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
   const unlocked = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .bonus-card');
+    const card = document.querySelector('#profile-body .ideal-partner-card');
     return { text: card.innerText, coverHidden: card.querySelector('.premium-cover').hidden,
       expanded: card.querySelector('.premium-unlock').getAttribute('aria-expanded') };
   });
   // Against the mock's own wording (lib/mock.js's analysePremium) rather than
   // a paraphrase, so this fails if the real content never actually arrived.
-  check('a simulated payment closes the dialog and reveals the roast, mocked',
-    /least charitable assessment/i.test(unlocked.text) &&
-    /honest friend would tell you/i.test(unlocked.text) &&
-    /uncharitable reading/i.test(unlocked.text) &&
+  check('a simulated payment closes the dialog and reveals the paid sections, mocked',
+    /Steady, low-drama check-ins/i.test(unlocked.text) &&
+    /escalates the moment things go quiet/i.test(unlocked.text) &&
+    /honest verdict on what kind of partner/i.test(unlocked.text) &&
     unlocked.coverHidden && unlocked.expanded === 'true',
     unlocked.text.slice(0, 200));
-  check('the caveat stays on screen beside the writing',
-    /not an assessment, not a diagnosis/i.test(unlocked.text) &&
-    (await page.locator('#profile-body .bonus-caveat').isVisible()));
-  check('no clinical condition is named in the mocked content', await page.evaluate(() => {
-    const text = document.querySelector('#profile-body .bonus-card').innerText;
+  // The wellness read carries the same "not an assessment" caveat the roast
+  // used to, for the same reason: it is the paid section closest to health.
+  check('the wellness caveat stays on screen beside the writing',
+    await page.evaluate(() => {
+      const card = document.querySelector('#profile-body .wellness-card');
+      const caveat = card && card.querySelector('.wellness-caveat');
+      return /not a measurement of your mental health/i.test(card.innerText) &&
+        Boolean(caveat) && caveat.offsetParent !== null;
+    }));
+  check('no clinical condition is named in the mocked wellness content', await page.evaluate(() => {
+    const text = document.querySelector('#profile-body .wellness-card').innerText;
     return !/\b(depression|anxiety disorder|adhd|bipolar|ptsd|ocd)\b/i.test(text);
   }));
   check('the unlock is persisted as the real analysis, not a boolean flag',
     await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis;
-      return Boolean(stored) && typeof stored.harsh === 'string' && typeof stored.advice === 'string' &&
-        Boolean(stored.wellness) && Boolean(stored.attachment) && Boolean(stored.careerAssessment);
+      return Boolean(stored) && Boolean(stored.wellness) && Boolean(stored.attachment) &&
+        Boolean(stored.idealPartner) && Boolean(stored.careerAssessment);
     }));
-  // One payment, four sections: the other three have to have opened with the
-  // roast. This is the check that would catch a reveal wired to the roast
-  // alone, which is exactly what it was before these three moved behind the
-  // paywall and is the easiest thing to leave half-done.
-  check('the same payment opened all four sections, not just the roast',
+  // One payment, four sections: the other three have to have opened with
+  // idealPartner. This is the check that would catch a reveal wired to one
+  // section alone, which is the easiest thing to leave half-done.
+  check('the same payment opened all four sections, not just one',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
       return keys.every(key => {
         const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
         return card && card.querySelector('.premium-cover').hidden &&
@@ -2913,7 +2972,7 @@ try {
   // than four items under one consolidated badge.
   check('each of the four unlocked cards carries its own "Premium" badge',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
       return keys.every(key => {
         const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
         const badge = card && card.querySelector('.mode-badge');
@@ -2924,7 +2983,7 @@ try {
   // a real section heading competing with its own title text for space.
   await page.setViewportSize({ width: 375, height: 800 });
   const cardBadgeLineFragments = await page.evaluate(() =>
-    document.querySelector('#profile-body .paid-card[data-paid="bonus"] .mode-badge').getClientRects().length);
+    document.querySelector('#profile-body .paid-card[data-paid="idealPartner"] .mode-badge').getClientRects().length);
   await page.setViewportSize({ width: 1100, height: 900 });
   check('an unlocked card\'s badge never breaks its own word across two lines, even at phone width',
     cardBadgeLineFragments === 1, cardBadgeLineFragments + ' line fragment(s)');
@@ -2933,7 +2992,7 @@ try {
   //
   // Two different providers wrote different parts of the document a reader is
   // about to save or forward, so a single line naming only the free report's
-  // model would misdescribe who wrote the roast they are now reading.
+  // model would misdescribe who wrote the paid sections they are now reading.
   check('unlocking stores which provider wrote the paid sections, and when',
     await page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
@@ -3058,9 +3117,9 @@ try {
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
   check('the unlock survives a reload, so a reader who paid does not pay twice',
     await page.evaluate(() => {
-      const card = document.querySelector('#profile-body .bonus-card');
+      const card = document.querySelector('#profile-body .ideal-partner-card');
       return Boolean(card) && card.querySelector('.premium-cover').hidden &&
-        /uncharitable reading/i.test(card.innerText);
+        /honest verdict on what kind of partner/i.test(card.innerText);
     }));
   check('and the two-line footer survives the reload with it',
     /^Analysed by mock on .+\nPremium sections analysed by mock on .+\.$/
@@ -3145,7 +3204,7 @@ try {
   page.off('request', countIntents);
   check('fetching again recovers all four sections without a second charge',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      const keys = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
       return keys.every(key => {
         const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
         return card && card.querySelector('.premium-cover').hidden &&
@@ -3179,8 +3238,8 @@ try {
     JSON.stringify(wrongPromo));
   const rightPromo = await tryPromo('jialatsia');
   check('the correct promo code unlocks the analysis with no payment at all',
-    rightPromo.status === 200 && typeof rightPromo.body.data.harsh === 'string' &&
-    typeof rightPromo.body.data.advice === 'string',
+    rightPromo.status === 200 && typeof rightPromo.body.data.idealPartner === 'object' &&
+    typeof rightPromo.body.data.idealPartner.summary === 'string',
     JSON.stringify(rightPromo).slice(0, 200));
   const caseInsensitivePromo = await tryPromo('  JiaLatSia  ');
   check('the promo code is case-insensitive and tolerates surrounding whitespace',
@@ -3657,14 +3716,16 @@ try {
   // require the PDF to carry all of them, in the same order. This is what keeps
   // the two from drifting — the first version of this PDF split values from
   // beliefs, renamed half the sections and put behaviour in a different place.
-  // The roast used to be the one exception to this, excluded from the PDF
-  // outright. It is not any more: it prints for the reader who bought it, and
-  // this walk is run after the unlock above, so it is held to the same parity
-  // and ordering rules as every free section. The unpaid path — no unlock, no
-  // section anywhere in the file — is checked separately below.
+  // The roast is free now, so it prints for every reader, not just the one who
+  // bought something — but it is still the one section whose *reveal* is
+  // gated on screen (a click-to-reveal cover rather than a paywall), and this
+  // walk is run after the unlock above, so it holds the roast to the same
+  // parity and ordering rules as every other section here. The unpaid path —
+  // the four still-paid sections absent, the roast still present — is checked
+  // separately below.
   //
   // The badge is dropped before comparing because it lives inside the same
-  // <h2> as the title, so textContent reads "Let us roast you Bonus Section"
+  // <h2> as the title, so textContent reads "Mental wellness Premium"
   // while the PDF prints the title alone. Stripping `.mode-badge` rather than
   // matching that one string keeps this working for any future badged section.
   const pageSections = await page.evaluate(() =>
@@ -3676,9 +3737,10 @@ try {
 
   // "Your matches" used to be a tenth section, shown only once this device had
   // history. It was removed from the profile page — past comparisons live on
-  // the compatibility page now — so this is a fixed nine free sections, plus
-  // the roast now that it has been paid for.
-  check('the page has all its sections to compare against', pageSections.length >= 10,
+  // the compatibility page now — so this is a fixed ten free sections
+  // (including the roast, which is one of them again), plus the four paid
+  // sections now that they have been paid for.
+  check('the page has all its sections to compare against', pageSections.length >= 14,
     pageSections.length + ': ' + pageSections.join(' | '));
 
   const placed = pageSections.map(title => ({
@@ -3721,23 +3783,26 @@ try {
   const pdfProse = asProse(pdfText);
 
   // A paid section belongs to whoever paid for it, and the PDF is the copy
-  // they keep. This `pdfText` was built after the unlock above, so the roast
-  // has to be all the way in: the heading, both subheadings, and the writing
-  // itself, since a renderer could lay down the headings and drop the prose.
+  // they keep. This `pdfText` was built after the unlock above, so all four
+  // have to be all the way in: the headings, and idealPartner's own writing,
+  // since a renderer could lay down the headings and drop the prose.
   check('the PDF carries all four paid sections once they have been paid for',
     pdfText.includes('(Mental wellness)') && pdfText.includes('(Attachment style)') &&
-    pdfText.includes('(Career assessment)') &&
+    pdfText.includes('(Ideal partner traits)') && pdfText.includes('(Career assessment)') &&
+    /Steady, low-drama check-ins/i.test(pdfProse) &&
+    /honest verdict on what kind of partner/i.test(pdfProse),
+    String(pdfText.match(/\((?:Mental wellness|Attachment style|Ideal partner traits|Career assessment)\)/g)));
+  // The roast is free, so it prints regardless of what has been paid for —
+  // checked here, in the same paid pdfText, to prove paying for the other
+  // four never disturbs it. The caveat travels with the writing rather than
+  // staying on screen: in a file that gets reopened cold and forwarded it is
+  // the only thing saying what the writing is.
+  check('the PDF also carries the free roast, same as the page',
     pdfText.includes('(Let us roast you)') &&
     pdfText.includes('(The least charitable assessment of you)') &&
     pdfText.includes('(What an honest friend would tell you)') &&
-    /uncharitable reading/i.test(pdfProse) && /unsoftened advice/i.test(pdfProse),
-    String(pdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
-  // The caveat travels with it. On screen it can be scrolled back to; in a
-  // file that gets reopened cold and forwarded it is the only thing saying
-  // what the writing is, so it has to be in the file rather than beside it.
-  check('and the roast\'s caveat prints with it rather than staying on screen',
-    /not an assessment, not a diagnosis/i.test(pdfProse),
-    (/[^.]*not an assessment[^.]*\./i.exec(pdfProse) || ['not found'])[0].slice(0, 80));
+    /uncharitable reading/i.test(pdfProse) && /unsoftened advice/i.test(pdfProse) &&
+    /not an assessment, not a diagnosis/i.test(pdfProse));
   // The downloaded file is the copy that gets kept and forwarded, so it needs
   // the same two-provider record the page grew once paid content existed —
   // otherwise a reader who saves the PDF loses the one place that says a
@@ -3767,13 +3832,16 @@ try {
     return out;
   });
   const unpaidProse = asProse(unpaidPdfText);
-  check('an unpaid report has no roast in it anywhere',
-    !unpaidPdfText.includes('(Let us roast you)') &&
-    !unpaidPdfText.includes('(The least charitable assessment of you)') &&
-    !unpaidPdfText.includes('(What an honest friend would tell you)') &&
-    !/not an assessment, not a diagnosis/i.test(unpaidProse) &&
-    !/uncharitable reading/i.test(unpaidProse) && !/unsoftened advice/i.test(unpaidProse),
-    String(unpaidPdfText.match(/\((?:Let us roast you|The least charitable assessment of you|What an honest friend would tell you)\)/g)));
+  // The roast is free, so an unpaid report still carries it in full — this
+  // is the check that would catch it accidentally being gated on `unlocked`
+  // the same way the four paid sections are, which is exactly the kind of
+  // shortcut the comment above the PDF's PAID_SECTIONS table warns against.
+  check('an unpaid report still carries the free roast, heading, caveat and all',
+    unpaidPdfText.includes('(Let us roast you)') &&
+    unpaidPdfText.includes('(The least charitable assessment of you)') &&
+    unpaidPdfText.includes('(What an honest friend would tell you)') &&
+    /not an assessment, not a diagnosis/i.test(unpaidProse) &&
+    /uncharitable reading/i.test(unpaidProse) && /unsoftened advice/i.test(unpaidProse));
   // ...and it is the same report otherwise, so the check above is about the
   // paywall rather than about a build that quietly failed and returned little.
   // A free section on either side of where the paid ones were cut out, so
@@ -3782,13 +3850,15 @@ try {
   check('the unpaid report is otherwise the same document',
     unpaidPdfText.includes('(In relationships)') && unpaidPdfText.includes('(At work)') &&
     unpaidPdfText.includes('(How much to trust this)'));
-  // The other three moved behind the paywall with the roast, so the same rule
-  // covers them: absent unless bought.
-  check('and none of the other three paid sections is in it either',
+  // The four paid sections are absent unless bought — the roast moved out of
+  // this group, so the same rule now covers wellness, attachment,
+  // idealPartner and careerAssessment rather than three of them plus the roast.
+  check('and none of the four paid sections is in it either',
     !unpaidPdfText.includes('(Mental wellness)') &&
     !unpaidPdfText.includes('(Attachment style)') &&
+    !unpaidPdfText.includes('(Ideal partner traits)') &&
     !unpaidPdfText.includes('(Career assessment)'),
-    String(unpaidPdfText.match(/\((?:Mental wellness|Attachment style|Career assessment)\)/g)));
+    String(unpaidPdfText.match(/\((?:Mental wellness|Attachment style|Ideal partner traits|Career assessment)\)/g)));
   // The page and the PDF are two renderings of one document, so a subsection
   // cut from one has to be gone from the other. These four went together.
   check('the PDF dropped the same subsections the page did',
@@ -5219,7 +5289,7 @@ try {
   check('the reader gets the sections they paid for',
     (await page.evaluate(() => Object.keys(
       JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis).sort().join(','))) ===
-      'advice,attachment,careerAssessment,harsh,wellness');
+      'attachment,careerAssessment,idealPartner,wellness');
 
   // ---- the unlock pays for the free sections too, when data was added ----
   //

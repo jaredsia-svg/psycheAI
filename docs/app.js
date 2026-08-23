@@ -564,6 +564,18 @@
       '<p class="fineprint">' + esc(attachment.caveat) + '</p></div>';
   }
 
+  // ---------- ideal partner traits ----------
+  //
+  // Sits between the attachment read and the career assessment, both in
+  // PAID_SECTIONS and in the schema this reads from — it argues directly off
+  // the attachment section immediately above it rather than off a fresh
+  // pass over the digest, so the two have to stay adjacent on the page too.
+  function idealPartnerBodyHtml(idealPartner) {
+    return '<h3>' + esc(TEXT.idealPartnerNeeds) + '</h3>' + points(idealPartner.needs) +
+      '<h3>' + esc(TEXT.idealPartnerCarefulOf) + '</h3>' + points(idealPartner.carefulOf) +
+      '<h3>' + esc(TEXT.idealPartnerSummary) + '</h3>' + paragraphs(idealPartner.summary);
+  }
+
   // ---------- career assessment ----------
   //
   // The coach's read, distinct from "At work" higher up: that section
@@ -664,16 +676,16 @@
       body: attachmentBodyHtml,
     },
     {
+      key: 'idealPartner', icon: '💘', cardClass: 'ideal-partner-card',
+      title: () => TEXT.idealPartner, sub: () => TEXT.idealPartnerSub,
+      coverTitle: () => TEXT.idealPartnerCoverTitle, coverBlurb: () => TEXT.idealPartnerCoverBlurb,
+      body: idealPartnerBodyHtml,
+    },
+    {
       key: 'careerAssessment', icon: '🎯', cardClass: 'career-card',
       title: () => TEXT.careerAssessment, sub: () => TEXT.careerAssessmentSub,
       coverTitle: () => TEXT.careerCoverTitle, coverBlurb: () => TEXT.careerCoverBlurb,
       body: careerAssessmentBodyHtml,
-    },
-    {
-      key: 'bonus', icon: '🕳️', cardClass: 'bonus-card',
-      title: () => TEXT.bonus, sub: () => TEXT.bonusSub,
-      coverTitle: () => TEXT.bonusCoverTitle, coverBlurb: () => TEXT.bonusCoverBlurb,
-      body: bonusBodyHtml,
     },
   ];
 
@@ -684,9 +696,6 @@
    * a partial response degrades to missing sections rather than to a card
    * whose cover is gone and whose body is blank.
    *
-   * The roast is the one entry that is not a straight field lookup: `harsh`
-   * and `advice` are two schema fields rendered as one section, so they are
-   * recombined here rather than in the renderer.
    */
   function unlockedSections(profile) {
     const paid = profile && profile.premiumAnalysis;
@@ -694,8 +703,8 @@
     const unlocked = {};
     if (paid.wellness) unlocked.wellness = paid.wellness;
     if (paid.attachment) unlocked.attachment = paid.attachment;
+    if (paid.idealPartner) unlocked.idealPartner = paid.idealPartner;
     if (paid.careerAssessment) unlocked.careerAssessment = paid.careerAssessment;
-    if (paid.harsh || paid.advice) unlocked.bonus = { harsh: paid.harsh, advice: paid.advice };
     return unlocked;
   }
 
@@ -827,6 +836,51 @@
     return '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
       '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) +
       '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice);
+  }
+
+  // Free, behind a cover the reader has to click through — not a paid
+  // section, so it is not in PAID_SECTIONS and shares nothing with
+  // paidCard()/paidSectionsLockedHtml() beyond a similar look.
+  //
+  // The writing is NOT written into the markup here. Blurring it with CSS
+  // would look the same and protect nothing: select-all copies it, a screen
+  // reader reads it out, and view-source hands it over. Somebody who has
+  // decided not to read this should not have it on their page at all, so
+  // the cover ships alone and revealRoast() injects the writing on the
+  // click, reading it from the report object rather than out of the page.
+  function roastBlock(bonus) {
+    if (!bonus) return '';
+    return '<div class="card section-card bonus-card">' +
+      sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub)) +
+      '<div class="bonus-cover">' +
+      '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
+      '<p>' + esc(TEXT.bonusCoverBlurb) + '</p>' +
+      '<button class="btn btn-ghost bonus-reveal" type="button" aria-expanded="false">' +
+      esc(TEXT.bonusReveal) + '</button></div>' +
+      '<div class="bonus-body" hidden></div></div>';
+  }
+
+  /** Fills a cover's sibling body with the writing it was hiding. */
+  function revealRoast(cover, bonus) {
+    const card = cover.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    body.innerHTML = bonusBodyHtml(bonus) +
+      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>';
+    body.hidden = false;
+    cover.hidden = true;
+  }
+
+  /** Puts the cover back, and takes the writing out of the page with it. */
+  function hideRoast(button) {
+    const card = button.closest('.bonus-card');
+    const body = card.querySelector('.bonus-body');
+    const cover = card.querySelector('.bonus-cover');
+    body.innerHTML = '';
+    body.hidden = true;
+    cover.hidden = false;
+    const reveal = cover.querySelector('.bonus-reveal');
+    reveal.setAttribute('aria-expanded', 'false');
+    reveal.focus();
   }
 
   /**
@@ -976,6 +1030,7 @@
   // must not call history.back() a second time.
   let sampleHistoryEntry = false;
   let closingFromHistory = false;
+  let sampleReport = null;
   const sampleDialog = () => $('#sample-dialog');
 
   async function showSample(button) {
@@ -988,6 +1043,10 @@
         if (!response.ok) throw new Error('The sample could not be loaded.');
         return response.json();
       });
+      // Kept so the roast can be revealed on demand inside the sample too.
+      // Its text is deliberately not written into the markup until the
+      // reader asks for it — see roastBlock()/revealRoast().
+      sampleReport = report;
       $('#sample-body').innerHTML = reportSectionsHtml(report, { sample: true });
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -1017,6 +1076,7 @@
     // shadowing the real one's selectors — and the sections it builds are the
     // same ones the reader's own report uses.
     $('#sample-body').innerHTML = '';
+    sampleReport = null;
   });
 
   window.addEventListener('popstate', () => {
@@ -1116,6 +1176,29 @@
   document.addEventListener('click', event => {
     const unlock = event.target.closest('.premium-unlock');
     if (unlock) openPremiumDialog(unlock, 'unlock');
+  });
+
+  // Delegated for the same reason — the covers are written by innerHTML in
+  // two places, the real report and the sample dialog, and both need the
+  // same behaviour. Unlike `.premium-unlock` above, neither of these ever
+  // opens a payment dialog: the roast is free, so this only ever toggles
+  // between a cover and the writing it was hiding. The writing itself is
+  // looked up from whichever report the clicked cover belongs to rather
+  // than read out of the page, since the whole point is that it was never
+  // put in the page.
+  document.addEventListener('click', event => {
+    const reveal = event.target.closest('.bonus-reveal');
+    if (reveal) {
+      const source = event.target.closest('#sample-body')
+        ? sampleReport
+        : state.profile && state.profile.report;
+      if (!source || !source.bonus) return;
+      reveal.setAttribute('aria-expanded', 'true');
+      revealRoast(reveal.closest('.bonus-cover'), source.bonus);
+      return;
+    }
+    const hide = event.target.closest('.bonus-hide');
+    if (hide) hideRoast(hide);
   });
 
   // Same reason: sourcesUsedHtml() writes this into #profile-body's innerHTML
@@ -2505,6 +2588,13 @@
       }
       html += '</div></div>';
     }
+
+    // The roast. Free, behind a click-to-reveal cover rather than a payment,
+    // and placed right after the digital footprint it draws its evidence
+    // from — this used to sit after all four paid sections, back when it
+    // was one of them; now that it is not, it belongs with the free report
+    // it is actually part of, not stranded after the paywall.
+    html += roastBlock(report.bonus);
 
     // Everything from here to the confidence close is paid for. The four
     // sections are rendered from `PAID_SECTIONS` rather than one `if` each,

@@ -344,18 +344,11 @@
     matchScore: 'Score',
     matchWhen: 'When',
 
-    // The unsparing section. Everything the reader is told before they open it
-    // is here, because a cover that undersells what is behind it is not
-    // consent — they should be able to decide not to look. It used to run
-    // free, behind a click-to-reveal cover; it now sits behind an S$1.99
-    // unlock — shared with the wellness, attachment and career sections —
-    // so the cover reads as a paywall rather than a content warning: the
-    // price and the register both belong on it.
-    // Cover copy for the three sections that moved behind the paywall with
-    // the roast. Each says specifically what is behind it rather than
-    // gesturing at "more analysis": a reader deciding whether to pay is owed
-    // the same honesty as a reader deciding whether to look at the roast, and
-    // a vague cover is the version that sells worst *and* informs least.
+    // Cover copy for the three sections behind the paywall. Each says
+    // specifically what is behind it rather than gesturing at "more
+    // analysis": a reader deciding whether to pay is owed the same honesty
+    // as a reader deciding whether to look at the roast below, and a vague
+    // cover is the version that sells worst *and* informs least.
     wellnessCoverTitle: 'Six dimensions, read from your behaviour',
     wellnessCoverBlurb: 'Sleep and rhythm, cognitive load, social connection, physical activity, ' +
       'emotional processing and meaning — each with the evidence behind it, an honest confidence ' +
@@ -364,16 +357,34 @@
     attachmentCoverBlurb: 'Your likely attachment style with the working shown — which traces point ' +
       'there, which style was considered and rejected, and what it means in practice for you and for ' +
       'whoever is close to you.',
+
+    // Sits between the attachment read and the career assessment, in the
+    // report and in PAID_SECTIONS — it argues directly off the attachment
+    // section immediately above it, so the two have to stay adjacent.
+    idealPartner: 'Ideal partner traits',
+    idealPartnerSub: 'What you actually need in a partner, argued from your attachment style rather ' +
+      'than guessed at — and what to be careful of.',
+    idealPartnerCoverTitle: 'What kind of partner truly suits you',
+    idealPartnerCoverBlurb: 'What you actually need in a partner to be well, argued from your ' +
+      'attachment style rather than a wishlist of adjectives — what to be careful of, and an honest ' +
+      'verdict on what suits you.',
+    idealPartnerNeeds: 'What you actually need',
+    idealPartnerCarefulOf: 'What to be careful of',
+    idealPartnerSummary: 'The honest verdict',
+
     careerCoverTitle: 'A career coach on your edge',
     careerCoverBlurb: 'Where you appear to be, the thing you do reliably that most people do not, ' +
       'what you are visibly not using, the pattern most likely to cost you — and actions to take ' +
       'this week, this quarter and this year.',
+    // The title of the free click-to-reveal section now, not a paid one —
+    // see `bonusCoverTitle` above and `roastBlock()` in docs/app.js. No
+    // longer part of `PAID_SECTIONS`.
     bonus: 'Let us roast you',
     // Sits beside the title as a small badge, the same way "Coming soon"
     // does on the comprehensive depth option — a label for what the section
     // is, not a second title competing with the one it sits next to. Shared
-    // by all four paid sections, not just the roast: see `PAID_SECTIONS` in
-    // docs/app.js, which applies it uniformly.
+    // by all four paid sections: see `PAID_SECTIONS` in docs/app.js, which
+    // applies it uniformly.
     premiumBadge: 'Premium',
 
     // The premium tier block, shown twice on the way in — the insight diagram
@@ -400,15 +411,19 @@
     // control on a report that is not the reader's own.
     premiumSampleUnlockLabel: 'Unlock',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
+    // Free again, behind a click-to-reveal cover rather than a payment — the
+    // cover is a consent gate, not a paywall, so what it says is what is
+    // behind it and why somebody might want to skip it, not what it costs.
     bonusCoverTitle: 'This roast is deliberately unkind',
-    // Unlike the other three coverBlurb strings, this one used to describe
-    // payment terms rather than content — a leftover from when the roast had
-    // its own standalone "Unlock" button and cover. Now it sits in a list of
-    // four alongside the others, all under one button, so it needs to say
-    // what the section actually contains like they do — and this is the one
-    // section whose content is a genuine warning, not just a preview.
     bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above — ' +
-      'deliberately unkind, not a diagnosis, and the one section here that is not trying to be fair.',
+      'deliberately unkind, not a diagnosis, and free with the rest of this report. Read it if you ' +
+      'want the truth without the softening; skip it if you do not.',
+    // The button that opens the cover, and the one that puts it back. Unlike
+    // the paid sections' `.premium-unlock`, clicking this never reaches a
+    // payment dialog — see bonusReveal()/hideRoast() in app.js — so the
+    // labels say "read"/"hide" rather than anything about a charge.
+    bonusReveal: 'Read it anyway',
+    bonusHide: 'Hide this again',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen beside the writing rather than only appearing on the
@@ -466,17 +481,17 @@
     analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
       'again tomorrow.',
     premiumDialogTitle: 'Unlock premium sections',
-    premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, the career ' +
-      'assessment and the roast. Taken on this device — Apple Pay or Google Pay, whichever this ' +
-      'browser offers.',
+    premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, what ' +
+      'partner truly suits you and the career assessment. Taken on this device — Apple Pay or Google ' +
+      'Pay, whichever this browser offers.',
     // Shown instead of the above when the reader added a Google or Facebook
     // export on the way here. The same S$1.99 now also rewrites the free
     // sections against that data, so the price is doing more and says so
     // before it is agreed to rather than after.
-    premiumDialogBlurbWithData: 'One charge opens the mental wellness read, your attachment style, the ' +
-      'career assessment and the roast — and, because you added more data, rewrites the rest of your ' +
-      'report with it at no extra cost. Taken on this device — Apple Pay or Google Pay, whichever this ' +
-      'browser offers.',
+    premiumDialogBlurbWithData: 'One charge opens the mental wellness read, your attachment style, ' +
+      'what partner truly suits you and the career assessment — and, because you added more data, ' +
+      'rewrites the rest of your report with it at no extra cost. Taken on this device — Apple Pay or ' +
+      'Google Pay, whichever this browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     // Followed immediately by the card fallback mounting itself (see
