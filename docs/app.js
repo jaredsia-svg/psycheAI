@@ -758,19 +758,24 @@
   // click event at all, in any browser, so the delegated `.premium-unlock`
   // listener never sees it fire; that is what actually keeps a demo report
   // from opening a real payment dialog, not a scope check on the listener.
+  // Shared by paidCard and paidSectionsLockedHtml, so the two never say
+  // different things about the same button. A reader who already paid is
+  // never shown the price again — the receipt is the difference between
+  // "buy this" and "collect what you bought", and showing S$1.99 to somebody
+  // mid-resume reads as being charged twice, the single worst thing this
+  // button could imply.
+  function premiumUnlockLabel(sample) {
+    return sample
+      ? esc(TEXT.premiumSampleUnlockLabel)
+      : (hasUnfetchedUnlock()
+        ? esc(TEXT.premiumResumeLabel)
+        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel));
+  }
+
   function paidCard(section, unlocked, options) {
     const sample = Boolean(options && options.sample);
     const data = unlocked[section.key];
     const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
-    const label = sample
-      ? esc(TEXT.premiumSampleUnlockLabel)
-      // A reader who already paid is never shown the price again. The receipt
-      // is the difference between "buy this" and "collect what you bought",
-      // and showing S$1.99 to somebody mid-resume reads as being charged
-      // twice — which is the single worst thing this dialog could imply.
-      : (hasUnfetchedUnlock()
-        ? esc(TEXT.premiumResumeLabel)
-        : esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel));
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
       sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub())) +
@@ -778,9 +783,44 @@
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '"' +
-      (sample ? ' disabled' : '') + '>' + label + '</button></div>' +
+      (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button></div>' +
       '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
       (data ? section.body(data) : '') + '</div></div>';
+  }
+
+  /**
+   * Shown instead of the four individual `paidCard()` covers while nothing
+   * is unlocked yet — one block naming and explaining all four sections,
+   * with exactly one "Unlock — S$1.99" button at the bottom, rather than
+   * four separate price tags for what is in fact one purchase. Reuses the
+   * `.premium-tier` look premiumTierHtml() already established on the
+   * welcome page for the same offer, so the two read as one system; this is
+   * the one place among that family with a real, wired-up `.premium-unlock`
+   * button rather than a marketing preview.
+   *
+   * Only reached from reportSectionsHtml when `Object.keys(unlocked).length
+   * === 0` — the moment anything at all comes back from the paid call, the
+   * four sections switch to their own full cards (see paidCard) and this
+   * block does not render again, sample included.
+   */
+  function paidSectionsLockedHtml(options) {
+    const sample = Boolean(options && options.sample);
+    const items = PAID_SECTIONS.map(section =>
+      '<li class="premium-tier-item">' +
+      '<span class="premium-tier-icon" aria-hidden="true">' + section.icon + '</span>' +
+      '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
+      '<span>' + esc(section.coverBlurb()) + '</span>' +
+      '</span></li>').join('');
+    return '<div class="premium-tier paid-consolidated">' +
+      '<div class="premium-tier-head">' +
+      '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
+      '<h3>' + esc(TEXT.premiumTierTitle) + '</h3>' +
+      '</div>' +
+      '<p class="premium-tier-blurb">' + esc(TEXT.premiumTierBlurb) + '</p>' +
+      '<ul class="premium-tier-list">' + items + '</ul>' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="false"' +
+      (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button>' +
+      '</div>';
   }
 
   function bonusBodyHtml(analysis) {
@@ -861,6 +901,19 @@
    */
   function revealPaid(analysis) {
     const unlocked = unlockedSections({ premiumAnalysis: analysis });
+    // Until now the reader was looking at the single consolidated block —
+    // see paidSectionsLockedHtml — which has no per-section cover or body to
+    // fill in place. Replace it outright with the four real cards, fully
+    // unlocked, rather than trying to reveal elements that never existed
+    // inside it.
+    const consolidated = document.querySelector('#profile-body .paid-consolidated');
+    if (consolidated) {
+      consolidated.outerHTML = PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('');
+      return;
+    }
+    // Defensive fallback for the one case where individual cards could
+    // already be on screen — a stale unlock receipt from before this block
+    // existed, still holding a partial `premiumAnalysis` client-side.
     for (const section of PAID_SECTIONS) {
       const data = unlocked[section.key];
       const card = document.querySelector('#profile-body .paid-card[data-paid="' + section.key + '"]');
@@ -2447,15 +2500,26 @@
 
     // Everything from here to the confidence close is paid for. The four
     // sections are rendered from `PAID_SECTIONS` rather than one `if` each,
-    // so a reader sees the same four covers in the same order whether or not
-    // they have bought anything, and `paidCard` is the only place that
-    // decides between a cover and a body.
+    // so a reader sees the same four sections in the same order whether or
+    // not they have bought anything.
     //
     // The sample forces every section locked (`unlocked = {}`) rather than
     // reading the reader's own `paidAnalysis()` — this report belongs to
     // nobody, so it must never show *their* unlock state, paid or not.
+    //
+    // While nothing at all has come back yet, one consolidated block explains
+    // all four sections with a single "Unlock" button — not four separate
+    // price tags for what is one purchase. The instant anything is unlocked
+    // (a full response, or a partial one from a call that only returned some
+    // fields), each section gets its own full card instead, so a reader who
+    // already paid is never shown the consolidated pitch again for the
+    // section still filling in behind it.
     const unlocked = sample ? {} : paidAnalysis();
-    for (const section of PAID_SECTIONS) html += paidCard(section, unlocked, { sample });
+    if (Object.keys(unlocked).length === 0) {
+      html += paidSectionsLockedHtml({ sample });
+    } else {
+      for (const section of PAID_SECTIONS) html += paidCard(section, unlocked, { sample });
+    }
 
 
     // Confidence closes the report rather than opening it: read after the

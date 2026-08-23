@@ -356,6 +356,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .premium-tier-text strong { font-size: .92rem; line-height: 1.45; }
 .premium-tier-text span { font-size: .84rem; color: var(--ink-soft); line-height: 1.4; }
 
+/* The report's own use of this block — see paidSectionsLockedHtml() in
+   app.js — sits among .card.section-card siblings, each with their own
+   margin-bottom, so this needs the same spacing below it that .premium-tier
+   otherwise only ever had above it on the welcome page. The button is full
+   width for a report-width block; on the welcome page's narrower marketing
+   copy there is no button at all. */
+.paid-consolidated { margin-bottom: 1.2rem; }
+.paid-consolidated .btn { margin-top: 1rem; width: 100%; }
+
 /* The sample dialog. The head is pinned and only the report scrolls, so the
    cross is on screen the whole way down — a reader four sections deep should
    never have to scroll back up to leave. */

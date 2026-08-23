@@ -687,21 +687,23 @@ report"* rather than implying the sample is partial. The free report is a whole 
 incomplete in order to sell the rest would be a lie about what somebody already has.
 
 **The four paid sections used to be summarised in a footer pinned under the sample; now they render
-inline, as real covers, in the sample body itself.** `showSample()` calls the same
-`reportSectionsHtml()` the real profile page uses, passing `{ sample: true }` instead of excluding
-paid sections outright. That option does two things inside `reportSectionsHtml()` and `paidCard()`:
-it forces `unlocked = {}` regardless of the reader's own `paidAnalysis()` — this report belongs to
-nobody, so it must never leak *their* real unlock state into a page meant to show what a stranger's
-report looks like — and it renders each cover's `Unlock` button with a plain, disabled label
-(`premiumSampleUnlockLabel`) instead of the real priced or resume-labelled one. A native `disabled`
-attribute, not a script-side guard, is what keeps a click on one of these buttons from ever reaching
-the delegated `.premium-unlock` listener that opens the real payment dialog — browsers never dispatch
-a `click` event on a disabled button in the first place. Fault-injecting the `disabled` attribute away
-confirmed this: the check on the button's state failed as expected, and the click genuinely opened
-`#premium-dialog` underneath the sample, which is exactly the failure this option exists to prevent.
-Fault-injecting the `unlocked = {}` guard away (falling back to the reader's real `paidAnalysis()`)
-was caught the same way, by the check that the sample's `.premium-body` elements stay empty even when
-the reader has a real, paid, unlocked profile of their own open in the same tab.
+inline, in the sample body itself, the same way an un-unlocked real report does** — see "One
+consolidated block before unlock, four cards after" below for what that looks like today.
+`showSample()` calls the same `reportSectionsHtml()` the real profile page uses, passing
+`{ sample: true }` instead of excluding paid sections outright. That option does two things inside
+`reportSectionsHtml()` and `paidSectionsLockedHtml()`/`paidCard()`: it forces `unlocked = {}`
+regardless of the reader's own `paidAnalysis()` — this report belongs to nobody, so it must never
+leak *their* real unlock state into a page meant to show what a stranger's report looks like — and it
+renders the single `Unlock` button with a plain, disabled label (`premiumSampleUnlockLabel`) instead
+of the real priced or resume-labelled one. A native `disabled` attribute, not a script-side guard, is
+what keeps a click on that button from ever reaching the delegated `.premium-unlock` listener that
+opens the real payment dialog — browsers never dispatch a `click` event on a disabled button in the
+first place. Fault-injecting the `disabled` attribute away confirmed this: the check on the button's
+state failed as expected, and the click genuinely opened `#premium-dialog` underneath the sample,
+which is exactly the failure this option exists to prevent. Fault-injecting the `unlocked = {}` guard
+away (falling back to the reader's real `paidAnalysis()`) was caught the same way, by the check that
+the sample's `.premium-body` elements stay empty even when the reader has a real, paid, unlocked
+profile of their own open in the same tab.
 
 **The blurb names the model doing the deeper read**, not just what it covers: "These four sections
 are a deeper analysis using Claude's Sonnet model." Pairing a price with a model name is what actually
@@ -725,6 +727,43 @@ read as one system, not as two different UI languages for "what does this sectio
 `docs/copy.js`'s `insightFreeBadge`/`insightFreeNote` the same way the premium tier block is, and
 mounted outside `.insight-map` so it cannot disturb the check that counts that element's children as
 exactly the hub, the rail and the branches.
+
+### One consolidated block before unlock, four cards after
+
+The four paid sections used to each render their own card and their own `Unlock — S$1.99` button,
+even though one payment has always unlocked all four. That meant a reader met the same price four
+times, in four covers stacked one after another, before paying anything — and the `PAID_SECTIONS`
+loop that rendered them made it easy to forget this was ever one purchase rather than four.
+
+Now `reportSectionsHtml()` checks `Object.keys(unlocked).length === 0` once: while nothing has been
+bought, `paidSectionsLockedHtml()` renders a single block — the same `.premium-tier` shell already
+built for the welcome page's marketing copy — listing all four sections by title and blurb under one
+"Unlock — S$1.99" button. The instant anything comes back unlocked (a full response, or a partial one
+from a call that only returned some fields), the branch flips to the original per-section loop and
+`paidCard()` renders each of the four as its own full card. A reader never sees the four-button
+version and never sees the consolidated pitch again once they have paid — the same `unlocked` check
+governs both the sample dialog (which forces it to stay in the locked, consolidated state; see above)
+and the real report.
+
+`revealPaid()`, which runs when a payment succeeds, has to handle both starting shapes: the normal
+case swaps the single `.paid-consolidated` element outright for the four real `paidCard()`s via one
+`outerHTML` assignment; a defensive per-card in-place fill is kept underneath for the case where four
+individual covers are already on screen (a report loaded before this change, still in `localStorage`,
+opened once more), though that path is not reachable by the flow this change ships. The delegated
+`document.addEventListener('click', …)` handler that opens `openPremiumDialog` needed no new wiring:
+it matches `.premium-unlock` wherever that class appears, whether there is one button or four.
+
+The consolidated block reuses `.premium-tier`'s CSS almost verbatim — an accent-bordered block
+originally built for the non-interactive welcome-page teaser — with a couple of spacing rules added
+for the wired-up unlock button now living inside it. Checks pin the block's position (below the free
+behaviour read, above the confidence card), that it carries exactly one `Premium` badge that never
+breaks its own word at phone width, that all four section names and their content descriptions appear
+inside it, and that clicking the sample's disabled button still opens nothing. Once the real unlock
+succeeds, a parallel pair of checks confirms each of the four now-separate cards carries its own
+badge with the same word-wrap guarantee. Fault-injecting the branch to always render four individual
+cards — never the consolidated block — was caught immediately: the sample-dialog check expecting one
+`.paid-consolidated` and zero `.paid-card` elements failed, along with several checks downstream of it
+that could no longer find the element they depend on.
 
 ### The "analysed by" footer grows a second provider
 
@@ -2660,7 +2699,7 @@ npm test           # 681 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 914 checks: drives the real UI in Chromium against a
+npm run test:ui    # 915 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

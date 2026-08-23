@@ -393,8 +393,14 @@
     premiumSampleUnlockLabel: 'Unlock',
     bonusSub: 'Everything else in this report is trying to be fair. This part is not trying.',
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusCoverBlurb: 'One S$1.99 unlock opens this and the three sections above it — no account, no ' +
-      'subscription, and it stays open on this device for as long as this report does.',
+    // Unlike the other three coverBlurb strings, this one used to describe
+    // payment terms rather than content — a leftover from when the roast had
+    // its own standalone "Unlock" button and cover. Now it sits in a list of
+    // four alongside the others, all under one button, so it needs to say
+    // what the section actually contains like they do — and this is the one
+    // section whose content is a genuine warning, not just a preview.
+    bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above — ' +
+      'deliberately unkind, not a diagnosis, and the one section here that is not trying to be fair.',
     bonusHarsh: 'The least charitable assessment of you',
     bonusAdvice: 'What an honest friend would tell you',
     // Stays on screen beside the writing rather than only appearing on the

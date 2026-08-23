@@ -1295,50 +1295,44 @@ try {
     (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
     (await page.locator('#sample-dialog button:not(#sample-body button)').allInnerTexts()).join('|'));
-  // The four paid sections render inline in the sample now, as real covers —
-  // same title, same badge, same blurb a real report shows — rather than
-  // being excluded and summarised in a footer. A reader sees exactly what
-  // they would meet on their own report, including the roast's, before ever
-  // uploading anything.
-  check('all four paid sections render as covers in the sample, same as a real report',
+  // The four paid sections render inline in the sample now, inside the same
+  // single consolidated block a real un-unlocked report shows — see
+  // paidSectionsLockedHtml — rather than four separate covers or a footer of
+  // their own. A reader sees exactly what they would meet on their own
+  // report before ever uploading anything, including the roast's blurb.
+  check('the sample shows the same consolidated premium block a real report does, not four covers',
+    (await page.locator('#sample-body .paid-consolidated').count()) === 1 &&
+    (await page.locator('#sample-body .paid-card').count()) === 0);
+  check('all four sections are named and explained inside it',
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
-      return keys.every(key =>
-        document.querySelector('#sample-body .paid-card[data-paid="' + key + '"] .premium-cover'));
-    }),
-    String(await page.locator('#sample-body .paid-card').count()) + ' paid cards');
-  check('the roast\'s cover reads the same way it does on a real report',
-    /deliberately unkind/i.test(await page.locator('#sample-body .bonus-card').innerText()));
-  // What must not happen: the sample is a made-up account nobody paid to
-  // analyse, so none of the writing behind any of the four covers may be in
-  // the document, in any form — rendered, hidden, or sitting in an attribute.
-  check('none of the four sections\' actual writing is in the sample, only their covers',
-    await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
-      return keys.every(key => {
-        const card = document.querySelector('#sample-body .paid-card[data-paid="' + key + '"]');
-        const body = card && card.querySelector('.premium-body');
-        return card && !card.querySelector('.premium-cover').hidden && body && body.hidden &&
-          body.innerHTML === '';
-      });
+      const text = document.querySelector('#sample-body .paid-consolidated').textContent;
+      return ['Mental wellness', 'Attachment style', 'Career assessment', 'Let us roast you']
+        .every(name => text.includes(name));
     }));
+  check('the roast\'s blurb reads the same way it does on a real report',
+    /deliberately unkind/i.test(await page.locator('#sample-body .paid-consolidated').innerText()));
+  // What must not happen: the sample is a made-up account nobody paid to
+  // analyse, so none of the four sections' actual writing may be in the
+  // document, in any form — the consolidated block has no body content at
+  // all to leak, which this confirms rather than assumes.
+  check('none of the four sections\' actual writing is in the sample',
+    !(await page.locator('#sample-body .premium-body').count()));
   // The one thing that would turn "here is what this looks like" into "click
   // here to pay": the button has to be genuinely inert, not just plain-looking.
   // A native `disabled` attribute is what stops it dispatching a click event
   // at all — checked directly, since a visual-only "looks disabled" style
-  // would still let a click through to the real payment dialog.
-  check('every unlock button in the sample is disabled, not just relabelled',
-    (await page.locator('#sample-body .premium-unlock').count()) === 4 &&
-    (await page.locator('#sample-body .premium-unlock:disabled').count()) === 4);
-  check('and reads as a plain "Unlock" rather than a price or a resume label',
-    (await page.locator('#sample-body .premium-unlock').allInnerTexts())
-      .every(text => text.trim() === 'Unlock'),
-    (await page.locator('#sample-body .premium-unlock').allInnerTexts()).join(' | '));
+  // would still let a click through to the real payment dialog. Exactly one
+  // button now, not four.
+  check('the sample has exactly one unlock button, disabled rather than just relabelled',
+    (await page.locator('#sample-body .premium-unlock').count()) === 1 &&
+    (await page.locator('#sample-body .premium-unlock:disabled').count()) === 1);
+  check('and it reads as a plain "Unlock" rather than a price or a resume label',
+    (await page.locator('#sample-body .premium-unlock').innerText()).trim() === 'Unlock');
   // Clicking it anyway must genuinely do nothing — a disabled button should
   // make this impossible, but the delegated listener that opens the payment
   // dialog has no scope of its own, so this is the check that would actually
   // catch a regression if `disabled` were ever dropped from the markup.
-  check('clicking a sample unlock button does not open the payment dialog',
+  check('clicking the sample unlock button does not open the payment dialog',
     await page.evaluate(async () => {
       document.querySelector('#sample-body .premium-unlock').click();
       await new Promise(resolve => setTimeout(resolve, 150));
@@ -2497,28 +2491,24 @@ try {
   // guarantee is that it carries no number: a progress bar or a score under
   // "Emotional processing" would read as a measurement of something that was
   // never measured, which is the whole reason this section bands instead.
-  // All four are behind one unlock now, so before payment every one of them
-  // is a cover and none of them carries a word of the writing. The DOM is
-  // what is checked, not the pixels: a CSS blur would look identical and
-  // protect nothing, since select-all copies it, a screen reader announces it
-  // and view-source hands it over.
-  check('all four paid sections render as covers before anything is paid for',
+  // All four are behind one unlock now, so before payment there is one
+  // consolidated block naming and explaining all four, not four separate
+  // covers — see paidSectionsLockedHtml. The DOM is what is checked, not the
+  // pixels: a CSS blur would look identical and protect nothing, since
+  // select-all copies it, a screen reader announces it and view-source hands
+  // it over.
+  check('all four paid sections are named in one consolidated block before anything is paid for, with no individual covers',
+    (await page.locator('#profile-body .paid-consolidated').count()) === 1 &&
+    (await page.locator('#profile-body .paid-card').count()) === 0 &&
     await page.evaluate(() => {
-      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
-      return keys.every(key => {
-        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
-        if (!card) return false;
-        const cover = card.querySelector('.premium-cover');
-        const body = card.querySelector('.premium-body');
-        return cover && !cover.hidden && body && body.hidden && body.innerHTML === '';
-      });
-    }),
-    String(await page.locator('#profile-body .paid-card .premium-cover:not([hidden])').count()) + ' covers');
-  check('and each cover asks for the same single S$1.99 unlock',
-    (await page.locator('#profile-body .paid-card .premium-unlock').count()) === 4 &&
-    (await page.locator('#profile-body .paid-card .premium-unlock').allInnerTexts())
-      .every(t => t.includes('S$1.99')),
-    (await page.locator('#profile-body .paid-card .premium-unlock').allInnerTexts()).join(' | '));
+      const text = document.querySelector('#profile-body .paid-consolidated').textContent;
+      return ['Mental wellness', 'Attachment style', 'Career assessment', 'Let us roast you']
+        .every(name => text.includes(name));
+    }));
+  check('and there is exactly one button asking for the S$1.99 unlock, not one per section',
+    (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('S$1.99'),
+    await page.locator('#profile-body .premium-unlock').innerText());
   // The specific thing a paywall must not do: ship the writing and hide it.
   // Checked against the mock's own wording, so it fails if the free call ever
   // starts returning paid content again.
@@ -2535,17 +2525,28 @@ try {
   // reads that follow from it, then the roast. Reading it off the rendered
   // <h2>s means a section that silently moves fails here rather than in
   // whichever pairwise check happened to cover that edge.
-  check('the report tail runs footprint → wellness → attachment → career → roast',
+  // Before anything is paid for, the four paid sections are list items inside
+  // the one consolidated block rather than their own <h2> cards — see
+  // paidSectionsLockedHtml — so what is checked here is the footprint card's
+  // position ahead of that block, and the list's own item order, rather than
+  // four separate headings. The consolidated block's position relative to
+  // confidence is covered separately below.
+  check('the report tail runs footprint → consolidated block, listing wellness → attachment → career → roast',
     await page.evaluate(() => {
-      const titles = [...document.querySelectorAll('#profile-body .card-head h2')]
-        .map(h => h.textContent.trim());
-      const at = needle => titles.findIndex(t => t.includes(needle));
-      const order = ['digital footprint', 'Mental wellness', 'Attachment style',
-        'Career assessment', 'Let us roast you'].map(at);
-      return order.every(i => i >= 0) && order.every((v, i) => i === 0 || v > order[i - 1]);
+      const footprint = [...document.querySelectorAll('#profile-body .card-head h2')]
+        .find(h => h.textContent.includes('digital footprint'));
+      const consolidated = document.querySelector('#profile-body .paid-consolidated');
+      if (!footprint || !consolidated) return false;
+      const inOrder = Boolean(footprint.closest('.section-card')
+        .compareDocumentPosition(consolidated) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const T = window.PsycheCopy.TEXT;
+      const want = [T.wellness, T.attachment, T.careerAssessment, T.bonus];
+      const got = [...consolidated.querySelectorAll('.premium-tier-item strong')]
+        .map(node => node.textContent.trim());
+      return inOrder && want.length === got.length && want.every((title, i) => title === got[i]);
     }),
-    (await page.locator('#profile-body .card-head h2').allInnerTexts()).map(t => t.trim()).join(' | '));
-  // ---- the roast, behind its $1.99 unlock ----
+    (await page.locator('#profile-body .paid-consolidated .premium-tier-item strong').allInnerTexts()).join(' | '));
+  // ---- the roast, and the other three, behind one $1.99 unlock ----
   //
   // Used to run free, in the same call as everything else, behind a
   // click-to-reveal cover. It is generated by its own paid call to Gemini
@@ -2558,42 +2559,36 @@ try {
   // it, view-source hands it over — so the writing must genuinely not be in
   // the document until a real result has arrived. This checks the DOM, not
   // the pixels.
-  check('the roast card sits below the behaviour read and above confidence',
+  //
+  // The per-card badge and word-wrap checks that only make sense once each
+  // section has its own card again are pinned further down, right after the
+  // real unlock below succeeds and paidCard() actually renders one per
+  // section. The old dashed-border/striped-background cover check does not
+  // move with them: that styling only ever applied to a *locked* card, and
+  // in the new flow a reader who has paid never sees a locked individual
+  // card again — the four cards render straight into their open state. It
+  // is a deliberate consequence of this redesign, not an oversight. Here,
+  // before anything is paid for, there is one consolidated block, not four,
+  // so what is checked is that block's position, its badge, and its own
+  // single price and warning.
+  check('the consolidated premium block sits below the behaviour read and above confidence',
     await page.evaluate(() => {
-      const bonus = document.querySelector('#profile-body .bonus-card');
+      const consolidated = document.querySelector('#profile-body .paid-consolidated');
       const grid = document.querySelector('#profile-body .facet-grid');
       const behaviour = grid && grid.closest('.section-card');
       const confidence = document.querySelector('#profile-body .confidence-card');
-      if (!bonus || !behaviour || !confidence) return false;
-      return Boolean(behaviour.compareDocumentPosition(bonus) & Node.DOCUMENT_POSITION_FOLLOWING) &&
-        Boolean(bonus.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
+      if (!consolidated || !behaviour || !confidence) return false;
+      return Boolean(behaviour.compareDocumentPosition(consolidated) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(consolidated.compareDocumentPosition(confidence) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
-  // The badge is a label for what the section is, not a second title — it
-  // has to be a small pill beside the card's own title, not text that reads
-  // as part of the sentence. Shared across all four paid sections rather than
-  // specific to the roast, which is what "Premium" says and "Bonus Section"
-  // did not: the wellness read is not a bonus, it is one of the four things
-  // the reader paid for.
-  check('the roast card reads "Let us roast you", with a "Premium" badge beside it',
+  // The badge is a label for what the whole block is, not a second title — a
+  // small pill beside "Four more sections" rather than text competing with
+  // it as a sentence. One badge for one purchase now, not one per section.
+  check('the consolidated block carries a "Premium" badge beside its title',
     await page.evaluate(() => {
-      const h2 = document.querySelector('#profile-body .bonus-card .card-head h2');
-      const badge = h2 && h2.querySelector('.mode-badge');
-      return Boolean(badge) && badge.textContent.trim() === 'Premium' &&
-        h2.textContent.replace(/\s+/g, ' ').trim() === 'Let us roast you Premium';
-    }),
-    await page.evaluate(() =>
-      (document.querySelector('#profile-body .bonus-card .card-head h2') || {}).innerHTML));
-  // The other three moved behind the same paywall and carry the same label —
-  // checked as a set rather than one at a time, so a future paid section
-  // missing the badge fails here rather than needing its own copy of this
-  // check written in.
-  check('every paid section carries the same "Premium" badge, not just the roast',
-    await page.evaluate(() => {
-      const cardClasses = ['wellness-card', 'attachment-card', 'career-card', 'bonus-card'];
-      return cardClasses.every(cls => {
-        const badge = document.querySelector('#profile-body .' + cls + ' .card-head h2 .mode-badge');
-        return Boolean(badge) && badge.textContent.trim() === 'Premium';
-      });
+      const head = document.querySelector('#profile-body .paid-consolidated .premium-tier-head');
+      const badge = head && head.querySelector('.mode-badge');
+      return Boolean(badge) && badge.textContent.trim() === 'Premium';
     }));
   // A pill this narrow has room to break "Premium" mid-word on a phone-width
   // title line that is already fighting the heading text for space. The
@@ -2602,33 +2597,30 @@ try {
   // visual line, so more than one means the word broke apart.
   await page.setViewportSize({ width: 375, height: 800 });
   const badgeLineFragments = await page.evaluate(() =>
-    document.querySelector('#profile-body .bonus-card .card-head h2 .mode-badge')
-      .getClientRects().length);
+    document.querySelector('#profile-body .paid-consolidated .mode-badge').getClientRects().length);
   await page.setViewportSize({ width: 1100, height: 900 });
   check('the badge never breaks its own word across two lines, even at phone width',
     badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
 
-  check('the roast cover reads as switched off — dashed border, striped background',
-    await page.evaluate(() => {
-      const style = getComputedStyle(document.querySelector('#profile-body .bonus-card .premium-cover'));
-      return style.borderStyle.includes('dashed') && /repeating-linear-gradient/.test(style.backgroundImage);
-    }));
-  check('the roast cover names the price and offers to unlock it',
-    /\$1\.99/.test(await page.locator('#profile-body .bonus-card .premium-cover').innerText()) &&
-    (await page.locator('#profile-body .bonus-card .premium-unlock').innerText()).includes('$1.99'));
-  const roastCovered = await page.evaluate(() => {
-    const card = document.querySelector('#profile-body .bonus-card');
-    return { html: card.innerHTML, text: card.innerText };
+  check('the consolidated block names the price and offers a single unlock',
+    /\$1\.99/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
+    (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('$1.99'));
+  const consolidatedBefore = await page.evaluate(() => {
+    const el = document.querySelector('#profile-body .paid-consolidated');
+    return { html: el.innerHTML, text: el.innerText };
   });
-  check('the roast cover warns what is behind it before it is unlocked',
-    /deliberately unkind/i.test(roastCovered.text));
+  check('the roast\'s warning about what is behind it is included in the consolidated block',
+    /deliberately unkind/i.test(consolidatedBefore.text));
   // Against the mock's own wording, so this fails if the writing is present
   // in any form — rendered, hidden, or sitting in an attribute — before a
   // real result has arrived.
-  check('the card\'s writing is not in the page until the report is unlocked',
-    !/uncharitable reading/i.test(roastCovered.html) && !/unsoftened advice/i.test(roastCovered.html));
+  check('none of the four sections\' writing is in the page until the report is unlocked',
+    !/uncharitable reading/i.test(consolidatedBefore.html) &&
+    !/unsoftened advice/i.test(consolidatedBefore.html) &&
+    !/Mock overall wellness read/i.test(consolidatedBefore.html));
 
-  await clickClear(page, '#profile-body .bonus-card .premium-unlock');
+  await clickClear(page, '#profile-body .premium-unlock');
   await skipPremiumDataOffer(page);
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
   // showModal() focuses the first focusable descendant when nothing has
@@ -2707,7 +2699,7 @@ try {
       localStorage.setItem('psycheai_digest', JSON.stringify({}));
     });
     await cardPage.reload({ waitUntil: 'load' });
-    await cardPage.waitForSelector('#profile-body .bonus-card .premium-unlock');
+    await cardPage.waitForSelector('#profile-body .premium-unlock');
 
     await cardPage.route('**/api/create-payment-intent', async route => {
       const response = await route.fetch();
@@ -2735,7 +2727,7 @@ try {
       };
     });
 
-    await clickClear(cardPage, '#profile-body .bonus-card .premium-unlock');
+    await clickClear(cardPage, '#profile-body .premium-unlock');
     await skipPremiumDataOffer(cardPage);
     await cardPage.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
     await cardPage.waitForSelector('#premium-card-fallback:not([hidden])', { timeout: 10000 });
@@ -2753,9 +2745,10 @@ try {
     await cardPage.waitForSelector('#premium-card-error:not([hidden])', { timeout: 10000 });
     check('a declined card surfaces Stripe\'s own message rather than a generic one',
       (await cardPage.locator('#premium-card-error').innerText()) === 'Your card was declined.');
-    check('a decline leaves the dialog open and the section locked, so the reader can just try again',
+    check('a decline leaves the dialog open and the sections still locked, so the reader can just try again',
       (await cardPage.locator('#premium-dialog').isVisible()) &&
-      !(await cardPage.locator('#profile-body .bonus-card .premium-body').isVisible()));
+      (await cardPage.locator('#profile-body .paid-consolidated').count()) === 1 &&
+      (await cardPage.locator('#profile-body .paid-card').count()) === 0);
 
     // Same mounted card, same button, only the confirm result changes — a
     // reader who fixes a typo or swaps cards after a decline retries on the
@@ -2865,6 +2858,27 @@ try {
       });
     }),
     String(await page.locator('#profile-body .paid-card .premium-cover[hidden]').count()) + ' opened');
+
+  // Each of the four cards renders its own header, so each has to carry its
+  // own "Premium" badge now that they are separate elements again rather
+  // than four items under one consolidated badge.
+  check('each of the four unlocked cards carries its own "Premium" badge',
+    await page.evaluate(() => {
+      const keys = ['wellness', 'attachment', 'careerAssessment', 'bonus'];
+      return keys.every(key => {
+        const card = document.querySelector('#profile-body .paid-card[data-paid="' + key + '"]');
+        const badge = card && card.querySelector('.mode-badge');
+        return Boolean(badge) && badge.textContent.trim() === 'Premium';
+      });
+    }));
+  // Same word-wrap hazard as the consolidated block's badge, now checked on
+  // a real section heading competing with its own title text for space.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const cardBadgeLineFragments = await page.evaluate(() =>
+    document.querySelector('#profile-body .paid-card[data-paid="bonus"] .mode-badge').getClientRects().length);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('an unlocked card\'s badge never breaks its own word across two lines, even at phone width',
+    cardBadgeLineFragments === 1, cardBadgeLineFragments + ' line fragment(s)');
 
   // ---- the "analysed by" footer grows a second line once paid content exists ----
   //
@@ -3041,16 +3055,18 @@ try {
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
 
+  // Still one consolidated block, not four covers — nothing has actually
+  // come back yet, so the same rule as before payment applies. Its one
+  // button is what changes: a receipt exists, so it offers to fetch what
+  // was already bought rather than a price.
   check('a reader who paid but lost the analysis is not shown a price again',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
-      return buttons.length === 4 && buttons.every(b => !/1\.99/.test(b.textContent));
+      return buttons.length === 1 && !/1\.99/.test(buttons[0].textContent);
     }),
-    (await page.locator('#profile-body .premium-unlock').allInnerTexts()).join(' | '));
-  check('the covers offer to fetch what was already bought',
-    (await page.locator('#profile-body .premium-unlock').allInnerTexts())
-      .every(text => /paid for/i.test(text)),
-    (await page.locator('#profile-body .premium-unlock').allInnerTexts())[0]);
+    (await page.locator('#profile-body .premium-unlock').innerText()));
+  check('the button offers to fetch what was already bought',
+    /paid for/i.test(await page.locator('#profile-body .premium-unlock').innerText()));
 
   // The one that actually protects money: opening the dialog in this state
   // must not ask Stripe for a second PaymentIntent. Counted against the real
@@ -3060,7 +3076,7 @@ try {
     if (request.url().includes('create-payment-intent')) intentRequests++;
   };
   page.on('request', countIntents);
-  await clickClear(page, '#profile-body .bonus-card .premium-unlock');
+  await clickClear(page, '#profile-body .premium-unlock');
   // No data offer on this path: the receipt already exists, so this reader is
   // collecting sections they paid for rather than starting a new unlock.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
