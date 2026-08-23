@@ -411,7 +411,13 @@
 <dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
     <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
     <div class="card-dialog-bar">
-      <button class="btn" id="card-download" type="button"></button>
+      <!-- Download on the left, share on the right — icons only, aria-labels
+           set from docs/copy.js at render time like every other label here. -->
+      <div class="card-dialog-actions">
+        <button class="btn btn-icon" id="card-download" type="button">⬇</button>
+        <button class="btn btn-icon" id="card-share" type="button">⤴</button>
+      </div>
+      <p class="card-dialog-status" id="card-dialog-status" hidden></p>
     </div>
     <button class="card-dialog-close" id="card-dialog-close" type="button" aria-label="Close">✕</button>
   </dialog>

@@ -705,10 +705,13 @@ away (falling back to the reader's real `paidAnalysis()`) was caught the same wa
 the sample's `.premium-body` elements stay empty even when the reader has a real, paid, unlocked
 profile of their own open in the same tab.
 
-**The blurb names the model doing the deeper read**, not just what it covers: "These four sections
-are a deeper analysis using Claude's Sonnet model." Pairing a price with a model name is what actually
-distinguishes the paid tier from the free one on the page — a reader can see not just what they get,
-but who writes it, before deciding whether that is worth the difference.
+**The blurb used to name the model doing the deeper read** — "These four sections are a deeper
+analysis using Claude's Sonnet model" — and now reads "These four sections provide you with deeper
+insights:" instead, dropping the provider name from marketing copy a reader sees before paying
+anything. The provenance itself is not hidden: which model actually wrote the paid sections still
+appears after the fact, in the report's own "analysed by" footer (see below), which is the honest
+place for it — spoken in the past tense, about a specific report, rather than as a selling point on a
+page for an account that has not uploaded anything yet.
 
 **The block used to close with a line about payment terms** — "One payment, on the device you read
 it on. No account, no subscription, and nothing recurring" — under the price and the section list.
@@ -2255,6 +2258,30 @@ that live in `index.html` — is not the culprit. The file's *comments* mention 
 Reading `cssText` off the CSSOM sidesteps it for free, because the parser has already stripped every
 comment.
 
+**Download sits on the left, share on the right, both icon-only.** The full-screen bar used to carry
+one button, centred, with a visible label — "Download as image". A share button joined it, and with
+two buttons a visible label each would have doubled the bar's width for no real gain, so both became
+icon-only, keeping their old copy as `aria-label` (`cardDownload`, plus a new `cardShare`) rather than
+dropping it. `docs/app.js` still sets both from `docs/copy.js` at render time, the same as every other
+label in the app — the icon glyphs themselves are the one exception, hardcoded in `index.html`
+directly, since they are not language-dependent copy. A shared status line under the pair
+(`#card-dialog-status`) carries a failure from either button now, since neither one has visible text
+left of its own for an error to borrow the way the old download button once did.
+
+Sharing reuses `cardImageBlob()` outright — the same rasterised PNG the download button already
+built — wrapped in a `File`, and calls the Web Share API only where `navigator.canShare({ files })`
+says a file can actually be shared: Safari and Chrome on a phone, not desktop Chrome or Firefox, where
+it silently falls back to the same download instead. A share button that did nothing on the browsers
+that cannot show a share sheet would be worse than one that hands over the file another way. Declining
+the share sheet (`AbortError`) is treated as success, not a failure to fall back from — the reader
+made a choice, not a mistake. Two checks cover both branches: the download fallback (`navigator.share`
+is genuinely absent in headless Chromium) and, with `navigator.share`/`canShare` stubbed the way Stripe
+is stubbed elsewhere in this suite, that the real call receives an actual PNG `File` rather than a
+link or text. Fault-injecting the branch that decides between them — forcing the download fallback
+even when Web Share is stubbed as available — reproduced the failure as a hard timeout waiting for the
+stub to be called, rather than a clean assertion, which is itself the point: nothing else in the flow
+can substitute for that branch actually running.
+
 **The download button at the top of the page is gone**, leaving the one at the foot. Two buttons put
 the exit before the thing being exited; somebody who has read the report is at the bottom of it.
 
@@ -2723,7 +2750,7 @@ npm test           # 681 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 917 checks: drives the real UI in Chromium against a
+npm run test:ui    # 922 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

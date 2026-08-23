@@ -204,7 +204,15 @@
     // and a check in the UI suite fails if app.js types any of them itself.
     cardSection: 'Summary card',
     cardHint: 'Tap to open full screen',
+    // Both buttons are icon-only now — download on the left, share on the
+    // right, the order a reader meets them reading left to right — so these
+    // two strings live on as their aria-labels rather than as visible text.
     cardDownload: 'Download as image',
+    cardShare: 'Share',
+    // One shared status line under both icon buttons rather than each
+    // swallowing its own label on failure, since neither button has visible
+    // text left to borrow for an error message.
+    cardImageError: 'Could not build the image',
 
     // The report still downloads straight to the reader's device; the dialog
     // just asks for an address first and says what happens to it.
@@ -379,7 +387,7 @@
     // because the free report is a whole report and calling it partial to
     // sell the rest would be a lie about what somebody already has.
     premiumTierTitle: 'Four more sections',
-    premiumTierBlurb: 'These four sections are a deeper analysis using Claude\'s Sonnet model:',
+    premiumTierBlurb: 'These four sections provide you with deeper insights:',
     // The free half's own line, shown once above the four free branches — the
     // parallel statement to premiumTierBlurb above, so a reader sees what each
     // half costs and which model writes it before choosing to upload anything.

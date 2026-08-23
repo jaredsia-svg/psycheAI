@@ -2603,7 +2603,11 @@
     $('#psyche-card-section').hidden = !cardHtml;
     $('#psyche-card-title').textContent = TEXT.cardSection;
     $('#psyche-card-hint').textContent = TEXT.cardHint;
-    $('#card-download').textContent = TEXT.cardDownload;
+    // Icon-only buttons: the label lives in aria-label rather than in text a
+    // sighted reader would see, so this still has to be set from copy.js
+    // rather than hardcoded in index.html like the icon glyphs themselves.
+    $('#card-download').setAttribute('aria-label', TEXT.cardDownload);
+    $('#card-share').setAttribute('aria-label', TEXT.cardShare);
     layoutPsycheCard();
 
     // The sources subsection and the re-run button are built into this HTML
@@ -3051,28 +3055,78 @@
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   }
 
+  function cardImageName() {
+    return 'psycheai-card-' +
+      String((state.profile && state.profile.card && state.profile.card.name) || 'me')
+        .toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  function triggerDownload(blob, name) {
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = name;
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
+  }
+
+  // Shared by both icon buttons: neither carries visible text of its own any
+  // more for a failure to borrow, so an error from either one shows up here
+  // instead of inside the button.
+  function flashCardStatus(message) {
+    const status = $('#card-dialog-status');
+    if (!status) return;
+    status.textContent = message || '';
+    status.hidden = !message;
+    if (message) setTimeout(() => { status.hidden = true; status.textContent = ''; }, 3000);
+  }
+
   async function downloadCardImage(event) {
     const button = event.currentTarget;
-    const label = button.textContent;
     if (button.disabled) return;
     button.disabled = true;
     try {
       const blob = await cardImageBlob();
       if (!blob) throw new Error('empty');
-      const name = 'psycheai-card-' +
-        String((state.profile && state.profile.card && state.profile.card.name) || 'me')
-          .toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = name + '.png';
-      link.href = href;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 10000);
+      triggerDownload(blob, cardImageName() + '.png');
     } catch (error) {
-      button.textContent = 'Could not build the image';
-      setTimeout(() => { button.textContent = label; }, 3000);
+      flashCardStatus(TEXT.cardImageError);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  // The Web Share API can share a file only on the browsers that actually
+  // support it — Safari and Chrome on a phone, not desktop Chrome or
+  // Firefox — and canShare() is how a browser says so up front rather than
+  // share() throwing after the fact. Where it is missing, or present but
+  // unable to share an image specifically, this falls back to the same
+  // download the other button offers: a share button that silently does
+  // nothing would be worse than one that hands over the file another way.
+  async function shareCardImage(event) {
+    const button = event.currentTarget;
+    if (button.disabled) return;
+    button.disabled = true;
+    try {
+      const blob = await cardImageBlob();
+      if (!blob) throw new Error('empty');
+      const name = cardImageName() + '.png';
+      const file = new File([blob], name, { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: TEXT.cardSection });
+          return;
+        } catch (error) {
+          // The reader opened the share sheet and backed out themselves —
+          // not a failure, and not something to fall back from.
+          if (error && error.name === 'AbortError') return;
+        }
+      }
+      triggerDownload(blob, name);
+    } catch (error) {
+      flashCardStatus(TEXT.cardImageError);
     } finally {
       button.disabled = false;
     }
@@ -3088,6 +3142,7 @@
 
   $('#psyche-card-open').addEventListener('click', openPsycheCard);
   $('#card-download').addEventListener('click', downloadCardImage);
+  $('#card-share').addEventListener('click', shareCardImage);
   $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
   // Clicking the backdrop closes it: the dialog element itself fills the screen,
   // so a click that lands on it rather than on the card is a click outside.

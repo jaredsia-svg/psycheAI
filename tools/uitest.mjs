@@ -2171,10 +2171,22 @@ try {
   // back and look for the card's own gradient.
   await page.click('#psyche-card-open');
   await page.waitForTimeout(250);
-  check('the full-screen view offers a download', await page.locator('#card-download').isVisible());
-  check('and says what it does',
-    (await page.locator('#card-download').innerText()) === 'Download as image',
-    await page.locator('#card-download').innerText());
+  check('the full-screen view offers a download and a share button',
+    (await page.locator('#card-download').isVisible()) &&
+    (await page.locator('#card-share').isVisible()));
+  check('both are icon-only, labelled for a screen reader rather than in visible words',
+    !/[a-zA-Z]/.test(await page.locator('#card-download').innerText()) &&
+    !/[a-zA-Z]/.test(await page.locator('#card-share').innerText()) &&
+    (await page.locator('#card-download').getAttribute('aria-label')) === 'Download as image' &&
+    (await page.locator('#card-share').getAttribute('aria-label')) === 'Share');
+  check('download sits to the left of share, the order a reader meets them',
+    await page.evaluate(() => {
+      const dl = document.querySelector('#card-download').getBoundingClientRect();
+      const sh = document.querySelector('#card-share').getBoundingClientRect();
+      return dl.left < sh.left;
+    }));
+  check('the shared status line under both buttons starts out hidden',
+    await page.evaluate(() => document.querySelector('#card-dialog-status').hidden));
   const [cardDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
     page.click('#card-download'),
@@ -2218,6 +2230,43 @@ try {
     JSON.stringify(pngSize));
   check('and is actually drawn, not a blank canvas',
     pngSize.colours > 20 && pngSize.purple > 2000, JSON.stringify(pngSize));
+
+  // Headless Chromium has neither navigator.share nor navigator.canShare, so
+  // the share button's own fallback is what a real desktop Chrome or Firefox
+  // reader would actually get too: the exact same download the other button
+  // offers, rather than a button that silently does nothing.
+  check('this browser has no Web Share support to fall back from',
+    await page.evaluate(() => typeof navigator.share === 'undefined' ||
+      typeof navigator.canShare === 'undefined'));
+  const [cardShareFallback] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#card-share'),
+  ]);
+  check('without Web Share support, the share button falls back to downloading the same image',
+    /^psycheai-card-.*\.png$/.test(cardShareFallback.suggestedFilename()),
+    cardShareFallback.suggestedFilename());
+
+  // Stubbed the way Stripe is elsewhere in this suite: a fake standing in
+  // for a real implementation this headless build does not have, so the
+  // branch that actually calls navigator.share gets exercised too, not just
+  // the fallback every browser here would otherwise take.
+  await page.evaluate(() => {
+    window.__shareCaptured = null;
+    navigator.canShare = () => true;
+    navigator.share = async data => {
+      const file = (data.files || [])[0];
+      window.__shareCaptured = { title: data.title, fileCount: (data.files || []).length,
+        fileType: file && file.type, fileName: file && file.name };
+    };
+  });
+  await page.click('#card-share');
+  await page.waitForFunction(() => window.__shareCaptured !== null, { timeout: 15000 });
+  const shareCall = await page.evaluate(() => window.__shareCaptured);
+  check('where Web Share is actually supported, it is handed a real PNG file rather than a link',
+    Boolean(shareCall) && shareCall.fileCount === 1 && shareCall.fileType === 'image/png' &&
+    /^psycheai-card-.*\.png$/.test(shareCall.fileName || ''),
+    JSON.stringify(shareCall));
+
   await page.click('#card-dialog-close');
   await page.waitForTimeout(150);
 
