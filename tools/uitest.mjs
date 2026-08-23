@@ -2034,6 +2034,21 @@ try {
       const style = getComputedStyle(document.querySelector('#psyche-card-full .pc-letters'));
       return style.display === 'grid' && style.gridTemplateColumns.split(' ').length === 2;
     }));
+  // With three stat boxes, the narrow card's two-column grid otherwise leaves
+  // Big Five as the odd one, orphaned alone at half the card's width on row
+  // two — reported from a real phone. It should span the full row instead.
+  check('Big Five spans the full row on a narrow card rather than sitting orphaned at half width',
+    await page.evaluate(() => {
+      const card = document.querySelector('#psyche-card-full');
+      card.classList.add('pc-narrow');
+      const stats = [...card.querySelectorAll('.pc-stats .pc-stat')];
+      const bigfive = card.querySelector('.pc-stat-bigfive');
+      const ok = stats.length === 3 && bigfive &&
+        Math.round(bigfive.getBoundingClientRect().width) >
+          Math.round(stats[0].getBoundingClientRect().width) * 1.5;
+      card.classList.remove('pc-narrow');
+      return ok;
+    }));
   check('every block on the card is labelled with an icon',
     await page.evaluate(() => {
       const labs = [...document.querySelectorAll('#psyche-card .pc-lab')];

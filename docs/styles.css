@@ -1678,6 +1678,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    side by side — and a narrower card is what lets the whole thing be drawn
    larger on a phone, so the column count gives way rather than the width. */
 .psyche-card.pc-narrow .pc-stats { grid-template-columns: 1fr 1fr; }
+/* With three stat boxes (type, Enneagram, Big Five) that leaves Big Five as
+   the odd one, orphaned alone on row two at half the card's width. Span it
+   across both columns instead so it reads as its own full-width row rather
+   than a box that lost its neighbour. Scoped to :nth-child(3) so the two-box
+   case (no Enneagram) is untouched — there Big Five is the second child and
+   already sits correctly beside type. */
+.psyche-card.pc-narrow .pc-stat-bigfive:nth-child(3) { grid-column: 1 / -1; }
 .psyche-card.pc-narrow .pc-letters { gap: 4px; }
 .psyche-card.pc-narrow .pc-letter b { font-size: 34px; }
 .psyche-card.pc-narrow .pc-letter i { font-size: 13px; }
