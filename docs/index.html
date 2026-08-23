@@ -443,13 +443,12 @@
        message would look like they had lost it. -->
   <div id="profile-alert" class="alert no-print" hidden></div>
 
-  <!-- Filled by renderProfile only once the free analysis is spent, so a
-       first-time reader is never shown a price for something still free. -->
-  <p class="fineprint no-print" id="rerun-price-note" hidden></p>
-
+  <!-- #rerun-with-data and its price note now live inside the confidence
+       card's "Sources used" subsection — see sourcesUsedHtml() in app.js —
+       rather than here, so the button sits beside the sources a re-run would
+       actually use. -->
   <div class="cta-row no-print">
     <button class="btn" id="export-pdf-bottom">Download full report</button>
-    <button class="btn btn-ghost" id="rerun-with-data" type="button" hidden>Re-run analysis with additional data</button>
     <button class="btn" id="test-compat-open" type="button">Test compatibility</button>
     <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
   </div>

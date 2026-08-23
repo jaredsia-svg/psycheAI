@@ -486,6 +486,17 @@
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',
     trustScore: 'Confidence: ',
+    sourcesUsed: 'Sources used',
+    sourcesUsedHint: 'You can raise this report’s confidence by adding more sources of data. ' +
+      'Instagram and Google together are the ideal combination — Instagram reads your outward ' +
+      'persona, the self you present; Google reads your inward self, what you search and watch when ' +
+      'no one is looking.',
+    sourceInstagram: 'Instagram',
+    sourceGoogle: 'Google Takeout',
+    sourceFacebook: 'Facebook',
+    sourceLoaded: 'Loaded',
+    sourceLoadData: 'Load data',
+    rerunAnalysis: 'Re-run analysis',
 
     glanceType: 'Type',
     glanceHighest: 'Highest',

@@ -40,6 +40,21 @@ async function clickClear(page, selector) {
   await page.click(selector);
 }
 
+// A Node-side array like analyseBodies cannot be observed from
+// page.waitForFunction, which only ever sees the page's own window — so a
+// path with no UI-visible completion signal (the rerun stays on
+// #view-profile throughout, unlike a first upload's working screen) has to
+// poll the array itself rather than something in the DOM.
+async function waitForLength(array, target, timeout) {
+  const deadline = Date.now() + (timeout || 10000);
+  while (array.length < target) {
+    if (Date.now() > deadline) {
+      throw new Error('waitForLength: timed out at length ' + array.length + ', wanted ' + target);
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
+
 // Most of this suite is about what the app *does*, not what it charges for,
 // and every analysis after the first now costs S$0.99 — so a flow that runs
 // two would stop at a payment sheet it was never written to expect. Clearing
@@ -52,10 +67,36 @@ async function clearRunCount(page) {
 }
 
 // The re-run button, pressed with a free analysis in hand so it goes straight
-// to the supplement offer rather than to the payment sheet.
+// to the review dialog rather than to the payment sheet. Clears the run
+// count first — see clearRunCount above — then clicks #rerun-with-data,
+// which lives inside the confidence card's "Sources used" subsection now
+// (see sourcesUsedHtml in app.js), not the page's own action row.
 async function startFreeRerun(page) {
   await clearRunCount(page);
-  await startFreeRerun(page);
+  await clickClear(page, '#rerun-with-data');
+}
+
+// The per-row "Load data" button in that same subsection: opens the
+// Google/Facebook offer (Skip available, unlike the old forced re-run
+// offer), adds one archive, and presses Continue — the free, no-review,
+// no-payment way a source gets into the digest before a rerun.
+async function loadSource(page, source, buffer, name) {
+  await clickClear(page, '.source-load-btn[data-source="' + source + '"]');
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
+  await addSupplement(page, source, buffer, name);
+  await page.click('#supplement-continue');
+  await page.waitForFunction(() => !document.querySelector('#supplement-dialog').open, { timeout: 15000 });
+  // The dialog's own `open` flag clears synchronously on close, a tick before
+  // loadSupplementSource's merge-and-renderProfile() runs — so waiting only
+  // on the dialog leaves a real race for any caller that immediately queries
+  // #profile-body afterwards (it replaces the whole subtree, including
+  // #rerun-with-data and every .source-load-btn, as new elements). Waiting
+  // on the digest actually reflecting the source is a readiness signal that
+  // is only ever written on the same synchronous turn as the re-render.
+  await page.waitForFunction(source => {
+    const d = localStorage.getItem('psycheai_digest');
+    return d && Boolean(JSON.parse(d)[source]);
+  }, source, { timeout: 15000 });
 }
 
 // Pressing the unlock button now opens the Google/Facebook offer FIRST, and
@@ -3079,17 +3120,14 @@ try {
   // Held as an exact list rather than as "contains", so a control cannot
   // reappear here unnoticed. A flat "re-run the analysis" button was once one
   // of three and was removed outright — nothing offered a second model call
-  // on the *same* export. #rerun-with-data is not that button back: it only
-  // ever appears when this session still holds the Instagram export in
-  // memory and no supplement has been added yet (see renderProfile), and it
-  // exists specifically to add a Google or Facebook export before rerunning —
-  // see the "…with additional data" checks further down for that path. This
-  // real Instagram-only upload is exactly the case where it is expected.
-  check('the report closes on exactly the four housekeeping actions, including the conditional rerun button',
+  // on the *same* export. #rerun-with-data lives inside the confidence card's
+  // "Sources used" subsection now, not this row — see the "sources used" and
+  // "re-run analysis" checks further down for that path.
+  check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Download full report | Re-run analysis with additional data | ' +
-        'Test compatibility | Delete everything' &&
-    (await page.locator('#reanalyse').count()) === 0,
+      .map(t => t.trim()).join(' | ') === 'Download full report | Test compatibility | Delete everything' &&
+    (await page.locator('#reanalyse').count()) === 0 &&
+    (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
   check('MBTI still comes before the relationship sections', at('MBTI') < at('In relationships'));
 
@@ -4733,65 +4771,98 @@ try {
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
-  // ---- "Re-run analysis with additional data" from the report page ----
+  // ---- the confidence card's "Sources used" subsection ----
   //
-  // Offered whenever the stored digest was written from Instagram alone —
-  // a fact about the report, not about the tab, so it has to survive a
-  // reload. Reuses the same supplement→review dialogs the first upload does,
-  // with Skip never offered: the reader pressed this button specifically to
-  // add a source, so there is nothing truthful "skip" could say here.
-  check('the button is offered after an Instagram-only upload',
+  // Instagram, Google Takeout and Facebook each get a row: a tick if the
+  // stored digest already carries that source, a "Load data" button if not.
+  // Loading a source is free and immediate; #rerun-with-data at the bottom
+  // of the same subsection is the one thing that costs money, and goes
+  // straight to the review — no supplement offer in between any more, since
+  // that is now this row's own job.
+  check('Instagram is ticked and the other two sources offer "Load data"',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
+      const of = name => rows.find(r => r.querySelector('.source-name').textContent.includes(name));
+      return rows.length === 3 &&
+        Boolean(of('Instagram').querySelector('.source-tick')) &&
+        Boolean(of('Google').querySelector('.source-load-btn')) &&
+        Boolean(of('Facebook').querySelector('.source-load-btn'));
+    }));
+  check('the hint about combining Instagram and Google for confidence is shown while a source is missing',
+    /instagram and google/i.test(await page.locator('.trust-sources > p.muted').innerText()),
+    await page.locator('.trust-sources > p.muted').innerText());
+  check('the re-run button is offered after an Instagram-only upload',
     await page.locator('#rerun-with-data').isVisible());
 
-  // The regression this section exists to prevent. Keying the button to the
-  // in-memory export (state.signals) made it vanish on reload — which is
-  // exactly when a reader coming back to a saved report would look for it.
-  // It is the digest that decides now, and the digest is persisted.
+  // The regression the old version of this section existed to prevent, still
+  // true of the sources subsection now: it reads the *stored digest*, not the
+  // in-memory export, so it has to survive a reload.
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
-  check('the button survives a reload, since the digest it reads is persisted',
-    await page.locator('#rerun-with-data').isVisible(),
-    'hidden=' + (await page.evaluate(() => document.querySelector('#rerun-with-data').hidden)));
+  check('the sources subsection and its button survive a reload',
+    await page.locator('#rerun-with-data').isVisible() &&
+    (await page.locator('.trust-sources .source-row').count()) === 3);
 
-  // And it is genuinely usable there, not just visible. This is the shape the
-  // reader actually asked for and the regression worth pinning: pressing it
-  // opens the Google/Facebook popout *immediately*, with the same two sources
-  // and the same instructions a first upload offers. An earlier version asked
-  // for the Instagram archive through an OS file picker first, which reads as
-  // a broken button — so the absence of that picker is asserted too, not just
-  // the presence of the dialog.
-  let rerunPickerOpened = false;
-  const noteChooser = () => { rerunPickerOpened = true; };
+  // "Load data" opens the same popout a first upload offers — Skip included,
+  // since loading a source here is genuinely optional, unlike the old forced
+  // re-run offer.
+  let loadPickerOpened = false;
+  const noteChooser = () => { loadPickerOpened = true; };
   page.on('filechooser', noteChooser);
-  await startFreeRerun(page);
+  await clickClear(page, '.source-load-btn[data-source="google"]');
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
   await page.waitForTimeout(300);
   page.off('filechooser', noteChooser);
-  check('pressing it after a reload opens the supplement popout straight away',
-    await page.locator('#supplement-dialog').isVisible());
-  check('and does not demand the Instagram export again first',
-    !rerunPickerOpened);
-  check('the blurb does not offer to skip, since there is no Skip button here',
-    !/skip/i.test(await page.locator('#supplement-dialog-blurb').innerText()),
-    await page.locator('#supplement-dialog-blurb').innerText());
+  check('"Load data" opens the supplement popout straight away, without asking for the Instagram export again',
+    (await page.locator('#supplement-dialog').isVisible()) && !loadPickerOpened);
+  check('Skip is offered here — loading a source is optional, unlike the old forced re-run offer',
+    await page.locator('#supplement-skip').isVisible());
   check('the popout offers both sources, exactly as a first upload does',
     (await page.locator('#supplement-dialog .mode-option').count()) === 2 &&
     (await page.evaluate(() => [...document.querySelectorAll('#supplement-dialog .mode-option')]
       .map(b => b.dataset.supplement).join(','))) === 'google,facebook');
-  // textContent, not innerText: the instructions sit inside a collapsed
-  // <details>, so innerText would return the summary line alone and this would
-  // fail for a reason that has nothing to do with the instructions being there.
   check('with the download instructions along with them',
     (await page.locator('#supplement-dialog .supplement-help').count()) === 1 &&
     /takeout\.google\.com/i.test(await page.evaluate(() =>
       document.querySelector('#supplement-dialog .supplement-help').textContent)));
+  // Since Skip is genuinely available now (requireAtLeastOne is false),
+  // Escape closes the dialog the same way a <dialog> always does natively —
+  // the old forced-offer's blockEscape only applies to the rerun flow, which
+  // no longer opens this dialog at all.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  check('Escape closes the popout, since nothing here requires a source to be added',
+    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
+  check('and no payment sheet appeared, since loading a source is free',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
 
   // Adding a source to a saved report has to work without the archive, by
   // merging into the stored digest — the whole reason the Instagram re-ask
-  // could be dropped. Checked end to end, against the real request body.
-  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
-  await page.click('#supplement-continue');
+  // could be dropped — and it must not send anything to the model by itself.
+  const beforeLoad = analyseBodies.length;
+  await loadSource(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.waitForFunction(() => {
+    const d = localStorage.getItem('psycheai_digest');
+    return d && Boolean(JSON.parse(d).google);
+  }, { timeout: 30000 });
+  check('loading a source merges it into the stored digest immediately',
+    await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')).coverage.sources.join(',')) ===
+      'instagram,google');
+  check('and sends nothing to the model — loading data is free',
+    analyseBodies.length === beforeLoad);
+  check('the row now ticks instead of offering "Load data" again',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
+      const google = rows.find(r => r.querySelector('.source-name').textContent.includes('Google'));
+      return Boolean(google.querySelector('.source-tick')) && !google.querySelector('.source-load-btn');
+    }));
+
+  // Now press "Re-run analysis": straight to the review, carrying the
+  // already-loaded source — no supplement popout reopens for it.
+  await clickClear(page, '#rerun-with-data');
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('the re-run goes straight to review — the supplement popout does not reopen',
+    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
   check('the merged digest brings the Google rows into the review',
     (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
   check('and the photos row explains why it is empty rather than looking like an export with none',
@@ -4801,10 +4872,15 @@ try {
   const beforeMergedSend = analyseBodies.length;
   await page.click('#review-send');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
-  await page.waitForFunction(() => {
-    const d = localStorage.getItem('psycheai_digest');
-    return d && Boolean(JSON.parse(d).google);
-  }, { timeout: 60000 });
+  // This run is paid — run #1 already spent the free allowance — so the
+  // payment sheet is the next stop, not the model.
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  check('re-running with the loaded data still asks to pay before analysing',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis');
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await page.click('#premium-mock-pay');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   const mergedBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('the request carries a digest with both the Instagram evidence and the new Google block',
     Boolean(mergedBody.digest.google) && mergedBody.digest.samples.captions.length > 0 &&
@@ -4815,6 +4891,8 @@ try {
   check('and the merged digest still respects the character budget',
     mergedBody.digest.coverage.digestChars <= 240991,
     mergedBody.digest.coverage.digestChars + ' chars');
+  check('the re-run button stays offered — it is a general action now, not spent by one use',
+    await page.locator('#rerun-with-data').isVisible());
 
   // Back to an Instagram-only session for the rest of this block, which
   // exercises the in-memory path (photographs and all).
@@ -4827,30 +4905,25 @@ try {
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
 
-  await startFreeRerun(page);
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 10000 });
-  check('Skip is never offered on this path, unlike the first-upload offer',
-    !(await page.locator('#supplement-skip').isVisible()));
-
-  // Escape is the one path Skip being hidden does not already close off — a
-  // <dialog> still closes on it natively unless something stops that.
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(200);
-  check('Escape does not dismiss the dialog while nothing has been added yet',
-    await page.evaluate(() => document.querySelector('#supplement-dialog').open));
-
-  // Back is still the one way out, and it must cost nothing: the report on
-  // screen was already paid for (in generation time, at least) and must
-  // survive a reader changing their mind here.
-  const digestBeforeBack = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
-  const analysesBeforeBack = analyseBodies.length;
-  await page.click('#supplement-back');
-  await page.waitForTimeout(200);
-  check('Back leaves the report and its digest exactly as they were',
-    (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeBack &&
+  // Declining the re-run's payment sheet costs nothing and leaves the report
+  // and its digest exactly as they were — the same "money last" guarantee
+  // as the old flow, just reached without a supplement dialog first now.
+  // Not startFreeRerun: the free allowance from the upload just above is
+  // already spent, and this check specifically needs the payment sheet to
+  // appear so there is something to decline.
+  const digestBeforeDecline0 = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
+  const analysesBeforeDecline0 = analyseBodies.length;
+  await clickClear(page, '#rerun-with-data');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  await page.click('#review-send');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  await page.click('#premium-cancel');
+  await page.waitForTimeout(300);
+  check('declining the re-run leaves the report and its digest exactly as they were',
+    (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeDecline0 &&
     (await page.locator('#view-profile').isVisible()) &&
-    analyseBodies.length === analysesBeforeBack);
-  check('the button is offered again after cancelling, rather than being spent by the attempt',
+    analyseBodies.length === analysesBeforeDecline0);
+  check('the button is offered again after declining, rather than being spent by the attempt',
     await page.locator('#rerun-with-data').isVisible());
 
   // Unlock premium first, with the promo code — mock mode's cash-free path,
@@ -4865,16 +4938,13 @@ try {
   }, { timeout: 30000 });
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
 
-  // Now actually add a source and follow it through to a real rerun.
-  await startFreeRerun(page);
-  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
-  check('once something is added, Continue appears and Skip stays out of the way',
-    (await page.locator('#supplement-continue').isVisible()) &&
-    !(await page.locator('#supplement-skip').isVisible()));
-
-  await page.click('#supplement-continue');
-  await page.waitForSelector('#review-dialog[open]', { timeout: 10000 });
-  const rerunReviewRows = await page.locator('#review-list input[type="checkbox"]').count();
+  // Load a source, then actually follow the rerun through to a real analysis.
+  await loadSource(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  const rerunReviewRows = await (async () => {
+    await startFreeRerun(page);
+    await page.waitForSelector('#review-dialog[open]', { timeout: 10000 });
+    return page.locator('#review-list input[type="checkbox"]').count();
+  })();
   check('the rebuilt digest carries the Google rows into the review',
     rerunReviewRows > 7, rerunReviewRows + ' rows');
 
@@ -4882,20 +4952,19 @@ try {
   await page.click('#review-send');
   // The view never actually leaves #view-profile for this path — unlike a
   // first upload, there is no working screen in between — so waiting on it
-  // proves nothing here; wait on the dialog closing and the digest actually
-  // changing instead.
+  // proves nothing here. And the digest write is not a reliable signal
+  // either: state.digest is written synchronously, one line before the
+  // fetch that carries it, but the mock round-trip and this test's own
+  // request-capturing listener land a tick or two after that — waiting on
+  // the request count actually landing is the only wait that means what it
+  // says.
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 10000 });
-  await page.waitForFunction(() => {
-    const d = localStorage.getItem('psycheai_digest');
-    return d && Boolean(JSON.parse(d).google);
-  }, { timeout: 60000 });
+  await waitForLength(analyseBodies, analysesBeforeSend + 1, 60000);
   check('rerunning sends exactly one more request, against the enriched digest',
     analyseBodies.length === analysesBeforeSend + 1,
     (analyseBodies.length - analysesBeforeSend) + ' new requests');
   check('the stored digest now actually carries the Google block',
     await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google)));
-  check('the button disappears once a supplement has been added, having done its one job',
-    await page.evaluate(() => document.querySelector('#rerun-with-data').hidden));
 
   // The paid sections that were unlocked before this rerun were read from the
   // smaller, Instagram-only digest. Carrying them forward under a report
@@ -5014,16 +5083,15 @@ try {
     /0\.99/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
-  // Route one to a second analysis: re-running with additional data. The data
-  // and the review come first here too, so the payment sheet is reached by
-  // going through them rather than instead of them.
+  // Route one to a second analysis: re-running with additional data. Loading
+  // the source is its own free step now (below), so the re-run itself goes
+  // straight to the review, and the payment sheet is reached by going
+  // through that rather than instead of it.
+  await loadSource(page, 'google', buildTakeoutZip(), 'takeout.zip');
   await clickClear(page, '#rerun-with-data');
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 15000 });
-  check('the re-run asks for data before it asks for money',
-    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
-  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
-  await page.click('#supplement-continue');
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('the re-run reviews the already-loaded data before it asks for money',
+    !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
   check('re-running with more data is charged, at the end rather than the start',
@@ -5037,7 +5105,7 @@ try {
     analyseBodies.length === beforeDecline &&
     (await page.locator('#view-profile').isVisible()) &&
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
-  check('and the data loaded for it is not kept, since it bought nothing',
+  check('and declining does not touch the digest any further — the Google load above was already free',
     (await page.evaluate(() => localStorage.getItem('psycheai_digest'))) === digestBeforeDecline);
 
   // An archive that will be refused must be refused *before* any money is
