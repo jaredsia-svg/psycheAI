@@ -2665,6 +2665,31 @@ try {
   check('the badge never breaks its own word across two lines, even at phone width',
     badgeLineFragments === 1, badgeLineFragments + ' line fragment(s)');
 
+  // Two columns at a laptop width, never three — auto-fit would keep adding
+  // a column as the block gets wider, leaving a single thin row of four that
+  // is harder to scan than two rows of two. Read off each item's own top
+  // offset rather than the grid's column count directly, since that is what
+  // a reader actually sees: wellness and attachment share a row, then ideal
+  // partner and career share the next one.
+  const laptopRowTops = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .paid-consolidated .premium-tier-item')]
+      .map(item => Math.round(item.getBoundingClientRect().top)));
+  check('at a laptop width, the four sections sit two to a row: wellness+attachment, then ideal partner+career',
+    laptopRowTops.length === 4 &&
+    laptopRowTops[0] === laptopRowTops[1] && laptopRowTops[2] === laptopRowTops[3] &&
+    laptopRowTops[2] > laptopRowTops[0],
+    JSON.stringify(laptopRowTops));
+  // And back to one column on a phone, where two-across would cramp both.
+  await page.setViewportSize({ width: 375, height: 800 });
+  const phoneRowTops = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .paid-consolidated .premium-tier-item')]
+      .map(item => Math.round(item.getBoundingClientRect().top)));
+  await page.setViewportSize({ width: 1100, height: 900 });
+  check('and one column on a phone, all four stacked',
+    phoneRowTops.length === 4 && new Set(phoneRowTops).size === 4 &&
+    phoneRowTops.every((top, i) => i === 0 || top > phoneRowTops[i - 1]),
+    JSON.stringify(phoneRowTops));
+
   check('the consolidated block names the price and offers a single unlock',
     /\$1\.99/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&

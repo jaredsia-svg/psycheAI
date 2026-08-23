@@ -345,10 +345,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 /* Two columns where there is room for them, one where there is not. Four
    items in a single column is a tall block for something that is not the
-   point of the page. */
+   point of the page — but four across a wide laptop screen is the opposite
+   problem, a single thin row that is harder to scan than two rows of two.
+   Fixed at exactly two columns above the breakpoint, the same one
+   .insight-branches switches at, rather than `auto-fit`, which would keep
+   adding a third and fourth column as the container gets wider. */
 .premium-tier-list {
   list-style: none; margin: .8rem 0 0; padding: 0;
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .55rem .9rem;
+  display: grid; grid-template-columns: 1fr; gap: .55rem .9rem;
+}
+@media (min-width: 560px) {
+  .premium-tier-list { grid-template-columns: repeat(2, 1fr); }
 }
 .premium-tier-item { display: flex; align-items: flex-start; gap: .55rem; }
 .premium-tier-icon { font-size: 1.05rem; line-height: 1.45; flex: none; }

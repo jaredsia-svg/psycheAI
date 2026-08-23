@@ -844,6 +844,19 @@ that walk rather than excluded from the PDF outright. Fault-injecting a renamed 
 was caught immediately and loudly: the self-test crashes rather than failing quietly, because the
 check dereferences the field directly rather than testing for its absence.
 
+**The consolidated block's own grid went from three columns on a laptop screen to two.**
+`.premium-tier-list` used `grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr))`, which keeps
+adding a column as the block gets wider — one column on a phone, two on a tablet, three once the
+report's column is wide enough, which left "Ideal partner traits" as the lone item alone in a second
+row above career assessment. Fixed at exactly two columns above the same `560px` breakpoint
+`.insight-branches` already switches at, rather than left to `auto-fit`: wellness and attachment now
+share the first row and ideal partner and career assessment share the second, on any screen wide
+enough for two columns at all, however much wider it gets from there. A check reads each item's own
+`top` offset rather than the grid's column count directly — that is what a reader actually sees, and
+it is what would have caught the original three-column layout without needing to know in advance how
+many columns "wrong" would produce. Fault-injecting `auto-fit` back in for the wide breakpoint
+reproduced the three-column layout exactly, and the check caught it.
+
 ### The "analysed by" footer grows a second provider
 
 The report's final line used to name one provider and one timestamp — true when one call wrote the
@@ -2808,7 +2821,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 930 checks: drives the real UI in Chromium against a
+npm run test:ui    # 932 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
