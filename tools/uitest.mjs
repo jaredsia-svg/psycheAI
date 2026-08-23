@@ -657,6 +657,23 @@ try {
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
         document.querySelectorAll('.help-card a').length === 1;
     }));
+  // The fallback route sits quietly under the deep link it backs up, and its
+  // menu labels are unbolded on purpose so the footnote does not compete with
+  // the numbered step above it — the underline stays, so it still reads as
+  // "this is a button in someone else's UI", just not shouted.
+  check('the fallback\'s menu labels keep the underline but drop the bold weight',
+    await page.evaluate(() => {
+      const labels = [...document.querySelectorAll('.help-card .step-fallback .ui-label')];
+      return labels.length > 0 &&
+        labels.every(l => getComputedStyle(l).fontWeight === '400') &&
+        labels.every(l => getComputedStyle(l).textDecorationLine === 'underline');
+    }));
+  check('while every other menu label on the page stays bold',
+    await page.evaluate(() => {
+      const labels = [...document.querySelectorAll('.ui-label')]
+        .filter(l => !l.closest('.step-fallback'));
+      return labels.length > 0 && labels.every(l => getComputedStyle(l).fontWeight === '600');
+    }));
   // The first three titles are the report's own section names, read from
   // copy.js, so a rename there fails this rather than leaving the landing
   // page advertising a section the report no longer calls that. The fourth

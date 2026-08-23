@@ -570,6 +570,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   display: block; margin-top: .3rem;
   font-size: .82rem; color: var(--ink-soft);
 }
+/* The fallback is a footnote, not a second instruction — its menu labels keep
+   the underline .ui-label uses everywhere else (so they still read as "this
+   is a button in someone else's UI"), but drop the bold weight that would
+   otherwise make this quiet line compete with the numbered step above it. */
+.step-fallback .ui-label { font-weight: 400; }
 
 /* The hero's primary action scrolls here. Without a scroll margin the card
    lands flush at viewport top, which is underneath the sticky nav — so the
