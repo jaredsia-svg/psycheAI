@@ -2122,10 +2122,18 @@
     // the raw fragment Supplement.js produced and a stored digest no longer
     // carries one — only the sampled, capped view that came out of it. The
     // popout's own copy says so before this ever runs.
+    //
+    // Read before the reassignment below, not after: state.signals is about
+    // to be replaced wholesale by the fresh Instagram read, and a fresh
+    // export never carries a .supplements property of its own. Reading
+    // afterwards would find it always undefined, silently dropping any
+    // Google/Facebook data from this same session the moment Instagram is
+    // replaced — exactly the bug this ordering exists to avoid.
+    const priorSupplements = state.signals && state.signals.supplements;
     if (typeof collected.instagram === 'object') state.signals = collected.instagram;
 
     if (state.signals) {
-      state.signals.supplements = Object.assign({}, state.signals.supplements,
+      state.signals.supplements = Object.assign({}, priorSupplements,
         typeof collected.google === 'object' ? { google: collected.google } : null,
         typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
     }

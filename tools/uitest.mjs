@@ -5011,11 +5011,31 @@ try {
   await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
   check('the report really was regenerated from the replaced Instagram export',
     analyseBodies.length === beforeReplaceSend + 1);
+  // The real point of the popout carrying Google forward as a green tick:
+  // the Google block loaded earlier in this same session must actually
+  // reach the request that follows an Instagram replacement, not just look
+  // loaded in the UI. addDataAndRerun() has to read state.signals.supplements
+  // before reassigning state.signals to the fresh Instagram read, not after
+  // — reading it after always finds a fresh export's undefined supplements
+  // and silently drops whatever was there, which is exactly the bug this
+  // pins.
+  check('Google, loaded before Instagram was replaced, still reaches the request the replacement sent',
+    Boolean(JSON.parse(analyseBodies[beforeReplaceSend]).digest.google),
+    analyseBodies[beforeReplaceSend]);
 
   // Unlock premium first, with the promo code — mock mode's cash-free path,
   // used elsewhere in this suite — so the rerun below has a real paid unlock
-  // to carry (or not carry) forward.
-  await openUnlockPayment(page);
+  // to carry (or not carry) forward. Google is already in this session's
+  // digest (carried forward across the Instagram replacement above), so
+  // collectExtraDataForPremium() correctly skips the data offer this time —
+  // see its own short-circuit on an existing current.google/.facebook — and
+  // goes straight to the payment sheet. openUnlockPayment always expects the
+  // offer, so it is not used here.
+  await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
+  await page.locator('.premium-unlock').first().click();
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  check('the data offer is skipped outright once Google is already in the digest',
+    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
   await page.fill('#premium-promo-input', 'jialatsia');
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {

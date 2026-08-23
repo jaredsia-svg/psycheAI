@@ -765,6 +765,30 @@ cards — never the consolidated block — was caught immediately: the sample-di
 `.paid-consolidated` and zero `.paid-card` elements failed, along with several checks downstream of it
 that could no longer find the element they depend on.
 
+### Google/Facebook data survives an Instagram replacement, for real
+
+The "Add / change data" popout lets a reader replace their Instagram export in place, and its own
+code comment always claimed that Google or Facebook data loaded earlier in the same browser session
+rides along with the replacement automatically. That claim was false: `addDataAndRerun()` in
+`docs/app.js` reassigned `state.signals` to the freshly-read Instagram export first, then tried to
+read `state.signals.supplements` to merge forward — except by then `state.signals` was already the
+new object, which never carries a `.supplements` property of its own, so the read always found
+`undefined` and silently dropped whatever was there. The reader saw their Google or Facebook row
+still ticked green in the popout (that flag is set independently, from the digest that existed before
+the replacement began) right up until the rebuilt report simply did not carry that data any more.
+
+The fix reads `state.signals.supplements` into a `priorSupplements` variable *before* the
+reassignment, then merges that into the new signals object instead of the (always empty) one that
+follows it — two lines, one moved above the other. A uitest check drives the exact scenario end to
+end — load Google, replace Instagram, and assert against the real `/api/analyse` request body that
+followed that the digest still carries `.google` — rather than trusting the popout's tick, since the
+tick was never the thing that was actually broken. Fault-injecting the bug back in (reverting to
+reading `state.signals.supplements` after the reassignment) reproduced it exactly, and surfaced a
+second, unrelated effect downstream: with Google actually present in the digest afterward, a later
+premium-unlock click in the same test correctly skips the data-offer popout entirely — see
+`collectExtraDataForPremium()`'s own short-circuit on an existing `current.google`/`.facebook` — which
+the test now asserts explicitly rather than assuming the popout always appears.
+
 ### The "analysed by" footer grows a second provider
 
 The report's final line used to name one provider and one timestamp — true when one call wrote the
@@ -2699,7 +2723,7 @@ npm test           # 681 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 915 checks: drives the real UI in Chromium against a
+npm run test:ui    # 917 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
