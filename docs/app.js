@@ -3370,6 +3370,14 @@
   // stored digest quietly changed — nor the re-run button gone, which is what
   // persisting early would do.
   let pendingPremiumDigest = null;
+  // True for the whole span between a payment/promo clearing and the paid
+  // sections either landing or failing. Guards two things at once: a second
+  // runPremiumAnalysis call cannot start while one is already spending this
+  // reader's retry budget, and the dialog cannot be closed and reopened out
+  // from under a call that is still awaiting its network response — which
+  // used to reset pendingPremiumDigest to null mid-flight and crash the
+  // original call once it finally resolved (see runPremiumAnalysis).
+  let premiumRunInFlight = false;
 
   /**
    * Offered when the unlock button is pressed and this reader has only ever
@@ -3463,6 +3471,11 @@
   }
 
   async function runPremiumAnalysis(auth, dialog, options) {
+    // A second invocation while one is already running would race the first
+    // for pendingPremiumDigest/state.digest and spend an extra retry for
+    // nothing — see the comment on premiumRunInFlight's declaration.
+    if (premiumRunInFlight) return;
+    premiumRunInFlight = true;
     // Only clear the payment controls for an actual payment attempt. A promo
     // attempt is a wholly separate authorisation path — hiding the wallet or
     // mock-pay button while it runs would strand a reader whose code turns
@@ -3516,11 +3529,18 @@
         // report — so both it and the digest behind it are kept whatever
         // happens next, and a retry sees the work already done rather than
         // paying for it twice.
-        const added = pendingPremiumDigest.__addedSupplements;
-        delete pendingPremiumDigest.__addedSupplements;
+        //
+        // Reads paidDigest, the snapshot taken before this await, rather than
+        // the shared pendingPremiumDigest variable again: premiumRunInFlight
+        // stops another call from touching it now, but reading the mutable
+        // variable here anyway would still be one stray future caller away
+        // from crashing on a null it was reset to while this await was
+        // pending.
+        const added = paidDigest.__addedSupplements;
+        delete paidDigest.__addedSupplements;
         if (added && state.signals) state.signals.supplements = added;
-        state.digest = pendingPremiumDigest;
-        store.write(KEYS.digest, pendingPremiumDigest);
+        state.digest = paidDigest;
+        store.write(KEYS.digest, paidDigest);
         pendingPremiumDigest = null;
 
         if (state.profile) {
@@ -3539,12 +3559,13 @@
       }
 
       premiumStatus(TEXT.premiumGenerating);
-      // The same rule as `paidDigest` above, re-evaluated rather than reused:
-      // a refresh that ran has since promoted the enriched digest into
-      // state.digest and cleared pendingPremiumDigest, so this picks it up
-      // either way. Reading state.digest directly would be wrong the moment
-      // a caller reached here with an unpromoted digest still pending.
-      const result = await LLM.analysePremium(pendingPremiumDigest || state.digest, auth);
+      // paidDigest, not state.digest directly: the refresh branch above sets
+      // state.digest to paidDigest the moment it promotes it, so the two
+      // already agree whenever that branch ran, and paidDigest is what to
+      // send when it did not — reading state.digest here would be wrong the
+      // moment this call reached here with an unpromoted digest still
+      // pending.
+      const result = await LLM.analysePremium(paidDigest, auth);
       if (state.profile) {
         state.profile.premiumAnalysis = result.data;
         // The provider and moment that wrote the paid sections, kept apart
@@ -3559,14 +3580,15 @@
       }
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
-      // the re-run button that reads it — exactly as they were. Skipped when
-      // the refresh above already promoted it.
-      if (pendingPremiumDigest && pendingPremiumDigest !== state.digest) {
-        const added = pendingPremiumDigest.__addedSupplements;
-        delete pendingPremiumDigest.__addedSupplements;
+      // the re-run button that reads it — exactly as they were. False already
+      // whenever the refresh above ran, since that branch just set
+      // state.digest to this same paidDigest.
+      if (paidDigest !== state.digest) {
+        const added = paidDigest.__addedSupplements;
+        delete paidDigest.__addedSupplements;
         if (added && state.signals) state.signals.supplements = added;
-        state.digest = pendingPremiumDigest;
-        store.write(KEYS.digest, pendingPremiumDigest);
+        state.digest = paidDigest;
+        store.write(KEYS.digest, paidDigest);
       }
       if (refreshedFree) {
         // Every section changed, not just the paid ones, so the whole report
@@ -3599,6 +3621,7 @@
       // down yet.
       stopProgress();
       guardUnload(false);
+      premiumRunInFlight = false;
     }
   }
 
@@ -3891,9 +3914,20 @@
     if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }
   });
 
-  $('#premium-cancel').addEventListener('click', () => $('#premium-dialog').close());
+  // Closeable at any other time, but not while runPremiumAnalysis actually
+  // has money or a promo code in flight: closing here doesn't cancel that
+  // call, and reopening this same dialog would reset pendingPremiumDigest
+  // out from under it (see premiumRunInFlight's declaration) and leave it to
+  // crash once its response finally arrives. None of these three paths —
+  // Cancel, clicking the backdrop, or Escape — should get past that.
+  $('#premium-cancel').addEventListener('click', () => {
+    if (!premiumRunInFlight) $('#premium-dialog').close();
+  });
   $('#premium-dialog').addEventListener('click', event => {
-    if (event.target === $('#premium-dialog')) $('#premium-dialog').close();
+    if (event.target === $('#premium-dialog') && !premiumRunInFlight) $('#premium-dialog').close();
+  });
+  $('#premium-dialog').addEventListener('cancel', event => {
+    if (premiumRunInFlight) event.preventDefault();
   });
 
   $('#export-pdf-bottom').addEventListener('click', exportPdf);

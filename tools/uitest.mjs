@@ -3224,8 +3224,44 @@ try {
     !(await page.locator('#premium-mock-pay').isVisible()),
     await page.locator('#premium-dialog').innerText());
 
+  // Regression: a reader once hit "Cannot read properties of null (reading
+  // '__addedSupplements')" right here, after leaving this resume fetch running
+  // for a while. It reproduces as a race — close this same dialog while the
+  // fetch is genuinely still in flight (Escape, the backdrop, or Cancel all
+  // used to manage it) and a reopen reset pendingPremiumDigest to null before
+  // the original call got back to reading it. The fix is refusing to close at
+  // all while a fetch is running, so this proves that refusal holds for all
+  // three ways of trying.
+  const consoleErrors = [];
+  const captureError = message => { if (message.type() === 'error') consoleErrors.push(message.text()); };
+  page.on('console', captureError);
+  await page.route('**/api/premium-analysis', async route => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+    await route.continue();
+  });
   await page.click('#premium-retry');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(50);
+  check('escape cannot close the dialog while its fetch is genuinely in flight',
+    await page.locator('#premium-dialog').isVisible());
+  await page.evaluate(() =>
+    document.querySelector('#premium-dialog').dispatchEvent(new MouseEvent('click', { bubbles: true })));
+  await page.waitForTimeout(50);
+  check('nor can a backdrop click',
+    await page.locator('#premium-dialog').isVisible());
+  await page.click('#premium-cancel');
+  await page.waitForTimeout(50);
+  check('nor can the Cancel button',
+    await page.locator('#premium-dialog').isVisible());
+
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 20000 });
+  page.off('console', captureError);
+  await page.unroute('**/api/premium-analysis');
+  check('the in-flight call still completes cleanly afterwards, with no null-dereference crash',
+    !consoleErrors.some(text => /__addedSupplements/.test(text)) &&
+    await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis)),
+    JSON.stringify(consoleErrors));
   page.off('request', countIntents);
   check('fetching again recovers all four sections without a second charge',
     await page.evaluate(() => {

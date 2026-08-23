@@ -1762,6 +1762,52 @@ The reload check was fault-injected against the original `state.signals` conditi
 that is the bug it exists to prevent: it fails with `hidden=true`, and the file-chooser check behind it
 times out, which is exactly what the reader saw.
 
+### A closed dialog does not stop the fetch behind it
+
+A reader hit `Cannot read properties of null (reading '__addedSupplements')` in the "you have
+already paid" resume dialog, about 30 seconds into fetching the paid sections — and a second press
+of the same button then worked. That timing is the tell: something the first attempt was still
+doing got undercut by something the reader did in the meantime, and only the second attempt's clean
+state let it finish.
+
+`runPremiumAnalysis` snapshots `pendingPremiumDigest` into a local `paidDigest` once, at the top,
+before anything asynchronous happens. Two spots deep in the function, after the network call that
+actually takes the 30 seconds, used to read the *module-level* `pendingPremiumDigest` again instead
+of that snapshot — on the assumption that nothing else touches it while a fetch most readers would
+just wait out is running. Nothing enforced that assumption. `#premium-dialog` could still be closed
+by Escape, a backdrop click, or Cancel while the fetch was in flight — closing a `<dialog>` does not
+cancel the `fetch()` a click handler kicked off earlier — and `openPremiumDialog` unconditionally
+resets `pendingPremiumDigest = null` at its own top every time it runs, including the resume path
+that shows this exact dialog again. A reader who closed the dialog out of impatience and reopened
+it — landing back on "you have already paid" because the receipt existed but the analysis still
+had not — reset the variable the original call was about to read. It read `null.__addedSupplements`
+the moment its `fetch()` finally resolved, and the error rendered straight into the resume dialog's
+own status line, which is exactly what the screenshot showed.
+
+The fix is two changes, not one — a guard on the trigger, and a guard on the read that would still
+be one future caller away from the same crash if only the trigger were closed off:
+
+- **The read.** Both post-`await` sites now use `paidDigest`, never `pendingPremiumDigest`, matching
+  what the function already did *before* its own `await` calls. A local snapshot cannot be reset by
+  code running somewhere else while this call is suspended, whatever that other code turns out to
+  be — this one change makes the specific crash structurally impossible regardless of the trigger.
+- **The trigger.** A new `premiumRunInFlight` flag, set for the same span `guardUnload(true)`
+  already covers, does two things: a second `runPremiumAnalysis` call returns immediately instead of
+  racing the first for `pendingPremiumDigest`/`state.digest` and spending an extra retry for
+  nothing, and the dialog's Cancel button, backdrop click, and `cancel` event (Escape) all refuse to
+  close it while a fetch is genuinely running. The reader cannot get back to a state that resets
+  `pendingPremiumDigest` until the call they are waiting on has actually finished.
+
+`tools/uitest.mjs` reproduces the race directly rather than only asserting the two symptoms
+separately: it slows `/api/premium-analysis` down (the same technique the mock-payment check above
+already uses to make a transient state observable), presses "fetch my analysis" on the resume
+dialog, and while that request is still pending tries Escape, a synthetic backdrop click, and
+Cancel in turn — checking after each that the dialog is still open. It then lets the delayed
+response land and checks the console never logged `__addedSupplements` and the analysis actually
+completed. Fault-injected by reverting the fix: the first two closes now succeed, and the third
+check throws outright — the suite's own click on the now-hidden Cancel button times out, since nothing
+was left open to receive it.
+
 ### The photographs
 
 Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
@@ -2821,7 +2867,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 932 checks: drives the real UI in Chromium against a
+npm run test:ui    # 936 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
