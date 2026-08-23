@@ -1065,13 +1065,11 @@
     if (unlock) openPremiumDialog(unlock, 'unlock');
   });
 
-  // Same reason: sourcesUsedHtml() writes both of these into #profile-body's
-  // innerHTML on every render, so a listener bound once to the element
-  // itself would be orphaned the next time the report redraws.
+  // Same reason: sourcesUsedHtml() writes this into #profile-body's innerHTML
+  // on every render, so a listener bound once to the element itself would be
+  // orphaned the next time the report redraws.
   document.addEventListener('click', event => {
-    const loadBtn = event.target.closest('.source-load-btn');
-    if (loadBtn) loadSupplementSource();
-    else if (event.target.closest('#rerun-with-data')) startRerun();
+    if (event.target.closest('#rerun-with-data')) startRerun();
   });
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -1876,70 +1874,221 @@
   // this opens has always offered both Google and Facebook together (see
   // askSupplement), and a reader who came here for one may as well add the
   // other while the picker is up rather than opening this twice.
-  async function loadSupplementSource() {
+  /**
+   * Driven by the "Add / change data & re-run analysis" button — see
+   * sourcesUsedHtml() and startRerun below. Shows Instagram, Google Takeout
+   * and Facebook together; unlike askSupplement, a row already ticked stays
+   * clickable, so any of the three — Instagram included — can be replaced
+   * with a fresh export rather than only ever being added once.
+   *
+   * Resolves `null` on Back (nothing touched). Otherwise resolves an object
+   * keyed by source: `true` for a row that was already loaded and left
+   * alone, or the freshly read result (Instagram's full `signals`, or a
+   * Google/Facebook supplement fragment) for one that was just picked. The
+   * caller tells the two apart with `typeof value === 'object'`.
+   *
+   * Nothing here touches state.digest, localStorage, or authoriseAnalysis —
+   * reading an export is free, and Continue only hands the results back to
+   * addDataAndRerun, which builds the digest the review dialog shows next.
+   */
+  function askDataSources() {
+    const dialog = $('#datasources-dialog');
+    const status = $('#datasources-status');
+    const input = $('#datasources-input');
+    const buttons = dialog.querySelectorAll('.mode-option');
+    const digest = state.digest;
+    const added = {
+      instagram: true,
+      google: Boolean(digest && digest.google) || undefined,
+      facebook: Boolean(digest && digest.facebook) || undefined,
+    };
+    let pending = '';
+    let busy = false;
+    let cancelled = false;
+    let replacedInstagram = false;
+
+    const say = (message, tone) => {
+      status.textContent = message || '';
+      status.hidden = !message;
+      status.className = 'supplement-status' + (tone ? ' is-' + tone : '');
+    };
+
+    const setBusy = state => {
+      busy = state;
+      for (const button of buttons) button.disabled = state;
+    };
+
+    const rowOf = source => dialog.querySelector('.mode-option[data-datasource="' + source + '"]');
+    const setSourceProgress = (source, percent, label) => {
+      const row = rowOf(source);
+      if (!row) return;
+      const wrap = row.querySelector('.mode-progress');
+      const bar = row.querySelector('.progress-bar');
+      const text = row.querySelector('.mode-progress-label');
+      row.classList.toggle('is-loading', percent !== null);
+      wrap.hidden = percent === null;
+      bar.style.width = (percent === null ? 0 : percent) + '%';
+      if (label !== undefined) text.textContent = label || '';
+    };
+
+    // Ticked whenever a row has anything at all — the seeded `true` for an
+    // already-loaded source, or a freshly read result. Never disabled once
+    // ticked: that is the whole difference from askSupplement's markAdded.
+    const markAdded = () => {
+      for (const button of buttons) {
+        const isAdded = Boolean(added[button.dataset.datasource]);
+        button.classList.toggle('is-added', isAdded);
+        const tick = button.querySelector('.mode-added');
+        if (isAdded && !tick) {
+          const mark = document.createElement('span');
+          mark.className = 'mode-added';
+          mark.setAttribute('role', 'img');
+          mark.setAttribute('aria-label', 'Loaded');
+          mark.textContent = '✓';
+          button.appendChild(mark);
+        } else if (!isAdded && tick) {
+          tick.remove();
+        }
+      }
+    };
+
+    return new Promise(resolve => {
+      const choose = event => {
+        const source = event.currentTarget.dataset.datasource;
+        if (busy) return;
+        pending = source;
+        input.value = '';
+        input.click();
+      };
+
+      const read = async () => {
+        const files = Array.from(input.files || []).filter(f => /\.zip$/i.test(f.name));
+        input.value = '';
+        if (!pending || !files.length) return;
+        const source = pending;
+        pending = '';
+        setBusy(true);
+        say('');
+        setSourceProgress(source, 0, 'Opening the archive…');
+        try {
+          if (source === 'instagram') {
+            added.instagram = await IG.readExports(files, {
+              includeMessages: true, includeImages: true,
+              onProgress: p => setSourceProgress(source,
+                Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
+            });
+            replacedInstagram = true;
+            $('#datasources-instagram-note').hidden = false;
+          } else {
+            const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
+            added[source] = await reader(files, {
+              onProgress: p => {
+                const share = p.total ? Math.min(1, p.done / p.total) : 0;
+                const percent = p.phase === 'open' ? 6
+                  : p.phase === 'done' ? 100
+                  : 10 + Math.round(share * 85);
+                setSourceProgress(source, percent, p.label);
+              },
+            });
+          }
+          setBusy(false);
+          setSourceProgress(source, null, '');
+          say('');
+          markAdded();
+        } catch (error) {
+          setBusy(false);
+          setSourceProgress(source, null, '');
+          // A failed replacement must not cost the reader the source they
+          // already had — the dialog stays open, on the tick it started
+          // with, and they can try another file or move on.
+          say((error && error.message) || 'That archive could not be read.', 'bad');
+          markAdded();
+        }
+      };
+
+      const done = () => dialog.close();
+      const goBack = () => { cancelled = true; dialog.close(); };
+
+      for (const button of buttons) button.addEventListener('click', choose);
+      input.addEventListener('change', read);
+      $('#datasources-continue').addEventListener('click', done);
+      $('#datasources-back').addEventListener('click', goBack);
+
+      dialog.addEventListener('close', () => {
+        for (const button of buttons) {
+          button.removeEventListener('click', choose);
+          button.disabled = false;
+          button.classList.remove('is-added');
+          const tick = button.querySelector('.mode-added');
+          if (tick) tick.remove();
+        }
+        input.removeEventListener('change', read);
+        $('#datasources-continue').removeEventListener('click', done);
+        $('#datasources-back').removeEventListener('click', goBack);
+        resolve(cancelled ? null : added);
+      }, { once: true });
+
+      say('');
+      cancelled = false;
+      replacedInstagram = false;
+      $('#datasources-instagram-note').hidden = true;
+      dialog.querySelector('.supplement-help').open = false;
+      for (const button of buttons) setSourceProgress(button.dataset.datasource, null, '');
+      setBusy(false);
+      markAdded();
+
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+
+  // The bottom of the confidence card's sources subsection — see
+  // sourcesUsedHtml(). Opens the data-sources popout first, then goes to the
+  // review of whatever comes out of it, then payment, then analysis.
+  function startRerun() {
     flash('#profile-alert', '');
-    const signals = state.signals;
-    const existing = signals
-      ? signals.supplements
-      : (state.digest && (state.digest.google || state.digest.facebook) ? {} : null);
-    let supplements;
+    addDataAndRerun();
+  }
+
+  async function addDataAndRerun() {
+    let collected;
     try {
-      supplements = await askSupplement(existing, { requireAtLeastOne: false });
+      collected = await askDataSources();
     } catch (error) {
       flash('#profile-alert', (error && error.message) || 'Could not read that export.');
       return;
     }
-    if (!supplements) return; // Skip, or Escape with nothing added yet.
+    if (!collected) return; // Back — nothing touched.
 
-    let digest;
-    if (signals) {
-      // Same session: rebuild from the archive so the digest — and any later
-      // rerun — can still carry photographs.
-      signals.supplements = supplements;
-      const chosenImages = Images.select(signals, { count: Digest.IMAGES });
-      digest = Digest.build(signals, {
-        includeMessages: true, includeImages: true, imageCount: chosenImages.length,
-      });
-    } else {
-      // A saved report, opened after a reload. Merge into a copy of the
-      // stored digest — every field a supplement contributes comes from the
-      // supplement, and a copy because nothing may touch the stored digest
-      // outside a successful analysis.
-      digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), supplements);
-      // The photographs cannot come along: they live in the archive, which
-      // this tab no longer has.
-      digest.coverage.images.included = false;
-      digest.coverage.images.attached = 0;
+    // A freshly read Instagram export replaces the in-memory signals
+    // outright — typeof 'object' is how askDataSources marks a real
+    // replacement rather than the seeded `true` for "already had it,
+    // unchanged". Google or Facebook data still held in this same session
+    // (state.signals.supplements) rides along with it automatically; data
+    // loaded only in an earlier session does not, because Digest.build needs
+    // the raw fragment Supplement.js produced and a stored digest no longer
+    // carries one — only the sampled, capped view that came out of it. The
+    // popout's own copy says so before this ever runs.
+    if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+
+    if (state.signals) {
+      state.signals.supplements = Object.assign({}, state.signals.supplements,
+        typeof collected.google === 'object' ? { google: collected.google } : null,
+        typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
     }
 
-    state.digest = digest;
-    store.write(KEYS.digest, digest);
-    // Redraws the whole report, which is the only way #profile-body updates
-    // today — but nothing else in it actually changed: the report itself,
-    // its confidence score and every section still describe the digest this
-    // reader has already paid to have analysed. Only the sources subsection
-    // this function lives in reflects the new tick, until Re-run analysis
-    // below is pressed and paid for.
-    renderProfile();
+    await rerunWithAdditionalData({
+      google: typeof collected.google === 'object' ? collected.google : undefined,
+      facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
+    });
   }
 
-  // The bottom of the confidence card's sources subsection — see
-  // sourcesUsedHtml(). Goes straight to the review of whatever is currently
-  // loaded (Instagram, plus any source added via "Load data" above), then
-  // payment, then analysis: adding a source is no longer part of this flow,
-  // it is its own free step the reader has already taken or not by the time
-  // this button is pressed.
-  function startRerun() {
-    flash('#profile-alert', '');
-    rerunWithAdditionalData();
-  }
-
-  async function rerunWithAdditionalData() {
-    // Present only in the same session as the upload. Its absence is not a
-    // problem to solve any more, just a branch: with it, the digest is rebuilt
-    // from the archive and can carry photographs; without it, the stored
-    // digest — already carrying whatever was loaded via "Load data" — is
-    // reviewed as a copy instead.
+  async function rerunWithAdditionalData(extraSupplements) {
+    // Present only in the same session as the upload — either the original
+    // one, or a fresh Instagram export just read by askDataSources above.
+    // With it, the digest is rebuilt from the archive and can carry
+    // photographs; without it, the stored digest is reviewed as a copy,
+    // merged with whatever Google or Facebook data this call was handed.
     const signals = state.signals;
     let digest;
     let chosenImages = [];
@@ -1957,6 +2106,7 @@
       });
     } else {
       digest = JSON.parse(JSON.stringify(state.digest));
+      if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements);
       digest.coverage.images.included = false;
       digest.coverage.images.attached = 0;
     }
@@ -2128,29 +2278,28 @@
    */
   // The "Sources used" subsection of the confidence card: one row per
   // possible source, a tick if this report's digest already carries it, a
-  // "Load data" button if not. Reads state.digest directly rather than
-  // taking it as a parameter — reportSectionsHtml only ever calls this for
-  // the real report, and the digest is the one true record of what has
-  // actually been loaded, on a reload as much as in the session that
-  // uploaded it.
-  //
-  // Loading a source here is free and immediate — it only calls
-  // loadSupplementSource(), never authoriseAnalysis() — matching the "money
-  // last" rule the rest of the app follows: adding evidence costs nothing,
-  // only the analysis that reads it does.
+  // red cross if not. Reads state.digest directly rather than taking it as a
+  // parameter — reportSectionsHtml only ever calls this for the real report,
+  // and the digest is the one true record of what has actually been loaded,
+  // on a reload as much as in the session that uploaded it. Adding or
+  // replacing a source is not done from here any more — see
+  // askDataSources() — so a row is purely a status line, no button.
   function sourcesUsedHtml() {
     const digest = state.digest;
     const rows = [
       { icon: '📷', label: TEXT.sourceInstagram, loaded: true },
-      { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google), source: 'google' },
-      { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook), source: 'facebook' },
+      { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
+      { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
     ];
+    // A status line each, not an action: adding or replacing a source now
+    // happens entirely behind the button below, in askDataSources(), so a
+    // row here only ever says what is true of the report, never invites a
+    // click of its own.
     const rowsHtml = rows.map(row =>
       '<li class="source-row"><span class="source-name">' + esc(row.icon) + ' ' + esc(row.label) + '</span>' +
       (row.loaded
         ? '<span class="source-tick" role="img" aria-label="' + esc(TEXT.sourceLoaded) + '">✓</span>'
-        : '<button class="btn btn-ghost source-load-btn" type="button" data-source="' + esc(row.source) + '">' +
-          esc(TEXT.sourceLoadData) + '</button>') +
+        : '<span class="source-cross" role="img" aria-label="' + esc(TEXT.sourceMissing) + '">✕</span>') +
       '</li>').join('');
     const anyMissing = rows.some(row => !row.loaded);
 
@@ -2386,10 +2535,10 @@
     layoutPsycheCard();
 
     // The sources subsection and the re-run button are built into this HTML
-    // by sourcesUsedHtml() — see reportSectionsHtml. Both #rerun-with-data
-    // and any .source-load-btn are handled by delegated listeners (see the
-    // document click handler below) rather than bound here, because this
-    // element is replaced every time the report renders.
+    // by sourcesUsedHtml() — see reportSectionsHtml. #rerun-with-data is
+    // handled by a delegated listener (see the document click handler
+    // below) rather than bound here, because this element is replaced every
+    // time the report renders.
     $('#profile-body').innerHTML = reportSectionsHtml(report);
 
     // Sits after the action buttons rather than inside the report: it is a

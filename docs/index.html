@@ -842,6 +842,108 @@
   <input type="file" id="supplement-input" accept=".zip,application/zip" multiple hidden>
 </dialog>
 
+<!-- Opened by #rerun-with-data — "Add / change data & re-run analysis" — in
+     the confidence card's "Data sources" subsection. Unlike #supplement-dialog
+     above, every row here stays clickable once ticked: a source already
+     loaded can still be replaced, Instagram included, rather than only ever
+     being added once. See askDataSources() in app.js. The hidden file input
+     lives inside the dialog for the same reason supplement-input does — the
+     picker has to open synchronously from the row's own click. -->
+<dialog id="datasources-dialog" class="mode-dialog" aria-labelledby="datasources-dialog-title">
+  <h2 id="datasources-dialog-title">Add or change your data</h2>
+  <p class="muted" id="datasources-dialog-blurb">Load a fresh export to replace a source, or add one
+    you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
+  <div class="mode-options">
+    <button class="mode-option" data-datasource="instagram" type="button">
+      <span class="mode-icon">📷</span>
+      <span class="mode-body"><strong>Instagram</strong>
+        <span class="muted">Load a new Instagram export .zip file here to replace it</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="mode-option" data-datasource="google" type="button">
+      <span class="mode-icon">🔍</span>
+      <span class="mode-body"><strong>Google Takeout</strong>
+        <span class="muted">Load your "My Activity" takeout .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="mode-option" data-datasource="facebook" type="button">
+      <span class="mode-icon">📘</span>
+      <span class="mode-body"><strong>Facebook</strong>
+        <span class="muted">Load your facebook .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+  </div>
+  <p class="supplement-status" id="datasources-status" hidden></p>
+  <!-- Shown only once a fresh Instagram export is actually picked — see the
+       reasoning at the call site in app.js for why previously loaded Google
+       or Facebook data cannot always be carried forward automatically onto a
+       replaced Instagram export. -->
+  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google and
+    Facebook data fresh too — reload them here as well if you want them included in this run.</p>
+
+  <details class="supplement-help">
+    <summary>See download instructions</summary>
+    <div class="supplement-help-body">
+      <h3>Instagram</h3>
+      <ol>
+        <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+              target="_blank" rel="noopener noreferrer">Download your information</a> — this goes
+            straight to the right page.
+            <span class="step-fallback">If that link does not open it, go the long way: Instagram →
+              Settings → <span class="ui-label">Accounts Centre</span> →
+              <span class="ui-label">Your information and permissions</span> →
+              <span class="ui-label">Export / Download your information</span>.</span></li>
+        <li>Choose <span class="ui-label">Create Export</span>, Date Range <span class="ui-label">All
+            time</span>, and <strong>Format JSON</strong> — an HTML export cannot be read.</li>
+      </ol>
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
+              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a> —
+            this skips deselecting everything else and hunting for it in the list.
+            <span class="step-fallback">If that link does not work, go to
+              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
+              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
+              <span class="ui-label">My Activity</span> on its own.</span></li>
+        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records to JSON.</strong> Takeout ships HTML by default, and an HTML
+            export cannot be read at all.</li>
+        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
+            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
+            usually within minutes.</li>
+      </ol>
+      <h3>Facebook</h3>
+      <ol>
+        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+            <span class="ui-label">Accounts Centre</span> →
+            <span class="ui-label">Your information and permissions</span>.</li>
+        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+            <span class="ui-label">JSON</span>.</li>
+      </ol>
+    </div>
+  </details>
+
+  <div class="btn-row supplement-actions">
+    <button class="btn btn-ghost" id="datasources-back" type="button">Back</button>
+    <span class="btn-spacer"></span>
+    <button class="btn" id="datasources-continue" type="button">Continue</button>
+  </div>
+  <input type="file" id="datasources-input" accept=".zip,application/zip" multiple hidden>
+</dialog>
+
 <!-- The last stop before anything leaves the device. Its content is built
      fresh in app.js from the real digest just produced — real counts, not a
      description of what the app generally does — so "review" means what it

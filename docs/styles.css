@@ -640,17 +640,26 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
 .caveats { color: var(--ink-soft); font-size: .89rem; padding-left: 1.1rem; margin: .6rem 0 0; }
 
-/* The confidence card's "sources used" subsection and its re-run button —
-   see sourcesUsedHtml() in app.js. */
-.trust-sources { margin-top: 1.3rem; padding-top: 1.2rem; border-top: 1px solid var(--line); }
-.trust-sources h3 { margin: 0 0 .5rem; }
-.source-list { list-style: none; margin: .6rem 0 1rem; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+/* The confidence card's "Data sources" subsection and its re-run button —
+   see sourcesUsedHtml() in app.js. Compact: each row is a status line, not a
+   card, and the whole list sits on one strip rather than one box per source —
+   the section describes a fact about the report, not three separate actions,
+   now that adding or replacing a source lives behind the button below it. */
+.trust-sources { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--line); }
+.trust-sources h3 { margin: 0 0 .35rem; font-size: 1rem; }
+.trust-sources > p.muted { margin: 0 0 .6rem; font-size: .88rem; }
+.source-list {
+  list-style: none; margin: 0 0 .8rem; padding: 0; border: 1px solid var(--line); border-radius: 12px;
+  overflow: hidden; background: var(--bg-alt);
+}
 .source-row {
   display: flex; align-items: center; justify-content: space-between; gap: .8rem;
-  padding: .65rem .95rem; border: 1px solid var(--line); border-radius: 12px; background: var(--bg-alt);
+  padding: .45rem .8rem; font-size: .92rem;
 }
+.source-row + .source-row { border-top: 1px solid var(--line); }
 .source-name { font-weight: 600; }
-.source-tick { color: var(--good); font-weight: 700; font-size: 1.15rem; }
+.source-tick { color: var(--good); font-weight: 700; }
+.source-cross { color: var(--danger); font-weight: 700; }
 
 /* ---------- trait bars ---------- */
 

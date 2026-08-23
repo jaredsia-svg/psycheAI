@@ -498,7 +498,7 @@
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',
     trustScore: 'Confidence: ',
-    sourcesUsed: 'Sources used',
+    sourcesUsed: 'Data sources',
     sourcesUsedHint: 'You can raise this report’s confidence by adding more sources of data. ' +
       'Instagram and Google together are the ideal combination — Instagram reads your outward ' +
       'persona, the self you present; Google reads your inward self, what you search and watch when ' +
@@ -507,8 +507,23 @@
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
     sourceLoaded: 'Loaded',
-    sourceLoadData: 'Load data',
-    rerunAnalysis: 'Re-run analysis',
+    sourceMissing: 'Not loaded',
+    rerunAnalysis: 'Add / change data & re-run analysis',
+
+    // The popout #rerun-with-data now opens, ahead of the review — see
+    // askDataSources() in app.js. Every source already loaded is ticked but
+    // stays clickable, so a reader can replace any one of them, Instagram
+    // included, without starting the whole report over.
+    dataSourcesTitle: 'Add or change your data',
+    dataSourcesBlurb: 'Load a fresh export to replace a source, or add one you have not used yet. ' +
+      'Nothing is sent anywhere until you review it on the next screen.',
+    // Only shown once a fresh Instagram export is actually picked — see the
+    // reasoning at the call site in app.js for why this cannot always be
+    // carried forward automatically.
+    dataSourcesInstagramReplaceNote: 'Replacing Instagram starts your Google and Facebook data fresh ' +
+      'too — reload them here as well if you want them included in this run.',
+    dataSourcesContinue: 'Continue',
+    dataSourcesBack: 'Back',
 
     glanceType: 'Type',
     glanceHighest: 'Highest',
