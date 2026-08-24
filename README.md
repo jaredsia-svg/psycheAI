@@ -1670,6 +1670,32 @@ list does once the window is genuinely short. Removing the fix entirely was trie
 checks fail, and the diagnostic shows the outer dialog scrolling at 560 and 650px while the list does
 not — the exact shape of the original bug — while 900px alone reports nothing wrong.
 
+**"Send this" says so only when that is actually all it does.** The button read "Send this" in every
+one of the three places this dialog opens, regardless of what came right after it — which was
+sometimes a payment. A reader past their free allowance who unticked nothing, read the review, and
+pressed what plainly said "Send this" landed on a payment sheet they had not been told to expect at
+the moment they agreed to anything. Agreeing to a price should happen with the price already named,
+not discovered on the very next screen.
+
+Each of the three callers already knows whether a charge follows, before this dialog ever opens: a
+first upload and a report-page rerun both call the existing `mustPayForAnalysis()` — true once this
+browser's free allowance is spent — and the premium unlock's own data offer (`collectExtraDataForPremium`)
+is never reached except on the way into a S$1.99 charge, so payment is unconditionally due there. Each
+now passes that single fact in as `options.paymentDue`, and `askReview()` sets the button's own text
+right before `showModal()`: `'Make payment'` when true, the unchanged `'Send this'` otherwise. Nothing
+about what the button *does* changes — it still only ever hands the reviewed decision back to
+whichever caller opened the dialog, which is what actually goes on to ask for money — only what it
+*says* does.
+
+`tools/uitest.mjs` checks the label directly at all three sites: the very first, free upload (`'Send
+this'`, nothing due), a report-page rerun run after the free allowance is spent (`'Make payment'`,
+right before the payment sheet that follows confirms it), and the premium unlock's own review once
+data has been added to it (`'Make payment'`, since that review is never reached without a charge
+waiting on the other side). Fault-injected both directions — forcing the label to `'Send this'`
+unconditionally fails the two paid cases, forcing it to `'Make payment'` unconditionally fails the
+free one — proving the text tracks the real condition rather than one hard-coded value happening to
+read correctly in whichever case was tested first.
+
 ### Re-running with additional data, from the report page
 
 A reader who uploaded Instagram alone the first time is not stuck with that choice forever. "Re-run
@@ -3045,7 +3071,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 945 checks: drives the real UI in Chromium against a
+npm run test:ui    # 948 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

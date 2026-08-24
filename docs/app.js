@@ -1677,6 +1677,13 @@
     // the Instagram archive: there are no photographs to offer, and the row
     // should say why rather than looking like an export that never had any.
     const photosUnavailable = Boolean(options && options.photosUnavailable);
+    // Set by the caller, not derived here — each of the three callers already
+    // knows whether the step right after this one is a charge (its own call
+    // to mustPayForAnalysis(), or the premium unlock this review sits inside
+    // of) before it ever opens this dialog. Send this button is only ever
+    // "send it to the model", never "and also pay for it" — a reader should
+    // not discover a charge was coming after they already agreed to send.
+    const paymentDue = Boolean(options && options.paymentDue);
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
@@ -1885,6 +1892,8 @@
         resolve(answer);
       }, { once: true });
 
+      $('#review-send').textContent = paymentDue ? 'Make payment' : 'Send this';
+
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
     });
@@ -1973,7 +1982,8 @@
         // each pass of the loop, because going Back can change the selection.
         extractedImages = null;
         decision = await askReview(digest, chosenImages.length, onProgress =>
-          getExtractedImages(signals, chosenImages, onProgress));
+          getExtractedImages(signals, chosenImages, onProgress),
+          { paymentDue: mustPayForAnalysis() });
         if (decision !== REVIEW_BACK) break;
       }
     } catch (error) {
@@ -2350,7 +2360,7 @@
     try {
       decision = await askReview(digest, chosenImages.length, onProgress =>
         getExtractedImages(signals, chosenImages, onProgress),
-        { photosUnavailable: !signals });
+        { photosUnavailable: !signals, paymentDue: mustPayForAnalysis() });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -3527,7 +3537,9 @@
       return current;
     }
 
-    const decision = await askReview(enriched, 0, null, { photosUnavailable: true });
+    // Payment is unconditionally the next step here — this review sits inside
+    // the S$1.99 unlock itself, never reached without one due.
+    const decision = await askReview(enriched, 0, null, { photosUnavailable: true, paymentDue: true });
     // Escape or Back at the review drops the addition rather than the unlock:
     // they have seen what the extra data contains and declined to send it, so
     // the paid call proceeds on the digest it would have used anyway.

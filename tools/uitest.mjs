@@ -1725,6 +1725,11 @@ try {
 
   await shot('1c-review');
 
+  // Send is only ever "send this to the model" here — a first upload is free,
+  // so nothing due after it should read as a charge.
+  check('the send button reads plainly when nothing is due next',
+    (await page.locator('#review-send').innerText()).trim() === 'Send this');
+
   await page.click('#review-send');
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
@@ -5153,6 +5158,11 @@ try {
   check('nothing has reached the model yet, and the stored digest is untouched, until Send',
     analyseBodies.length === beforeMergedSend &&
     !(await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google))));
+  // This run is paid — run #1 already spent the free allowance — and the
+  // button has to say so before it is pressed, not leave the charge to be
+  // discovered on the sheet that follows.
+  check('the send button reads as a payment when this run is going to cost one',
+    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
   await page.click('#review-send');
   await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
   // This run is paid — run #1 already spent the free allowance — so the
@@ -5383,6 +5393,10 @@ try {
     (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
   check('and still no payment sheet has been shown',
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  // This review sits inside the unlock itself — a payment sheet is always
+  // the very next step here, never just "send it to the model".
+  check('the send button already reads as a payment, since this review sits inside the unlock',
+    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
   await page.click('#review-send');
 
   // Only now is the reader asked to pay.
