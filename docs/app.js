@@ -2450,6 +2450,12 @@
   }
 
   async function rerunWithAdditionalData(extraSupplements) {
+    // Once premium is unlocked, "Add / change data & re-run" stops being the
+    // S$0.99 free-only re-run: the four paid sections are sitting on evidence
+    // this new data is about to make stale, so the S$1.99 unlock price now
+    // buys a regeneration of everything together — see the branch below.
+    const alreadyUnlocked = Object.keys(paidAnalysis()).length > 0;
+
     // Present only in the same session as the upload — either the original
     // one, or a fresh Instagram export just read by askDataSources above.
     // With it, the digest is rebuilt from the archive and can carry
@@ -2465,11 +2471,18 @@
       return extractedImages;
     };
 
-    if (signals) {
+    if (signals && !alreadyUnlocked) {
       chosenImages = Images.select(signals, { count: Digest.IMAGES });
       digest = Digest.build(signals, {
         includeMessages: true, includeImages: true, imageCount: chosenImages.length,
       });
+    } else if (signals) {
+      // alreadyUnlocked: this rerun is about to bundle into the paid call
+      // below (see the branch after the review), and no premium-adjacent
+      // call anywhere in this app ever carries photographs — see
+      // collectExtraDataForPremium. Built without images from the start
+      // rather than offered in the review and silently dropped after.
+      digest = Digest.build(signals, { includeMessages: true, includeImages: false, imageCount: 0 });
     } else {
       digest = JSON.parse(JSON.stringify(state.digest));
       if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements);
@@ -2481,7 +2494,7 @@
     try {
       decision = await askReview(digest, chosenImages.length, onProgress =>
         getExtractedImages(signals, chosenImages, onProgress),
-        { photosUnavailable: !signals, paymentDue: mustPayForAnalysis() });
+        { photosUnavailable: !signals || alreadyUnlocked, paymentDue: alreadyUnlocked || mustPayForAnalysis() });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -2493,6 +2506,21 @@
     // this review any more for it to return to, so either one simply leaves
     // the report on screen untouched.
     if (!decision || decision === REVIEW_BACK) return;
+
+    if (alreadyUnlocked) {
+      // One S$1.99 charge regenerates everything together — the free report
+      // and all four premium sections — against this reviewed digest.
+      // Reuses runPremiumAnalysis's own bundled-refresh mechanism (built for
+      // adding data on the way to a first unlock) via pendingPremiumDigest,
+      // rather than a second copy of it. runAnalysis is deliberately never
+      // called on this branch: it replaces state.profile wholesale, which is
+      // what would wipe the premiumAnalysis this same charge is about to
+      // write — see the comment that used to sit where this branch is now.
+      applyReviewDecision(digest, decision);
+      pendingDataSourceReads = {};
+      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', digest);
+      return;
+    }
 
     // Money last, in the same place the first upload asks: after the review,
     // before the photo decode. Declining costs nothing — the report and
@@ -2525,12 +2553,13 @@
     // Whatever was pending is now either committed into digest above or
     // superseded by it — see pendingDataSourceReads' own declaration.
     pendingDataSourceReads = {};
-    // runAnalysis replaces state.profile wholesale on success, which is what
-    // actually clears any premiumAnalysis from before this rerun — a paid
-    // read of the old, smaller digest would otherwise sit under a report that
-    // moved on without it. hasUnfetchedUnlock() picks that up on its own: the
-    // receipt in psycheai_unlock is untouched, so the paid cards fall back to
-    // "Get the sections you paid for" rather than losing the payment.
+    // Only reachable here when premium has nothing unlocked yet — see
+    // alreadyUnlocked above — so runAnalysis's wholesale replacement of
+    // state.profile has no premiumAnalysis to lose. The one case still worth
+    // naming: a receipt paid for but never fetched (hasUnfetchedUnlock()).
+    // That receipt in psycheai_unlock is untouched by this call, so the paid
+    // cards still offer "Get the sections you paid for" afterwards, now
+    // against this rerun's digest, rather than losing the payment.
     await runAnalysis(digest, images, auth);
   }
 
@@ -2686,8 +2715,14 @@
       '<div class="btn-row">' +
       '<button class="btn" id="rerun-with-data" type="button">' + esc(TEXT.rerunAnalysis) + '</button>' +
       '</div>' +
-      (mustPayForAnalysis()
-        ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNote) + '</p>' : '') +
+      // Unconditional once premium is unlocked — that S$1.99 is not tied to
+      // the free-run allowance mustPayForAnalysis() tracks, so the note has
+      // to say so even for a reader with free runs left. See
+      // rerunWithAdditionalData's own alreadyUnlocked branch.
+      (Object.keys(paidAnalysis()).length
+        ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNoteUnlocked) + '</p>'
+        : mustPayForAnalysis()
+          ? '<p class="fineprint" id="rerun-price-note">' + esc(TEXT.analysisPriceNote) + '</p>' : '') +
       '</div>';
   }
 
@@ -3855,6 +3890,14 @@
         // ever threw, the footer would otherwise have already started claiming
         // Claude wrote sections the page does not show.
         if (state.profile) renderAnalysedBy(state.profile);
+        // The confidence card's own re-run price note was written before this
+        // unlock — paidAnalysis() now returns four sections where it returned
+        // none, and the note has to say S$1.99 from this point on, not the
+        // S$0.99 it showed a moment ago. renderProfile (the refreshedFree
+        // branch above) already redraws this along with everything else, so
+        // this only has to happen on the path that skips it.
+        const sources = document.querySelector('.trust-sources');
+        if (sources) sources.outerHTML = sourcesUsedHtml();
       }
       dialog.close();
     } catch (error) {
@@ -3995,18 +4038,29 @@
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
    */
-  async function openPremiumDialog(button, product) {
+  async function openPremiumDialog(button, product, preparedDigest) {
     const kind = product === 'analysis' ? 'analysis' : 'unlock';
+    // The re-run button's own route to this same S$1.99 product, used only
+    // when premium is already unlocked and the reader is adding/changing
+    // data — see rerunWithAdditionalData. Ledgers and prices exactly like a
+    // fresh unlock (server.js only ever sees `product: 'unlock'`); the only
+    // difference is the title/blurb, since "unlock" is the wrong verb for a
+    // reader who already has these sections.
+    const rerunAll = product === 'rerunAll';
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
 
     // Data first, review second, money last.
     //
-    // Only for a fresh unlock: the resume path already has a receipt and is
-    // here to collect sections that were paid for on an earlier visit, so it
-    // is neither charged nor asked for anything.
+    // preparedDigest is handed in already reviewed — see
+    // rerunWithAdditionalData — so it is used as-is. Otherwise, only for a
+    // fresh unlock: the resume path already has a receipt and is here to
+    // collect sections that were paid for on an earlier visit, so it is
+    // neither charged nor asked for anything.
     pendingPremiumDigest = null;
-    if (kind === 'unlock' && !unlockReceipt()) {
+    if (preparedDigest) {
+      pendingPremiumDigest = preparedDigest;
+    } else if (kind === 'unlock' && !unlockReceipt()) {
       const collected = await collectExtraDataForPremium();
       // Back at the supplement offer abandons the unlock. Nothing has been
       // charged and no dialog has been opened, so this simply returns.
@@ -4014,7 +4068,9 @@
       pendingPremiumDigest = collected;
     }
     $('#premium-dialog-title').textContent =
-      kind === 'analysis' ? TEXT.analysisDialogTitle : TEXT.premiumDialogTitle;
+      kind === 'analysis' ? TEXT.analysisDialogTitle
+        : rerunAll ? TEXT.premiumRerunDialogTitle
+        : TEXT.premiumDialogTitle;
     // By the time this sheet opens, the data offer has already been through,
     // so the dialog knows whether this S$1.99 is about to buy a rewrite of
     // the free sections as well — and says so. A reader agreeing to a price
@@ -4024,6 +4080,7 @@
       Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
     $('#premium-dialog-blurb').textContent =
       kind === 'analysis' ? TEXT.analysisDialogBlurb
+        : rerunAll ? TEXT.premiumRerunDialogBlurb
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;

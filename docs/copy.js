@@ -479,6 +479,12 @@
     // Shown on the upload page and beside the re-run button once the free run
     // is spent, so the price is never a surprise sprung at the last moment.
     analysisPriceNote: 'Your next analysis costs S$0.99.',
+    // Shown instead of the above once premium is unlocked — re-running then
+    // bundles the four paid sections back in, at the unlock's own S$1.99
+    // rather than the plain re-run's S$0.99, whether or not a free run is
+    // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
+    analysisPriceNoteUnlocked: 'Your premium sections are unlocked, so re-running costs S$1.99 and ' +
+      'refreshes everything — the free report and all four premium sections.',
     analysisFreeNote: 'Your first analysis is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
@@ -497,6 +503,15 @@
       'what partner truly suits you and the career assessment — and, because you added more data, ' +
       'rewrites the rest of your report with it at no extra cost. Taken on this device — Apple Pay or ' +
       'Google Pay, whichever this browser offers.',
+    // Shown instead of the unlock copy above when the reader already has
+    // premium and is re-running with added or changed data — "unlock" would
+    // be the wrong verb for sections they already have. Same S$1.99, same
+    // product, just a different reason to be paying it — see
+    // rerunWithAdditionalData's alreadyUnlocked branch.
+    premiumRerunDialogTitle: 'Re-run your full analysis',
+    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data — the free ' +
+      'report and all four premium sections together. Taken on this device — Apple Pay or Google Pay, ' +
+      'whichever this browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     // Followed immediately by the card fallback mounting itself (see

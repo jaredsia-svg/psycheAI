@@ -5481,20 +5481,50 @@ try {
     return Boolean(p && p.premiumAnalysis);
   }, { timeout: 30000 });
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
+  // The confidence card's fineprint has to say S$1.99 now, unconditionally —
+  // this reader still has free runs available (clearRunCount was never
+  // called against them in this test), so the plain S$0.99 note would be
+  // shown if this only checked mustPayForAnalysis() as before.
+  check('the confidence card now names the S$1.99 price, not the plain re-run price',
+    /1\.99/.test(await page.locator('#rerun-price-note').innerText()) &&
+    !/0\.99/.test(await page.locator('#rerun-price-note').innerText()),
+    await page.locator('#rerun-price-note').innerText());
 
-  // Load Facebook, then actually follow the rerun through to a real analysis
-  // — a source this session had not touched yet, unlike the Google carried
-  // over from above. Free, so this proves the point on the simplest path:
-  // no payment sheet to route around before checking the request itself.
-  await clearRunCount(page);
+  // Load Facebook, then actually follow the rerun through to a real
+  // regeneration — a source this session had not touched yet, unlike the
+  // Google carried over from above. Premium is already unlocked, so this
+  // rerun is never free regardless of the run counter: it is priced and
+  // routed exactly like the S$1.99 unlock itself, and both the free report
+  // and the four paid sections are rewritten on the same charge — see
+  // rerunWithAdditionalData's alreadyUnlocked branch.
   await loadSource(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
   const rerunReviewRows = await page.locator('#review-list input[type="checkbox"]').count();
   check('the rebuilt digest carries the new source\'s rows into the review',
     rerunReviewRows > 7, rerunReviewRows + ' rows');
+  check('photos are explained as unavailable, since this rerun bundles into the paid call',
+    /cannot be included/i.test(
+      await page.locator('#review-images').locator('xpath=../..').innerText()),
+    await page.locator('#review-images').locator('xpath=../..').innerText());
+  check('the send button already reads as a payment, since premium is already unlocked',
+    (await page.locator('#review-send').innerText()).trim() === 'Make payment');
 
   const analysesBeforeSend = analyseBodies.length;
+  const rerunPremiumBodies = [];
+  const noteRerunPremium = request => {
+    if (request.url().endsWith('/api/premium-analysis')) rerunPremiumBodies.push(JSON.parse(request.postData()));
+  };
+  page.on('request', noteRerunPremium);
   await page.click('#review-send');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  check('the dialog names this as a full re-run rather than a first unlock',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your full analysis');
+  check('and says the charge regenerates everything, not just the paid sections',
+    /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
+    await page.locator('#premium-dialog-blurb').innerText());
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await page.click('#premium-mock-pay');
+  await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   // The view never actually leaves #view-profile for this path — unlike a
   // first upload, there is no working screen in between — so waiting on it
   // proves nothing here. And the digest write is not a reliable signal
@@ -5503,29 +5533,40 @@ try {
   // request-capturing listener land a tick or two after that — waiting on
   // the request count actually landing is the only wait that means what it
   // says.
-  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 10000 });
   await waitForLength(analyseBodies, analysesBeforeSend + 1, 60000);
-  check('rerunning sends exactly one more request, against the enriched digest',
+  await waitForLength(rerunPremiumBodies, 1, 60000);
+  page.off('request', noteRerunPremium);
+  check('rerunning sends exactly one more free-report request, against the enriched digest',
     analyseBodies.length === analysesBeforeSend + 1,
     (analyseBodies.length - analysesBeforeSend) + ' new requests');
+  check('and exactly one premium request, against the same enriched digest',
+    rerunPremiumBodies.length === 1 && Boolean(rerunPremiumBodies[0].digest.facebook),
+    JSON.stringify({ count: rerunPremiumBodies.length, facebook: Boolean(rerunPremiumBodies[0] && rerunPremiumBodies[0].digest.facebook) }));
+  check('both requests were authorised by the same unlock-tier charge, not a second S$0.99',
+    JSON.parse(analyseBodies[analyseBodies.length - 1]).product === 'unlock' &&
+    !JSON.parse(analyseBodies[analyseBodies.length - 1]).promoCode,
+    analyseBodies[analyseBodies.length - 1]);
   check('the stored digest now actually carries the new block',
     await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).facebook)));
 
   // The paid sections that were unlocked before this rerun were read from the
-  // smaller, Instagram-only digest. Carrying them forward under a report
-  // that moved on without them would misdescribe what they are about; losing
-  // the reader's payment over it would be worse — check both halves.
+  // smaller, Instagram-only digest. The old behaviour cleared them and made a
+  // reader fetch them again for free against the new digest; the new S$1.99
+  // rerun regenerates them in the same charge instead, so nothing is lost and
+  // nothing is left half up to date.
   const afterRerun = await page.evaluate(() => ({
     hasPremiumAnalysis: Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis),
     unlockReceipt: localStorage.getItem('psycheai_unlock'),
   }));
-  check('a stale paid unlock is cleared by the rerun rather than left describing the old digest',
-    !afterRerun.hasPremiumAnalysis);
-  check('the payment receipt itself survives — this is a refresh, not a lost purchase',
-    afterRerun.unlockReceipt === receiptBeforeRerun && Boolean(afterRerun.unlockReceipt));
-  check('the paid card offers to fetch what was already paid for, not a second price',
-    (await page.locator('.premium-unlock').first().innerText()).trim() === 'Get the sections you paid for',
-    await page.locator('.premium-unlock').first().innerText());
+  check('the rerun leaves the paid sections filled in, not cleared',
+    afterRerun.hasPremiumAnalysis);
+  check('a fresh receipt was written for the new charge',
+    Boolean(afterRerun.unlockReceipt) && afterRerun.unlockReceipt !== receiptBeforeRerun,
+    afterRerun.unlockReceipt);
+  check('the paid cards show the real, regenerated content — no resume prompt left behind',
+    (await page.evaluate(() =>
+      [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
+        .filter(body => !body.hidden).length)) === 4);
 
   // ---- adding data at the paid unlock actually enriches the paid call ----
   //

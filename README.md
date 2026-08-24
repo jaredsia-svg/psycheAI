@@ -101,7 +101,10 @@ does not exist.
 
 **The per-device allowance is a fair-use nudge, not a wall.** One analysis is
 free per browser; each one after is S$0.99, whether it is a re-run with Google
-or Facebook data added or a fresh Instagram upload. The count lives in
+or Facebook data added or a fresh Instagram upload — unless premium is already
+unlocked, in which case a rerun is S$1.99 and rewrites the four paid sections
+along with the free report; see "Re-running with additional data, from the
+report page" below. The count lives in
 `psycheai_runs`, and the single most important thing about it is that it is
 **deliberately not in `KEYS`** — `store.clearAll()` iterates `KEYS`, so anything
 listed there is wiped by "Delete everything", which was exactly the free way
@@ -1763,14 +1766,44 @@ or photographs that will not decode, write their message to `#profile-alert` and
 their report — rather than calling `showUploadError()`, which drops back to the welcome page and would
 look for all the world like the report had been lost.
 
-**A paid unlock from before the rerun does not quietly survive under a report that moved on without
-it.** `runAnalysis()` replaces `state.profile` wholesale on success, which is what actually clears any
+**A paid unlock from before the rerun used to be quietly cleared, and now it is rewritten instead.**
+`runAnalysis()` replaces `state.profile` wholesale on success, which used to be exactly what dropped any
 `premiumAnalysis` left over from before — the paid sections read the *old*, smaller digest, and
-carrying them forward under a new one would misdescribe what they are about. The payment itself is not
-lost: the receipt in `psycheai_unlock` is written independently of the report and is left alone, so
-`hasUnfetchedUnlock()` picks the gap up on its own and the paid cards fall back to "Get the sections
-you paid for" — the existing lost-tab recovery path, reused here for a different reason — rather than
-asking to pay again.
+carrying them forward under a new one would misdescribe what they are about. The payment itself was
+never lost: the receipt in `psycheai_unlock` is written independently of the report, so
+`hasUnfetchedUnlock()` picked the gap up on its own and the paid cards fell back to "Get the sections
+you paid for", the existing lost-tab recovery path, borrowed for a different reason. That was a real
+answer, but it charged nothing for a materially bigger request (regenerate the free report **and**
+re-fetch four paid sections from newer evidence) and left the reader an extra click before either half
+was actually current.
+
+**Once premium is unlocked, "Add / change data & re-run analysis" now costs S$1.99, not S$0.99, and
+rewrites everything in one request.** `rerunWithAdditionalData()` checks `Object.keys(paidAnalysis())`
+before it builds anything: empty, and the button behaves exactly as documented above — the ordinary
+S$0.99-or-free rerun, free report only. Non-empty, and the whole shape of the rerun changes:
+
+- The digest is built without photographs even when `state.signals` is in memory, because it is about
+  to feed the paid call, and nothing premium-adjacent in this app has ever carried a photograph — see
+  `collectExtraDataForPremium`'s own no-photos rule below. Offering photos here and quietly dropping
+  them afterwards would be worse than never offering them, so the review's photos row explains why
+  instead.
+- The review's Send button always reads "Make payment" — unconditionally, regardless of whether a free
+  run is still available, because this is no longer the free-run allowance's price to set.
+- Send does not lead to `authoriseAnalysis()`/`runAnalysis()` at all. It leads to `openPremiumDialog()`
+  with a third product, `'rerunAll'`, and the digest just reviewed handed in as `pendingPremiumDigest`.
+  That is the same variable `runPremiumAnalysis()`'s own bundled-refresh mechanism already watches —
+  built originally for adding data on the way to a *first* unlock — so paying the S$1.99 here reruns
+  the free report and regenerates all four paid sections together, on one authorisation, with no second
+  copy of that machinery written. `runAnalysis()` is never called on this branch, so there is nothing
+  left to wipe `premiumAnalysis` in the first place.
+- The dialog itself says so before the charge is agreed to: a new title, "Re-run your full analysis",
+  and a new blurb naming both halves, rather than reusing "Unlock premium sections" for a reader who
+  already has them.
+- The confidence card's fineprint switches from "Your next analysis costs S$0.99" to a note naming
+  S$1.99 and both halves, and it has to be refreshed at the moment of unlock, not just at the next full
+  render — an unlock with no added data never used to touch this note (`mustPayForAnalysis()`, what it
+  read before, does not change when premium is bought), so the gap was invisible until the note started
+  reading unlock status too.
 
 `tools/uitest.mjs` drives all of this for real: the button appearing after an ordinary upload **and
 surviving a reload**; pressing it on a reloaded page opening the popout straight away, with both
@@ -1778,15 +1811,18 @@ sources and their instructions, and **without** demanding the Instagram export (
 is asserted not to fire); the merge path sending a digest that carries both the Instagram evidence and
 the new Google block, inside budget, in one request; Skip absent and Escape
 refused in the forced dialog; Back leaving the digest, the profile and the request count exactly where
-they were; adding a Google Takeout and completing the rerun sending exactly one more request and
-landing a digest that actually carries the new block; and a promo-unlocked report whose paid sections
-are cleared by the rerun while the receipt and the "already paid" cover survive it.
+they were; and, once premium is unlocked, adding a Facebook export and completing the rerun sending
+exactly one more free-report request and exactly one premium request — both against the enriched
+digest, both authorised by the same unlock-tier charge — landing the paid sections filled back in
+rather than cleared, a fresh receipt, no resume prompt left on screen, and the confidence card's price
+note reading S$1.99 before any of it is even sent.
 
 Each was fault-injected — dropping `requireAtLeastOne`, inverting the button's visibility condition,
-and reintroducing the old `premiumAnalysis` after a rerun — and each broke a different, specific check.
-The reload check was fault-injected against the original `state.signals` condition specifically, since
-that is the bug it exists to prevent: it fails with `hidden=true`, and the file-chooser check behind it
-times out, which is exactly what the reader saw.
+forcing `alreadyUnlocked` false so the rerun fell back to the old S$0.99 path, and disabling the price
+note's post-unlock refresh — and each broke a different, specific check. The reload check was
+fault-injected against the original `state.signals` condition specifically, since that is the bug it
+exists to prevent: it fails with `hidden=true`, and the file-chooser check behind it times out, which is
+exactly what the reader saw.
 
 ### A closed dialog does not stop the fetch behind it
 
@@ -3198,7 +3234,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 964 checks: drives the real UI in Chromium against a
+npm run test:ui    # 971 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
