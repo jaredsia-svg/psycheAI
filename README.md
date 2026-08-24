@@ -1980,37 +1980,49 @@ working view has no dialog-like "cover the page, then get out of it" shape to ha
 off in the first place. Worth revisiting if a reader ever reports the prompt itself as confusing
 rather than as not appearing at all.
 
-### The compatibility report leaving the site on Back
+### Any secondary view leaving the site on Back
 
-`show('report')` — reached from a fresh comparison or from clicking a past one in the history table —
-never pushed a history entry the way `showSample()` already does for its own dialog. A reader on a
-phone reaching for Back to leave a comparison and return to their own psyche page instead left the
-site entirely, for the same reason the sample dialog needed the exact same fix: nothing was ever
-pushed for the browser to pop, so Back fell through to whatever page preceded this one.
+The first pass at this fix only covered `show('report')` — reached from a fresh comparison or a past
+one in the history table — with a dedicated `showReport()` wrapper. It shipped, and the very next
+report named the actual scope of the bug: the compatibility *scan* page and the FAQ had the identical
+problem, for the identical reason, since neither pushed a history entry either. A one-off wrapper for
+one view was the wrong shape for a bug that was never about `report` specifically — it was about
+`show(view)` being the single funnel every view change already runs through, and none of them pushing
+anything for the browser to pop. A reader on a phone reaching for Back from any of these — "My
+Compatibility", the FAQ, a comparison's result — left the site entirely rather than returning to
+their own psyche page, the same failure `showSample()`'s dialog needed fixing for its own overlay.
 
-The fix, `showReport()`, mirrors `showSample()`'s pattern closely rather than inventing a new one:
-push `{ psycheaiReport: true }` on arrival, guarded so opening a second report — a fresh scan, or a
-different history-table row — while already on this view never stacks a second entry behind the
-first. The `popstate` listener that already existed for the sample dialog gained a second branch,
-reached only once the sample dialog (if it happened to be open on top of the report) is out of the
-way: pop the report's own flag and navigate to the psyche page with `go('profile')`. Both call sites
-that used to call `show('report')` directly — the fresh-comparison path in `runMatch` and the
-history-table click handler — now call `showReport()` instead.
+The fix moved into `show()` itself, generalized rather than duplicated per view. Two view lists name
+the two roles: `SECONDARY_VIEWS = ['scan', 'report', 'about']` are the views a reader reaches by
+navigating away from wherever they actually live, and `HOME_VIEWS = ['welcome', 'profile']` are the
+two places Back should land — whichever is real, which is exactly what `go('home')` already knows how
+to pick. `'working'` deliberately belongs to neither list: it is a transient step *inside* reaching
+`report` (`scan` → `working` → `report`), never a page someone arrives at directly or means to leave
+from, so it must not trigger a push or a pop just by being shown in between.
 
-**Leaving the report any way other than Back also has to give the entry back**, or a later Back press
-from wherever that other navigation landed would pop a phantom state and jump to the psyche page
-unannounced — exactly the failure mode `showSample()`'s own `close` handler already guards against by
-calling `history.back()` itself when its dialog closes some other way. `show(view)` gained the
-equivalent: leaving the report view for anything other than 'report' consumes the entry the same way,
-before the requested view is drawn.
+`show(view)` now pushes one history entry — guarded on `!navHistoryEntry`, so moving between two
+secondary views (`about` → `scan`, or `scan` → its own `report`) never stacks a second `pushState`
+behind the first — the moment `view` is a secondary one and no entry is already open for this
+excursion. One entry covers the whole excursion, not one per view visited inside it, which matches
+what a reader actually wants from Back: return to where they started, not retrace every screen they
+happened to pass through. Landing on a home view consumes that entry the same way, whether the reader
+got there by pressing Back or by any other route — a nav-link click, "Back to my profile," a fresh
+upload — because leaving a secondary view any way other than Back still has to give the entry back,
+or a later Back press from wherever that other navigation landed would pop a phantom state and jump
+home unannounced. The `popstate` listener that already existed for the sample dialog gained the
+equivalent second branch, reached only once the sample dialog (if it happened to be open on top of
+whatever secondary view) is out of the way: pop the flag and call `go('home')`, which is what makes a
+reader who opens the FAQ before ever having a profile land back on `welcome` rather than a `profile`
+view that does not exist yet.
 
-`tools/uitest.mjs` drives a real comparison through to its report, presses the browser's actual back
-button (`page.goBack()`), and confirms the psyche page is what comes back — not the site's exit,
-which is what the failure mode actually looks like, following the same shape as the sample dialog's
-own back-button check earlier in the suite. Fault-injected by disabling the `pushState` call inside
-`showReport()`: the back-button check fails directly, and the very next step — a plain nav-link click
-that assumes the page is still there to click on — times out, the same cascade a real reader leaving
-the site would produce.
+`tools/uitest.mjs` drives a real comparison through to its report and presses the browser's actual
+back button (`page.goBack()`), confirming the psyche page comes back rather than the site's exit —
+and does the same from the FAQ, reached by a plain nav click with no comparison involved at all, to
+prove the fix is genuinely general rather than still secretly report-shaped. Both follow the same
+shape as the sample dialog's own back-button check earlier in the suite. Fault-injected by dropping
+`'about'` from `SECONDARY_VIEWS` alone: the FAQ back-button check fails directly, and the very next
+step — a plain nav-link click that assumes the page is still there to click on — times out, the same
+cascade a real reader leaving the site would produce.
 
 ### The photographs
 
@@ -3071,7 +3083,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 948 checks: drives the real UI in Chromium against a
+npm run test:ui    # 949 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

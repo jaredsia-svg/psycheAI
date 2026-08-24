@@ -995,6 +995,21 @@
 
   const VIEWS = ['welcome', 'working', 'profile', 'scan', 'report', 'about'];
 
+  // Views a reader reaches by navigating away from wherever they actually
+  // live — the nav bar's "My Compatibility" and "FAQ", a fresh scan's result,
+  // a past comparison opened from the history table. On a phone, Back is how
+  // people leave any of these the way they would close something covering the
+  // page — see navHistoryEntry's own declaration below for the fix. 'working'
+  // is deliberately not here: it is a transient step inside reaching 'report'
+  // (scan → working → report), never a place someone arrives at directly or
+  // means to leave from, so it must not trigger a push or a pop on its own.
+  const SECONDARY_VIEWS = ['scan', 'report', 'about'];
+  // Where Back actually belongs once a secondary view's entry is popped —
+  // whichever of these is real right now. Reached through go('home'), which
+  // already knows to fall back to 'welcome' for a reader who opened the FAQ
+  // before ever having a profile at all.
+  const HOME_VIEWS = ['welcome', 'profile'];
+
   // Both links lead somewhere that redirects straight back to the upload page
   // until a profile exists, so until then they are noise. They start hidden in
   // the markup and appear the moment there is something to point at.
@@ -1006,14 +1021,15 @@
 
   function show(view) {
     if (view !== 'scan') stopCamera();
-    // Leaving the report view any way other than the Back press that its own
-    // history entry exists for — a nav link, a new scan, anything else — still
-    // has to give that entry back. Left in place, a later Back from wherever
-    // this navigation actually lands would pop a phantom state and jump to
-    // the psyche page unannounced. See showReport() and the popstate listener
-    // it shares a comment with for why the entry exists at all.
-    if (reportHistoryEntry && view !== 'report' && !closingReportFromHistory) {
-      reportHistoryEntry = false;
+    // Arriving at a home view gives back the entry pushed for whichever
+    // secondary view preceded it — a nav link, a fresh scan's result, anything
+    // other than the Back press the entry exists for. Left in place, a later
+    // Back from wherever this navigation actually lands would pop a phantom
+    // state and jump to a home view unannounced. See navHistoryEntry's own
+    // declaration for why the entry exists at all, and the popstate listener
+    // below for the other half of this same guard.
+    if (navHistoryEntry && HOME_VIEWS.includes(view) && !closingNavFromHistory) {
+      navHistoryEntry = false;
       history.back();
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
@@ -1023,6 +1039,16 @@
     // would be scaled to nothing. Re-fit here, where the width is real.
     if (view === 'profile') layoutPsycheCard();
     window.scrollTo(0, 0);
+    // One entry covers a whole excursion into any of the secondary views, not
+    // one per view — moving between them (about → scan, or scan → its own
+    // report) never stacks a second pushState behind the first. Guarded on
+    // navHistoryEntry already being false, which is also what stops this from
+    // re-firing on every one of the several show() calls a single scan →
+    // working → report sequence makes.
+    if (SECONDARY_VIEWS.includes(view) && !navHistoryEntry) {
+      history.pushState({ psycheaiNav: true }, '');
+      navHistoryEntry = true;
+    }
   }
 
   // ---- the sample report ----
@@ -1099,41 +1125,34 @@
     }
     // Falls through here only once the sample dialog (if it was even open)
     // is out of the way — a Back press pops one history entry, and if that
-    // entry was the sample's own, the report underneath it is not what this
-    // press was aimed at. A second Back, with nothing left to close, reaches
-    // this branch on its own next time. See showReport()'s own comment for
-    // why leaving the report view any other way must also consume this entry.
-    if (reportHistoryEntry) {
-      closingReportFromHistory = true;
-      reportHistoryEntry = false;
-      go('profile');
-      closingReportFromHistory = false;
+    // entry was the sample's own, whatever secondary view sits underneath it
+    // is not what this press was aimed at. A second Back, with nothing left
+    // to close, reaches this branch on its own next time. See
+    // navHistoryEntry's own declaration for why leaving a secondary view any
+    // other way must also consume this entry.
+    if (navHistoryEntry) {
+      closingNavFromHistory = true;
+      navHistoryEntry = false;
+      go('home');
+      closingNavFromHistory = false;
     }
   });
 
-  // ---- the compatibility report ----
+  // ---- getting back to a home view ----
   //
-  // Reached from a scan or from the history table — either way, it is a page
-  // the reader arrived at from their own psyche page and, on a phone, will
-  // reach for Back to leave the same way they would close anything covering
-  // what they were looking at. Nothing pushed a history entry for this view
-  // before, so Back had nowhere to go but out of the site entirely. One entry
-  // per genuine arrival at this view fixes that, the same way showSample()
-  // already does for its own dialog.
-  let reportHistoryEntry = false;
-  let closingReportFromHistory = false;
-
-  function showReport() {
-    show('report');
-    // Guarded so opening a second history entry, or a fresh scan's result,
-    // while already on this view never stacks a second pushState behind it —
-    // one entry covers however many reports are opened before the reader
-    // actually leaves.
-    if (!reportHistoryEntry) {
-      history.pushState({ psycheaiReport: true }, '');
-      reportHistoryEntry = true;
-    }
-  }
+  // My Compatibility, the FAQ, a fresh scan's result, a past comparison
+  // opened from the history table — every one of these is a page the reader
+  // arrived at by navigating away from their own psyche page, and on a
+  // phone, Back is how people leave any of them the way they would close
+  // something covering what they were looking at. Nothing pushed a history
+  // entry for any of them before, so Back had nowhere to go but out of the
+  // site entirely. One entry per excursion fixes that, the same way
+  // showSample() already does for its own dialog — see SECONDARY_VIEWS and
+  // show()'s own push/pop for where this actually happens; the flags live
+  // here only because show() and the popstate listener above both need them,
+  // and neither is defined yet at this point in the file.
+  let navHistoryEntry = false;
+  let closingNavFromHistory = false;
 
   function go(target) {
     closeSample();
@@ -2851,7 +2870,7 @@
     if (!link) return;
     event.preventDefault();
     const entry = store.read(KEYS.history, [])[Number(link.dataset.report)];
-    if (entry) { renderReport(entry.report, entry.withName, entry.when); showReport(); }
+    if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
   });
 
   // The profile page and the scan page both offer this person's own link, so
@@ -4551,7 +4570,7 @@
       history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });
       store.write(KEYS.history, history.slice(0, 25));
       renderReport(report, other.name);
-      showReport();
+      show('report');
     } catch (error) {
       renderScan();
       show('scan');

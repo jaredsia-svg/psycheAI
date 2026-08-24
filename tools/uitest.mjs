@@ -5825,10 +5825,10 @@ try {
 
   // The report page is reached from the reader's own psyche page, and on a
   // phone the back button is the natural way to leave anything covering the
-  // screen. Nothing pushed a history entry for this view before showReport()
-  // did, so that press left the site entirely instead of coming back here —
-  // the same failure the sample dialog's own back-button check above guards
-  // against, for the same reason.
+  // screen. Nothing pushed a history entry for any secondary view before
+  // show()'s own push/pop did, so that press left the site entirely instead
+  // of coming back here — the same failure the sample dialog's own
+  // back-button check above guards against, for the same reason.
   await page.goBack();
   await page.waitForLoadState('domcontentloaded');
   check('the back button returns from a compatibility report to the psyche page, not off the site',
@@ -6042,6 +6042,16 @@ try {
   check('no dev setup instructions are left on a user-facing page',
     !/GEMINI_API_KEY|npm start|PSYCHEAI_MOCK/.test(about));
   await shot('5-about');
+
+  // The FAQ is reachable with a single nav click from anywhere, including
+  // before a reader ever has a profile — see go('home')'s own fallback to
+  // 'welcome'. The same history entry SECONDARY_VIEWS pushes for a
+  // compatibility report covers this page too, so Back has to behave the
+  // same way here: return to the psyche page, not leave the site.
+  await page.goBack();
+  await page.waitForLoadState('domcontentloaded');
+  check('the back button returns from the FAQ page to the psyche page, not off the site',
+    await page.locator('#view-profile').isVisible() && !(await page.locator('#view-about').isVisible()));
 
   // ---- persistence, history, rejection ----
   await page.click('[data-nav="profile"]');
