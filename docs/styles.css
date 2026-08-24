@@ -881,6 +881,67 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 
 .card-head { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: 1.1rem; }
 .card-head h2 { margin: 0; }
+/* The text block beside the glyph, so the chevron below can push to the far
+   edge of the card rather than sitting against the end of the title. */
+.card-head > div { flex: 1; min-width: 0; }
+
+/*
+ * Collapsible sections.
+ *
+ * The report opens with every section shut, so the whole of it is a short list
+ * of headings a reader can scan and pick from rather than one long scroll they
+ * have to travel. See collapseSections() in app.js for the state, and the
+ * delegated handler beside it for the toggle.
+ *
+ * Hiding works by sibling rather than by wrapping the body in a container:
+ * every section is already `.card-head` followed by its content, so "everything
+ * that is not the head" names the body exactly, and no builder had to be
+ * restructured to introduce a wrapper element around it.
+ *
+ * Screen only. In print there is no one to click anything, and a report that
+ * printed as ten headings and nothing else would be worthless — so the collapse
+ * simply does not exist there, and the chevrons go with the other controls.
+ */
+.card-toggle {
+  display: flex; align-items: center; gap: .6rem; width: 100%;
+  justify-content: space-between; padding: 0; border: 0; background: none;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.card-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.card-toggle-text { min-width: 0; }
+.card-chevron {
+  flex: none; width: .62rem; height: .62rem; margin-right: .15rem;
+  border-right: 2.5px solid var(--ink-soft); border-bottom: 2.5px solid var(--ink-soft);
+  border-radius: 1px;
+  /* Points down when open, right when shut — the rotation is the animation, so
+     it reads as the same arrow turning rather than one glyph swapped for another. */
+  transform: rotate(45deg); transform-origin: center;
+  transition: transform .18s ease;
+}
+.card-head-toggle:hover .card-chevron { border-color: var(--accent); }
+
+@media screen {
+  .section-card.is-collapsed > :not(.card-head) { display: none; }
+  /* The head's bottom margin is spacing between it and a body that is no
+     longer there, and leaving it in is most of what stops a shut card from
+     actually looking shut. */
+  .section-card.is-collapsed .card-head { margin-bottom: 0; }
+  .section-card.is-collapsed { padding-top: .9rem; padding-bottom: .9rem; margin-bottom: .55rem; }
+  .section-card.is-collapsed .card-chevron { transform: rotate(-45deg); }
+  /* One line each while shut, so every row in the list is the same height and
+     the whole thing scans as an index. The four paid sections have the longest
+     sub-lines by far — three lines apiece — and left alone they make their own
+     rows twice the height of the free ones for text a reader is about to see
+     in full anyway the moment they open the section. */
+  .section-card.is-collapsed .card-sub {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1;
+    line-clamp: 1; overflow: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-chevron { transition: none; }
+}
 .card-icon {
   flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem;
   border-radius: 12px; background: var(--accent-soft); font-size: 1.15rem; line-height: 1;
@@ -1444,7 +1505,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 
 @media print {
   .no-print, .nav, .footer, .btn, .btn-row, .cta-row, #server-status,
-  .screen-only { display: none !important; }
+  .screen-only, .card-chevron { display: none !important; }
   .print-only { display: block; }
 
   :root {

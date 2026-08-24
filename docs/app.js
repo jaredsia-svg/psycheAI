@@ -468,10 +468,57 @@
   // the section is for. It gives a long page a rhythm to scroll through
   // instead of a wall of identical cards. Module-level because both the
   // profile page and the scan page's QR-contents block use it.
-  function sectionHead(icon, title, sub) {
-    return '<div class="card-head"><span class="card-icon">' + icon + '</span>' +
-      '<div><h2>' + title + '</h2>' +
+  // `collapsible` turns the heading into a disclosure control for the card
+  // below it — see collapseSections(). The button lives *inside* the `<h2>`
+  // rather than replacing it or wrapping the whole row: that is the canonical
+  // disclosure pattern, it gives the control its accessible name from the
+  // section title for free, and it leaves the document outline intact, which
+  // wrapping the row in a button would not (a heading is not valid button
+  // content). The whole row stays clickable anyway — the delegated handler
+  // listens on `.card-head-toggle`, so a click on the button bubbles to the
+  // same place a click on the title does, and toggles once either way.
+  function sectionHead(icon, title, sub, collapsible) {
+    const chevron = '<span class="card-chevron" aria-hidden="true"></span>';
+    return '<div class="card-head' + (collapsible ? ' card-head-toggle' : '') + '">' +
+      '<span class="card-icon">' + icon + '</span>' +
+      '<div><h2>' +
+      (collapsible
+        ? '<button class="card-toggle" type="button" aria-expanded="true">' +
+          '<span class="card-toggle-text">' + title + '</span>' + chevron + '</button>'
+        : title) +
+      '</h2>' +
       (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
+  }
+
+  /**
+   * Shuts every collapsible section in `root`, and is what actually makes the
+   * report open compact rather than as one long scroll.
+   *
+   * Done here, right after the markup is written, rather than baked into the
+   * markup itself: `is-collapsed` is a *state*, and the same section HTML is
+   * also what the sample dialog renders and what a freshly-paid unlock splices
+   * back in — one function that closes whatever is currently there beats
+   * threading a "start closed" flag through every builder. It runs in the same
+   * synchronous task as the `innerHTML` that precedes it, so nothing is ever
+   * painted expanded first.
+   *
+   * `aria-expanded` starts `true` in the markup and is corrected here, so the
+   * one place that decides the state is the one place that announces it.
+   */
+  function collapseSections(root) {
+    // Found through the heads rather than with `.section-card:has(...)`: the
+    // set is identical, and this asks nothing of the browser that the rest of
+    // this file does not already assume.
+    for (const head of root.querySelectorAll('.card-head-toggle')) {
+      const card = head.closest('.section-card');
+      if (card) setSectionOpen(card, false);
+    }
+  }
+
+  function setSectionOpen(card, open) {
+    card.classList.toggle('is-collapsed', !open);
+    const toggle = card.querySelector('.card-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', String(open));
   }
 
   // What the QR code actually carries — the compact card, not the full
@@ -787,7 +834,7 @@
     const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
-      sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub())) +
+      sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub()), true) +
       '<div class="premium-cover"' + (data ? ' hidden' : '') + '>' +
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
@@ -851,7 +898,7 @@
   function roastBlock(bonus) {
     if (!bonus) return '';
     return '<div class="card section-card bonus-card">' +
-      sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub)) +
+      sectionHead('🕳️', esc(TEXT.bonus), esc(TEXT.bonusSub), true) +
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
       '<p>' + esc(TEXT.bonusCoverBlurb) + '</p>' +
@@ -963,21 +1010,39 @@
     const consolidated = document.querySelector('#profile-body .paid-consolidated');
     if (consolidated) {
       consolidated.outerHTML = PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('');
-      return;
+    } else {
+      // Defensive fallback for the one case where individual cards could
+      // already be on screen — a stale unlock receipt from before this block
+      // existed, still holding a partial `premiumAnalysis` client-side.
+      for (const section of PAID_SECTIONS) {
+        const data = unlocked[section.key];
+        const card = document.querySelector('#profile-body .paid-card[data-paid="' + section.key + '"]');
+        if (!card || !data) continue;
+        const cover = card.querySelector('.premium-cover');
+        const body = card.querySelector('.premium-body');
+        body.innerHTML = section.body(data);
+        body.hidden = false;
+        cover.hidden = true;
+        cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
+      }
     }
-    // Defensive fallback for the one case where individual cards could
-    // already be on screen — a stale unlock receipt from before this block
-    // existed, still holding a partial `premiumAnalysis` client-side.
-    for (const section of PAID_SECTIONS) {
-      const data = unlocked[section.key];
-      const card = document.querySelector('#profile-body .paid-card[data-paid="' + section.key + '"]');
-      if (!card || !data) continue;
-      const cover = card.querySelector('.premium-cover');
-      const body = card.querySelector('.premium-body');
-      body.innerHTML = section.body(data);
-      body.hidden = false;
-      cover.hidden = true;
-      cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
+    // One call for both routes, and only one of them strictly needs it: cards
+    // built fresh above are born open, since nothing has run collapseSections
+    // over them, while the ones the fallback finds already on screen were shut
+    // by the render that put them there. Stating it once for both is what
+    // makes "what you just paid for is open" a property of this function
+    // rather than of whichever branch happened to run.
+    openPaidSections();
+  }
+
+  /**
+   * The one exception to sections arriving shut — see collapseSections. A
+   * reader who has just paid should be looking at what they bought, not at
+   * four more shut headings to click through to find it.
+   */
+  function openPaidSections() {
+    for (const card of document.querySelectorAll('#profile-body .paid-card')) {
+      setSectionOpen(card, true);
     }
   }
 
@@ -1084,6 +1149,7 @@
       // reader asks for it — see roastBlock()/revealRoast().
       sampleReport = report;
       $('#sample-body').innerHTML = reportSectionsHtml(report, { sample: true });
+      collapseSections($('#sample-body'));
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
@@ -1266,6 +1332,23 @@
     }
     const hide = event.target.closest('.bonus-hide');
     if (hide) hideRoast(hide);
+  });
+
+  // Opening and shutting a section. Delegated for the same reason as the two
+  // above: these heads are written by innerHTML in both the real report and
+  // the sample dialog, and a listener bound to the elements themselves would
+  // be orphaned by the next render.
+  //
+  // Bound to the whole head rather than to `.card-toggle` alone, so the title
+  // and the sub-line are as clickable as the chevron is — a disclosure whose
+  // hit area is a 2rem glyph at the end of the row is a worse one. The button
+  // inside bubbles up to this same handler, so a click on it toggles once,
+  // not twice.
+  document.addEventListener('click', event => {
+    const head = event.target.closest('.card-head-toggle');
+    if (!head) return;
+    const card = head.closest('.section-card');
+    if (card) setSectionOpen(card, card.classList.contains('is-collapsed'));
   });
 
   // Same reason: sourcesUsedHtml() writes this into #profile-body's innerHTML
@@ -2591,7 +2674,12 @@
 
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
-    const head = sectionHead;
+    // Every section of the report body is a disclosure; sectionHead's other
+    // caller — the scan page's QR-contents block — is not, so the default
+    // stays off there and this local alias turns it on for the report only.
+    // The confidence card at the bottom deliberately calls sectionHead
+    // directly instead, and stays open: see its own comment.
+    const head = (icon, title, sub) => sectionHead(icon, title, sub, true);
 
     let html = '';
 
@@ -2759,8 +2847,14 @@
     // Neither belongs on the sample: it is nobody's report, has no digest of
     // its own, and must never show a real reader's re-run price or upload
     // state as if it were the sample's.
+    // `sectionHead` rather than `head`: this one card does not collapse. It is
+    // the only section that is not a piece of the reading — it holds the
+    // confidence score, the Data sources rows and the button that adds a
+    // source or runs again, which are the things a reader comes back to the
+    // bottom of the report to *do*. Shutting those behind a disclosure would
+    // hide the page's own controls, not tidy its prose.
     html += '<div class="card section-card confidence-card">' +
-      head('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
+      sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
       '<div class="confidence-meter"><div class="confidence-fill" style="width:' + Math.round(report.confidence.score) + '%"></div></div>' +
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p>' +
@@ -2837,6 +2931,7 @@
     // below) rather than bound here, because this element is replaced every
     // time the report renders.
     $('#profile-body').innerHTML = reportSectionsHtml(report);
+    collapseSections($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -3731,6 +3826,10 @@
         // the paid cards from state.profile.premiumAnalysis, which is set
         // above, and calls renderAnalysedBy itself.
         renderProfile();
+        // renderProfile shuts every section, this one included — and this is
+        // the one moment that is wrong, for the same reason revealPaid opens
+        // what it injects: the reader has just paid for these four.
+        openPaidSections();
       } else {
         revealPaid(result.data);
         // After revealPaid, not before: if injecting the sections themselves

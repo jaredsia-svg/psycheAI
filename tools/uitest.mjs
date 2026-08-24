@@ -66,6 +66,25 @@ async function clearRunCount(page) {
   await page.evaluate(() => localStorage.removeItem('psycheai_runs'));
 }
 
+// The report renders with every section shut — see collapseSections() in
+// app.js — so its prose is genuinely not on screen until a reader opens it.
+// That makes `innerText` and every visibility-dependent locator empty for
+// content that is present and correct, which is exactly what this undoes.
+//
+// Called by the checks that are about the *writing* rather than about the
+// disclosure, so those never have to care which sections happen to be open.
+// The checks that are about the disclosure itself drive real clicks instead,
+// and are grouped together further down.
+async function openAllSections(page, scope) {
+  await page.evaluate(root => {
+    for (const card of document.querySelectorAll(root + ' .section-card.is-collapsed')) {
+      card.classList.remove('is-collapsed');
+      const toggle = card.querySelector('.card-toggle');
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    }
+  }, scope || '#profile-body');
+}
+
 // #rerun-with-data — "Add / change data & re-run analysis" — opens the
 // data-sources popout every time now (see askDataSources() in app.js), never
 // the review dialog directly. Every caller below opens it through this.
@@ -1174,6 +1193,15 @@ try {
   const beforeSample = analyseBodies.length;
   await clickClear(page, '#hero-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  // The sample is the same section HTML the real report is, disclosures and
+  // all — so reading its prose means opening it first, exactly as on the
+  // report. That the sample opens shut in the first place is checked on its
+  // own terms below, before this.
+  check('the sample opens with its sections shut, the same as a real report',
+    (await page.locator('#sample-body .section-card.is-collapsed').count()) > 5 &&
+    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) === 1,
+    (await page.locator('#sample-body .section-card.is-collapsed').count()) + ' shut');
+  await openAllSections(page, '#sample-body');
   const sample = await page.evaluate(() => {
     const dialog = document.querySelector('#sample-dialog');
     return {
@@ -1282,6 +1310,7 @@ try {
 
   await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await openAllSections(page, '#sample-body');
   const fromSecond = await page.evaluate(() =>
     document.querySelector('#sample-body').innerText.length);
   check('the button under the diagram opens the same sample', fromSecond > 2500,
@@ -1734,6 +1763,78 @@ try {
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
+
+  // ---- the report opens as an index, not a scroll ----
+  //
+  // Every section arrives shut, so the whole report is a short list of
+  // headings to pick from rather than several thousand pixels to travel. This
+  // block runs before openAllSections touches anything — it is the one place
+  // in the suite that sees the report in the state a reader actually meets it
+  // in, and everything after it opens the sections first as a matter of course.
+  const shutState = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#profile-body .section-card')];
+    return {
+      total: cards.length,
+      shut: cards.filter(c => c.classList.contains('is-collapsed')).length,
+      open: cards.filter(c => !c.classList.contains('is-collapsed'))
+        .map(c => c.querySelector('h2').innerText.trim()),
+      height: Math.round(document.querySelector('#profile-body').getBoundingClientRect().height),
+      // The heading of a shut section stays readable; its body does not.
+      headVisible: Boolean(cards[0].querySelector('.card-head').offsetParent),
+      bodyHidden: [...cards[0].children].filter(el => !el.classList.contains('card-head'))
+        .every(el => !el.offsetParent),
+    };
+  });
+  check('every section of the report arrives shut, bar the one that holds the controls',
+    shutState.total > 8 && shutState.shut === shutState.total - 1 &&
+    shutState.open.length === 1 && /trust this/i.test(shutState.open[0]),
+    JSON.stringify({ total: shutState.total, shut: shutState.shut, open: shutState.open }));
+  check('a shut section still shows its heading, and genuinely hides its body',
+    shutState.headVisible && shutState.bodyHidden);
+  // Hidden, not merely scrolled past: a reader on a phone should be able to
+  // see the whole list at once, which is the entire point.
+  const openHeight = await page.evaluate(() => {
+    for (const c of document.querySelectorAll('#profile-body .section-card')) c.classList.remove('is-collapsed');
+    const h = Math.round(document.querySelector('#profile-body').getBoundingClientRect().height);
+    for (const c of document.querySelectorAll('#profile-body .section-card:not(.confidence-card)')) {
+      c.classList.add('is-collapsed');
+    }
+    return h;
+  });
+  check('shutting the report makes it dramatically shorter, not just tidier',
+    shutState.height < openHeight / 2,
+    shutState.height + 'px shut vs ' + openHeight + 'px open');
+
+  // Driven by a real click on the heading rather than on the chevron alone —
+  // the whole row is the control, and a disclosure whose hit area is a small
+  // glyph at the end of the line is a worse one.
+  const firstCard = page.locator('#profile-body .section-card').first();
+  await firstCard.locator('.card-head-toggle').click();
+  check('clicking a heading opens that section',
+    !(await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
+    (await firstCard.locator('.card-toggle').getAttribute('aria-expanded')) === 'true');
+  check('and opens only that one, leaving the rest of the list alone',
+    (await page.locator('#profile-body .section-card.is-collapsed').count()) === shutState.total - 2);
+  await firstCard.locator('.card-head-toggle').click();
+  check('clicking it again shuts it',
+    (await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
+    (await firstCard.locator('.card-toggle').getAttribute('aria-expanded')) === 'false');
+  // Clicking the chevron itself must toggle once, not twice — it sits inside
+  // the row the handler is bound to, so a second listener on the button would
+  // open and immediately shut it again.
+  await firstCard.locator('.card-chevron').click();
+  check('clicking the chevron itself toggles once, not twice',
+    !(await firstCard.evaluate(c => c.classList.contains('is-collapsed'))));
+  // The control has to be a real button carrying its own name, or a reader
+  // not using a mouse is handed a row of unlabelled glyphs.
+  check('the control is a real button, named by its own section title',
+    await page.evaluate(() => {
+      const button = document.querySelector('#profile-body .card-toggle');
+      return button.tagName === 'BUTTON' && button.type === 'button' &&
+        button.closest('h2') !== null && /who you are/i.test(button.innerText);
+    }));
+
+  await openAllSections(page);
   check('sending from the review includes DMs and photos, since neither was unticked',
     (await page.evaluate(() => {
       const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
@@ -2996,6 +3097,18 @@ try {
       });
     }),
     String(await page.locator('#profile-body .paid-card .premium-cover[hidden]').count()) + ' opened');
+  // Same claim as the bundled-refresh path further down, checked here because
+  // the two arrive by genuinely different routes: this one splices the four
+  // cards in over the consolidated block (revealPaid), that one redraws the
+  // whole report (renderProfile). Both have to leave what was just paid for
+  // open, and neither proves it for the other.
+  check('and the four are open rather than shut, unlike every other section',
+    await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#profile-body .paid-card')];
+      return cards.length === 4 && cards.every(card =>
+        !card.classList.contains('is-collapsed') &&
+        Boolean(card.querySelector('.premium-body').offsetParent));
+    }));
 
   // Each of the four cards renders its own header, so each has to carry its
   // own "Premium" badge now that they are separate elements again rather
@@ -3145,6 +3258,7 @@ try {
 
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await openAllSections(page);
   check('the unlock survives a reload, so a reader who paid does not pay twice',
     await page.evaluate(() => {
       const card = document.querySelector('#profile-body .ideal-partner-card');
@@ -3192,6 +3306,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await openAllSections(page);
 
   // Still one consolidated block, not four covers — nothing has actually
   // come back yet, so the same rule as before payment applies. Its one
@@ -4818,6 +4933,7 @@ try {
   await shot('1c-review-supplemented');
   await page.click('#review-send');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
 
   const bothBody = JSON.parse(analyseBodies[analyseBodies.length - 1]).digest;
   check('the digest records all three sources it was built from',
@@ -4855,6 +4971,7 @@ try {
     untickFacebookFriends: true, untickFacebookMessages: true,
   });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
   const strippedBody = JSON.parse(analyseBodies[analyseBodies.length - 1]).digest;
   check('unticking the YouTube rows empties the channels, titles and searches',
     strippedBody.google.topChannels.length === 0 &&
@@ -4921,6 +5038,7 @@ try {
     untickTopics: true, untickSearches: true, untickMessages: true, untickImages: true,
   });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
   const optedOut = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
   check('unticking the switch leaves DMs out entirely', optedOut.directMessages === undefined);
   check('the opt-out is recorded for the model', optedOut.coverage.directMessagesIncluded === false);
@@ -4984,6 +5102,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
 
   // ---- the confidence card's "Data sources" subsection ----
   //
@@ -5015,6 +5134,7 @@ try {
   // in-memory export, so it has to survive a reload.
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  await openAllSections(page);
   check('the sources subsection and its button survive a reload',
     await page.locator('#rerun-with-data').isVisible() &&
     (await page.locator('.trust-sources .source-row').count()) === 3);
@@ -5206,6 +5326,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
 
   // Declining the re-run's payment sheet costs nothing and leaves the report
   // and its digest exactly as they were, whether or not anything was loaded
@@ -5364,6 +5485,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
 
   const premiumBodies = [];
   const notePremium = request => {
@@ -5472,6 +5594,19 @@ try {
     await page.evaluate(() =>
       [...document.querySelectorAll('#profile-body .paid-card .premium-body')]
         .filter(body => !body.hidden).length) === 4);
+  // The one exception to "sections arrive shut" — and it has to be checked as
+  // what a reader can actually *see*, not as an unset `hidden` attribute on a
+  // body whose card is collapsed around it, which is what the check above
+  // would still report on its own. Somebody who has just paid should be
+  // reading what they bought, not looking at four more shut headings.
+  check('and the four they just paid for are open, not shut like the rest',
+    await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#profile-body .paid-card')];
+      return cards.length === 4 && cards.every(card =>
+        !card.classList.contains('is-collapsed') &&
+        card.querySelector('.card-toggle').getAttribute('aria-expanded') === 'true' &&
+        Boolean(card.querySelector('.premium-body').offsetParent));
+    }));
   // Coverage this path never had before, unlike the free-standing rerun's own
   // equivalent check above (the "Google row now ticks" one) — the data
   // sources subsection reads state.digest directly (see sourcesUsedHtml), so
@@ -5495,6 +5630,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
   const analysesBeforeBareUnlock = analyseBodies.length;
   await openUnlockPayment(page);
   // The inverse of the promise above: with nothing added there is nothing to
@@ -5531,6 +5667,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
   await page.waitForFunction(() => localStorage.getItem('psycheai_runs') !== null, { timeout: 30000 });
   const firstFreeBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('the first analysis is free — no payment is attached to it',
@@ -5622,6 +5759,7 @@ try {
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
   const paidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('paying runs the analysis, with the payment attached for the server to verify',
     typeof paidBody.paymentIntentId === 'string' && paidBody.paymentIntentId.length > 0,
@@ -5640,6 +5778,7 @@ try {
   await chooseDepth(page);
   await answerReview(page);
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+  await openAllSections(page);
 
   // ---- compatibility, via a second card ----
   const otherPayload = await page.evaluate(async () => {
@@ -6056,8 +6195,10 @@ try {
   // ---- persistence, history, rejection ----
   await page.click('[data-nav="profile"]');
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   check('profile survives a reload', (await page.locator('#profile-title').innerText()).includes('Aleç'));
   // "Your matches" was removed from the profile page — past comparisons live
   // only on the compatibility page now, under "Your compatibility results" —
@@ -6072,6 +6213,7 @@ try {
     (await page.locator('#scan-history').innerText()).includes('Jordan'));
   await page.click('[data-nav="profile"]');
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
 
   // A model told to send exactly one emoji will occasionally send a sentence.
   // Drive the real render path with a bad one rather than trusting the guard.
@@ -6082,6 +6224,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   const swapped = (await page.locator('.essence-icon').innerText()).trim();
   check('a wordy icon is swapped for a placeholder rather than printed',
     !/lighthouse/.test(swapped) && swapped.codePointAt(0) > 0x2000, swapped);
@@ -6101,6 +6244,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   check('a profile saved before characters still shows its noun',
     (await page.locator('.essence-noun').innerText()).includes('Riverbed'),
     await page.locator('.essence-noun').innerText());
@@ -6226,6 +6370,7 @@ try {
   // download and decode it rather than trusting the encoder.
   await page.click('[data-nav="profile"]');
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   await page.click('#test-compat-open');
   const download = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
@@ -6357,6 +6502,7 @@ try {
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await openAllSections(page);
   await page.click('#test-compat-open');
   const [longDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
@@ -6396,6 +6542,7 @@ try {
   await page.evaluate(json => localStorage.setItem('psycheai_profile', json), originalProfileJson);
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  await openAllSections(page);
 
   // The round trip that was actually broken: download the code, then upload
   // that exact file back through the real handler. Decoding the bytes in the
@@ -6577,6 +6724,7 @@ try {
   // not stack a second copy underneath the first.
   await page.click('[data-nav="profile"]');
   await page.waitForSelector('#view-profile:not([hidden])');
+  await openAllSections(page);
   await page.click('[data-nav="scan"]');
   await page.waitForSelector('#view-scan:not([hidden])');
   check('the QR-contents section does not stack up across repeat visits',

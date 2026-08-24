@@ -2256,6 +2256,71 @@ suite so they survive edits to the prompt.
 
 ## What the report contains
 
+### The report opens as an index, not a scroll
+
+Every section arrives shut. What a reader meets on the psyche page is a list of headings — Who you
+are, Big Five, MBTI, Enneagram, Interests, Values & Beliefs, In relationships, At work, Your digital
+footprint, the roast, and the four paid sections — each one line of title, one line of purpose, and a
+chevron. Opening one is a click on the row. The full report is around **6,000 pixels** tall; shut, it
+is **1,835**, and 577 of those are the confidence card at the bottom that does not collapse. A reader
+looking for what the model said about their work no longer scrolls past six other sections to reach
+it.
+
+**One card does not collapse, deliberately: the confidence card.** It is the only section that is not
+part of the reading — it holds the confidence score, the Data sources rows and the button that adds a
+source or runs the analysis again. Those are the things a reader comes back to the bottom of the
+report to *do*, and shutting a page's own controls behind a disclosure is hiding, not tidying. It is
+also the reason the fault-injection for this was worth running: making it collapse like the rest
+fails the suite twice over, once on the section count and once on a check further down that simply
+cannot reach `#rerun-with-data` any more.
+
+**The four paid sections are the other exception, but only at the moment they are bought.** Somebody
+who has just paid should be looking at what they paid for, not at four more shut headings. Both routes
+into a fresh unlock end in `openPaidSections()` — the one that splices the four cards in over the
+consolidated block (`revealPaid`) and the one that redraws the whole report after a bundled free
+refresh (`renderProfile`). Stating it once at the end of `revealPaid` rather than inside the branch
+that happens to need it is what makes it a property of the function: cards built fresh are born open
+because nothing has run `collapseSections` over them, while the ones the fallback finds already on
+screen were shut by the render that put them there. Break both — have `paidCard` emit `is-collapsed`
+*and* drop the call — and eight checks fail across the wellness, attachment and career reads.
+
+Mechanically it is deliberately small. `sectionHead` gained a `collapsible` flag that puts a real
+`<button>` **inside** the existing `<h2>` — the canonical disclosure pattern, which gives the control
+its accessible name from the section title for free and leaves the document outline intact, where
+wrapping the whole row in a button would have destroyed both (a heading is not valid button content).
+The body is hidden by sibling selector — `.section-card.is-collapsed > :not(.card-head)` — rather than
+by wrapping each section's content in a container: every section was already a head followed by its
+content, so "everything that is not the head" names the body exactly, and not one of the ten builders
+had to be restructured to introduce a wrapper. The whole head row is the click target, not the chevron
+alone; the button inside bubbles to the same delegated handler, which is why one of the checks exists
+specifically to prove a click on the chevron toggles **once** rather than opening and immediately
+shutting again.
+
+`collapseSections()` sets the state after `innerHTML` rather than baking `is-collapsed` into the
+markup — it runs in the same synchronous task, so nothing is ever painted expanded first, and one
+function closing whatever is currently there beats threading a "start closed" flag through every
+builder and every caller. Sub-lines are clamped to one line while shut, which is what makes the list
+uniform: the four paid sections have sub-lines three lines long, and left alone their rows were twice
+the height of the free ones for text the reader is about to see in full the moment they open it.
+
+**The collapse is screen-only.** In print there is nobody to click anything, and a report that printed
+as ten headings and nothing else would be worthless — so the rule lives inside `@media screen` and the
+chevrons join the other controls in the print-hidden list. The PDF export is unaffected either way: it
+is built from the report object in `docs/pdf.js`, never from the DOM.
+
+`tools/uitest.mjs` gained a block that runs at the first report render, before anything in the suite
+opens a section — the one place that sees the report as a reader actually meets it. It checks that
+every section but one arrives shut, that a shut section still shows its heading while genuinely
+hiding its body, that shutting the report at least halves its height, and then drives real clicks:
+open one, confirm only that one opened, shut it again, click the chevron alone and confirm it toggles
+once. Everywhere else, an `openAllSections()` helper opens the report first, so a check about the
+*writing* never has to care about the disclosure. Fault-injected in five directions — never
+collapsing, collapsing the confidence card too, leaving the paid sections shut after payment, breaking
+the born-open assumption, and a second listener on the chevron — and each broke a different, specific
+set of checks.
+
+### One character
+
 It opens on **one character** — a globally famous one from Disney, Pixar, Marvel, DC, Nintendo,
 Pokémon, Ghibli or similar — with the franchise beside the name and the reasoning for why that one
 and not a neighbouring one. The prompt's test is whether a stranger in another country would picture
@@ -3083,7 +3148,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 949 checks: drives the real UI in Chromium against a
+npm run test:ui    # 960 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
