@@ -2319,6 +2319,24 @@ collapsing, collapsing the confidence card too, leaving the paid sections shut a
 the born-open assumption, and a second listener on the chevron — and each broke a different, specific
 set of checks.
 
+**Opening a section shuts whichever one was open before it** — an accordion, not a pile of sections a
+reader has to remember to close again. The point of arriving shut was to keep the report navigable at
+a glance; a reader who opens three sections while exploring and never closes any of them ends up back
+at a long scroll, just with three extra clicks behind it. The rule lives in the same delegated click
+handler `.card-head-toggle` already used: opening a section walks every other `.card-head-toggle` in
+the *same* report — `card.closest('#profile-body, #sample-body')`, so opening a section in the sample
+dialog can never reach across and shut one in a reader's own report sitting underneath it — and shuts
+whichever of them are open. Closing a section, the other direction, touches nothing else: only opening
+triggers the sweep. The confidence card is the one exception both ways, exactly as it is for
+`collapseSections()` itself — it is never in the set the sweep walks, since it carries no
+`.card-head-toggle` at all, so it stays open regardless of what a reader does to the ten sections
+around it.
+
+Two checks pin this: opening a second section confirms the first one shut and the second one did not,
+and a separate check confirms the confidence card survived that sweep untouched. Fault-injected both
+ways — dropping the sweep entirely, and widening it from `.card-head-toggle` elements to every
+`.section-card` in scope — and each broke a different one of the two.
+
 ### One character
 
 It opens on **one character** — a globally famous one from Disney, Pixar, Marvel, DC, Nintendo,
@@ -3180,7 +3198,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 962 checks: drives the real UI in Chromium against a
+npm run test:ui    # 964 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

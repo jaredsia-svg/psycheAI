@@ -1351,7 +1351,23 @@
     const head = event.target.closest('.card-head-toggle');
     if (!head) return;
     const card = head.closest('.section-card');
-    if (card) setSectionOpen(card, card.classList.contains('is-collapsed'));
+    if (!card) return;
+    const opening = card.classList.contains('is-collapsed');
+    setSectionOpen(card, opening);
+    // Accordion, not a pile of open sections: opening one shuts every other
+    // one already open in the same report, so the page stays as compact as
+    // collapsing it in the first place was for — an index a reader picks one
+    // thing from at a time, not a list that just regrows as they explore it.
+    // Scoped to whichever report this card actually belongs to (the real one
+    // or the sample dialog's), so opening a section in one never reaches
+    // across and shuts a section in the other.
+    if (opening) {
+      const scope = card.closest('#profile-body, #sample-body') || document;
+      for (const head2 of scope.querySelectorAll('.card-head-toggle')) {
+        const other = head2.closest('.section-card');
+        if (other && other !== card) setSectionOpen(other, false);
+      }
+    }
   });
 
   // Same reason: sourcesUsedHtml() writes this into #profile-body's innerHTML

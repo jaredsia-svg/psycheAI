@@ -1834,6 +1834,22 @@ try {
         button.closest('h2') !== null && /who you are/i.test(button.innerText);
     }));
 
+  // Accordion: opening a second section shuts whichever one was open before
+  // it, so exploring the report never regrows it into several open sections
+  // at once — the whole point of shutting it in the first place. firstCard is
+  // already open here, from the chevron click just above.
+  const secondCard = page.locator('#profile-body .section-card').nth(1);
+  await secondCard.locator('.card-head-toggle').click();
+  check('opening a second section shuts the one that was open before it',
+    (await firstCard.evaluate(c => c.classList.contains('is-collapsed'))) &&
+    !(await secondCard.evaluate(c => c.classList.contains('is-collapsed'))));
+  // The confidence card never collapses at all — see its own comment in
+  // reportSectionsHtml — so the accordion has to leave it alone rather than
+  // treating "everything else shut" as licence to shut it too.
+  check('and the confidence card, which never collapses, is untouched by it',
+    !(await page.locator('#profile-body .confidence-card')
+      .evaluate(c => c.classList.contains('is-collapsed'))));
+
   await openAllSections(page);
   check('sending from the review includes DMs and photos, since neither was unticked',
     (await page.evaluate(() => {
