@@ -1006,6 +1006,16 @@
 
   function show(view) {
     if (view !== 'scan') stopCamera();
+    // Leaving the report view any way other than the Back press that its own
+    // history entry exists for — a nav link, a new scan, anything else — still
+    // has to give that entry back. Left in place, a later Back from wherever
+    // this navigation actually lands would pop a phantom state and jump to
+    // the psyche page unannounced. See showReport() and the popstate listener
+    // it shares a comment with for why the entry exists at all.
+    if (reportHistoryEntry && view !== 'report' && !closingReportFromHistory) {
+      reportHistoryEntry = false;
+      history.back();
+    }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
     syncNav();
     // The psyche card is scaled from the width of the column it sits in, and a
@@ -1080,12 +1090,50 @@
   });
 
   window.addEventListener('popstate', () => {
-    if (!sampleDialog().open && !sampleDialog().hasAttribute('open')) return;
-    closingFromHistory = true;
-    sampleHistoryEntry = false;
-    closeSample();
-    closingFromHistory = false;
+    if (sampleDialog().open || sampleDialog().hasAttribute('open')) {
+      closingFromHistory = true;
+      sampleHistoryEntry = false;
+      closeSample();
+      closingFromHistory = false;
+      return;
+    }
+    // Falls through here only once the sample dialog (if it was even open)
+    // is out of the way — a Back press pops one history entry, and if that
+    // entry was the sample's own, the report underneath it is not what this
+    // press was aimed at. A second Back, with nothing left to close, reaches
+    // this branch on its own next time. See showReport()'s own comment for
+    // why leaving the report view any other way must also consume this entry.
+    if (reportHistoryEntry) {
+      closingReportFromHistory = true;
+      reportHistoryEntry = false;
+      go('profile');
+      closingReportFromHistory = false;
+    }
   });
+
+  // ---- the compatibility report ----
+  //
+  // Reached from a scan or from the history table — either way, it is a page
+  // the reader arrived at from their own psyche page and, on a phone, will
+  // reach for Back to leave the same way they would close anything covering
+  // what they were looking at. Nothing pushed a history entry for this view
+  // before, so Back had nowhere to go but out of the site entirely. One entry
+  // per genuine arrival at this view fixes that, the same way showSample()
+  // already does for its own dialog.
+  let reportHistoryEntry = false;
+  let closingReportFromHistory = false;
+
+  function showReport() {
+    show('report');
+    // Guarded so opening a second history entry, or a fresh scan's result,
+    // while already on this view never stacks a second pushState behind it —
+    // one entry covers however many reports are opened before the reader
+    // actually leaves.
+    if (!reportHistoryEntry) {
+      history.pushState({ psycheaiReport: true }, '');
+      reportHistoryEntry = true;
+    }
+  }
 
   function go(target) {
     closeSample();
@@ -2373,6 +2421,12 @@
     startElapsed('Analysing');
     show('working');
 
+    // This call runs for minutes, and a reader reaching for the back button —
+    // on a phone, the most natural gesture for "get me off this screen" —
+    // would otherwise navigate away with nothing pushed here to stop it,
+    // aborting the fetch and losing the analysis with no warning at all. The
+    // same guard runPremiumAnalysis already carries for the same reason.
+    guardUnload(true);
     try {
       const result = await LLM.analyseProfile(digest, images, auth || undefined);
       const payload = await Card.encodeCard(result.data.card);
@@ -2390,7 +2444,6 @@
       if (!store.write(KEYS.profile, state.profile)) {
         flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
       }
-      stopElapsed();
 
       const pending = sessionStorage.getItem('psycheai_pending');
       if (pending) {
@@ -2400,8 +2453,10 @@
       renderProfile();
       show('profile');
     } catch (error) {
-      stopElapsed();
       showUploadError((error && error.message) || 'The analysis failed.');
+    } finally {
+      stopElapsed();
+      guardUnload(false);
     }
   }
 
@@ -2786,7 +2841,7 @@
     if (!link) return;
     event.preventDefault();
     const entry = store.read(KEYS.history, [])[Number(link.dataset.report)];
-    if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
+    if (entry) { renderReport(entry.report, entry.withName, entry.when); showReport(); }
   });
 
   // The profile page and the scan page both offer this person's own link, so
@@ -4474,20 +4529,24 @@
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
+    // Same reasoning as runAnalysis's own guard: this call runs for real time
+    // with nothing else standing between a reader's back button and losing it.
+    guardUnload(true);
     try {
       const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance);
-      stopElapsed();
       const report = { ...result.data, mode: result.data.mode || mode, stance };
       const history = store.read(KEYS.history, []);
       history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });
       store.write(KEYS.history, history.slice(0, 25));
       renderReport(report, other.name);
-      show('report');
+      showReport();
     } catch (error) {
-      stopElapsed();
       renderScan();
       show('scan');
       flash('#scan-alert', (error && error.message) || 'The comparison failed.');
+    } finally {
+      stopElapsed();
+      guardUnload(false);
     }
     return true;
   }

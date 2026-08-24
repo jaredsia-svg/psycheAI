@@ -5809,6 +5809,17 @@ try {
       .every(t => /^\d+$/.test(t.trim())));
   await shot('4-report');
 
+  // The report page is reached from the reader's own psyche page, and on a
+  // phone the back button is the natural way to leave anything covering the
+  // screen. Nothing pushed a history entry for this view before showReport()
+  // did, so that press left the site entirely instead of coming back here —
+  // the same failure the sample dialog's own back-button check above guards
+  // against, for the same reason.
+  await page.goBack();
+  await page.waitForLoadState('domcontentloaded');
+  check('the back button returns from a compatibility report to the psyche page, not off the site',
+    await page.locator('#view-profile').isVisible() && !(await page.locator('#view-report').isVisible()));
+
   // ---- how it works ----
   await page.click('[data-nav="about"]');
   await page.waitForSelector('#view-about:not([hidden])');
@@ -6776,8 +6787,33 @@ try {
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
   await page.waitForSelector('#mode-dialog[open]', { timeout: 30000 });
   check('a shared link asks for the basis as well', await page.locator('#mode-dialog').isVisible());
+
+  // The comparison runs for real time with nothing else standing between a
+  // reader's back button and losing it — the same risk runPremiumAnalysis's
+  // own guard exists for, and runMatch carries the identical guardUnload
+  // call for the identical reason. Proven directly by dispatching a synthetic
+  // beforeunload and reading back whether it was prevented, rather than
+  // trying to drive a real navigation through Playwright's own handling of
+  // that dialog, which is unreliable across browsers for exactly this event.
+  const beforeunloadPrevented = () => page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  check('nothing guards against leaving before a comparison has even started',
+    !(await beforeunloadPrevented()));
+  await page.route('**/api/compatibility', async route => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await route.continue();
+  });
   await page.click('#mode-dialog .mode-option[data-mode="platonic"]');
+  await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
+  check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
+    await beforeunloadPrevented());
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+  await page.unroute('**/api/compatibility');
+  check('and the guard lifts again once the comparison actually lands',
+    !(await beforeunloadPrevented()));
   check('a shared link runs the comparison straight away',
     (await page.locator('#report-body').innerText()).includes('Jordan'));
   check('the basis chosen for a link is the one reported',

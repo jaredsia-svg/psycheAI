@@ -1917,6 +1917,75 @@ Verified directly rather than assumed: a check now confirms the Google row ticks
 after that exact bundled-refresh path, alongside the existing checks for the digest and the paid
 sections themselves — a gap in coverage, not a gap in behaviour.
 
+### Losing an in-progress analysis to the back button
+
+Two long calls carried no protection against a reader simply leaving mid-flight: the free report's
+own generation (`runAnalysis`, used by both a first upload and "Re-run analysis with additional
+data") and a compatibility comparison (`runMatch`). Each shows the same `#view-working` screen for up
+to a few minutes, and neither called `guardUnload(true)` — the same one-line guard
+`runPremiumAnalysis` already carries, registering a `beforeunload` listener that asks the browser to
+confirm before the tab is actually left. Without it, a reader reaching for the back button — on a
+phone, the natural gesture for "get me off this screen," and not obviously different from leaving
+any other loading screen — would navigate away with nothing to stop them, aborting the in-flight
+`fetch()` and losing the analysis outright, no warning, no confirmation, nothing to undo it.
+
+The fix adds the identical guard to both calls, restructured into a `try`/`finally` so it lifts on
+every exit path — success, a thrown error, or the early return `runAnalysis` takes when a pending
+compatibility match runs immediately after (`stopElapsed()` moved into the same `finally`, rather
+than being duplicated in both the success and catch branches as before). Nothing else about either
+function's behaviour changes: the guard only ever asks the browser to confirm before leaving, it
+never blocks navigation outright, and a reader who really does want to leave still can.
+
+`tools/uitest.mjs` proves the guard is actually wired up, rather than trusting the one-line diff: it
+dispatches a synthetic `beforeunload` event via `page.evaluate` and reads back whether it was
+prevented, both before a comparison starts (not prevented — nothing running yet) and while one is
+deliberately slowed down mid-flight (prevented), then again once it lands (not prevented — the guard
+lifted). A synthetic event was used rather than driving a real navigation through Playwright, since
+`beforeunload` dialogs are handled inconsistently enough across browsers and Playwright versions to
+make that the less reliable test, not the more thorough one. Fault-injected by dropping the
+`guardUnload(true)` call from `runMatch`: the mid-flight check fails directly, which is the one this
+whole fix exists to prevent.
+
+**Whether the "back" instinct itself needs handling separately from the confirmation prompt** — i.e.,
+whether the working screen should also push a history entry the way the report view below does, so
+Back cannot even reach a state where the prompt is needed — was considered and set aside for now: the
+`beforeunload` confirmation is the same protection the premium flow already relies on, and the
+working view has no dialog-like "cover the page, then get out of it" shape to hang a history entry
+off in the first place. Worth revisiting if a reader ever reports the prompt itself as confusing
+rather than as not appearing at all.
+
+### The compatibility report leaving the site on Back
+
+`show('report')` — reached from a fresh comparison or from clicking a past one in the history table —
+never pushed a history entry the way `showSample()` already does for its own dialog. A reader on a
+phone reaching for Back to leave a comparison and return to their own psyche page instead left the
+site entirely, for the same reason the sample dialog needed the exact same fix: nothing was ever
+pushed for the browser to pop, so Back fell through to whatever page preceded this one.
+
+The fix, `showReport()`, mirrors `showSample()`'s pattern closely rather than inventing a new one:
+push `{ psycheaiReport: true }` on arrival, guarded so opening a second report — a fresh scan, or a
+different history-table row — while already on this view never stacks a second entry behind the
+first. The `popstate` listener that already existed for the sample dialog gained a second branch,
+reached only once the sample dialog (if it happened to be open on top of the report) is out of the
+way: pop the report's own flag and navigate to the psyche page with `go('profile')`. Both call sites
+that used to call `show('report')` directly — the fresh-comparison path in `runMatch` and the
+history-table click handler — now call `showReport()` instead.
+
+**Leaving the report any way other than Back also has to give the entry back**, or a later Back press
+from wherever that other navigation landed would pop a phantom state and jump to the psyche page
+unannounced — exactly the failure mode `showSample()`'s own `close` handler already guards against by
+calling `history.back()` itself when its dialog closes some other way. `show(view)` gained the
+equivalent: leaving the report view for anything other than 'report' consumes the entry the same way,
+before the requested view is drawn.
+
+`tools/uitest.mjs` drives a real comparison through to its report, presses the browser's actual back
+button (`page.goBack()`), and confirms the psyche page is what comes back — not the site's exit,
+which is what the failure mode actually looks like, following the same shape as the sample dialog's
+own back-button check earlier in the suite. Fault-injected by disabling the `pushState` call inside
+`showReport()`: the back-button check fails directly, and the very next step — a plain nav-link click
+that assumes the page is still there to click on — times out, the same cascade a real reader leaving
+the site would produce.
+
 ### The photographs
 
 Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
@@ -2976,7 +3045,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 941 checks: drives the real UI in Chromium against a
+npm run test:ui    # 945 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
