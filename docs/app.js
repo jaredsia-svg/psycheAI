@@ -273,19 +273,22 @@
     return title ? title.replace(/[.!?]*$/, '') + '.' : '';
   }
 
-  // Four sentences, each from a different part of the report, so nothing
-  // said once gets said again: the opening two sentences of report.summary —
-  // stopping there deliberately, before the summary's own paragraph on
-  // relationships and career begins — plus one dedicated relationship
-  // strength and one dedicated career strength, read straight from
-  // relationship.strengths and career.strengths rather than from the summary.
+  // Four sentences written by the model as their own field — see
+  // cardHighlights in lib/prompts.js — condensing the two paragraphs of
+  // report.summary specifically for the card: the first two sentences summarize
+  // the first paragraph, the next two summarize the second. Genuine
+  // summarizing, from the model that wrote those paragraphs, rather than an
+  // excerpt assembled at read time.
   //
-  // It stays positive by construction rather than by scanning for negative
-  // words after the fact: report.summary is written as the report's own
-  // affirming portrait, and .strengths is never .weaknesses — this never
-  // reaches into relationship.weaknesses, career.weaknesses or the roast,
-  // which is where the report's critical material actually lives.
+  // Two fallbacks exist only for a report saved before this field existed,
+  // oldest first: the previous approach — the opening two sentences of
+  // report.summary itself, plus one dedicated relationship strength and one
+  // dedicated career strength, read straight off relationship.strengths and
+  // career.strengths — and finally report.card.summary, the QR-coded card's
+  // own two-sentence line, if even that stitching finds nothing.
   function cardBlurb(report) {
+    const highlights = String((report && report.cardHighlights) || '').trim();
+    if (highlights) return highlights;
     const summary = String((report && report.summary) || '').replace(/\s*\n+\s*/g, ' ').trim();
     const opening = splitSentences(summary).slice(0, 2);
     const relationship = strengthSentence(report && report.relationship && report.relationship.strengths);

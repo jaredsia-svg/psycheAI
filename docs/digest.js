@@ -115,7 +115,14 @@
   // good — a reader now sees it without paying anything, so the free prompt
   // and schema carry its full instructions and hard limits again, and the
   // digest budget has to shrink to leave room for them.
-  const FIXED_INPUT_TOKENS = 16600;
+  //
+  // Bumped to 16,800 for cardHighlights — the shareable card's own
+  // model-written summarizing field, added to PROFILE_SCHEMA. The real cost
+  // came out to ~16,584 tokens against the old 16,600 reserve, a margin of 16
+  // — one more sentence of prompt guidance anywhere in this schema would have
+  // put the free call over its own reserve. This restores the same ~200-token
+  // headroom the reserve is meant to carry.
+  const FIXED_INPUT_TOKENS = 16800;
 
   // One 768px image is one 768x768 tile.
   const IMAGE_TOKENS = 258;

@@ -1966,7 +1966,7 @@ try {
     }));
   check('it carries the character, the enneagram and a summary',
     /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
-    /Mock summary paragraph one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+    /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
   // same information twice.
@@ -1994,31 +1994,70 @@ try {
   });
   check('the summary runs several lines rather than a single strapline',
     blurbLines >= 3 && blurbLines <= 10, blurbLines + ' lines');
-  // Four sentences from four different places — the summary's opening two,
-  // then one dedicated relationship strength and one dedicated career
-  // strength — checked against the stored report rather than fixed text, so
-  // it fails if the card ever starts inventing sentences or drifting onto a
-  // different source.
+  // The card's blurb is now its own model-written field — cardHighlights in
+  // lib/prompts.js — a real condensation of report.summary's first two
+  // paragraphs, not an excerpt assembled at read time. Checked against the
+  // stored report's own cardHighlights rather than fixed text, so this fails
+  // if the card ever starts reading from a different field or inventing text.
   const blurbSources = await page.evaluate(() => {
     const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
     const blurb = document.querySelector('#psyche-card .pc-blurb').innerText.replace(/\s+/g, ' ').trim();
-    const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
-    const strengthSentence = rows => {
-      const top = (rows || []).find(row => row && (row.detail || row.title));
-      if (!top) return '';
-      const detail = String(top.detail || '').trim();
-      return detail ? firstSentence(detail) : (top.title ? String(top.title).trim().replace(/[.!?]*$/, '') + '.' : '');
-    };
-    const summary = String(report.summary || '').replace(/\s*\n+\s*/g, ' ').trim();
-    const opening = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
-    const relationship = strengthSentence(report.relationship && report.relationship.strengths);
-    const career = strengthSentence(report.career && report.career.strengths);
-    const expected = [...opening, relationship, career].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
-    return { blurb, expected, sentenceCount: [...opening, relationship, career].filter(Boolean).length };
+    const expected = String(report.cardHighlights || '').replace(/\s+/g, ' ').trim();
+    const sentenceCount = expected.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    return { blurb, expected, sentenceCount };
   });
-  check('the paragraph is exactly four sentences: the summary\'s opening two, a relationship strength, a career strength',
-    blurbSources.blurb === blurbSources.expected && blurbSources.sentenceCount <= 4,
+  check('the card blurb is report.cardHighlights, not an excerpt stitched together at read time',
+    blurbSources.blurb === blurbSources.expected && blurbSources.expected.length > 0,
     JSON.stringify(blurbSources));
+  check('cardHighlights itself is exactly four sentences',
+    blurbSources.sentenceCount === 4, JSON.stringify(blurbSources));
+  // The old stitching logic is still there for a report saved before this
+  // field existed — proven by seeding a profile with cardHighlights deleted
+  // and confirming the card falls back to summary's opening plus the two
+  // strengths, exactly as it always did, rather than showing nothing. Its own
+  // page rather than a reload of the shared one: this file's other seeded-
+  // profile check (the card's own confirmCardPayment fallback, just below)
+  // takes its own page for exactly this reason — browser.newPage() gets its
+  // own localStorage, so this cannot disturb window.__titles or any other
+  // in-memory state the shared page has been accumulating since the real
+  // upload at the top of this run.
+  {
+    const fallbackPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    await fallbackPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+    await fallbackPage.evaluate(async () => {
+      const report = await fetch('sample.json').then(r => r.json());
+      delete report.cardHighlights;
+      const card = window.PsycheCard.shape(report.card);
+      const payload = await window.PsycheCard.encodeCard(report.card);
+      localStorage.setItem('psycheai_profile', JSON.stringify({
+        report, card, payload, model: 'gemini-3.7-flash', createdAt: new Date().toISOString(),
+      }));
+      localStorage.setItem('psycheai_digest', JSON.stringify({}));
+    });
+    await fallbackPage.reload({ waitUntil: 'load' });
+    await fallbackPage.waitForSelector('#psyche-card .pc-blurb', { timeout: 20000 });
+    const fallbackBlurb = await fallbackPage.evaluate(() => {
+      const report = JSON.parse(localStorage.getItem('psycheai_profile')).report;
+      const firstSentence = text => String(text || '').trim().split(/(?<=[.!?])\s+/)[0] || '';
+      const strengthSentence = rows => {
+        const top = (rows || []).find(row => row && (row.detail || row.title));
+        if (!top) return '';
+        const detail = String(top.detail || '').trim();
+        return detail ? firstSentence(detail) : (top.title ? String(top.title).trim().replace(/[.!?]*$/, '') + '.' : '');
+      };
+      const summary = String(report.summary || '').replace(/\s*\n+\s*/g, ' ').trim();
+      const opening = summary.split(/(?<=[.!?])\s+/).filter(Boolean).slice(0, 2);
+      const relationship = strengthSentence(report.relationship && report.relationship.strengths);
+      const career = strengthSentence(report.career && report.career.strengths);
+      const expected = [...opening, relationship, career].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+      const blurb = document.querySelector('#psyche-card .pc-blurb').innerText.replace(/\s+/g, ' ').trim();
+      return { blurb, expected };
+    });
+    check('a report saved before cardHighlights existed still falls back to the old stitching',
+      fallbackBlurb.blurb === fallbackBlurb.expected && fallbackBlurb.expected.length > 0,
+      JSON.stringify(fallbackBlurb));
+    await fallbackPage.close();
+  }
 
   check('the psyche card sits above the written report',
     await page.evaluate(() => {
@@ -2029,7 +2068,7 @@ try {
     }));
   check('it carries the character, the enneagram and a summary',
     /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
-    /Mock summary paragraph one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
+    /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
   // same information twice.

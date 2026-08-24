@@ -794,6 +794,22 @@ check('the opening summary names the type and traits outright',
 check('the opening summary may not contradict the sections',
   /do not contradict any section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
 
+// The shareable card's blurb — cardHighlights — is a real condensation of
+// summary's own two paragraphs, written by the model that just wrote them,
+// not an excerpt assembled at read time out of unrelated fields. See
+// cardBlurb() in docs/app.js for the read side of this.
+check('the schema covers the card\'s own summarizing field',
+  'cardHighlights' in prompts.PROFILE_SCHEMA.properties);
+const cardHighlightsDesc = prompts.PROFILE_SCHEMA.properties.cardHighlights.description;
+check('cardHighlights asks for exactly four sentences', /exactly four sentences/i.test(cardHighlightsDesc));
+check('cardHighlights splits two and two across summary\'s first two paragraphs',
+  /first two sentences summarize the first paragraph/i.test(cardHighlightsDesc) &&
+  /next two summarize the second paragraph/i.test(cardHighlightsDesc));
+check('cardHighlights explicitly excludes a third paragraph of summary, if there is one',
+  /third paragraph/i.test(cardHighlightsDesc) && /not covered here/i.test(cardHighlightsDesc));
+check('cardHighlights asks for real summarizing, not verbatim sentences',
+  /never sentences copied verbatim/i.test(cardHighlightsDesc));
+
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on a character, its franchise, an icon and a reason',
   ['character', 'franchise', 'icon', 'why'].every(k => k in essenceProps));

@@ -2928,6 +2928,38 @@ Ctrl+P still works, and `@media print` in `styles.css` still shapes it: a letter
 bar is dropped, backgrounds nothing depends on, breaks between items rather than through them, and
 one type size throughout. Those rules keep their own UI checks.
 
+### The card's blurb is written for the card, not skimmed off the report
+
+The four to six lines under the character on the psyche card used to be assembled at *read* time, in
+`docs/app.js`, by taking the opening two sentences of `report.summary` verbatim and appending one
+sentence read off `relationship.strengths` and one off `career.strengths`. That produced an excerpt
+rather than a summary — whichever sentence happened to come first in each of three unrelated fields,
+however well or badly it read stitched to the next, with the card's own paragraph on relationships and
+career left out entirely because the code stopped at `summary`'s opening two sentences on purpose.
+
+`cardHighlights` in `PROFILE_SCHEMA` (`lib/prompts.js`) asks the model to do this instead, immediately
+after it writes `summary` itself: **exactly four sentences, the first two condensing `summary`'s first
+paragraph, the next two condensing its second** — real summarizing, in the model's own words, never
+sentences lifted verbatim. If `summary` runs to a third paragraph, as it sometimes does, that paragraph
+is not covered — the card holds two paragraphs' worth, not three, so it stays roughly the length the
+old stitched version was.
+
+`cardBlurb()` in `docs/app.js` now reads `cardHighlights` directly, and falls back to the old
+stitching logic only for a report saved before this field existed — a real path, not a defensive
+guess: `tools/uitest.mjs` proves it by seeding an isolated page with a `cardHighlights`-free profile
+(a copy of `docs/sample.json` with the field deleted) and confirming the card still shows the old
+excerpt rather than nothing. That check needs its own page rather than a reload of the suite's shared
+one, the same reason the card's `confirmCardPayment` fallback check a little further down does — a
+reload wipes `window.__titles` and the other in-page state the shared page has been accumulating
+since the very first upload this run made, and `browser.newPage()` gets its own `localStorage`
+without touching any of it.
+
+Bumped `FIXED_INPUT_TOKENS` in `docs/digest.js` from 16,600 to 16,800 alongside this: the new field's
+prompt guidance grew `PROFILE_SYSTEM` + `PROFILE_SCHEMA` to roughly 16,584 real tokens against the old
+16,600 reserve — a margin of 16, tight enough that one more sentence of guidance anywhere in this
+schema would have put the free call over its own reserve. The new figure restores the ~200-token
+headroom the reserve is meant to carry.
+
 ## The QR code
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short
@@ -3139,7 +3171,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 687 checks: synthesises a real ZIP export and runs
+npm test           # 692 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -3148,7 +3180,7 @@ npm test           # 687 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 960 checks: drives the real UI in Chromium against a
+npm run test:ui    # 962 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
