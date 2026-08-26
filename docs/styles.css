@@ -473,6 +473,21 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .btn:hover { filter: brightness(1.06); }
 .btn:active { transform: translateY(1px); }
+/* A disabled button has to look disabled. There was no rule for this at all,
+   so a button the app had genuinely switched off — the payment sheet's Cancel
+   once a charge clears, the promo Apply beside it, the sample report's inert
+   Unlock — sat there at full strength, took a click, and did nothing. That
+   reads as broken rather than as deliberate. Greyscale plus a flat opacity
+   rather than a hand-picked grey, so it lands the same way on the filled
+   gradient, the ghost and the outline without three separate rules; the
+   hover/active feedback is withdrawn with it, since a button that cannot be
+   pressed must not answer the pointer as though it can. */
+.btn:disabled,
+.btn[disabled] { cursor: not-allowed; opacity: .45; filter: grayscale(1); }
+.btn:disabled:hover, .btn[disabled]:hover { filter: grayscale(1); }
+.btn:disabled:active, .btn[disabled]:active { transform: none; }
+.btn-ghost:disabled:hover, .btn-ghost[disabled]:hover { background: transparent; }
+.btn-outline:disabled:hover, .btn-outline[disabled]:hover { background: transparent; }
 /* --accent is a deep purple in the light theme and a pale one in the dark, so
    white holds on one and washes out on the other: measured, filled buttons ran
    at 2.25:1 against their own background in dark mode. --bg flips with the

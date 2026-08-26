@@ -3404,11 +3404,16 @@ try {
   // for a while. It reproduced as a race — close this same dialog while the
   // fetch is genuinely still in flight and a reopen reset pendingPremiumDigest
   // to null before the original call got back to reading it. Escape and a
-  // backdrop click both used to close it that way; now neither ever does, at
-  // any time, by design (see the listeners this pins) — only Cancel, or the
-  // run finishing, may close this sheet at all. Cancel closing mid-flight
-  // must still not resurrect the crash, so this also proves the call finishes
-  // safely even when the one door that is still open gets used.
+  // backdrop click both used to close it that way; neither ever does now, at
+  // any time, by design.
+  //
+  // Cancel is the door that closed last. Once a charge has cleared or a code
+  // has been accepted it is greyed out too, so between "authorised" and
+  // "finished or failed" there is no exit at all and the sheet closes itself
+  // when the run ends. Leaving mid-flight only ever hid the progress and the
+  // retry button belonging to work already paid for — the fetch was never
+  // tied to the dialog, which is what made the crash above reachable in the
+  // first place.
   const consoleErrors = [];
   const captureError = message => { if (message.type() === 'error') consoleErrors.push(message.text()); };
   page.on('console', captureError);
@@ -3416,8 +3421,25 @@ try {
     await new Promise(resolve => setTimeout(resolve, 800));
     await route.continue();
   });
+  check('Cancel is offered right up until the moment something is authorised',
+    !(await page.locator('#premium-cancel').isDisabled()));
   await page.click('#premium-retry');
   await page.waitForTimeout(150);
+  check('and is greyed out the moment the authorised run starts',
+    await page.locator('#premium-cancel').isDisabled());
+  // Greyed out to look at, not only to the DOM. There was no `.btn:disabled`
+  // rule at all, so a switched-off button sat at full strength and took a
+  // click that did nothing — which reads as broken rather than as deliberate.
+  check('and it actually looks disabled, rather than only being disabled',
+    await page.evaluate(() => {
+      const style = getComputedStyle(document.querySelector('#premium-cancel'));
+      return Number(style.opacity) < 0.6 && /grayscale/.test(style.filter) &&
+        style.cursor === 'not-allowed';
+    }),
+    await page.evaluate(() => {
+      const s = getComputedStyle(document.querySelector('#premium-cancel'));
+      return s.opacity + ' | ' + s.filter + ' | ' + s.cursor;
+    }));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(50);
   check('escape never closes the payment sheet, in flight or not',
@@ -3427,10 +3449,14 @@ try {
   await page.waitForTimeout(50);
   check('nor does a backdrop click',
     await page.locator('#premium-dialog').isVisible());
-  await page.click('#premium-cancel');
+  // Not page.click(): the point is that the button refuses the press. A real
+  // reader's click on a disabled button dispatches no event at all, which is
+  // what actually holds them here, so this drives the same no-op rather than
+  // waiting on an enabled state that is never coming.
+  await page.evaluate(() => document.querySelector('#premium-cancel').click());
   await page.waitForTimeout(50);
-  check('only Cancel closes it, even with its fetch still genuinely in flight',
-    !(await page.locator('#premium-dialog').isVisible()));
+  check('and Cancel itself no longer closes it either, with its fetch genuinely in flight',
+    await page.locator('#premium-dialog').isVisible());
 
   await page.waitForFunction(() => {
     const profile = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
@@ -3438,8 +3464,9 @@ try {
   }, { timeout: 20000 });
   page.off('console', captureError);
   await page.unroute('**/api/premium-analysis');
-  check('the call Cancel closed the sheet on still completes cleanly afterwards, with no null-dereference crash',
+  check('the run closes the sheet itself once it lands, with no null-dereference crash',
     !consoleErrors.some(text => /__addedSupplements/.test(text)) &&
+    !(await page.locator('#premium-dialog').isVisible()) &&
     await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis)),
     JSON.stringify(consoleErrors));
   page.off('request', countIntents);
@@ -3660,6 +3687,16 @@ try {
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));
+  // And no two of them are the same one. Career assessment and "How much to
+  // trust this" both wore 🎯, which reads as a rendering mistake rather than
+  // as two different things — a glyph is the fastest way to tell one section
+  // from another while scrolling, and a repeat throws that away. Held as a
+  // property of the whole report rather than as a check on those two, so the
+  // next section added cannot quietly reintroduce a duplicate.
+  const glyphs = await page.locator('#profile-body .card-icon').allInnerTexts();
+  check('and no two sections wear the same glyph',
+    new Set(glyphs.map(g => g.trim())).size === glyphs.length,
+    glyphs.map(g => g.trim()).join(' '));
   check('strengths and weaknesses sit side by side',
     (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
   // The behaviour section carried a two-column advice block and a full-width
@@ -5316,6 +5353,25 @@ try {
   await page.click('#datasources-back');
   await page.waitForFunction(() => !document.querySelector('#datasources-dialog').open, { timeout: 15000 });
 
+  // Dismissing the OS file picker without choosing anything is not Back, and
+  // must not be treated as it. `<input type="file">` fires its own `cancel`
+  // event — and it bubbles — so with the dialog's cancel listener unscoped it
+  // arrived looking exactly like Escape: the reader pressed a source, thought
+  // better of the file, pressed Continue, and the whole re-run resolved null
+  // and vanished with no message at all. Dispatched here exactly as the
+  // browser dispatches it, since Playwright's file chooser has no dismiss.
+  await openDataSourcesPopout(page);
+  await page.evaluate(() => document.querySelector('#datasources-input')
+    .dispatchEvent(new Event('cancel', { bubbles: true })));
+  await page.click('#datasources-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('dismissing the file picker does not turn the next Continue into a silent Back',
+    await page.locator('#review-dialog').isVisible());
+  await page.click('#review-send');
+  await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  await page.click('#premium-cancel');
+  await page.waitForTimeout(300);
+
   // Loading Google for real, all the way through to a paid re-run: the
   // popout, Continue, review, payment, and the enriched digest landing in
   // the request body and the stored digest alike.
@@ -5401,6 +5457,47 @@ try {
     analyseBodies.length === analysesBeforeDecline0);
   check('the button is offered again after declining, rather than being spent by the attempt',
     await page.locator('#rerun-with-data').isVisible());
+
+  // ---- Back at the re-run's review steps upstream, it does not bail out ----
+  //
+  // Back means "let me change what I am sending", and the only screen that
+  // can answer that is the popout behind it. Returning to the report instead
+  // — which is what this did — threw away a source the reader had just spent
+  // a minute loading, and read as the button having failed. Escape still
+  // abandons the whole attempt; the two are deliberately no longer the same.
+  const analysesBeforeReviewBack = analyseBodies.length;
+  await loadSource(page, 'google', buildTakeoutZip(), 'takeout.zip');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  // #review-cancel is the Back button — named for the Cancel it used to be,
+  // and kept because the id is load-bearing across this suite.
+  check('the review really is offering Back, not Cancel, on the re-run path',
+    (await page.locator('#review-cancel').innerText()).trim() === 'Back',
+    await page.locator('#review-cancel').innerText());
+  await page.click('#review-cancel');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+  check('Back at the re-run review reopens the data-sources popout, not the report',
+    (await page.locator('#datasources-dialog').isVisible()) &&
+    !(await page.evaluate(() => document.querySelector('#review-dialog').open)));
+  check('and the Google export loaded before it is still ticked, not thrown away',
+    await page.evaluate(() => document.querySelector(
+      '#datasources-dialog .mode-option[data-datasource="google"]').classList.contains('is-added')));
+  check('nothing was sent or stored by the trip through the review and back',
+    analyseBodies.length === analysesBeforeReviewBack &&
+    !(await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google))));
+  // Continue from the reopened popout reaches the review again, carrying the
+  // same Google rows — the loop really is a loop, not a one-way door.
+  await continueFromDataSources(page);
+  await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+  check('Continue from the reopened popout returns to the review with the data intact',
+    (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
+  // Escape, by contrast, still leaves entirely.
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
+  await page.waitForTimeout(200);
+  check('Escape at that same review still abandons the attempt rather than stepping back',
+    !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)) &&
+    (await page.locator('#view-profile').isVisible()) &&
+    analyseBodies.length === analysesBeforeReviewBack);
 
   // ---- replacing Instagram itself ----
   //

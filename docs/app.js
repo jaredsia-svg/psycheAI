@@ -732,7 +732,12 @@
       body: idealPartnerBodyHtml,
     },
     {
-      key: 'careerAssessment', icon: '🎯', cardClass: 'career-card',
+      // Not 🎯: the confidence card at the foot of every report already uses
+      // that one, and two sections wearing the same icon reads as a rendering
+      // mistake rather than as two different things. 🪜 is the one image in
+      // reach that says "career" without colliding with 💼 ("How you work",
+      // the free section) or 🧭 (the MBTI block) either.
+      key: 'careerAssessment', icon: '🪜', cardClass: 'career-card',
       title: () => TEXT.careerAssessment, sub: () => TEXT.careerAssessmentSub,
       coverTitle: () => TEXT.careerCoverTitle, coverBlurb: () => TEXT.careerCoverBlurb,
       body: careerAssessmentBodyHtml,
@@ -1601,7 +1606,14 @@
       // leave with nothing, same as Skip would have. Once something is in,
       // Escape is allowed again and resolves the same way Continue does,
       // exactly as it already does outside this mode.
+      //
+      // Scoped to the dialog's own cancel for the same reason askDataSources
+      // scopes its own: the file input inside this dialog fires a bubbling
+      // `cancel` of its own when the OS picker is dismissed, and calling
+      // preventDefault() on that one refuses a dismissal the reader has every
+      // right to make.
       const blockEscape = event => {
+        if (event.target !== dialog) return;
         if (requireAtLeastOne && Object.keys(added).length === 0) event.preventDefault();
       };
 
@@ -2363,7 +2375,16 @@
       // Continue. Without this, a <dialog>'s native Escape fires no listener
       // here at all, cancelled stays false, and the close handler below would
       // resolve `added` exactly as if Continue had been pressed.
-      const onNativeCancel = () => { cancelled = true; };
+      //
+      // Scoped to the dialog's *own* cancel. `<input type="file">` fires its
+      // own `cancel` event — bubbling — when the reader dismisses the OS file
+      // picker without choosing anything, and #datasources-input sits inside
+      // this dialog. Unscoped, that bubbled event set `cancelled = true` from
+      // a gesture that means nothing more than "not that file after all", and
+      // the reader's next press of Continue then resolved null and abandoned
+      // the whole re-run with no message and no dialog — exactly as if they
+      // had pressed Back.
+      const onNativeCancel = event => { if (event.target === dialog) cancelled = true; };
 
       for (const button of buttons) button.addEventListener('click', choose);
       input.addEventListener('change', read);
@@ -2409,44 +2430,61 @@
   }
 
   async function addDataAndRerun() {
-    let collected;
-    try {
-      collected = await askDataSources();
-    } catch (error) {
-      flash('#profile-alert', (error && error.message) || 'Could not read that export.');
-      return;
+    // The popout and the review are one loop, for the same reason the first
+    // upload's supplement offer and review are (see handleFiles): Back on the
+    // review means "let me change what I am sending", and the only screen
+    // that can answer that is the one behind it. Returning to the report
+    // instead — which is what this did — threw away a source the reader had
+    // just spent a minute loading, and read as the button having failed.
+    for (;;) {
+      let collected;
+      try {
+        collected = await askDataSources();
+      } catch (error) {
+        flash('#profile-alert', (error && error.message) || 'Could not read that export.');
+        return;
+      }
+      if (!collected) return; // Back at the popout — nothing touched.
+
+      // A freshly read Instagram export replaces the in-memory signals
+      // outright — typeof 'object' is how askDataSources marks a real
+      // replacement rather than the seeded `true` for "already had it,
+      // unchanged". Google or Facebook data still held in this same session
+      // (state.signals.supplements) rides along with it automatically; data
+      // loaded only in an earlier session does not, because Digest.build needs
+      // the raw fragment Supplement.js produced and a stored digest no longer
+      // carries one — only the sampled, capped view that came out of it. The
+      // popout's own copy says so before this ever runs.
+      //
+      // Read before the reassignment below, not after: state.signals is about
+      // to be replaced wholesale by the fresh Instagram read, and a fresh
+      // export never carries a .supplements property of its own. Reading
+      // afterwards would find it always undefined, silently dropping any
+      // Google/Facebook data from this same session the moment Instagram is
+      // replaced — exactly the bug this ordering exists to avoid.
+      //
+      // Re-applied on every pass of the loop rather than once: a reader who
+      // goes Back and returns keeps whatever they had loaded (pendingDataSourceReads
+      // re-seeds the popout's ticks, and a replaced Instagram is already in
+      // state.signals), so a second pass is idempotent rather than additive.
+      const priorSupplements = state.signals && state.signals.supplements;
+      if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+
+      if (state.signals) {
+        state.signals.supplements = Object.assign({}, priorSupplements,
+          typeof collected.google === 'object' ? { google: collected.google } : null,
+          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
+      }
+
+      const outcome = await rerunWithAdditionalData({
+        google: typeof collected.google === 'object' ? collected.google : undefined,
+        facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
+      });
+      // Anything other than Back is terminal: the run happened, the payment
+      // was declined, the reader pressed Escape, or something failed and has
+      // already written its own message to #profile-alert.
+      if (outcome !== REVIEW_BACK) return;
     }
-    if (!collected) return; // Back — nothing touched.
-
-    // A freshly read Instagram export replaces the in-memory signals
-    // outright — typeof 'object' is how askDataSources marks a real
-    // replacement rather than the seeded `true` for "already had it,
-    // unchanged". Google or Facebook data still held in this same session
-    // (state.signals.supplements) rides along with it automatically; data
-    // loaded only in an earlier session does not, because Digest.build needs
-    // the raw fragment Supplement.js produced and a stored digest no longer
-    // carries one — only the sampled, capped view that came out of it. The
-    // popout's own copy says so before this ever runs.
-    //
-    // Read before the reassignment below, not after: state.signals is about
-    // to be replaced wholesale by the fresh Instagram read, and a fresh
-    // export never carries a .supplements property of its own. Reading
-    // afterwards would find it always undefined, silently dropping any
-    // Google/Facebook data from this same session the moment Instagram is
-    // replaced — exactly the bug this ordering exists to avoid.
-    const priorSupplements = state.signals && state.signals.supplements;
-    if (typeof collected.instagram === 'object') state.signals = collected.instagram;
-
-    if (state.signals) {
-      state.signals.supplements = Object.assign({}, priorSupplements,
-        typeof collected.google === 'object' ? { google: collected.google } : null,
-        typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
-    }
-
-    await rerunWithAdditionalData({
-      google: typeof collected.google === 'object' ? collected.google : undefined,
-      facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
-    });
   }
 
   async function rerunWithAdditionalData(extraSupplements) {
@@ -2502,10 +2540,14 @@
       return;
     }
 
-    // Back reads the same as Escape here: there is no supplement step behind
-    // this review any more for it to return to, so either one simply leaves
-    // the report on screen untouched.
-    if (!decision || decision === REVIEW_BACK) return;
+    // Back and Escape mean different things, and did not used to. Back steps
+    // one dialog upstream — addDataAndRerun's loop reopens "Add or change
+    // your data" on this return value, keeping everything already loaded —
+    // while Escape still abandons the whole attempt and leaves the report on
+    // screen untouched. Collapsing the two sent a reader who only wanted to
+    // add another source back to the report with their work discarded.
+    if (decision === REVIEW_BACK) return REVIEW_BACK;
+    if (!decision) return;
 
     if (alreadyUnlocked) {
       // One S$1.99 charge regenerates everything together — the free report
@@ -3772,6 +3814,16 @@
     $('#premium-retry').hidden = true;
     $('#premium-promo-input').disabled = true;
     $('#premium-promo-apply').disabled = true;
+    // Cancel goes with them. Reaching this line means a charge has cleared or
+    // a code has been accepted, and from here on the only thing Cancel can do
+    // is walk away from work already paid for: the generation keeps running
+    // either way (the fetch is not tied to the dialog — see "A closed dialog
+    // does not stop the fetch behind it"), so closing here just hides the
+    // progress and the retry button belonging to it. Re-enabled in the catch
+    // below, because a *failed* generation is exactly when a reader must be
+    // able to leave — including one whose promo code turns out to be wrong,
+    // for whom nothing was ever charged in the first place.
+    $('#premium-cancel').disabled = true;
     // Before the call, not after it. The whole point is to survive the tab
     // closing *during* the minutes this takes, so a receipt written on success
     // would be written exactly when it is no longer needed. It also has to be
@@ -3904,6 +3956,11 @@
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
       $('#premium-promo-input').disabled = false;
       $('#premium-promo-apply').disabled = false;
+      // Nothing is generating any more, so there is nothing left to walk out
+      // on — and a reader who has just been told their code was rejected, or
+      // that the writing failed, must not be held in a dialog whose only
+      // other exit is to try again.
+      $('#premium-cancel').disabled = false;
       const retry = $('#premium-retry');
       retry.textContent = TEXT.premiumRetry;
       retry.hidden = false;
@@ -4084,6 +4141,11 @@
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
+    // Reset with the rest of the dialog's state: runPremiumAnalysis greys it
+    // out once a charge or code is accepted, and this markup is reused across
+    // every purchase, so a dialog opened after a completed unlock would
+    // otherwise open with no way out at all.
+    $('#premium-cancel').disabled = false;
     $('#premium-payment-request-button').innerHTML = '';
     $('#premium-card-fallback').hidden = true;
     $('#premium-card-element').innerHTML = '';

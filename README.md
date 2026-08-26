@@ -1766,6 +1766,29 @@ or photographs that will not decode, write their message to `#profile-alert` and
 their report — rather than calling `showUploadError()`, which drops back to the welcome page and would
 look for all the world like the report had been lost.
 
+**Back at the review steps upstream; only Escape leaves.** The popout and the review are one loop, for
+the same reason the first upload's supplement offer and review are — `addDataAndRerun` now runs both in
+a `for(;;)`, and `rerunWithAdditionalData` returns the `REVIEW_BACK` sentinel rather than swallowing it.
+Back means "let me change what I am sending", and the only screen that can answer that is the one
+behind it; returning to the report instead, which is what this did, threw away a source the reader had
+just spent a minute loading and read as the button having failed. Nothing is re-read on the way back:
+`pendingDataSourceReads` still holds any Google or Facebook fragment, a replaced Instagram export is
+already in `state.signals`, and neither is cleared until a run actually commits — so a second pass
+through the loop is idempotent rather than additive, and the popout reopens with the same ticks. Escape
+is deliberately left alone and still abandons the whole attempt: the two gestures now mean different
+things, where collapsing them was the bug.
+
+**Dismissing the OS file picker is not Back, and used to be treated as it.** A reader who pressed
+Google Takeout, thought better of the file, and then pressed Continue watched the whole re-run vanish
+with no message at all. `<input type="file">` fires a `cancel` event of its own when the picker is
+dismissed without a choice — and it *bubbles* — so with `#datasources-input` sitting inside
+`#datasources-dialog`, that event reached the dialog's own `cancel` listener looking exactly like
+Escape and set `cancelled = true`. The next Continue then resolved `null`, and `addDataAndRerun`'s
+`if (!collected) return` did the rest, silently. Both this dialog's listener and `askSupplement`'s
+Escape guard are now scoped to `event.target === dialog`, so a bubbled `cancel` from a descendant is
+ignored — the same hazard existed in the supplement offer, where an unscoped `preventDefault()` was
+refusing a dismissal the reader had every right to make.
+
 **A paid unlock from before the rerun used to be quietly cleared, and now it is rewritten instead.**
 `runAnalysis()` replaces `state.profile` wholesale on success, which used to be exactly what dropped any
 `premiumAnalysis` left over from before — the paid sections read the *old*, smaller digest, and
@@ -1865,22 +1888,39 @@ losing the whole sheet to a stray tap was never the intended behaviour, in fligh
 DOM is concerned, from a click landing on the dialog's own padding, which is why "clicking any part
 of the box" and "clicking outside it" were reported as the same complaint and fixed the same way: the
 backdrop-click listener was removed outright, and the `cancel` event Escape fires is unconditionally
-prevented. Cancel remains the one door that is always open, including mid-fetch — closing it there
-no longer risks the crash above, since the read-side fix already made `runPremiumAnalysis` immune to
-whatever happens to `pendingPremiumDigest` after it has captured its own `paidDigest`.
+prevented.
+
+**Cancel was the last door, and it is now shut too once something has actually been authorised.** The
+moment a charge clears or a promo code is accepted, `runPremiumAnalysis` greys Cancel out alongside
+the promo field and the wallet button it already cleared, and the sheet closes itself when the run
+ends. Leaving mid-flight never stopped anything — the `fetch()` is not tied to the dialog, which is
+precisely what made the crash above reachable — so all it ever did was hide the progress bar and the
+retry button belonging to work already paid for. The catch block re-enables it, deliberately and
+symmetrically: a *failed* generation is exactly when a reader must be able to leave, and that includes
+someone whose promo code turns out to be wrong, for whom nothing was ever charged. `openPremiumDialog`
+resets it on every open, because this markup is reused across every purchase and a sheet that opened
+with no way out at all would be the worse bug by far.
+
+That change exposed a smaller one worth naming: there was no `.btn:disabled` rule in the stylesheet at
+all. A button the app had genuinely switched off — this Cancel, the promo Apply beside it, the sample
+report's inert Unlock — sat at full strength, took a click, and did nothing, which reads as broken
+rather than as deliberate. One rule now greys every one of them (greyscale plus a flat opacity, so it
+lands the same way on the filled gradient, the ghost and the outline without three separate rules) and
+withdraws the hover and active feedback with it.
 
 `tools/uitest.mjs` reproduces the original race directly rather than only asserting its symptoms
 separately: it slows `/api/premium-analysis` down (the same technique the mock-payment check above
-already uses to make a transient state observable), presses "fetch my analysis" on the resume
-dialog, and while that request is still pending tries Escape and a synthetic backdrop click — checking
-after each that the dialog is still open — before pressing Cancel and checking that this one **does**
-close it, immediately, even with the fetch still running. It then lets the delayed response land and
-checks the console never logged `__addedSupplements` and the analysis actually completed regardless.
-Fault-injected by reverting to the old backdrop-click-closes listener (which also meant dropping the
-`cancel` prevention, since both lived in the same edit): Escape then closes the dialog on its own
-native default, the first check catches that directly, and the cascade that follows — a synthetic
-backdrop click and then Cancel both aimed at a dialog that Escape had already closed a moment before —
-is exactly the shape of failure the original bug produced, not an artefact of the test.
+already uses to make a transient state observable), checks Cancel is offered right up until the
+moment something is authorised, presses "fetch my analysis" on the resume dialog, and while that
+request is still pending checks Cancel has gone grey — both as an attribute and as computed style,
+since the greying is half the point — then tries Escape, a synthetic backdrop click, and a direct
+`.click()` on Cancel itself, checking after each that the dialog is still open. A real reader's click
+on a disabled button dispatches no event at all, which is what actually holds them there, so the test
+drives that same no-op rather than waiting on an enabled state that is never coming. It then lets the
+delayed response land and checks the sheet closed itself, the console never logged
+`__addedSupplements`, and the analysis completed regardless. Fault-injected three ways — reverting to
+the old backdrop-click-closes listener, leaving Cancel enabled during an authorised run, and removing
+the `.btn:disabled` rule — and each broke a different, specific check.
 
 ### A read inside "Add or change your data" survives Back
 
@@ -2319,6 +2359,14 @@ that happens to need it is what makes it a property of the function: cards built
 because nothing has run `collapseSections` over them, while the ones the fallback finds already on
 screen were shut by the render that put them there. Break both — have `paidCard` emit `is-collapsed`
 *and* drop the call — and eight checks fail across the wellness, attachment and career reads.
+
+**Once every section is a heading, the glyph beside it is doing real work**, and two of them were the
+same. Career assessment and "How much to trust this" both wore 🎯 — fine when the report was a scroll
+and the two sat 4,000 pixels apart, but a duplicate in a fifteen-row index reads as a rendering
+mistake. Career assessment is 🪜 now, which says the same thing without colliding with 💼 ("At work",
+the free section) or 🧭 (the MBTI block) either. The check that pins it is written as a property of the
+whole report — no two `.card-icon` values in `#profile-body` may repeat — rather than as an assertion
+about those two, so the next section added cannot quietly reintroduce the problem.
 
 Mechanically it is deliberately small. `sectionHead` gained a `collapsible` flag that puts a real
 `<button>` **inside** the existing `<h2>` — the canonical disclosure pattern, which gives the control
@@ -3234,7 +3282,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 971 checks: drives the real UI in Chromium against a
+npm run test:ui    # 982 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
