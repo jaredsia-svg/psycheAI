@@ -2343,6 +2343,20 @@ each declared `width`/`height` has to match the file's own `naturalWidth`/`natur
 existing "the ring sits inside its screenshot" check would not have caught it: a ring at the wrong
 percentage is still inside the picture.
 
+**Steps 2 and 3's four screens lost their browser chrome as well.** Those four are the ones served
+from `accountscenter.instagram.com` rather than the Instagram app itself, so each carried roughly
+65px of address bar — the padlock, the URL, the "Instagram" subtitle — sitting above the actual
+screen. None of it is an instruction; it is the same bar on all four and teaches nothing after the
+first one. Cropped away, the same trap applied a second time: every ring's percentage had to be
+recomputed against the new, shorter box rather than just re-measured by eye, since a ring left at its
+old percentage would still land "inside the picture" — just the wrong part of it.
+
+**The "Tap Instagram" screenshot lost its bottom half too, on top of that.** Once the chrome was gone,
+the profile list still ran on well past Instagram's own row into Meta, WhatsApp and Threads — rows the
+caption never sends anyone to. Keeping only the top half leaves Facebook and Instagram in full and the
+next row cut off mid-line, which is what the alt text now says rather than naming platforms that are
+no longer in the picture.
+
 **The screenshots have a real border.** They had one already — a `--line` hairline, which is the pale
 lilac used to separate rows *inside* a card. Against a white phone capture on a near-white dialog that
 is not an edge at all, and the pictures bled into the page. It is a proper mid-grey now with a soft
