@@ -856,6 +856,74 @@ try {
           cap && cap.textContent.trim().length > 5;
       });
     }));
+  // ---- the tap target is ringed on every screenshot ----
+  //
+  // A screenshot of a menu is a picture of fifteen rows, and the reader needs
+  // one of them. The ring is what turns "here is the screen" into "here is the
+  // thing to press", and it is the difference between a guide and a gallery.
+  //
+  // Positioned in percentages over the image rather than burnt into the JPEG,
+  // so it scales with every column width and can be corrected without
+  // re-exporting a picture.
+  check('every screenshot rings the thing to tap',
+    (await page.locator('#guide-dialog .guide-mark').count()) === 7,
+    (await page.locator('#guide-dialog .guide-mark').count()) + ' marks');
+  check('and each ring sits inside its own screenshot, not floating over the page',
+    await page.evaluate(() => {
+      const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
+      return figs.length === 7 && figs.every(f => {
+        // Guarded rather than dereferenced: a figure that has lost its ring
+        // should fail this check, not throw out of page.evaluate and take the
+        // whole suite down with it several hundred checks early.
+        const imgEl = f.querySelector('img');
+        const markEl = f.querySelector('.guide-mark');
+        if (!imgEl || !markEl) return false;
+        const img = imgEl.getBoundingClientRect();
+        const mark = markEl.getBoundingClientRect();
+        // Inside the picture, with a pixel of tolerance for subpixel layout.
+        return mark.width > 8 && mark.height > 8 &&
+          mark.left >= img.left - 1 && mark.right <= img.right + 1 &&
+          mark.top >= img.top - 1 && mark.bottom <= img.bottom + 1;
+      });
+    }));
+  // Decorative: the caption and the alt text both already say what to tap, so
+  // a screen reader announcing a third, wordless thing would be noise.
+  check('the rings are hidden from screen readers, which already have the caption',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-mark')]
+      .every(m => m.getAttribute('aria-hidden') === 'true')));
+
+  // ---- everything is reachable by scrolling one direction ----
+  //
+  // The screenshots were a horizontal scroller: three across where there was
+  // room, swipe sideways on a phone. That hid two of every three behind a
+  // gesture nothing advertised, in a dialog whose whole job is to show
+  // somebody what they are about to look at. Checked at both sizes, because
+  // the failure only ever appeared at one of them.
+  for (const [label, width, height] of [['a phone', 390, 844], ['a laptop', 1100, 900]]) {
+    await page.setViewportSize({ width, height });
+    await page.waitForTimeout(250);
+    check('nothing in the guide scrolls sideways on ' + label,
+      await page.evaluate(() => {
+        const body = document.querySelector('.guide-body');
+        const rows = [...document.querySelectorAll('#guide-dialog .guide-shots')];
+        return body.scrollWidth <= body.clientWidth + 1 &&
+          rows.every(r => r.scrollWidth <= r.clientWidth + 1);
+      }));
+  }
+  // And the row really does reflow rather than just not overflowing — one
+  // column on a phone, several on a laptop, which is what makes "no sideways
+  // scrolling" mean "all of it is visible" rather than "it is squashed".
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  const phoneCols = await page.evaluate(() => getComputedStyle(
+    document.querySelector('#guide-dialog .guide-shots')).gridTemplateColumns.split(' ').length);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.waitForTimeout(250);
+  const laptopCols = await page.evaluate(() => getComputedStyle(
+    document.querySelector('#guide-dialog .guide-shots')).gridTemplateColumns.split(' ').length);
+  check('the screenshots stack on a phone and sit side by side on a laptop',
+    phoneCols === 1 && laptopCols === 3, phoneCols + ' then ' + laptopCols + ' columns');
+
   // Deferred, and inside a closed dialog, so a reader who never opens this
   // never pays for the images at all.
   check('the screenshots are lazy-loaded rather than fetched on every page view',
@@ -874,13 +942,31 @@ try {
   check('nothing in the guide names the account it was captured from',
     !/jialatsia|jaredsia|Jared Sia|@gmail|\+65/i.test(
       await page.evaluate(() => document.querySelector('#guide-dialog').innerHTML)));
-  // The one step that costs a reader hours reuses the same HTML/JSON trap the
-  // card itself carries, rather than restating it in words that could drift.
-  check('the format step reuses the same HTML-versus-JSON trap the card shows',
-    (await page.locator('#guide-dialog .format-trap .format-trap-pill').allInnerTexts())
-      .map(t => t.trim()).join('|') === 'HTML|JSON');
-  check('and that setting is the only one flagged',
+  // The one setting that costs a reader hours has to warn against the wrong
+  // value, not just name the right one — "Format: JSON" alone reads as a
+  // preference, where "JSON, not HTML" reads as a trap.
+  //
+  // Asserted on the warning rather than on the markup that carries it. The
+  // card has a two-row HTML/JSON widget and the guide used to repeat it; the
+  // guide says it in one line now, which is the point of making 3-5 concise.
+  // A check that pinned `.format-trap` would have been pinning the widget
+  // rather than the thing the widget is for.
+  const formatRow = page.locator('#guide-dialog .guide-settings > li.is-warning');
+  check('the format setting warns against HTML, not just names JSON',
+    (await formatRow.count()) === 1 &&
+    /JSON/.test(await formatRow.innerText()) &&
+    /not HTML/i.test(await formatRow.innerText()),
+    await formatRow.innerText());
+  check('and it is the only one of the three flagged',
     (await page.locator('#guide-dialog .guide-settings > li.is-warning').count()) === 1);
+  // Three one-line rows, not three headed paragraphs. The compact shape is the
+  // point: it gave "media quality" as much room as the setting that costs an
+  // afternoon, and buried the latter in the middle of the wall.
+  check('the three settings each fit on their own row',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#guide-dialog .guide-settings > li')];
+      return rows.length === 3 && rows.every(r => r.querySelectorAll('p').length === 0);
+    }));
 
   // Back is how people dismiss something covering the page on a phone. Without
   // an entry to pop they would leave the site instead — the same reasoning the

@@ -2277,6 +2277,30 @@ because "the row that says Instagram" *is* the instruction. A check asserts the 
 never names the account, since alt text is where a redacted image most easily leaks what it was
 hiding.
 
+**Every screenshot rings the thing to tap.** A capture of an Instagram menu is a picture of fifteen
+rows, and the reader needs one of them — the ring is what turns "here is the screen" into "here is
+what to press", and it is the difference between a guide and a gallery. The rings are positioned in
+percentages over the image from the markup rather than burnt into the JPEG, so they scale at every
+column width and can be corrected without re-exporting a picture. They are magenta rather than the
+app's own accent, because these sit on Instagram's white and blue UI and a purple ring on a blue
+button is the one pairing that does not read; the white outer ring is what keeps them visible where
+they cross a grey row rather than a white one. `aria-hidden`, since the caption and the alt text both
+already say what to tap.
+
+**No horizontal scrolling.** The screenshots were a sideways scroller — three across where there was
+room, swipe on a phone. That hid two of every three behind a gesture nothing on the page advertised,
+inside a dialog whose entire job is to show somebody what they are about to look at. It is a wrapping
+grid now: three on a laptop, one on a phone, everything reachable by scrolling the one direction the
+dialog already scrolls.
+
+**Steps 3, 4 and 5 are three one-line rows**, not three headed paragraphs. The long version gave
+"media quality" as much room as the setting that costs a reader their afternoon, and buried the
+latter in the middle of the wall. Each row is now number, setting, value, and why in a few words. The
+format row keeps its warning — "JSON, **not HTML**" — because naming only the right value reads as a
+preference where naming the wrong one reads as a trap. It dropped the two-row HTML/JSON widget the
+card still carries; the check that used to pin that widget now asserts the warning instead, which is
+the thing the widget was for.
+
 They are downscaled from 1080px to 480px — 1.75MB to 251KB — and `loading="lazy"` inside a closed
 dialog, so a reader who never opens the guide never downloads any of it. Each carries explicit
 `width`/`height` so the dialog does not reflow as they arrive. On a phone the three-across rows become
@@ -3512,7 +3536,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1044 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1051 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
