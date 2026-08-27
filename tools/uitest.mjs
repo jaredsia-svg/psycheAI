@@ -785,16 +785,22 @@ try {
   check('pressing it opens the guide over the page rather than navigating away',
     (await page.locator('#guide-dialog').isVisible()) &&
     (await page.locator('#view-welcome').isVisible()));
-  // Four blocks now, not six numbered steps: steps 3, 4 and 5 all happen on
-  // one Instagram screen — "Confirm your export" — so the guide groups them
-  // under one heading with a sub-list, exactly as the screen does. The six
-  // settings are still all named; this checks the shape, and the loop below
-  // checks the content.
+  // Four steps, numbered 1 to 4. Date range, format and media quality are three
+  // fields on one Instagram screen — "Confirm your export" — so they are three
+  // bullets inside step 3 rather than steps of their own. They were numbered
+  // 3, 4 and 5, which made the guide claim six steps for four screens.
   check('the guide walks the whole journey',
     (await page.locator('#guide-dialog .guide-step').count()) === 4 &&
     (await page.locator('#guide-dialog .guide-settings > li').count()) === 3,
     (await page.locator('#guide-dialog .guide-step').count()) + ' steps, ' +
     (await page.locator('#guide-dialog .guide-settings > li').count()) + ' settings');
+  check('and numbers them 1 to 4, with no sub-numbering inside step 3',
+    (await page.locator('#guide-dialog .guide-num').allInnerTexts())
+      .map(t => t.trim()).join(',') === '1,2,3,4',
+    (await page.locator('#guide-dialog .guide-num').allInnerTexts()).join(','));
+  check('the three settings are bullets rather than a numbered row each',
+    (await page.evaluate(() => getComputedStyle(
+      document.querySelector('#guide-dialog .guide-settings')).listStyleType)) === 'disc');
   const guideText = await page.locator('#guide-dialog').innerText();
   // The settings that actually matter, each named in the guide. These are the
   // ones a reader can get wrong in a way that costs them the whole wait.
@@ -807,7 +813,7 @@ try {
     ['the format', /JSON/],
     ['the media quality', /[Ll]ower quality/],
     ['what arrives afterwards', /email/i],
-    ['how long the link lasts', /4 days/],
+    ['where the file goes', /bottom of this page/i],
   ]) {
     check('the guide covers ' + what, needle.test(guideText), guideText.slice(0, 200));
   }
@@ -911,10 +917,42 @@ try {
   check('the screenshots are lazy-loaded rather than fetched on every page view',
     await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
       .every(i => i.getAttribute('loading') === 'lazy')));
-  // Dimensions on every one, so the dialog does not reflow as they arrive.
+  // Dimensions on every one, so the dialog does not reflow as they arrive —
+  // and the declared ones have to be the file's real ones, or the reserved box
+  // is the wrong shape and the page jumps anyway. Four of the seven were
+  // cropped to their top half and kept 931 in the markup once; the rings, being
+  // percentages of that box, all landed in the wrong place.
   check('and each reserves its space before it loads',
     await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
       .every(i => i.getAttribute('width') && i.getAttribute('height'))));
+  check('the declared dimensions are the ones the files actually have',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
+      .every(i => Number(i.getAttribute('width')) === i.naturalWidth &&
+        Number(i.getAttribute('height')) === i.naturalHeight)),
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
+      .map(i => i.getAttribute('width') + 'x' + i.getAttribute('height') + ' vs ' +
+        i.naturalWidth + 'x' + i.naturalHeight).join(', ')));
+  // A capture of a white phone screen on a near-white dialog needs an edge, or
+  // the reader cannot tell where the screenshot stops and the page starts. The
+  // hairline this used to carry was --line, a pale lilac built for separating
+  // rows inside a card, which against white was no edge at all. Checked as
+  // contrast against the dialog behind it rather than "has a border", since a
+  // border set to the background colour would pass the latter.
+  check('every screenshot has a border that actually reads against the page',
+    await page.evaluate(() => {
+      const lum = (c) => {
+        const [r, g, b] = c.match(/\d+(\.\d+)?/g).map(Number);
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      };
+      const page_ = lum(getComputedStyle(document.querySelector('.guide-body')).backgroundColor
+        .startsWith('rgba(0, 0, 0, 0)')
+        ? getComputedStyle(document.body).backgroundColor
+        : getComputedStyle(document.querySelector('.guide-body')).backgroundColor);
+      return [...document.querySelectorAll('#guide-dialog .guide-shot img')].every(i => {
+        const s = getComputedStyle(i);
+        return parseFloat(s.borderTopWidth) >= 1 && Math.abs(lum(s.borderTopColor) - page_) > 0.15;
+      });
+    }));
   // The originals carried the account holder's name, three handles, a phone
   // number, an email address and their profile photograph. None of that
   // teaches anybody anything and all of it would have been published. This

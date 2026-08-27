@@ -2257,12 +2257,15 @@ laptop and only looked correct on a phone, where the content happened to fill th
 ### The step-by-step guide
 
 "Show me step by step" in the how-to card opens the export journey as real screenshots of the real
-screens: seven captures across four blocks, each with a caption saying what to tap. The numbered list
+screens: seven captures across four steps, each with a caption saying what to tap. The numbered list
 in the card stays as it was — that is the quick version for somebody who has done this before.
 
-Steps 3, 4 and 5 are grouped under one heading because Instagram groups them: date range, format and
-media quality are three rows on one "Confirm your export" screen, so the guide shows that screen once
-and lists the three settings under it rather than pretending they are three separate journeys.
+**Four steps, numbered 1 to 4.** Date range, format and media quality are three fields on one
+"Confirm your export" screen, so they are three bullets inside step 3, not steps of their own. They
+were numbered 3, 4 and 5 in their own pills, which made a four-screen journey advertise itself as six
+steps and gave three fields the same visual weight as the four screens around them. A check pins the
+step numbers as the literal sequence `1,2,3,4`, because that is the claim — "there are four of these"
+— rather than counting elements, which stayed true the whole time the labels said otherwise.
 
 The first version drew the screens as CSS sketches, because Meta's UI is theirs and a capture goes
 stale silently the next time they move a menu. That was the wrong call: a sketch tells a reader a list
@@ -2293,13 +2296,20 @@ inside a dialog whose entire job is to show somebody what they are about to look
 grid now: three on a laptop, one on a phone, everything reachable by scrolling the one direction the
 dialog already scrolls.
 
-**Steps 3, 4 and 5 are three one-line rows**, not three headed paragraphs. The long version gave
-"media quality" as much room as the setting that costs a reader their afternoon, and buried the
-latter in the middle of the wall. Each row is now number, setting, value, and why in a few words. The
-format row keeps its warning — "JSON, **not HTML**" — because naming only the right value reads as a
-preference where naming the wrong one reads as a trap. It dropped the two-row HTML/JSON widget in
-favour of that one phrase; the check that used to pin the widget now asserts the warning instead,
-which is the thing the widget was for.
+**The three settings are three bullets**, each one sentence: what to change, what to change it to,
+and why in a few words. This started as three headed paragraphs — which gave "media quality" as much
+room as the setting that costs a reader their afternoon — then became a grid of numbered rows, and is
+now the plainest thing that carries the same content. The format bullet keeps its warning, "JSON —
+**not HTML**", because naming only the right value reads as a preference where naming the wrong one
+reads as a trap. It dropped the two-row HTML/JSON widget in favour of that one phrase; the check that
+used to pin the widget now asserts the warning instead, which is the thing the widget was for.
+
+**The guide ends at the upload, not at a summary.** The last step carried three fact boxes — arrives
+in, link valid for, file format — restating what the steps above had just said, in a dialog whose
+last useful sentence is "now go and upload it". A closing paragraph about Instagram moving its menus
+around went with them: it hedged the whole guide at the moment a reader should be leaving it, and the
+seven screenshots are a better answer to "the labels have changed" than a paragraph warning that they
+might.
 
 **The how-to card's own numbered list lost the same widget, and a clause besides.** Step 1 no longer
 says the deep link "goes straight to the right page" — the link's own text already promises that, and
@@ -2312,11 +2322,29 @@ fallback instructions on this page and the identical copy inside the supplement 
 all three now carry the same one-sentence warning as plain text, and a check confirms no `.format-trap`
 markup is left anywhere on the page.
 
-They are downscaled from 1080px to 480px — 1.75MB to 251KB — and `loading="lazy"` inside a closed
-dialog, so a reader who never opens the guide never downloads any of it. Each carries explicit
-`width`/`height` so the dialog does not reflow as they arrive. On a phone the three-across rows become
-a horizontal scroller: three phone screenshots side by side in a 340px column would be 100px each,
-which is a picture of a screen rather than a readable one.
+**Four of the seven are cropped to their top half.** A phone screenshot is 931px tall against 480
+wide, and on four of these screens everything the reader needs is in the first third — the rest is
+menu rows they are not being sent to, or, on the "Create export" screen, half a page of white. Cropped
+to 466px they show the row and its context and nothing else, and the four files together dropped from
+138KB to 88KB.
+
+That crop has a trap in it worth naming, because it is the kind that fails silently: the rings are
+positioned as percentages *of the image box*, so halving an image's height without changing the
+`height` attribute leaves every ring on it pointing at the wrong row. There is a check for it now —
+each declared `width`/`height` has to match the file's own `naturalWidth`/`naturalHeight`. The
+existing "the ring sits inside its screenshot" check would not have caught it: a ring at the wrong
+percentage is still inside the picture.
+
+**The screenshots have a real border.** They had one already — a `--line` hairline, which is the pale
+lilac used to separate rows *inside* a card. Against a white phone capture on a near-white dialog that
+is not an edge at all, and the pictures bled into the page. It is a proper mid-grey now with a soft
+shadow under it, so a capture reads as a thing lying on the page rather than as more page. The check
+measures the border's contrast against the background rather than asserting a border exists, since a
+border painted in the background colour would satisfy the latter and be exactly the bug.
+
+They are downscaled from 1080px to 480px and `loading="lazy"` inside a closed dialog, so a reader who
+never opens the guide never downloads any of it. Each carries explicit `width`/`height` so the dialog
+does not reflow as they arrive.
 
 One thing worth recording about the tests. The new block declared `const shots` for the screenshot
 locator, which shadowed the module-level `--shots` flag inside that scope and silently switched on
@@ -3547,7 +3575,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1048 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1052 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

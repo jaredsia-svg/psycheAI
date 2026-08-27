@@ -462,12 +462,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .help-head h2 { margin: 0; flex: 1 1 auto; }
 .help-guide-open { flex: none; padding: .45rem .9rem; font-size: .9rem; }
 
-.guide-lede { margin: 0 0 1.5rem; color: var(--ink-soft); }
-.guide-foot {
-  margin: 1.6rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line);
-  color: var(--ink-soft); font-size: .9rem;
-}
-
 .guide-steps { list-style: none; margin: 0; padding: 0; }
 .guide-step { padding: 1.4rem 0; border-top: 1px solid var(--line); }
 .guide-step:first-child { border-top: 0; padding-top: 0; }
@@ -477,16 +471,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   margin: 0 0 .55rem; font-size: 1.05rem;
 }
 /* The step number as its own token rather than an <ol> marker, so it sits in
-   the heading's line box at a size the rest of the dialog agrees with. A span
-   rather than ::before because step 3 covers three of them and reads "3–5". */
-.guide-num, .guide-subnum {
+   the heading's line box at a size the rest of the dialog agrees with. */
+.guide-num {
   flex: none; display: grid; place-items: center;
   min-width: 1.7rem; height: 1.7rem; padding: 0 .4rem; border-radius: 999px;
   background: linear-gradient(100deg, var(--accent), var(--accent-2));
   color: #fff; font-size: .8rem; font-weight: 700;
 }
 @media (prefers-color-scheme: dark) {
-  .guide-num, .guide-subnum { color: var(--bg); }
+  .guide-num { color: var(--bg); }
 }
 
 /* ---------- the screenshots ---------- */
@@ -513,14 +506,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .guide-frame { position: relative; display: block; line-height: 0; }
 .guide-shot img {
   display: block; width: 100%; height: auto; border-radius: 12px;
-  border: 1px solid var(--line);
+  /* A capture of a white phone screen sits on a near-white dialog, so the two
+     run together and a reader cannot tell where the screenshot stops and the
+     page starts. --line is a pale lilac hairline built for separating rows
+     inside a card and disappears entirely here; this is a real edge, with a
+     shadow under it so the picture reads as a thing lying on the page. */
+  border: 1px solid #9a90a6;
+  box-shadow: 0 1px 5px rgba(20, 16, 26, .13);
   /* The captures are light-mode phone screens. On a dark page a pure white
      rectangle glares, so it is knocked back a little — enough to sit in the
      page, not so much that the grey UI rows lose their edges. */
   background: #fff;
 }
 @media (prefers-color-scheme: dark) {
-  .guide-shot img { filter: brightness(.88); }
+  .guide-shot img { filter: brightness(.88); border-color: #574d63; box-shadow: none; }
 }
 
 /* The ring around the thing to tap. Positioned in percentages from the markup
@@ -542,51 +541,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .guide-shot figcaption b { color: var(--ink); font-weight: 600; }
 
-/* ---------- the three settings inside step 3–5 ---------- */
-/* One row each: number, what to change, what to change it to, and why in a few
-   words. This was three sub-headings with a paragraph under each, which gave
-   as much room to "media quality" as the step deserves and buried the one
-   setting that actually costs a reader their afternoon. */
-.guide-settings { list-style: none; margin: 0 0 .8rem; padding: 0; }
-.guide-settings > li {
-  display: grid; align-items: baseline;
-  grid-template-columns: auto auto 1fr;
-  gap: .3rem .6rem;
-  padding: .6rem 0; border-top: 1px dashed var(--line);
-}
-.guide-settings > li:first-child { border-top: 0; }
+/* ---------- the three settings inside step 3 ---------- */
+/* Plain bullets, each reading as one sentence: what to change, what to change
+   it to, and why in a few words. These were rows in a grid, each led by its own
+   numbered pill — which read as three more steps in a guide that only has four,
+   when they are three fields on one screen. */
+.guide-settings { list-style: disc; margin: 0 0 .8rem; padding-left: 1.25rem; }
+.guide-settings > li { margin: 0 0 .5rem; line-height: 1.5; }
+.guide-settings > li:last-child { margin-bottom: 0; }
 .guide-setting-name { font-weight: 600; }
-.guide-setting-value { justify-self: start; }
-/* The why sits under the name on a phone, where three columns would leave it
-   two words wide, and beside it once there is room. */
-.guide-setting-why {
-  grid-column: 2 / -1; font-size: .88rem; color: var(--ink-soft);
-}
+.guide-setting-why { font-size: .92rem; color: var(--ink-soft); }
 /* The one setting that costs hours if it is wrong is the only one coloured.
    Once in three is a signal; three in three is wallpaper. */
-.guide-settings > li.is-warning .guide-subnum { background: var(--danger); }
 .guide-settings > li.is-warning .guide-setting-why strong { color: var(--danger); }
 .guide-then { margin: 0; }
-
-@media (min-width: 460px) {
-  .guide-settings > li { grid-template-columns: auto auto auto 1fr; }
-  .guide-setting-why { grid-column: auto; }
-}
-
-/* ---------- what to expect afterwards ---------- */
-.guide-facts {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: .7rem; margin: 0;
-}
-.guide-facts > div {
-  padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px;
-  background: var(--bg-alt);
-}
-.guide-facts dt {
-  font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
-  color: var(--ink-soft);
-}
-.guide-facts dd { margin: .2rem 0 0; font-weight: 600; }
 
 .sample-dialog-body {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
