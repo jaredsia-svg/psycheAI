@@ -1341,6 +1341,33 @@
   // This is the one path back that keeps the reason on screen: it scrolls to
   // the message itself once show() and flash() have both run, rather than to
   // wherever show() happens to leave the page.
+  /**
+   * Back out of an upload and land where the reader was standing.
+   *
+   * Both abandon paths — Back at the supplement offer, Escape at the review —
+   * go through here rather than calling show() directly, so the two cannot
+   * drift apart on the one thing that makes them feel different from a
+   * failure. show() scrolls every view change to the top, which is right for
+   * arriving somewhere and wrong for backing out: the dropzone sits near the
+   * foot of a long page, and a reader who abandons an upload was standing
+   * there a second ago.
+   *
+   * The restore overrides show()'s scroll rather than suppressing it. Both run
+   * in the same synchronous task, so nothing is painted in between and there
+   * is no visible jump — and an option threaded through show() to skip its
+   * scroll would be an option no test could ever catch failing, since this
+   * line would put the reader in the right place either way.
+   *
+   * Guarded on the page still being long enough to hold that position: a
+   * shorter page would otherwise get an out-of-range scroll the browser clamps
+   * somewhere arbitrary.
+   */
+  function abandonUpload(scrollY) {
+    show('welcome');
+    const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo(0, Math.min(scrollY, limit));
+  }
+
   function showUploadError(message) {
     show('welcome');
     flash('#upload-error', message);
@@ -1440,7 +1467,26 @@
     dropzone.classList.remove('is-over');
     handleFiles(event.dataTransfer.files);
   });
-  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+  // The value is cleared on every pick, and that is what keeps the box
+  // working the second time.
+  //
+  // A file input only fires `change` when its value actually changes, so
+  // choosing the *same* archive twice in a row fires nothing at all: the
+  // reader clicks the box, the OS chooser opens, they pick the file they
+  // picked a minute ago, and the page sits there. Which is exactly what
+  // happens after abandoning an upload at the supplement offer — the most
+  // likely next action is to pick that same file again, and it was the one
+  // action that silently did nothing.
+  //
+  // handleFiles copies the list into an array on its first line, so clearing
+  // here is safe even though `files` empties with the value. Both of the other
+  // file inputs in this app already do this (see askSupplement and
+  // askDataSources); the main dropzone was the one that never did.
+  fileInput.addEventListener('change', () => {
+    const picked = Array.from(fileInput.files || []);
+    fileInput.value = '';
+    handleFiles(picked);
+  });
 
   function setProgress(percent, label) {
     $('#progress-bar').style.width = percent + '%';
@@ -2034,6 +2080,11 @@
     // for the previous one while this phase is only reading, not sending.
     $('#working-note').textContent = '';
     setProgress(0, 'Opening the archive…');
+    // Where the reader was standing before the working screen covered the
+    // page — almost always the dropzone, near the foot of a long welcome page.
+    // Read before show('working'), which scrolls to the top itself, so this is
+    // the position they actually chose rather than the one show() just imposed.
+    const scrollBeforeUpload = window.scrollY;
     show('working');
 
     let digest;
@@ -2062,7 +2113,9 @@
         // here does not throw away an archive already read.
         const supplements = await askSupplement(signals.supplements);
         if (!supplements) {
-          show('welcome');
+          // Back at the offer abandons the upload, and puts them back exactly
+          // where they were rather than at the top of a page they never left.
+          abandonUpload(scrollBeforeUpload);
           return;
         }
         signals.supplements = supplements;
@@ -2080,7 +2133,8 @@
     }
 
     if (!decision) {
-      show('welcome');
+      // Escape at the review means the same thing Back at the offer does.
+      abandonUpload(scrollBeforeUpload);
       return;
     }
 

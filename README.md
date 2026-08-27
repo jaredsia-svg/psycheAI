@@ -2204,6 +2204,39 @@ inherit whatever order the parser produced, which also makes the output one chro
 of two interleaved halves. A check builds the same captions in both orders and asserts the sample is
 now identical either way; under the old code the two differed completely.
 
+### Backing out of an upload
+
+The dropzone sits near the foot of a long welcome page. Uploading covers it with the working screen
+for a moment, and pressing Back at the supplement offer used to drop the reader at the **top** of the
+page they had never really left — so the next thing they had to do was scroll a page and a half back
+down to reach the box they had just been using.
+
+`show()` scrolls every view change to the top, which is right for arriving somewhere and wrong for
+backing out. Both abandon paths — Back at the offer, Escape at the review — go through one
+`abandonUpload()` that remembers where the reader was standing (read *before* `show('working')`,
+since show() scrolls to the top itself) and puts them back. The restore overrides show()'s scroll
+rather than suppressing it: both run in the same synchronous task, so nothing is painted between them
+and there is no visible jump.
+
+There was a `keepScroll` option threaded through `show()` at first, and fault-injecting it exposed it
+as dead weight — the suite stayed green with the option ignored, because the explicit restore put the
+reader in the right place either way. An option no test can catch failing is worse than no option, so
+it came out and the check now bites on the line that does the work.
+
+**And the upload box has to still work afterwards**, which is the half that actually looked broken. A
+file input only fires `change` when its value *changes*, so picking the same archive twice in a row
+fires nothing at all. After abandoning an upload the most likely next action is to pick that same file
+again — and it was the one action that silently did nothing: the OS chooser opened, the reader chose
+their export, and the page sat there. Clearing `fileInput.value` on every pick is what makes the
+second attempt fire like the first. Both of the app's other file inputs already did this
+(`askSupplement`, `askDataSources`, which document the hazard in their own comments); the main
+dropzone was the one that never did.
+
+Playwright's `setFiles` dispatches `change` whether or not the value really changed, so it cannot
+reproduce the browser's rule directly. The check asserts the condition the rule turns on — the input
+must not still be holding the last pick — and a second check drives the whole round trip through a
+real file chooser.
+
 ### The evidence ladder
 
 The prompt had weighting rules scattered through it as prose — photographs are weakest, absence is
@@ -3394,7 +3427,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1002 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1009 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

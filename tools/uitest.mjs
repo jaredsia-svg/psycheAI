@@ -4870,6 +4870,88 @@ try {
     analyseBodies.length === beforeReviewBack &&
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null);
 
+  // ---- abandoning an upload leaves you where you were standing ----
+  //
+  // The dropzone sits near the foot of a long welcome page. Uploading covers
+  // it with the working screen for a moment; pressing Back at the offer used
+  // to drop the reader at the *top* of the page they had never really left, so
+  // the next thing they had to do was scroll all the way down again to reach
+  // the box they were about to use. show() scrolls to the top on every view
+  // change, which is right for arriving somewhere and wrong for backing out.
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: 'load' });
+  await page.locator('#dropzone').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  const scrollAtDropzone = await page.evaluate(() => window.scrollY);
+  check('the dropzone really is far enough down to make this matter',
+    scrollAtDropzone > 400, String(scrollAtDropzone));
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await page.click('#supplement-back');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+  await page.waitForTimeout(300);
+  check('Back at the offer leaves the page where the reader left it',
+    Math.abs((await page.evaluate(() => window.scrollY)) - scrollAtDropzone) < 40,
+    'was ' + scrollAtDropzone + ', now ' + (await page.evaluate(() => window.scrollY)));
+  check('so the upload box is still on screen, not a page-length away',
+    await page.locator('#dropzone').isVisible());
+  // Escape at the review is the same gesture one dialog further in, and has to
+  // behave the same way — they are one abandon path with two entrances.
+  await page.setInputFiles('#file-input', {
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  await page.click('#supplement-skip');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#review-dialog').open, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  check('and Escape at the review does too, since it means the same thing',
+    Math.abs((await page.evaluate(() => window.scrollY)) - scrollAtDropzone) < 40,
+    'was ' + scrollAtDropzone + ', now ' + (await page.evaluate(() => window.scrollY)));
+  // A genuine arrival still starts at the top — the fix must not turn into
+  // "never scroll", which would strand a reader mid-page on a new screen.
+  await page.click('.nav-links a[data-nav="about"]');
+  await page.waitForSelector('#view-about:not([hidden])', { timeout: 15000 });
+  check('but arriving at a real view still starts at its top',
+    (await page.evaluate(() => window.scrollY)) === 0,
+    String(await page.evaluate(() => window.scrollY)));
+  await page.goBack();
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+
+  // ---- the box still works the second time ----
+  //
+  // A file input fires `change` only when its value actually changes, so
+  // picking the same archive twice in a row fires nothing at all. After
+  // abandoning an upload the most likely next action is to pick that same file
+  // again — and it was the one action that silently did nothing, which reads
+  // as the upload box having stopped working. Clearing the value on every pick
+  // is what makes the second attempt fire like the first.
+  //
+  // Playwright's setFiles dispatches `change` whether or not the value really
+  // changed, so it cannot reproduce the browser's rule directly. What it can
+  // check is the condition the rule turns on: the input must not still be
+  // holding the last pick.
+  check('the file input does not hold on to the last archive picked',
+    (await page.evaluate(() => document.querySelector('#file-input').value)) === '',
+    await page.evaluate(() => document.querySelector('#file-input').value));
+  // And the whole round trip through a real chooser, which is what a reader
+  // actually does: click the box, pick the same file, get the offer back.
+  const [rechooser] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 15000 }),
+    page.click('#dropzone'),
+  ]);
+  await rechooser.setFiles({
+    name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+  });
+  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
+  check('picking the same archive again after backing out starts a fresh upload',
+    await page.locator('#supplement-dialog').isVisible());
+  await page.click('#supplement-back');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
+
   // ---- going back must not discard an archive already read ----
   //
   // The point of the whole loop. Re-reading a Takeout is slow, and a reader
