@@ -683,10 +683,18 @@ try {
   // labels, which are checked separately below. Left unscoped this asserted
   // the union of both lists, and — because a closed <details> yields empty
   // strings — did so against a row of blanks.
+  // JSON is deliberately not in this list. The format step was redrawn as a
+  // visual trap — a struck-through HTML pill above a ticked JSON one — because
+  // it is the single mistake that costs a reader hours, and a word underlined
+  // in a sentence was not carrying that weight. It has its own checks a few
+  // dozen lines up, which are stricter than a membership test: the pill text,
+  // the line-through, and the aria-label that says the same thing to a screen
+  // reader. This check went stale when that redesign landed and kept asserting
+  // the old shape.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
     ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
-      'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
+      'Create Export', 'All time', 'lower quality'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's and Facebook's menus, and they go
@@ -712,7 +720,18 @@ try {
       return Boolean(link) && link.href === 'https://takeout.google.com/' &&
         link.target === '_blank' && /noopener/.test(link.rel);
     }));
-  check('the underline is not the one links use, and the one real link is the only <a> here',
+  // The property that matters is that the two kinds of underline never get
+  // confused: a ui-label is a word to hunt for inside somebody else's menu and
+  // goes nowhere, a link is a destination. So the labels must be underlined
+  // but must not wear the link colour, and every <a> in the card must be a
+  // real external destination rather than a label dressed as one.
+  //
+  // This used to assert `a.length === 1`, which went stale the moment the
+  // optional-sources disclosure moved inside this card and brought its own two
+  // links with it — a count is the wrong shape for "no fake links", since it
+  // fails on every honest addition and would still pass if a genuine link were
+  // swapped for a dead one.
+  check('the underline is not the one links use, and every link here is a real destination',
     await page.evaluate(() => {
       const probe = document.createElement('a');
       probe.href = '#';
@@ -720,9 +739,12 @@ try {
       const linkColour = getComputedStyle(probe).color;
       probe.remove();
       const labels = [...document.querySelectorAll('.help-card .ui-label')];
+      const links = [...document.querySelectorAll('.help-card a')];
       return labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
-        document.querySelectorAll('.help-card a').length === 1;
+        links.length > 0 &&
+        links.every(a => /^https:\/\//.test(a.getAttribute('href') || '')) &&
+        links.every(a => !a.classList.contains('ui-label'));
     }));
   // The fallback route sits quietly under the deep link it backs up, and its
   // menu labels are unbolded on purpose so the footnote does not compete with
