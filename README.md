@@ -689,6 +689,33 @@ The sample dialog's copy is the one that needed the most care: it says *"This sa
 report"* rather than implying the sample is partial. The free report is a whole report, and calling it
 incomplete in order to sell the rest would be a lie about what somebody already has.
 
+**The sample opens on the summary card, above the sections, exactly as a real report does.** A reader
+deciding whether this is worth handing an archive over is shown what the app actually produces, and the
+card is the one part of a report that reads at a glance — meeting a list of fourteen shut headings
+instead undersold the thing badly. It is built by the same `psycheCardHtml()` the reader's own report
+uses, from the same `sample.json` the sections below it come from, so there is no second rendering path
+to keep in step.
+
+Three details are deliberate. The card sits *inside* `#sample-body` rather than above it, because that
+element is the dialog's scroll container and a card pinned outside it would stay put while the report
+moved underneath. Its head carries no `.card-head-toggle`, which is the entire mechanism that keeps it
+open — `collapseSections` only shuts cards whose head has one, the same thing that leaves the
+confidence card alone, so this needed no special case anywhere. And it renders as a plain frame, not
+the report's `.psyche-card-slot` button: full screen, download and share all act on *your* card, and
+there is no reader's card here to act on.
+
+The fit is the part that had to be sequenced carefully. `fitCard` measures `offsetHeight`, and a closed
+`<dialog>` has no layout at all — called before `showModal()` it reads a natural height of zero, bails
+out, and leaves the card at its natural 1000px, overflowing the frame and scrolling the dialog
+sideways. `layoutSampleCard()` therefore runs immediately *after* the dialog opens, and is called from
+`layoutPsycheCard()` too so the existing resize listener covers both copies without a second one.
+
+The close handler needed a matching change. It used to empty `#sample-body` outright, which is correct
+when everything inside it was built by `showSample()`; the card's frame is markup in `index.html` now,
+so wiping the container would take it away for good and every later open would find no card — and, as
+the fault-injection confirmed, no `#sample-sections` either, which throws before the dialog even opens.
+It empties the two slots instead.
+
 **The four paid sections used to be summarised in a footer pinned under the sample; now they render
 inline, in the sample body itself, the same way an un-unlocked real report does** — see "One
 consolidated block before unlock, four cards after" below for what that looks like today.
@@ -3282,7 +3309,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 982 checks: drives the real UI in Chromium against a
+npm run test:ui    # 990 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

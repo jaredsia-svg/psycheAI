@@ -743,7 +743,19 @@
       </svg>
     </button>
   </header>
-  <div class="sample-dialog-body" id="sample-body"></div>
+  <!-- The summary card, above the sections, exactly as a real report opens.
+       Filled by showSample() from the same psycheCardHtml() the reader's own
+       report uses. Deliberately a plain frame rather than the report's
+       .psyche-card-slot button: full screen, download and share all act on
+       "your" card, and there is no reader's card here to act on. -->
+  <div class="sample-dialog-body" id="sample-body">
+    <section class="card section-card sample-card-section" id="sample-card-section" hidden>
+      <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
+        <div><h2 id="sample-card-title"></h2></div></div>
+      <div class="psyche-card-frame"><div class="psyche-card" id="sample-psyche-card"></div></div>
+    </section>
+    <div id="sample-sections"></div>
+  </div>
 </dialog>
 
 <!-- Offered once the Instagram archive has already parsed, so a reader who

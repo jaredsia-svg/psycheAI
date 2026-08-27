@@ -1156,11 +1156,29 @@
       // Its text is deliberately not written into the markup until the
       // reader asks for it — see roastBlock()/revealRoast().
       sampleReport = report;
-      $('#sample-body').innerHTML = reportSectionsHtml(report, { sample: true });
+      // The summary card first, exactly as a real report opens — a reader
+      // being shown what this app produces should meet the same thing its
+      // readers meet, and the card is the one part of the report that reads
+      // at a glance. Same psycheCardHtml() the reader's own report uses, from
+      // the same sample.json the sections below it come from.
+      //
+      // Its head carries no .card-head-toggle, which is what keeps it open:
+      // collapseSections only shuts cards whose head has one, the same
+      // mechanism that leaves the confidence card alone.
+      const cardHtml = psycheCardHtml(report);
+      $('#sample-psyche-card').innerHTML = cardHtml;
+      $('#sample-card-section').hidden = !cardHtml;
+      $('#sample-card-title').textContent = TEXT.cardSection;
+      $('#sample-sections').innerHTML = reportSectionsHtml(report, { sample: true });
       collapseSections($('#sample-body'));
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
+      // After showModal, not before: fitCard measures offsetHeight, and a
+      // closed <dialog> has no layout at all — called any earlier it reads a
+      // natural height of 0, bails out, and leaves the card unscaled and
+      // overflowing its frame.
+      layoutSampleCard();
       history.pushState({ psycheaiSample: true }, '');
       sampleHistoryEntry = true;
     } catch (error) {
@@ -1185,7 +1203,14 @@
     // document, so a whole second report's worth of markup would sit there
     // shadowing the real one's selectors — and the sections it builds are the
     // same ones the reader's own report uses.
-    $('#sample-body').innerHTML = '';
+    //
+    // The two slots are emptied, not #sample-body itself: the card section's
+    // own frame is markup in index.html now rather than something showSample
+    // builds, and wiping the container would take it away for good, leaving
+    // every later open with no card at all.
+    $('#sample-sections').innerHTML = '';
+    $('#sample-psyche-card').innerHTML = '';
+    $('#sample-card-section').hidden = true;
     sampleReport = null;
   });
 
@@ -3360,6 +3385,30 @@
       fitCard($('#psyche-card-full'),
         window.innerWidth * 0.94, window.innerHeight * 0.96 - CARD_BAR_SPACE, 'screen');
     }
+    layoutSampleCard();
+  }
+
+  /**
+   * The same fit for the sample dialog's copy of the card.
+   *
+   * Kept separate from the branch above rather than folded into it because the
+   * two are measured against different boxes: the report's preview is fitted to
+   * the column it sits in, and this one to the dialog's own scrolling body,
+   * which is a different width on the same screen. Width-led with the same
+   * PREVIEW_MAX_H ceiling, so the sample opens on a card the same size the
+   * reader's own report will show them.
+   */
+  function layoutSampleCard() {
+    const section = $('#sample-card-section');
+    if (!section || section.hidden) return;
+    const frame = section.querySelector('.psyche-card-frame');
+    if (!frame) return;
+    // The frame is what fitCard resizes, so its own width is not the space
+    // available — that is the section it sits in, minus the padding.
+    const style = getComputedStyle(section);
+    const width = section.clientWidth -
+      parseFloat(style.paddingLeft || 0) - parseFloat(style.paddingRight || 0);
+    if (width > 0) fitCard($('#sample-psyche-card'), width, PREVIEW_MAX_H);
   }
 
   // ---------- the card as an image ----------

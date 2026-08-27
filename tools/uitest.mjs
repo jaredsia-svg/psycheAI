@@ -1197,10 +1197,15 @@ try {
   // all — so reading its prose means opening it first, exactly as on the
   // report. That the sample opens shut in the first place is checked on its
   // own terms below, before this.
+  // Two cards stay open: the summary card at the top and the confidence card
+  // at the bottom. Neither is part of the reading — one is the glance, the
+  // other the caveat — and neither head carries a .card-head-toggle, which is
+  // the single mechanism that keeps both out of collapseSections' reach.
   check('the sample opens with its sections shut, the same as a real report',
     (await page.locator('#sample-body .section-card.is-collapsed').count()) > 5 &&
-    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) === 1,
-    (await page.locator('#sample-body .section-card.is-collapsed').count()) + ' shut');
+    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) === 2,
+    (await page.locator('#sample-body .section-card.is-collapsed').count()) + ' shut, ' +
+    (await page.locator('#sample-body .section-card:not(.is-collapsed)').count()) + ' open');
   await openAllSections(page, '#sample-body');
   const sample = await page.evaluate(() => {
     const dialog = document.querySelector('#sample-dialog');
@@ -1230,6 +1235,64 @@ try {
   check('the sample says plainly that it is one', /sample report/i.test(sample.text));
   check('the report scrolls inside the dialog, so the way out stays visible',
     sample.bodyScrolls);
+
+  // ---- the summary card at the top of the sample ----
+  //
+  // A reader being shown what this app produces should meet the same thing its
+  // readers meet, and the card is the one part of the report that reads at a
+  // glance. Built from the same psycheCardHtml() and the same sample.json the
+  // sections below it come from.
+  check('the sample opens on a summary card, above the sections',
+    await page.evaluate(() => {
+      const card = document.querySelector('#sample-card-section');
+      const sections = document.querySelector('#sample-sections');
+      if (!card || card.hidden || !sections) return false;
+      return Boolean(card.compareDocumentPosition(sections) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  check('and it is the real card, carrying this sample report’s own reading',
+    await page.evaluate(() => {
+      const card = document.querySelector('#sample-psyche-card');
+      return Boolean(card) && card.querySelectorAll('.pc-stat').length >= 2 &&
+        card.querySelectorAll('.pc-letter').length === 4;
+    }),
+    await page.locator('#sample-psyche-card .pc-letter').allInnerTexts()
+      .then(l => l.join('')).catch(() => 'none'));
+  check('the card names the sample, not the reader',
+    (await page.locator('#sample-psyche-card .pc-owner').innerText()).trim() ===
+      sampleFixture.card.name,
+    await page.locator('#sample-psyche-card .pc-owner').innerText());
+  check('and carries the sample’s four-sentence blurb',
+    (await page.locator('#sample-psyche-card .pc-blurb').innerText()).trim() ===
+      sampleFixture.cardHighlights.trim(),
+    await page.locator('#sample-psyche-card .pc-blurb').innerText());
+  // Scaled to the dialog's own body rather than left at its natural 1000px,
+  // which would overflow the frame and scroll the dialog sideways. fitCard
+  // measures offsetHeight, so this only works when it runs after showModal —
+  // a closed <dialog> has no layout at all and the fit silently bails.
+  check('the card is fitted to the dialog rather than overflowing it',
+    await page.evaluate(() => {
+      const card = document.querySelector('#sample-psyche-card');
+      const frame = card.parentElement;
+      const scale = /scale\(([\d.]+)\)/.exec(card.style.transform || '');
+      return Boolean(scale) && Number(scale[1]) > 0 && Number(scale[1]) < 1 &&
+        frame.getBoundingClientRect().width <=
+          document.querySelector('#sample-body').clientWidth + 1;
+    }),
+    await page.evaluate(() => document.querySelector('#sample-psyche-card').style.transform));
+  // The card section is a .section-card like the rest, so it would collapse
+  // with them if its head carried a toggle. It deliberately does not — the
+  // same thing that keeps the confidence card open.
+  check('the summary card never collapses, the same as the confidence card',
+    await page.evaluate(() => {
+      const card = document.querySelector('#sample-card-section');
+      return !card.classList.contains('is-collapsed') &&
+        card.querySelectorAll('.card-head-toggle').length === 0;
+    }));
+  // Full screen, download and share all act on "your" card. There is no
+  // reader's card here to act on, so the sample shows the frame alone.
+  check('the sample card offers no full-screen, download or share of its own',
+    (await page.locator('#sample-dialog .psyche-card-slot, #sample-dialog #card-download, ' +
+      '#sample-dialog #card-share').count()) === 0);
   // Everything below belongs to a report somebody owns. Offering any of it on
   // a stranger's sample is at best confusing and at worst destructive — the
   // delete button clears the reader's own stored profile. Each control is
@@ -1315,6 +1378,18 @@ try {
     document.querySelector('#sample-body').innerText.length);
   check('the button under the diagram opens the same sample', fromSecond > 2500,
     fromSecond + ' chars');
+  // Third open of the dialog in this block, so this is the check that catches
+  // a close handler emptying #sample-body wholesale: the card's frame is
+  // markup in index.html rather than something showSample builds, and wiping
+  // the container takes it away permanently.
+  check('and the summary card comes back with it, open after two closes',
+    await page.evaluate(() => {
+      const section = document.querySelector('#sample-card-section');
+      const card = document.querySelector('#sample-psyche-card');
+      return Boolean(section) && !section.hidden &&
+        !section.classList.contains('is-collapsed') &&
+        Boolean(card) && card.querySelectorAll('.pc-stat').length >= 2;
+    }));
   // The cross is the only way out that is always on screen, so it carries the
   // whole burden now that the dialog has no footer action of its own. Scoped
   // to the dialog's own chrome: buttons inside #sample-body belong to the
