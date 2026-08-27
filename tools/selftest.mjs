@@ -28,13 +28,12 @@ const check = (label, ok, detail) => {
 
 // copy.js is here so the suite can hold the client's vocabulary against the
 // server's — the working-relationship list exists in both and must not drift.
-for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'images.js', 'digest.js', 'card.js', 'copy.js']) {
+for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'digest.js', 'card.js', 'copy.js']) {
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
 const IG = globalThis.PsycheInstagram;
 const Supplement = globalThis.PsycheSupplement;
-const Images = globalThis.PsycheImages;
 const Digest = globalThis.PsycheDigest;
 const Card = globalThis.PsycheCard;
 
@@ -1329,8 +1328,8 @@ check('the cut supplementary-analysis fields are actually gone, not just unused'
   !('patternsWorthAttention' in premiumProps) && !('lifeAdvice' in premiumProps));
 check('the paid prompt still refuses a bare attachment label',
   /A named style with no reasoning is worthless/.test(prompts.PREMIUM_SYSTEM));
-check('the premium call no longer receives photographs, and says so',
-  /this call receives no photographs/.test(prompts.PREMIUM_SYSTEM));
+check('the premium call reasons from text, counts and rhythms alone',
+  /there is nothing else, for this call or for the free one/.test(prompts.PREMIUM_SYSTEM));
 check('the premium prompt states plainly it is the paid half, not a rewrite of the free report',
   /the paid half of a report whose free half is already written/.test(prompts.PREMIUM_SYSTEM) &&
   /do not repeat, summarise or re-derive any of it/.test(prompts.PREMIUM_SYSTEM));
@@ -1598,25 +1597,31 @@ for (const [label, needle] of [
   ['tells the model not to identify other people', /Do not identify or speculate about specific other people/],
   ['blocks protected-attribute inference', /sexual orientation, health conditions/],
   ['blocks appearance-based classification', /classify anyone by appearance/],
-  ['tells the model to weigh the sources', /Their own words/],
   ['warns about base rates', /Most people are near the middle/],
-  // The images are the newest and sharpest way this could go wrong, so every
-  // limit on them is pinned individually rather than as one loose match.
-  ['says images may be attached', /you are also given up to twenty of their own photographs/i],
-  ['protects other people in the photos', /do not describe, count, identify or infer anything whatsoever about them/i],
-  ['blocks appearance inference from photos', /race, ethnicity, body, attractiveness, age, gender, wealth or health/i],
-  ['blocks locating someone from a photo', /Do not read a location precisely enough/],
-  ['blocks quoting text out of a photo', /Never quote text you can see inside a photograph/],
-  ['says what may be taken from an image', /the setting, the activity, the company kept/],
-  ['keeps images as weak evidence', /weakest evidence per item/],
-  // The two sections asked to draw on the photographs. Each is pinned on the
-  // instruction *and* on its escape hatch, because the failure worth guarding
-  // against is not silence about the pictures — it is a model that pads both
-  // sections with a sentence about them when there was nothing there to say.
-  ['names the one section that should use the photos',
-    /`summary` should spend a sentence or two on the photographs/],
-  ['says the sample leans recent and deliberate',
-    /selection prefers the last two years/],
+  // Other people are all over an export whether or not a photograph is
+  // attached — named in captions, written to in messages, listed as friends —
+  // so these limits outlived the pictures they were written for.
+  ['protects other people in the data', /do not describe, count, identify or infer anything whatsoever about them/i],
+  ['blocks appearance inference', /race, ethnicity, body, attractiveness, age, gender, wealth or health/i],
+  ['blocks locating someone', /Do not read a location precisely enough/],
+  // The evidence ladder. Pinned rung by rung rather than as one loose match:
+  // the point of a ranked list is the ranking, and a check that only proved
+  // "the words appear somewhere" would pass on a shuffled one.
+  ['ranks evidence explicitly', /## The evidence ladder/],
+  ['puts repeated action at the top', /Sustained, repeated action across time/],
+  ['puts their own words second', /Their own composed words/],
+  ['puts a single like near the bottom', /A single endorsement/],
+  ['puts inferred labels last', /Passive membership and inferred labels/],
+  ['says the higher tier wins a disagreement', /the higher tier wins and you say so/],
+  ['demands the count in the evidence', /N=1 is not a pattern, and the count belongs in the sentence/],
+  ['keeps absence as the weakest evidence', /Absence is the weakest evidence there is/],
+  // Temporal reading. The trap named here is the one the reference implementation
+  // names, and it is the reason captions are dated at all.
+  ['tells the model captions are dated', /Every sampled caption is prefixed with the year it was written/],
+  ['names the runner trap', /a runner in 2015 is not necessarily a runner in 2026/i],
+  ['defines every trajectory', /\*\*dormant\*\* — the last evidence is more than about two years old/],
+  ['warns that quiet is not gone', /Reduced posting is not a reduced life/],
+  ['warns an undated caption is not an old one', /An undated caption is not an old one/],
   // Supplementary sources. Each limit is pinned on its own rather than as one
   // loose match, for the same reason the image limits are: they are the newest
   // way this could go wrong, and they cover the most sensitive data the app
@@ -1835,10 +1840,13 @@ for (const [label, needle] of [
 // photographs"), it has nothing to check here any more.
 const profileSchemaText = JSON.stringify(prompts.PROFILE_SCHEMA);
 for (const [label, needle] of [
-  ['asks the summary to use the photographs when they add something',
-    /give it one or two sentences here, inside the photograph rules/],
-  ['lets the summary skip them when they add nothing',
-    /If they only confirm what the text already established, leave them out/],
+  // The trajectory fields, which are what makes "when" reach the reader rather
+  // than staying in the model's head. Pinned on the schema text so a renamed
+  // field or a dropped enum fails here.
+  ['gives interests a trajectory', /trajectory.*See the trajectory rules in the system prompt/s],
+  ['asks for the year of the most recent evidence', /The year of the most recent evidence for this/],
+  ['tells the detail to say it in words too', /so a reader who never looks at the label still learns it/],
+  ['wants the span in the evidence string', /eleven captions between 2017 and 2019, none since/],
 ]) {
   check('profile schema ' + label, needle.test(profileSchemaText));
 }
@@ -2039,161 +2047,18 @@ check('and lists three properly rather than with a stray comma',
     .test(openingFor(['instagram', 'google', 'facebook'])),
   openingFor(['instagram', 'google', 'facebook']));
 check('a digest with no coverage block at all still opens sanely',
-  /built from their Instagram data/.test(prompts.profileBlocks({}, []).at(0).text));
+  /built from their Instagram data/.test(prompts.profileBlocks({}).at(0).text));
 check('the opening no longer hardcodes the word Instagram',
-  !/Here is the Instagram evidence digest/.test(prompts.profileBlocks({}, []).at(0).text));
+  !/Here is the Instagram evidence digest/.test(prompts.profileBlocks({}).at(0).text));
 
-// ---------- image selection ----------
+// ---------- what the archive held, without reading any of it ----------
 //
-// Only selection is covered here. Decoding and downscaling need canvas and
-// createImageBitmap, so the extraction half is exercised by the Chromium
-// suite against these same files.
-
-check('opting out of images indexes nothing', signals.mediaIndex.total === 0);
-check('opting out of images selects nothing', Images.select(signals).length === 0);
-
-const withImages = await IG.readExports(
-  [new File([buildExportZip()], 'instagram-export.zip', { type: 'application/zip' })],
-  { includeMessages: false, includeImages: true });
-
-check('finds the stills referenced by the JSON', withImages.mediaRefs.length === 52,
-  'got ' + withImages.mediaRefs.length);
-check('indexes the image files in the archive', withImages.mediaIndex.total === 34,
-  'got ' + withImages.mediaIndex.total);
-check('resolves a media uri to its archive entry',
-  Boolean(IG.findMedia(withImages.mediaIndex, 'media/posts/3.png')));
-check('resolves a uri nested under an export folder',
-  Boolean(IG.findMedia(withImages.mediaIndex, 'instagram-alec-2025/media/posts/3.png')));
-check('does not invent a match for a missing file',
-  IG.findMedia(withImages.mediaIndex, 'media/posts/999.png') === null);
-
-const picked = Images.select(withImages);
-
-check('selects at least ten images', picked.length >= 10, 'got ' + picked.length);
-check('never exceeds the hard ceiling', picked.length <= Images.LIMITS.max);
-check('drops stills whose file is not in the archive',
-  picked.every(p => IG.findMedia(withImages.mediaIndex, p.path)));
-check('drops files below the size floor',
-  picked.every(p => p.bytes >= Images.LIMITS.minBytes) &&
-  !picked.some(p => /thumb/.test(p.path)));
-check('never sends a video', picked.every(p => !/\.(mp4|mov|webm)$/i.test(p.path)));
-check('returns them oldest first',
-  picked.every((p, i) => i === 0 || picked[i - 1].ts <= p.ts));
-const mean = (rows, get) => rows.reduce((sum, r) => sum + get(r), 0) / (rows.length || 1);
-const share = (rows, ok) => rows.filter(ok).length / (rows.length || 1);
-
-// Recent life first. The fixture holds an older era three to four years back
-// whose posts are deliberately the strongest in the archive — long captions,
-// nine-image carousels — so these checks fail if selection is ranking on score
-// with no regard for when something was posted. That arrangement is the point:
-// against an older era that was also the weakest, every one of these would pass
-// whether the window existed or not.
-const datedRefs = withImages.mediaRefs
-  .filter(r => r.ts > 0 && IG.findMedia(withImages.mediaIndex, r.path));
-const newestTs = Math.max(...datedRefs.map(r => r.ts));
-const windowStart = newestTs - Images.LIMITS.recentDays * 86400;
-const oldRefs = datedRefs.filter(r => r.ts < windowStart);
-
-check('the fixture really does hold an era outside the window to skip',
-  oldRefs.length >= 5 &&
-  mean(oldRefs, r => r.captionLen) > mean(datedRefs.filter(r => r.ts >= windowStart),
-    r => r.captionLen),
-  oldRefs.length + ' old refs, mean caption ' + Math.round(mean(oldRefs, r => r.captionLen)));
-check('every pick comes from the last two years while that window can fill them',
-  picked.every(p => p.ts >= windowStart),
-  picked.filter(p => p.ts < windowStart).length + ' picks from before the window');
-check('and passes over older posts that would outscore everything it took',
-  Images.scoreRef(oldRefs[0], 60000) >
-  Math.max(...picked.map(p => Images.scoreRef(p, 60000))),
-  'best skipped scores ' + Images.scoreRef(oldRefs[0], 60000) + ', best taken ' +
-  Math.max(...picked.map(p => Images.scoreRef(p, 60000))));
-// The fallback, driven by asking for more than the window can supply. Nothing
-// else in the suite reaches the older era, so without this the branch that
-// makes a dormant account usable at all would never run.
-// Driven by shrinking the window rather than by asking for more images: the
-// fixture's recent era holds more distinct days than the hard ceiling allows,
-// so no count it could be asked for would ever exhaust it naturally.
-const realWindow = Images.LIMITS.recentDays;
-Images.LIMITS.recentDays = 12;
-const shortWindowStart = newestTs - 12 * 86400;
-// Ten rather than fourteen on purpose: the recent window plus the older era's
-// distinct days can just cover ten, so a correct run never needs the last-resort
-// pass. That is what makes the one-a-day check below able to see the difference
-// between the ordered fallback and the pass that abandons the rule.
-const reachBack = Images.select(withImages, { count: 10 });
-Images.LIMITS.recentDays = realWindow;
-
-check('reaches further back once the recent window cannot fill the slots',
-  reachBack.length === 10 && reachBack.some(p => p.ts < shortWindowStart),
-  reachBack.length + ' picked, ' +
-  reachBack.filter(p => p.ts < shortWindowStart).length + ' from before the window');
-check('takes everything the window did have before reaching past it',
-  datedRefs.filter(r => r.ts >= shortWindowStart)
-    .every(r => reachBack.some(p => p.path === r.path)) ||
-  reachBack.filter(p => p.ts >= shortWindowStart).length ===
-    new Set(datedRefs.filter(r => r.ts >= shortWindowStart)
-      .map(r => Math.floor(r.ts / 86400))).size,
-  reachBack.filter(p => p.ts >= shortWindowStart).length + ' of ' +
-  datedRefs.filter(r => r.ts >= shortWindowStart).length + ' in-window candidates taken');
-check('and still refuses two shots from one day when it does',
-  new Set(reachBack.map(p => Math.floor(p.ts / 86400))).size === reachBack.length);
-check('the shrunken window is put back so later checks see the real one',
-  Images.LIMITS.recentDays === 730);
-check('takes no two images from the same day',
-  new Set(picked.map(p => Math.floor(p.ts / 86400))).size === picked.length);
-check('prefers posts over stories',
-  picked.filter(p => p.kind === 'post').length > picked.filter(p => p.kind === 'story').length,
-  JSON.stringify(picked.map(p => p.kind)));
-// Selection reads effort, not novelty. The old rule paid 16 points for a
-// caption of zero on the theory that a wordless post was invisible to a
-// text-only digest — true, but it spent the scarcest thing in the app on the
-// least considered posts in the archive. These checks pin the inversion, and
-// they are written as comparisons against the candidate pool rather than as
-// fixed numbers, so they still mean something if the fixture is edited.
-//
-// Scoped to the recent window, because that is the set selection is actually
-// choosing among — comparing the picks against the whole archive would measure
-// the window rather than the scoring, and the two rules would mask each other:
-// the older era here is uniformly long-captioned, so including it makes a
-// correctly-behaving selector look like it is avoiding long captions.
-const poolRefs = withImages.mediaRefs
-  .filter(r => {
-    const hit = IG.findMedia(withImages.mediaIndex, r.path);
-    return hit && hit.bytes >= Images.LIMITS.minBytes && hit.bytes <= Images.LIMITS.maxBytes;
-  })
-  .filter(r => r.ts === 0 || r.ts >= windowStart);
-
-check('the pool it chooses from really does hold both extremes',
-  poolRefs.some(r => r.captionLen === 0) && poolRefs.some(r => r.captionLen >= 300) &&
-  poolRefs.some(r => r.mediaCount > 1),
-  JSON.stringify({ wordless: poolRefs.filter(r => !r.captionLen).length,
-    long: poolRefs.filter(r => r.captionLen >= 300).length,
-    carousels: poolRefs.filter(r => r.mediaCount > 1).length }));
-check('picks posts they wrote at length, not the ones they wrote nothing on',
-  mean(picked, p => p.captionLen) > mean(poolRefs, r => r.captionLen),
-  Math.round(mean(picked, p => p.captionLen)) + ' chars picked vs ' +
-  Math.round(mean(poolRefs, r => r.captionLen)) + ' available');
-check('no longer hunts for the wordless posts it used to prefer',
-  share(picked, p => p.captionLen === 0) < share(poolRefs, r => r.captionLen === 0),
-  Math.round(share(picked, p => !p.captionLen) * 100) + '% of picks vs ' +
-  Math.round(share(poolRefs, r => !r.captionLen) * 100) + '% of the pool');
-check('a long caption is worth more than a short one, all else equal',
-  Images.scoreRef({ kind: 'post', captionLen: 400, mediaCount: 1 }, 50000) >
-  Images.scoreRef({ kind: 'post', captionLen: 0, mediaCount: 1 }, 50000));
-check('reads a carousel as effort and prefers it to a single still',
-  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 9 }, 50000) >
-  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 1 }, 50000));
-check('and prefers a longer carousel to a shorter one',
-  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 9 }, 50000) >
-  Images.scoreRef({ kind: 'post', captionLen: 80, mediaCount: 2 }, 50000));
-check('carousels reach the selection more often than their share of the pool',
-  share(picked, p => p.mediaCount > 1) > share(poolRefs, r => r.mediaCount > 1),
-  Math.round(share(picked, p => p.mediaCount > 1) * 100) + '% of picks vs ' +
-  Math.round(share(poolRefs, r => r.mediaCount > 1) * 100) + '% of the pool');
-check('a lower count is honoured', Images.select(withImages, { count: 4 }).length === 4);
-check('a count of zero sends nothing', Images.select(withImages, { count: 0 }).length === 0);
-check('a count above the ceiling is clamped',
-  Images.select(withImages, { count: 500 }).length <= Images.LIMITS.max);
+// The image-selection suite used to sit here — scoring, recency windows,
+// carousel preference, byte floors, one-per-day spacing. All of it went with
+// the photographs themselves (see the note above COST_CAP in digest.js). What
+// remains is the one fact the digest still carries about them: how many stills
+// the archive held, which is real evidence about how visual a life this is and
+// costs nothing to count.
 
 // ---------- digest ----------
 
@@ -2216,6 +2081,116 @@ check('captions about other people reach the model, or the rule guards nothing',
   digest.samples.captions.length + ' captions sampled');
 check('and the reader\'s own handle is there to compare them against',
   digest.profile.username === 'alec.runs', JSON.stringify(digest.profile.username));
+
+// ---------- captions carry their year ----------
+//
+// They used to be bare strings, so the model received 560 of them with no way
+// to tell one written in 2016 from one written last month. It could see the
+// shape of a life over time — activity.monthly is complete — and could not
+// place a single thing anybody said inside it, which is how an interest
+// somebody dropped four years ago reached the reader identically to one they
+// are in the middle of.
+const datedCaptions = digest.samples.captions.filter(c => /^\[\d{4}\] /.test(c));
+// Not every caption: the bio has no timestamp of its own — it is whatever it
+// says today — so it is deliberately emitted bare. Everything that came off a
+// dated post carries its year.
+check('sampled captions are prefixed with the year they were written',
+  datedCaptions.length > 0 &&
+  datedCaptions.length >= digest.samples.captions.length - 1,
+  datedCaptions.length + ' of ' + digest.samples.captions.length + ' dated');
+check('the years are real ones off the fixture, not a constant',
+  new Set(datedCaptions.map(c => c.slice(1, 5))).size > 1,
+  [...new Set(datedCaptions.map(c => c.slice(1, 5)))].sort().join(','));
+// The prefix must not eat the caption. A dated sample that dropped the text
+// would pass the check above and be worthless.
+check('the caption itself survives the prefix',
+  digest.samples.captions.some(c => /^\[\d{4}\] .*@mokkzy/.test(c)));
+// Chronological, because the model is being asked to read a trajectory out of
+// this and a shuffled sequence makes that harder for no reason. The sample is
+// picked in two passes (recent half, longest half) which land interleaved, so
+// this is a real property of the filter and not an accident of the input.
+check('the sample arrives in chronological order',
+  datedCaptions.every((c, i) => i === 0 || c.slice(1, 5) >= datedCaptions[i - 1].slice(1, 5)));
+// Proved on an input long enough to actually take the sampling path — the
+// small fixture returns early, so on its own it would pass this vacuously.
+{
+  const many = [];
+  for (let year = 2010; year <= 2025; year++) {
+    for (let i = 0; i < 60; i++) {
+      many.push({ text: 'caption ' + year + ' number ' + i + ' with enough text to survive the floor',
+        ts: Date.UTC(year, 0, 1 + i * 6) / 1000 });
+    }
+  }
+  const sampled = Digest.build({ ...signals, captions: many }, { includeMessages: false })
+    .samples.captions;
+  check('and stays chronological once the sampler actually has to choose',
+    sampled.length === Digest.LIMITS.captions &&
+    sampled.every((c, i) => i === 0 || c.slice(1, 5) >= sampled[i - 1].slice(1, 5)),
+    sampled.length + ' sampled, first ' + sampled[0].slice(0, 6) +
+    ' last ' + sampled[sampled.length - 1].slice(0, 6));
+}
+// Roughly four extra characters plus a space per caption. Cheap enough that
+// the trade never has to be argued about again — this pins it as a number.
+{
+  const overhead = digest.samples.captions.reduce(
+    (sum, c) => sum + (/^\[\d{4}\] /.test(c) ? 7 : 0), 0);
+  check('dating the sample costs a rounding error, not a budget line',
+    overhead < Digest.LIMITS.totalChars * 0.01,
+    overhead + ' chars of ' + Digest.LIMITS.totalChars);
+}
+// The bug the years exposed: "the most recent half" was read as the tail of
+// the array, on the assumption that captions arrive oldest-first. A real
+// Instagram export is newest-first — `posts_1.json` leads with the latest post
+// — so the tail was the *oldest* half and the sampler had been doing the exact
+// opposite of what it claimed. Nothing downstream knew when a caption was
+// written, so nothing could catch it.
+{
+  // Distinct timestamps, a few days apart, as real posts have. Giving all
+  // sixty of a year the same second would make the sort non-total and leave
+  // the check below measuring tie-break order rather than the fix.
+  const many = [];
+  for (let year = 2010; year <= 2025; year++) {
+    for (let i = 0; i < 60; i++) {
+      many.push({ text: 'caption ' + year + ' number ' + i + ' with enough text to survive the floor',
+        ts: Date.UTC(year, 0, 1 + i * 6) / 1000 });
+    }
+  }
+  // Newest-first, exactly as the real export hands them over.
+  const newestFirst = many.slice().reverse();
+  const fromNewestFirst = Digest.build({ ...signals, captions: newestFirst },
+    { includeMessages: false }).samples.captions;
+  const fromOldestFirst = Digest.build({ ...signals, captions: many },
+    { includeMessages: false }).samples.captions;
+  // The cleanest statement of the fix: the sample no longer depends on which
+  // way round the source happened to be. Under the old code these two differed
+  // completely — one preferred the newest captions and the other the oldest,
+  // from identical data.
+  check('the sample no longer depends on which way round the export is ordered',
+    fromNewestFirst.join('|') === fromOldestFirst.join('|'),
+    fromNewestFirst.length + ' vs ' + fromOldestFirst.length + ' captions');
+  // And it is the recent end that is preferred, not merely a consistent end.
+  // Every caption from the most recent year has to survive: the recent half is
+  // 280 slots against 60 captions a year, so 2025 cannot be partly cut without
+  // the preference pointing the wrong way.
+  const years = fromNewestFirst.map(c => Number(c.slice(1, 5)));
+  check('and it is the newest captions that are kept whole',
+    years.filter(y => y === 2025).length === 60,
+    years.filter(y => y === 2025).length + ' of 60 captions from the most recent year');
+  check('while the oldest year is the one that gets thinned',
+    years.filter(y => y === 2010).length < 60,
+    years.filter(y => y === 2010).length + ' of 60 from the oldest year');
+}
+
+// A record with no usable timestamp is emitted bare rather than guessed at —
+// the bio is the real instance of this, since it is current by definition and
+// carries no date of its own.
+check('an undated caption comes through without a year rather than a wrong one',
+  Digest.build({ ...signals, captions: [{ text: 'a caption with no timestamp at all', ts: 0 }] },
+    { includeMessages: false }).samples.captions[0] === 'a caption with no timestamp at all');
+// Epoch-zero and far-future stamps turn up in real exports; neither is a year.
+check('a nonsense timestamp is treated as undated, not as 1970',
+  Digest.build({ ...signals, captions: [{ text: 'stamped at the epoch itself', ts: 1 }] },
+    { includeMessages: false }).samples.captions[0] === 'stamped at the epoch itself');
 check('digest samples comments', digest.samples.comments.length > 0);
 check('digest carries the hour histogram', digest.rhythm.hourOfDay.length === 24);
 check('digest carries the weekday histogram', digest.rhythm.dayOfWeek.length === 7);
@@ -2308,7 +2283,7 @@ check('no message text survives redaction, own or otherwise',
 check('omitMessages touches nothing outside the message fields',
   redacted.samples.captions.length === withDms.samples.captions.length &&
   redacted.following.length === withDms.following.length &&
-  redacted.coverage.images.attached === withDms.coverage.images.attached);
+  redacted.coverage.stillsInArchive === withDms.coverage.stillsInArchive);
 // Calling it on a digest that was never given messages in the first place —
 // a future caller passing one straight through, say — must be a no-op, not
 // a crash reaching for a directMessages that was never there. A fresh digest
@@ -2448,45 +2423,36 @@ check('a Google search histogram no longer returns junk as its top term',
   JSON.stringify([junkTermDigest.google.topGoogleSearches[0],
     junkTermDigest.google.topYoutubeSearches[0]]));
 
-// ---------- how images reach the model ----------
+// ---------- what the request actually carries ----------
+//
+// One text block, and nothing else. This block used to prove that fourteen
+// images rode alongside the digest, each with a dated label immediately in
+// front of it and the whole thing truncated at a ceiling shared with the
+// client. Nothing sends them now — see the note above COST_CAP in digest.js —
+// so what is worth pinning is the absence: no pixels, no image blocks, and a
+// count of the stills the archive held so the model still knows how visual a
+// life this is without seeing any of it.
 
-const withPhotos = Digest.build(withImages, {
-  includeMessages: false, includeImages: true, imageCount: picked.length,
-});
-check('digest records that images were sent', withPhotos.coverage.images.included === true &&
-  withPhotos.coverage.images.attached === picked.length);
-check('digest records how many stills existed to choose from',
-  withPhotos.coverage.images.availableStills === withImages.mediaRefs.length);
-check('digest says images are a spread, not the latest few',
-  /spread across the whole account history/.test(withPhotos.coverage.images.note));
-check('opting out is visible to the model', digest.coverage.images.included === false &&
-  digest.coverage.images.attached === 0);
+const withPhotos = Digest.build(signals, { includeMessages: false });
+check('digest counts the stills it did not send',
+  withPhotos.coverage.stillsInArchive === signals.mediaRefs.length &&
+  signals.mediaRefs.length === 52,
+  withPhotos.coverage.stillsInArchive + ' of ' + signals.mediaRefs.length);
+// mediaRefs is built from the JSON that references the images, never from the
+// image files themselves, so it survives the reader no longer opening any of
+// them. That is what makes the count free.
+check('and counted them without opening a single image file',
+  signals.mediaRefs.every(r => typeof r.path === 'string' && !('bytes' in r)));
+check('and carries no images field at all, which would only ever read zero',
+  withPhotos.coverage.images === undefined);
 check('no pixels ride along inside the digest',
   !JSON.stringify(withPhotos).includes('base64') && withPhotos.coverage.digestChars < 200000);
 
-const fakeImages = [
-  { mime: 'image/jpeg', data: 'AAAA', takenAt: '2019-03-04', kind: 'post', hasCaption: false },
-  { mime: 'image/jpeg', data: 'BBBB', takenAt: '2024-11-20', kind: 'story', hasCaption: true },
-];
-const blocks = prompts.profileBlocks(withPhotos, fakeImages);
-const imageBlocks = blocks.filter(b => b.type === 'image');
-
-check('the digest leads the request', blocks[0].type === 'text' && blocks[0].text.includes('<evidence>'));
-check('every image is passed through', imageBlocks.length === 2);
-check('each image is dated for the model',
-  /Image 1 — posted 2019-03-04, post, no caption\./.test(blocks.map(b => b.text || '').join('\n')) &&
-  /Image 2 — posted 2024-11-20, story, had a caption\./.test(blocks.map(b => b.text || '').join('\n')));
-check('each label sits immediately before its image',
-  blocks.findIndex(b => b.type === 'image') === blocks.findIndex(b => /^Image 1 /.test(b.text || '')) + 1);
-check('the image limits are restated in the user turn',
-  blocks.some(b => /hard limits on what you may take from them/.test(b.text || '')));
-check('no images means no image blocks',
-  prompts.profileBlocks(withPhotos, []).every(b => b.type === 'text') &&
-  prompts.profileBlocks(withPhotos, null).length === 1);
-check('more images than the ceiling are truncated',
-  prompts.profileBlocks(withPhotos, new Array(60).fill(fakeImages[0]))
-    .filter(b => b.type === 'image').length === prompts.MAX_IMAGES);
-check('the ceiling matches the client\'s own', prompts.MAX_IMAGES === Images.LIMITS.max);
+const blocks = prompts.profileBlocks(withPhotos);
+check('the request is one text block carrying the digest',
+  blocks.length === 1 && blocks[0].type === 'text' && blocks[0].text.includes('<evidence>'));
+check('no block of any kind is an image',
+  blocks.every(b => b.type === 'text'));
 check('compatibility never carries images',
   prompts.compatibilityBlocks({ name: 'A' }, { name: 'B' }).every(b => b.type === 'text'));
 
@@ -2575,7 +2541,7 @@ check('captions under 4 characters are dropped, 4 and over are kept',
 // ---------- supplements in the digest: aggregation, cost, and precedence ----------
 
 const withBoth = Digest.build({ ...signals, supplements: { google, facebook } },
-  { includeMessages: true, includeImages: true, imageCount: 14 });
+  { includeMessages: true });
 
 check('the digest records which exports it was built from',
   JSON.stringify(withBoth.coverage.sources) === '["instagram","google","facebook"]',
@@ -2648,9 +2614,9 @@ const hugeGoogle = {
     'a search phrase long enough to matter for the budget and then some more words, number ' + i),
 };
 const deepAlone = Digest.build(heavySignals(),
-  { includeMessages: false, includeImages: true, imageCount: 14, maxChars: TRIM_BUDGET });
+  { includeMessages: false, maxChars: TRIM_BUDGET });
 const crowded = Digest.build({ ...heavySignals(), supplements: { google: hugeGoogle } },
-  { includeMessages: false, includeImages: true, imageCount: 14, maxChars: TRIM_BUDGET });
+  { includeMessages: false, maxChars: TRIM_BUDGET });
 
 // The trim loop must actually have run, or everything below is vacuous. The
 // direct evidence is that the supplement lists came out far under their own
@@ -2711,7 +2677,7 @@ const omitCases = [
 ];
 for (const [name, emptied] of omitCases) {
   const fresh = Digest.build({ ...signals, supplements: { google, facebook } },
-    { includeMessages: true, includeImages: false });
+    { includeMessages: true });
   Digest[name](fresh);
   check(name + ' empties its own fields', emptied(fresh));
   // Each must touch only its own row. Captions and following stand in for
@@ -2754,7 +2720,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     ...google,
     videoTitles: many(4000, i => 'A long video title to fill the sample, number ' + i),
     googleSearches: many(6000, i => 'a google search phrase of some length, number ' + i),
-  } } }, { includeMessages: false, includeImages: true, imageCount: Digest.IMAGES });
+  } } }, { includeMessages: false });
   return full.coverage.digestChars <= Digest.LIMITS.totalChars;
 })());
 
@@ -2824,14 +2790,17 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 // that produces it is worth pinning down rather than trusting.
 {
   const CHARS_PER_TOKEN = 3.5;
-  const images = Digest.IMAGES;
   // Reads the module's own constant rather than repeating the literal. The
   // repeated `8600` here is why this check sat green through the drift below:
   // it was holding the arithmetic against the same stale number the
   // implementation used, so the two agreed with each other and neither agreed
   // with the prompt actually being sent.
-  const worstCost = ((Digest.LIMITS.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS +
-    images * 258) * (1.50 / 1e6) + Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6);
+  //
+  // The `images * 258` term came out with the photographs. Its absence is the
+  // whole of what the removal bought: the same cap now pays for 12,642 more
+  // characters of text, which the ceiling check below reads directly.
+  const worstCost = ((Digest.LIMITS.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS)
+    * (1.50 / 1e6) + Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6);
   check('a full digest plus maximum output stays under the cap',
     worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
   // digest.js cannot require() lib/gemini.js — it runs in the browser — so its
@@ -2856,14 +2825,19 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.FIXED_INPUT_TOKENS + ' reserved vs ' + fixedActual + ' real');
   check('the budget is not needlessly conservative either',
     worstCost > Digest.COST_CAP - 0.01, '$' + worstCost.toFixed(4));
-  check('a tighter cap buys a smaller digest', Digest.charBudget(0.25, 14) < Digest.charBudget(0.50, 14));
-  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10, 14) === 0);
-  check('images are charged against the same budget',
-    Digest.charBudget(0.50, 0) > Digest.charBudget(0.50, 14));
+  check('a tighter cap buys a smaller digest', Digest.charBudget(0.25) < Digest.charBudget(0.50));
+  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10) === 0);
+  // What dropping the photographs actually bought, stated as a number rather
+  // than asserted in a comment: 14 images at 258 tokens each, times 3.5 chars
+  // per token. If someone reinstates an image reserve, this is what fails.
+  check('the freed image reserve really did go back to the text budget',
+    Digest.charBudget(Digest.COST_CAP) ===
+      Math.floor((((Digest.COST_CAP - Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6)) / (1.50 / 1e6))
+        - Digest.FIXED_INPUT_TOKENS) * CHARS_PER_TOKEN),
+    String(Digest.charBudget(Digest.COST_CAP)));
 }
 
-check('there is one image count, and it is the one the app asks for',
-  Digest.IMAGES === 14, String(Digest.IMAGES));
+check('nothing exports an image count any more', Digest.IMAGES === undefined);
 check('the prompt tells the model to use the sampling coverage',
   /coverage\.sampling/.test(prompts.PROFILE_SYSTEM));
 
@@ -3204,9 +3178,7 @@ console.log('  digest size       : ' + digest.coverage.digestChars + ' chars (sm
 console.log('  heavy account     : ' + heavy.coverage.digestChars + ' chars, ' +
   heavy.coverage.sampling.captions.shown + '/' + heavy.coverage.sampling.captions.available + ' captions');
 console.log('  QR payload        : ' + cardPayload.length + ' chars');
-console.log('  images selected   : ' + picked.length + ' of ' + withImages.mediaRefs.length +
-  ' stills, mean caption ' + Math.round(mean(picked, p => p.captionLen)) + ' chars, ' +
-  picked.filter(p => p.ts >= windowStart).length + ' from the last two years');
+console.log('  stills counted    : ' + withPhotos.coverage.stillsInArchive + ' (none sent)');
 
 if (failures.length) {
   console.error('\n' + failures.length + ' failed, ' + passed + ' passed:');

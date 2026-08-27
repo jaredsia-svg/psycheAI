@@ -2166,69 +2166,115 @@ shape as the sample dialog's own back-button check earlier in the suite. Fault-i
 step — a plain nav-link click that assumes the page is still there to click on — times out, the same
 cascade a real reader leaving the site would produce.
 
-### The photographs
+### When, not just whether
 
-Text alone leaves a real blind spot: a wordless photo of a summit and a wordless photo of a
-nightclub are the same row in the digest. So **a small sample of images is sent by default**, and
-the Photos row in the pre-send review turns it off.
+An export flattens a decade into one pile. Until now the model got that pile with no way to date any
+of it: `sampleTexts` stripped everything but the string, so 560 captions arrived with nothing to say
+whether one was written in 2016 or last month. It could see the *shape* of a life over time —
+`activity.monthly` is complete rather than sampled — and could not place a single thing anybody had
+said inside it. An interest somebody dropped four years ago and one they are in the middle of reached
+the reader identically.
 
-`docs/images.js` picks them. Candidates are the stills the JSON references — carousels contribute
-only their cover frame, videos never qualify, and anything under 12KB is discarded as a thumbnail
-or a screenshot of text. Each is scored: posts outrank stories, larger files break ties, and the two
-rules that carry the most weight both measure **effort** — how much they wrote, and how much they
-assembled. A caption over 300 characters is worth 26 points and a nine-image carousel 22, against
-nothing for a wordless single.
+**Every sampled caption now carries its year**, as a leading `[2019] ` prefix. Comments and messages
+take the same treatment where the source dates them. The cost is four characters and a space per
+item — under 4,000 characters across the full sample, about a sixth of a cent — which is why this
+never needed to be a trade-off discussion.
 
-**Then recency decides which era those scores compete inside.** The slots are filled from the last
-two years on score alone; only when that window cannot fill them does selection reach further back,
-and only after that — when the whole archive is bunched onto a handful of days — does it give up the
-rule that no two picks share a day. The window is measured back from their most recent post rather
-than from the clock, which is the same thing for an export downloaded days after the last post, and
-a much better thing for a dormant account: counting from today would put the entire archive outside
-the window and collapse straight through to the fallback, losing the preference for recency
-altogether.
+`interests` and `values` each gained a `trajectory` and a `lastSeen` year. The six trajectories are
+**structural** (across the whole span, including recently), **stable** (several periods, confirmed
+within about eighteen months), **rising**, **declining**, **dormant** (last evidence over two years
+old) and **phasic** (ran for a defined window and stopped). Dormant is the one that earns its place:
+without it the honest answer to "do they still run?" had to be squeezed into either "yes" or silence.
+The report renders it as a chip beside the intensity one — two questions, "how much" and "still?", so
+they get two chips rather than one compound label — and the three that mean *the evidence stopped*
+carry the year and the same red the missing-source cross uses.
 
-This replaced an even spread across the whole timeline. That guaranteed range, and spent most of the
-slots describing somebody who no longer exists — on the test fixture, which reaches back to 2021, it
-took photographs from four years ago over the ones from this year. Now every pick comes from the
-recent window even though the older era in that fixture is deliberately its strongest material: the
-best score it passes over is 75, against 69 for the best it takes.
+The prompt names the trap directly, in the reference implementation's words: **a runner in 2015 is
+not necessarily a runner in 2026.** Two counter-cautions sit with it, because the failure mode of a
+temporal rule is over-applying it: reduced posting is not a reduced life (people stop performing an
+interest long before they stop having it), and an undated caption is unknown rather than ancient.
 
-**Effort is a stand-in for something the archive does not carry.** The question you actually want
-answered is which posts *mattered*, and the honest measure of that would be likes, comments and
-views — none of which Instagram exports. Every likes file in the download records what you gave
-other people (`liked_posts.json`, `liked_comments.json`), never what you received. So selection
-reads the two things the person themselves put in, both of which are in the export: caption length,
-and how many pieces they assembled into one post.
+**Dating the captions immediately exposed a bug in the sampler that had been there all along.** The
+"take the most recent half" step was `cleaned.slice(-recentCount)` — the tail of the array, on the
+assumption it ran oldest-first. A real Instagram export does not: `posts_1.json` leads with the
+latest post. So the tail was the *oldest* half, and the sampler had been doing the exact opposite of
+what its own comment claimed, for as long as it had existed. Nothing caught it because nothing
+downstream knew when any caption was written. The fix is to sort on the timestamp rather than
+inherit whatever order the parser produced, which also makes the output one chronological run instead
+of two interleaved halves. A check builds the same captions in both orders and asserts the sample is
+now identical either way; under the old code the two differed completely.
 
-This replaced an earlier rule that paid a bonus for the *absence* of a caption, on the theory that
-wordless posts were invisible to a text-only digest. That was true, and it still spent the scarcest
-resource in the app on the least considered posts in the archive — measured against the fixture, the
-old rule picked a set whose mean caption length (34 characters) was *below* the pool it drew from
-(39). The current rule pulls it to 61, and drops the wordless share of the picks from 61% to 43%.
+### The evidence ladder
 
-Recency still outranks effort by construction — the window decides which posts are eligible before
-any of them are scored — but within that window effort now decides freely, which is what the old
-per-era bucketing prevented.
+The prompt had weighting rules scattered through it as prose — photographs are weakest, absence is
+weak, watch history is not taste, a like is not an interest. All true, none of it ordered, so a model
+facing two signals that disagreed had no rule for which wins.
 
-Both of these are visible to the model rather than left implicit. The prompt says the sample leans
-recent and deliberate, so a report cannot read the absence of an early era as the absence of a life,
-and it names `summary` and `harsh` as the two sections that should each spend a sentence or two on
-the photographs — conditionally, with an explicit instruction to leave them out when the pictures
-only repeat what the text already carries or when none came through at all.
+They are one ranked list now, strongest first: **sustained repeated action across time** → **their
+own composed words** → **what they searched for when nobody was watching** → **behavioural rhythm**
+(complete rather than sampled, and routinely overlooked) → **repeated engagement with someone else's
+work** → **a single endorsement** → **passive membership and inferred labels**. The rule that makes
+it a ladder rather than a list: when two signals disagree, the higher tier wins *and the report says
+so* — "they follow a dozen running accounts but have not mentioned a run since 2021" is a better
+sentence than either half alone.
 
-The chosen images are decoded, downscaled to a 768px long edge and re-encoded as JPEG **in the
-browser**, which also strips whatever EXIF the originals carried, GPS included. About 14 images
-land near 1MB of base64 and add roughly $0.01 to a Gemini Flash run.
+Two rules govern the whole thing. **"N=1 is not a pattern, and the count belongs in the sentence"** is
+new, and applies to every `evidence` string and every `why`: say "forty-odd captions across four
+years" rather than "several", because a reader can weigh a claim with a number attached and cannot
+weigh one without. **Absence is the weakest evidence there is** was already in the prompt and moved
+here, where its relationship to the rest is visible.
 
-The prompt's limits on them are stricter than anything else in the app, and the test suite pins
-each one: nothing about any other person in the frame, nothing about anyone's race, body, age,
-attractiveness or wealth, no reading a location closely enough to place someone, and no quoting
-text out of a photo. What the model may use is the setting, the activity, whether someone is alone
-or in company, and the care taken over the shot.
+Both are pinned rung by rung in `tools/selftest.mjs` rather than by one loose match, since the point
+of a ranked list is the ranking and a check that only proved "the words appear somewhere" would pass
+on a shuffled one.
 
-The images are held in memory only. They are never written to localStorage, so re-running the
-analysis after a page reload uses the written evidence alone unless you upload the `.zip` again.
+Adapted from [Tomasz-T/social-profile-analyzer](https://github.com/Tomasz-T/social-profile-analyzer),
+a Claude Code Skill that reads the same kind of exports locally. Its trajectory vocabulary and its
+anti-overstatement rules are the two ideas worth stealing; its verification-by-Python-query approach
+does not port to a browser app that ships one capped digest to a metered API, and was not attempted.
+
+### The photographs, and why they are gone
+
+Fourteen of the reader's own stills used to ride alongside the digest — decoded and downscaled in
+the browser, each labelled with the date it was posted, chosen by an effort-weighted scorer in
+`docs/images.js` that preferred long captions and assembled carousels. The reasoning was a real
+blind spot: a wordless photo of a summit and a wordless photo of a nightclub are the same row in a
+text digest.
+
+**They were removed, and the trade is worth writing down because it was a real one.**
+
+The argument for removing them:
+
+- **They were never in more than one report per reader.** The paid call has always refused them, and
+  a re-run drops them whenever the Instagram archive is no longer in memory — which is every re-run
+  after a reload, since the archive is deliberately never written to disk. So the report most people
+  ended up holding had no photographs in it either way, and the first one differed from every later
+  one in a way nobody could see.
+- **The prompt itself ranked them last.** "The weakest evidence per item and the easiest to
+  over-read — twelve pictures out of thousands, chosen by a crude filter, and Instagram is where
+  people post their best day of the month."
+- **They carried the strictest safety rules in the file**, because other people appear in them
+  without having agreed to any of it.
+- **They were the slowest step in the app** by a wide margin, and the largest part of the request.
+
+What was lost, stated plainly rather than waved away: the setting, whether somebody is usually alone
+or in company, and how much care goes into what they publish. Some of that is recoverable from
+captions and rhythm and some of it is not. **There is no A/B evaluation behind this** — the mock
+engine returns canned data, so no test in this repo can measure report quality, and nobody should
+claim the change is quality-neutral on the strength of the reasoning above alone.
+
+What it bought is measurable. `IMAGE_TOKENS * 14` = 3,612 tokens of reserve became **12,642 more
+characters** of captions, searches and messages — evidence the ladder ranks higher and which *every*
+run gets, not just the first. Against that, the same commit spent about 800 tokens on the longer
+prompt (the evidence ladder and the temporal rules), so the digest ceiling still rose by roughly
+9,800 characters on net. `coverage.images` is gone with them; what survives is
+`coverage.stillsInArchive`, a count of how many stills the archive held, which is real evidence
+about how visual a life this is and costs nothing because it is read off the JSON rather than the
+files.
+
+The privacy copy moved with the behaviour, which is the part that could not be left: the FAQ used to
+promise "every photo except the few you agree to send" stays on the device, and now says none are
+sent at all. A page describing what leaves a reader's machine cannot lag the code that decides it.
 
 **Direct messages are included by default**, because how someone writes to people who already know
 them is the most revealing text in the export. Only the user's own messages are ever sampled — the
@@ -3339,7 +3385,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 692 checks: synthesises a real ZIP export and runs
+npm test           # 672 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -3348,7 +3394,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1002 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1000 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
@@ -3405,7 +3451,6 @@ docs/                 the browser app — no build step
   app.js              upload, profile report, QR, scanner, compatibility report
   zip.js              ZIP reader (ZIP64-aware, inflates only the JSON entries)
   instagram.js        export parser → normalised signals
-  images.js           picks ~14 photos worth looking at, downscales them
   digest.js           signals → the bounded evidence digest that gets sent
   card.js             shareable card ⇄ compressed QR payload
   copy.js             every string the page and the PDF both show, written once

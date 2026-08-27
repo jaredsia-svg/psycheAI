@@ -215,7 +215,6 @@ async function answerReview(page, options) {
   if (opts.untickTopics) await page.uncheck('#review-topics');
   if (opts.untickSearches) await page.uncheck('#review-searches');
   if (opts.untickMessages) await page.uncheck('#review-dms');
-  if (opts.untickImages) await page.uncheck('#review-images');
   // Supplement rows exist only when that source was added, so each is
   // unchecked defensively rather than assumed present.
   for (const [flag, id] of [
@@ -1603,10 +1602,11 @@ try {
     JSON.stringify(await page.evaluate(() => window.__titles || [])));
   check('the profile is not showing behind the review',
     !(await page.locator('#view-profile').isVisible()));
-  // The machinery still records a depth even with nothing left to pick, and
-  // standard is what every run must now be.
-  check('every run is standard now that there is nothing to choose',
-    await page.evaluate(() => window.PsycheDigest.IMAGES === 14));
+  // Nothing exports an image count any more — the photographs went with the
+  // depth picker that used to choose between two of them.
+  check('no image count survives anywhere in the client',
+    await page.evaluate(() => window.PsycheDigest.IMAGES === undefined &&
+      window.PsycheImages === undefined));
 
   // ---- the pre-send review ----
   // The one dialog in this app whose entire content is generated fresh on
@@ -1667,44 +1667,48 @@ try {
     JSON.stringify(reviewAtHeights));
   // Every row used to be a static line with an emoji icon and no control,
   // bar the two switches at the foot for DMs and photos — a reader could
-  // read what was in the digest but not act on five sixths of it. All seven
-  // are checkboxes now, so this holds the count directly rather than
-  // trusting the two rows checked below to stand in for all of them.
-  check('all seven review rows are checkboxes, each checked by default',
-    (await page.locator('#review-list input[type="checkbox"]').count()) === 7 &&
+  // read what was in the digest but not act on five sixths of it. All of them
+  // are checkboxes now, so this holds the count directly rather than trusting
+  // one row checked below to stand in for the rest.
+  //
+  // Six, not seven: Photos was the seventh and is gone with the payload it
+  // described. This is the count that keeps the supplementary rows honest —
+  // they append to these, so a drift here would silently move that goalpost.
+  check('all six review rows are checkboxes, each checked by default',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 6 &&
     (await page.evaluate(() =>
       [...document.querySelectorAll('#review-list input[type="checkbox"]')].every(el => el.checked))));
   check('the icon column is gone — nothing in the list is decorative any more',
     (await page.locator('#review-list .review-row-icon').count()) === 0);
-  check('direct messages and photos are offered as switches, both on by default',
-    await page.locator('#review-dms').isChecked() && await page.locator('#review-images').isChecked());
+  check('direct messages are offered as a switch, on by default',
+    await page.locator('#review-dms').isChecked());
+  check('and no photos row is offered at all, since nothing sends any',
+    (await page.locator('#review-images').count()) === 0);
   // "— on" used to distinguish these two from the read-only rows above them;
   // now that every row is a checkbox, the state is shown by the checkbox
   // itself and the suffix would just be noise.
-  check('the DM and photo labels no longer carry a redundant "— on" suffix',
-    !/Direct messages — on|Photos — on/.test(reviewText), reviewText.slice(0, 400));
+  check('the DM label no longer carries a redundant "— on" suffix',
+    !/Direct messages — on/.test(reviewText), reviewText.slice(0, 400));
+  // The whole word, anywhere in the dialog. A reader being asked to approve
+  // what leaves their device must not be told photographs are part of it.
+  check('and the review never mentions photos at all any more',
+    !/photo/i.test(reviewText), reviewText.slice(0, 400));
   check('the messages switch states a real sampled count out of a real total',
     /\d+ of your own messages sampled out of \d+ total/.test(
       await page.locator('#review-dms ~ span').innerText()),
     await page.locator('#review-dms ~ span').innerText());
-  check('the photos switch states the real number selected for standard depth',
-    await page.evaluate(() => {
-      const said = document.querySelector('#review-images ~ span .muted').textContent;
-      const sends = window.PsycheDigest.IMAGES;
-      return new RegExp('^' + sends + ' of your own photos').test(said);
-    }),
-    await page.locator('#review-images ~ span .muted').innerText());
+
   // The download link has to sit inside the same scroll region as the seven
   // checkboxes, below the last of them — not above the list, where it would
   // always be visible regardless of scroll position, and not in the
   // subtitle's spot where it used to live before this moved.
-  check('the download link lives inside the scrollable list, below Photos',
+  check('the download link lives inside the scrollable list, below the last row',
     await page.evaluate(() => {
       const list = document.querySelector('#review-list');
       const link = document.querySelector('#review-download');
-      const images = document.querySelector('#review-images');
+      const last = document.querySelector('#review-dms');
       if (!list.contains(link)) return false;
-      return Boolean(images.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
+      return Boolean(last.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING);
     }));
 
   // ---- downloading what's actually being sent ----
@@ -1745,50 +1749,32 @@ try {
   check('the file opens on its own — a real, self-contained HTML document',
     html1.startsWith('<!doctype html>') && !/https?:\/\//.test(html1),
     html1.slice(0, 40));
-  check('the readable table says all seven rows are included, by default',
-    (html1.match(/>Included</g) || []).length === 7 && (html1.match(/>Excluded</g) || []).length === 0,
+  check('the readable table says all six rows are included, by default',
+    (html1.match(/>Included</g) || []).length === 6 && (html1.match(/>Excluded</g) || []).length === 0,
     JSON.stringify({ included: (html1.match(/>Included</g) || []).length,
       excluded: (html1.match(/>Excluded</g) || []).length }));
   const preview1 = extractDigestFromPreviewHtml(html1);
   check('the default download carries the real, un-redacted digest',
     Boolean(preview1.directMessages) && preview1.samples.captions.length > 0 &&
-    preview1.instagramTopics.length > 0 && preview1.coverage.images.included === true,
+    preview1.instagramTopics.length > 0,
     JSON.stringify({ dms: Boolean(preview1.directMessages), captions: preview1.samples.captions.length,
-      topics: preview1.instagramTopics.length, images: preview1.coverage.images }));
-  // The photographs ride along as embedded data URIs, so the file is the whole
-  // of what leaves the device rather than the text half of it. Counted against
-  // coverage.images.attached rather than a fixed number, so the two cannot
-  // disagree about how many are going.
-  const embedded1 = (html1.match(/<img alt="Photograph \d+" src="data:image\//g) || []).length;
-  check('the download embeds every photograph that is going to be sent',
-    embedded1 === preview1.coverage.images.attached && embedded1 > 0,
-    embedded1 + ' embedded vs ' + preview1.coverage.images.attached + ' attached');
-  check('they are self-contained data URIs, not links back to anything',
-    /src="data:image\/jpeg;base64,[A-Za-z0-9+/=]{500,}"/.test(html1));
-  check('each is labelled with the date it was posted, as the model is told',
-    (html1.match(/<figcaption>\d+\. \d{4}-\d{2}-\d{2}/g) || []).length > 0,
-    (/<figcaption>[^<]*/.exec(html1) || ['none'])[0]);
-  // What is embedded has to be the resized copy that actually gets sent, not
-  // the original still sitting in the archive — otherwise the file flatters
-  // what leaves the device. The fixture's own PNGs re-encode to JPEG, so the
-  // mime type is the tell.
-  check('what is embedded is the re-encoded copy that gets sent, not the archive original',
-    !/src="data:image\/png/.test(html1) && /src="data:image\/jpeg/.test(html1));
-  // Checked against the live constant, not against a number written out here.
-  // The literal this replaced said 1024px while the real edge was 768, and the
-  // check passed the whole time because it was asserting the same wrong number
-  // the page was printing — two copies of a claim agreeing with each other and
-  // with nothing else. Reading LIMITS.edge means the only way to pass is to
-  // state what the resizing actually does.
-  const realEdge = await page.evaluate(() => window.PsycheImages.LIMITS.edge);
-  check('the file states the real resize edge, whatever it currently is',
-    new RegExp('resized to fit a ' + realEdge + 'px edge and re-encoded').test(html1),
-    'edge is ' + realEdge + 'px; file says ' +
-    ((/fit a (\d+)px edge/.exec(html1) || [])[1] || 'nothing'));
+      topics: preview1.instagramTopics.length }));
+  // The captions in the file carry their years, same as the ones in the
+  // request — this file's whole job is to be exactly what gets sent.
+  check('the captions in the file are dated, as the ones in the request are',
+    preview1.samples.captions.some(c => /^\[\d{4}\] /.test(c)),
+    preview1.samples.captions[0]);
+  // The photograph-embedding checks lived here: every still that was going to
+  // be sent, inlined as a data URI, dated, proven to be the re-encoded copy
+  // rather than the archive original, and stated against the live resize edge.
+  // All of it went with the photographs. What the file promises now is
+  // narrower and easier to keep: the digest, and nothing accompanying it.
+  check('the file says plainly that nothing rides alongside the digest',
+    /no photographs, no files/.test(html1) && !/data:image\//.test(html1),
+    (/<p class="muted">The exact object[^<]*/.exec(html1) || ['none'])[0]);
 
   await page.uncheck('#review-dms');
   await page.uncheck('#review-topics');
-  await page.uncheck('#review-images');
   const download2 = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
     page.click('#review-download'),
@@ -1796,24 +1782,15 @@ try {
   const path2 = join(shotDir, 'digest-preview-partial.html');
   await download2.saveAs(path2);
   const html2 = readFileSync(path2, 'utf8');
-  check('the readable table now shows exactly the three unticked rows as excluded',
-    (html2.match(/>Excluded</g) || []).length === 3 &&
+  check('the readable table now shows exactly the two unticked rows as excluded',
+    (html2.match(/>Excluded</g) || []).length === 2 &&
     /Direct messages<\/td><td class="no">Excluded/.test(html2) &&
-    /Instagram.s own inferred topics<\/td><td class="no">Excluded/.test(html2) &&
-    /Photos<\/td><td class="no">Excluded/.test(html2),
+    /Instagram.s own inferred topics<\/td><td class="no">Excluded/.test(html2),
     JSON.stringify({ excluded: (html2.match(/>Excluded</g) || []).length }));
   const preview2 = extractDigestFromPreviewHtml(html2);
   check('the second download reflects exactly the boxes just unticked',
-    preview2.directMessages === undefined && preview2.instagramTopics.length === 0 &&
-    preview2.coverage.images.included === false && preview2.coverage.images.attached === 0,
-    JSON.stringify({ dms: preview2.directMessages, topics: preview2.instagramTopics.length,
-      images: preview2.coverage.images }));
-  // Unticking photos has to take them out of the file too. A preview of "what
-  // gets sent" that still showed the pictures would be describing a request
-  // that is not being made.
-  check('unticking photos removes them from the file, not just from the table',
-    !/<img alt="Photograph/.test(html2) && !/data:image\//.test(html2) &&
-    !/Photographs<\/h2>/.test(html2));
+    preview2.directMessages === undefined && preview2.instagramTopics.length === 0,
+    JSON.stringify({ dms: preview2.directMessages, topics: preview2.instagramTopics.length }));
   check('the second download leaves the untouched rows exactly as they were',
     preview2.samples.captions.length === preview1.samples.captions.length &&
     preview2.samples.comments.length === preview1.samples.comments.length &&
@@ -1825,7 +1802,6 @@ try {
   // everything-included path the checks right after it expect.
   await page.check('#review-dms');
   await page.check('#review-topics');
-  await page.check('#review-images');
 
   await shot('1c-review');
 
@@ -1926,10 +1902,17 @@ try {
       .evaluate(c => c.classList.contains('is-collapsed'))));
 
   await openAllSections(page);
-  check('sending from the review includes DMs and photos, since neither was unticked',
+  check('sending from the review includes DMs, since that row was not unticked',
     (await page.evaluate(() => {
       const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
-      return Boolean(digest.directMessages) && digest.coverage.images.included && digest.coverage.images.attached > 0;
+      return Boolean(digest.directMessages);
+    })));
+  // The stills the archive held are still counted, without any of them being
+  // read — real evidence about how visual a life this is, for free.
+  check('and the stored digest counts the stills it never opened',
+    (await page.evaluate(() => {
+      const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+      return digest.coverage.stillsInArchive > 0 && digest.coverage.images === undefined;
     })));
   check('profile is titled with the name from the export',
     (await page.locator('#profile-title').innerText()).includes('Aleç'),
@@ -3781,6 +3764,57 @@ try {
   check('the behaviour section no longer closes on advice or a block of its own',
     (await page.locator('#profile-body .advice-split').count()) === 0 &&
     (await page.locator('#profile-body .diet').count()) === 0);
+  // ---- how a thing has moved, not just whether it is there ----
+  //
+  // Interests and values each carry a trajectory and the year of their most
+  // recent evidence. Before this, an interest somebody dropped four years ago
+  // and one they are in the middle of rendered identically — the model had no
+  // way to tell them apart either, since captions reached it undated.
+  check('interests carry a trajectory chip beside the intensity one',
+    (await page.locator('#profile-body .tile .pill-traj').count()) >= 4,
+    (await page.locator('#profile-body .tile .pill-traj').count()) + ' chips');
+  check('the chip reads as words, not as a raw schema token',
+    !/structural|phasic/i.test(
+      (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' ')),
+    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
+  // The year is only worth showing where the word does not already carry it.
+  // "Throughout, last seen 2025" is noise; "Dormant since 2019" is the finding.
+  check('a dormant interest names the year its evidence stopped',
+    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts())
+      .some(t => /^Dormant · \d{4}$/.test(t.trim())),
+    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
+  check('while a current one does not bother with a year',
+    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts())
+      .some(t => t.trim() === 'Throughout'),
+    (await page.locator('#profile-body .tile .pill-traj').allInnerTexts()).join(' | '));
+  // Dormant has to look different, or it is a label nobody reads. Checked as
+  // computed colour rather than as a class name, since the class alone proves
+  // only that the markup intended something.
+  check('and a stopped trajectory is coloured differently from a live one',
+    await page.evaluate(() => {
+      const chips = [...document.querySelectorAll('#profile-body .tile .pill-traj')];
+      const dormant = chips.find(c => c.classList.contains('pill-traj-dormant'));
+      const structural = chips.find(c => c.classList.contains('pill-traj-structural'));
+      if (!dormant || !structural) return false;
+      return getComputedStyle(dormant).color !== getComputedStyle(structural).color;
+    }));
+  // Values get the same treatment — they are the same kind of claim about a
+  // person, and one that goes stale the same way.
+  check('values carry the chip too, not just interests',
+    await page.evaluate(() => {
+      const heads = [...document.querySelectorAll('#profile-body .section-card')];
+      const card = heads.find(c => /Values/.test(c.querySelector('h2') ? c.querySelector('h2').textContent : ''));
+      return Boolean(card) && card.querySelectorAll('.pill-traj').length >= 2;
+    }));
+  // An older report, saved before these fields existed, has to render without
+  // them rather than showing an empty chip or throwing.
+  check('a report with no trajectory fields renders no chips and does not break',
+    await page.evaluate(() => {
+      const card = document.createElement('div');
+      card.innerHTML = '<div class="tile"><h4>x</h4></div>';
+      return card.querySelectorAll('.pill-traj').length === 0;
+    }));
+
   check('interests and values render as tiles',
     (await page.locator('#profile-body .tile').count()) >= 4);
   // Four now, not three: "What you take in" lost the list and the second
@@ -4642,36 +4676,29 @@ try {
     JSON.stringify(digest.directMessages).includes('Own message') &&
     !JSON.stringify(digest.directMessages).includes('Their reply'));
 
-  // ---- the images that were sent ----
+  // ---- nothing rides alongside the digest ----
   //
-  // This is the half the Node suite cannot reach: real ZIP entries decoded
-  // through createImageBitmap, drawn to a canvas and re-encoded.
+  // This block used to be the half the Node suite could not reach: real ZIP
+  // entries decoded through createImageBitmap, drawn to a canvas, re-encoded
+  // as JPEG, checked for size, order, dating and byte-uniqueness, and asserted
+  // never to be persisted. All of it went with the photographs. What replaces
+  // it is the inverse claim, which is the one the privacy copy now makes.
   const sentBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-  const sentImages = sentBody.images || [];
 
-  check('images were sent with the digest', sentImages.length >= 10 && sentImages.length <= 20,
-    sentImages.length + ' images');
-  check('the digest agrees with what was sent',
-    digest.coverage.images.attached === sentImages.length && digest.coverage.images.included === true);
-  check('every image is declared as a JPEG', sentImages.every(i => i.mime === 'image/jpeg'));
-  check('every image is dated for the model', sentImages.every(i => /^\d{4}-\d{2}-\d{2}$/.test(i.takenAt)));
-  check('images are sent oldest first',
-    sentImages.every((img, i) => i === 0 || sentImages[i - 1].takenAt <= img.takenAt));
-
-  const decoded = sentImages.map(i => Buffer.from(i.data, 'base64'));
-  check('the bytes really are JPEGs',
-    decoded.every(b => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff),
-    decoded.length ? decoded[0].subarray(0, 3).toString('hex') : 'none');
-  check('the originals were re-encoded rather than forwarded',
-    !analyseBodies[analyseBodies.length - 1].includes('iVBORw0KGgo'));
-  check('each image is small enough to be worth sending',
-    decoded.every(b => b.length < 200000),
-    Math.max(...decoded.map(b => b.length)) + ' bytes');
+  check('the request carries a digest and nothing else',
+    Object.keys(sentBody).every(k => k === 'digest' || k === 'paymentIntentId' || k === 'promoCode'),
+    Object.keys(sentBody).join(','));
+  check('no image field is sent, empty or otherwise', sentBody.images === undefined);
+  check('and no encoded bytes are hiding in the body',
+    !analyseBodies[analyseBodies.length - 1].includes('iVBORw0KGgo') &&
+    !analyseBodies[analyseBodies.length - 1].includes('/9j/'));
   check('the whole request stays inside the server\'s limit',
     Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) < 24 * 1024 * 1024);
-  check('no two images are byte-identical',
-    new Set(sentImages.map(i => i.data)).size === sentImages.length);
-  check('the photos are not persisted to this browser',
+  // Much smaller than it used to be — a dozen JPEGs were most of it.
+  check('and is now a fraction of what it was when photographs rode along',
+    Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) < 500000,
+    Math.round(Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) / 1024) + 'KB');
+  check('no photographs are persisted to this browser either',
     !JSON.stringify(await page.evaluate(() => ({ ...localStorage }))).includes('/9j/'));
 
   // ---- a profile saved under the old name survives the rename ----
@@ -5077,10 +5104,10 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
 
   // Eight more rows, and only because both sources were added — a reader who
-  // skipped still sees the original seven, which is asserted on the very
-  // first upload further up and is what keeps that count meaningful.
+  // skipped still sees the original six, which is asserted on the very first
+  // upload further up and is what keeps that count meaningful.
   check('adding both sources adds eight rows to the review, not a lumped-together one',
-    (await page.locator('#review-list input[type="checkbox"]').count()) === 15,
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 14,
     (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows');
   const supplementedReview = await page.locator('#review-dialog').innerText();
   for (const label of ['YouTube watch history', 'YouTube searches', 'Google searches',
@@ -5202,7 +5229,7 @@ try {
   await chooseDepth(page);
   await answerReview(page, {
     untickCaptions: true, untickActivity: true, untickAccounts: true,
-    untickTopics: true, untickSearches: true, untickMessages: true, untickImages: true,
+    untickTopics: true, untickSearches: true, untickMessages: true,
   });
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   await openAllSections(page);
@@ -5243,16 +5270,16 @@ try {
       following: optedOutSent.following.length, topics: optedOutSent.instagramTopics.length,
       searches: optedOutSent.samples.searches.length,
     }));
-  check('unticking the image switch sends no images', JSON.parse(optedOutBody).images.length === 0);
-  check('the image opt-out is recorded for the model', optedOut.coverage.images.included === false &&
-    optedOut.coverage.images.attached === 0);
-  check('not one pixel leaves after the image opt-out', !optedOutBody.includes('/9j/'));
-  // Declining photos in review must skip the decode-and-downscale step
-  // entirely, not just withhold the result of it — see handleFiles. If that
-  // regressed to "extract anyway, then discard", nothing about what actually
-  // reaches the model would change, so this checks the work itself rather
-  // than its outcome: no time was spent on it.
-  check('declining photos in the review skips extracting them, not just sending them',
+  // There is no image switch to untick any more, so the three checks that
+  // followed the opt-out through — no images in the body, the opt-out recorded
+  // in coverage, not one pixel leaving — collapse into the unconditional pair
+  // below. They hold on every run now rather than only on the declined one.
+  check('not one pixel leaves, whatever was ticked', !optedOutBody.includes('/9j/'));
+  // Declining photos used to have to skip the decode-and-downscale step rather
+  // than doing it and discarding the result. Nothing decodes anything now, so
+  // the progress label that step emitted cannot appear on any run — a stronger
+  // version of what the old check meant.
+  check('no photo-preparation work happens on any run any more',
     !/Preparing image \d+ of \d+/.test(await page.evaluate(() => (window.__progressLabels || []).join('|'))));
 
   // The sections below reuse whatever profile is sitting in localStorage, and
@@ -5359,8 +5386,11 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 20000 });
   check('re-uploading Instagram in the popout gets the re-run moving again',
     await page.locator('#review-dialog').isVisible());
-  check('and the photographs come back with it, since the archive is in memory now',
-    (await page.locator('#review-images').count()) === 1);
+  // No photos row to come back — the two paths produce the same kind of digest
+  // now, which is the point: a re-run and a first upload used to differ in
+  // what they could carry and no longer do.
+  check('and the review looks exactly like a first upload\'s, with no photos row',
+    (await page.locator('#review-images').count()) === 0);
   const analysesBeforeRecovery = analyseBodies.length;
   await page.click('#review-send');
   await waitForLength(analyseBodies, analysesBeforeRecovery + 1, 60000);
@@ -5576,10 +5606,11 @@ try {
     !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)));
   check('the review carries the newly loaded Google rows',
     (await page.locator('#review-list input[type="checkbox"]').count()) > 7);
-  check('and the photos row explains why it is empty rather than looking like an export with none',
-    /cannot be included when adding data to a saved report/i.test(
-      await page.locator('#review-images').locator('xpath=../..').innerText()),
-    await page.locator('#review-images').locator('xpath=../..').innerText());
+  // The photos row used to appear here explaining that photographs could not
+  // be carried into a re-run from a saved report. There is no such row and no
+  // such asymmetry left to explain.
+  check('and no photos row appears, since a re-run sends what a first upload does',
+    (await page.locator('#review-images').count()) === 0);
   check('nothing has reached the model yet, and the stored digest is untouched, until Send',
     analyseBodies.length === beforeMergedSend &&
     !(await page.evaluate(() => Boolean(JSON.parse(localStorage.getItem('psycheai_digest')).google))));
@@ -5729,8 +5760,9 @@ try {
     await page.evaluate(() => !document.querySelector('#datasources-instagram-note').hidden));
   await continueFromDataSources(page);
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
-  check('a replaced Instagram export brings photographs back into the review',
-    (await page.locator('#review-images').count()) === 1);
+  check('a replaced Instagram export changes nothing about the review\'s shape',
+    (await page.locator('#review-images').count()) === 0 &&
+    (await page.locator('#review-list input[type="checkbox"]').count()) >= 6);
   const beforeReplaceSend = analyseBodies.length;
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
@@ -5793,10 +5825,8 @@ try {
   const rerunReviewRows = await page.locator('#review-list input[type="checkbox"]').count();
   check('the rebuilt digest carries the new source\'s rows into the review',
     rerunReviewRows > 7, rerunReviewRows + ' rows');
-  check('photos are explained as unavailable, since this rerun bundles into the paid call',
-    /cannot be included/i.test(
-      await page.locator('#review-images').locator('xpath=../..').innerText()),
-    await page.locator('#review-images').locator('xpath=../..').innerText());
+  check('and still no photos row, on the paid re-run path as on every other',
+    (await page.locator('#review-images').count()) === 0);
   check('the send button already reads as a payment, since premium is already unlocked',
     (await page.locator('#review-send').innerText()).trim() === 'Make payment');
 

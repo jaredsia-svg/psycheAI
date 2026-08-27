@@ -177,12 +177,22 @@
     });
   }
 
-  function addText(out, text) {
+  // Captions carry the moment they were written, not just the words.
+  //
+  // They used to be bare strings, which meant the model received 560 of them
+  // with no way to tell a caption from 2016 from one written last month. It
+  // could see the *shape* of a life over time — the monthly histogram is
+  // complete — and not place a single thing anybody said inside it, so every
+  // interest and value in the report read as timeless. A subject somebody
+  // dropped four years ago and one they are in the middle of came through
+  // identically. `ts` is seconds, or 0 when the record carried no timestamp;
+  // digest.js turns it into a year at sampling time.
+  function addText(out, text, timestamp) {
     const clean = fixText(text).trim();
     if (!clean) return;
     if (out.corpusChars >= LIMITS.corpusChars) return;
     out.corpusChars += clean.length;
-    out.captions.push(clean);
+    out.captions.push({ text: clean, ts: toSeconds(timestamp) || 0 });
   }
 
   const handlers = {
@@ -196,7 +206,7 @@
         // carry it on the post. Take whichever is longer.
         const caption = [post.title, media[0] && media[0].title]
           .map(t => fixText(t || '')).sort((a, b) => b.length - a.length)[0] || '';
-        addText(out, caption);
+        addText(out, caption, ts);
         if (media.length > 1) out.counts.carousels++;
         // Only the first still of a carousel is a candidate — it is the frame
         // they chose as the cover, and taking all ten would let one post crowd
@@ -215,7 +225,7 @@
       for (const story of asArray(data, 'ig_stories', 'stories')) {
         pushEvent(out, 'story', story.creation_timestamp);
         out.counts.stories++;
-        addText(out, story.title);
+        addText(out, story.title, story.creation_timestamp);
         addMedia(out, 'story', story.uri, story.creation_timestamp,
           fixText(story.title || '').length, 1);
       }
@@ -226,14 +236,14 @@
         const first = media[0] || {};
         pushEvent(out, 'reel', reel.creation_timestamp || first.creation_timestamp);
         out.counts.reels++;
-        addText(out, first.title || reel.title);
+        addText(out, first.title || reel.title, reel.creation_timestamp || first.creation_timestamp);
       }
     },
     igtv(out, data) {
       for (const item of asArray(data, 'ig_igtv_media', 'ig_other_content')) {
         const media = Array.isArray(item.media) ? item.media : [item];
         pushEvent(out, 'post', (media[0] || {}).creation_timestamp);
-        addText(out, (media[0] || {}).title || item.title);
+        addText(out, (media[0] || {}).title || item.title, (media[0] || {}).creation_timestamp);
       }
     },
     profilePhotos(out, data) {
@@ -325,7 +335,8 @@
         out.profile.website = out.profile.website || mapValue(item, 'Website');
         out.profile.birthday = out.profile.birthday || mapValue(item, 'Date of birth', 'Birthday');
       }
-      if (out.profile.bio) addText(out, out.profile.bio);
+      // The bio is whatever it says today, so it is dateless rather than old.
+      if (out.profile.bio) addText(out, out.profile.bio, 0);
     },
     basedIn(out, data) {
       for (const item of asArray(data, 'inferred_data_primary_location', 'account_based_in')) {
@@ -410,40 +421,14 @@
       messageEvents: [],
       messageTexts: [],
       corpusChars: 0,
-      // Where the images live. Only paths and sizes — no pixels are read here.
+      // A record that an image exists, never the image itself: path, kind,
+      // timestamp and caption length only. Nothing reads the pixels any more
+      // — see the note above COST_CAP in digest.js — so this survives purely
+      // as a count of how visual the account is, which reaches the digest as
+      // `coverage.stillsInArchive`.
       mediaRefs: [],
-      mediaIndex: { byPath: new Map(), byName: new Map(), total: 0 },
       files: { total: 0, used: 0, byRoute: {}, htmlOnly: false },
     };
-  }
-
-  // The `uri` in the JSON is archive-relative ("media/posts/…"), but the entry
-  // is often nested under an export folder, and in a split export the image can
-  // sit in a different .zip part from the JSON that references it. So index
-  // every image by full path, by the path from "media/" onwards, and by bare
-  // filename — the last only when it is unambiguous.
-  const mediaKey = path => String(path || '').toLowerCase().replace(/^\/+/, '');
-
-  function indexMedia(index, archive, entry) {
-    const key = mediaKey(entry.name);
-    const record = { archive, entry, bytes: entry.uncompressedSize || 0 };
-    index.total++;
-    index.byPath.set(key, record);
-    const at = key.indexOf('media/');
-    if (at > 0) index.byPath.set(key.slice(at), record);
-    const base = key.slice(key.lastIndexOf('/') + 1);
-    // A collision means the filename alone cannot identify the file, so poison
-    // the entry rather than resolving it to the wrong photo.
-    if (base) index.byName.set(base, index.byName.has(base) ? null : record);
-  }
-
-  /** Resolves a JSON media `uri` to an archive entry, or null. */
-  function findMedia(index, path) {
-    const key = mediaKey(path);
-    if (index.byPath.has(key)) return index.byPath.get(key);
-    const at = key.indexOf('media/');
-    if (at > 0 && index.byPath.has(key.slice(at))) return index.byPath.get(key.slice(at));
-    return index.byName.get(key.slice(key.lastIndexOf('/') + 1)) || null;
   }
 
   // Once threads are parsed we can tell which participant is the account
@@ -520,7 +505,6 @@
    * @param {File[]|FileList} files      the .zip files the user picked
    * @param {object} options
    * @param {boolean} options.includeMessages  opt in to DM aggregates
-   * @param {boolean} options.includeImages    index images so a few can be sampled
    * @param {(p:{phase:string,done:number,total:number,label:string})=>void} options.onProgress
    */
   async function readExports(files, options) {
@@ -540,7 +524,6 @@
       for (const entry of archive.entries) {
         const lower = entry.name.toLowerCase();
         if (lower.endsWith('.html') || lower.endsWith('.htm')) sawHtml = true;
-        if (opts.includeImages && IMAGE_EXT.test(lower)) indexMedia(signals.mediaIndex, archive, entry);
         if (!lower.endsWith('.json')) continue;
         sawJson = true;
         signals.files.total++;
@@ -612,5 +595,5 @@
     return signals;
   }
 
-  root.PsycheInstagram = { readExports, fixText, routeOf, findMedia, LIMITS };
+  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

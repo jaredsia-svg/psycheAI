@@ -547,6 +547,26 @@
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +
       'it would stand behind them.',
     trustScore: 'Confidence: ',
+    // The six trajectory labels, keyed by the enum in lib/prompts.js. Written
+    // for a reader rather than for a schema: "structural" is accurate and
+    // means nothing to anybody, where "throughout" says the same thing in a
+    // word they already know. Kept as a map so a renamed enum value fails
+    // visibly here rather than silently rendering a raw token.
+    //
+    // Each is a bare word so the three that carry a year read correctly after
+    // the separator — "Dormant · 2019", not "Dormant since · 2019". The
+    // separator is doing the work "since" would; see trajectoryPill.
+    // trajectoryNote is the tooltip that spells that out, because a middot
+    // between a word and a year is compact rather than self-explanatory.
+    trajectoryLabels: {
+      structural: 'Throughout',
+      stable: 'Ongoing',
+      rising: 'Growing',
+      declining: 'Fading',
+      dormant: 'Dormant',
+      phasic: 'A phase',
+    },
+    trajectoryNote: 'The most recent year this shows up in your data',
     sourcesUsed: 'Data sources',
     sourcesUsedHint: 'You can raise this report’s confidence by adding more sources of data. ' +
       'Instagram and Google together are the ideal combination — Instagram reads your outward ' +

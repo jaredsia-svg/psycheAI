@@ -172,26 +172,6 @@ function requirePremiumEngine(response) {
 // The browser already caps and downscales, but the endpoint is open to anyone
 // who can reach it, so re-check the shape here rather than forwarding whatever
 // arrives to a metered API.
-function cleanImages(raw) {
-  if (!Array.isArray(raw)) return [];
-  const out = [];
-  for (const item of raw) {
-    if (out.length >= prompts.MAX_IMAGES) break;
-    if (!item || typeof item.data !== 'string') continue;
-    if (!IMAGE_MIMES.has(item.mime)) continue;
-    if (item.data.length > MAX_IMAGE_BYTES) continue;
-    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(item.data)) continue;
-    out.push({
-      mime: item.mime,
-      data: item.data,
-      takenAt: typeof item.takenAt === 'string' ? item.takenAt.slice(0, 10) : '',
-      kind: typeof item.kind === 'string' ? item.kind.slice(0, 16) : 'post',
-      hasCaption: Boolean(item.hasCaption),
-    });
-  }
-  return out;
-}
-
 // The free report, and the one route with two ways in.
 //
 // Without payment it is free, and bounded only by the server-wide daily
@@ -265,7 +245,7 @@ async function handleAnalyse(request, response) {
 
   const engine = requireEngine(response);
   if (!engine) return;
-  const result = await engine.analyseProfile(body.digest, cleanImages(body.images));
+  const result = await engine.analyseProfile(body.digest);
 
   // Both recorded only after the call actually came back, so a provider
   // outage neither spends the day's budget nor burns the reader's payment.

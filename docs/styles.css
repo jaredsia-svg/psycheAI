@@ -1081,6 +1081,22 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pill-core { border-color: var(--accent); color: var(--accent); }
 .pill-casual { opacity: .65; }
 
+/* The trajectory chip: how a thing has moved across the years, beside the
+   intensity chip that says how much of it there is. Two questions, two pills —
+   folding them into one would make a reader scanning for "do I still do this?"
+   parse "how into it am I?" first.
+
+   Dormant and phasic are the ones a reader is most likely to want to argue
+   with, so they are the ones that must not be quiet: --danger is the same red
+   the missing-source cross uses, which is the right register for "the evidence
+   stopped" without being alarming. Fading sits between that and nothing.
+   Throughout and Ongoing are deliberately unstyled — the common, unsurprising
+   cases should not compete with the heading they sit next to. */
+.pill-traj { margin-left: .35rem; }
+.pill-traj-dormant, .pill-traj-phasic { border-color: var(--danger); color: var(--danger); }
+.pill-traj-declining { opacity: .8; border-style: dashed; }
+.pill-traj-rising { border-color: var(--accent); color: var(--accent); }
+
 /* ---------- behaviour facets ---------- */
 
 /* `align-items: start` so each facet is only as tall as its own text. Stretched

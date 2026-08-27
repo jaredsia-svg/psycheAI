@@ -5,7 +5,6 @@
 
   const IG = window.PsycheInstagram;
   const Supplement = window.PsycheSupplement;
-  const Images = window.PsycheImages;
   const Digest = window.PsycheDigest;
   const Card = window.PsycheCard;
   const LLM = window.PsycheLLM;
@@ -120,15 +119,12 @@
   const state = {
     profile: store.read(KEYS.profile, null),
     digest: store.read(KEYS.digest, null),
-    // In memory only, and only for as long as this page lives — see handleFiles.
-    images: [],
-    // The parsed Instagram export itself, kept for the same reason and on the
-    // same terms as `images`: it is what "Re-run analysis with additional
-    // data" needs to add a Google or Facebook export without asking for the
+    // The parsed Instagram export itself, in memory only and only for as long
+    // as this page lives. It is what "Add / change data & re-run analysis"
+    // needs to add a Google or Facebook export without asking for the
     // Instagram one again, and it is exactly the raw material this app's
-    // privacy story says never touches a disk. A reload loses it, same as the
-    // photographs — the button that needs it simply does not appear after
-    // one; see renderProfile and rerunWithAdditionalData.
+    // privacy story says never touches a disk. A reload loses it, and the
+    // re-run then asks for the archive back — see rerunWithAdditionalData.
     signals: null,
     server: { ready: false, mock: false, model: null },
   };
@@ -1729,7 +1725,8 @@
   // decision to arrive back where the reader started. The picker went first;
   // the second set of caps and the second budget followed it out of
   // digest.js once it was clear an unreachable budget was a number everyone
-  // still had to reason about. `Digest.IMAGES` is the one image count.
+  // still had to reason about. Photographs followed them both — see the note
+  // above COST_CAP in digest.js for why, and for what the freed budget bought.
 
   /** One togglable row: checked and enabled when there is something to send, disabled when there is not. */
   function reviewSwitch(id, count, onLabel, offLabel, detail) {
@@ -1744,10 +1741,7 @@
   // and askReview's own downloadable preview (on a throwaway clone, while the
   // dialog is still open) — the same six fields, redacted the same way,
   // so the file a reader downloads mid-review cannot drift from what
-  // actually goes out once they press Send. Images are not included here:
-  // handleFiles's photo handling has a real async side effect (extraction)
-  // that a preview must not trigger, so each caller patches
-  // coverage.images itself.
+  // actually goes out once they press Send.
   function applyReviewDecision(target, decision) {
     if (!decision.includeCaptions) Digest.omitCaptionsAndComments(target);
     if (!decision.includeActivity) Digest.omitActivity(target);
@@ -1775,7 +1769,7 @@
   // own row list, reused here so the category names and detail lines in this
   // table are read from the same place the checklist itself was, not typed
   // out a second time where they could drift.
-  function buildDigestPreviewHtml(rows, decision, preview, photos) {
+  function buildDigestPreviewHtml(rows, decision, preview) {
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
@@ -1783,29 +1777,6 @@
         '<td>' + esc(r[5]) + '</td></tr>';
     }).join('');
 
-    // Embedded as data URIs rather than linked, so the file is one thing the
-    // reader can keep, move or open offline — a preview that broke as soon as
-    // it left the Downloads folder would be worth little. These are the
-    // resized, re-encoded copies that actually go in the request, not the
-    // originals from the archive, so the file cannot flatter what is sent.
-    const list = Array.isArray(photos) ? photos : [];
-    const photosHtml = !list.length ? '' :
-      '<h2>Photographs</h2>' +
-      // Read off Images.LIMITS rather than written out, because this sentence
-      // shipped claiming 1024px against a real edge of 768. A file whose whole
-      // job is to state what leaves the device cannot carry a number that has
-      // to be kept in sync with the code by hand.
-      '<p class="muted">All ' + list.length + ' of them, exactly as they will be sent: resized to ' +
-      'fit a ' + Images.LIMITS.edge + 'px edge and re-encoded, which is smaller and softer than ' +
-      'the originals still sitting in your export. Nothing else from any photo is included — ' +
-      'no location, no filename.</p>' +
-      '<div class="shots">' + list.map((p, i) =>
-        '<figure><img alt="Photograph ' + (i + 1) + '" src="data:' +
-        esc(p.mime || 'image/jpeg') + ';base64,' + esc(p.data) + '">' +
-        '<figcaption>' + (i + 1) + '. ' + esc(p.takenAt || 'date unknown') +
-        (p.kind && p.kind !== 'post' ? ' · ' + esc(p.kind) : '') +
-        (p.hasCaption ? ' · had a caption' : '') + '</figcaption></figure>').join('') +
-      '</div>';
     return '<!doctype html><html><head><meta charset="utf-8">' +
       '<title>What was sent to the AI model</title><style>' +
       'body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;' +
@@ -1814,11 +1785,6 @@
       'table{border-collapse:collapse;width:100%;margin:1rem 0}' +
       'th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid #e7dfec;font-size:.92rem}' +
       'td.yes{color:#2f7d5b;font-weight:600}td.no{color:#6b6076}' +
-      '.shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.8rem;' +
-      'margin:1rem 0}' +
-      '.shots figure{margin:0}' +
-      '.shots img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid #e7dfec}' +
-      '.shots figcaption{font-size:.78rem;color:#6b6076;margin-top:.3rem}' +
       'pre{background:#fff;border:1px solid #e7dfec;border-radius:10px;padding:1rem;' +
       'overflow-x:auto;font-size:.82rem;white-space:pre-wrap;word-break:break-word}' +
       '.muted{color:#6b6076;font-size:.9rem}' +
@@ -1828,9 +1794,9 @@
       '. This file was written directly to your device and was never uploaded anywhere.</p>' +
       '<table><thead><tr><th>Category</th><th>Status</th><th>Detail</th></tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table>' +
-      photosHtml +
       '<h2>Full digest</h2>' +
-      '<p class="muted">The exact object sent alongside your photos, if any were included above.</p>' +
+      '<p class="muted">The exact object that is sent. Nothing accompanies it — no photographs, no ' +
+      'files, nothing from your archive that is not written out below.</p>' +
       '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
       '</body></html>';
   }
@@ -1848,19 +1814,15 @@
   //   null         — Escape, or the dialog closed some other way. Abandon.
   const REVIEW_BACK = 'review:back';
 
-  // `getImages` is a lazy extractor, not the images themselves. Decoding and
-  // re-encoding a dozen photographs is the slowest thing this app does, and it
-  // is deliberately not done before the review — a reader who unticks photos or
-  // presses Back must not have paid for them. So the download button is what
-  // triggers it, on the one path where the reader has actually asked to see
-  // them, and the result is cached so the real send does not decode twice.
-  function askReview(digest, imageCount, getImages, options) {
+  // This used to take a `getImages` lazy extractor alongside the digest, and a
+  // count, and a "your photos could not be carried over" flag — three
+  // parameters and a whole row of the checklist, all for a payload nothing
+  // sends any more. Decoding and re-encoding a dozen photographs was also the
+  // slowest thing this app did, which is why it was deferred to whichever of
+  // Send or the download button asked first. All of that is gone with them.
+  function askReview(digest, options) {
     const dialog = $('#review-dialog');
     const list = $('#review-list');
-    // Set when adding a source to a saved report in a tab that no longer holds
-    // the Instagram archive: there are no photographs to offer, and the row
-    // should say why rather than looking like an export that never had any.
-    const photosUnavailable = Boolean(options && options.photosUnavailable);
     // Set by the caller, not derived here — each of the three callers already
     // knows whether the step right after this one is a charge (its own call
     // to mustPayForAnalysis(), or the premium unlock this review sits inside
@@ -1908,13 +1870,6 @@
         dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +
           'your side of any conversation is ever included.' :
           'This export did not include any direct messages to sample.'],
-      ['review-images', 'includeImages', imageCount,
-        'Photos', 'Photos — none selected',
-        imageCount ? imageCount + ' of your own photos, resized. Videos are never included.' :
-          photosUnavailable
-            ? 'Your photos stay on your device and were never saved, so they cannot be included ' +
-              'when adding data to a saved report. Upload your Instagram export again to include them.'
-            : 'No photos were selected from this export.'],
     ];
 
     // Supplementary rows are appended only when that source was actually
@@ -2021,40 +1976,16 @@
       // and applyReviewDecision mutates in place. Nothing here ever leaves
       // the device; it is the same object Send would build, written to a
       // file instead of a request body.
-      let downloading = false;
-      const download = async event => {
-        // Guarded because the photo pass takes seconds and the button stays
-        // live throughout: a second click would decode the same archive again
-        // and hand the reader two copies of the file.
-        if (downloading) return;
-        const button = event.currentTarget;
-        const label = button.textContent;
+      // Synchronous now. It used to await a photo pass that took seconds, with
+      // a re-entrancy guard and a progress label on the button, so a reader
+      // could see the resized images that were about to be sent rather than
+      // the originals on their disk. Nothing sends images any more, so what
+      // this writes is the digest and nothing else.
+      const download = () => {
         const decision = currentDecision();
         const preview = applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision);
-        if (!decision.includeImages) {
-          preview.coverage.images.included = false;
-          preview.coverage.images.attached = 0;
-        }
 
-        // The photographs, but only when they are actually going to be sent —
-        // a file describing what leaves the device should not contain pictures
-        // that do not. Read through the same extractor the request itself
-        // uses, so what the reader opens is the resized, re-encoded image that
-        // will reach the model rather than the untouched original.
-        let photos = [];
-        if (decision.includeImages && imageCount && typeof getImages === 'function') {
-          downloading = true;
-          try {
-            photos = await getImages((done, total) =>
-              { button.textContent = 'Preparing photo ' + done + ' of ' + total + '…'; });
-          } catch (error) {
-            photos = [];
-          }
-          downloading = false;
-          button.textContent = label;
-        }
-
-        const html = buildDigestPreviewHtml(rows, decision, preview, photos);
+        const html = buildDigestPreviewHtml(rows, decision, preview);
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -2109,15 +2040,6 @@
     let decision = null;
     let signals;
     let uploadAuth = null;
-    let chosenImages = [];
-    // Set by whichever caller decodes the photographs first — the review's
-    // download button, or the send itself. See getExtractedImages.
-    let extractedImages = null;
-    const getExtractedImages = async (forSignals, forChosen, onProgress) => {
-      if (extractedImages) return extractedImages;
-      extractedImages = await Images.extract(forSignals, forChosen, onProgress || function () {});
-      return extractedImages;
-    };
     try {
       // Read everything the export has, unconditionally. The choice of what
       // to send used to gate this step, before the reader had seen any of
@@ -2126,7 +2048,6 @@
       // rather than in advance of it.
       signals = await IG.readExports(chosen, {
         includeMessages: true,
-        includeImages: true,
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
 
@@ -2146,28 +2067,11 @@
         }
         signals.supplements = supplements;
 
-        // Only the selection, not the extraction: picking which stills to use
-        // is cheap, and the reader has not yet said photos may be sent at all.
-        // The slow part — decoding and downscaling — waits for that answer,
-        // below, so declining costs nothing beyond this pick.
-        chosenImages = Images.select(signals, { count: Digest.IMAGES });
-
         setProgress(80, 'Building your evidence summary…');
         await new Promise(resolve => setTimeout(resolve, 30));
-        digest = Digest.build(signals, {
-          includeMessages: true, includeImages: true,
-          imageCount: chosenImages.length,
-        });
+        digest = Digest.build(signals, { includeMessages: true });
 
-        // Decode once at most, whoever asks first. The review's download
-        // button may want the photographs before Send does; if it took them,
-        // the extraction below reuses that result rather than putting the
-        // reader through the slowest step in the app a second time. Reset on
-        // each pass of the loop, because going Back can change the selection.
-        extractedImages = null;
-        decision = await askReview(digest, chosenImages.length, onProgress =>
-          getExtractedImages(signals, chosenImages, onProgress),
-          { paymentDue: mustPayForAnalysis() });
+        decision = await askReview(digest, { paymentDue: mustPayForAnalysis() });
         if (decision !== REVIEW_BACK) break;
       }
     } catch (error) {
@@ -2186,8 +2090,7 @@
     // both are reasons it is not one line earlier: the archive has parsed, so
     // nobody is charged for a file that turns out to be unusable; and the
     // review has been agreed, so nobody is charged before seeing exactly what
-    // will be sent. It also sits ahead of the photo decode below — the
-    // slowest thing this app does — so declining costs no wasted work.
+    // will be sent.
     //
     // Nothing is persisted above this point, so declining leaves the browser
     // exactly as it was.
@@ -2199,51 +2102,18 @@
 
     applyReviewDecision(digest, decision);
 
-    let images = [];
-    if (decision.includeImages && chosenImages.length) {
-      try {
-        // Decoding and re-encoding is the slowest client-side step by a wide
-        // margin, so it gets its own slice of the bar rather than appearing
-        // as a stall at the end. Only reached once the reader has agreed to
-        // send photos at all, so declining them upstream skips this outright
-        // rather than doing the work and then discarding it.
-        images = await getExtractedImages(signals, chosenImages, (done, total) => {
-          setProgress(80 + Math.round((done / Math.max(1, total)) * 15),
-            'Preparing image ' + done + ' of ' + total + '…');
-        });
-        // extract() can return fewer than it was given — a candidate that
-        // fails to decode is skipped, not substituted. digest.coverage.images
-        // was written from the pre-extraction count because the review had
-        // to show a number before extraction had run; correct it now to the
-        // count that is actually about to be sent, or the digest overstates
-        // its own attachment to the model.
-        digest.coverage.images.attached = images.length;
-      } catch (error) {
-        showUploadError((error && error.message) || 'Could not prepare your photos.');
-        return;
-      }
-    } else {
-      digest.coverage.images.included = false;
-      digest.coverage.images.attached = 0;
-    }
-
     state.digest = digest;
     // A Google or Facebook read stashed by an earlier report's own rerun
     // popout belongs to that report, not this fresh upload — see
     // pendingDataSourceReads' own declaration.
     pendingDataSourceReads = {};
-    // The images are deliberately not persisted: a dozen JPEGs would blow the
-    // localStorage quota, and keeping the user's photographs on disk is not
-    // something to do as a side effect. A retry after a reload runs on the
-    // digest alone.
-    state.images = images;
-    // Kept for the same reason and on the same terms — see state.signals —
-    // so "Re-run analysis with additional data" on the report page can add a
-    // Google or Facebook export to this one later in the session without
-    // asking for the Instagram export again.
+    // Kept in memory only, and only for as long as this page lives — see
+    // state.signals — so "Add / change data & re-run analysis" on the report
+    // page can add a Google or Facebook export to this one later in the
+    // session without asking for the Instagram export again.
     state.signals = signals;
     writeDigest(digest);
-    await runAnalysis(digest, images, uploadAuth);
+    await runAnalysis(digest, uploadAuth);
   }
 
   // The per-row "Load data" button in the confidence card's sources
@@ -2390,7 +2260,7 @@
         try {
           if (source === 'instagram') {
             added.instagram = await IG.readExports(files, {
-              includeMessages: true, includeImages: true,
+              includeMessages: true,
               onProgress: p => setSourceProgress(source,
                 Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
             });
@@ -2553,36 +2423,23 @@
 
     // Present only in the same session as the upload — either the original
     // one, or a fresh Instagram export just read by askDataSources above.
-    // With it, the digest is rebuilt from the archive and can carry
-    // photographs; without it, the stored digest is reviewed as a copy,
-    // merged with whatever Google or Facebook data this call was handed.
+    // With it the digest is rebuilt from the archive; without it, the stored
+    // digest is reviewed as a copy, merged with whatever Google or Facebook
+    // data this call was handed.
+    //
+    // The two used to differ in more than that: a rebuild carried photographs
+    // and a merge could not, which is why the review had a row explaining
+    // that photos "cannot be included when adding data to a saved report".
+    // Nothing sends photographs now, so the two paths produce the same kind
+    // of digest and that row is gone with them.
     const signals = state.signals;
     let digest;
-    let chosenImages = [];
-    let extractedImages = null;
-    const getExtractedImages = async (forSignals, forChosen, onProgress) => {
-      if (extractedImages) return extractedImages;
-      extractedImages = await Images.extract(forSignals, forChosen, onProgress || function () {});
-      return extractedImages;
-    };
 
-    if (signals && !alreadyUnlocked) {
-      chosenImages = Images.select(signals, { count: Digest.IMAGES });
-      digest = Digest.build(signals, {
-        includeMessages: true, includeImages: true, imageCount: chosenImages.length,
-      });
-    } else if (signals) {
-      // alreadyUnlocked: this rerun is about to bundle into the paid call
-      // below (see the branch after the review), and no premium-adjacent
-      // call anywhere in this app ever carries photographs — see
-      // collectExtraDataForPremium. Built without images from the start
-      // rather than offered in the review and silently dropped after.
-      digest = Digest.build(signals, { includeMessages: true, includeImages: false, imageCount: 0 });
+    if (signals) {
+      digest = Digest.build(signals, { includeMessages: true });
     } else if (state.digest) {
       digest = JSON.parse(JSON.stringify(state.digest));
       if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements);
-      digest.coverage.images.included = false;
-      digest.coverage.images.attached = 0;
     } else {
       // No archive in memory and no stored digest to merge into — there is
       // nothing to send. Reached when the digest went missing on its own
@@ -2601,9 +2458,8 @@
 
     let decision;
     try {
-      decision = await askReview(digest, chosenImages.length, onProgress =>
-        getExtractedImages(signals, chosenImages, onProgress),
-        { photosUnavailable: !signals || alreadyUnlocked, paymentDue: alreadyUnlocked || mustPayForAnalysis() });
+      decision = await askReview(digest,
+        { paymentDue: alreadyUnlocked || mustPayForAnalysis() });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -2635,33 +2491,15 @@
       return;
     }
 
-    // Money last, in the same place the first upload asks: after the review,
-    // before the photo decode. Declining costs nothing — the report and
-    // digest the reader arrived with are untouched.
+    // Money last, in the same place the first upload asks: after the review.
+    // Declining costs nothing — the report and digest the reader arrived with
+    // are untouched.
     const auth = await authoriseAnalysis();
     if (auth === false) { flash('#profile-alert', TEXT.analysisDeclined); return; }
 
     applyReviewDecision(digest, decision);
 
-    let images = [];
-    if (decision.includeImages && chosenImages.length) {
-      try {
-        images = await getExtractedImages(signals, chosenImages, (done, total) => {
-          setProgress(80 + Math.round((done / Math.max(1, total)) * 15),
-            'Preparing image ' + done + ' of ' + total + '…');
-        });
-        digest.coverage.images.attached = images.length;
-      } catch (error) {
-        flash('#profile-alert', (error && error.message) || 'Could not prepare your photos.');
-        return;
-      }
-    } else {
-      digest.coverage.images.included = false;
-      digest.coverage.images.attached = 0;
-    }
-
     state.digest = digest;
-    state.images = images;
     writeDigest(digest);
     // Whatever was pending is now either committed into digest above or
     // superseded by it — see pendingDataSourceReads' own declaration.
@@ -2673,7 +2511,7 @@
     // That receipt in psycheai_unlock is untouched by this call, so the paid
     // cards still offer "Get the sections you paid for" afterwards, now
     // against this rerun's digest, rather than losing the payment.
-    await runAnalysis(digest, images, auth);
+    await runAnalysis(digest, auth);
   }
 
   // The waiting screen speaks as the product, not as whichever model the
@@ -2683,14 +2521,12 @@
     return 'PsycheAI';
   }
 
-  async function runAnalysis(digest, images, auth) {
-    const sent = (images || []).length;
+  async function runAnalysis(digest, auth) {
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
-      'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary' +
-      (sent ? ' and ' + sent + ' of your photos were' : ' was') + ' sent for analysis. ' +
-      'It usually takes up to three minutes for the personality analysis to be completed. ' +
-      'Please be patient.';
+      'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
+      'analysis. It usually takes up to three minutes for the personality analysis to be ' +
+      'completed. Please be patient.';
     startElapsed('Analysing');
     show('working');
 
@@ -2701,7 +2537,7 @@
     // same guard runPremiumAnalysis already carries for the same reason.
     guardUnload(true);
     try {
-      const result = await LLM.analyseProfile(digest, images, auth || undefined);
+      const result = await LLM.analyseProfile(digest, auth || undefined);
       const payload = await Card.encodeCard(result.data.card);
       state.profile = {
         report: result.data,
@@ -2853,6 +2689,33 @@
       '</div>';
   }
 
+  // The trajectory chip beside an interest or a value: how the thing has moved
+  // across the span of the data, not whether it is there. Rendered as its own
+  // pill rather than folded into the intensity one — they answer different
+  // questions ("how much" against "still?") and a reader scanning for the
+  // second should not have to parse the first. Dormant and declining get their
+  // own colour, because those are the two the reader is most likely to want to
+  // argue with, and burying them would be the whole point missed.
+  //
+  // Silent when the model returns nothing, which is what an old report saved
+  // before these fields existed looks like — see TRAJECTORIES in prompts.js.
+  function trajectoryPill(item) {
+    const trajectory = String((item && item.trajectory) || '').trim();
+    if (!trajectory) return '';
+    const year = String((item && item.lastSeen) || '').trim();
+    const label = TEXT.trajectoryLabels[trajectory] || trajectory;
+    // The year is only worth showing where it adds something the word does
+    // not. "Structural, last seen 2025" is noise; "Dormant since 2019" is the
+    // finding.
+    const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
+    const dated = stale && /^\d{4}$/.test(year);
+    const text = dated ? label + ' · ' + year : label;
+    // The tooltip only where there is a year to explain — a bare "Throughout"
+    // needs no gloss, and a title on every chip would be noise on hover.
+    return '<span class="pill pill-traj pill-traj-' + esc(trajectory) + '"' +
+      (dated ? ' title="' + esc(TEXT.trajectoryNote) + '"' : '') + '>' + esc(text) + '</span>';
+  }
+
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
     // Every section of the report body is a disclosure; sectionHead's other
@@ -2922,7 +2785,8 @@
     if ((report.interests || []).length) {
       html += '<div class="tile-grid">' + report.interests.map(item =>
         '<div class="tile tile-' + esc(item.intensity) + '">' +
-        '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span></h4>' +
+        '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span>' +
+        trajectoryPill(item) + '</h4>' +
         '<p>' + esc(item.detail) + '</p>' +
         '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
     } else {
@@ -2937,7 +2801,8 @@
       '<h3>' + esc(TEXT.values) + '</h3>';
     html += (report.values || []).length
       ? '<div class="tile-grid">' + report.values.map(item =>
-        '<div class="tile"><h4>' + esc(item.value) + '</h4><p>' + esc(item.detail) + '</p>' +
+        '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
+        '<p>' + esc(item.detail) + '</p>' +
         '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
       : '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
 
@@ -3858,15 +3723,13 @@
 
     // Payment is unconditionally the next step here — this review sits inside
     // the S$1.99 unlock itself, never reached without one due.
-    const decision = await askReview(enriched, 0, null, { photosUnavailable: true, paymentDue: true });
+    const decision = await askReview(enriched, { paymentDue: true });
     // Escape or Back at the review drops the addition rather than the unlock:
     // they have seen what the extra data contains and declined to send it, so
     // the paid call proceeds on the digest it would have used anyway.
     if (!decision || decision === REVIEW_BACK) return current;
 
     applyReviewDecision(enriched, decision);
-    enriched.coverage.images.included = false;
-    enriched.coverage.images.attached = 0;
     enriched.__addedSupplements = supplements;
     return enriched;
   }
@@ -3964,9 +3827,7 @@
       // instead delivers nothing yet and the retry below covers both.
       if (needsFreeRefresh) {
         premiumStatus(TEXT.premiumRefreshingFree);
-        // No images: the unlock path never holds the archive open, which is
-        // why collectExtraDataForPremium marks photographs unavailable.
-        const refreshed = await LLM.analyseProfile(paidDigest, [], bundledAuth(auth));
+        const refreshed = await LLM.analyseProfile(paidDigest, bundledAuth(auth));
 
         // Committed the moment the call comes back, before the paid sections
         // are even asked for. The extra data has bought something now — this
@@ -4468,7 +4329,6 @@
     store.clearAll();
     state.profile = null;
     state.digest = null;
-    state.images = [];
     state.signals = null;
     show('welcome');
   });

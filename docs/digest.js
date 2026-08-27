@@ -122,10 +122,19 @@
   // — one more sentence of prompt guidance anywhere in this schema would have
   // put the free call over its own reserve. This restores the same ~200-token
   // headroom the reserve is meant to carry.
-  const FIXED_INPUT_TOKENS = 16800;
-
-  // One 768px image is one 768x768 tile.
-  const IMAGE_TOKENS = 258;
+  //
+  // Raised to 17,800 for two additions to PROFILE_SYSTEM that arrived
+  // together: the ranked evidence ladder, which consolidates weighting rules
+  // that were scattered through the prompt as prose and adds the
+  // state-the-count rule; and the temporal section, which tells the model the
+  // captions are dated and defines the six trajectories that `interests` and
+  // `values` now carry. About 800 tokens between them, measured at 17,594.
+  //
+  // Worth noting against the drop below it: the same commit removed the
+  // photographs, which freed 3,612 tokens of image reserve. So the digest
+  // ceiling still went *up* by roughly 9,800 characters on net, even after
+  // paying for the longer prompt.
+  const FIXED_INPUT_TOKENS = 17800;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to
@@ -144,18 +153,36 @@
    * allowed to, rather than holding on average and quietly breaking on the
    * accounts that give it the most to chew on.
    */
-  function charBudget(costCap, imageCount) {
+  function charBudget(costCap) {
     const worstOutputCost = MAX_OUTPUT_TOKENS * PRICING.outputPerToken;
     const inputTokens = (costCap - worstOutputCost) / PRICING.inputPerToken;
-    const forDigest = inputTokens - FIXED_INPUT_TOKENS - (imageCount || 0) * IMAGE_TOKENS;
+    const forDigest = inputTokens - FIXED_INPUT_TOKENS;
     return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
   }
 
   const COST_CAP = 0.25;
 
-  // How many photographs a run reserves room for. One number, because there
-  // is one kind of run.
-  const IMAGES = 14;
+  // Photographs used to be part of a run: fourteen of the reader's own stills,
+  // decoded and downscaled in the browser and sent alongside the digest. They
+  // are gone, and the reasoning is worth keeping because it was a real trade.
+  //
+  // They were never in more than one report per reader. The paid call has
+  // always refused them (see PREMIUM_SYSTEM), and a re-run drops them whenever
+  // the Instagram archive is no longer in memory — which is every re-run after
+  // a reload, since the archive is deliberately never written to disk. So the
+  // report most readers ended up holding had no photographs in it either way,
+  // and the first one differed from every later one in a way nobody could see.
+  //
+  // Against that: the prompt itself ranked them "the weakest evidence per item
+  // and the easiest to over-read", they carried the strictest safety rules in
+  // the whole file because other people appear in them without consenting to
+  // any of this, and they were the slowest step in the app by a wide margin.
+  //
+  // Removing them buys the text budget back. IMAGE_TOKENS * 14 = 3,612 tokens
+  // reserved for pictures becomes 12,642 more characters of captions, searches
+  // and messages — evidence the prompt ranks higher and which every run gets,
+  // not just the first. That is the trade: fewer pictures, more words, and one
+  // kind of report instead of two.
 
   // One digest, one ceiling, derived from the price rather than typed.
   //
@@ -174,7 +201,7 @@
   // path no reader can reach while the real one had 28% to spare. So there is
   // one budget now. Restoring a paid deeper tier means adding caps and a way
   // to choose them, which was always the honest version of that promise.
-  LIMITS.totalChars = charBudget(COST_CAP, IMAGES);
+  LIMITS.totalChars = charBudget(COST_CAP);
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -192,25 +219,69 @@
   // The floor is 4 characters rather than 1: "ok", "lol", "yes" carry no
   // signal the model can read anything from, and dropping them means the
   // limited slots above go to text that actually says something.
+  //
+  // Accepts either bare strings or `{ text, ts }` records. Instagram captions
+  // are the latter, and each one comes out prefixed with the year it was
+  // written — "[2019] finally ran the whole thing without stopping". Four
+  // extra visible characters and a space, which across the full 560-caption
+  // sample is under 4,000 characters, about a sixth of a cent of input. That
+  // prefix is what lets the report say *when* rather than only *whether*.
+  //
+  // **Dating the records exposed a bug in the recency preference itself.**
+  // This used to read "the most recent" as `cleaned.slice(-recentCount)` — the
+  // tail of the array, on the assumption that the array ran oldest-first. A
+  // real Instagram export does not: `posts_1.json` is newest-first, so the
+  // tail was the *oldest* half and the sampler had been doing the exact
+  // opposite of what its own comment claimed. Nothing caught it because
+  // nothing downstream knew when any caption was written; the years made it
+  // visible in one run.
+  //
+  // So the order is now established here rather than inherited. Records with
+  // timestamps sort oldest-first; bare strings all carry ts 0 and a stable
+  // sort leaves them in whatever order the parser produced, which is the
+  // existing behaviour for comments, messages and the supplementary sources.
   function sampleTexts(texts, limit, maxChars) {
     const cleaned = [];
     const seen = new Set();
-    for (const text of texts) {
-      const value = trim(text, maxChars);
+    for (const item of texts) {
+      const dated = Boolean(item) && typeof item === 'object';
+      const value = trim(dated ? item.text : item, maxChars);
       if (value.length < 4 || seen.has(value)) continue;
       seen.add(value);
-      cleaned.push(value);
+      const ts = dated && Number.isFinite(item.ts) && item.ts > 0 ? item.ts : 0;
+      const year = dated ? yearOf(item.ts) : '';
+      cleaned.push({ ts, display: year ? '[' + year + '] ' + value : value });
     }
-    if (cleaned.length <= limit) return cleaned;
+    // Stable, so the all-zero case is a no-op rather than a reshuffle.
+    cleaned.sort((a, b) => a.ts - b.ts);
+    if (cleaned.length <= limit) return cleaned.map(c => c.display);
 
+    // Now genuinely the most recent, because the line above says which end
+    // that is instead of guessing.
     const recentCount = Math.ceil(limit / 2);
-    const chosen = new Set(cleaned.slice(-recentCount));
-    const byLength = cleaned.slice(0, -recentCount).sort((a, b) => b.length - a.length);
-    for (const text of byLength) {
+    const chosen = new Set(cleaned.slice(-recentCount).map(c => c.display));
+    const byLength = cleaned.slice(0, -recentCount)
+      .slice().sort((a, b) => b.display.length - a.display.length);
+    for (const item of byLength) {
       if (chosen.size >= limit) break;
-      chosen.add(text);
+      chosen.add(item.display);
     }
-    return Array.from(chosen);
+    // Filtered back through `cleaned` rather than returned as the Set was
+    // built. The two halves are picked by different rules — the recent tail,
+    // then the longest of what is left — so a Set built from them lands
+    // interleaved, and a sequence the model is asked to read a trajectory out
+    // of should not arrive shuffled. Filtering restores one chronological run.
+    return cleaned.filter(c => chosen.has(c.display)).map(c => c.display);
+  }
+
+  // The year a caption was written, as a string, or '' when the record carried
+  // no usable timestamp. Guarded against the epoch-zero and far-future values
+  // that turn up in real exports rather than trusting whatever Date returns.
+  function yearOf(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '';
+    const year = new Date(seconds * 1000).getFullYear();
+    if (!Number.isFinite(year) || year < 2005 || year > 2100) return '';
+    return String(year);
   }
 
   // Follows are sampled evenly across the whole list rather than taking the
@@ -321,7 +392,7 @@
 
   /**
    * @param {object} signals  output of PsycheInstagram.readExports
-   * @param {object} options  { includeMessages, includeImages, imageCount }
+   * @param {object} options  { includeMessages }
    */
   function build(signals, options) {
     const opts = options || {};
@@ -399,16 +470,16 @@
         filesSeen: signals.files.total,
         sections: Object.keys(signals.files.byRoute),
         directMessagesIncluded: !!opts.includeMessages,
-        // The pictures ride alongside the digest rather than inside it, but
-        // the model needs to know whether it is looking at an account it can
-        // see or only one it can count.
-        images: {
-          included: !!opts.includeImages,
-          attached: opts.imageCount || 0,
-          availableStills: (signals.mediaRefs || []).length,
-          note: 'Attached images are a spread across the whole account history, not the latest few. ' +
-            'They are downscaled stills; videos are never sent.',
-        },
+        // `images` used to sit here, saying whether photographs rode alongside
+        // this digest and how many. Nothing sends them any more — see the note
+        // above COST_CAP — so the field would only ever have reported zero,
+        // and a permanently-zero count is worse than no field: it reads as an
+        // account with no pictures rather than as a product that stopped
+        // asking for them. How many stills the archive held is still counted
+        // below, under `stillsInArchive`, because it is a real fact about the
+        // account and the model can use it to judge how visual a life this is
+        // without seeing any of it.
+        stillsInArchive: (signals.mediaRefs || []).length,
         // Written from what the numbers below actually say rather than
         // asserting "this is a subset": on an ordinary account nothing is
         // sampled away, and a note claiming otherwise would have the model
@@ -784,7 +855,7 @@
 
   root.PsycheDigest = {
     build, addSupplements,
-    LIMITS, IMAGES, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
+    LIMITS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,

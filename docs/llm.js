@@ -55,8 +55,8 @@
   // `{ paymentIntentId }` or `{ promoCode }`. Absent, this is the free run
   // every reader gets; present, it is a purchased re-run that the server
   // verifies and that does not draw on the daily free ceiling.
-  const analyseProfile = (digest, images, auth) =>
-    post('/api/analyse', Object.assign({ digest, images: images || [] }, auth || {}));
+  const analyseProfile = (digest, auth) =>
+    post('/api/analyse', Object.assign({ digest }, auth || {}));
   const analyseCompatibility = (a, b, mode, stance) => post('/api/compatibility', { a, b, mode, stance });
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds

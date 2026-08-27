@@ -1120,11 +1120,29 @@
       out.fineprint(enneagram.caveat);
     }
 
+  // Page/PDF parity for the trajectory chip — see trajectoryPill in app.js.
+  // The PDF's tile takes one pill, so the two are joined rather than stacked:
+  // "core · Dormant since 2019". Falls back to the intensity alone on a report
+  // written before these fields existed.
+  const trajectoryTag = item => {
+    const trajectory = String((item && item.trajectory) || '').trim();
+    if (!trajectory) return '';
+    const year = String((item && item.lastSeen) || '').trim();
+    const label = (TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory;
+    const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
+    return stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
+  };
+  const tilePill = (item, intensity) => {
+    const tag = trajectoryTag(item);
+    if (!intensity) return tag;
+    return tag ? intensity + ' · ' + tag : intensity;
+  };
+
     // 5. Interests.
     out.sectionTitle(TEXT.interests);
     const interests = source.interests || [];
     if (interests.length) {
-      for (const item of interests) out.tile(item.name, item.intensity, item.detail, item.evidence);
+      for (const item of interests) out.tile(item.name, tilePill(item, item.intensity), item.detail, item.evidence);
     } else {
       out.muted(TEXT.interestsEmpty);
     }
@@ -1134,7 +1152,7 @@
     out.h3(TEXT.values);
     const values = source.values || [];
     if (values.length) {
-      for (const item of values) out.tile(item.value, '', item.detail, item.evidence);
+      for (const item of values) out.tile(item.value, tilePill(item, ''), item.detail, item.evidence);
     } else {
       out.muted(TEXT.valuesEmpty);
     }

@@ -126,24 +126,32 @@
     {
       "name": "Distance running",
       "intensity": "core",
+      "trajectory": "structural",
+      "lastSeen": "2025",
       "detail": "Not a phase — four consecutive years of training blocks with the same structure, and the vocabulary of someone who has read about it as well as done it.",
       "evidence": "63 posts tagged at three trailheads, recurring 'week n of 12' captions"
     },
     {
       "name": "Cooking for people",
       "intensity": "core",
+      "trajectory": "dormant",
+      "lastSeen": "2019",
       "detail": "Almost always for others and almost never a photograph of the finished plate alone — the table is in shot.",
       "evidence": "41 posts, 38 of which include other people or multiple place settings"
     },
     {
       "name": "Reading",
       "intensity": "strong",
+      "trajectory": "stable",
+      "lastSeen": "2024",
       "detail": "Wide rather than deep, and skewed towards non-fiction about how things work.",
       "evidence": "14 distinct titles named in captions, none repeated"
     },
     {
       "name": "Live music",
       "intensity": "strong",
+      "trajectory": "phasic",
+      "lastSeen": "2021",
       "detail": "Concentrated in summer and almost entirely with the same group.",
       "evidence": "19 posts, 17 of them June–August"
     }
@@ -159,16 +167,22 @@
   "values": [
     {
       "value": "Reliability",
+      "trajectory": "structural",
+      "lastSeen": "2025",
       "detail": "You treat a commitment as binding in a way most accounts do not show. The follow-through rate on things you announce is the clearest number in this report.",
       "evidence": "41 of 47 announced plans have a matching completion post"
     },
     {
       "value": "Craft",
+      "trajectory": "declining",
+      "lastSeen": "2022",
       "detail": "You care how a thing is done, not only that it got done — visible in the way you describe other people's work as much as your own.",
       "evidence": "Comments frequently name a specific detail rather than praising generally"
     },
     {
       "value": "Belonging",
+      "trajectory": "stable",
+      "lastSeen": "2024",
       "detail": "Nearly everything you publish is about a group rather than an individual, yours included.",
       "evidence": "71% of posts contain more than one person"
     }
