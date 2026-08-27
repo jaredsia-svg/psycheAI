@@ -1236,7 +1236,59 @@
     sampleReport = null;
   });
 
+  // ---- the illustrated Instagram guide ----
+  //
+  // The same shape as the sample dialog above and for the same reasons, so the
+  // two share their markup classes and their history handling. Its content is
+  // static markup in index.html rather than built here: nothing in it depends
+  // on the reader's own data, so there is nothing to render and nothing to
+  // clear on close.
+  let guideHistoryEntry = false;
+  const guideDialog = () => $('#guide-dialog');
+
+  function showGuide() {
+    const dialog = guideDialog();
+    if (dialog.open) return;
+    dialog.querySelector('.guide-body').scrollTop = 0;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    history.pushState({ psycheaiGuide: true }, '');
+    guideHistoryEntry = true;
+  }
+
+  function closeGuide() {
+    const dialog = guideDialog();
+    if (dialog.open) dialog.close();
+    else if (dialog.hasAttribute('open')) dialog.removeAttribute('open');
+  }
+
+  guideDialog().addEventListener('close', () => {
+    // Same bookkeeping the sample dialog does: give back the entry that was
+    // pushed for it, unless this close *came* from a Back press, in which case
+    // the entry is already gone and popping again would take the reader off a
+    // page they were not trying to leave.
+    if (guideHistoryEntry && !closingGuideFromHistory) history.back();
+    guideHistoryEntry = false;
+  });
+
+  $('#guide-open').addEventListener('click', showGuide);
+  $('#guide-close').addEventListener('click', closeGuide);
+
+  let closingGuideFromHistory = false;
+
   window.addEventListener('popstate', () => {
+    // The guide is checked before the sample because it is the one that can be
+    // open on top: it is reachable from the welcome page, where the sample is
+    // reachable too, and whichever was opened last is the one a Back press is
+    // aimed at. Both are guarded on being open at all, so the order only
+    // decides which closes first when — impossibly, today — both are.
+    if (guideDialog().open || guideDialog().hasAttribute('open')) {
+      closingGuideFromHistory = true;
+      guideHistoryEntry = false;
+      closeGuide();
+      closingGuideFromHistory = false;
+      return;
+    }
     if (sampleDialog().open || sampleDialog().hasAttribute('open')) {
       closingFromHistory = true;
       sampleHistoryEntry = false;

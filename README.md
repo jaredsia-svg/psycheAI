@@ -2204,6 +2204,32 @@ inherit whatever order the parser produced, which also makes the output one chro
 of two interleaved halves. A check builds the same captions in both orders and asserts the sample is
 now identical either way; under the old code the two differed completely.
 
+### The step-by-step guide
+
+The numbered list in "How do I get my Instagram data?" is the quick version, and it stays exactly as
+it was — short, scannable, enough for somebody who has done this before. **Show me step by step**
+opens the same journey drawn out: six steps, each paired with a panel showing the screen it is
+talking about and where the thing to tap sits on it. A dialog rather than a second disclosure inside
+the card, because it is somewhere you go and come back from; it reuses `.sample-dialog`'s frame,
+head and close cross, and the same Back-to-dismiss history handling, since it is the same kind of
+thing as the sample report.
+
+The panels are currently **schematic, drawn in CSS and inline SVG** rather than screenshots. Three
+reasons stood behind that: a capture of Meta's UI goes stale silently the next time they move a menu,
+where a sketch reads as a sketch and ages honestly; drawn panels inherit the reader's own theme
+instead of pasting a light-mode phone into a dark page; and there are no image assets to ship or keep
+in step.
+
+**This is a placeholder.** The intended treatment is real Instagram screenshots, from a design file
+that could not be reached from the build environment — `claude.ai/design` sits behind a Cloudflare
+challenge, so there is no server-side path to it. Each step has a single `.guide-shot` slot, so
+swapping the sketch for an image per step is contained. The trade above is the argument for keeping
+the drawn version underneath if the screenshots ever go stale, not an argument against replacing it.
+
+The format step is the one that matters most and is the only one marked as a warning: it reuses the
+exact HTML-versus-JSON trap the card itself carries rather than restating it in words that could
+drift. Choosing HTML costs a reader the whole multi-hour wait, twice.
+
 ### Backing out of an upload
 
 The dropzone sits near the foot of a long welcome page. Uploading covers it with the working screen
@@ -3427,7 +3453,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1009 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1028 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

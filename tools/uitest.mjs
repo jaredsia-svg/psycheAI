@@ -731,6 +731,91 @@ try {
   // links with it — a count is the wrong shape for "no fake links", since it
   // fails on every honest addition and would still pass if a genuine link were
   // swapped for a dead one.
+  // ---- the illustrated guide behind "Show me step by step" ----
+  //
+  // The numbered list in the card is the quick version and stays exactly as it
+  // was; this is the same journey drawn out for a reader who wants to see the
+  // screens rather than read a description of them. Held as a separate dialog
+  // rather than a disclosure inside the card because it is somewhere you go
+  // and come back from.
+  check('the how-to card offers a step-by-step guide button',
+    (await page.locator('#guide-open').isVisible()) &&
+    (await page.evaluate(() => document.querySelector('.help-card').contains(
+      document.querySelector('#guide-open')))));
+  check('and the guide is shut until it is asked for',
+    !(await page.evaluate(() => document.querySelector('#guide-dialog').open)));
+  await page.click('#guide-open');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  check('pressing it opens the guide over the page rather than navigating away',
+    (await page.locator('#guide-dialog').isVisible()) &&
+    (await page.locator('#view-welcome').isVisible()));
+  check('the guide walks all six steps of the real journey',
+    (await page.locator('#guide-dialog .guide-step').count()) === 6,
+    (await page.locator('#guide-dialog .guide-step').count()) + ' steps');
+  const guideText = await page.locator('#guide-dialog').innerText();
+  // The settings that actually matter, each named in the guide. These are the
+  // four a reader can get wrong in a way that costs them the whole wait.
+  for (const [what, needle] of [
+    ['the menu path', /Accounts Centre/],
+    ['creating the export', /Create Export/i],
+    ['the date range', /All time/],
+    ['the format', /JSON/],
+    ['the media quality', /[Ll]ower quality/],
+    ['what arrives afterwards', /email/i],
+  ]) {
+    check('the guide covers ' + what, needle.test(guideText), guideText.slice(0, 200));
+  }
+  // Every step is drawn, not just described — the sketch is the whole reason
+  // this exists rather than being more paragraphs in the card.
+  check('every step carries a sketch of the screen it is talking about',
+    (await page.locator('#guide-dialog .guide-shot .shot-frame').count()) === 6);
+  // A sketch nobody can see is a decoration. Each carries its own description,
+  // and the frame itself is role="img" so a screen reader reads that label
+  // instead of walking a pile of meaningless rows.
+  check('and each sketch describes itself to a screen reader',
+    await page.evaluate(() => {
+      const shots = [...document.querySelectorAll('#guide-dialog .guide-shot')];
+      return shots.length === 6 &&
+        shots.every(s => s.getAttribute('role') === 'img' &&
+          (s.getAttribute('aria-label') || '').length > 20);
+    }));
+  // Drawn rather than screenshotted: Meta's UI is theirs, a capture goes stale
+  // silently, and a light-mode screenshot pasted into a dark page looks wrong.
+  check('the sketches are drawn, not screenshots of somebody else\'s app',
+    (await page.locator('#guide-dialog img').count()) === 0 &&
+    !/data:image|\.png|\.jpg/.test(await page.evaluate(() =>
+      document.querySelector('#guide-dialog').innerHTML)));
+  // The one step that costs a reader hours if they get it wrong reuses the
+  // same HTML/JSON trap the card itself carries, rather than restating it in
+  // words that could drift from it.
+  check('the format step reuses the same HTML-versus-JSON trap the card shows',
+    (await page.locator('#guide-dialog .format-trap .format-trap-pill').allInnerTexts())
+      .map(t => t.trim()).join('|') === 'HTML|JSON');
+  check('and that step is the only one marked as a warning',
+    (await page.locator('#guide-dialog .guide-step.is-warning').count()) === 1);
+  // Back is how people dismiss something covering the page on a phone. Without
+  // an entry to pop they would leave the site instead — the same reasoning the
+  // sample dialog's own history handling exists for.
+  const historyBeforeGuide = await page.evaluate(() => history.length);
+  await page.goBack();
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  check('Back closes the guide instead of leaving the site',
+    !(await page.evaluate(() => document.querySelector('#guide-dialog').open)) &&
+    (await page.locator('#view-welcome').isVisible()));
+  check('and leaves no history entry stranded behind it',
+    (await page.evaluate(() => history.length)) <= historyBeforeGuide,
+    'was ' + historyBeforeGuide + ', now ' + (await page.evaluate(() => history.length)));
+  // Reopening has to work, and has to start at the top rather than wherever
+  // the reader had scrolled to last time.
+  await page.click('#guide-open');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  check('the guide reopens cleanly, scrolled back to the first step',
+    (await page.evaluate(() => document.querySelector('.guide-body').scrollTop)) === 0);
+  await page.click('#guide-close');
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  check('and the cross closes it too',
+    !(await page.evaluate(() => document.querySelector('#guide-dialog').open)));
+
   check('the underline is not the one links use, and every link here is a real destination',
     await page.evaluate(() => {
       const probe = document.createElement('a');
