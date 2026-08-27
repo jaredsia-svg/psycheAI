@@ -2256,9 +2256,11 @@ laptop and only looked correct on a phone, where the content happened to fill th
 
 ### The step-by-step guide
 
-"Show me step by step" in the how-to card opens the export journey as real screenshots of the real
+"See illustration" in the how-to card opens the export journey as real screenshots of the real
 screens: seven captures across four steps, each with a caption saying what to tap. The numbered list
-in the card stays as it was — that is the quick version for somebody who has done this before.
+in the card stays as it was — that is the quick version for somebody who has done this before. The
+button was "Show me step by step", which described the numbered list it sits beside as much as the
+thing it opens; what is actually behind it is pictures.
 
 **Four steps, numbered 1 to 4.** Date range, format and media quality are three fields on one
 "Confirm your export" screen, so they are three bullets inside step 3, not steps of their own. They
@@ -2375,6 +2377,16 @@ the paragraph came before the picture but the picture came before the settings i
 order is now: what to change, then what it looks like changed. The check walks `compareDocumentPosition`
 between the settings list and the screenshot rather than reading rendered pixel order, so it holds at
 every viewport width the grid reflows to.
+
+**Step 1 says where the deep link actually lands.** It used to say the link "goes straight to the
+right page", which is true and useless — a reader who has just been handed a link expects it to work,
+and the sentence's real job is telling them what to skip if it does not. It names the step instead:
+"The link above brings you to step 2." That is a claim about the guide's own numbering rather than
+about Instagram, and nothing in the markup connects the sentence to the step it names, so it would go
+quietly false the next time a step was added or reordered. Two checks hold it: the number has to match
+a step the guide actually has, and that step has to be the one showing the screen the link opens
+(`04-create-export.jpg`). The second is the one that matters — pointing at an existing but wrong step
+is the failure that looks fine.
 
 **The guide ends with a "Start here" button** rather than a sentence pointing at the bottom of the
 page. It closes the dialog and scrolls straight to the upload card, the same way the hero's own
@@ -3623,7 +3635,7 @@ npm test           # 675 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1060 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1062 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

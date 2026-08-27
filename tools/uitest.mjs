@@ -709,7 +709,7 @@ try {
   // links with it — a count is the wrong shape for "no fake links", since it
   // fails on every honest addition and would still pass if a genuine link were
   // swapped for a dead one.
-  // ---- the illustrated guide behind "Show me step by step" ----
+  // ---- the illustrated guide behind "See illustration" ----
   //
   // The numbered list in the card is the quick version and stays exactly as it
   // was; this is the same journey drawn out for a reader who wants to see the
@@ -797,13 +797,39 @@ try {
   check('the three settings are bullets rather than a numbered row each',
     (await page.evaluate(() => getComputedStyle(
       document.querySelector('#guide-dialog .guide-settings')).listStyleType)) === 'disc');
+  // Step 1 tells the reader the deep link skips ahead to step 2, which is a
+  // claim about the guide's own numbering rather than about Instagram — the
+  // kind that goes quietly false the next time a step is added, removed or
+  // reordered, since nothing else in the markup connects the sentence to the
+  // step it names. Pinned to the step the link genuinely lands on: the
+  // accountscenter dyi URL opens the Export your information screen, which is
+  // the first thing step 2 shows.
+  const linkTarget = await page.evaluate(() => {
+    const steps = [...document.querySelectorAll('#guide-dialog .guide-step')];
+    const said = /brings you to step (\d+)/i.exec(steps[0].innerText);
+    if (!said) return { said: null };
+    const n = Number(said[1]);
+    const target = steps[n - 1];
+    return {
+      said: n,
+      exists: Boolean(target),
+      shows: target ? Boolean(target.querySelector('img[src*="04-create-export"]')) : false,
+      number: target ? (target.querySelector('.guide-num') || {}).textContent : null,
+    };
+  });
+  check('step 1\'s "brings you to step 2" points at a step the guide actually has',
+    linkTarget.said !== null && linkTarget.exists &&
+    String(linkTarget.number).trim() === String(linkTarget.said),
+    JSON.stringify(linkTarget));
+  check('and that step is the one showing the screen the link opens',
+    linkTarget.shows, JSON.stringify(linkTarget));
   const guideText = await page.locator('#guide-dialog').innerText();
   // The settings that actually matter, each named in the guide. These are the
   // ones a reader can get wrong in a way that costs them the whole wait.
   for (const [what, needle] of [
     ['the menu path', /Accounts Centre/],
     ['creating the export', /Create export/i],
-    ['picking the Instagram profile', /labelled\s+Instagram/i],
+    ['picking the Instagram profile', /Instagram profile/i],
     ['exporting to the device', /Export to device/i],
     ['the date range', /All time/],
     ['the format', /JSON/],
