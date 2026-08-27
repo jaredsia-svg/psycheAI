@@ -665,18 +665,14 @@ try {
   // labels, which are checked separately below. Left unscoped this asserted
   // the union of both lists, and — because a closed <details> yields empty
   // strings — did so against a row of blanks.
-  // JSON is deliberately not in this list. The format step was redrawn as a
-  // visual trap — a struck-through HTML pill above a ticked JSON one — because
-  // it is the single mistake that costs a reader hours, and a word underlined
-  // in a sentence was not carrying that weight. It has its own checks a few
-  // dozen lines up, which are stricter than a membership test: the pill text,
-  // the line-through, and the aria-label that says the same thing to a screen
-  // reader. This check went stale when that redesign landed and kept asserting
-  // the old shape.
+  // JSON is in this list, but HTML is not: the format step underlines the value
+  // to set, not the value to avoid. Underlining both would mark the mistake the
+  // same as the fix; the "not HTML" wording is what carries the warning; see
+  // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
     ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
-      'Create Export', 'All time', 'lower quality'].join(' | '),
+      'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's and Facebook's menus, and they go
