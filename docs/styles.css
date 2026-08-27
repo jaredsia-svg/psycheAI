@@ -448,7 +448,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   color: var(--accent); border-color: var(--accent); background: var(--accent-soft); outline: none;
 }
 
-/* ---------- the illustrated Instagram guide ---------- */
+/* ---------- the Instagram guide ---------- */
 /* Shares the sample dialog's frame, head and close cross — see .sample-dialog.
    Only what differs is written here. */
 
@@ -462,115 +462,107 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .help-head h2 { margin: 0; flex: 1 1 auto; }
 .help-guide-open { flex: none; padding: .45rem .9rem; font-size: .9rem; }
 
-.guide-lede { margin: 0 0 1.4rem; color: var(--ink-soft); }
+.guide-lede { margin: 0 0 1.5rem; color: var(--ink-soft); }
 .guide-foot {
   margin: 1.6rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line);
   color: var(--ink-soft); font-size: .9rem;
 }
 
-.guide-steps { list-style: none; counter-reset: guide; margin: 0; padding: 0; }
-
-/* Two columns on a laptop — words left, sketch right — and one on a phone,
-   where a 300px-wide sketch beside a paragraph would shrink both to nothing.
-   The number is drawn as a counter rather than an <ol> marker so it can sit in
-   the heading's own line box at the size the rest of the card uses. */
-.guide-step {
-  counter-increment: guide;
-  display: grid; grid-template-columns: 1fr; gap: 1rem;
-  padding: 1.3rem 0; border-top: 1px solid var(--line);
-}
+.guide-steps { list-style: none; margin: 0; padding: 0; }
+.guide-step { padding: 1.4rem 0; border-top: 1px solid var(--line); }
 .guide-step:first-child { border-top: 0; padding-top: 0; }
-.guide-step-text h3 {
-  display: flex; align-items: baseline; gap: .55rem;
-  margin: 0 0 .5rem; font-size: 1.02rem;
+.guide-step > p { margin: 0 0 1rem; }
+.guide-step h3 {
+  display: flex; align-items: baseline; gap: .6rem;
+  margin: 0 0 .55rem; font-size: 1.05rem;
 }
-.guide-step-text h3::before {
-  content: counter(guide);
+/* The step number as its own token rather than an <ol> marker, so it sits in
+   the heading's line box at a size the rest of the dialog agrees with. A span
+   rather than ::before because step 3 covers three of them and reads "3–5". */
+.guide-num, .guide-subnum {
   flex: none; display: grid; place-items: center;
-  width: 1.6rem; height: 1.6rem; border-radius: 999px;
+  min-width: 1.7rem; height: 1.7rem; padding: 0 .4rem; border-radius: 999px;
   background: linear-gradient(100deg, var(--accent), var(--accent-2));
-  color: #fff; font-size: .82rem; font-weight: 700;
+  color: #fff; font-size: .8rem; font-weight: 700;
 }
-.guide-step-text p { margin: 0 0 .5rem; }
-.guide-step-text p:last-child { margin-bottom: 0; }
-.guide-shortcut { font-size: .92rem; }
-
-/* The step that costs a reader the most to get wrong is the only one tinted.
-   Used sparingly on purpose: colour that appears on one step in six is a
-   signal, and colour on all six is wallpaper. */
-.guide-step.is-warning .guide-step-text h3::before {
-  background: var(--danger);
-}
-
-/* ---------- the sketches ---------- */
-/* Schematic mock-ups of Instagram's own screens, drawn rather than captured —
-   see the comment above #guide-dialog in index.html for why. Everything here
-   reads from the theme's own tokens, so the sketch is dark on a dark page. */
-.guide-shot { min-width: 0; }
-.shot-frame {
-  border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
-  background: var(--bg); font-size: .84rem;
-}
-.shot-bar {
-  display: flex; align-items: center; gap: .5rem;
-  padding: .55rem .7rem; background: var(--bg-alt);
-  border-bottom: 1px solid var(--line); font-weight: 600;
-}
-.shot-back { color: var(--ink-soft); font-size: 1.1rem; line-height: 1; }
-.shot-row, .shot-opt {
-  display: flex; align-items: center; gap: .55rem;
-  padding: .55rem .7rem; border-bottom: 1px solid var(--line);
-  color: var(--ink-soft);
-}
-.shot-row:last-child, .shot-opt:last-child { border-bottom: 0; }
-.shot-glyph { flex: none; width: 1.2rem; text-align: center; opacity: .8; }
-.shot-chev { margin-left: auto; color: var(--ink-soft); }
-.shot-tag {
-  margin-left: auto; font-size: .72rem; padding: .05rem .4rem;
-  border: 1px solid var(--line); border-radius: 999px; color: var(--ink-soft);
-}
-
-/* The one row in each sketch the reader is actually looking for. Tinted *and*
-   weighted, not tinted alone: on a small phone screen at this size a colour
-   shift by itself is easy to skim straight past, and colour is the one channel
-   that fails for some readers entirely. */
-.shot-row.is-target, .shot-opt.is-target {
-  background: var(--accent-soft); color: var(--ink); font-weight: 600;
-}
-.shot-radio {
-  flex: none; width: .85rem; height: .85rem; border-radius: 999px;
-  border: 2px solid var(--line);
-}
-.shot-radio.is-on {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 3px var(--accent);
-}
-.shot-cta {
-  margin: .7rem; padding: .5rem; border-radius: 10px; text-align: center;
-  background: linear-gradient(100deg, var(--accent), var(--accent-2));
-  color: #fff; font-weight: 600;
-}
-/* The same flip .btn makes, for the same reason: --accent is a deep purple in
-   the light theme and a pale one in the dark, so white holds on one and washes
-   out on the other. Measured at 2.3:1 against the pale gradient before this. */
 @media (prefers-color-scheme: dark) {
-  .shot-cta { color: var(--bg); }
+  .guide-num, .guide-subnum { color: var(--bg); }
 }
-.shot-note { margin: 0 .7rem .7rem; color: var(--ink-soft); font-size: .78rem; }
-.shot-done, .shot-mail {
-  display: flex; align-items: center; gap: .6rem; padding: .7rem;
+
+/* ---------- the screenshots ---------- */
+/* Real captures of the journey, redacted before shipping — see the comment
+   above #guide-dialog in index.html. Three across where there is room, and a
+   horizontal scroller on a phone: three phone screenshots side by side in a
+   340px column would be 100px each, which is a picture of a screen rather than
+   a readable one. */
+.guide-shots {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(9.5rem, 1fr);
+  gap: .8rem; margin: 0 0 1rem;
+  overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  /* Room for the scrollbar some platforms draw under the row, so it never
+     lands on top of the captions. */
+  padding-bottom: .4rem;
+}
+.guide-shots.is-single { grid-auto-columns: minmax(0, 13rem); justify-content: start; }
+.guide-shot { margin: 0; scroll-snap-align: start; min-width: 0; }
+.guide-shot img {
+  display: block; width: 100%; height: auto; border-radius: 12px;
+  border: 1px solid var(--line);
+  /* The captures are light-mode phone screens. On a dark page a pure white
+     rectangle glares, so it is knocked back a little — enough to sit in the
+     page, not so much that the grey UI rows lose their edges. */
+  background: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .guide-shot img { filter: brightness(.88); }
+}
+.guide-shot figcaption {
+  margin-top: .45rem; font-size: .82rem; line-height: 1.4; color: var(--ink-soft);
+}
+.guide-shot figcaption b { color: var(--ink); font-weight: 600; }
+
+/* ---------- the three settings inside step 3–5 ---------- */
+.guide-settings { list-style: none; margin: 0; padding: 0; }
+.guide-settings > li {
+  padding: .9rem 0; border-top: 1px dashed var(--line);
+}
+.guide-settings > li:first-child { border-top: 0; }
+.guide-settings h4 {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .5rem;
+  margin: 0 0 .35rem; font-size: .98rem;
+}
+.guide-settings p { margin: 0; font-size: .94rem; }
+/* The step that costs a reader hours if they get it wrong is the only one
+   flagged. Used once on purpose: a colour that appears on one row in three is
+   a signal, and on all three is wallpaper. */
+.guide-settings > li.is-warning .guide-subnum { background: var(--danger); }
+.guide-flag {
+  padding: .1rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+  background: var(--danger); color: #fff;
+}
+@media (prefers-color-scheme: dark) {
+  .guide-flag { color: var(--bg); }
+}
+
+/* ---------- what to expect afterwards ---------- */
+.guide-facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: .7rem; margin: 0;
+}
+.guide-facts > div {
+  padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--bg-alt);
+}
+.guide-facts dt {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .05em;
   color: var(--ink-soft);
 }
-.shot-done { border-bottom: 1px solid var(--line); }
-.shot-done-mark {
-  flex: none; display: grid; place-items: center;
-  width: 1.5rem; height: 1.5rem; border-radius: 999px;
-  background: var(--accent-soft); color: var(--accent); font-weight: 700;
-}
-.shot-mail strong { color: var(--ink); }
+.guide-facts dd { margin: .2rem 0 0; font-weight: 600; }
 
 @media (min-width: 620px) {
-  .guide-step { grid-template-columns: minmax(0, 1fr) minmax(0, 15rem); gap: 1.6rem; }
+  .guide-shots { grid-auto-columns: minmax(0, 1fr); overflow-x: visible; }
 }
 
 .sample-dialog-body {

@@ -803,50 +803,85 @@ try {
   check('pressing it opens the guide over the page rather than navigating away',
     (await page.locator('#guide-dialog').isVisible()) &&
     (await page.locator('#view-welcome').isVisible()));
-  check('the guide walks all six steps of the real journey',
-    (await page.locator('#guide-dialog .guide-step').count()) === 6,
-    (await page.locator('#guide-dialog .guide-step').count()) + ' steps');
+  // Four blocks now, not six numbered steps: steps 3, 4 and 5 all happen on
+  // one Instagram screen — "Confirm your export" — so the guide groups them
+  // under one heading with a sub-list, exactly as the screen does. The six
+  // settings are still all named; this checks the shape, and the loop below
+  // checks the content.
+  check('the guide walks the whole journey',
+    (await page.locator('#guide-dialog .guide-step').count()) === 4 &&
+    (await page.locator('#guide-dialog .guide-settings > li').count()) === 3,
+    (await page.locator('#guide-dialog .guide-step').count()) + ' steps, ' +
+    (await page.locator('#guide-dialog .guide-settings > li').count()) + ' settings');
   const guideText = await page.locator('#guide-dialog').innerText();
   // The settings that actually matter, each named in the guide. These are the
-  // four a reader can get wrong in a way that costs them the whole wait.
+  // ones a reader can get wrong in a way that costs them the whole wait.
   for (const [what, needle] of [
     ['the menu path', /Accounts Centre/],
-    ['creating the export', /Create Export/i],
+    ['creating the export', /Create export/i],
+    ['picking the Instagram profile', /Instagram badge/i],
+    ['exporting to the device', /Export to device/i],
     ['the date range', /All time/],
     ['the format', /JSON/],
     ['the media quality', /[Ll]ower quality/],
     ['what arrives afterwards', /email/i],
+    ['how long the link lasts', /4 days/],
   ]) {
     check('the guide covers ' + what, needle.test(guideText), guideText.slice(0, 200));
   }
-  // Every step is drawn, not just described — the sketch is the whole reason
-  // this exists rather than being more paragraphs in the card.
-  check('every step carries a sketch of the screen it is talking about',
-    (await page.locator('#guide-dialog .guide-shot .shot-frame').count()) === 6);
-  // A sketch nobody can see is a decoration. Each carries its own description,
-  // and the frame itself is role="img" so a screen reader reads that label
-  // instead of walking a pile of meaningless rows.
-  check('and each sketch describes itself to a screen reader',
+  // Real screenshots of the real journey. A drawn sketch tells a reader that a
+  // list exists; a capture tells them what the row they are hunting for
+  // actually looks like, which is the whole reason somebody opens a guide
+  // rather than reading the six-line version in the card.
+  // Deliberately not named `shots`: that is the module-level --shots flag, and
+  // shadowing it inside this block flipped every screenshot-writing branch in
+  // the suite to on. One of them then timed out on a locator that was not
+  // ready yet, which is a confusing way to discover you picked a bad name.
+  const guideShotImgs = page.locator('#guide-dialog .guide-shot img');
+  check('the guide shows real screenshots of each screen',
+    (await guideShotImgs.count()) === 7, (await guideShotImgs.count()) + ' screenshots');
+  check('and every one of them actually loads',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
+      .every(i => i.complete && i.naturalWidth > 0)));
+  // Each carries its own alt text and a caption. The caption says what to do,
+  // the alt says what is in the picture — a screen reader needs both, and they
+  // are not the same sentence.
+  check('each screenshot describes itself and says what to do',
     await page.evaluate(() => {
-      const shots = [...document.querySelectorAll('#guide-dialog .guide-shot')];
-      return shots.length === 6 &&
-        shots.every(s => s.getAttribute('role') === 'img' &&
-          (s.getAttribute('aria-label') || '').length > 20);
+      const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
+      return figs.length === 7 && figs.every(f => {
+        const img = f.querySelector('img');
+        const cap = f.querySelector('figcaption');
+        return img && (img.getAttribute('alt') || '').length > 20 &&
+          cap && cap.textContent.trim().length > 5;
+      });
     }));
-  // Drawn rather than screenshotted: Meta's UI is theirs, a capture goes stale
-  // silently, and a light-mode screenshot pasted into a dark page looks wrong.
-  check('the sketches are drawn, not screenshots of somebody else\'s app',
-    (await page.locator('#guide-dialog img').count()) === 0 &&
-    !/data:image|\.png|\.jpg/.test(await page.evaluate(() =>
-      document.querySelector('#guide-dialog').innerHTML)));
-  // The one step that costs a reader hours if they get it wrong reuses the
-  // same HTML/JSON trap the card itself carries, rather than restating it in
-  // words that could drift from it.
+  // Deferred, and inside a closed dialog, so a reader who never opens this
+  // never pays for the images at all.
+  check('the screenshots are lazy-loaded rather than fetched on every page view',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
+      .every(i => i.getAttribute('loading') === 'lazy')));
+  // Dimensions on every one, so the dialog does not reflow as they arrive.
+  check('and each reserves its space before it loads',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
+      .every(i => i.getAttribute('width') && i.getAttribute('height'))));
+  // The originals carried the account holder's name, three handles, a phone
+  // number, an email address and their profile photograph. None of that
+  // teaches anybody anything and all of it would have been published. This
+  // cannot check pixels, but it can check that nothing in the guide's own
+  // markup names them — the alt text is where a redacted image would most
+  // easily leak what it was hiding.
+  check('nothing in the guide names the account it was captured from',
+    !/jialatsia|jaredsia|Jared Sia|@gmail|\+65/i.test(
+      await page.evaluate(() => document.querySelector('#guide-dialog').innerHTML)));
+  // The one step that costs a reader hours reuses the same HTML/JSON trap the
+  // card itself carries, rather than restating it in words that could drift.
   check('the format step reuses the same HTML-versus-JSON trap the card shows',
     (await page.locator('#guide-dialog .format-trap .format-trap-pill').allInnerTexts())
       .map(t => t.trim()).join('|') === 'HTML|JSON');
-  check('and that step is the only one marked as a warning',
-    (await page.locator('#guide-dialog .guide-step.is-warning').count()) === 1);
+  check('and that setting is the only one flagged',
+    (await page.locator('#guide-dialog .guide-settings > li.is-warning').count()) === 1);
+
   // Back is how people dismiss something covering the page on a phone. Without
   // an entry to pop they would leave the site instead — the same reasoning the
   // sample dialog's own history handling exists for.

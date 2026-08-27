@@ -752,25 +752,29 @@
      body is filled with the same section HTML a real report renders — the
      download, delete and QR panels live outside that, so they are
      absent here by construction rather than by hiding them one by one. -->
-<!-- The illustrated walkthrough behind "Show me step by step" in the how-to
-     card. Same dialog shape as the sample report — head, scrolling body, one
-     cross — because it is the same kind of thing: somewhere you go, look at,
-     and come back from.
+<!-- The walkthrough behind "Show me step by step" in the how-to card. Same
+     dialog shape as the sample report — head, scrolling body, one cross —
+     because it is the same kind of thing: somewhere you go, look at, and come
+     back from.
 
-     Every screen here is drawn in CSS and inline SVG rather than screenshotted.
-     Three reasons, in order of weight: Meta's UI is theirs and shipping
-     captures of it is not ours to do; a screenshot goes stale silently the
-     next time they move a menu, where a sketch reads as a sketch and ages
-     honestly; and drawn panels inherit the reader's own theme instead of
-     pasting a light-mode phone into a dark page.
+     The panels are real screenshots of the journey, taken on a phone and
+     shipped from docs/guide/. An earlier version drew them as CSS sketches; a
+     sketch tells you a list exists, a screenshot tells you what the row you
+     are hunting for actually looks like, which is the whole reason somebody
+     opens a guide rather than reading the six-line version in the card.
 
-     The sketches are deliberately schematic — the shape of the screen and the
-     position of the thing to tap, not a facsimile. What a reader needs is
-     "there is a list, the row you want is third", which survives Instagram
-     restyling everything, and is the part a numbered list cannot give them. -->
+     Every one has been redacted before shipping. The originals carried the
+     account holder's name, three handles, a phone number, an email address and
+     their profile photograph — none of which teaches anybody anything, and all
+     of which this is a public page for. The grey blocks are deliberate and the
+     platform labels beside them are untouched, because "the row that says
+     Instagram" is the instruction.
+
+     They are `loading="lazy"` and sit inside a closed dialog, so a reader who
+     never opens this never downloads the 250KB. -->
 <dialog id="guide-dialog" class="sample-dialog guide-dialog" aria-labelledby="guide-dialog-title">
   <header class="sample-dialog-head">
-    <h2 id="guide-dialog-title">Downloading your Instagram data</h2>
+    <h2 id="guide-dialog-title">How do I get my Instagram data?</h2>
     <button class="sample-close" id="guide-close" type="button" aria-label="Close the guide">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor"
@@ -779,142 +783,125 @@
     </button>
   </header>
   <div class="sample-dialog-body guide-body">
-    <p class="guide-lede">Six steps, about two minutes of tapping. Then Instagram takes a few hours
-      to build the file and emails you when it is ready.</p>
+    <p class="guide-lede">Six steps, about five minutes of tapping. Instagram then emails you a
+      download link — usually within a few hours. <strong>The one setting people get wrong is in
+      step 4.</strong></p>
 
     <ol class="guide-steps">
       <li class="guide-step">
-        <div class="guide-step-text">
-          <h3>Open Download your information</h3>
-          <p>In Instagram: <span class="ui-label">Settings</span> →
-            <span class="ui-label">Accounts Centre</span> →
-            <span class="ui-label">Your information and permissions</span> →
-            <span class="ui-label">Export / Download your information</span>.</p>
-          <p class="guide-shortcut">On this device you can skip all of that:
-            <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
-               target="_blank" rel="noopener noreferrer">open it directly</a>.</p>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch of the Accounts Centre menu, with 'Your information and permissions' highlighted.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span class="shot-back">‹</span><span>Accounts Centre</span></div>
-            <div class="shot-row"><span class="shot-glyph">⚙</span>Password and security</div>
-            <div class="shot-row"><span class="shot-glyph">👤</span>Personal details</div>
-            <div class="shot-row is-target"><span class="shot-glyph">📄</span>Your information and permissions
-              <span class="shot-chev">›</span></div>
-            <div class="shot-row"><span class="shot-glyph">📢</span>Ad preferences</div>
-          </div>
-        </div>
-      </li>
-
-      <li class="guide-step">
-        <div class="guide-step-text">
-          <h3>Choose Create Export</h3>
-          <p>Then pick the Instagram account you want the export for. If you have more than one,
-            pick the one you actually use — that is the one worth reading.</p>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch showing a 'Create export' button above a list of past exports.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span class="shot-back">‹</span><span>Download your information</span></div>
-            <div class="shot-cta is-target">Create export</div>
-            <p class="shot-note">Past exports appear underneath. There will be none the first time.</p>
-          </div>
+        <h3><span class="guide-num">1</span>Open <a
+          href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+          target="_blank" rel="noopener noreferrer">Download your information</a></h3>
+        <p>That link goes straight to the right page. If it does not open, go the long way inside
+          the Instagram app: <span class="ui-label">Settings</span> →
+          <span class="ui-label">Accounts Centre</span> →
+          <span class="ui-label">Your information and permissions</span> →
+          <span class="ui-label">Export your information</span>.</p>
+        <div class="guide-shots">
+          <figure class="guide-shot">
+            <img src="guide/01-settings.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="Instagram's Settings and activity screen, with Accounts Centre at the top.">
+            <figcaption>Settings → tap <b>Accounts Centre</b></figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="guide/02-info-permissions.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="The Accounts Centre menu, listing Your information and permissions.">
+            <figcaption>Tap <b>Your information and permissions</b></figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="guide/03-export-your-information.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="The information and permissions screen, with Export your information at the top.">
+            <figcaption>Tap <b>Export your information</b></figcaption>
+          </figure>
         </div>
       </li>
 
       <li class="guide-step">
-        <div class="guide-step-text">
-          <h3>Set the date range to All time</h3>
-          <p>The default is the last year, which is enough for a report about who you are now and
-            far too little for one about how you got here. All time is what makes the trajectory
-            readable.</p>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch of a date range picker with 'All time' selected.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span class="shot-back">‹</span><span>Date range</span></div>
-            <div class="shot-opt"><span class="shot-radio"></span>Last week</div>
-            <div class="shot-opt"><span class="shot-radio"></span>Last 3 months</div>
-            <div class="shot-opt"><span class="shot-radio"></span>Last year</div>
-            <div class="shot-opt is-target"><span class="shot-radio is-on"></span>All time</div>
-          </div>
+        <h3><span class="guide-num">2</span>Create export, then pick your Instagram profile</h3>
+        <p>Tap <span class="ui-label">Create export</span>, choose the profile with the Instagram
+          badge — not Facebook, Threads or WhatsApp — then choose
+          <span class="ui-label">Export to device</span>.</p>
+        <div class="guide-shots">
+          <figure class="guide-shot">
+            <img src="guide/04-create-export.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="The Export your information screen with a blue Create export button.">
+            <figcaption>Tap the blue <b>Create export</b> button</figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="guide/05-pick-profile.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="A list of profiles labelled Facebook, Instagram, Meta, WhatsApp and Threads. Names and photos are redacted.">
+            <figcaption>Pick the one labelled <b>Instagram</b></figcaption>
+          </figure>
+          <figure class="guide-shot">
+            <img src="guide/06-export-to-device.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="A choice between Export to device and Export to external service.">
+            <figcaption>Choose <b>Export to device</b></figcaption>
+          </figure>
         </div>
       </li>
 
-      <li class="guide-step is-warning">
-        <div class="guide-step-text">
-          <h3>Set the format to JSON</h3>
-          <p><strong>This is the one that catches people out.</strong> HTML is the default, the
-            export takes hours to arrive, and an HTML one cannot be read at all when it does — so
-            getting this wrong costs you the whole wait, twice.</p>
-          <span class="format-trap" role="img"
-                aria-label="Format setting: HTML will not work, choose JSON.">
-            <span class="format-trap-row is-wrong">
-              <span class="format-trap-mark" aria-hidden="true">✕</span>
-              <span class="format-trap-pill">HTML</span>
-              <span class="format-trap-note">the default — cannot be read</span>
+      <li class="guide-step">
+        <h3><span class="guide-num">3–5</span>On <em>Confirm your export</em>, change three settings</h3>
+        <p>Everything you need is on this one screen. Tap each row, set it, come back.</p>
+        <div class="guide-shots is-single">
+          <figure class="guide-shot">
+            <img src="guide/07-confirm-export.jpg" width="480" height="931" loading="lazy" decoding="async"
+                 alt="The Confirm your export screen, showing rows for Date range, Format and Media quality. The account name and email are redacted.">
+            <figcaption>The three rows to change sit at the bottom</figcaption>
+          </figure>
+        </div>
+        <ol class="guide-settings">
+          <li>
+            <h4><span class="guide-subnum">3</span>Date range → <span class="ui-label">All time</span></h4>
+            <p>Gives the whole history instead of a recent slice — which is what makes the arc of a
+              life readable rather than just the last few months of it.</p>
+          </li>
+          <li class="is-warning">
+            <h4><span class="guide-subnum">4</span>Format → <span class="ui-label">JSON</span>
+              <span class="guide-flag">Do not skip</span></h4>
+            <p>This is the one that catches people out. The export takes hours to arrive, and an
+              HTML one cannot be read at all when it does — so getting it wrong costs you the whole
+              wait, twice.</p>
+            <span class="format-trap" role="img"
+                  aria-label="Format setting: HTML will not work, choose JSON.">
+              <span class="format-trap-row is-wrong">
+                <span class="format-trap-mark" aria-hidden="true">✕</span>
+                <span class="format-trap-pill">HTML</span>
+                <span class="format-trap-note">the default — cannot be read</span>
+              </span>
+              <span class="format-trap-row is-right">
+                <span class="format-trap-mark" aria-hidden="true">✓</span>
+                <span class="format-trap-pill">JSON</span>
+                <span class="format-trap-note">choose this one</span>
+              </span>
             </span>
-            <span class="format-trap-row is-right">
-              <span class="format-trap-mark" aria-hidden="true">✓</span>
-              <span class="format-trap-pill">JSON</span>
-              <span class="format-trap-note">choose this one</span>
-            </span>
-          </span>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch of the format picker with JSON selected instead of the HTML default.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span class="shot-back">‹</span><span>Format</span></div>
-            <div class="shot-opt"><span class="shot-radio"></span>HTML
-              <span class="shot-tag">default</span></div>
-            <div class="shot-opt is-target"><span class="shot-radio is-on"></span>JSON</div>
-          </div>
-        </div>
+          </li>
+          <li>
+            <h4><span class="guide-subnum">5</span>Media quality →
+              <span class="ui-label">Lower quality</span></h4>
+            <p>Saves a lot of space on your device. PsycheAI never reads your photographs, so the
+              full-resolution ones are gigabytes you would be downloading for nothing. Then tap
+              <span class="ui-label">Start export</span>.</p>
+          </li>
+        </ol>
       </li>
 
       <li class="guide-step">
-        <div class="guide-step-text">
-          <h3>Set media quality to lower</h3>
-          <p>PsycheAI never reads your photographs, so the full-resolution ones are gigabytes you
-            would be downloading for nothing. Lower quality makes the file small enough to handle
-            comfortably on a phone.</p>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch of a media quality picker with 'Lower quality' selected.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span class="shot-back">‹</span><span>Media quality</span></div>
-            <div class="shot-opt"><span class="shot-radio"></span>High quality
-              <span class="shot-tag">very large</span></div>
-            <div class="shot-opt is-target"><span class="shot-radio is-on"></span>Lower quality</div>
-          </div>
-        </div>
-      </li>
-
-      <li class="guide-step">
-        <div class="guide-step-text">
-          <h3>Start the export, then wait for the email</h3>
-          <p>Instagram builds the file in the background — usually a few hours, occasionally a day.
-            When the email arrives, download the <code>.zip</code> to this device and upload it
-            below. Do not unzip it first; PsycheAI reads the archive as it comes.</p>
-        </div>
-        <div class="guide-shot" role="img"
-             aria-label="Sketch of the confirmation screen and the email that follows.">
-          <div class="shot-frame">
-            <div class="shot-bar"><span>Export requested</span></div>
-            <div class="shot-done"><span class="shot-done-mark">✓</span>
-              <span>We will email you when it is ready</span></div>
-            <div class="shot-mail"><span class="shot-glyph">✉</span>
-              <span><strong>Your Instagram data is ready</strong><br>Download it before the link
-                expires</span></div>
-          </div>
-        </div>
+        <h3><span class="guide-num">6</span>Wait for the email, then upload the file</h3>
+        <p>Instagram emails you a download link, usually within a few hours. Download it to this
+          device and upload it below — do not unzip it first, PsycheAI reads the archive as it
+          comes.</p>
+        <dl class="guide-facts">
+          <div><dt>Arrives in</dt><dd>A few hours</dd></div>
+          <div><dt>Link valid for</dt><dd>4 days</dd></div>
+          <div><dt>File format</dt><dd>JSON · lower quality</dd></div>
+        </dl>
       </li>
     </ol>
 
-    <p class="guide-foot">Instagram's menus move around from time to time. If a label here does not
-      match what you see, look for the nearest thing to it — the order of the steps has stayed the
-      same for years even as the wording drifts.</p>
+    <p class="guide-foot">Instagram moves its menus around from time to time. If a label here does
+      not match what you see, look for the nearest thing to it — the order of the steps has stayed
+      the same for years even as the wording drifts.</p>
   </div>
 </dialog>
 
