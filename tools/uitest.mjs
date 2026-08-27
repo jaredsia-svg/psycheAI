@@ -357,37 +357,19 @@ try {
     /cannot be read at all/.test(optionalOpen),
     optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
 
-  // ---- the format trap, drawn rather than described ----
+  // ---- the format warning, said in one line rather than drawn ----
   //
   // Choosing HTML is the one mistake that costs a reader their afternoon: the
-  // export takes hours to arrive and is refused on sight when it does. As
-  // prose it sat mid-sentence in step five, which is where skimming happens,
-  // so it is drawn as the two options with the wrong one struck through.
-  const traps = await page.locator('.format-trap').count();
-  check('the JSON trap is shown as well as written, in both sets of instructions',
-    traps >= 2, traps + ' format-trap blocks');
-  const trapText = await page.evaluate(() =>
-    document.querySelector('.optional-card .format-trap').textContent.replace(/\s+/g, ' ').trim());
-  check('it puts the wrong option and the right one side by side',
-    /HTML/.test(trapText) && /JSON/.test(trapText) &&
-    /cannot be read/.test(trapText) && /choose this one/.test(trapText), trapText);
-  check('the wrong one is struck through rather than only being labelled',
-    await page.evaluate(() => {
-      const pill = document.querySelector('.format-trap-row.is-wrong .format-trap-pill');
-      return /line-through/.test(getComputedStyle(pill).textDecorationLine);
-    }));
-  // Drawn from real text, so it survives zoom and reads correctly aloud — but
-  // only if the container carries the whole meaning as one label, or a screen
-  // reader gets "cross HTML the default cannot be read tick JSON choose this".
-  check('it reads as one labelled image rather than a jumble of loose words',
-    await page.evaluate(() => {
-      const trap = document.querySelector('.optional-card .format-trap');
-      return trap.getAttribute('role') === 'img' &&
-        /JSON/.test(trap.getAttribute('aria-label') || '');
-    }));
-  check('and the marks themselves are hidden from screen readers, being decoration',
-    await page.evaluate(() => [...document.querySelectorAll('.format-trap-mark')]
-      .every(n => n.getAttribute('aria-hidden') === 'true')));
+  // export takes hours to arrive and is refused on sight when it does. This
+  // used to be a struck-through HTML/JSON widget; it is a plain sentence now,
+  // so the check is on the warning surviving, not on markup that no longer
+  // exists.
+  check('no format-trap widget is left behind — the warning is text now',
+    (await page.locator('.format-trap').count()) === 0);
+  const igStep = (await page.locator('.help-card > ol > li').nth(3).innerText())
+    .replace(/\s+/g, ' ').trim();
+  check('the Instagram list says JSON, not HTML, in one short line',
+    /Set Format to JSON, not HTML\.?$/.test(igStep), igStep);
 
   // ---- deep links, with the long way round kept underneath ----
   //

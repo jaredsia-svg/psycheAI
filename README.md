@@ -2297,9 +2297,20 @@ dialog already scrolls.
 "media quality" as much room as the setting that costs a reader their afternoon, and buried the
 latter in the middle of the wall. Each row is now number, setting, value, and why in a few words. The
 format row keeps its warning — "JSON, **not HTML**" — because naming only the right value reads as a
-preference where naming the wrong one reads as a trap. It dropped the two-row HTML/JSON widget the
-card still carries; the check that used to pin that widget now asserts the warning instead, which is
-the thing the widget was for.
+preference where naming the wrong one reads as a trap. It dropped the two-row HTML/JSON widget in
+favour of that one phrase; the check that used to pin the widget now asserts the warning instead,
+which is the thing the widget was for.
+
+**The how-to card's own numbered list lost the same widget, and a clause besides.** Step 1 no longer
+says the deep link "goes straight to the right page" — the link's own text already promises that, and
+a reader who has clicked the same kind of link before does not need it restated. Step 4 shrank from a
+sentence naming the cost of getting it wrong plus a struck-through HTML/JSON widget to one line: "Set
+Format to JSON, not HTML." The widget made sense back when this was the only place the setting was
+shown; now that the guide carries real, ringed screenshots of the exact same screen, drawing it twice
+was the redundant copy, not the concise one. The widget's CSS and its two other copies — the Google
+fallback instructions on this page and the identical copy inside the supplement dialog — went with it;
+all three now carry the same one-sentence warning as plain text, and a check confirms no `.format-trap`
+markup is left anywhere on the page.
 
 They are downscaled from 1080px to 480px — 1.75MB to 251KB — and `loading="lazy"` inside a closed
 dialog, so a reader who never opens the guide never downloads any of it. Each carries explicit
@@ -3536,7 +3547,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1051 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1048 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
