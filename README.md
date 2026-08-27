@@ -2846,16 +2846,6 @@ JS, so it cannot drift the next time the nav changes height; inside the sample d
 to a much smaller value, since that dialog's head sits outside its scrolling body and overlaps
 nothing.
 
-**The shut-then-open ordering inside the handler is cosmetic, and was measured to be sure.** The
-handler closes the previously-open section first and opens the clicked one second, which reads the
-way the interaction is described. It makes no difference to what anybody sees: every mutation happens
-inside one task, so the browser paints once at the end, and both orderings end at the same DOM.
-Instrumented over 90 animation frames on a phone, the two produced identical settled positions (83,
-82, 82 across three openings), identical intermediate frame values, and the same count of distinct
-positions along the scroll. Recorded because "reorder these two statements" is exactly the kind of
-change that looks like it should do something — the ordering *above* it, scroll versus collapse, is
-the one that genuinely matters, and the two are one line apart.
-
 The checks drive both orderings — closing a section *below* the new one, which shifts nothing, and
 closing one *above* it, which is the case that was broken — because a single ordering passes against
 a half-fix. A third asserts the heading clears the nav rather than merely reaching scroll position
