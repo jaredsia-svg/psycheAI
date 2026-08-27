@@ -1494,7 +1494,6 @@
     const card = head.closest('.section-card');
     if (!card) return;
     const opening = card.classList.contains('is-collapsed');
-    setSectionOpen(card, opening);
     // Accordion, not a pile of open sections: opening one shuts every other
     // one already open in the same report, so the page stays as compact as
     // collapsing it in the first place was for — an index a reader picks one
@@ -1502,12 +1501,22 @@
     // Scoped to whichever report this card actually belongs to (the real one
     // or the sample dialog's), so opening a section in one never reaches
     // across and shuts a section in the other.
+    //
+    // Shut first, open second. Both orderings end at the same DOM, and every
+    // mutation here happens inside one task so the browser paints once at the
+    // end either way — measured, the settled position and the intermediate
+    // frames are identical. It is written this way because it reads the way
+    // the interaction is described: the old section closes, then the new one
+    // opens.
     if (opening) {
       const scope = card.closest('#profile-body, #sample-body') || document;
       for (const head2 of scope.querySelectorAll('.card-head-toggle')) {
         const other = head2.closest('.section-card');
         if (other && other !== card) setSectionOpen(other, false);
       }
+    }
+    setSectionOpen(card, opening);
+    if (opening) {
       // Land the section the reader just opened at the top of the screen.
       //
       // Without this the accordion moves the page under them: shutting a
