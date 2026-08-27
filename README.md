@@ -2827,6 +2827,32 @@ builder and every caller. Sub-lines are clamped to one line while shut, which is
 uniform: the four paid sections have sub-lines three lines long, and left alone their rows were twice
 the height of the free ones for text the reader is about to see in full the moment they open it.
 
+**Opening a section scrolls its heading to the top of the screen, and it did not used to.** The
+accordion shuts whichever section was open, and when that one sat *above* the one being opened its
+whole height leaves the flow — so the card the reader just clicked jumps upward by however tall the
+closing section happened to be. Measured on a 390×844 phone before the fix, headings landed around
+400px down the viewport instead of just under the nav, and in the worst ordering the heading ended up
+at **−165px**: above the top edge entirely, leaving the reader looking at the middle of a section
+whose title was off-screen. The distance depended on which section had been open a moment earlier,
+which is what made it read as the page misbehaving rather than as a layout consequence.
+
+Two details make it work. The `scrollIntoView` runs **after** the accordion's collapse loop, not
+before: those `display: none` switches are synchronous, so the position measured afterwards is the
+settled one, and scrolling first aims at coordinates the collapse is about to invalidate — worth
+stating because it looks like a free reordering and is not. Fault-injecting exactly that, moving the
+scroll one statement earlier, put the heading at **−979px**. And the offset that keeps the heading
+clear of the sticky nav is `scroll-margin-top` on `.section-card` rather than a pixel figure in the
+JS, so it cannot drift the next time the nav changes height; inside the sample dialog it is overridden
+to a much smaller value, since that dialog's head sits outside its scrolling body and overlaps
+nothing.
+
+The checks drive both orderings — closing a section *below* the new one, which shifts nothing, and
+closing one *above* it, which is the case that was broken — because a single ordering passes against
+a half-fix. A third asserts the heading clears the nav rather than merely reaching scroll position
+zero, since a heading tucked under a translucent sticky nav would satisfy "at the top" and still be
+the bug. All three fail, with real numbers, against each of: no scroll at all, no `scroll-margin-top`,
+and the scroll placed before the collapse.
+
 **The collapse is screen-only.** In print there is nobody to click anything, and a report that printed
 as ten headings and nothing else would be worthless — so the rule lives inside `@media screen` and the
 chevrons join the other controls in the print-hidden list. The PDF export is unaffected either way: it
@@ -3739,7 +3765,7 @@ npm test           # 705 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1068 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1071 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

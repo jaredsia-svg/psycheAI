@@ -1508,6 +1508,28 @@
         const other = head2.closest('.section-card');
         if (other && other !== card) setSectionOpen(other, false);
       }
+      // Land the section the reader just opened at the top of the screen.
+      //
+      // Without this the accordion moves the page under them: shutting a
+      // section that sat *above* the one they clicked removes its whole height
+      // from the flow, so the card they are opening jumps upward by however
+      // much that section happened to be — sometimes past the top of the
+      // viewport entirely, leaving them looking at the middle of a section
+      // whose heading is now off-screen. The shift is invisible in the markup
+      // and depends on which section was open before, which is why it reads as
+      // the page misbehaving rather than as a layout consequence.
+      //
+      // Deliberately after the accordion loop: those `display: none` switches
+      // are synchronous, so the position measured here is the settled one
+      // rather than the pre-collapse one. Scrolling first would aim at
+      // coordinates the collapse is about to invalidate.
+      //
+      // The offset that keeps the heading clear of the sticky nav lives in CSS
+      // as .section-card's `scroll-margin-top`, so the two cannot drift the way
+      // a hardcoded pixel figure here would the next time the nav changes
+      // height. Inside the sample dialog that margin is smaller, because the
+      // dialog's own head does not overlap its scrolling body.
+      card.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
     }
   });
 

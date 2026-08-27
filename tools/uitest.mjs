@@ -2340,6 +2340,69 @@ try {
     !(await page.locator('#profile-body .confidence-card')
       .evaluate(c => c.classList.contains('is-collapsed'))));
 
+  // ---- opening a section lands its heading at the top of the screen ----
+  //
+  // The accordion shuts whichever section was open, and when that one sat
+  // *above* the one being opened its whole height leaves the flow — so the
+  // card the reader clicked jumps upward by however tall it happened to be.
+  // Measured on a phone before the fix, headings landed around 400px down a
+  // 844px viewport instead of just under the nav, and the distance depended on
+  // which section had been open, which is what made it read as the page
+  // misbehaving rather than as a layout consequence.
+  //
+  // Checked at phone size because that is where it bites hardest and where it
+  // was reported, and driven through the two orderings that differ: closing a
+  // section below the new one (no shift) and closing one above it (the shift).
+  // A single ordering would pass against a half-fix.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(200);
+  const sectionHeads = page.locator('#profile-body .card-head-toggle');
+  const headCount = await sectionHeads.count();
+  const landing = async (index) => {
+    await sectionHeads.nth(index).click();
+    // Settles the smooth scroll rather than sleeping a fixed time: wait for
+    // the heading to stop moving, requiring motion first so the quiet moment
+    // before the scroll starts is not mistaken for the end of it.
+    await page.waitForFunction((i) => {
+      const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
+      const y = Math.round(head.getBoundingClientRect().top);
+      const s = window.__headSettle || (window.__headSettle = { last: null, moved: false, still: 0 });
+      if (s.last === null) { s.last = y; return false; }
+      if (y !== s.last) { s.moved = true; s.still = 0; s.last = y; return false; }
+      s.still += 1;
+      return s.moved && s.still >= 5;
+    }, index, { timeout: 6000, polling: 100 }).catch(() => {});
+    return page.evaluate((i) => {
+      const head = document.querySelectorAll('#profile-body .card-head-toggle')[i];
+      window.__headSettle = null;
+      return {
+        top: Math.round(head.getBoundingClientRect().top),
+        navBottom: Math.round(document.querySelector('.nav').getBoundingClientRect().bottom),
+        open: !head.closest('.section-card').classList.contains('is-collapsed'),
+      };
+    }, index);
+  };
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const lateFirst = await landing(headCount - 2);
+  check('opening a section brings its heading to the top of the screen',
+    lateFirst.open && lateFirst.top >= lateFirst.navBottom - 4 && lateFirst.top < 220,
+    JSON.stringify(lateFirst));
+  // The one that was actually broken: the section that closes is above the one
+  // being opened, so its height leaves the flow and everything below shifts up.
+  const afterAboveClosed = await landing(headCount - 1);
+  check('and still does when the section that closes was above it',
+    afterAboveClosed.open && afterAboveClosed.top >= afterAboveClosed.navBottom - 4 &&
+    afterAboveClosed.top < 220,
+    JSON.stringify(afterAboveClosed));
+  // Clear of the sticky nav rather than merely at scroll position zero — a
+  // heading tucked under a translucent nav is the failure this offset exists
+  // to prevent, and "top === 0" would pass against it.
+  check('the heading clears the sticky nav rather than sitting under it',
+    afterAboveClosed.top >= afterAboveClosed.navBottom,
+    afterAboveClosed.top + ' vs nav bottom ' + afterAboveClosed.navBottom);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.waitForTimeout(200);
+
   await openAllSections(page);
   check('sending from the review includes DMs, since that row was not unticked',
     (await page.evaluate(() => {
