@@ -2204,6 +2204,56 @@ inherit whatever order the parser produced, which also makes the output one chro
 of two interleaved halves. A check builds the same captions in both orders and asserts the sample is
 now identical either way; under the old code the two differed completely.
 
+### Nothing behind a dialog moves
+
+`showModal()` makes the rest of the page inert — unclickable, untabbable — but it does not stop it
+**scrolling**. A wheel or a swipe anywhere outside the dialog still ran the page underneath, so a
+reader working through a long popout could look up and find the page behind them somewhere else
+entirely, and on a phone the two scroll areas fought over every gesture.
+
+One rule fixes it for all eleven dialogs and for the twelfth automatically:
+
+```css
+body:has(dialog[open]) { overflow: hidden; }
+```
+
+Written as `:has()` rather than a class toggled from JS because a class has to be added and removed
+by every open and close path, and this app has several — including the `setAttribute('open')`
+fallback some dialogs use where `showModal` is missing, which a JS toggle would have had to remember
+separately.
+
+`scrollbar-gutter: stable` is the other half, and its scoping is the interesting part. Hiding overflow
+removes the scrollbar, and where that scrollbar occupies layout width the page shifts right by 15px
+the instant a dialog opens — a visible lurch behind the thing that just appeared. Reserving the gutter
+keeps it still. But applied unscoped it costs 15px on a phone, which draws scrollbars as an overlay
+and so has no width to lose and no lurch to prevent — 5% of a 320px screen given up for nothing. The
+suite caught that directly: five `does not scroll sideways` checks went to `-15px` the moment it
+landed. It is scoped to 560px and up, the app's own narrowest breakpoint.
+
+One limit worth stating: iOS Safari does not always honour `overflow: hidden` on the body for touch
+scrolling. The dialogs' own `overscroll-behavior: contain` catches the common case — a swipe that runs
+past the end of the dialog's own scroll — and the bulletproof fix (`position: fixed` on the body)
+loses the reader's scroll position on open, which is worse than the problem.
+
+### The psyche card's close button
+
+It used to sit top right, diagonally opposite the download and share buttons it belongs with. It is
+bottom right now: every control on one line, and under the thumb on a phone rather than at the far end
+of a reach.
+
+The part that needed care is that it must never land on those two buttons. It is positioned against
+the action bar rather than the viewport, and the bar carries a matching gutter on its actions row, so
+the gap is a fact of the layout rather than a coincidence of widths. That mattered more than it looked
+like it would: the pair of pill buttons is centred, and **at 320px they run 25px underneath a
+viewport-fixed cross** while looking perfectly fine at 390px and up. The first version of the check
+stopped at 390 and pronounced the gutter unnecessary — fault-injecting it passed, which is what
+exposed the check rather than the code. The geometry is now asserted at 320, 390 and 1100.
+
+The bar also needed `justify-self: stretch`. The dialog sets `place-items: center`, which centres
+*and* shrinks both its grid rows — right for the card above, wrong for a bar whose close button is
+meant to reach the corner. Without it the cross landed a third of the way in from the right on a
+laptop and only looked correct on a phone, where the content happened to fill the width anyway.
+
 ### The step-by-step guide
 
 The numbered list in "How do I get my Instagram data?" is the quick version, and it stays exactly as
@@ -3453,7 +3503,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1028 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1038 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

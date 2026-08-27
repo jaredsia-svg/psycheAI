@@ -50,6 +50,45 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Nothing behind a dialog moves while it is open.
+ *
+ * `showModal()` makes the rest of the page inert — unclickable, untabbable —
+ * but it does not stop it *scrolling*. A wheel or a swipe anywhere outside the
+ * dialog still ran the page underneath, so a reader reading a long popout
+ * could look up and find the page behind them somewhere else entirely, and on
+ * a phone the two scroll areas fought each other for every gesture.
+ *
+ * Written as `:has()` on the body rather than a class toggled from JS, so it
+ * covers all eleven dialogs at once and covers the twelfth automatically. The
+ * selector also catches the `setAttribute('open')` fallback path some of them
+ * use where `showModal` is missing, which a JS toggle would have had to
+ * remember separately.
+ *
+ * `scrollbar-gutter` is the other half. Hiding overflow removes the
+ * scrollbar, and where that scrollbar takes up layout width — desktop, classic
+ * scrollbars — the whole page shifts right by 15px the instant a dialog opens,
+ * a visible lurch behind the thing that just appeared. Reserving the gutter up
+ * front keeps the page still. It goes on `html`, not `body`, because that is
+ * the element actually scrolling.
+ *
+ * Scoped to wide viewports, and that is not cosmetic. Phones draw scrollbars as
+ * an overlay, so there is no width to lose and no lurch to prevent — but the
+ * gutter is reserved regardless, and 15px out of a 320px screen is 5% of the
+ * reader's display given up for nothing. The suite caught this directly: five
+ * `does not scroll sideways` checks went to -15px the moment it was applied
+ * unscoped. 560px is the app's own narrowest breakpoint, so this changes
+ * nothing about where the layout already decides it is on a small screen.
+ *
+ * Known limit: iOS Safari does not always honour `overflow: hidden` on the
+ * body for touch scrolling. The dialogs' own `overscroll-behavior: contain`
+ * catches the common case — a swipe that runs past the end of the dialog's own
+ * scroll — and the bulletproof fix (position: fixed on the body) loses the
+ * reader's scroll position on open, which is worse than the problem. */
+body:has(dialog[open]) { overflow: hidden; }
+@media (min-width: 560px) {
+  html { scrollbar-gutter: stable; }
+}
+
 h1, h2, h3 { line-height: 1.25; margin: 0 0 .5em; font-weight: 650; letter-spacing: -.015em; }
 h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); }
 h2 { font-size: 1.28rem; }
@@ -2011,8 +2050,32 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .card-dialog[open] { display: grid; grid-template-rows: 1fr auto; }
 .card-dialog::backdrop { background: rgba(20, 14, 28, .92); }
 .card-dialog-frame { overflow: hidden; place-self: center; }
+/* Bottom right, on the same line as the download and share buttons rather
+   than diagonally opposite them in the top corner.
+ *
+ * Positioned against the bar rather than the viewport, which is what stops it
+ * colliding with those two: the actions row is centred, and on a narrow phone
+ * a pair of pill buttons centred in the full width reaches close enough to the
+ * right edge to run underneath a viewport-fixed cross. Making the bar the
+ * containing block and reserving a matching gutter on the actions row means
+ * the layout guarantees the gap instead of it being a coincidence of widths.
+ *
+ * Vertically centred on the actions row, not on the bar: the bar also holds
+ * the status line, which appears only after a download or a share, and
+ * centring on the whole bar would make the cross jump the moment that text
+ * arrived. */
+/* Full width, not shrink-wrapped. The dialog sets `place-items: center`,
+   which centres *and* shrinks both of its grid rows — fine for the card in the
+   row above, wrong for the bar, whose close button is supposed to reach the
+   corner of the screen. Without this the cross landed a third of the way in
+   from the right on a laptop and only looked correct on a phone, where the
+   content happened to fill the width anyway. */
+.card-dialog-bar { position: relative; justify-self: stretch; }
 .card-dialog-close {
-  position: fixed; top: 14px; right: 14px; z-index: 2; width: 44px; height: 44px;
+  position: absolute; right: 14px; top: 14px; z-index: 2; width: 44px; height: 44px;
+  /* Nudged up by half the difference between it and the pill buttons beside
+     it, so the two sit on one optical line rather than the cross hanging low. */
+  margin-top: -2px;
   border-radius: 50%; border: 1px solid rgba(255, 255, 255, .3);
   background: rgba(255, 255, 255, .12); color: #fff; font-size: 1.1rem;
   cursor: pointer; line-height: 1;
@@ -2085,7 +2148,12 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .card-dialog-actions {
   display: flex; justify-content: center; align-items: center;
-  gap: 20px; width: 100%; padding: 0 24px;
+  gap: 20px; width: 100%;
+  /* Symmetric, and wide enough on the right for the close button that now
+     sits there — 44px of button plus its 14px offset, rounded up. Applied to
+     both sides so the pair stays visually centred in the row rather than
+     drifting left by the width of the gutter. */
+  padding: 0 68px;
 }
 .card-dialog-bar .btn { box-shadow: 0 6px 24px rgba(0, 0, 0, .35); }
 /* Icon plus a small label, in a pill rather than a plain circle — a bare

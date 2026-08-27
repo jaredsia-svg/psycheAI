@@ -738,6 +738,60 @@ try {
   // screens rather than read a description of them. Held as a separate dialog
   // rather than a disclosure inside the card because it is somewhere you go
   // and come back from.
+  // ---- nothing behind a dialog moves ----
+  //
+  // showModal() makes the rest of the page inert but does not stop it
+  // scrolling, so a wheel or a swipe anywhere outside the dialog ran the page
+  // underneath. A reader working through a long popout could look up and find
+  // the page behind them somewhere else entirely, and on a phone the two
+  // scroll areas fought over every gesture.
+  //
+  // Driven with a real wheel event over the dialog's own chrome — its head,
+  // which is not itself scrollable — because that is where the gesture used to
+  // fall through to the page. Asserting the CSS rule exists would prove much
+  // less than proving the page does not move.
+  await page.click('#guide-open');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  await page.waitForTimeout(200);
+  // Read after the dialog is up, not before: clicking the button makes
+  // Playwright scroll it into view first, so a position captured earlier
+  // measures that auto-scroll rather than anything the wheel below did.
+  const pageScrollBeforeDialog = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(200, 60);
+  await page.mouse.wheel(0, 600);
+  await page.waitForTimeout(400);
+  check('the page behind an open dialog does not scroll',
+    (await page.evaluate(() => window.scrollY)) === pageScrollBeforeDialog,
+    'was ' + pageScrollBeforeDialog + ', now ' + (await page.evaluate(() => window.scrollY)));
+  // The lock must not reach inside the thing it is protecting. A dialog whose
+  // own body stopped scrolling would be a worse bug than the one being fixed,
+  // since the guide is taller than any phone.
+  check('but the dialog itself still scrolls',
+    await page.evaluate(() => {
+      const body = document.querySelector('.guide-body');
+      const was = body.scrollTop;
+      body.scrollTop = 300;
+      const moved = body.scrollTop > 0;
+      body.scrollTop = was;
+      return moved;
+    }));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  await page.waitForTimeout(200);
+  check('and the page scrolls again once the dialog is closed',
+    (await page.evaluate(() => getComputedStyle(document.body).overflow)) !== 'hidden');
+  // One rule for all eleven dialogs rather than a class each remembers to
+  // toggle — which is what makes the twelfth free. Checked against the sample
+  // dialog too, since it is opened by entirely different code.
+  await page.click('#hero-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await page.waitForTimeout(200);
+  check('the lock covers every dialog, not just the one it was written for',
+    (await page.evaluate(() => getComputedStyle(document.body).overflow)) === 'hidden');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   check('the how-to card offers a step-by-step guide button',
     (await page.locator('#guide-open').isVisible()) &&
     (await page.evaluate(() => document.querySelector('.help-card').contains(
@@ -2599,7 +2653,54 @@ try {
     JSON.stringify(shareCall));
 
   await page.click('#card-dialog-close');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => !document.querySelector('#card-dialog').open, { timeout: 15000 });
+
+  // ---- the close button sits in the bottom right ----
+  //
+  // It used to be top right, diagonally opposite the download and share
+  // buttons it belongs with. Moving it down puts every control on the card's
+  // one action line, and puts it under the thumb on a phone rather than at the
+  // far end of a reach.
+  //
+  // The measurements matter more than the CSS here. Positioned against the
+  // bar rather than the viewport is what stops it colliding with those two
+  // buttons: the pair is centred, and on a narrow phone a viewport-fixed cross
+  // lands right on top of the rightmost one. Checked as real geometry at both
+  // sizes, because the collision only appears at one of them.
+  // 320px is in the list deliberately, and it is the width that earns the
+  // gutter on the actions row: without it the centred pair of pill buttons
+  // runs 25px *under* the close button there, while 390px and up look fine.
+  // A check that stopped at 390 would have called the clearance unnecessary.
+  for (const [label, width, height] of [
+    ['the narrowest phone', 320, 700], ['a phone', 390, 844], ['a laptop', 1100, 900],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.click('#psyche-card-open');
+    await page.waitForSelector('#card-dialog[open]', { timeout: 15000 });
+    await page.waitForTimeout(250);
+    const geo = await page.evaluate(() => {
+      const close = document.querySelector('#card-dialog-close').getBoundingClientRect();
+      const actions = [...document.querySelectorAll('.card-dialog-actions .btn')]
+        .map(b => b.getBoundingClientRect());
+      const card = document.querySelector('#psyche-card-full').getBoundingClientRect();
+      const hits = box => !(box.right < close.left || box.left > close.right ||
+        box.bottom < close.top || box.top > close.bottom);
+      return {
+        fromBottom: Math.round(window.innerHeight - close.bottom),
+        fromRight: Math.round(window.innerWidth - close.right),
+        inLowerHalf: close.top > window.innerHeight / 2,
+        overlapsActions: actions.some(hits),
+        overlapsCard: hits(card),
+      };
+    });
+    check('the card\'s close button sits in the bottom right on ' + label,
+      geo.inLowerHalf && geo.fromBottom < 60 && geo.fromRight < 40, JSON.stringify(geo));
+    check('and never lands on the download or share buttons on ' + label,
+      !geo.overlapsActions && !geo.overlapsCard, JSON.stringify(geo));
+    await page.click('#card-dialog-close');
+    await page.waitForFunction(() => !document.querySelector('#card-dialog').open, { timeout: 15000 });
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
 
   const onLaptop = await fitAt(1440, 860);
   const onPhone = await fitAt(390, 844);
