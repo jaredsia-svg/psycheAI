@@ -86,6 +86,32 @@
     store.write(RUNS_KEY, runCount() + 1);
   }
 
+  /**
+   * Persist the digest, and say so when it does not fit.
+   *
+   * `store.write` swallows a quota failure and returns false. The profile's
+   * own write has always checked that and warned; the digest's four did not,
+   * which is the one way a browser ends up holding a report whose evidence is
+   * gone — the two are separate localStorage entries, and the report is
+   * written first. What the reader saw afterwards was a confidence card
+   * claiming Instagram was loaded and a re-run button that threw when pressed.
+   *
+   * Both halves of that are fixed elsewhere (sourcesUsedHtml reads the digest
+   * for the Instagram row now; rerunWithAdditionalData asks for the export
+   * back instead of dereferencing null). This is the half that says it at the
+   * moment it happens, rather than leaving the reader to find out later.
+   *
+   * #profile-alert rather than a per-caller slot: all four callers land on the
+   * report a moment later — two through runAnalysis, two as the premium dialog
+   * closes — and renderProfile does not clear that element, so a message
+   * written here survives the navigation and is read where it makes sense.
+   */
+  function writeDigest(digest) {
+    if (store.write(KEYS.digest, digest)) return true;
+    flash('#profile-alert', TEXT.digestTooLarge);
+    return false;
+  }
+
   /** True when the next analysis is past this browser's free allowance. */
   function mustPayForAnalysis() {
     return runCount() >= freeAnalyses;
@@ -2216,7 +2242,7 @@
     // Google or Facebook export to this one later in the session without
     // asking for the Instagram export again.
     state.signals = signals;
-    store.write(KEYS.digest, digest);
+    writeDigest(digest);
     await runAnalysis(digest, images, uploadAuth);
   }
 
@@ -2272,7 +2298,13 @@
     const buttons = dialog.querySelectorAll('.mode-option');
     const digest = state.digest;
     const added = {
-      instagram: true,
+      // Seeded from the digest, not assumed. Instagram is always already
+      // loaded *when there is a digest* — it is the one source a report
+      // cannot exist without — but the digest can go missing on its own while
+      // the report survives, and a tick here would then promise the popout
+      // was holding an archive it does not have. Left unticked, the row reads
+      // as the one thing still to do, which is exactly what it is.
+      instagram: Boolean(digest) || undefined,
       google: Boolean(digest && digest.google) || pendingDataSourceReads.google || undefined,
       facebook: Boolean(digest && digest.facebook) || pendingDataSourceReads.facebook || undefined,
     };
@@ -2546,11 +2578,25 @@
       // collectExtraDataForPremium. Built without images from the start
       // rather than offered in the review and silently dropped after.
       digest = Digest.build(signals, { includeMessages: true, includeImages: false, imageCount: 0 });
-    } else {
+    } else if (state.digest) {
       digest = JSON.parse(JSON.stringify(state.digest));
       if (extraSupplements) digest = Digest.addSupplements(digest, extraSupplements);
       digest.coverage.images.included = false;
       digest.coverage.images.attached = 0;
+    } else {
+      // No archive in memory and no stored digest to merge into — there is
+      // nothing to send. Reached when the digest went missing on its own
+      // while the report survived (see sourcesUsedHtml's Instagram row), and
+      // the reader pressed Continue without loading Instagram again.
+      //
+      // This used to fall into the branch above and dereference
+      // `null.coverage`, which threw where nothing catches: the popout shut,
+      // no review opened, no message appeared, and the button read as simply
+      // broken. Saying what is needed is the whole fix — askDataSources
+      // already treats Instagram as replaceable, so the reader's next attempt
+      // has somewhere to go.
+      flash('#profile-alert', TEXT.rerunNeedsInstagram);
+      return;
     }
 
     let decision;
@@ -2616,7 +2662,7 @@
 
     state.digest = digest;
     state.images = images;
-    store.write(KEYS.digest, digest);
+    writeDigest(digest);
     // Whatever was pending is now either committed into digest above or
     // superseded by it — see pendingDataSourceReads' own declaration.
     pendingDataSourceReads = {};
@@ -2759,7 +2805,15 @@
   function sourcesUsedHtml() {
     const digest = state.digest;
     const rows = [
-      { icon: '📷', label: TEXT.sourceInstagram, loaded: true },
+      // Not hardcoded true, which it was. Instagram is required to produce a
+      // report at all, so a report on screen used to be taken as proof its
+      // export was still loaded — but the digest is a separate localStorage
+      // entry from the profile and can go missing on its own (a browser too
+      // full to take it, eviction, a hand-edited store). The row then said
+      // "loaded" about evidence this device no longer holds, and the re-run
+      // behind it had nothing to rebuild from. It reads the digest like the
+      // other two now, so missing means missing whichever source it is.
+      { icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
       { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
     ];
@@ -2777,7 +2831,13 @@
 
     return '<div class="trust-sources">' +
       '<h3>' + esc(TEXT.sourcesUsed) + '</h3>' +
-      (anyMissing ? '<p class="muted">' + esc(TEXT.sourcesUsedHint) + '</p>' : '') +
+      // A missing Instagram export is a different message from a missing
+      // supplement: the ordinary hint invites a reader to *raise* their
+      // confidence by adding Google or Facebook, which is beside the point
+      // when the evidence the report was written from is the thing that has
+      // gone. This one says what happened and what re-running will ask for.
+      (!digest ? '<p class="muted">' + esc(TEXT.sourcesInstagramLost) + '</p>'
+        : anyMissing ? '<p class="muted">' + esc(TEXT.sourcesUsedHint) + '</p>' : '') +
       '<ul class="source-list">' + rowsHtml + '</ul>' +
       '<div class="btn-row">' +
       '<button class="btn" id="rerun-with-data" type="button">' + esc(TEXT.rerunAnalysis) + '</button>' +
@@ -3924,7 +3984,7 @@
         delete paidDigest.__addedSupplements;
         if (added && state.signals) state.signals.supplements = added;
         state.digest = paidDigest;
-        store.write(KEYS.digest, paidDigest);
+        writeDigest(paidDigest);
         pendingPremiumDigest = null;
 
         if (state.profile) {
@@ -3972,7 +4032,7 @@
         delete paidDigest.__addedSupplements;
         if (added && state.signals) state.signals.supplements = added;
         state.digest = paidDigest;
-        store.write(KEYS.digest, paidDigest);
+        writeDigest(paidDigest);
       }
       if (refreshedFree) {
         // Every section changed, not just the paid ones, so the whole report

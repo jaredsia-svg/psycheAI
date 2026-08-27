@@ -1793,6 +1793,45 @@ or photographs that will not decode, write their message to `#profile-alert` and
 their report — rather than calling `showUploadError()`, which drops back to the welcome page and would
 look for all the world like the report had been lost.
 
+**The digest never expires, and the app is finally honest about the one way it can vanish.** It is
+plain `localStorage` under `psycheai_digest` with no TTL, no expiry field and no timestamp check
+anywhere — it survives until "Delete everything", a site-data wipe, or browser eviction takes it.
+Those all take the report with it, which is a clean state to be in.
+
+What was not clean is the asymmetric case. The profile and the digest are separate entries, the
+profile is written first, and `store.write` swallows a quota failure and returns `false` — so a
+browser with room for the report and not the evidence behind it produced a report whose digest was
+gone. The profile's write had always checked that return value and warned; the digest's four writes
+did not. Downstream, two things then lied about it:
+
+- The Instagram row in the confidence card was hardcoded `loaded: true`, on the reasoning that a
+  report on screen proves its export was read. It ticked green about data the device no longer had.
+- `rerunWithAdditionalData`'s no-signals branch did `JSON.parse(JSON.stringify(state.digest))` on a
+  `null` and then dereferenced `digest.coverage`. That threw where nothing catches: the popout shut,
+  no review opened, **no message appeared at all**, and the button read as simply broken.
+
+All three are fixed together, because any one alone still leaves a reader stuck. The Instagram row
+reads the digest like the other two, so missing means missing whichever source it is. The confidence
+card swaps its "add Google to raise confidence" hint for one that says the evidence is gone, the
+report is safe, and re-running will ask for the export again — a different message, because the
+ordinary one is beside the point when the primary source is what went. The data-sources popout seeds
+Instagram unticked to match, so it never promises to be holding an archive it does not have; Instagram
+was always replaceable there, so the recovery needed no new UI. And the re-run branch asks for the
+export back instead of dereferencing null. A single `writeDigest()` helper now wraps all four writes
+and warns at the moment the digest fails to save, so the situation announces itself rather than being
+discovered a fortnight later.
+
+The recovery is driven end to end in `tools/uitest.mjs` — digest removed, reload, Instagram crossed
+out, the report still whole, Continue-with-nothing-loaded producing a message instead of a
+`pageerror`, then a real re-upload through the popout bringing the photographs back, sending one
+analysis, restoring the digest and ticking the row green — with a `pageerror` listener asserting zero
+uncaught errors across the whole thing. The quota failure that creates the state has its own isolated
+page whose `setItem` refuses the digest key specifically, since a real quota wall cannot be aimed at
+one key and aiming it is what proves the report still saves while the digest does not. Four
+fault-injections: the hardcoded `loaded: true`, the unguarded null branch (which reproduces
+`Cannot read properties of null (reading 'coverage')` verbatim), the popout's unconditional tick, and
+the unchecked write.
+
 **Back at the review steps upstream; only Escape leaves.** The popout and the review are one loop, for
 the same reason the first upload's supplement offer and review are — `addDataAndRerun` now runs both in
 a `for(;;)`, and `rerunWithAdditionalData` returns the `REVIEW_BACK` sentinel rather than swallowing it.
@@ -3309,7 +3348,7 @@ npm test           # 692 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 990 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1002 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

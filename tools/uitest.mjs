@@ -5306,6 +5306,125 @@ try {
     await page.locator('#rerun-with-data').isVisible() &&
     (await page.locator('.trust-sources .source-row').count()) === 3);
 
+  // ---- the digest going missing while the report survives ----
+  //
+  // The two are separate localStorage entries and the report is written
+  // first, so a browser too full to take the digest — or one that evicts it —
+  // leaves a report whose evidence is gone. The Instagram row used to be
+  // hardcoded `loaded: true`, on the reasoning that a report on screen proves
+  // its export was read; it ticked green about data this device no longer
+  // had, and the re-run behind it dereferenced a null digest and threw where
+  // nothing catches. The popout shut, no review opened, no message appeared.
+  const digestBackup = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
+  const pageErrors = [];
+  const notePageError = error => pageErrors.push(error.message);
+  page.on('pageerror', notePageError);
+  await page.evaluate(() => localStorage.removeItem('psycheai_digest'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  await openAllSections(page);
+  check('a missing digest crosses Instagram out rather than ticking it',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
+      const instagram = rows.find(r => r.querySelector('.source-name').textContent.includes('Instagram'));
+      return Boolean(instagram.querySelector('.source-cross')) &&
+        !instagram.querySelector('.source-tick');
+    }));
+  check('and the report itself is still on screen — only the evidence went',
+    (await page.locator('#view-profile').isVisible()) &&
+    (await page.locator('#profile-body .section-card').count()) > 5);
+  // A different message from the ordinary "add Google to raise confidence"
+  // hint, which is beside the point when the primary source is what is gone.
+  check('the note explains what happened rather than offering to raise confidence',
+    /no longer on this device/i.test(await page.locator('.trust-sources > p.muted').innerText()) &&
+    !/raise this report/i.test(await page.locator('.trust-sources > p.muted').innerText()),
+    await page.locator('.trust-sources > p.muted').innerText());
+  // The popout has to agree with the card behind it: a tick here would
+  // promise it was holding an archive it does not have.
+  await openDataSourcesPopout(page);
+  check('the popout shows Instagram unticked too, as the one thing left to do',
+    !(await page.evaluate(() => document.querySelector(
+      '#datasources-dialog .mode-option[data-datasource="instagram"]').classList.contains('is-added'))));
+  await continueFromDataSources(page);
+  await page.waitForTimeout(600);
+  check('Continue with nothing loaded says what is needed instead of throwing',
+    /no longer on this device/i.test(await page.locator('#profile-alert').innerText()) &&
+    !(await page.evaluate(() => document.querySelector('#review-dialog').open)),
+    await page.locator('#profile-alert').innerText());
+  check('and no uncaught error reached the page while doing it',
+    pageErrors.length === 0, pageErrors.join(' | '));
+  // The recovery itself: load Instagram again and the re-run works normally.
+  await clearRunCount(page);
+  await loadSource(page, 'instagram', buildExportZip(), 'instagram-again.zip');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 20000 });
+  check('re-uploading Instagram in the popout gets the re-run moving again',
+    await page.locator('#review-dialog').isVisible());
+  check('and the photographs come back with it, since the archive is in memory now',
+    (await page.locator('#review-images').count()) === 1);
+  const analysesBeforeRecovery = analyseBodies.length;
+  await page.click('#review-send');
+  await waitForLength(analyseBodies, analysesBeforeRecovery + 1, 60000);
+  await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
+  await openAllSections(page);
+  check('the digest is stored again and Instagram ticks green',
+    (await page.evaluate(() => Boolean(localStorage.getItem('psycheai_digest')))) &&
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('.trust-sources .source-row')];
+      const instagram = rows.find(r => r.querySelector('.source-name').textContent.includes('Instagram'));
+      return Boolean(instagram.querySelector('.source-tick'));
+    }));
+  page.off('pageerror', notePageError);
+  check('still no uncaught errors across the whole recovery',
+    pageErrors.length === 0, pageErrors.join(' | '));
+
+  // Back to the digest this block started with, so what follows is unaffected
+  // by the detour above.
+  await page.evaluate(saved => localStorage.setItem('psycheai_digest', saved), digestBackup);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  await openAllSections(page);
+
+  // ---- and the write that creates that state in the first place ----
+  //
+  // store.write swallows a quota failure and returns false. The profile's own
+  // write has always checked that and warned; the digest's four did not, so a
+  // browser with just enough room for the report and not the evidence behind
+  // it produced the whole situation above in silence. Driven on its own page,
+  // with setItem made to refuse the digest key specifically — a real quota
+  // wall cannot be aimed at one key, and aiming it is what proves the report
+  // still saves while the digest does not.
+  {
+    const fullPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    await fullPage.addInitScript(() => {
+      const real = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === 'psycheai_digest') {
+          const error = new Error('QuotaExceededError');
+          error.name = 'QuotaExceededError';
+          throw error;
+        }
+        return real.call(this, key, value);
+      };
+    });
+    await fullPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+    await fullPage.setInputFiles('#file-input', {
+      name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+    });
+    await chooseDepth(fullPage);
+    await answerReview(fullPage);
+    await fullPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+    check('a digest too large to store says so, rather than failing silently',
+      /too large for this browser/i.test(await fullPage.locator('#profile-alert').innerText()),
+      await fullPage.locator('#profile-alert').innerText());
+    // The distinction the copy draws has to be true: the report really is
+    // saved, and really will survive a reload — it is only the evidence that
+    // did not fit.
+    check('and the report really is saved, exactly as that message claims',
+      await fullPage.evaluate(() => Boolean(localStorage.getItem('psycheai_profile'))) &&
+      !(await fullPage.evaluate(() => localStorage.getItem('psycheai_digest'))));
+    await fullPage.close();
+  }
+
   // The popout offers all three sources together — Instagram included, and
   // already ticked, but still clickable: a source already loaded can still
   // be replaced, which is the whole reason this differs from the old

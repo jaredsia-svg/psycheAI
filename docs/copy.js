@@ -552,12 +552,30 @@
       'Instagram and Google together are the ideal combination — Instagram reads your outward ' +
       'persona, the self you present; Google reads your inward self, what you search and watch when ' +
       'no one is looking.',
+    // Shown in place of the hint above when the digest itself has gone — the
+    // report survives in its own localStorage entry, the evidence behind it
+    // does not. Says what re-running will ask for rather than leaving a
+    // reader to discover it by pressing the button.
+    sourcesInstagramLost: 'The evidence this report was written from is no longer on this device — ' +
+      'your browser may have cleared it to free space. The report itself is safe. To run the ' +
+      'analysis again, load your Instagram export once more below.',
     sourceInstagram: 'Instagram',
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
     sourceLoaded: 'Loaded',
     sourceMissing: 'Not loaded',
     rerunAnalysis: 'Add / change data & re-run analysis',
+    // Flashed on the report when Continue is pressed with no Instagram export
+    // loaded and none stored. Names the one thing that would make the re-run
+    // possible, rather than reporting a failure the reader cannot act on.
+    rerunNeedsInstagram: 'Your Instagram export is no longer on this device, so there is nothing to ' +
+      're-analyse. Load it again in the popout and your report will be rewritten from it.',
+    // The digest failed to save — almost always a full localStorage. Said at
+    // the moment it happens rather than left for the reader to discover when
+    // a re-run has nothing to work from. The report itself is stored
+    // separately and is usually fine, so this does not claim otherwise.
+    digestTooLarge: 'Your report is saved, but the evidence summary behind it was too large for this ' +
+      'browser’s storage. Re-running the analysis later will ask for your Instagram export again.',
 
     // The popout #rerun-with-data now opens, ahead of the review — see
     // askDataSources() in app.js. Every source already loaded is ticked but
