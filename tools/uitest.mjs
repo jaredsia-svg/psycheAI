@@ -807,7 +807,7 @@ try {
   for (const [what, needle] of [
     ['the menu path', /Accounts Centre/],
     ['creating the export', /Create export/i],
-    ['picking the Instagram profile', /Instagram badge/i],
+    ['picking the Instagram profile', /labelled\s+Instagram/i],
     ['exporting to the device', /Export to device/i],
     ['the date range', /All time/],
     ['the format', /JSON/],
@@ -831,19 +831,43 @@ try {
   check('and every one of them actually loads',
     await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
       .every(i => i.complete && i.naturalWidth > 0)));
-  // Each carries its own alt text and a caption. The caption says what to do,
-  // the alt says what is in the picture — a screen reader needs both, and they
-  // are not the same sentence.
-  check('each screenshot describes itself and says what to do',
+  // Every screenshot carries its own alt text, long enough to describe the
+  // screen and what is ringed on it.
+  check('every screenshot describes itself in its alt text',
     await page.evaluate(() => {
       const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
       return figs.length === 7 && figs.every(f => {
         const img = f.querySelector('img');
-        const cap = f.querySelector('figcaption');
-        return img && (img.getAttribute('alt') || '').length > 20 &&
-          cap && cap.textContent.trim().length > 5;
+        return img && (img.getAttribute('alt') || '').length > 20;
       });
     }));
+  // Six of the seven also carry a caption naming the tap — the step 3 shot is
+  // the exception, because what to do with it (the three settings, then
+  // Start export) is now written above it as real content rather than a
+  // one-line caption repeating the ring.
+  check('six of the seven name the tap in a caption, and the step 3 shot does not repeat it',
+    await page.evaluate(() => {
+      const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
+      const withCaption = figs.filter(f => {
+        const cap = f.querySelector('figcaption');
+        return cap && cap.textContent.trim().length > 5;
+      });
+      const confirmShot = document.querySelector('#guide-dialog img[src*="07-confirm-export"]')
+        .closest('.guide-shot');
+      return withCaption.length === 6 && !confirmShot.querySelector('figcaption');
+    }));
+  // The caption is the instruction and the picture is the evidence for it, so
+  // a reader should meet the instruction first — moved here from below the
+  // picture, where the caption read as an afterthought to something already
+  // shown rather than as the thing to look for.
+  check('the caption sits above its screenshot, not below',
+    await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot')]
+      .filter(f => f.querySelector('figcaption'))
+      .every(f => {
+        const cap = f.querySelector('figcaption');
+        const frame = f.querySelector('.guide-frame');
+        return Boolean(cap.compareDocumentPosition(frame) & Node.DOCUMENT_POSITION_FOLLOWING);
+      })));
   // ---- the tap target is ringed on every screenshot ----
   //
   // A screenshot of a menu is a picture of fifteen rows, and the reader needs
@@ -987,6 +1011,27 @@ try {
       const rows = [...document.querySelectorAll('#guide-dialog .guide-settings > li')];
       return rows.length === 3 && rows.every(r => r.querySelectorAll('p').length === 0);
     }));
+  // The settings are the instruction; the screenshot is where to find them.
+  // Read top to bottom that is backwards — a reader hits "ringed below" before
+  // there is anything ringed yet. Moved so the three bullets and the "Start
+  // export" tap both come before the screenshot, not after it.
+  check('the three settings and "Start export" both sit above the step 3 screenshot',
+    await page.evaluate(() => {
+      const step3 = document.querySelector('#guide-dialog .guide-step:nth-child(3)');
+      const settings = step3.querySelector('.guide-settings');
+      const then = step3.querySelector('.guide-then');
+      const shots = step3.querySelector('.guide-shots');
+      return Boolean(settings.compareDocumentPosition(shots) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(then.compareDocumentPosition(shots) & Node.DOCUMENT_POSITION_FOLLOWING);
+    }));
+  // Two sentences that used to sit in step 2 and step 3 were pure narration —
+  // "choose the profile with the Instagram badge" when the screenshot already
+  // rings that profile, "all three are rows on one screen" when the bullets
+  // now say exactly what those rows are. Removed rather than reworded.
+  check('the narration sentences that only repeated the screenshots are gone',
+    !/Instagram badge/i.test(guideText) &&
+    !/rows on the one/i.test(guideText) &&
+    !/three rows sit at the bottom/i.test(guideText));
 
   // Back is how people dismiss something covering the page on a phone. Without
   // an entry to pop they would leave the site instead — the same reasoning the
@@ -1010,6 +1055,29 @@ try {
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
   check('and the cross closes it too',
     !(await page.evaluate(() => document.querySelector('#guide-dialog').open)));
+
+  // The guide's own hand-off: reopen it and use its closing "Start here"
+  // button, which should do the whole rest of the reader's job — close the
+  // dialog and land them on the upload box, rather than leave them to close
+  // it themselves and go hunting for the dropzone on a long page.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.click('#guide-open');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  check('the guide ends with a Start here button',
+    await page.locator('#guide-start').isVisible());
+  await page.click('#guide-start');
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  await page.waitForTimeout(600);
+  check('Start here closes the guide and lands on the upload box',
+    !(await page.evaluate(() => document.querySelector('#guide-dialog').open)) &&
+    await page.evaluate(() => {
+      const nav = document.querySelector('.nav').getBoundingClientRect();
+      const card = document.querySelector('.upload-card').getBoundingClientRect();
+      return card.top >= nav.bottom - 4 && card.top < window.innerHeight / 2;
+    }),
+    await page.evaluate(() =>
+      'upload-card at ' + Math.round(document.querySelector('.upload-card').getBoundingClientRect().top)));
+  await page.evaluate(() => window.scrollTo(0, 0));
 
   check('the underline is not the one links use, and every link here is a real destination',
     await page.evaluate(() => {

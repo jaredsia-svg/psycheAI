@@ -1273,6 +1273,13 @@
 
   $('#guide-open').addEventListener('click', showGuide);
   $('#guide-close').addEventListener('click', closeGuide);
+  // The guide's own way of saying "you're done reading, go do it" — closes
+  // the dialog and lands the reader on the upload box rather than leaving
+  // them to close it and scroll the rest of the page themselves.
+  $('#guide-start').addEventListener('click', () => {
+    closeGuide();
+    $('.upload-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
 
   let closingGuideFromHistory = false;
 

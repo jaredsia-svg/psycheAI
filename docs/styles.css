@@ -537,7 +537,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   pointer-events: none;
 }
 .guide-shot figcaption {
-  margin-top: .5rem; font-size: .84rem; line-height: 1.4; color: var(--ink-soft);
+  margin-bottom: .5rem; font-size: .84rem; line-height: 1.4; color: var(--ink-soft);
 }
 .guide-shot figcaption b { color: var(--ink); font-weight: 600; }
 
@@ -554,7 +554,14 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 /* The one setting that costs hours if it is wrong is the only one coloured.
    Once in three is a signal; three in three is wallpaper. */
 .guide-settings > li.is-warning .guide-setting-why strong { color: var(--danger); }
-.guide-then { margin: 0; }
+.guide-then { margin: 0 0 1rem; }
+
+/* ---------- the closing hand-off ---------- */
+/* The guide's last word used to be "upload it at the bottom of this page" —
+   true, but the reader still has to go find that page and scroll it
+   themselves. A button that does the finding removes the one step the guide
+   could not otherwise shorten. */
+.guide-cta { margin: 1.6rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); }
 
 .sample-dialog-body {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;

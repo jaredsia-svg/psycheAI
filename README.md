@@ -2352,6 +2352,37 @@ every screenshot-writing branch in the suite. One of them then timed out on a lo
 ready, and the reported failure was a wellness-card screenshot several hundred checks away from
 anything that had changed. The variable is `guideShotImgs` now.
 
+**The caption moved above the picture, and two sentences that only narrated the screenshot are gone.**
+A caption below a picture reads as a footnote to something already shown; above it, it is the
+instruction the picture then proves. All six captioned screenshots were rebuilt this way — figcaption
+first, then the frame — and a check pins the order rather than just the caption's presence, since a
+caption in the wrong place still passes any check that only asks whether one exists.
+
+The two sentences it dropped alongside that move were pure narration of what a screenshot already
+showed: "Choose the profile with the Instagram badge — not Facebook, Threads or WhatsApp" when the
+picture already rings the Instagram row, and "All three are rows on the one Confirm your export screen
+— ringed below" when the three bullets underneath now say exactly what those rows are. The step 3
+screenshot's own caption, "The three rows sit at the bottom", went the same way and was not
+replaced — it has no caption at all now, because the bullets above it already say what to do with it.
+That makes the guide's screenshot count and its caption count genuinely different numbers for the
+first time (seven pictures, six captions), so the check that used to require every screenshot to carry
+a caption was split into two: one asserting the alt text on all seven, a second asserting the caption
+on six and confirming the seventh — matched by its filename, not by position — is the one without.
+
+**Step 3's bullets and its "Start export" line moved above the screenshot they describe**, for the
+same reason as the caption move: a reader hit "ringed below" before anything was ringed yet, because
+the paragraph came before the picture but the picture came before the settings it was ringing. Reading
+order is now: what to change, then what it looks like changed. The check walks `compareDocumentPosition`
+between the settings list and the screenshot rather than reading rendered pixel order, so it holds at
+every viewport width the grid reflows to.
+
+**The guide ends with a "Start here" button** rather than a sentence pointing at the bottom of the
+page. It closes the dialog and scrolls straight to the upload card, the same way the hero's own
+"Analyse my data" button already lands on the how-to card — so a reader who has just read six screens
+of instructions does not also have to go find the box they were reading about. The check clicks it and
+asserts both halves: the dialog is gone, and the upload card's own top edge is what is now under the
+nav, not merely "somewhere on screen".
+
 ### Backing out of an upload
 
 The dropzone sits near the foot of a long welcome page. Uploading covers it with the working screen
@@ -3575,7 +3606,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1052 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1058 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
