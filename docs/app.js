@@ -1276,9 +1276,30 @@
   // The guide's own way of saying "you're done reading, go do it" — closes
   // the dialog and lands the reader on the upload box rather than leaving
   // them to close it and scroll the rest of the page themselves.
+  //
+  // The order here is load-bearing and was wrong at first. Closing the guide
+  // gives back the history entry it pushed, and the browser restores the
+  // scroll position that entry was created at — which is wherever the reader
+  // was standing when they opened the guide, and which lands *after* a scroll
+  // started before it. Scrolling first therefore raced the restoration and
+  // usually lost, dropping the reader back where they started with no sign
+  // anything had been tried. So the scroll waits for the pop to land, and only
+  // then moves the page.
   $('#guide-start').addEventListener('click', () => {
-    closeGuide();
-    $('.upload-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    const land = () => $('.upload-card')
+      .scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    if (guideHistoryEntry) {
+      // Two frames rather than one: the first lets the popstate handler finish,
+      // the second lets the browser's own scroll restoration paint before this
+      // overrides it. `once` so a later Back press cannot re-trigger a scroll
+      // the reader did not ask for.
+      window.addEventListener('popstate',
+        () => requestAnimationFrame(() => requestAnimationFrame(land)), { once: true });
+      closeGuide();
+    } else {
+      closeGuide();
+      land();
+    }
   });
 
   let closingGuideFromHistory = false;
@@ -2874,6 +2895,16 @@
         (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
         '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
         '<p>' + esc(letter.why) + '</p>' +
+        // The opposing case, between the argument it opposes and the "in your
+        // week" line that closes the axis. Rendered as its own labelled block
+        // rather than folded into `why`, because the strength pill above is
+        // read off the gap between the two and a reader should be able to see
+        // both halves of that judgement separately. Optional in the markup:
+        // a report saved before the field existed still renders.
+        (letter.counterEvidence
+          ? '<p class="axis-counter"><span class="axis-counter-label">' + esc(TEXT.mbtiAgainst) +
+            '</span>' + esc(letter.counterEvidence) + '</p>'
+          : '') +
         (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';

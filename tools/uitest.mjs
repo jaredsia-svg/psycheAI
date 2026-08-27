@@ -1091,7 +1091,37 @@ try {
     await page.locator('#guide-start').isVisible());
   await page.click('#guide-start');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
-  await page.waitForTimeout(600);
+  // Waits for the scroll to move and *then* stop, rather than for a fixed
+  // number of milliseconds. Two subtleties, both learned the hard way:
+  //
+  // A flat wait read the position mid-glide on a slow run and failed a card
+  // that was still travelling to exactly where it belonged. But simply
+  // polling for two equal readings is worse: the scroll does not begin until
+  // two frames after the history pop lands, so two equal readings are
+  // satisfied by the quiet period *before* it starts, and the check then
+  // measured the unscrolled page every time. Requiring movement first, then
+  // stability, is what distinguishes "has not started" from "has finished".
+  //
+  // Deliberately not waiting for the card to reach its final position: that
+  // would be waiting for the very thing the check then asserts, which always
+  // passes or hangs. This waits only for motion to stop, and the assertion
+  // below decides whether it stopped anywhere useful. The timeout is short and
+  // swallowed for the same reason — a page that never scrolls should fail the
+  // check with a real number in the message, not throw out of the run.
+  await page.waitForFunction(() => {
+    const y = Math.round(document.querySelector('.upload-card').getBoundingClientRect().top);
+    const s = window.__cardSettle || (window.__cardSettle = { last: null, moved: false, still: 0 });
+    if (s.last === null) { s.last = y; return false; }
+    if (y !== s.last) { s.moved = true; s.still = 0; s.last = y; return false; }
+    s.still += 1;
+    // Six still polls, not two. The history restoration lands *after* the
+    // smooth scroll has finished easing, so a short stillness window is
+    // satisfied at the end of the glide and reads a position the browser is
+    // about to yank back — which is exactly the bug this check exists for, and
+    // it passed against it. Six polls is 600ms of genuine quiet, long enough
+    // for the pop to arrive and reset the counter if it is going to.
+    return s.moved && s.still >= 6;
+  }, { timeout: 6000, polling: 100 }).catch(() => {});
   check('Start here closes the guide and lands on the upload box',
     !(await page.evaluate(() => document.querySelector('#guide-dialog').open)) &&
     await page.evaluate(() => {
@@ -4200,6 +4230,49 @@ try {
     (await page.locator('.axis-against').allInnerTexts()).join('|'));
   check('the letter itself is still shown',
     (await page.locator('.axis-letter').allInnerTexts()).join('') === 'ENFJ');
+  // ---- each axis shows the case against its own letter ----
+  //
+  // N/S and T/F were the two letters readers reported as subtly wrong, and the
+  // cause was a letter picked off the first thing that pointed at it. The
+  // model now has to write the opposing case for every axis, and `strength` is
+  // read off the gap between the two — so the reader has to be able to see
+  // both halves of that judgement, not just the half that won.
+  //
+  // The mock deliberately leaves one axis's counter empty (the `clear` one,
+  // which is the single case the schema allows it), so this asserts three
+  // rendered rather than four: a check for four would fail on the correct
+  // behaviour, and a check for "at least one" would pass on a renderer that
+  // dropped the field entirely on three axes out of four.
+  check('the case against each letter is rendered where the model wrote one',
+    (await page.locator('.axis-counter').count()) === 3,
+    (await page.locator('.axis-counter').count()) + ' counters');
+  check('and each one is labelled rather than running on from the argument above it',
+    await page.evaluate(() => [...document.querySelectorAll('.axis-counter')]
+      .every(n => {
+        const label = n.querySelector('.axis-counter-label');
+        return label && /case against/i.test(label.textContent);
+      })));
+  // Set apart visually, because a reader deciding whether they agree with
+  // their own type needs to find it. Checked as a real left border rather than
+  // as a class being present, which would pass on a rule that got deleted.
+  check('the opposing case is set apart from the case that won',
+    await page.evaluate(() => {
+      // Guarded: a renderer that dropped the block entirely should fail this
+      // check, not throw out of page.evaluate and abort the run.
+      const el = document.querySelector('.axis-counter');
+      if (!el) return false;
+      const s = getComputedStyle(el);
+      return parseFloat(s.borderLeftWidth) >= 2 && s.borderLeftStyle === 'solid';
+    }));
+  // An axis with no counter must render nothing at all rather than an empty
+  // labelled block — a stray "The case against:" with nothing after it reads
+  // as a bug in the report.
+  check('an axis with no counter shows no empty label',
+    await page.evaluate(() => [...document.querySelectorAll('.axis')]
+      .every(a => {
+        const c = a.querySelector('.axis-counter');
+        return !c || c.textContent.replace(/^\s*The case against:\s*/i, '').trim().length > 0;
+      })));
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));

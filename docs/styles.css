@@ -984,6 +984,17 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 .axis-name { font-weight: 650; margin-right: .35rem; }
 .axis-against { color: var(--ink-soft); font-size: .86rem; margin-right: .4rem; }
 .axis p { margin: .2rem 0 0; font-size: .92rem; }
+/* The case against the letter, which the strength pill is read off. Set apart
+   from the argument above it by a rule down its left edge rather than by going
+   grey like `.muted`: it is not an aside, it is the other half of the
+   judgement, and a reader deciding whether they agree with their own type
+   needs to find it rather than skim past it. */
+.axis-counter {
+  margin-top: .5rem; padding-left: .7rem;
+  border-left: 2px solid var(--line);
+  color: var(--ink-soft);
+}
+.axis-counter-label { font-weight: 650; color: var(--ink); }
 /* A slight lean should look slighter than a clear one at a glance. */
 .pill-slight { opacity: .6; }
 .pill-clear { border-color: var(--accent); color: var(--accent); }

@@ -134,7 +134,19 @@
   // photographs, which freed 3,612 tokens of image reserve. So the digest
   // ceiling still went *up* by roughly 9,800 characters on net, even after
   // paying for the longer prompt.
-  const FIXED_INPUT_TOKENS = 17800;
+  //
+  // Raised to 20,300 for the N/S and T/F section, which does for those two
+  // axes what the extraversion trap already did for E/I: defines what each
+  // pole actually measures, names the direction that axis's error runs, and
+  // points at the digest fields that bear on it — plus the per-axis
+  // `counterEvidence` field it feeds. Measured at 20,085.
+  //
+  // This is the most expensive kind of prompt text there is: it buys nothing
+  // on a thin account and costs every account the same. It is here because
+  // those two letters were the ones readers reported as wrong, and the cost
+  // is ~8,750 characters off the digest ceiling — a trade of some sampled
+  // captions for two of the four letters being right more often.
+  const FIXED_INPUT_TOKENS = 20300;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to

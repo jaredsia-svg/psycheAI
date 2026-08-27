@@ -821,6 +821,109 @@ check('cardHighlights asks for real summarizing, not verbatim sentences',
 check('cardHighlights names both fields it condenses',
   /`essence\.why`/.test(cardHighlightsDesc) && /`summary`/.test(cardHighlightsDesc));
 
+// ---------- MBTI: each axis is an argument with two sides ----------
+//
+// N/S and T/F were the two letters readers reported as subtly wrong. Both had
+// the same hole: E/I carried a whole section on what its evidence looks like
+// and which way its error runs, and those two carried nothing but "cite
+// evidence". The fix is in two halves, and both are pinned here — a schema
+// field that makes the opposing case mandatory, and prompt guidance naming the
+// digest fields that actually bear on those axes.
+const letterProps = prompts.PROFILE_SCHEMA.properties.mbti.properties.letters.items.properties;
+// Read through a guard rather than dereferenced: a missing field should fail
+// the check that looks for it and leave the rest of the suite running, not
+// throw out of the file and take four hundred later checks with it.
+const letterDesc = key => String((letterProps[key] || {}).description || '');
+check('every MBTI axis carries the case against its own letter',
+  'counterEvidence' in letterProps);
+check('the opposing case is asked for at full strength, not raised to be dismissed',
+  /at full strength/i.test(letterDesc('counterEvidence')) &&
+  /rather than raised in order to be waved away/i.test(letterDesc('counterEvidence')));
+check('and it has to carry a count, like every other evidence string in this report',
+  /with a count on it/i.test(letterDesc('counterEvidence')));
+// The point of the field: a letter picked off the first thing that pointed at
+// it, with no search for the other side, is the failure being corrected.
+check('finding no counter-evidence is treated as not having looked',
+  /means not having looked/i.test(letterDesc('counterEvidence')));
+check('an empty counter is allowed but tied to a one-sided axis',
+  /empty string/i.test(letterDesc('counterEvidence')) &&
+  /genuinely one-sided/i.test(letterDesc('counterEvidence')));
+// Strength is the whole reason the field exists: it is read off the balance
+// rather than asserted and justified afterwards.
+check('strength is read off the balance between the two sides, not asserted',
+  /balance\*? between `why` and `counterEvidence`/i.test(letterDesc('strength')) &&
+  /rather than asserted on its own/i.test(letterDesc('strength')));
+check('and each of the three strengths is defined against that balance',
+  /`clear` only where the opposing side stayed thin/i.test(letterDesc('strength')) &&
+  /`slight` where the two are close/i.test(letterDesc('strength')));
+check('the case for a letter needs two separate pieces of evidence, not one read twice',
+  /at least two distinct pieces of evidence/i.test(letterDesc('why')) &&
+  /different parts of the digest/i.test(letterDesc('why')) &&
+  /not two readings of the same caption/i.test(letterDesc('why')));
+check('and each piece of it is counted',
+  /each with a count or a proportion on it/i.test(letterDesc('why')));
+
+// The prompt half. Each axis's error has a direction, and naming it is what
+// makes the correction actionable rather than a general plea for care.
+const sys = prompts.PROFILE_SYSTEM;
+check('the prompt says N/S and T/F have the same medium problem E/I does',
+  /N\/S and T\/F have the same problem/i.test(sys));
+// The definitions come first, because a correction for the medium is useless
+// to a model that is fuzzy on what the pole means in the first place. Each
+// pole is pinned on the words that distinguish it from its opposite.
+check('Intuition is defined by meaning, abstraction, analogy and pattern',
+  /\*\*Intuition\*\* is an appetite for meaning, purpose, ideas, abstraction, analogy and pattern/.test(sys));
+check('Sensing is defined by facts, the senses, steps, specs and verifiable data',
+  /\*\*Sensing\*\* is an appetite for facts, the five senses, steps, specs, concrete verifiable data/.test(sys));
+// The commonest way to get this axis wrong in a *flattering* direction is to
+// treat N as the clever one, which would make the letter a compliment rather
+// than a preference.
+check('and neither N nor S is allowed to read as the deeper of the two',
+  /Neither is depth and neither is shallowness/i.test(sys));
+check('Thinking is defined by logic, fairness, plain criticism and tolerating dislike',
+  /\*\*Thinking\*\* decides by logic, consistency and fairness-as-impartiality/.test(sys) &&
+  /willing to be disliked for a position/i.test(sys));
+check('Feeling is defined by effect on people, harmony and withheld criticism',
+  /\*\*Feeling\*\* decides by the effect on people/.test(sys) &&
+  /keep harmony/i.test(sys) &&
+  /withhold a criticism rather than damage a bond/i.test(sys));
+check('and T/F is not allowed to be read as cold versus warm',
+  /Neither is warmth and neither is coldness/i.test(sys));
+
+check('N/S is corrected for the platform being a camera, not a person',
+  /Instagram is a camera/i.test(sys) && /concreteness is the genre/i.test(sys));
+check('and it says to read what they do once the concrete detail is down',
+  /once the concrete detail is down/i.test(sys));
+check('T/F is corrected for the platform rewarding warmth',
+  /warmth-performing medium/i.test(sys) && /kindness is the genre/i.test(sys));
+// The sharpest tell on the axis, and it falls straight out of the definition:
+// the F pole is defined by withholding criticism, and the platform withholds
+// criticism for everybody — so criticism that survives anyway is the signal.
+check('criticism surviving the medium is named as the axis\'s strongest T tell',
+  /criticism that appears anyway/i.test(sys) &&
+  /worth several times its weight as Thinking evidence/i.test(sys));
+check('and its absence is still not evidence of the opposite',
+  /Its absence, as always, is not evidence of the opposite/i.test(sys));
+// The direction matters as much as the existence of the bias: a warning that
+// did not say which way it runs would leave the model free to overcorrect.
+check('and the T/F error is named as running towards F, the way E/I runs towards E',
+  /The error on this axis runs towards F/i.test(sys));
+check('neither axis may be read off sheer volume',
+  /volume on this axis is as misleading as it is on E\/I/i.test(sys));
+// Named digest fields, so the guidance points at things that exist rather than
+// at a general idea of evidence.
+for (const field of ['geminiPrompts', 'instagramTopics', 'mostEngagedWith', 'rhythm.regularity']) {
+  check('the axis guidance points at the real digest field `' + field + '`',
+    sys.includes(field), field);
+}
+check('J/P is read straight, being the least confounded of the four',
+  /J\/P is the least confounded/i.test(sys));
+check('the prompt orders counterEvidence written before strength is settled',
+  /write \\`counterEvidence\\` before you settle \\`strength\\`/i.test(sys) ||
+  /write `counterEvidence` before you settle `strength`/i.test(sys));
+check('and calls out a report that found every axis clear',
+  /clear` on all four axes is a report that did not look/i.test(sys));
+
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on a character, its franchise, an icon and a reason',
   ['character', 'franchise', 'icon', 'why'].every(k => k in essenceProps));

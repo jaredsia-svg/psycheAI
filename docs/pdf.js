@@ -731,8 +731,13 @@
     return this;
   };
 
-  /** One MBTI axis: the lettered square, the pole it beat, and the reasoning. */
-  Report.prototype.axis = function (letter, pole, strength, why, inPractice) {
+  /**
+   * One MBTI axis: the lettered square, the pole it beat, the reasoning, the
+   * opposing case the strength was read against, and what it looks like in
+   * their week. `counterEvidence` is optional so a report saved before the
+   * field existed still lays out.
+   */
+  Report.prototype.axis = function (letter, pole, strength, why, inPractice, counterEvidence) {
     const nameStyle = { size: 11.5, bold: true, color: INK };
     const whyStyle = { size: 9.8, color: INK, leading: 14 };
     this.need(76);
@@ -760,6 +765,10 @@
     }
     this.doc.y = cursor + 6;
     if (why) this.body(why, { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
+    if (counterEvidence) {
+      this.body(TEXT.mbtiAgainst + counterEvidence,
+        { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
+    }
     if (inPractice) this.body(inPractice, { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
     this.space(3);
     return this;
@@ -1105,7 +1114,7 @@
         TEXT.mbtiConfidence + (mbti.confidence || ''));
       for (const letter of mbti.letters || []) {
         out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
-          letter.strength, letter.why, letter.inPractice);
+          letter.strength, letter.why, letter.inPractice, letter.counterEvidence);
       }
       out.fineprint(mbti.caveat);
     }

@@ -2415,6 +2415,27 @@ of instructions does not also have to go find the box they were reading about. T
 asserts both halves: the dialog is gone, and the upload card's own top edge is what is now under the
 nav, not merely "somewhere on screen".
 
+**The order of those two things is load-bearing, and it was wrong.** Closing the guide gives back the
+history entry it pushed, and the browser then restores the scroll position that entry was created at —
+wherever the reader was standing when they opened the guide. That restoration lands *after* a scroll
+started before it, so scrolling first raced it and lost: the button dropped the reader back where they
+started, with no sign anything had been attempted. The scroll now waits for the pop to land — a
+`popstate` listener and two animation frames, the first for the handler and the second for the
+browser's own restoration to paint — and only then moves the page. Measured 5/5 failing in the old
+order and 5/5 correct in the new one.
+
+Worth recording how close this came to shipping, because the test was the problem twice over. It first
+passed on a flat 600ms wait, which happened to land in the gap before the restoration arrived. Made to
+poll for two equal readings instead, it then failed *every* run — but for the wrong reason: the scroll
+does not begin until two frames after the pop, so two equal readings were satisfied by the quiet
+period before it started, and the check was measuring an unscrolled page. Fixing that to require
+movement *then* stillness made it pass again — including against the known-broken ordering, because
+the restoration lands after the smooth scroll finishes easing, so a short stillness window reads a
+position the browser is about to yank back. Only requiring 600ms of sustained stillness separated the
+two. Three versions of this check passed against a genuinely broken button; the one that finally
+distinguished them is the one pinned now, and the ordering fix was verified against a direct
+five-run measurement rather than against the suite.
+
 ### Backing out of an upload
 
 The dropzone sits near the foot of a long welcome page. Uploading covers it with the working screen
@@ -2677,6 +2698,61 @@ nobody from anybody, so it is silence, and silence does not go in an evidence li
 The live test carries the alignment rule too — the letter against the score, the middle band hedged,
 and the axis reasoning checked for the same blank the trait evidence is checked for. That is the only
 place either rule can be shown to land rather than merely to be present.
+
+### N/S and T/F get the same treatment, and every axis now argues both sides
+
+Readers reported those two letters as the ones their report got subtly wrong, and the cause was
+structural: E/I had a whole section explaining what its evidence looks like and which way its error
+runs, and the other three axes had one line telling the model to cite evidence. A letter with no
+account of what counts as evidence for it gets picked off whatever the model noticed first.
+
+**Each axis now opens with what it actually measures.** Intuition as an appetite for meaning, purpose,
+abstraction, analogy and pattern; Sensing as an appetite for facts, the senses, steps, specs and
+verifiable data. Thinking as deciding by logic and impartial fairness, stating a criticism plainly,
+tolerating being disliked for a position; Feeling as deciding by the effect on people, weighting the
+relationship as a real cost, keeping harmony, withholding a criticism rather than damaging a bond.
+Both definitions carry an explicit "neither pole is the better one" — N is not the deep one and F is
+not the warm one — because a letter that reads as a compliment stops being a measurement.
+
+**Then each gets its own version of the extraversion trap, because both have one.** Instagram is a
+camera, so concrete sensory specificity is the *genre*: naming the place, the date, the model and the
+price is what a caption is for, and counting it as Sensing types the platform rather than the person.
+The instruction is to read what they do once the concrete detail is down — whether the caption goes on
+to say what the thing meant or resembled — and to cite the ratio between "how to" and "why does"
+across searches and prompts rather than one example of either.
+
+The T/F version is sharper, and it falls straight out of the definition. The F pole is defined partly
+by withholding criticism to protect a relationship — and withholding criticism in public is the
+platform norm for *everybody*, so an export of comments and captions looks Feeling for the entire
+population. **The error on this axis runs towards F**, exactly as E/I runs towards E and for the same
+structural reason. That gives the axis its single best probe: criticism that survives the medium
+anyway. A plainly-stated disagreement, ranking or unflattering verdict in a room built for being liked
+is worth several times its weight as Thinking evidence. Its absence, as ever, is worth nothing.
+
+**And every axis now writes the case against its own letter.** `counterEvidence` is a required field
+beside `why`: the best argument for the opposite letter, stated at full strength with its own count
+rather than raised in order to be dismissed, then a clause on why it did not win. `strength` is read
+off the gap between the two — close is `slight`, one clearly stronger showing is `moderate`, and
+`clear` is only earned where the other side stayed thin after an honest search. Finding nothing on the
+other side of a four-letter judgement made from one social-media export means not having looked, and
+the prompt says so; a report that returns `clear` on all four axes has told on itself.
+
+`why` also has a floor now: at least two separate pieces of evidence from different parts of the
+digest, not two readings of the same caption, each with a count on it.
+
+The reader sees both halves. The opposing case renders as its own labelled block under the argument it
+opposes, set off by a rule down its left edge rather than greyed out like an aside — someone deciding
+whether they agree with their own type needs to find it, not skim past it. It is in the PDF on the
+same terms. Rewriting `docs/sample.json` to the new shape moved one of its own letters: T/F was
+`clear`, and once the counter-evidence was actually written out — deadlines tracked on delivery, work
+assessed as often as celebrated — it was plainly `moderate`. That is the mechanism doing the job it
+was added for, on the exact axis readers complained about.
+
+This cost 2,500 tokens of fixed prompt, taking the reserve from 17,800 to 20,300 and roughly 8,750
+characters off the digest ceiling. That is the most expensive kind of prompt text there is: it buys
+nothing on a thin account and every account pays for it. It is worth it because those two letters were
+wrong often enough for readers to say so, and a sampled caption or two is a cheaper thing to lose than
+half the type.
 
 ### What the model is told not to do
 
@@ -3646,7 +3722,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 675 checks: synthesises a real ZIP export and runs
+npm test           # 705 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -3655,7 +3731,7 @@ npm test           # 675 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1062 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1066 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
