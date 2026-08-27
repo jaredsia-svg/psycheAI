@@ -1272,44 +1272,59 @@ try {
   check('the block no longer closes with the removed "nothing recurring" note',
     await page.evaluate(() => document.querySelectorAll('.premium-tier-note').length === 0));
 
-  // ---- the free half's own label ----
+  // ---- the free half's own label is gone ----
   //
-  // The parallel statement to the premium tier block below it: what the four
-  // free branches cost (nothing) and which model writes them (Gemini), read
-  // from copy.js the same way the premium tier is, so a rename moves both.
-  check('the free branches carry their own "Free" badge and name Gemini',
-    await page.evaluate(() => {
-      const T = window.PsycheCopy.TEXT;
-      const note = document.querySelector('#view-welcome .insight-free-note');
-      const badge = note && note.querySelector('.mode-badge.is-free');
-      return Boolean(badge) && badge.textContent.trim() === T.insightFreeBadge &&
-        note.textContent.includes(T.insightFreeNote) && /gemini/i.test(note.textContent);
-    }),
+  // A "Free" badge and a line naming Gemini used to sit above the insight
+  // diagram. It came out — the heading already answers "what do I get" without
+  // a second sentence confirming that answer is free, and naming the model
+  // duplicated the "analysed by" line the real report carries. Checked as an
+  // absence rather than just leaving the old checks deleted, so a copy-paste
+  // of the old markup back into index.html fails loudly.
+  check('the free-tier badge and note are gone, not just unmounted',
     await page.evaluate(() =>
-      (document.querySelector('#view-welcome .insight-free-note') || {}).innerHTML));
-  // Above the diagram, not inside it — `.insight-map`'s own child count is
-  // pinned elsewhere as exactly the hub, the rail and the branches, and this
-  // note would break that count if it ever moved inside.
-  check('the free note sits above the diagram rather than inside it',
+      document.querySelectorAll('#view-welcome .insight-free-note, #view-welcome .mode-badge.is-free')
+        .length === 0));
+
+  // ---- "See sample report" moved to the insight card's own head ----
+  //
+  // It used to close the card, after the four free branches and the premium
+  // pitch. It now sits beside "What insights will I get?", the same shape
+  // "See illustration" uses beside the how-to card's heading — a reader asking
+  // what they get should find "can I see one" next to the question.
+  check('the insight card opens with its heading and the sample button together',
     await page.evaluate(() => {
-      const note = document.querySelector('#view-welcome .insight-free-note');
-      const map = document.querySelector('#view-welcome .insight-map');
-      return Boolean(note) && Boolean(map) && !map.contains(note) &&
-        Boolean(note.compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const head = document.querySelector('#view-welcome .insight-card-head');
+      if (!head) return false;
+      const h2 = head.querySelector('h2');
+      const btn = head.querySelector('#insight-sample');
+      return Boolean(h2) && Boolean(btn) &&
+        /What insights will I get/.test(h2.textContent) &&
+        head === document.querySelector('.insight-card').firstElementChild;
     }));
-  // The two badges read as one system — same shape, different colour — rather
-  // than two different UI languages for "what does this section cost".
-  check('the free badge and the premium badge share their shape and differ only in colour',
+  // Filled purple would repeat the hero's own `#hero-sample`, which says the
+  // same three words in the same place on the same page — two loud calls to
+  // one action. Checked as computed style, not the class list, so a rule
+  // change that quietly refilled the button would still be caught.
+  check('the sample button is outlined, not filled like the hero\'s own sample button',
     await page.evaluate(() => {
-      const free = document.querySelector('#view-welcome .insight-free-note .mode-badge');
-      const premium = document.querySelector('#view-welcome .premium-tier-head .mode-badge');
-      if (!free || !premium) return false;
-      const freeStyle = getComputedStyle(free);
-      const premiumStyle = getComputedStyle(premium);
-      return freeStyle.borderRadius === premiumStyle.borderRadius &&
-        freeStyle.fontSize === premiumStyle.fontSize &&
-        freeStyle.color !== premiumStyle.color;
+      const s = getComputedStyle(document.querySelector('#insight-sample'));
+      return /rgba?\(0, ?0, ?0, ?0\)|transparent/.test(s.backgroundColor) &&
+        parseFloat(s.borderWidth) >= 2;
     }));
+  // The row itself has to actually reflow — a button that never moves off the
+  // heading's line on a phone would overlap the wrapped text below it.
+  for (const [label, width, wide] of [['a laptop', 1100, true], ['a phone', 390, false]]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(200);
+    const onSameLine = await page.evaluate(() => {
+      const h2 = document.querySelector('.insight-card-head h2').getBoundingClientRect();
+      const btn = document.querySelector('#insight-sample').getBoundingClientRect();
+      return Math.abs(h2.top - btn.top) < 8;
+    });
+    check('on ' + label + ' the heading and button ' + (wide ? 'share a row' : 'wrap onto their own'),
+      onSameLine === wide, onSameLine + ' vs expected ' + wide);
+  }
+  await page.setViewportSize({ width: 1100, height: 900 });
   // The diagram is the hub and its branches, nothing else. It used to carry a
   // confidence footnote across the bottom; that came out, and the check that
   // held it in place came out with it rather than being loosened into one that

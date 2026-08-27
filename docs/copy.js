@@ -409,11 +409,6 @@
     // sell the rest would be a lie about what somebody already has.
     premiumTierTitle: 'Four more sections',
     premiumTierBlurb: 'These four sections provide you with deeper insights:',
-    // The free half's own line, shown once above the four free branches — the
-    // parallel statement to premiumTierBlurb above, so a reader sees what each
-    // half costs and which model writes it before choosing to upload anything.
-    insightFreeBadge: 'Free',
-    insightFreeNote: 'These four sections come with every report, analysed by Gemini.',
     // The sample report's paid sections show their real covers now — same
     // title, same blurb, same price mentioned in the blurb — but the button
     // underneath is inert (see paidCard's `sample` option) and disabled, so it

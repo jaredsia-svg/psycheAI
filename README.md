@@ -750,16 +750,24 @@ mounts (the welcome page's insight diagram and the FAQ's "What you can expect?")
 one function and cannot say different things. A check asserts no `.premium-tier-note` element
 survives in either slot; fault-injecting the paragraph back in confirmed it fails.
 
-**The free half earned the same statement rather than being left implicit.** Right above the insight
-diagram, a small **"Free"** badge and a line — *"These four sections come with every report, analysed
-by Gemini"* — makes the parallel explicit: what does this cost, and which model writes it, is now
-answered for both halves of the report in the same place, in the same visual language. The badge
-reuses `.mode-badge`'s exact shape (same radius, same size) with a colour swap (`.is-free`, green
-against the premium badge's purple) rather than inventing a second pill design — the two are meant to
-read as one system, not as two different UI languages for "what does this section cost." Built from
-`docs/copy.js`'s `insightFreeBadge`/`insightFreeNote` the same way the premium tier block is, and
-mounted outside `.insight-map` so it cannot disturb the check that counts that element's children as
-exactly the hub, the rail and the branches.
+**The free half briefly earned the same statement, then lost it again.** A small **"Free"** badge and
+a line — *"These four sections come with every report, analysed by Gemini"* — sat above the insight
+diagram, making explicit what does this cost and which model writes it. It came out: the section
+heading already answers "what insights will I get" without needing a second sentence to say the answer
+is free, and naming the model here duplicated the "analysed by" line the report itself carries once a
+reader has one. `mountFreeTierNotes()`, its `[data-free-tier-note]` mount point, and `insightFreeBadge`
+/`insightFreeNote` in `docs/copy.js` all went with it rather than being left as dead code for a badge
+nothing renders any more.
+
+**"See sample report" moved from the foot of the insight card to its head**, sitting beside "What
+insights will I get?" the same way "See illustration" sits beside the how-to card's own heading —
+same `.insight-card-head`/`.help-head` flex shape, wrapping under the heading on a phone rather than
+forcing both onto one cramped line. It used to close the card, past the four free branches and the
+premium tier pitch; a reader asking what they get should find "can I see one" beside the question, not
+after the sales pitch for the paid half. It is also `.btn-outline` now instead of the filled purple
+`.btn` — a page with `#hero-sample` and this button both filled and both saying the same three words
+was two loud calls to the same next step; secondary styling here has one obviously primary "Analyse my
+data" in the hero and lets this be the quieter of the two ways to see the report.
 
 ### One consolidated block before unlock, four cards after
 
@@ -3731,7 +3739,7 @@ npm test           # 705 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1066 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1068 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

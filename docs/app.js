@@ -1007,24 +1007,6 @@
   }
 
   /**
-   * The free half's own label, shown once above the four free branches — the
-   * parallel statement to the premium tier block below it, reusing the same
-   * badge shape (`.mode-badge`) in a different colour (`.is-free`) so the two
-   * read as one system rather than two different UI languages for "what does
-   * this cost and who writes it".
-   */
-  function freeTierNoteHtml() {
-    return '<span class="mode-badge is-free">' + esc(TEXT.insightFreeBadge) + '</span> ' +
-      esc(TEXT.insightFreeNote);
-  }
-
-  function mountFreeTierNotes() {
-    for (const slot of document.querySelectorAll('[data-free-tier-note]')) {
-      slot.innerHTML = freeTierNoteHtml();
-    }
-  }
-
-  /**
    * Fills every paid card's body once a real result has arrived, in place
    * rather than by re-rendering the report — a reader who has just paid is
    * looking at one of these cards, and rebuilding #profile-body would throw
@@ -5063,6 +5045,5 @@
   }
 
   mountPremiumTiers();
-  mountFreeTierNotes();
   boot();
 })();

@@ -86,11 +86,16 @@
        names them, so a rename in copy.js fails a check rather than leaving
        this page advertising a section the report no longer calls that. -->
   <div class="card insight-card">
-    <h2>What insights will I get?</h2>
-    <!-- The free half's own label, parallel to the premium tier block below
-         it — filled by app.js's mountFreeTierNotes from copy.js, so a rename
-         there moves this line with it. -->
-    <p class="insight-free-note" data-free-tier-note></p>
+    <!-- Same head shape as the how-to card's "See illustration" row: the
+         heading takes the flexible space and the button sits at its end,
+         wrapping underneath on a phone rather than cramming both onto one
+         line. Moved up from the foot of the card, where it sat below the
+         premium tier block — a reader asking "what do I get" should find the
+         answer to "can I see one" beside the question, not past the pitch. -->
+    <div class="insight-card-head">
+      <h2>What insights will I get?</h2>
+      <button class="btn btn-outline" id="insight-sample" type="button">See sample report</button>
+    </div>
 
     <div class="insight-map">
       <p class="insight-hub">Your report</p>
@@ -151,12 +156,6 @@
          and the price here are the ones the report and the unlock button
          actually use. -->
     <div data-premium-tier></div>
-
-    <!-- The diagram describes the report; this shows it. Anyone still reading
-         this far down is asking what it actually looks like. -->
-    <div class="btn-row insight-actions">
-      <button class="btn" id="insight-sample" type="button">See sample report</button>
-    </div>
   </div>
 
   <div class="card help help-card">
