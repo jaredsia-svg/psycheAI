@@ -793,21 +793,33 @@ check('the opening summary names the type and traits outright',
 check('the opening summary may not contradict the sections',
   /do not contradict any section below/.test(prompts.PROFILE_SCHEMA.properties.summary.description));
 
-// The shareable card's blurb — cardHighlights — is a real condensation of
-// summary's own two paragraphs, written by the model that just wrote them,
-// not an excerpt assembled at read time out of unrelated fields. See
-// cardBlurb() in docs/app.js for the read side of this.
+// The shareable card's blurb — cardHighlights — is a real condensation of the
+// character rationale and summary's own paragraphs, written by the model that
+// just wrote them, not an excerpt assembled at read time out of unrelated
+// fields. See cardBlurb() in docs/app.js for the read side of this.
 check('the schema covers the card\'s own summarizing field',
   'cardHighlights' in prompts.PROFILE_SCHEMA.properties);
 const cardHighlightsDesc = prompts.PROFILE_SCHEMA.properties.cardHighlights.description;
 check('cardHighlights asks for exactly four sentences', /exactly four sentences/i.test(cardHighlightsDesc));
-check('cardHighlights splits two and two across summary\'s first two paragraphs',
-  /first two sentences summarize the first paragraph/i.test(cardHighlightsDesc) &&
-  /next two summarize the second paragraph/i.test(cardHighlightsDesc));
+// The card prints the character's name in its largest type and then never says
+// why, because the reasoning lives in a report section somebody looking at the
+// card is not reading. The opening sentence is what supports it.
+check('cardHighlights opens by condensing why that character was chosen',
+  /first sentence condenses `essence\.why`/i.test(cardHighlightsDesc));
+check('and tells it not to restate the name the card already prints above it',
+  /prints the character's name directly above/i.test(cardHighlightsDesc) &&
+  /do not open by restating the name/i.test(cardHighlightsDesc));
+check('cardHighlights gives the remaining three sentences to summary, two then one',
+  /second and third sentences summarize the first paragraph/i.test(cardHighlightsDesc) &&
+  /fourth summarizes the second paragraph/i.test(cardHighlightsDesc));
 check('cardHighlights explicitly excludes a third paragraph of summary, if there is one',
   /third paragraph/i.test(cardHighlightsDesc) && /not covered here/i.test(cardHighlightsDesc));
 check('cardHighlights asks for real summarizing, not verbatim sentences',
   /never sentences copied verbatim/i.test(cardHighlightsDesc));
+// Both sources are named, so neither can quietly become the only one it draws
+// on — the card is a condensation of two fields now, not one.
+check('cardHighlights names both fields it condenses',
+  /`essence\.why`/.test(cardHighlightsDesc) && /`summary`/.test(cardHighlightsDesc));
 
 const essenceProps = prompts.PROFILE_SCHEMA.properties.essence.properties;
 check('the profile opens on a character, its franchise, an icon and a reason',

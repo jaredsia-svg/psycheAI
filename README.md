@@ -3364,11 +3364,28 @@ however well or badly it read stitched to the next, with the card's own paragrap
 career left out entirely because the code stopped at `summary`'s opening two sentences on purpose.
 
 `cardHighlights` in `PROFILE_SCHEMA` (`lib/prompts.js`) asks the model to do this instead, immediately
-after it writes `summary` itself: **exactly four sentences, the first two condensing `summary`'s first
-paragraph, the next two condensing its second** — real summarizing, in the model's own words, never
-sentences lifted verbatim. If `summary` runs to a third paragraph, as it sometimes does, that paragraph
-is not covered — the card holds two paragraphs' worth, not three, so it stays roughly the length the
-old stitched version was.
+after it writes `summary` itself: **exactly four sentences — the first condensing `essence.why`, the
+next two condensing `summary`'s first paragraph, the fourth condensing its second** — real
+summarizing, in the model's own words, never sentences lifted verbatim out of either source. If
+`summary` runs to a third paragraph, as it sometimes does, that paragraph is not covered — the card
+stays roughly the length the old stitched version was.
+
+**The first sentence is given to the character rather than to more of `summary`,** because the card
+prints the character's name in its largest type and then never justifies it. The reasoning lives in
+the report's own essence section, which is precisely what somebody handed the card is not reading —
+so the card's single most prominent claim was the one thing on it with no support at all. That
+sentence is a swap, not an addition: `summary`'s second paragraph dropped from two sentences of
+coverage to one, and the card stays four sentences long because being short enough to take in at a
+glance is the whole of what it is for.
+
+The schema also tells the model not to spend that sentence restating the name or announcing the
+comparison — "You are like X" — since the name is printed directly above the paragraph and the reader
+has already read it. It should open on the shared trait. Both halves are checked: the selftest pins
+the instruction's wording in the schema, and the UI suite checks the sample fixture's blurb actually
+opens on the character rationale *and* does not lead with the character's name. Those two are
+asserted against `docs/sample.json` rather than the mock, because the mock's copy is deliberate filler
+("sentence one", "sentence two") that could satisfy a wording test by accident — `sample.json` is the
+one fixture written as a real report.
 
 `cardBlurb()` in `docs/app.js` now reads `cardHighlights` directly, and falls back to the old
 stitching logic only for a report saved before this field existed — a real path, not a defensive
@@ -3597,7 +3614,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 672 checks: synthesises a real ZIP export and runs
+npm test           # 675 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -3606,7 +3623,7 @@ npm test           # 672 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1058 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1060 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

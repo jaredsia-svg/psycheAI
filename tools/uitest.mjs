@@ -2451,6 +2451,23 @@ try {
     JSON.stringify(blurbSources));
   check('cardHighlights itself is exactly four sentences',
     blurbSources.sentenceCount === 4, JSON.stringify(blurbSources));
+  // The card puts the character's name in its largest type and then never says
+  // why — the reasoning is in the report's essence section, which somebody
+  // handed the card is not reading. The blurb's first sentence is the only
+  // support that claim gets, so the card has to carry a blurb at all before it
+  // can carry one that opens on the character.
+  //
+  // Asserted on the sample rather than the mock: the mock's copy is deliberate
+  // filler ("sentence one", "sentence two") and could satisfy any wording test
+  // by accident. docs/sample.json is the one fixture written as a real report.
+  const sampleBlurb = String(sampleFixture.cardHighlights || '');
+  const sampleFirst = sampleBlurb.split(/(?<=[.!?])\s+/)[0] || '';
+  check('the sample card blurb opens on why the character fits, before the personality read',
+    /duty|carry it without announcing/i.test(sampleFirst), sampleFirst);
+  // ...without wasting that sentence restating the name printed directly above
+  // it, which the schema explicitly forbids.
+  check('and does not open by restating the character name the card already shows',
+    !new RegExp(sampleFixture.essence.character, 'i').test(sampleFirst), sampleFirst);
   // The old stitching logic is still there for a report saved before this
   // field existed — proven by seeding a profile with cardHighlights deleted
   // and confirming the card falls back to summary's opening plus the two
