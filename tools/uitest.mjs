@@ -331,9 +331,8 @@ try {
   check('the optional-sources card is collapsed until the reader opens it',
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
-  check('its summary still says what it is and when the offer comes',
-    /Optional: also add Google or Facebook data/.test(optionalCard) &&
-    /After your Instagram file is read/.test(optionalCard));
+  check('its summary recommends Google rather than merely offering it',
+    /Recommended: Also add Google data for a more complete analysis/.test(optionalCard));
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
 
@@ -390,8 +389,12 @@ try {
       const text = note ? note.textContent.replace(/\s+/g, ' ') : '';
       return /Deselect all/.test(text) && /My Activity/.test(text);
     }));
-  check('it covers Facebook too, in JSON',
-    /Download your information/.test(optionalOpen) && /Facebook/.test(optionalOpen));
+  // Facebook's instructions moved out of this card — the main page now offers
+  // only Google, and Facebook is still reachable later through the supplement
+  // dialog's own "See download instructions" disclosure. A stray mention here
+  // would mean the two had drifted back out of sync.
+  check('Facebook is not covered here any more — the main page only offers Google',
+    !/Facebook/.test(optionalOpen));
   // Closed again so the rest of the suite meets the page as a reader first
   // does, and so the screenshots below are of the default state.
   await page.click('.optional-card > summary');
@@ -675,17 +678,16 @@ try {
       'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
-  // are the words to hunt for in Google's and Facebook's menus, and they go
-  // stale the same way. textContent, since the disclosure is closed here.
-  // takeout.google.com is not in this list: it is a real destination rather
-  // than a button inside somebody else's UI, so it is a genuine link instead
-  // of a ui-label — checked separately below.
+  // are the words to hunt for in Google's own menus, and they go stale the
+  // same way. textContent, since the disclosure is closed here. takeout.google.com
+  // is not in this list: it is a real destination rather than a button inside
+  // somebody else's UI, so it is a genuine link instead of a ui-label —
+  // checked separately below.
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
     ['Deselect all', 'My Activity', 'Multiple formats', 'Next Step', 'Export once',
-      'Create Export', 'Settings & privacy', 'Accounts Centre', 'Your information and permissions',
-      'Download your information', 'All time', 'JSON'].join(' | '),
+      'Create Export'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole

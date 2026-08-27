@@ -754,11 +754,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 /* A step down from the card's own h2, because it is subordinate to it — but
    still heavier than the body text, so the row reads as a control. */
 .optional-title { display: block; font-size: 1rem; font-weight: 650; letter-spacing: -.01em; }
-.optional-card > summary .muted { display: block; margin-top: .25rem; font-size: .88rem; line-height: 1.5; }
 /* Drawn rather than a glyph, so it inherits the accent and rotates cleanly.
-   Pinned to the first line of the summary rather than centred on the whole
-   box, so it stays beside the title when the sub-line wraps to four lines on
-   a phone. */
+   Pinned to the title's own line rather than centred on the whole box, so it
+   stays put if the title ever wraps to two lines on a narrow phone. */
 .optional-card > summary::after {
   content: ''; position: absolute; right: .2rem; top: 1.4rem;
   width: .5rem; height: .5rem; border-right: 2px solid var(--accent);

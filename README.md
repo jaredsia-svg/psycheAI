@@ -1358,13 +1358,19 @@ page of every site somebody ever opened — where the domain histogram keeps the
 surveillance. The fixture's URLs carry deep paths and query strings so that a parser which kept them
 is caught rather than trusted.
 
-The instructions for requesting either export live in a collapsed `<details>` on the welcome page —
+The instructions for requesting a Google export live in a collapsed `<details>` on the welcome page —
 a native disclosure rather than the JS-managed one the paid roast's cover uses, because that one
 keeps its text out of the DOM entirely as a payment gate and this is only a page of instructions for
 a step most readers skip. Left in the document while closed, they stay findable with Find-in-page
 and reachable by a
 screen reader navigating headings; the checks read `textContent` for the content and visibility for
 the disclosure, since `innerText` reports nothing for a closed `<details>` and would prove neither.
+Facebook's own instructions no longer live here: the welcome page now recommends Google specifically
+("Recommended: Also add Google data for a more complete analysis") rather than offering either
+option neutrally, and Facebook's steps live only in the supplement dialog's own disclosure, opened
+after Instagram has already been read. A check on the welcome page's card asserts the word "Facebook"
+does not appear in it at all, so the two cannot quietly drift back into sync by somebody restoring the
+old copy without noticing the dialog now carries it alone.
 
 The eight new review rows appear **only when that source was added**, so a reader who skipped sees
 the same seven rows as before — which is what keeps the "exactly seven checkboxes" check meaningful
