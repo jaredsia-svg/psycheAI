@@ -239,6 +239,9 @@
     bigFive: 'Big Five',
     bigFiveSub: '0–100, where 50 is an average person. Each score lists the evidence behind it.',
 
+    // PDF-only: the cover's contents list, built from the sections that
+    // actually printed rather than from a fixed table of them.
+    pdfContents: 'Inside this report',
     mbtiPrefix: 'MBTI: ',
     mbtiConfidence: 'Confidence: ',
     mbtiOver: 'over ',

@@ -4512,6 +4512,65 @@ try {
   check('the PDF is a sensible size', pdf.length > 8000 && pdf.length < 900000,
     Math.round(pdf.length / 1024) + 'KB');
 
+  // ---- page one is the summary card ----
+  //
+  // The report used to open on a band with 70pt of empty purple under the
+  // title and then a section heading. It opens on the card now — the one
+  // object in this product people actually share, and the only page anybody
+  // would screenshot rather than read.
+  const pdfPages = [...pdfText.matchAll(/stream\n([\s\S]*?)\nendstream/g)].map(m => m[1]);
+  const coverStream = pdfPages[0] || '';
+  const coverHas = needle => coverStream.includes('(' + needle + ')');
+  // Asserted on the card being present rather than on the first section being
+  // absent: the contents list names every section, "Who you are" included, so
+  // a "the cover does not mention it" test fails on correct output. Where the
+  // section actually *starts* is the next check.
+  check('the first page carries the card',
+    coverHas('YOU ARE MOST LIKE'),
+    coverStream.length + ' bytes of cover stream');
+  // The card's own rows, so a cover that kept the hero and quietly lost
+  // everything under it does not pass.
+  for (const label of ['MBTI', 'ENNEAGRAM', 'BIG FIVE', 'VALUES', 'RECEIVES LOVE AS']) {
+    check('the card prints its ' + label + ' row on the cover', coverHas(label));
+  }
+  // The report proper starts overleaf. A cover that ran into the first section
+  // would not be a cover.
+  check('the report itself starts on page two',
+    (pdfPages[1] || '').includes('(Who you are)'));
+
+  // ---- the cover's contents list ----
+  //
+  // Built from the sections that actually printed rather than from a fixed
+  // table, so it cannot promise a paid section the reader did not buy. Drawn
+  // onto page one after the whole document exists, which is the only point at
+  // which the page numbers are known.
+  check('the cover lists what is inside', coverHas('INSIDE THIS REPORT'));
+  check('and the sections it lists are ones the report actually has',
+    ['Who you are', 'Big Five', 'How much to trust this']
+      .every(title => coverHas(title) && pdfPages.slice(1).some(p => p.includes('(' + title + ')'))));
+  // The page numbers have to be real. Every section named on the cover should
+  // appear on the page the cover sends the reader to — checked on the one
+  // section whose position is fixed, since it is always the first.
+  check('the contents\' page numbers point at the right pages',
+    (() => {
+      const rows = [...coverStream.matchAll(/\((Who you are)\) Tj[\s\S]{0,400}?\((\d+)\) Tj/g)];
+      if (!rows.length) return false;
+      const page = Number(rows[0][2]);
+      return page === 2 && (pdfPages[page - 1] || '').includes('(Who you are)');
+    })());
+
+  // There is deliberately no check here for the widow that `sectionTitle`'s
+  // reserve was raised to prevent — a heading stranded at a page foot with its
+  // sub-line and nothing else, which is what "Big Five" did before the cover
+  // existed. One was written and then removed: with this fixture the widow
+  // cannot be reproduced at all. Dropping the reserve from 214 back to 130,
+  // and then to 46, still left real content under the last heading on every
+  // page, because adding the cover shifted the pagination out of the case.
+  // A check that passes against the bug it was written for is not coverage,
+  // and leaving it in would have claimed the reserve was protected when
+  // nothing was protecting it. The fix stands on the before/after renders
+  // instead, and this note stands in place of the check.
+
   // Text, not a rasterised picture of text: real fonts and findable strings.
   check('the text is text, in embeddable base-14 fonts',
     /\/BaseFont \/Helvetica\b/.test(pdfText) && /\/BaseFont \/Helvetica-Bold/.test(pdfText));
@@ -4886,10 +4945,18 @@ try {
   });
 
   // Every string with the x it was drawn at, on the page holding the essence.
+  //
+  // Deliberately skips the first stream. Page one is the cover, and the cover's
+  // summary card prints the character name and its franchise too — so a plain
+  // "first page containing this string" search started reading the *card's*
+  // layout and checking it against the essence section's rule, which is a
+  // different block with different geometry. The section is what this pair of
+  // checks is about, so the search starts after the cover.
   const drawnAt = (pdf, needle) => {
-    const page1 = [...pdf.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
-      .map(match => match[1]).find(content => content.includes('(' + needle + ')')) || '';
-    const found = [...page1.matchAll(/([\d.]+) ([\d.]+) Td\n\((.*?)\) Tj/g)]
+    const body = [...pdf.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
+      .map(match => match[1]).slice(1)
+      .find(content => content.includes('(' + needle + ')')) || '';
+    const found = [...body.matchAll(/([\d.]+) ([\d.]+) Td\n\((.*?)\) Tj/g)]
       .find(match => match[3] === needle);
     return found ? { x: Number(found[1]), y: Number(found[2]) } : null;
   };
@@ -4902,21 +4969,26 @@ try {
     JSON.stringify({ shortName, shortFranchise }));
 
   const longFranchise = drawnAt(franchisePlacement.long, 'Walt Disney Animation');
+  // `shortName` is guarded rather than dereferenced: it is null whenever the
+  // essence never reached a body page, and reading `.y` off it threw out of
+  // the run instead of failing this one check — which is how a deliberately
+  // broken cover took the whole suite down rather than reporting itself.
   check('a franchise that would overrun drops to its own line instead',
-    Boolean(longFranchise) && Math.abs(longFranchise.x - 54) < 0.6 &&
-      longFranchise.y < shortName.y,
-    JSON.stringify({ longFranchise }));
+    Boolean(longFranchise) && Boolean(shortName) &&
+      Math.abs(longFranchise.x - 54) < 0.6 && longFranchise.y < shortName.y,
+    JSON.stringify({ longFranchise, shortName }));
 
   // The point of the whole exercise: neither placement runs past the margin.
   const franchiseWidths = await page.evaluate(names => names.map(name =>
     window.PsychePDF.measure(window.PsychePDF.toWinAnsi(name), 10, false)),
   ['Marvel', 'Walt Disney Animation']);
   check('neither franchise is drawn past the right margin',
-    shortFranchise.x + franchiseWidths[0] <= 595.28 - 54 + 0.5 &&
+    Boolean(shortFranchise && longFranchise) &&
+      shortFranchise.x + franchiseWidths[0] <= 595.28 - 54 + 0.5 &&
       longFranchise.x + franchiseWidths[1] <= 595.28 - 54 + 0.5,
     JSON.stringify({
-      shortRight: Math.round(shortFranchise.x + franchiseWidths[0]),
-      longRight: Math.round(longFranchise.x + franchiseWidths[1]),
+      shortRight: shortFranchise && Math.round(shortFranchise.x + franchiseWidths[0]),
+      longRight: longFranchise && Math.round(longFranchise.x + franchiseWidths[1]),
       margin: Math.round(595.28 - 54),
     }));
 

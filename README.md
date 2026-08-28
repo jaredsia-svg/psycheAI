@@ -3439,10 +3439,45 @@ The subtitle slot under the cover title is used on a comparison and deliberately
 profile. The comparison's says what basis was chosen, which the reader picked themselves and needs
 to see. The profile's used to print the card's one-line headline, and that read as a verdict handed
 down before any of the evidence for it — "High-energy tech investor, macro thinker, and social
-catalyst" set in italics under someone's own name. The band keeps its height either way, so the
-space is blank rather than closed up; a check fails if a headline reappears there, and another
-fails if the title itself goes missing, since "no headline" would otherwise also pass with the whole
-block deleted.
+catalyst" set in italics under someone's own name. A check fails if a headline reappears there, and
+another fails if the title itself goes missing, since "no headline" would otherwise also pass with
+the whole block deleted.
+
+### Page one is the summary card
+
+Removing that headline left the band with the title at the top and 70pt of empty purple under it, and
+then the report's first section heading immediately below — a paid document opening on dead space.
+Page one is now a real cover carrying the **psyche card**, the same object the reader sees on screen:
+the character and franchise over the four-sentence blurb on the accent panel, then the MBTI code with
+its per-axis strengths, the Enneagram type and wing, the five trait scores, the values/beliefs/
+interests row and the giving/receiving pair. It is the one thing in this product people actually
+share, and the only page of a nine-page PDF anybody would screenshot rather than read, so it is what
+the document should open on. The report proper starts on page two, under the running head.
+
+The card's blurb is `report.cardHighlights`, the same field the on-screen card uses. `cardBlurb()` in
+`app.js` has two further fallbacks for reports written before that field existed, but both stitch
+text out of fields this file would have to re-derive; `card.summary` is the shaped card's own line
+and is never empty, so it is the single fallback kept here.
+
+**The contents list is a record, not a table.** It sits under the card and is built from the sections
+that actually printed — `sectionTitle` appends its own title and page number as each one lays out —
+so it cannot promise a paid section the reader did not buy, or miss one added later. That means it
+can only be drawn once the whole document exists, which is also the only moment its page numbers are
+known; it reaches back onto page one by pointing the writer's op buffer at page one's own array for
+the duration, since `Doc.op` appends to `this.buffer` and nothing caches it. Two columns past six
+entries: a full report runs to a dozen sections, one column of those is taller than the space the
+card leaves, and the first version simply never drew because its own fits-on-the-page guard was
+declining every time.
+
+**One widow fixed, and one check deleted for being unfalsifiable.** `sectionTitle` reserved enough
+room for a title, its rule and its sub-line — which is what stranded "Big Five" and its "0–100, where
+50 is an average person" at the foot of a page with the first trait overleaf. The reserve now covers
+the first content block too. A check was written for it and then removed: with the sample fixture the
+widow cannot be reproduced at all any more, because adding the cover shifted the pagination out of
+the case. Dropping the reserve back to its old 130, and then to 46, still left real content under the
+last heading on every page. A check that passes against the bug it was written for is not coverage —
+it would have claimed the reserve was protected while nothing protected it — so the fix stands on the
+before/after renders and a comment stands where the check would have been.
 
 The suite clicks the real button, keeps the file the browser saved, and greps the drawn text out of
 it — streams are uncompressed partly so it can. That is what proves the document exists rather than
@@ -3775,7 +3810,7 @@ npm test           # 706 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1070 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1080 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

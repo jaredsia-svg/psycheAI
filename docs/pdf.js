@@ -109,6 +109,11 @@
   const WASH = [0.953, 0.914, 0.973];
   const PAPER = [0.980, 0.969, 0.984];
   const WHITE = [1, 1, 1];
+  // Text on the accent panel that should read as secondary without going grey:
+  // pure white for the name, this for the blurb and the small caps above it.
+  // Mixed towards the accent rather than towards black, so it recedes on the
+  // purple instead of muddying against it.
+  const CARD_SOFT = [0.898, 0.855, 0.949];
   // The page colours its strengths and weaknesses headings; so does this.
   const GOOD = [0.184, 0.490, 0.357];
   const WARN = [0.604, 0.357, 0.071];
@@ -407,6 +412,11 @@
   function Report(doc, meta) {
     this.doc = doc;
     this.meta = meta;
+    // Filled by sectionTitle as each one is laid out, and read back by
+    // coverContents once the whole report exists. Collected rather than
+    // declared up front so the list cannot claim a section the reader did not
+    // pay for, or miss one added later — it is a record of what printed.
+    this.contents = [];
   }
 
   Report.prototype.space = function (amount) {
@@ -485,8 +495,17 @@
 
   /** A section head: the page's card-head, minus the glyph. */
   Report.prototype.sectionTitle = function (title, sub) {
-    // Keep a title with at least a couple of lines of what follows.
-    this.need(sub ? 130 : 100);
+    // Keep a title with the first real block of what follows, not merely with
+    // its own sub-line. At 130 the reserve covered the title, the rule and the
+    // sub and nothing else, so "Big Five" and its "0-100, where 50 is average"
+    // line sat alone at the foot of a page with the first trait overleaf —
+    // technically satisfied and visibly a widow. The tallest opening block in
+    // the report is a Big Five trait at 84, hence the reserve here.
+    this.need(sub ? 214 : 184);
+    // Recorded after `need`, never before: the reserve above is what decides
+    // which page this title lands on, so asking earlier would file half the
+    // sections under the page they were nearly on.
+    this.contents.push({ title: String(title), page: this.doc.pageNumber });
     this.space(14);
     const style = { size: 18, bold: true, color: INK };
     for (const line of wrap(toWinAnsi(title), COLUMN, style)) {
@@ -863,22 +882,246 @@
     return this;
   };
 
-  // ---------- the letterhead ----------
+  // ---------- the cover ----------
   //
-  // The page's own printed letterhead: the brand, whose report this is, and the
-  // line of provenance. Content starts underneath it rather than on a separate
-  // cover, exactly as the printed page flows.
+  // The band carried the brand, the title and a line of provenance, and then
+  // roughly 70pt of empty purple where a headline used to be — the first page
+  // of a paid report opened on dead space and a section heading. It is a real
+  // cover now: the same summary card the reader sees on screen, printed at the
+  // top of page one, with the report starting on page two.
+  //
+  // The card is the one object in this product people actually share, so it is
+  // the right thing for the document to open on — and the only page in the PDF
+  // that a reader might screenshot rather than read.
 
-  function letterhead(doc, report, card, meta) {
+  /**
+   * A labelled column inside the card: the small tracked caps, then its lines.
+   * Returns the height it will take, so the caller can size a row from the
+   * tallest column before anything is drawn.
+   */
+  function cardColumn(doc, x, top, width, label, lines, options) {
+    const settings = options || {};
+    const style = settings.style || { size: 9.6, bold: true, color: INK };
+    const leading = settings.leading || 12.6;
+    const lead = settings.lead || '';
+    const leadHeight = lead ? 14 : 0;
+    if (doc) {
+      doc.draw(toWinAnsi(String(label).toUpperCase()), x, top + 7,
+        { size: 6.8, bold: true, color: settings.labelColor || SOFT, tracking: 1 });
+      if (lead) doc.draw(lead, x, top + 20, { size: 11.5, bold: true, color: INK });
+      let cursor = top + 20 + leadHeight;
+      for (const line of lines) {
+        doc.draw(line, x, cursor, style);
+        cursor += leading;
+      }
+    }
+    return 20 + leadHeight + lines.length * leading;
+  }
+
+  function psycheCard(doc, report, card, top) {
+    const essence = report.essence || {};
+    // `noun` is what this field was called before it held a character, so a
+    // profile saved before that change still prints a name here.
+    const name = essence.character || essence.noun || '';
+    const franchise = essence.franchise || '';
+    // The same four sentences the on-screen card shows. `cardBlurb()` in
+    // app.js has two further fallbacks for reports written before
+    // `cardHighlights` existed, but both of them stitch text out of fields
+    // this file would have to re-derive; `card.summary` is the shaped card's
+    // own line and is never empty, so it is the one fallback kept here.
+    const blurb = String(report.cardHighlights || card.summary || '').trim();
+    const mbti = report.mbti || {};
+    const enneagram = report.enneagram || {};
+    const five = report.bigFive || {};
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const confidence = Number((card || {}).confidence);
+
+    const padX = 22;
+    const innerW = COLUMN - padX * 2;
+
+    // ---- measure the hero before drawing it, so its panel can be filled first
+    const nameStyle = { size: 23, bold: true, color: WHITE };
+    const franchiseStyle = { size: 9.6, color: CARD_SOFT };
+    const blurbStyle = { size: 9.4, color: CARD_SOFT };
+    const blurbLeading = 13.4;
+    // Room kept clear on the right for the confidence figure, so a long
+    // character name cannot run underneath it.
+    const nameLines = wrap(toWinAnsi(name), innerW - 62, nameStyle);
+    // Capped rather than trusted: `cardHighlights` is four sentences by schema,
+    // but a model that ignored that must not push the card off the page.
+    const blurbLines = wrap(toWinAnsi(blurb), innerW, blurbStyle).slice(0, 9);
+    const heroH = 22 + 12 + nameLines.length * 26 + (franchise ? 13 : 0) +
+      (blurbLines.length ? 8 + blurbLines.length * blurbLeading : 0) + 20;
+
+    // ---- measure the three rows underneath it ----
+    const letters = (mbti.letters || []).map(l =>
+      toWinAnsi(String(l.choice || '') + '  ' + String(l.strength || '')));
+    const enneagramBadge = enneagram.type
+      ? String(enneagram.type) + (enneagram.wing ? 'w' + enneagram.wing : '') : '';
+    const fiveRows = Object.keys(TRAIT_LABELS)
+      .filter(key => five[key])
+      .map(key => toWinAnsi(TRAIT_LABELS[key] + '  ' + Math.round(Number(five[key].score) || 0)));
+
+    const third = innerW / 3;
+    const titles = (rows, limit) => (rows || []).slice(0, limit)
+      .map(r => (r && (r.title || r.name || r.value || r.belief)) || '').filter(Boolean);
+    const wrapCell = (text, width, style) =>
+      text ? wrap(toWinAnsi(text), width - 10, style || { size: 9.6, color: INK }) : [];
+
+    const smallStyle = { size: 9, color: INK };
+    // The four-letter type leads its own column in bold, with the per-axis
+    // strengths under it in plain — the same split the on-screen card makes,
+    // where the code is the finding and the strengths are how firmly each
+    // letter was picked. Drawn as a `lead` rather than as another line, so the
+    // two weights cannot be confused for one list.
+    const statCells = [
+      { label: TEXT.cardType, lead: mbti.type ? toWinAnsi(mbti.type) : '',
+        lines: letters, style: { size: 9.2, color: INK }, leading: 12 },
+      { label: TEXT.cardEnneagram, lead: enneagramBadge ? toWinAnsi(enneagramBadge) : '',
+        lines: [enneagram.nickname && toWinAnsi(enneagram.nickname)].filter(Boolean) },
+      { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: 11.6 },
+    ];
+    const chipCells = [
+      { label: TEXT.cardValues, lines: wrapCell(titles(report.values, 3).join(' · '), third, smallStyle), style: smallStyle },
+      { label: TEXT.cardBeliefs, lines: wrapCell(titles(report.beliefs, 2).join(' · '), third, smallStyle), style: smallStyle },
+      { label: TEXT.cardInterests, lines: wrapCell(titles(report.interests, 3).join(' · '), third, smallStyle), style: smallStyle },
+    ];
+    const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean).join(' · ');
+    const half = innerW / 2;
+    const loveCells = [
+      { label: TEXT.cardLoveIn, lines: wrapCell(loveNames(love.receiving), half, smallStyle), style: smallStyle },
+      { label: TEXT.cardLoveOut, lines: wrapCell(loveNames(love.giving), half, smallStyle), style: smallStyle },
+    ];
+
+    const rowHeight = cells => Math.max(...cells.map(c =>
+      cardColumn(null, 0, 0, 0, c.label, c.lines, c)));
+    const statH = rowHeight(statCells) + 14;
+    const chipH = chipCells.some(c => c.lines.length) ? rowHeight(chipCells) + 14 : 0;
+    const loveH = loveCells.some(c => c.lines.length) ? rowHeight(loveCells) + 14 : 0;
+    const bodyH = 8 + statH + (chipH ? chipH + 1 : 0) + (loveH ? loveH + 1 : 0) + 8;
+    const totalH = heroH + bodyH;
+
+    // ---- draw: body panel first, hero over its top, then all the text ----
+    doc.roundRect(MARGIN, top, COLUMN, totalH, 16, WHITE);
+    doc.roundRect(MARGIN, top, COLUMN, heroH, 16, ACCENT);
+    // Squares off the hero's own bottom corners, so the colour meets the white
+    // body on a straight edge rather than showing two rounded notches. Drawn
+    // to exactly `heroH` and no further: an earlier +16 here put the panel's
+    // bottom edge below where the first row of labels starts, and printed
+    // "MBTI", "ENNEAGRAM" and "BIG FIVE" in grey on top of the purple.
+    doc.rect(MARGIN, top + heroH - 16, COLUMN, 16, ACCENT);
+    // The same darker wedge the band above uses, so the two read as one object.
+    doc.setFill(ACCENT_2);
+    doc.op(num(MARGIN) + ' ' + num(PAGE.height - top - heroH) + ' m ' +
+      num(MARGIN + COLUMN) + ' ' + num(PAGE.height - top - heroH) + ' l ' +
+      num(MARGIN + COLUMN) + ' ' + num(PAGE.height - top - heroH + 22) + ' l ' +
+      num(MARGIN) + ' ' + num(PAGE.height - top - heroH) + ' l f');
+
+    const x = MARGIN + padX;
+    doc.draw(toWinAnsi(String(TEXT.essenceLabel).toUpperCase()), x, top + 26,
+      { size: 6.8, bold: true, color: CARD_SOFT, tracking: 1.1 });
+    if (Number.isFinite(confidence) && confidence > 0) {
+      const score = toWinAnsi(Math.round(confidence) + '/100');
+      const width = measure(score, 9.6, true);
+      doc.draw(score, MARGIN + COLUMN - padX - width, top + 26,
+        { size: 9.6, bold: true, color: WHITE });
+    }
+    let cursor = top + 34;
+    for (const line of nameLines) {
+      doc.draw(line, x, cursor + 20, nameStyle);
+      cursor += 26;
+    }
+    if (franchise) {
+      doc.draw(toWinAnsi(franchise), x, cursor + 18, franchiseStyle);
+      cursor += 13;
+    }
+    cursor += 8;
+    for (const line of blurbLines) {
+      doc.draw(line, x, cursor + 16, blurbStyle);
+      cursor += blurbLeading;
+    }
+
+    let rowTop = top + heroH + 8;
+    statCells.forEach((cell, i) => cardColumn(doc, x + i * third, rowTop, third, cell.label, cell.lines, cell));
+    rowTop += statH;
+    if (chipH) {
+      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
+      chipCells.forEach((cell, i) => cardColumn(doc, x + i * third, rowTop, third, cell.label, cell.lines, cell));
+      rowTop += chipH;
+    }
+    if (loveH) {
+      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
+      loveCells.forEach((cell, i) => cardColumn(doc, x + i * half, rowTop, half, cell.label, cell.lines, cell));
+      rowTop += loveH;
+    }
+    return top + totalH;
+  }
+
+  /**
+   * The cover's contents list, drawn onto page one *after* the whole report
+   * has been laid out.
+   *
+   * It has to be last, because the page numbers do not exist until the pages
+   * do — and it has to be on page one, which was finished long before. Both
+   * are satisfied by pointing the document's op buffer back at page one's own
+   * array for the duration: `Doc.op` appends to `this.buffer` and nothing else
+   * caches it, so swapping it is enough to write into a finished page. Drawn
+   * at absolute coordinates rather than through `doc.y`, which by now belongs
+   * to the last page.
+   *
+   * Skipped rather than squeezed when the card leaves no room — a long
+   * character name and a full four-sentence blurb can push it down — because a
+   * contents list colliding with the colophon is worse than no contents list.
+   */
+  function coverContents(doc, out, cardBottom) {
+    const rows = out.contents;
+    if (!rows.length) return;
+    const rowHeight = 16.5;
+    const top = cardBottom + 32;
+    // Two columns past six entries. A full report runs to a dozen sections,
+    // and a single column of those is taller than the space the card leaves —
+    // the list simply never drew. Splitting it halves the height and fills the
+    // foot of the cover rather than stacking down past the colophon.
+    const columns = rows.length > 6 ? 2 : 1;
+    const perColumn = Math.ceil(rows.length / columns);
+    const columnWidth = COLUMN / columns;
+    const needed = 22 + perColumn * rowHeight;
+    if (top + needed > PAGE.height - MARGIN - 26) return;
+
+    const saved = doc.buffer;
+    doc.buffer = doc.pages[0].content;
+    doc.draw(toWinAnsi(String(TEXT.pdfContents).toUpperCase()), MARGIN, top,
+      { size: 6.8, bold: true, color: SOFT, tracking: 1.1 });
+    doc.hairline(top + 8, MARGIN, PAGE.width - MARGIN);
+    rows.forEach((row, index) => {
+      const column = Math.floor(index / perColumn);
+      const x = MARGIN + column * columnWidth;
+      // The number sits at the end of its own column, not the page, or the
+      // left column's figures would be stranded mid-page against nothing.
+      const rightEdge = x + columnWidth - (column === columns - 1 ? 0 : 18);
+      const y = top + 22 + (index % perColumn) * rowHeight + 8;
+      const page = toWinAnsi(String(row.page));
+      const pageWidth = measure(page, 9, false);
+      const titleStyle = { size: 9.6, color: INK };
+      // Trimmed to what is left after the page number, so a long section name
+      // cannot run through the digit beside it.
+      const title = wrap(toWinAnsi(row.title), rightEdge - x - pageWidth - 10, titleStyle)[0];
+      doc.draw(title, x, y, titleStyle);
+      doc.draw(page, rightEdge - pageWidth, y, { size: 9, color: SOFT });
+    });
+    doc.buffer = saved;
+  }
+
+  function cover(doc, report, card, meta) {
     doc.newPage({ bare: true, top: 0 });
     doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
-    const bandHeight = 176;
+    const bandHeight = 150;
     doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
     // A second, darker wedge so the band is not a flat slab of colour.
     doc.setFill(ACCENT_2);
     doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
       num(PAGE.width) + ' ' + num(PAGE.height - bandHeight) + ' l ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 34) + ' l 0 ' +
+      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 30) + ' l 0 ' +
       num(PAGE.height - bandHeight) + ' l f');
 
     // The brand lockup, as the nav and the printed letterhead have it: the mark
@@ -890,26 +1133,26 @@
 
     // The title, and nothing under it. The card's one-line headline used to sit
     // here in italics, and it read as a claim the cover was making about the
-    // person before they had read a word of the evidence — "High-energy tech
-    // investor, macro thinker, and social catalyst" under their own name. The
-    // band keeps its height, so the space below simply stays empty; the
-    // provenance line and the first section are positioned off `bandHeight`
-    // rather than off this block, and do not move up to fill it.
+    // person before they had read a word of the evidence.
     const title = (card.name || 'Your') + '’s psyche';
     const titleStyle = { size: 27, bold: true, color: WHITE };
-    let y = 96;
+    let y = 104;
     for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
       doc.draw(line, MARGIN, y, titleStyle);
       y += 31;
     }
 
-    // The same provenance line the printed page carries.
+    const cardBottom = psycheCard(doc, report, card, bandHeight + 24);
+
+    // The provenance line sits at the foot of the cover rather than under the
+    // band: it is what the page was printed from, which is a colophon, and it
+    // reads as one down there instead of as a subtitle.
     const confidence = report.confidence || {};
     const stamp = ['Generated ' + (meta.date || ''), 'from an Instagram data export',
       Math.round(Number(confidence.score) || 0) + '/100 confidence']
       .filter(Boolean).join('  ·  ');
-    doc.draw(toWinAnsi(stamp), MARGIN, bandHeight + 26, { size: 8.8, color: SOFT });
-    doc.y = bandHeight + 40;
+    doc.draw(toWinAnsi(stamp), MARGIN, PAGE.height - MARGIN, { size: 8.8, color: SOFT });
+    return cardBottom;
   }
 
   // ---------- sections that were paid for ----------
@@ -1054,7 +1297,11 @@
     const doc = new Doc();
     const out = new Report(doc, { name: who.name || 'Your profile' });
 
-    letterhead(doc, source, who, stamp);
+    // Page one is the card and nothing else. The report proper starts on page
+    // two, under the running head, so the cover stays a cover — a page that
+    // ends mid-section would not be one.
+    const cardBottom = cover(doc, source, who, stamp);
+    out.page();
 
     // 1. Who you are — essence, the headline findings, then the summary.
     out.sectionTitle(TEXT.whoYouAre);
@@ -1287,6 +1534,11 @@
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Premium sections analysed by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
+
+    // Last, because it is the only block whose content depends on the whole
+    // document already existing \u2014 see coverContents for how it reaches back
+    // onto page one.
+    coverContents(doc, out, cardBottom);
 
     return serialise(doc, (who.name || 'Your') + '\u2019s psyche',
       'Personality analysis from an Instagram data export');
