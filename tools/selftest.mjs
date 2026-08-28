@@ -3481,6 +3481,91 @@ check('the schema requires evidence on strengths and frictions',
   }
 }
 
+// ---------- a malformed request path must not end the process ----------
+//
+// `GET /%` used to kill the server outright. decodeURIComponent raises
+// URIError on a bad percent-escape, the call sat outside any try/catch, and an
+// uncaught exception in a request handler takes Node down with it. One
+// request, from anyone, with no nonce and ahead of the rate limiter, was a
+// complete outage — and a supervisor restarting the process bought nothing,
+// because the request could simply be sent again.
+//
+// Run against a real server in a real subprocess, because that is the only
+// way the bug is visible: calling the handler in-process would surface it as
+// a thrown error a test could catch, which is precisely the thing that was
+// not happening in production. What matters is that the process is still
+// answering afterwards.
+{
+  const port = 8931;
+  const child = execFileSync(process.execPath,
+    ['-e', `
+      const { spawn } = require('node:child_process');
+      const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+        env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1' }, stdio: 'ignore',
+      });
+      const get = async path => {
+        try {
+          const response = await fetch('http://localhost:${port}' + path);
+          await response.text();
+          return response.status;
+        } catch (error) { return 'unreachable'; }
+      };
+      setTimeout(async () => {
+        const out = { malformed: [], aliveAfter: null, pageAfter: null };
+        for (const path of ['/%', '/%zz', '/api/%E0%A4%A', '/api/analyse%', '/%FF%FE']) {
+          out.malformed.push(await get(path));
+        }
+        out.aliveAfter = await get('/api/status');
+        out.pageAfter = await get('/');
+        server.kill();
+        process.stdout.write(JSON.stringify(out));
+      }, 900);
+    `],
+    { env: { PATH: process.env.PATH }, timeout: 20000 });
+  const survived = JSON.parse(child.toString());
+  check('every malformed path is answered as a client error, not a crash',
+    survived.malformed.every(status => status === 400), JSON.stringify(survived.malformed));
+  check('and the server is still serving its API afterwards',
+    survived.aliveAfter === 200, String(survived.aliveAfter));
+  check('and still serving the page — one bad URL is not an outage for everybody else',
+    survived.pageAfter === 200, String(survived.pageAfter));
+}
+
+// ---------- one payment, one generation at a time ----------
+//
+// canUse reads the ledger, the caller spends minutes generating, and only then
+// does recordUse append. Two requests carrying the same payment that arrive
+// together both read the same count, both find room under the cap, and both
+// generate: a cap of three that six concurrent requests walk straight through.
+// What it costs is money — one S$1.99 buying as many analyses as a caller can
+// start at once.
+{
+  const id = 'pi_selftest_hold_' + Date.now();
+  const first = paymentLedger.hold(id, 'premium');
+  check('a payment can be held for the length of one generation', typeof first === 'function');
+  check('a second generation against the same payment is refused while the first runs',
+    paymentLedger.hold(id, 'premium') === null);
+  // The whole point of separate kinds: an unlock generating its premium
+  // sections must not block the free-report rewrite the same payment bought.
+  const otherKind = paymentLedger.hold(id, 'bundled');
+  check('but a different kind of the same payment is not blocked',
+    typeof otherKind === 'function');
+  check('and neither is a different payment',
+    typeof paymentLedger.hold('pi_selftest_hold_other', 'premium') === 'function');
+  first();
+  check('releasing lets the next generation through',
+    typeof paymentLedger.hold(id, 'premium') === 'function');
+  // A double release used to be able to free a hold a *later* request had
+  // since taken, which would have reintroduced the race it exists to close.
+  const held = paymentLedger.holdCount();
+  first();
+  check('releasing twice does not free somebody else\'s hold',
+    paymentLedger.holdCount() === held, held + ' -> ' + paymentLedger.holdCount());
+  check('a missing payment id is never holdable',
+    paymentLedger.hold('', 'premium') === null &&
+    paymentLedger.hold(undefined, 'premium') === null);
+}
+
 // ---------- the ceilings on the routes that cost money ----------
 //
 // Two new guards sit in front of /api/analyse, /api/compatibility,

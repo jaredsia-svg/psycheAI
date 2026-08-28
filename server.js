@@ -336,22 +336,39 @@ async function handleAnalyse(request, response) {
     return;
   }
 
-  await sendJsonWhileWorking(response, async () => {
-    const result = await engine.analyseProfile(body.digest);
+  // Same hold the two premium routes take, for the same check-then-act gap:
+  // canUse read a count that recordUse will not write until the model comes
+  // back. Only for a paid run — a free one is metered by the daily budget,
+  // which is a server-wide count rather than a per-payment cap, and a promo
+  // code carries no cap at all.
+  const paidRun = Boolean(paymentIntentId && !promoCode);
+  const release = paidRun ? paymentLedger.hold(paymentIntentId, ledgerKind) : () => {};
+  if (!release) {
+    sendJson(response, 429, {
+      error: 'This payment is already generating an analysis. Wait for it to finish before trying again.',
+    });
+    return;
+  }
+  try {
+    await sendJsonWhileWorking(response, async () => {
+      const result = await engine.analyseProfile(body.digest);
 
-    // Both recorded only after the call actually came back, so a provider
-    // outage neither spends the day's budget nor burns the reader's payment.
-    if (paying) {
-      if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, ledgerKind);
-    } else {
-      budget.record('analyse');
-    }
-    // Stored last, and only on success. If the socket has already died this is
-    // the line that makes the reader's retry free — the whole point of the
-    // cache is that it is written even when nobody is left to receive the
-    // response it is about to be handed to.
-    return results.set('analyse', body.digest, result);
-  });
+      // Both recorded only after the call actually came back, so a provider
+      // outage neither spends the day's budget nor burns the reader's payment.
+      if (paying) {
+        if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
+      } else {
+        budget.record('analyse');
+      }
+      // Stored last, and only on success. If the socket has already died this
+      // is the line that makes the reader's retry free — the whole point of
+      // the cache is that it is written even when nobody is left to receive
+      // the response it is about to be handed to.
+      return results.set('analyse', body.digest, result);
+    });
+  } finally {
+    release();
+  }
 }
 
 // A single-use ticket for the routes below. Cheap to serve, rate-limited like
@@ -450,11 +467,26 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 200, cachedPaid);
     return;
   }
-  await sendJsonWhileWorking(response, async () => {
-    const result = await engine.analysePremium(body.digest);
-    paymentLedger.recordUse(paymentIntentId, 'premium');
-    return results.set('premium', body.digest, result);
-  });
+  // Held across the generation, because canUse above read a count that
+  // recordUse below will not write for several minutes — see lib/premiumLedger
+  // on the race that gap opens. Taken after the cache check, so a reader
+  // collecting something already generated is never turned away by it.
+  const release = paymentLedger.hold(paymentIntentId, 'premium');
+  if (!release) {
+    sendJson(response, 429, {
+      error: 'This payment is already generating an analysis. Wait for it to finish before trying again.',
+    });
+    return;
+  }
+  try {
+    await sendJsonWhileWorking(response, async () => {
+      const result = await engine.analysePremium(body.digest);
+      paymentLedger.recordUse(paymentIntentId, 'premium');
+      return results.set('premium', body.digest, result);
+    });
+  } finally {
+    release();
+  }
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -547,11 +579,23 @@ async function handleCompatibility(request, response) {
     sendJson(response, 200, cachedPaid);
     return;
   }
-  await sendJsonWhileWorking(response, async () => {
-    const result = await engine.analyseCompatibility(a, b, mode, stance);
-    paymentLedger.recordUse(paymentIntentId, 'compatibility');
-    return results.set('compatibility', cacheKey, result);
-  });
+  // Same hold as the premium route, for the same reason.
+  const release = paymentLedger.hold(paymentIntentId, 'compatibility');
+  if (!release) {
+    sendJson(response, 429, {
+      error: 'This payment is already generating a report. Wait for it to finish before trying again.',
+    });
+    return;
+  }
+  try {
+    await sendJsonWhileWorking(response, async () => {
+      const result = await engine.analyseCompatibility(a, b, mode, stance);
+      paymentLedger.recordUse(paymentIntentId, 'compatibility');
+      return results.set('compatibility', cacheKey, result);
+    });
+  } finally {
+    release();
+  }
 }
 
 function serveStatic(requestedPath, response) {
@@ -678,15 +722,56 @@ function applySecurityHeaders(request, response) {
 }
 
 const server = http.createServer((request, response) => {
-  const url = new URL(request.url, 'http://localhost');
-  const route = decodeURIComponent(url.pathname);
-
   // Before anything branches, so no route can be added that forgets them.
   // setHeader rather than passing them to each writeHead: they survive into
   // whatever the handler eventually writes, including the 404 and 403 paths
   // in serveStatic and every sendJson refusal above.
   applySecurityHeaders(request, response);
 
+  // Parsing the request line is the first thing that can throw, and until this
+  // guard existed a throw here ended the process.
+  //
+  // `GET /%` was enough. decodeURIComponent raises URIError on a malformed
+  // percent-escape, this ran outside any try/catch, and an uncaught exception
+  // in a request handler takes Node down with it — so one request, needing no
+  // nonce and passing no rate limit because both are checked further down,
+  // was a complete outage for everybody. A supervisor restarting the process
+  // does not help when the request can simply be sent again.
+  //
+  // A malformed path is a client error, so it is answered as one rather than
+  // swallowed. new URL is inside the same guard: it throws on request lines
+  // no browser sends but anything speaking HTTP can.
+  let route;
+  let url;
+  try {
+    url = new URL(request.url, 'http://localhost');
+    route = decodeURIComponent(url.pathname);
+  } catch (error) {
+    sendJson(response, 400, { error: 'That is not a valid request path.' });
+    return;
+  }
+
+  // Everything from here is wrapped, because the crash above was not really
+  // about decodeURIComponent — it was about a synchronous throw anywhere in
+  // this function being fatal to the whole server. The specific bug is fixed
+  // above; this is so the next one costs a request instead of the site.
+  //
+  // Deliberately not a process-level uncaughtException handler. That would
+  // also catch throws from timers and callbacks with no request in hand and
+  // no way to answer, leaving the process running in a state nobody has
+  // reasoned about. This catches only what one request can throw, where there
+  // is a response to send and the damage is bounded to the caller who caused
+  // it.
+  try {
+    routeRequest(route, url, request, response);
+  } catch (error) {
+    console.error('[' + route + '] unhandled: ' + (error && error.message ? error.message : error));
+    if (!response.headersSent) sendJson(response, 500, { error: 'Something went wrong on the server.' });
+    else response.end();
+  }
+});
+
+function routeRequest(route, url, request, response) {
   if (route.startsWith('/api/')) {
     const handler =
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
@@ -746,7 +831,7 @@ const server = http.createServer((request, response) => {
   }
 
   serveStatic(route, response);
-});
+}
 
 // Node closes an idle keep-alive socket after 5 seconds by default, which is
 // shorter than the reverse proxy in front of this server assumes when it holds
