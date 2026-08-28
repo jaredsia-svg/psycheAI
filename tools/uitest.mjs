@@ -4292,7 +4292,10 @@ try {
     rightPromo.status === 200 && typeof rightPromo.body.data.idealPartner === 'object' &&
     typeof rightPromo.body.data.idealPartner.summary === 'string',
     JSON.stringify(rightPromo).slice(0, 200));
-  const caseInsensitivePromo = await tryPromo('  JiaLatSia  ');
+  // Derived from the constant rather than typed out again: a hand-written
+  // variant is a second copy of the code that silently stops matching the
+  // first the moment it changes, which is exactly what happened here.
+  const caseInsensitivePromo = await tryPromo('  ' + UITEST_PROMO.toUpperCase() + '  ');
   check('the promo code is case-insensitive and tolerates surrounding whitespace',
     caseInsensitivePromo.status === 200);
   const emptyPromo = await tryPromo('');
