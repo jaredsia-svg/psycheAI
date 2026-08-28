@@ -1205,10 +1205,17 @@ together, and it is worth being precise about which does what, because it is eas
 with protection it does not provide.
 
 **`lib/ratelimit.js` is the ceiling.** A token bucket per caller per route — six payment intents per
-ten minutes, six analyses an hour, eight of each paid route — refusing with a `429` and a
+ten minutes, twenty analyses an hour, eight of each paid route — refusing with a `429` and a
 `Retry-After`. A bucket rather than a fixed window, because a fixed window lets a caller spend one
 window's allowance in its last second and the next window's in its first, which is twice the
 intended rate in a burst at exactly the moment a flood is most useful to whoever is running it.
+
+The analysis limit started at six an hour and was raised to twenty, because an address is very often
+not a person: an office, a school or a café each look like one caller, and a mobile carrier can put
+thousands of phones behind a single address. Six shared between all of them turns readers away for
+something they did not do. Loosening it costs nothing defensively — the flooding this was built to
+stop is bounded by the `payment-intent` bucket, which is separate, and by the daily budget ceiling
+above it.
 
 The dangerous part is deciding *who the caller is*. Behind a proxy the socket address is the
 proxy's, identical for everyone, so a limiter that used it would put every reader in the world in
