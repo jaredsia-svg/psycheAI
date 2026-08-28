@@ -2468,6 +2468,34 @@ is read. The checks name the sources individually rather than counting them — 
 pass while naming the wrong two, and telling a reader *which* of their exports survived is the whole
 job of the line.
 
+**One dialog, two audiences.** It was saying the report page's words to both: *"Add or change your
+data"* describes a report that does not exist yet and offers to replace data nobody has loaded, and
+the Instagram row's *"…to replace it"* had the same problem one line down. `askDataSources()` now
+takes a `title`, a `blurb`, `sublines` and a list of `sources`; the welcome page passes **"Add your
+data"** and shows **Instagram and Google only**, while the report page passes nothing and gets all
+three rows and its own wording back. Facebook is not gone, just not offered at the point where a
+reader has uploaded nothing yet — it is one screen away, on the report page, which is where somebody
+who wants it will already be.
+
+Two traps in that, both of which had to be written out rather than assumed. Rows are *hidden*, not
+removed, and `.mode-option`'s own `display: flex` beats the user agent's `[hidden] { display: none }`
+outright — specificity never enters into it — so without an explicit `.mode-option[hidden]` rule the
+row would be excluded from every list in the function and still drawn on screen. And the sub-line
+override works by overwriting the markup's text, so the original is stashed in `dataset.defaultText`
+the first time and restored on every later open; without that, the welcome page's wording would stick
+for the rest of the page's life. The suite can prove the stash exists but *not* that the restore
+works: eight page reloads sit between the one welcome-page use and the first report-page use, and a
+reload restores the markup anyway. Injecting the leak passes the suite unchanged, so what is checked
+is the half that can fail.
+
+**And Back at the review kept losing the tick.** The Instagram row was seeded from `state.digest`
+alone — but a first upload has no digest until the review has been agreed *and paid for*. So a reader
+who loaded their export, pressed Continue, then pressed Back found the row unticked and was being
+told to load the same archive again: the exact thing this popout exists to prevent, at the moment it
+is most likely. Seeding from `state.signals` as well — set the instant an archive is read — is the
+fix, and it is the one source that had no memory of its own because on the report page a digest was
+always there to stand in for it.
+
 `startFromSources()` then does the popout → review → payment → analysis loop, with Back at the review
 stepping upstream to the popout rather than abandoning the run. It is deliberately not routed through
 `rerunWithAdditionalData()`, which does the same three steps on the report page: that one also has to
@@ -3847,7 +3875,7 @@ npm test           # 719 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1086 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1092 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

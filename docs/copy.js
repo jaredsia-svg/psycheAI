@@ -610,6 +610,18 @@
     dataSourcesTitle: 'Add or change your data',
     dataSourcesBlurb: 'Load a fresh export to replace a source, or add one you have not used yet. ' +
       'Nothing is sent anywhere until you review it on the next screen.',
+    // The same popout opened from the welcome page, where there is nothing to
+    // change yet — "Add or change" describes a report that does not exist and
+    // offers to replace data nobody has loaded. Facebook is left out of that
+    // entry point entirely (see askDataSources' `sources`), so the blurb names
+    // the two it does show rather than "a source".
+    dataSourcesFirstTitle: 'Add your data',
+    dataSourcesFirstBlurb: 'Load your Instagram export, and your Google Takeout too if you have it. ' +
+      'Nothing is sent anywhere until you review it on the next screen.',
+    // The Instagram row's own line on that same popout. The markup's version
+    // ends "to replace it", which is right on the report page and describes
+    // replacing something that does not exist yet here.
+    dataSourcesFirstInstagram: 'Load your Instagram export .zip file here',
     // Only shown once a fresh Instagram export is actually picked — see the
     // reasoning at the call site in app.js for why this cannot always be
     // carried forward automatically.

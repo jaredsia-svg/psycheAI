@@ -1458,6 +1458,13 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 
 .mode-options { display: grid; gap: .55rem; margin-bottom: 1rem; }
+/* A row the current entry point does not offer — the welcome page hides
+   Facebook. Written out because the `display: flex` below beats the user
+   agent's own `[hidden] { display: none }` outright, specificity never
+   entering into it: without this the row would be set `hidden`, excluded from
+   every list in askDataSources, and still drawn on the screen. The same trap
+   .mode-progress[hidden] already carries a note about. */
+.mode-option[hidden] { display: none; }
 .mode-option {
   display: flex; gap: .8rem; align-items: flex-start; text-align: left;
   width: 100%; font: inherit; color: inherit; cursor: pointer;

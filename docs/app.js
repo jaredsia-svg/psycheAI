@@ -1498,7 +1498,17 @@
     for (;;) {
       let collected;
       try {
-        collected = await askDataSources();
+        collected = await askDataSources({
+          title: TEXT.dataSourcesFirstTitle,
+          blurb: TEXT.dataSourcesFirstBlurb,
+          // Instagram and Google only. A first upload is not the moment to
+          // open a third door, and the how-to card directly above this
+          // recommends exactly these two; Facebook stays available from the
+          // report page afterwards, which is where somebody who wants it will
+          // already be.
+          sources: ['instagram', 'google'],
+          sublines: { instagram: TEXT.dataSourcesFirstInstagram },
+        });
       } catch (error) {
         showUploadError((error && error.message) || 'Could not read that export.');
         return;
@@ -2429,20 +2439,56 @@
    * reading an export is free, and Continue only hands the results back to
    * addDataAndRerun, which builds the digest the review dialog shows next.
    */
-  function askDataSources() {
+  function askDataSources(options) {
+    const settings = options || {};
     const dialog = $('#datasources-dialog');
     const status = $('#datasources-status');
     const input = $('#datasources-input');
-    const buttons = dialog.querySelectorAll('.mode-option');
+    // Which rows this entry point offers. The welcome page shows Instagram and
+    // Google only — a first upload is not the moment to open a third door, and
+    // the how-to card beside it recommends exactly those two — while the report
+    // page still offers all three, so Facebook stays reachable for anybody who
+    // wants it, one screen later. Hidden rather than removed from the markup:
+    // one dialog, two audiences.
+    const offered = settings.sources || ['instagram', 'google', 'facebook'];
+    // A row's own sub-line has the same problem the title does: "Load a new
+    // Instagram export .zip file here to replace it" describes replacing
+    // something, and on a first upload there is nothing to replace. Overridden
+    // per entry point, with the markup's own wording remembered the first time
+    // so the report page — which really is offering a replacement — gets it
+    // back. Restoring matters: the override works by overwriting the text, so
+    // without it the welcome page's wording would stick for the rest of the
+    // page's life.
+    const sublines = settings.sublines || {};
+    for (const row of dialog.querySelectorAll('.mode-option')) {
+      const source = row.dataset.datasource;
+      row.hidden = !offered.includes(source);
+      const line = row.querySelector('.mode-body > .muted');
+      if (!line) continue;
+      if (line.dataset.defaultText === undefined) line.dataset.defaultText = line.textContent;
+      line.textContent = sublines[source] || line.dataset.defaultText;
+    }
+    // Every list below is built from the visible rows, so a hidden source can
+    // neither be ticked, read, nor resolved.
+    const buttons = dialog.querySelectorAll('.mode-option:not([hidden])');
+    $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
+    $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
     const digest = state.digest;
     const added = {
-      // Seeded from the digest, not assumed. Instagram is always already
-      // loaded *when there is a digest* — it is the one source a report
-      // cannot exist without — but the digest can go missing on its own while
-      // the report survives, and a tick here would then promise the popout
-      // was holding an archive it does not have. Left unticked, the row reads
-      // as the one thing still to do, which is exactly what it is.
-      instagram: Boolean(digest) || undefined,
+      // Seeded from the digest *and* from the archive held in memory. The
+      // digest alone was wrong on the welcome page: a first upload has no
+      // digest until the review has been agreed and paid for, so a reader who
+      // loaded Instagram, pressed Continue, then pressed Back at the review
+      // found the row unticked and was being told to load it again — the one
+      // thing this popout exists to stop, at the moment it is most likely.
+      // `state.signals` is set the moment an archive is read, which is exactly
+      // the memory Instagram was missing.
+      //
+      // The digest can also go missing on its own while the report survives,
+      // and a tick would then promise an archive the popout does not have;
+      // with neither, the row is left unticked and reads as the one thing
+      // still to do, which is what it is.
+      instagram: Boolean(digest || state.signals) || undefined,
       google: Boolean(digest && digest.google) || pendingDataSourceReads.google || undefined,
       facebook: Boolean(digest && digest.facebook) || pendingDataSourceReads.facebook || undefined,
     };

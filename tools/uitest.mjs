@@ -5652,6 +5652,47 @@ try {
   // in a later dialog.
   await page.click('#open-sources');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+
+  // ---- the popout on a first upload ----
+  //
+  // One dialog serves two audiences, and it said the report page's words to
+  // both: "Add or change your data" describes a report that does not exist yet
+  // and offers to replace data nobody has loaded.
+  check('the first-upload popout asks to add data rather than change it',
+    (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data',
+    await page.locator('#datasources-dialog-title').innerText());
+  // Instagram and Google only. A first upload is not the moment to open a
+  // third door, and the how-to card directly above recommends exactly those
+  // two. Checked as visibility rather than as markup: the row is hidden, not
+  // removed, because the report page still offers all three from this same
+  // dialog — and `display: flex` beats `[hidden]` unless a rule says
+  // otherwise, which is precisely how a "hidden" row stays on screen.
+  check('it offers Instagram and Google, and does not open a third door',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2 &&
+    await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible() &&
+    !(await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()),
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) + ' rows shown');
+  // The row's own line, for the same reason as the title.
+  const igLine = '#datasources-dialog .mode-option[data-datasource="instagram"] .mode-body > .muted';
+  check('the Instagram row asks for an export rather than a replacement',
+    !/replace/i.test(await page.locator(igLine).innerText()),
+    await page.locator(igLine).innerText());
+  // That override works by overwriting the markup's own text, so the report
+  // page can only get its wording back if the original was kept first. This is
+  // the half of the restore this suite is in a position to prove — eight page
+  // reloads sit between here and the first report-page use, and a reload
+  // restores the markup anyway, so an actual leak cannot be observed.
+  check('and the markup\'s own wording is kept so the report page can have it back',
+    await page.evaluate(sel => {
+      const line = document.querySelector(sel);
+      const kept = line && line.dataset.defaultText;
+      return Boolean(kept) && /replace/i.test(kept) && kept !== line.textContent;
+    }, igLine),
+    await page.evaluate(sel => {
+      const line = document.querySelector(sel);
+      return JSON.stringify({ shown: line.textContent.trim(), kept: line.dataset.defaultText });
+    }, igLine));
+
   const [rechooser] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
     page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
@@ -5670,6 +5711,28 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
   check('and Continue goes straight to the review, with no second upload asked for',
     await page.locator('#review-dialog').isVisible());
+
+  // ---- Back at the review keeps what was loaded ----
+  //
+  // The tick was seeded from `state.digest` alone, and a first upload has no
+  // digest until the review has been agreed and paid for. So a reader who
+  // loaded Instagram, pressed Continue, then pressed Back found the row
+  // unticked and was being told to load the same archive again — the one thing
+  // this popout exists to stop, happening at the moment it is most likely.
+  // Seeding from `state.signals` too is the fix; this is the check that would
+  // have caught it.
+  await page.click('#review-cancel');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 30000 });
+  check('Back at the review reopens the popout with Instagram still ticked',
+    await page.locator('#datasources-dialog .mode-option[data-datasource="instagram"] .mode-added')
+      .isVisible(),
+    await page.evaluate(() => document.querySelector(
+      '#datasources-dialog .mode-option[data-datasource="instagram"]').className));
+  check('and it is still the first-upload popout, not the report page\'s wording',
+    (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data' &&
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2,
+    await page.locator('#datasources-dialog-title').innerText());
+
   await page.keyboard.press('Escape');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
 
