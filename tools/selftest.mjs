@@ -826,42 +826,53 @@ check('cardHighlights names both fields it condenses',
 // N/S and T/F were the two letters readers reported as subtly wrong. Both had
 // the same hole: E/I carried a whole section on what its evidence looks like
 // and which way its error runs, and those two carried nothing but "cite
-// evidence". The fix is in two halves, and both are pinned here — a schema
-// field that makes the opposing case mandatory, and prompt guidance naming the
-// digest fields that actually bear on those axes.
+// evidence". The fix is in two halves, and both are pinned here — a `why` that
+// has to argue the letter at real length and temper itself, and prompt
+// guidance naming the digest fields that actually bear on those axes.
 const letterProps = prompts.PROFILE_SCHEMA.properties.mbti.properties.letters.items.properties;
 // Read through a guard rather than dereferenced: a missing field should fail
 // the check that looks for it and leave the rest of the suite running, not
 // throw out of the file and take four hundred later checks with it.
 const letterDesc = key => String((letterProps[key] || {}).description || '');
-check('every MBTI axis carries the case against its own letter',
-  'counterEvidence' in letterProps);
-check('the opposing case is asked for at full strength, not raised to be dismissed',
-  /at full strength/i.test(letterDesc('counterEvidence')) &&
-  /rather than raised in order to be waved away/i.test(letterDesc('counterEvidence')));
-check('and it has to carry a count, like every other evidence string in this report',
-  /with a count on it/i.test(letterDesc('counterEvidence')));
-// The point of the field: a letter picked off the first thing that pointed at
-// it, with no search for the other side, is the failure being corrected.
-check('finding no counter-evidence is treated as not having looked',
-  /means not having looked/i.test(letterDesc('counterEvidence')));
-check('an empty counter is allowed but tied to a one-sided axis',
-  /empty string/i.test(letterDesc('counterEvidence')) &&
-  /genuinely one-sided/i.test(letterDesc('counterEvidence')));
-// Strength is the whole reason the field exists: it is read off the balance
-// rather than asserted and justified afterwards.
-check('strength is read off the balance between the two sides, not asserted',
-  /balance\*? between `why` and `counterEvidence`/i.test(letterDesc('strength')) &&
-  /rather than asserted on its own/i.test(letterDesc('strength')));
-check('and each of the three strengths is defined against that balance',
-  /`clear` only where the opposing side stayed thin/i.test(letterDesc('strength')) &&
-  /`slight` where the two are close/i.test(letterDesc('strength')));
-check('the case for a letter needs two separate pieces of evidence, not one read twice',
-  /at least two distinct pieces of evidence/i.test(letterDesc('why')) &&
+// The tempering used to be its own field rendered as a labelled "case against"
+// block. That made every axis read as a debate transcript and gave contrary
+// evidence the same visual weight as the finding whatever its real weight, so
+// it was folded back into `why` as a clause. Asserted as an absence, since the
+// natural way to regress is to re-add the field rather than to edit `why`.
+check('the axis is one passage, not an argument and a rebuttal in two fields',
+  !('counterEvidence' in letterProps));
+check('and `why` is asked for at the depth a Big Five trait gets',
+  /depth a Big Five trait gets/i.test(letterDesc('why')) &&
+  /four to six sentences/i.test(letterDesc('why')));
+check('the case for a letter needs three separate pieces of evidence, not one read three ways',
+  /at least three distinct pieces of evidence/i.test(letterDesc('why')) &&
   /different parts of the digest/i.test(letterDesc('why')) &&
-  /not two readings of the same caption/i.test(letterDesc('why')));
+  /not three readings of the same caption/i.test(letterDesc('why')));
 check('and each piece of it is counted',
   /each with a count or a proportion on it/i.test(letterDesc('why')));
+// The tempering is the half that stops a letter being chosen on the first
+// thing that pointed at it, so it is required in the same paragraph and has to
+// carry its own count rather than being a hedge.
+check('`why` has to temper itself in the same paragraph',
+  /temper it in the same paragraph/i.test(letterDesc('why')) &&
+  /where behaviour runs the other way, say so plainly/i.test(letterDesc('why')));
+check('the tempering carries its own count and says what it does not overturn',
+  /give it its own count/i.test(letterDesc('why')) &&
+  /what it does and does not overturn/i.test(letterDesc('why')));
+check('an axis argued only in its own favour is named as the failure being prevented',
+  /argued only in its own favour is the failure this field exists to prevent/i.test(letterDesc('why')));
+// Even-handedness is not the goal — accuracy is. A model told to always temper
+// would invent a doubt on the axes that genuinely run one way.
+check('and a one-sided axis may say so rather than manufacturing a doubt',
+  /instead of manufacturing a doubt/i.test(letterDesc('why')));
+// Strength is read off how close that tempering comes, rather than asserted
+// and justified afterwards.
+check('strength is read off the balance inside `why`, not asserted',
+  /balance inside `why`\*?/i.test(letterDesc('strength')) &&
+  /rather than asserted on its own/i.test(letterDesc('strength')));
+check('and each of the three strengths is defined against that balance',
+  /`clear` only where the contrary behaviour stayed thin/i.test(letterDesc('strength')) &&
+  /`slight` where the two are close/i.test(letterDesc('strength')));
 
 // The prompt half. Each axis's error has a direction, and naming it is what
 // makes the correction actionable rather than a general plea for care.
@@ -918,9 +929,8 @@ for (const field of ['geminiPrompts', 'instagramTopics', 'mostEngagedWith', 'rhy
 }
 check('J/P is read straight, being the least confounded of the four',
   /J\/P is the least confounded/i.test(sys));
-check('the prompt orders counterEvidence written before strength is settled',
-  /write \\`counterEvidence\\` before you settle \\`strength\\`/i.test(sys) ||
-  /write `counterEvidence` before you settle `strength`/i.test(sys));
+check('the prompt orders the contrary behaviour found before strength is settled',
+  /look for the contrary behaviour before you settle `strength`/i.test(sys));
 check('and calls out a report that found every axis clear',
   /clear` on all four axes is a report that did not look/i.test(sys));
 

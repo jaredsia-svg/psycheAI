@@ -732,10 +732,10 @@
   };
 
   /**
-   * One MBTI axis: the lettered square, the pole it beat, the reasoning, the
-   * opposing case the strength was read against, and what it looks like in
-   * their week. `counterEvidence` is optional so a report saved before the
-   * field existed still lays out.
+   * One MBTI axis: the lettered square, the pole it beat, the reasoning, and
+   * what it looks like in their week. `counterEvidence` is a legacy field —
+   * the tempering lives inside `why` now — kept so a report saved while it was
+   * separate still lays out with all its text.
    */
   Report.prototype.axis = function (letter, pole, strength, why, inPractice, counterEvidence) {
     const nameStyle = { size: 11.5, bold: true, color: INK };
@@ -765,9 +765,12 @@
     }
     this.doc.y = cursor + 6;
     if (why) this.body(why, { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
+    // Only a report saved before the tempering was merged into `why` still
+    // carries this separately; set in the same style rather than as an aside,
+    // since it is the second half of one analysis.
     if (counterEvidence) {
-      this.body(TEXT.mbtiAgainst + counterEvidence,
-        { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
+      this.body(counterEvidence,
+        { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
     }
     if (inPractice) this.body(inPractice, { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
     this.space(3);

@@ -2737,30 +2737,40 @@ structural reason. That gives the axis its single best probe: criticism that sur
 anyway. A plainly-stated disagreement, ranking or unflattering verdict in a room built for being liked
 is worth several times its weight as Thinking evidence. Its absence, as ever, is worth nothing.
 
-**And every axis now writes the case against its own letter.** `counterEvidence` is a required field
-beside `why`: the best argument for the opposite letter, stated at full strength with its own count
-rather than raised in order to be dismissed, then a clause on why it did not win. `strength` is read
-off the gap between the two — close is `slight`, one clearly stronger showing is `moderate`, and
-`clear` is only earned where the other side stayed thin after an honest search. Finding nothing on the
-other side of a four-letter judgement made from one social-media export means not having looked, and
-the prompt says so; a report that returns `clear` on all four axes has told on itself.
+**And every axis is now a real analysis that tempers itself**, written at the depth a Big Five trait
+gets rather than as a caption: four to six sentences in one paragraph. `why` has a floor — at least
+three separate pieces of evidence from different parts of the digest, not three readings of the same
+caption, each with a count on it — and a ceiling on one-sidedness: where behaviour runs the other way
+it has to be named in the same paragraph, with its own count and a statement of what it does and does
+not overturn. `strength` is read off how close that tempering comes: close is `slight`, one clearly
+stronger showing is `moderate`, `clear` only where the contrary behaviour stayed thin after an honest
+search. A report that returns `clear` on all four axes has told on itself. Even-handedness is not the
+goal, though — an axis that genuinely runs one way says so rather than manufacturing a doubt to look
+balanced, because a model told to always temper will invent the temper.
 
-`why` also has a floor now: at least two separate pieces of evidence from different parts of the
-digest, not two readings of the same caption, each with a count on it.
+**That tempering was briefly its own field, and briefly its own block on the page.** `counterEvidence`
+rendered under each argument as a labelled "The case against:", set off by a rule down its left edge.
+It came out. Two blocks made every axis read as a debate transcript rather than as a finding, and —
+worse — gave the contrary evidence fixed visual weight equal to the case that won, whatever its actual
+weight. A clause that says "six accounts absorb most of the engagement, and every cluster is followed
+by a fortnight of silence — what tips it to E is that the organising is outward-facing" carries its own
+proportion; the same words in a bordered box below the argument read as a rebuttal of it. The field is
+gone from the schema, the label from `copy.js`, the rule from the stylesheet; `docs/app.js` and
+`docs/pdf.js` still render a legacy `counterEvidence` if a report saved during that window has one,
+appended as ordinary body text rather than dropping a paragraph of real analysis on the floor.
 
-The reader sees both halves. The opposing case renders as its own labelled block under the argument it
-opposes, set off by a rule down its left edge rather than greyed out like an aside — someone deciding
-whether they agree with their own type needs to find it, not skim past it. It is in the PDF on the
-same terms. Rewriting `docs/sample.json` to the new shape moved one of its own letters: T/F was
-`clear`, and once the counter-evidence was actually written out — deadlines tracked on delivery, work
-assessed as often as celebrated — it was plainly `moderate`. That is the mechanism doing the job it
-was added for, on the exact axis readers complained about.
+Rewriting `docs/sample.json` to the tempered shape moved one of its own letters: T/F was `clear`, and
+once the contrary behaviour was actually written out — deadlines tracked on delivery, other people's
+work assessed about as often as celebrated — it was plainly `moderate`. That is the mechanism doing
+the job it was added for, on the exact axis readers complained about. The sample's four axes now run
+95 to 137 words each, against the 15-word captions they replaced.
 
 This cost 2,500 tokens of fixed prompt, taking the reserve from 17,800 to 20,300 and roughly 8,750
 characters off the digest ceiling. That is the most expensive kind of prompt text there is: it buys
 nothing on a thin account and every account pays for it. It is worth it because those two letters were
 wrong often enough for readers to say so, and a sampled caption or two is a cheaper thing to lose than
-half the type.
+half the type. Folding the counter back into `why` did not give any of it back — 20,085 tokens before,
+20,126 after: a longer `why` description costs about what dropping a whole field saves.
 
 ### What the model is told not to do
 
@@ -3756,7 +3766,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 705 checks: synthesises a real ZIP export and runs
+npm test           # 706 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -3765,7 +3775,7 @@ npm test           # 705 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1071 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1070 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -4308,49 +4308,35 @@ try {
     (await page.locator('.axis-against').allInnerTexts()).join('|'));
   check('the letter itself is still shown',
     (await page.locator('.axis-letter').allInnerTexts()).join('') === 'ENFJ');
-  // ---- each axis shows the case against its own letter ----
+  // ---- each axis is one analysis, tempered inside itself ----
   //
   // N/S and T/F were the two letters readers reported as subtly wrong, and the
   // cause was a letter picked off the first thing that pointed at it. The
-  // model now has to write the opposing case for every axis, and `strength` is
-  // read off the gap between the two — so the reader has to be able to see
-  // both halves of that judgement, not just the half that won.
+  // model has to argue each axis at length and name the behaviour running the
+  // other way in the same paragraph.
   //
-  // The mock deliberately leaves one axis's counter empty (the `clear` one,
-  // which is the single case the schema allows it), so this asserts three
-  // rendered rather than four: a check for four would fail on the correct
-  // behaviour, and a check for "at least one" would pass on a renderer that
-  // dropped the field entirely on three axes out of four.
-  check('the case against each letter is rendered where the model wrote one',
-    (await page.locator('.axis-counter').count()) === 3,
-    (await page.locator('.axis-counter').count()) + ' counters');
-  check('and each one is labelled rather than running on from the argument above it',
-    await page.evaluate(() => [...document.querySelectorAll('.axis-counter')]
-      .every(n => {
-        const label = n.querySelector('.axis-counter-label');
-        return label && /case against/i.test(label.textContent);
-      })));
-  // Set apart visually, because a reader deciding whether they agree with
-  // their own type needs to find it. Checked as a real left border rather than
-  // as a class being present, which would pass on a rule that got deleted.
-  check('the opposing case is set apart from the case that won',
-    await page.evaluate(() => {
-      // Guarded: a renderer that dropped the block entirely should fail this
-      // check, not throw out of page.evaluate and abort the run.
-      const el = document.querySelector('.axis-counter');
-      if (!el) return false;
-      const s = getComputedStyle(el);
-      return parseFloat(s.borderLeftWidth) >= 2 && s.borderLeftStyle === 'solid';
-    }));
-  // An axis with no counter must render nothing at all rather than an empty
-  // labelled block — a stray "The case against:" with nothing after it reads
-  // as a bug in the report.
-  check('an axis with no counter shows no empty label',
-    await page.evaluate(() => [...document.querySelectorAll('.axis')]
-      .every(a => {
-        const c = a.querySelector('.axis-counter');
-        return !c || c.textContent.replace(/^\s*The case against:\s*/i, '').trim().length > 0;
-      })));
+  // This was briefly two rendered blocks, an argument and a labelled "case
+  // against" beneath it. That made every axis read as a debate transcript and
+  // gave the contrary evidence the same visual weight as the finding whatever
+  // its real weight. Checked as an absence, since the natural way to regress
+  // is to re-add the block rather than to shorten `why`.
+  check('no separate "case against" block survives beside the analysis',
+    (await page.locator('.axis-counter, .axis-counter-label').count()) === 0);
+  // The point of merging them was depth, not brevity, so the thing worth
+  // pinning is that each axis actually carries a substantial passage. Measured
+  // against the sample, which is the fixture written as real prose — the mock's
+  // axes are placeholder text and would pass a word count on filler.
+  check('each axis argues its letter at length rather than in a caption',
+    sampleFixture.mbti.letters.every(l => String(l.why || '').split(/\s+/).length >= 60),
+    sampleFixture.mbti.letters.map(l => String(l.why || '').split(/\s+/).length).join(', '));
+  // And that the merge did not quietly drop the tempering along with the block
+  // it used to live in: every axis whose strength is not `clear` should name
+  // something running the other way.
+  check('and the axes that are not clear still say what runs the other way',
+    sampleFixture.mbti.letters
+      .filter(l => l.strength !== 'clear')
+      .every(l => /against that|the tempering|what does count against|but |though/i.test(l.why)),
+    sampleFixture.mbti.letters.map(l => l.axis + ':' + l.strength).join(' '));
   check('every section carries a heading glyph',
     (await page.locator('#profile-body .card-icon').count()) ===
     (await page.locator('#profile-body .section-card').count()));

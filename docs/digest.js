@@ -138,8 +138,10 @@
   // Raised to 20,300 for the N/S and T/F section, which does for those two
   // axes what the extraversion trap already did for E/I: defines what each
   // pole actually measures, names the direction that axis's error runs, and
-  // points at the digest fields that bear on it — plus the per-axis
-  // `counterEvidence` field it feeds. Measured at 20,085.
+  // points at the digest fields that bear on it — plus the per-axis analysis
+  // it feeds. Measured at 20,085, and 20,126 after the axis's opposing case
+  // was folded back into `why` as a tempering clause, which cost about as much
+  // in a longer `why` description as it saved in dropping a field.
   //
   // This is the most expensive kind of prompt text there is: it buys nothing
   // on a thin account and costs every account the same. It is here because

@@ -2898,17 +2898,18 @@
         '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
         (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
         '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
+        // One passage carrying both the case for the letter and the behaviour
+        // that tempers it. This was briefly two blocks — an argument and a
+        // labelled "case against" beneath it — which made every axis read as a
+        // debate transcript rather than as an analysis, and gave the contrary
+        // evidence the same visual weight as the finding whatever its actual
+        // weight. The tempering is a clause in the same paragraph now, the way
+        // a Big Five trait's reading carries its own qualifications.
         '<p>' + esc(letter.why) + '</p>' +
-        // The opposing case, between the argument it opposes and the "in your
-        // week" line that closes the axis. Rendered as its own labelled block
-        // rather than folded into `why`, because the strength pill above is
-        // read off the gap between the two and a reader should be able to see
-        // both halves of that judgement separately. Optional in the markup:
-        // a report saved before the field existed still renders.
-        (letter.counterEvidence
-          ? '<p class="axis-counter"><span class="axis-counter-label">' + esc(TEXT.mbtiAgainst) +
-            '</span>' + esc(letter.counterEvidence) + '</p>'
-          : '') +
+        // A report written before that merge still has the separate field;
+        // append it rather than dropping a paragraph of real analysis on the
+        // floor. New reports never take this branch.
+        (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') +
         (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
         '</div></div>';
     }).join('') + '</div>';

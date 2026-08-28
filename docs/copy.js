@@ -242,11 +242,6 @@
     mbtiPrefix: 'MBTI: ',
     mbtiConfidence: 'Confidence: ',
     mbtiOver: 'over ',
-    // Labels the opposing case the model is now required to write for every
-    // axis. Named as a heading rather than a connective ("but", "however")
-    // because it introduces a block a reader may want to weigh on its own —
-    // the strength pill beside the letter is read off exactly this.
-    mbtiAgainst: 'The case against: ',
 
     // Reuses mbtiConfidence for its own "Confidence: " line — the same word,
     // not a second one to keep in step.
