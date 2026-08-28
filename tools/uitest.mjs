@@ -228,6 +228,10 @@ async function answerReview(page, options) {
   await page.click('#review-send');
 }
 
+// Deliberately not a plausible production value: a reader of this file
+// should never be able to mistake it for one that works anywhere real.
+const UITEST_PROMO = 'uitest-promo-not-a-real-code';
+
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: {
@@ -252,6 +256,11 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
     PSYCHEAI_RATE_COMPATIBILITY: '100000',
     PSYCHEAI_RATE_PAYMENT_INTENT: '100000',
     PSYCHEAI_RATE_NONCE: '100000',
+    // The suite's own promo code. There is no default any more — an unset
+    // PSYCHEAI_PROMO_CODE switches redemption off entirely — so a suite that
+    // wants to exercise the promo path has to declare one, which is exactly
+    // the property that stops a test fixture doubling as a live backdoor.
+    PSYCHEAI_PROMO_CODE: UITEST_PROMO,
   },
   stdio: 'ignore',
 });
@@ -4157,14 +4166,67 @@ try {
   // whatever else the request carries. A valid promo code is used here
   // deliberately, so the only thing standing between this call and a real
   // generation is the missing header.
-  const noTicket = await tryPromo('jialatsia', null);
+  const noTicket = await tryPromo(UITEST_PROMO, null);
   check('a request with no one-time token is refused before anything is generated',
     noTicket.status === 400 && noTicket.body.nonceRequired === true, JSON.stringify(noTicket));
   const staleTicket = await ticket();
-  await tryPromo('jialatsia', staleTicket);
-  const replayed = await tryPromo('jialatsia', staleTicket);
+  await tryPromo(UITEST_PROMO, staleTicket);
+  const replayed = await tryPromo(UITEST_PROMO, staleTicket);
   check('and a token cannot be spent twice, so a captured request cannot be replayed',
     replayed.status === 400 && replayed.body.nonceRequired === true, JSON.stringify(replayed));
+
+  // ---- security headers, on every response ----
+  //
+  // Checked against the running server rather than by reading server.js,
+  // because the thing that matters is what actually reaches a browser: a
+  // policy defined and never attached would read identically in the source.
+  //
+  // The strongest CSP coverage in this suite is not here, though — it is the
+  // console-error collector at the top of this file. Chromium reports every
+  // refused load as a console error, so all 1000-odd checks below run as one
+  // long smoke test of the policy: anything the CSP wrongly blocks shows up
+  // as a failure of the end-of-suite "no console errors" check.
+  {
+    const headersOf = async (path, extra) => {
+      const response = await fetch('http://localhost:' + PORT + path, { headers: extra || {} });
+      await response.text();
+      return response.headers;
+    };
+    const pageHeaders = await headersOf('/');
+    const apiHeaders = await headersOf('/api/status');
+
+    check('the page is served with a content security policy',
+      /default-src 'self'/.test(pageHeaders.get('content-security-policy') || ''),
+      pageHeaders.get('content-security-policy'));
+    check('and so are the API routes — headers on the HTML alone would leave JSON bare',
+      (apiHeaders.get('content-security-policy') || '') ===
+      (pageHeaders.get('content-security-policy') || ''));
+    check('the policy allows Stripe and nothing else off-origin',
+      /script-src 'self' https:\/\/js\.stripe\.com;/.test(pageHeaders.get('content-security-policy')),
+      pageHeaders.get('content-security-policy'));
+    check('scripts cannot be inlined or evaled under it, which is what makes it worth having',
+      !/script-src[^;]*unsafe-inline/.test(pageHeaders.get('content-security-policy')) &&
+      !/unsafe-eval/.test(pageHeaders.get('content-security-policy')));
+    check('the app refuses to be framed, by policy and by header',
+      /frame-ancestors 'none'/.test(pageHeaders.get('content-security-policy')) &&
+      (pageHeaders.get('x-frame-options') || '').toUpperCase() === 'DENY',
+      pageHeaders.get('x-frame-options'));
+    check('content types are not sniffed', pageHeaders.get('x-content-type-options') === 'nosniff');
+    check('referrers do not carry paths off-origin',
+      pageHeaders.get('referrer-policy') === 'strict-origin-when-cross-origin',
+      pageHeaders.get('referrer-policy'));
+
+    // The guard that matters most to whoever runs this locally: accepting HSTS
+    // on http://localhost pins that browser to https for localhost for a year,
+    // across every project on the machine.
+    check('HSTS is not sent over plain http, so a dev machine is never pinned to https on localhost',
+      pageHeaders.get('strict-transport-security') === null,
+      pageHeaders.get('strict-transport-security'));
+    const proxied = await headersOf('/', { 'X-Forwarded-Proto': 'https' });
+    check('but it is sent once a proxy says the request arrived over TLS',
+      /max-age=31536000/.test(proxied.get('strict-transport-security') || ''),
+      proxied.get('strict-transport-security'));
+  }
 
   // ---- the rate limiter, against a real server ----
   //
@@ -4189,6 +4251,7 @@ try {
         // Tickets must stay plentiful, or the first refusal would come from
         // the nonce route instead and this would pass for the wrong reason.
         PSYCHEAI_RATE_NONCE: '100000',
+        PSYCHEAI_PROMO_CODE: UITEST_PROMO,
       },
       stdio: 'ignore',
     });
@@ -4201,7 +4264,7 @@ try {
         const response = await fetch(limitedUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
-          body: JSON.stringify({ digest: minimalDigest, promoCode: 'jialatsia' }),
+          body: JSON.stringify({ digest: minimalDigest, promoCode: UITEST_PROMO }),
         });
         await response.text();
         return { status: response.status, retryAfter: response.headers.get('retry-after') };
@@ -4224,7 +4287,7 @@ try {
   check('a wrong promo code is refused with a 402 and no analysis',
     wrongPromo.status === 402 && /not valid/i.test(wrongPromo.body.error || ''),
     JSON.stringify(wrongPromo));
-  const rightPromo = await tryPromo('jialatsia');
+  const rightPromo = await tryPromo(UITEST_PROMO);
   check('the correct promo code unlocks the analysis with no payment at all',
     rightPromo.status === 200 && typeof rightPromo.body.data.idealPartner === 'object' &&
     typeof rightPromo.body.data.idealPartner.summary === 'string',
@@ -6691,7 +6754,7 @@ try {
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('the data offer is skipped outright once Google is already in the digest',
     !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
-  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
@@ -6849,7 +6912,7 @@ try {
   const reportBeforeUnlock = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
   const analysesBeforeUnlock = analyseBodies.length;
-  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
@@ -6865,7 +6928,7 @@ try {
     enrichedPaidBody.digest.samples.captions.length > 0,
     String(enrichedPaidBody.digest.samples.captions.length));
   check('the authorisation rides along unchanged',
-    enrichedPaidBody.promoCode === 'jialatsia', JSON.stringify(enrichedPaidBody.promoCode));
+    enrichedPaidBody.promoCode === UITEST_PROMO, JSON.stringify(enrichedPaidBody.promoCode));
   check('the reader gets the sections they paid for',
     (await page.evaluate(() => Object.keys(
       JSON.parse(localStorage.getItem('psycheai_profile')).premiumAnalysis).sort().join(','))) ===
@@ -6887,7 +6950,7 @@ try {
     JSON.stringify({ google: Boolean(bundledBody.digest.google),
       captions: bundledBody.digest.samples.captions.length }));
   check('and it is authorised by the unlock, never by a second charge',
-    bundledBody.promoCode === 'jialatsia' && !bundledBody.paymentIntentId,
+    bundledBody.promoCode === UITEST_PROMO && !bundledBody.paymentIntentId,
     JSON.stringify({ promo: bundledBody.promoCode, intent: bundledBody.paymentIntentId }));
   check('the stored report really is the rewritten one, not the pre-unlock one',
     (await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).createdAt)) !==
@@ -6951,7 +7014,7 @@ try {
   check('with no data added the sheet makes no claim about rewriting anything',
     !/rewrites the rest of your report/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
-  await page.fill('#premium-promo-input', 'jialatsia');
+  await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');

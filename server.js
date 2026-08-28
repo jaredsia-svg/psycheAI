@@ -55,10 +55,24 @@ const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
 // rather than fabricating a fake PaymentIntent for them to flow through: a
 // promo redemption never touches lib/stripe.js or lib/premiumLedger.js at
 // all, so it works even on a deployment with no Stripe key configured, as
-// long as the premium (Claude) engine itself is set up. Overridable so a real
-// deployment is not stuck with a code that shipped in this repo's history.
-const PROMO_CODE = process.env.PSYCHEAI_PROMO_CODE || 'jialatsia';
+// long as the premium (Claude) engine itself is set up.
+//
+// There is no default, and that is the whole point.
+//
+// This used to fall back to a literal string when PSYCHEAI_PROMO_CODE was
+// unset. That string was in this file, in the README, and in the test suite,
+// and this repository is public — so the backdoor stood open to anyone who
+// read it, and every paid gate in the app was decorative on any deployment
+// that had not set the variable. A secret with a default committed beside it
+// is not a secret; it is a password prompt that ships with the password.
+//
+// Unset now means promo redemption is switched off entirely rather than
+// falling back to something guessable. An operator who wants the backdoor
+// sets a random value in the environment; an operator who forgets gets no
+// backdoor, which is the safe direction to fail in.
+const PROMO_CODE = String(process.env.PSYCHEAI_PROMO_CODE || '').trim();
 function isValidPromoCode(code) {
+  if (!PROMO_CODE) return false;
   return typeof code === 'string' && code.trim().length > 0 &&
     code.trim().toLowerCase() === PROMO_CODE.toLowerCase();
 }
@@ -590,9 +604,88 @@ const API_GUARDS = {
 // thing a nonce is closing off.
 const NONCE_HEADER = 'x-psycheai-nonce';
 
+// ---------- security headers ----------
+//
+// Set on every response, static and API alike, because the researcher who
+// asked for them was right that "live responses" is the unit that matters —
+// headers on the HTML only would leave the JSON routes bare.
+//
+// Worth being accurate about what the CSP is doing here, because it would be
+// easy to claim more. Model output is rendered into the page with innerHTML,
+// which sounds alarming, but it goes through `esc()` in docs/app.js first —
+// 191 call sites, escaping the five characters that matter. There is no known
+// XSS to close. What the CSP buys is the *next* one: 191 escape sites is a
+// lot of places for one to be missed later, and a missed escape with a CSP in
+// front of it is a broken paragraph rather than a stolen report.
+//
+// The policy can afford to be strict because this app is unusually
+// self-contained — every script is a file in docs/, there is not one inline
+// <script> or on* handler in index.html, no web fonts, no analytics, no CDN.
+// Stripe is the single exception and gets exactly the three origins its own
+// documentation names, and nothing else does.
+const CSP = [
+  "default-src 'self'",
+  // Scripts are all local files, plus Stripe.js, which app.js injects when a
+  // reader actually reaches the payment sheet.
+  "script-src 'self' https://js.stripe.com",
+  // 'unsafe-inline' is here for the handful of style="" attributes in
+  // index.html, and is the one genuine weakness in this policy: it means an
+  // injected style attribute would still apply. Styles cannot exfiltrate on
+  // their own the way scripts can, and removing it means moving those
+  // attributes into styles.css — worth doing, not worth blocking this on.
+  "style-src 'self' 'unsafe-inline'",
+  // data: for the SVG the psyche-card image is built from, blob: for every
+  // object URL the app hands to a download link — the PDF, the card image,
+  // the QR code.
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  // The app's own routes, and Stripe's API for the payment sheet.
+  "connect-src 'self' https://api.stripe.com",
+  // Stripe's payment sheets are iframes it opens itself.
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "media-src 'self' blob:",
+  "worker-src 'self' blob:",
+  // Nothing here is ever legitimately framed, and the app takes payments —
+  // the exact case clickjacking is for. X-Frame-Options below says the same
+  // thing for anything too old to read this.
+  "frame-ancestors 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+function applySecurityHeaders(request, response) {
+  response.setHeader('Content-Security-Policy', CSP);
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('X-Frame-Options', 'DENY');
+  // Not 'no-referrer', which would suit this app's privacy claims but has a
+  // history of upsetting payment providers' fraud checks. Origin-only on
+  // cross-origin requests leaks no path, and the shared-profile payload lives
+  // in the URL fragment, which is never sent in a Referer header at all.
+  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // HSTS only where it can mean anything, and — more importantly — never on
+  // plain HTTP. A browser that accepts this header for localhost will refuse
+  // to load *any* http://localhost afterwards, for a year, across every
+  // project on that machine. That is a genuinely nasty thing to do to a
+  // developer, so the header goes out only when the request demonstrably
+  // arrived over TLS.
+  const proto = String(request.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  const secure = proto === 'https' || Boolean(request.socket && request.socket.encrypted);
+  if (secure) {
+    response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+}
+
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, 'http://localhost');
   const route = decodeURIComponent(url.pathname);
+
+  // Before anything branches, so no route can be added that forgets them.
+  // setHeader rather than passing them to each writeHead: they survive into
+  // whatever the handler eventually writes, including the 404 and 403 paths
+  // in serveStatic and every sendJson refusal above.
+  applySecurityHeaders(request, response);
 
   if (route.startsWith('/api/')) {
     const handler =
@@ -698,4 +791,7 @@ if (require.main === module) {
 // writes bytes while it runs, and that what lands is still parseable JSON —
 // and driving it through a real socket would make the test about timing
 // rather than about the function.
-module.exports = { premiumEngine, isValidPromoCode, server, sendJsonWhileWorking, API_GUARDS, NONCE_HEADER };
+module.exports = {
+  premiumEngine, isValidPromoCode, server, sendJsonWhileWorking,
+  API_GUARDS, NONCE_HEADER, CSP,
+};

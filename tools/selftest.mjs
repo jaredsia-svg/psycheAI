@@ -628,9 +628,19 @@ check('both move together when the keep-alive window is overridden',
 // The promo-code bypass — server.js's isValidPromoCode — checked the same
 // way: a fresh process per env combo, since PSYCHEAI_PROMO_CODE is read into
 // a module-level constant at require time exactly like GEMINI_MODEL and the
-// rest. Exercises the default code, the override, case-insensitivity and
-// whitespace tolerance, and that a near-miss is still rejected rather than
-// matched loosely.
+// rest.
+//
+// The first check here used to be "the default promo code unlocks with no
+// configuration at all", which was a real feature tested as working and was
+// exactly the bug: the default was a literal string in server.js, repeated in
+// the README and in this file, in a public repository. Anybody who read any
+// of the three had a free pass around every paid gate on any deployment that
+// had not set the variable.
+//
+// So the first check is now its inverse, and it is the load-bearing one: with
+// no configuration, nothing at all is accepted. The rest cover the configured
+// code — case-insensitivity, whitespace tolerance, and that a near-miss is
+// rejected rather than fuzzy-matched.
 async function isValidPromoCodeFor(env, code) {
   const out = execFileSync(process.execPath,
     ['-e', 'const s = require("' + join(root, 'server.js') + '"); ' +
@@ -639,17 +649,32 @@ async function isValidPromoCodeFor(env, code) {
   return JSON.parse(out.toString());
 }
 
-check('the default promo code unlocks with no configuration at all',
-  await isValidPromoCodeFor({}, 'jialatsia'));
-check('the default promo code is case-insensitive and tolerates surrounding whitespace',
-  await isValidPromoCodeFor({}, 'JiaLatSia') && await isValidPromoCodeFor({}, '  jialatsia  '));
-check('a near-miss on the default code is rejected, not fuzzy-matched',
-  !(await isValidPromoCodeFor({}, 'jialatsia2')) && !(await isValidPromoCodeFor({}, 'jialats')));
-check('an empty or missing code is rejected outright',
+// The code that used to be the default, and every other guess, against an
+// unconfigured server. All refused: no environment variable, no backdoor.
+check('with no PSYCHEAI_PROMO_CODE set, the old built-in code no longer unlocks anything',
+  !(await isValidPromoCodeFor({}, 'jialatsia')));
+check('and neither does anything else, so an unset variable means no promo path at all',
+  !(await isValidPromoCodeFor({}, 'promo')) && !(await isValidPromoCodeFor({}, 'PSYCHEAI')) &&
   !(await isValidPromoCodeFor({}, '')) && !(await isValidPromoCodeFor({}, undefined)));
-check('PSYCHEAI_PROMO_CODE overrides the default, so this repo\'s own history is not a permanent backdoor',
-  !(await isValidPromoCodeFor({ PSYCHEAI_PROMO_CODE: 'other-code' }, 'jialatsia')) &&
-  await isValidPromoCodeFor({ PSYCHEAI_PROMO_CODE: 'other-code' }, 'other-code'));
+check('an empty or whitespace-only PSYCHEAI_PROMO_CODE is treated as unset, not as a code '
+  + 'that an empty submission would match',
+  !(await isValidPromoCodeFor({ PSYCHEAI_PROMO_CODE: '' }, '')) &&
+  !(await isValidPromoCodeFor({ PSYCHEAI_PROMO_CODE: '   ' }, '')) &&
+  !(await isValidPromoCodeFor({ PSYCHEAI_PROMO_CODE: '   ' }, '   ')));
+
+// And the configured code behaves as it always did.
+const configured = { PSYCHEAI_PROMO_CODE: 'selftest-code' };
+check('a configured promo code unlocks',
+  await isValidPromoCodeFor(configured, 'selftest-code'));
+check('a configured code is case-insensitive and tolerates surrounding whitespace',
+  await isValidPromoCodeFor(configured, 'SelfTest-Code') &&
+  await isValidPromoCodeFor(configured, '  selftest-code  '));
+check('a near-miss on a configured code is rejected, not fuzzy-matched',
+  !(await isValidPromoCodeFor(configured, 'selftest-code2')) &&
+  !(await isValidPromoCodeFor(configured, 'selftest-cod')));
+check('an empty or missing submission is rejected even when a code is configured',
+  !(await isValidPromoCodeFor(configured, '')) &&
+  !(await isValidPromoCodeFor(configured, undefined)));
 
 // ---------- payments (lib/stripe.js) ----------
 //

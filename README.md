@@ -239,10 +239,49 @@ costs per run and where the margin goes.
 **A promo code bypasses payment entirely.** The unlock dialog carries a promo-code field at its foot,
 independent of the Stripe flow above it — entering the right code calls `/api/premium-analysis` with a
 `promoCode` instead of a `paymentIntentId`, and `server.js`'s `isValidPromoCode()` checks it
-case-insensitively against `PSYCHEAI_PROMO_CODE` (default `jialatsia`, overridable so this repo's own
-history is not a permanent backdoor into a real deployment). A valid code skips `verifyPaid` and the
-usage ledger both — there is no payment to verify and no use to meter — so it works even on a server
-with no Stripe keys configured at all, as long as the premium engine itself is set up.
+case-insensitively against `PSYCHEAI_PROMO_CODE`. A valid code skips `verifyPaid` and the usage
+ledger both — there is no payment to verify and no use to meter — so it works even on a server with
+no Stripe keys configured at all, as long as the premium engine itself is set up.
+
+**There is no default, and an unset variable means no promo path at all.** This used to fall back to
+a literal string when `PSYCHEAI_PROMO_CODE` was unset, and that string sat in `server.js`, in this
+README and in the test suite — in a public repository. Anyone who read any of the three had a free
+pass around every paid gate on any deployment that had not set the variable, which is to say the
+paid gates were decorative. A secret with a default committed next to it is not a secret; it is a
+password prompt shipped with the password. Unset now switches redemption off rather than falling
+back to something guessable, and the self-test's first check on this is that the old built-in code
+unlocks nothing. **Any deployment that was relying on the default needs a fresh random value set in
+its environment; the old code should be treated as burned.**
+
+### Security headers
+
+Every response — static and API alike — carries a CSP, `X-Content-Type-Options: nosniff`,
+`X-Frame-Options: DENY` and `Referrer-Policy: strict-origin-when-cross-origin`, set before the
+request branches so no route can be added that forgets them.
+
+Worth being accurate about what the CSP does here rather than claiming more. Model output is
+rendered with `innerHTML`, which sounds alarming, but it passes through `esc()` in `docs/app.js`
+first — 191 call sites, escaping the five characters that matter. There is no known XSS to close.
+What the policy buys is the *next* one: 191 escape sites is a lot of places to miss one later, and a
+missed escape behind a CSP is a broken paragraph instead of a stolen report.
+
+The policy can afford to be strict because the app is unusually self-contained — every script is a
+file in `docs/`, there is not one inline `<script>` or `on*` handler in `index.html`, no web fonts,
+no analytics, no CDN. Stripe is the single exception and gets exactly the three origins its own
+documentation names. `script-src` carries no `unsafe-inline` and no `unsafe-eval`.
+
+The one genuine weakness is `style-src 'unsafe-inline'`, for the handful of `style=""` attributes in
+`index.html`. Styles cannot exfiltrate on their own the way scripts can; removing it means moving
+those attributes into `styles.css`, which is worth doing and was not worth blocking this on.
+
+HSTS is sent **only** when the request demonstrably arrived over TLS — `x-forwarded-proto: https`,
+or an encrypted socket. Not a nicety: a browser that accepts HSTS for `http://localhost` will refuse
+to load any `http://localhost` for a year afterwards, across every project on that machine.
+
+The strongest coverage of the policy is not the header assertions in the UI suite but the
+console-error collector at the top of it. Chromium reports every refused load as a console error, so
+the whole suite doubles as a CSP smoke test: anything the policy wrongly blocks fails the
+end-of-suite "no console errors" check.
 
 **Stripe.js is the one script in this app not vendored under `docs/vendor/`.** Every other third-party
 script here is a local file, on the reasoning that nothing should reach a CDN this app doesn't control
