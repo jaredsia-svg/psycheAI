@@ -321,6 +321,150 @@ const premiumSelections = {
   revertFlagWithoutTheKeyItNames: await premiumEngineFor({ GEMINI_API_KEY: 'x', PSYCHEAI_PREMIUM_PROVIDER: 'anthropic' }),
 };
 
+// ---------- surviving a dropped connection ----------
+//
+// Two failures cost real money and were both invisible from the client.
+//
+// An analysis was a single buffered POST that sent nothing at all for minutes.
+// Everything between a browser and this server treats a silent connection as a
+// dead one — proxies cut it, mobile carriers drop the NAT entry, a
+// backgrounded phone discards the page — and the reader was then told "Could
+// not reach the PsycheAI server", which was never true.
+//
+// And because Node does not abort a handler when the client disconnects, the
+// model call finished anyway: the budget or the payment was spent and the
+// report was written to a socket nobody was listening on. The retry paid for
+// identical work.
+//
+// Driven in a fresh process against a fake response object rather than a real
+// socket, so what is proven is the function's behaviour and not the timing of
+// a loopback connection.
+function runInServer(source, env) {
+  const out = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'server.js') + '");' +
+      'const results = require("' + join(root, 'lib', 'results.js') + '");' +
+      '(async () => { ' + source + ' })().then(r => process.stdout.write(JSON.stringify(r)));'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1', ...env } });
+  return JSON.parse(out.toString());
+}
+
+// A response that records what was written instead of sending it anywhere.
+const fakeResponse = `
+  const written = [];
+  let head = null;
+  const response = {
+    writableEnded: false,
+    writeHead: (status, headers) => { head = { status, headers }; },
+    write: chunk => { written.push(String(chunk)); },
+    end: chunk => { if (chunk !== undefined) written.push(String(chunk)); response.writableEnded = true; },
+  };
+`;
+
+const keepAlive = runInServer(fakeResponse + `
+  // Slower than the ping interval, so the timer really fires.
+  await s.sendJsonWhileWorking(response, async () => {
+    await new Promise(r => setTimeout(r, 260));
+    return { ok: true, deep: { value: 42 } };
+  });
+  const body = written.join('');
+  const lead = body.length - body.replace(/^\\s+/, '').length;
+  let parsed = null;
+  try { parsed = JSON.parse(body); } catch (e) { parsed = null; }
+  return { status: head.status, headers: head.headers, lead, parsed, ended: response.writableEnded };
+`, { PSYCHEAI_KEEPALIVE_PING_MS: '50' });
+
+check('a long generation writes bytes while it works, instead of going silent',
+  keepAlive.lead > 0, keepAlive.lead + ' whitespace bytes before the body');
+// The whole reason the filler is whitespace: leading whitespace is legal JSON,
+// so every existing client keeps working with no change at all.
+check('and what lands is still parseable JSON, whitespace and all',
+  Boolean(keepAlive.parsed) && keepAlive.parsed.ok === true &&
+  keepAlive.parsed.deep.value === 42, JSON.stringify(keepAlive.parsed));
+// nginx and several hosted proxies buffer a response body by default, which
+// would hold the keep-alive bytes and reproduce exactly the silence they are
+// there to remove.
+check('the response tells proxies not to buffer it',
+  keepAlive.headers['X-Accel-Buffering'] === 'no', JSON.stringify(keepAlive.headers));
+check('the status is committed up front, which is what makes streaming possible',
+  keepAlive.status === 200);
+
+// The cost of committing that 200 early: a failure part-way through can no
+// longer be a 502, so it has to arrive in the body instead. docs/llm.js reads
+// `error` on any status for exactly this reason.
+const midFailure = runInServer(fakeResponse + `
+  await s.sendJsonWhileWorking(response, async () => { throw new Error('provider fell over'); });
+  const body = written.join('');
+  let parsed = null;
+  try { parsed = JSON.parse(body); } catch (e) { parsed = null; }
+  return { status: head.status, parsed, ended: response.writableEnded };
+`, {});
+check('a failure during generation is reported in the body, not lost',
+  Boolean(midFailure.parsed && midFailure.parsed.error), JSON.stringify(midFailure.parsed));
+check('and the response is still properly closed after it',
+  midFailure.ended === true);
+
+// The cache. Keyed on the digest because the client sends no request id and
+// could not be believed about one anyway.
+const cache = runInServer(`
+  const a = { profile: { name: 'A' }, counts: { posts: 1 } };
+  const b = { profile: { name: 'B' }, counts: { posts: 1 } };
+  results.set('analyse', a, { report: 'first' });
+  const hit = results.get('analyse', a);
+  const miss = results.get('analyse', b);
+  // Same digest, different kind: the free report and the paid sections are
+  // different shapes and one must never be served for the other.
+  const crossKind = results.get('premium', a);
+  // Key stability does not depend on which order the object was built in.
+  const reordered = results.get('analyse', { counts: { posts: 1 }, profile: { name: 'A' } });
+  return {
+    hit: hit && hit.report,
+    miss,
+    crossKind,
+    reorderedHit: reordered && reordered.report,
+    keysDiffer: results.keyFor('analyse', a) !== results.keyFor('premium', a),
+    keyIsAHash: /^analyse:[0-9a-f]{64}$/.test(results.keyFor('analyse', a)),
+  };
+`, {});
+check('a finished analysis is remembered against its digest', cache.hit === 'first');
+check('a different digest is a different question', cache.miss === null);
+check('and the free report is never served in place of the paid sections',
+  cache.crossKind === null && cache.keysDiffer === true);
+check('the key is a hash of the evidence, not the evidence',
+  cache.keyIsAHash === true);
+// JSON.stringify preserves insertion order, so two objects built differently
+// hash differently. Worth knowing rather than assuming: it means the cache
+// only ever helps a byte-identical retry, which is exactly what a retry is.
+// JSON.stringify preserves insertion order, so the same fields built in a
+// different order hash differently and miss. That is the honest scope of this
+// cache: it helps a byte-identical retry, which is exactly what a retry is,
+// and never guesses that two differently-shaped digests are the same question.
+check('the key is order-sensitive, so only a byte-identical retry hits it',
+  cache.reorderedHit === null,
+  'reordered lookup: ' + JSON.stringify(cache.reorderedHit));
+
+const expiry = runInServer(`
+  const d = { profile: { name: 'E' } };
+  results.set('analyse', d, { report: 'stale' });
+  const before = results.get('analyse', d);
+  await new Promise(r => setTimeout(r, 120));
+  const after = results.get('analyse', d);
+  return { before: before && before.report, after };
+`, { PSYCHEAI_RESULT_TTL_MS: '60' });
+check('a cached analysis expires rather than living forever',
+  expiry.before === 'stale' && expiry.after === null, JSON.stringify(expiry));
+
+const eviction = runInServer(`
+  for (let i = 0; i < 6; i++) results.set('analyse', { n: i }, { report: i });
+  return {
+    size: results.size(),
+    oldestGone: results.get('analyse', { n: 0 }),
+    newestKept: results.get('analyse', { n: 5 }) && results.get('analyse', { n: 5 }).report,
+  };
+`, { PSYCHEAI_RESULT_CACHE_MAX: '3' });
+check('the cache is bounded, dropping the oldest first',
+  eviction.size === 3 && eviction.oldestGone === null && eviction.newestKept === 5,
+  JSON.stringify(eviction));
+
 check('premium has no engine at all with nothing configured',
   premiumSelections.none.name === null);
 check('premium refuses even when the MAIN provider (Grok) is configured, if there is no GEMINI_API_KEY',

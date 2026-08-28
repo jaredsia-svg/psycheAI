@@ -24,7 +24,24 @@
     } catch (error) {
       clearTimeout(timer);
       if (error && error.name === 'AbortError') throw new Error('The analysis took too long and was cancelled.');
-      throw new Error('Could not reach the PsycheAI server. Is it running?');
+      // This branch used to say "Could not reach the PsycheAI server. Is it
+      // running?" for every failure that reached it, which sent readers — and
+      // whoever they reported it to — looking at a server that was almost
+      // always up and mid-sentence. `fetch` rejects here for the connection
+      // dying just as much as for nobody answering: a backgrounded phone
+      // discarding the page, a wifi-to-cellular handover, a proxy cutting a
+      // connection it thought was idle, a deploy restarting the process.
+      //
+      // The distinction a reader can act on is whether *they* are offline, so
+      // that is the one drawn. Everything else says the connection dropped,
+      // which is both true and the thing that suggests trying again — and adds
+      // that the work may already be done, because a retry inside the result
+      // cache's window returns the finished report for free.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        throw new Error('Your device is offline. Reconnect and try again — your data is still loaded.');
+      }
+      throw new Error('The connection dropped before the analysis came back. ' +
+        'Try again — if it had already finished, you will get it straight away.');
     }
     clearTimeout(timer);
 
@@ -37,6 +54,12 @@
     if (!response.ok) {
       throw new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').');
     }
+    // An `error` field on an otherwise-fine response is a real failure. A
+    // generating request commits its 200 before the work starts — it has to,
+    // because it is writing keep-alive whitespace down the socket while the
+    // model runs — so a failure part-way through can only be reported in the
+    // body. See sendJsonWhileWorking in server.js.
+    if (payload && payload.error) throw new Error(payload.error);
     return payload;
   }
 

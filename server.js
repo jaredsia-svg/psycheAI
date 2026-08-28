@@ -16,6 +16,7 @@ const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
 const budget = require('./lib/budget');
+const results = require('./lib/results');
 // Required directly rather than reached through provider.active: the paid
 // analysis is a fixed choice of its own, independent of whichever provider
 // the free report used, so a deployment with only XAI_API_KEY set still has
@@ -86,6 +87,69 @@ function sendJson(response, status, payload) {
     'Cache-Control': 'no-store',
   });
   response.end(body);
+}
+
+// How often a generating request writes a byte. Well inside the idle windows
+// that actually bite — reverse proxies commonly cut a silent connection at 60
+// seconds, mobile carriers sooner — and cheap enough to be invisible.
+const KEEPALIVE_EVERY_MS = Number(process.env.PSYCHEAI_KEEPALIVE_PING_MS) || 15000;
+
+/**
+ * Run a long generation with bytes trickling out while it works.
+ *
+ * An analysis takes minutes and, until this existed, sent nothing at all until
+ * it was finished. Everything between the browser and this process treats a
+ * silent connection as a dead one: proxies cut it, mobile carriers drop the
+ * NAT entry, a backgrounded phone discards the page. The reader then saw
+ * "Could not reach the PsycheAI server", which was never true — the server was
+ * mid-sentence.
+ *
+ * The trickle is whitespace, which is the trick that makes this safe. Leading
+ * whitespace is legal JSON, so a client that has always called
+ * `response.json()` keeps working with no change: it parses "   \n{...}"
+ * exactly as it parsed "{...}". No new content type, no framing to agree on,
+ * nothing for an old client to fail on.
+ *
+ * The cost is that the status code is committed before the work starts, so a
+ * failure during generation cannot be a 502 any more — it is a 200 whose body
+ * carries `{ error }`. `docs/llm.js` therefore treats an `error` field as a
+ * failure whatever the status, and the pre-flight checks that *do* need real
+ * status codes — payment, quota, bad body — all still run before this is
+ * called and still send theirs.
+ *
+ * `X-Accel-Buffering: no` is not decoration: nginx and several hosted proxies
+ * buffer a response body by default, which would hold the whitespace and
+ * reproduce exactly the silence this removes.
+ */
+async function sendJsonWhileWorking(response, produce) {
+  response.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+  });
+  const timer = setInterval(() => {
+    // A space, not a newline: both are legal JSON whitespace, and a space
+    // cannot be mistaken for a line-delimited protocol by anything reading
+    // this by eye.
+    if (!response.writableEnded) response.write(' ');
+  }, KEEPALIVE_EVERY_MS);
+  // Unref'd so a pending ping never holds the process open on shutdown.
+  if (typeof timer.unref === 'function') timer.unref();
+  try {
+    const payload = await produce();
+    clearInterval(timer);
+    response.end(JSON.stringify(payload));
+  } catch (error) {
+    clearInterval(timer);
+    const described = error && error.status
+      ? { message: error.message }
+      : provider.active
+        ? provider.active.describeError(error)
+        : { message: (error && error.message) || 'Unknown server error.' };
+    // The message only — never the body, which is somebody's evidence digest.
+    console.error('[generation]', error && error.message ? error.message : error);
+    if (!response.writableEnded) response.end(JSON.stringify({ error: described.message }));
+  }
 }
 
 function readJsonBody(request) {
@@ -245,16 +309,33 @@ async function handleAnalyse(request, response) {
 
   const engine = requireEngine(response);
   if (!engine) return;
-  const result = await engine.analyseProfile(body.digest);
 
-  // Both recorded only after the call actually came back, so a provider
-  // outage neither spends the day's budget nor burns the reader's payment.
-  if (paying) {
-    if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, ledgerKind);
-  } else {
-    budget.record('analyse');
+  // A report for this exact digest that finished minutes ago and never reached
+  // the reader — see lib/results.js. Returned before anything is spent: this
+  // is the same question already answered, so it costs neither the day's
+  // budget nor the reader's payment a second time.
+  const cached = results.get('analyse', body.digest);
+  if (cached) {
+    sendJson(response, 200, cached);
+    return;
   }
-  sendJson(response, 200, result);
+
+  await sendJsonWhileWorking(response, async () => {
+    const result = await engine.analyseProfile(body.digest);
+
+    // Both recorded only after the call actually came back, so a provider
+    // outage neither spends the day's budget nor burns the reader's payment.
+    if (paying) {
+      if (paymentIntentId && !promoCode) paymentLedger.recordUse(paymentIntentId, ledgerKind);
+    } else {
+      budget.record('analyse');
+    }
+    // Stored last, and only on success. If the socket has already died this is
+    // the line that makes the reader's retry free — the whole point of the
+    // cache is that it is written even when nobody is left to receive the
+    // response it is about to be handed to.
+    return results.set('analyse', body.digest, result);
+  });
 }
 
 // The report is typeset and downloaded entirely client-side and never reaches
@@ -324,7 +405,13 @@ async function handlePremiumAnalysis(request, response) {
     }
     const engine = requirePremiumEngine(response);
     if (!engine) return;
-    sendJson(response, 200, await engine.analysePremium(body.digest));
+    const cachedPromo = results.get('premium', body.digest);
+    if (cachedPromo) {
+      sendJson(response, 200, cachedPromo);
+      return;
+    }
+    await sendJsonWhileWorking(response, async () =>
+      results.set('premium', body.digest, await engine.analysePremium(body.digest)));
     return;
   }
 
@@ -346,9 +433,20 @@ async function handlePremiumAnalysis(request, response) {
   }
   const engine = requirePremiumEngine(response);
   if (!engine) return;
-  const result = await engine.analysePremium(body.digest);
-  paymentLedger.recordUse(paymentIntentId, 'premium');
-  sendJson(response, 200, result);
+  // The most expensive thing in the product to lose to a dead socket: this one
+  // was paid for. Served from the cache before the ledger is touched, so a
+  // reader whose connection died collecting sections they had already bought
+  // gets them back without spending a second use of the same payment.
+  const cachedPaid = results.get('premium', body.digest);
+  if (cachedPaid) {
+    sendJson(response, 200, cachedPaid);
+    return;
+  }
+  await sendJsonWhileWorking(response, async () => {
+    const result = await engine.analysePremium(body.digest);
+    paymentLedger.recordUse(paymentIntentId, 'premium');
+    return results.set('premium', body.digest, result);
+  });
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -499,4 +597,9 @@ if (require.main === module) {
 // `server` is exported unlistened — requiring this file never binds a port
 // (see the require.main guard above), so a test can read the timeouts off it
 // without a round trip or a socket left open behind the check.
-module.exports = { premiumEngine, isValidPromoCode, server };
+// `sendJsonWhileWorking` is exported for the same reason `premiumEngine` is:
+// it is the piece with real behaviour worth proving — that a slow generation
+// writes bytes while it runs, and that what lands is still parseable JSON —
+// and driving it through a real socket would make the test about timing
+// rather than about the function.
+module.exports = { premiumEngine, isValidPromoCode, server, sendJsonWhileWorking };
