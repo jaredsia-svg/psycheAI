@@ -690,14 +690,18 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 /* ---------- upload ---------- */
 
-.dropzone {
-  border: 2px dashed var(--line); border-radius: var(--radius);
-  padding: 2.2rem 1rem; text-align: center; cursor: pointer;
+/* The card is the drop target now — there is no box of its own. It shows only
+   while something is actually being dragged over it, so the affordance appears
+   exactly when it is usable and takes no space the rest of the time. */
+.upload-card.is-over {
+  border-color: var(--accent); background: var(--accent-soft);
   transition: border-color .15s ease, background .15s ease;
 }
-.dropzone:hover, .dropzone:focus-visible, .dropzone.is-over { border-color: var(--accent); background: var(--accent-soft); outline: none; }
-.dropzone p { margin: .2rem 0; }
-.dropzone-icon { font-size: 2rem; }
+.upload-actions { margin: 1.1rem 0 .2rem; }
+/* Only present once something is loaded, which is when it has anything to
+   say. Sits under the button rather than beside it so the button keeps the
+   whole line at every width. */
+.upload-loaded { margin: .6rem 0 0; font-size: .9rem; }
 
 .switch-row { display: flex; gap: .7rem; align-items: flex-start; margin: 1.1rem 0 .4rem; font-size: .92rem; }
 .switch-row input { margin-top: .35rem; flex: none; width: 18px; height: 18px; accent-color: var(--accent); }

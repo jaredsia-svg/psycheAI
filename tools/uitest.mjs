@@ -448,20 +448,21 @@ try {
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
       : 'no lede');
   // The privacy badge moved out of the hero and down to the upload card, then
-  // further down to sit under the dropzone — once the two switches that used
-  // to sit between them moved into the review dialog, the dropzone became the
-  // last thing before it. Checked by document order — a rule that moved it
-  // visually while leaving it earlier in the DOM would read to a screen
-  // reader exactly as it did before.
-  check('the privacy badge sits under the dropzone, above any error state',
+  // further down to sit under the thing that asks for the file — once the two
+  // switches that used to sit between them moved into the review dialog, that
+  // became the last thing before it. Anchored to the button now that the
+  // dropzone box is gone and the card itself is the drop target. Checked by
+  // document order — a rule that moved it visually while leaving it earlier in
+  // the DOM would read to a screen reader exactly as it did before.
+  check('the privacy badge sits under the load button, above any error state',
     await page.evaluate(() => {
       const pill = document.querySelector('#view-welcome .upload-card .eyebrow');
-      const dropzone = document.querySelector('#view-welcome .upload-card #dropzone');
+      const actions = document.querySelector('#view-welcome .upload-card .upload-actions');
       const error = document.querySelector('#upload-error');
-      if (!pill || !dropzone || !error) return false;
-      const afterDropzone = dropzone.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
+      if (!pill || !actions || !error) return false;
+      const afterActions = actions.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_FOLLOWING;
       const beforeError = error.compareDocumentPosition(pill) & Node.DOCUMENT_POSITION_PRECEDING;
-      return Boolean(afterDropzone && beforeError);
+      return Boolean(afterActions && beforeError);
     }));
   // Started as two badges (storage promise, no-tracking promise) and was
   // merged back into one bar: both facts answer the same moment-of-the-ask
@@ -529,23 +530,23 @@ try {
       (await page.locator('#view-welcome .hero').innerText()).lastIndexOf('PsycheAI'),
     (await page.locator('#view-welcome .hero').innerText()).replace(/\s+/g, ' ').trim());
 
-  // The badge now sits right under the dropzone, pulled up with a small
-  // negative margin so it reads as attached to the dropzone rather than
-  // floating in the space before the card's own edge below it.
-  check('the badge sits closer to the dropzone than to the card edge below it',
+  // The badge sits right under the button that asks for the file, so it reads
+  // as attached to the ask rather than floating in the space before the card's
+  // own edge below it.
+  check('the badge sits closer to the load button than to the card edge below it',
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
+      const actions = document.querySelector('.upload-actions').getBoundingClientRect();
       const card = document.querySelector('.upload-card').getBoundingClientRect();
-      const gapAbove = pill.top - dropzone.bottom;
-      // Must actually be below the dropzone, not just nearer to it by sign.
+      const gapAbove = pill.top - actions.bottom;
+      // Must actually be below the button, not just nearer to it by sign.
       return gapAbove >= 0 && gapAbove < (card.bottom - pill.bottom);
     }),
     await page.evaluate(() => {
       const pill = document.querySelector('.upload-card .eyebrow').getBoundingClientRect();
-      const dropzone = document.querySelector('#dropzone').getBoundingClientRect();
+      const actions = document.querySelector('.upload-actions').getBoundingClientRect();
       const card = document.querySelector('.upload-card').getBoundingClientRect();
-      return Math.round(pill.top - dropzone.bottom) + 'px above, ' +
+      return Math.round(pill.top - actions.bottom) + 'px above, ' +
         Math.round(card.bottom - pill.bottom) + 'px below';
     }));
   // The hero's warm band closes under the buttons, which are the last thing in
@@ -5415,11 +5416,11 @@ try {
   // finished by the time they read window.scrollY. Reset once they are done,
   // since the rest of the suite runs on this same page.
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  // Scrolled to the dropzone first, the way a real reader gets there — past
+  // Scrolled to the upload card first, the way a real reader gets there — past
   // the hero, the how-it-works row, the insight card and the instructions —
   // so the scroll checks below are against a realistic starting position
   // rather than the top of the page, where they would pass either way.
-  await page.locator('#dropzone').scrollIntoViewIfNeeded();
+  await page.locator('.upload-card').scrollIntoViewIfNeeded();
   const beforeForeign = analyseBodies.length;
   await page.setInputFiles('#file-input', {
     name: 'facebook-export.zip', mimeType: 'application/zip', buffer: buildForeignExportZip(),
@@ -5525,7 +5526,7 @@ try {
   // change, which is right for arriving somewhere and wrong for backing out.
   await page.evaluate(() => localStorage.clear());
   await page.reload({ waitUntil: 'load' });
-  await page.locator('#dropzone').scrollIntoViewIfNeeded();
+  await page.locator('.upload-card').scrollIntoViewIfNeeded();
   await page.waitForTimeout(200);
   const scrollAtDropzone = await page.evaluate(() => window.scrollY);
   check('the dropzone really is far enough down to make this matter',
@@ -5541,7 +5542,7 @@ try {
     Math.abs((await page.evaluate(() => window.scrollY)) - scrollAtDropzone) < 40,
     'was ' + scrollAtDropzone + ', now ' + (await page.evaluate(() => window.scrollY)));
   check('so the upload box is still on screen, not a page-length away',
-    await page.locator('#dropzone').isVisible());
+    await page.locator('#open-sources').isVisible());
   // Escape at the review is the same gesture one dialog further in, and has to
   // behave the same way — they are one abandon path with two entrances.
   await page.setInputFiles('#file-input', {
@@ -5582,19 +5583,94 @@ try {
   check('the file input does not hold on to the last archive picked',
     (await page.evaluate(() => document.querySelector('#file-input').value)) === '',
     await page.evaluate(() => document.querySelector('#file-input').value));
+
+  // ---- what "Start here" says about data already in hand ----
+  //
+  // A failed analysis loses nothing: writeDigest puts the digest in storage
+  // before the model is called, and the digest is the only thing the server is
+  // ever sent. But the welcome page used to have no way to say so and no way
+  // back in except a dropzone reading "Drop your Instagram .zip here", so the
+  // reader's only visible option after an error was to upload everything
+  // again — which is exactly the expensive double run this pair of changes
+  // exists to stop.
+  //
+  // Checked from a seeded digest rather than by failing a real analysis: what
+  // is being tested is what the card says about stored data, and driving a
+  // provider failure to get there would be testing the provider.
+  const startHere = await page.evaluate(() => {
+    const before = {
+      label: document.querySelector('#open-sources').textContent.trim(),
+      noteHidden: document.querySelector('#upload-loaded').hidden,
+    };
+    localStorage.setItem('psycheai_digest', JSON.stringify({
+      schema: 'psycheai-digest/1', profile: { name: 'Seed' }, counts: { posts: 3 },
+      google: { youtubeTopChannels: ['a'] },
+    }));
+    return before;
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+  const startAfter = await page.evaluate(() => ({
+    label: document.querySelector('#open-sources').textContent.trim(),
+    note: document.querySelector('#upload-loaded').textContent.trim(),
+    noteHidden: document.querySelector('#upload-loaded').hidden,
+  }));
+  check('with nothing loaded the button asks for data and claims nothing',
+    startHere.noteHidden === true && /^load/i.test(startHere.label),
+    JSON.stringify(startHere));
+  check('and once a digest is stored it says so instead of asking again',
+    startAfter.noteHidden === false && /Instagram/.test(startAfter.note) &&
+    /nothing to upload again/i.test(startAfter.note), JSON.stringify(startAfter));
+  // Named individually rather than counted: "two sources" would pass while
+  // naming the wrong two, and the whole job of the line is to tell a reader
+  // which of their exports survived.
+  check('naming every source the stored digest actually carries',
+    /Instagram and Google/.test(startAfter.note), startAfter.note);
+  check('the button stops saying "load" once there is nothing to load',
+    /continue/i.test(startAfter.label) && !/^load/i.test(startAfter.label),
+    startAfter.label);
+  // The popout is the way back in, and its ticks are what make the claim on
+  // the card checkable by the reader.
+  await page.click('#open-sources');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+  check('and the popout it opens ticks those same sources',
+    await page.evaluate(() => {
+      const tick = source => Boolean(document.querySelector(
+        '#datasources-dialog .mode-option[data-datasource="' + source + '"].is-added'));
+      return tick('instagram') && tick('google') && !tick('facebook');
+    }));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  await page.evaluate(() => localStorage.removeItem('psycheai_digest'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
   // And the whole round trip through a real chooser, which is what a reader
-  // actually does: click the box, pick the same file, get the offer back.
+  // actually does: open the popout, pick the same file on the Instagram row,
+  // and get somewhere other than a dead page. The chooser now lives inside the
+  // popout rather than behind the card, which is the point of the button — one
+  // place that offers all three sources instead of Instagram here and the rest
+  // in a later dialog.
+  await page.click('#open-sources');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
   const [rechooser] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#dropzone'),
+    page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
   ]);
   await rechooser.setFiles({
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
   });
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
-  check('picking the same archive again after backing out starts a fresh upload',
-    await page.locator('#supplement-dialog').isVisible());
-  await page.click('#supplement-back');
+  // Ticked once it has been read, which is what tells a reader coming back
+  // after a failed analysis that there is nothing to upload again.
+  await page.waitForSelector('#datasources-dialog .mode-option[data-datasource="instagram"].is-added',
+    { timeout: 30000 });
+  check('picking an archive in the popout ticks its row',
+    await page.locator('#datasources-dialog .mode-option[data-datasource="instagram"] .mode-added')
+      .isVisible());
+  await page.click('#datasources-continue');
+  await page.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+  check('and Continue goes straight to the review, with no second upload asked for',
+    await page.locator('#review-dialog').isVisible());
+  await page.keyboard.press('Escape');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 30000 });
 
   // ---- going back must not discard an archive already read ----
@@ -5702,12 +5778,12 @@ try {
   // <dialog> is still in the document, and an unscoped `display: flex` beats
   // the user agent's `dialog:not([open]) { display: none }`, leaving it laid
   // out over the page and swallowing clicks even though nothing looks open.
-  await page.locator('#dropzone').scrollIntoViewIfNeeded();
+  await page.locator('.upload-card').scrollIntoViewIfNeeded();
   check('the closed review dialog is not still covering the page',
     await page.evaluate(() => {
-      const box = document.querySelector('#dropzone').getBoundingClientRect();
+      const box = document.querySelector('#open-sources').getBoundingClientRect();
       const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return Boolean(hit && hit.closest('#dropzone'));
+      return Boolean(hit && hit.closest('#open-sources'));
     }),
     await page.evaluate(() => getComputedStyle(document.querySelector('#review-dialog')).display));
 

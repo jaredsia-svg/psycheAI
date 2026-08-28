@@ -241,17 +241,32 @@
          switches does not read as removing the choice. The photo switch has
          since gone entirely, along with the photographs: there is nothing
          left to choose about them because none are sent. -->
-    <p class="card-sub">Drop your Instagram file below. Before any data is sent for analysis, you
+    <p class="card-sub">Load your data below. Before any data is sent for analysis, you
       will be able to review exactly what it contains and untick anything you are not comfortable
       sharing.</p>
     <div id="server-status" class="alert" hidden></div>
 
-    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose your Instagram export zip files">
-      <div class="dropzone-icon">📦</div>
-      <p><strong>Drop your Instagram .zip here</strong></p>
-      <p class="muted">or click to choose — you can select several parts at once</p>
-      <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
+    <!-- A button opening the same "Add or change your data" popout the report
+         page uses, rather than a dropzone that only ever took Instagram.
+         Two things fall out of sharing that popout, and the second is the
+         reason for the change:
+         · all three sources are offered in one place on the first upload,
+           instead of Instagram here and the other two in a later dialog;
+         · every source already loaded is ticked. An analysis that fails does
+           not lose anything — the digest is written to localStorage before the
+           model is called — but the welcome page had no way to say so, and no
+           way back in except the dropzone, which read as "upload it all
+           again". Now the reader reopens the popout, sees the ticks, and
+           presses Continue.
+         The file input stays for drag-and-drop, which is kept: an Instagram
+         export arrives as several .zip parts and dropping them together is
+         genuinely faster than a picker. The card is the drop target now, so
+         the box that used to advertise it is not needed. -->
+    <div class="upload-actions">
+      <button class="btn btn-lg" id="open-sources" type="button">Load your data</button>
+      <p class="upload-loaded muted" id="upload-loaded" hidden></p>
     </div>
+    <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
 
     <!-- The promise sits at the point of the ask: this is the moment somebody
          is deciding whether to hand over their Instagram history, not the

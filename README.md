@@ -2444,6 +2444,43 @@ two. Three versions of this check passed against a genuinely broken button; the 
 distinguished them is the one pinned now, and the ordering fix was verified against a direct
 five-run measurement rather than against the suite.
 
+### "Start here" is a button and a popout, and a failed run costs nothing to retry
+
+The welcome page asked for a file through a dropzone that only ever took Instagram, and the report
+page asked for the same three sources through a popout with per-source ticks. The dropzone is gone:
+the card carries a **button** that opens the same `#datasources-dialog` popout, so all three sources
+are offered in one place on a first upload instead of Instagram here and the other two in a later
+dialog.
+
+**The reason it matters is what happens when an analysis fails.** Nothing is lost — `docs/app.js`
+sets `state.digest`, `state.signals` and calls `writeDigest(digest)` *before* `runAnalysis`, and the
+digest is the only thing the server is ever sent. But `showUploadError` returned the reader to a
+welcome page whose sole affordance said "Drop your Instagram .zip here", so the only visible option
+was to upload everything again. It was a dead end, not data loss, and it was producing exactly the
+expensive double run the server-side fixes above are also aimed at.
+
+Now the card reads its own state: the button says **"Continue with your data"** and a line under it
+names what survived — *"Instagram and Google already loaded — nothing to upload again."* Opening the
+popout shows those same rows ticked. `refreshStartHere()` reads `state.signals` and `state.digest`,
+the same two places the popout seeds its ticks from, so the card and the popout cannot disagree; it
+runs on every arrival at the welcome view rather than only at boot, because arriving is when the line
+is read. The checks name the sources individually rather than counting them — "two sources" would
+pass while naming the wrong two, and telling a reader *which* of their exports survived is the whole
+job of the line.
+
+`startFromSources()` then does the popout → review → payment → analysis loop, with Back at the review
+stepping upstream to the popout rather than abandoning the run. It is deliberately not routed through
+`rerunWithAdditionalData()`, which does the same three steps on the report page: that one also has to
+decide whether a S$1.99 unlock is regenerating four paid sections alongside the free ones, and there
+is no report here for any of that to be true of. The shared thing is the popout and the review, not
+the pricing.
+
+**Drag-and-drop survived the change**, moved from the box to the card itself. An Instagram export
+arrives as several `.zip` parts and dropping them together is genuinely faster than a picker; nothing
+advertises it any more, which is the trade — an accelerator for people who already reach for it. The
+`.upload-card.is-over` highlight only appears while something is actually being dragged, so the
+affordance shows exactly when it is usable and costs no space the rest of the time.
+
 ### Backing out of an upload
 
 The dropzone sits near the foot of a long welcome page. Uploading covers it with the working screen
@@ -3810,7 +3847,7 @@ npm test           # 719 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1080 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1086 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -1115,6 +1115,11 @@
     // hidden view measures zero — so a card rendered before its view was shown
     // would be scaled to nothing. Re-fit here, where the width is real.
     if (view === 'profile') layoutPsycheCard();
+    // The Start here card claims what is loaded, and what is loaded changes
+    // underneath it — a failed run, a deleted profile, a fresh session. Kept
+    // truthful on arrival rather than only at boot, since arriving is when it
+    // is read.
+    if (view === 'welcome') refreshStartHere();
     window.scrollTo(0, 0);
     // One entry covers a whole excursion into any of the secondary views, not
     // one per view — moving between them (about → scan, or scan → its own
@@ -1373,7 +1378,10 @@
 
   // ══════════════ 1. upload and analysis ══════════════
 
-  const dropzone = $('#dropzone');
+  // The card itself, not a box inside it — see the markup. Kept under the old
+  // name because everything below still talks about a dropzone, and it still
+  // is one; only its bounds changed.
+  const dropzone = $('.upload-card');
   const fileInput = $('#file-input');
 
   // The hero's primary action. It scrolls rather than jumping straight into
@@ -1432,8 +1440,128 @@
 
   function showUploadError(message) {
     show('welcome');
+    // Before the message, so the card behind it already reads "your data is
+    // still here" by the time the reader looks up from the error. A failed
+    // analysis loses nothing — the digest was written to storage before the
+    // model was called — and the whole point of the line is to say so at the
+    // moment somebody is deciding whether they have to start over.
+    refreshStartHere();
     flash('#upload-error', message);
     $('#upload-error').scrollIntoView({ behavior: scrollBehaviour(), block: 'center' });
+  }
+
+  /**
+   * What the "Start here" card says about data already in hand.
+   *
+   * Read from the same two places the popout seeds its ticks from, so the card
+   * and the popout cannot disagree: `state.signals` is the archive parsed this
+   * session, `state.digest` the evidence summary that survives a reload. Either
+   * one means the reader has something to analyse and nothing to re-upload.
+   */
+  function refreshStartHere() {
+    const note = $('#upload-loaded');
+    const button = $('#open-sources');
+    if (!note || !button) return;
+    const digest = state.digest;
+    const supplements = (state.signals && state.signals.supplements) || {};
+    const loaded = [];
+    if (state.signals || digest) loaded.push('Instagram');
+    if ((digest && digest.google) || supplements.google) loaded.push('Google');
+    if ((digest && digest.facebook) || supplements.facebook) loaded.push('Facebook');
+    note.hidden = loaded.length === 0;
+    note.textContent = loaded.length
+      ? loaded.join(' and ') + TEXT.startLoadedSuffix
+      : '';
+    button.textContent = loaded.length ? TEXT.startContinue : TEXT.startLoad;
+  }
+
+  /**
+   * The welcome page's own way in: the same popout the report page uses to add
+   * or change a source, followed by the same review, payment and analysis a
+   * dropped file went through.
+   *
+   * Sharing the popout is what makes a failed analysis cheap. Everything a run
+   * needs is already on the device by the time it fails — `writeDigest` puts
+   * the digest in storage before the model is called — so reopening this shows
+   * Instagram and Google ticked and the reader presses Continue. Nothing is
+   * read again, and the server's result cache means a retry inside its window
+   * does not pay for the analysis twice either.
+   *
+   * Deliberately not routed through `rerunWithAdditionalData`, which does the
+   * same three steps on the report page: that one also has to decide whether a
+   * S$1.99 unlock is regenerating four paid sections alongside the free ones,
+   * and there is no report here for any of that to be true of. The shared
+   * thing is the popout and the review, not the pricing.
+   */
+  async function startFromSources() {
+    const scrollBefore = window.scrollY;
+    for (;;) {
+      let collected;
+      try {
+        collected = await askDataSources();
+      } catch (error) {
+        showUploadError((error && error.message) || 'Could not read that export.');
+        return;
+      }
+      // Back or Escape at the popout: nothing touched, and the reader is put
+      // back where they were standing rather than at the top of the page.
+      if (!collected) { abandonUpload(scrollBefore); return; }
+
+      // The same merge order addDataAndRerun uses, and for the same reason:
+      // a fresh Instagram read replaces `state.signals` wholesale and carries
+      // no `.supplements` of its own, so anything loaded earlier this session
+      // has to be read off the old object before it is replaced.
+      const priorSupplements = state.signals && state.signals.supplements;
+      if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+      if (state.signals) {
+        state.signals.supplements = Object.assign({}, priorSupplements,
+          typeof collected.google === 'object' ? { google: collected.google } : null,
+          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
+      }
+
+      let digest;
+      if (state.signals) {
+        digest = Digest.build(state.signals, { includeMessages: true });
+      } else if (state.digest) {
+        // The retry path after a reload: the archive is gone but the digest
+        // it produced is not, and the digest is the only thing the server was
+        // ever going to be sent. Copied rather than mutated so a declined
+        // review leaves the stored one exactly as it was.
+        digest = JSON.parse(JSON.stringify(state.digest));
+        const extra = {};
+        if (typeof collected.google === 'object') extra.google = collected.google;
+        if (typeof collected.facebook === 'object') extra.facebook = collected.facebook;
+        if (Object.keys(extra).length) digest = Digest.addSupplements(digest, extra);
+      } else {
+        // Google or Facebook loaded with no Instagram behind them. The popout
+        // is reopened rather than the run abandoned, because the reader is one
+        // row away from being able to continue.
+        flash('#upload-error', TEXT.startNeedsInstagram);
+        continue;
+      }
+
+      let decision;
+      try {
+        decision = await askReview(digest, { paymentDue: mustPayForAnalysis() });
+      } catch (error) {
+        showUploadError((error && error.message) || 'Could not build your evidence summary.');
+        return;
+      }
+      // Back steps upstream to the popout with everything still loaded, which
+      // is the whole reason this is a loop; Escape abandons the attempt.
+      if (decision === REVIEW_BACK) continue;
+      if (!decision) { abandonUpload(scrollBefore); return; }
+
+      const auth = await authoriseAnalysis();
+      if (auth === false) { showUploadError(TEXT.analysisDeclined); return; }
+
+      applyReviewDecision(digest, decision);
+      state.digest = digest;
+      pendingDataSourceReads = {};
+      writeDigest(digest);
+      await runAnalysis(digest, auth);
+      return;
+    }
   }
 
   $('#hero-start').addEventListener('click', () => {
@@ -1540,10 +1668,12 @@
     if (event.target.closest('#rerun-with-data')) startRerun();
   });
 
-  dropzone.addEventListener('click', () => fileInput.click());
-  dropzone.addEventListener('keydown', event => {
-    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); fileInput.click(); }
-  });
+  // The button is the discoverable path and opens the popout. Drag-and-drop
+  // survives on the card itself rather than in a box of its own: an Instagram
+  // export arrives as several .zip parts, and dropping them together stays
+  // faster than any picker. Nothing advertises it any more, which is the
+  // trade — an accelerator for the people who already reach for it.
+  $('#open-sources').addEventListener('click', startFromSources);
   dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('is-over'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-over'));
   dropzone.addEventListener('drop', event => {

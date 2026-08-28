@@ -586,6 +586,14 @@
     // Flashed on the report when Continue is pressed with no Instagram export
     // loaded and none stored. Names the one thing that would make the re-run
     // possible, rather than reporting a failure the reader cannot act on.
+    // The welcome page's "Start here" button and the line under it. The label
+    // changes once anything is loaded, because at that point the button is no
+    // longer asking for a file — it is the way back into a run that failed,
+    // and "Load your data" would read as "do it all again".
+    startLoad: 'Load your data',
+    startContinue: 'Continue with your data',
+    startLoadedSuffix: ' already loaded — nothing to upload again.',
+    startNeedsInstagram: 'Load your Instagram export to get started.',
     rerunNeedsInstagram: 'Your Instagram export is no longer on this device, so there is nothing to ' +
       're-analyse. Load it again in the popout and your report will be rewritten from it.',
     // The digest failed to save — almost always a full localStorage. Said at
