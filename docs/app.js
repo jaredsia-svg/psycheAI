@@ -145,7 +145,12 @@
    * ring's --pct. All three used to travel as style="" attributes inside
    * generated HTML, and all three stopped working the moment the CSP dropped
    * 'unsafe-inline' from style-src — silently, because a refused inline style
-   * is not an error, it is a bar that renders at zero width.
+   * is not an error. Removing this function and watching what happens is worth
+   * doing once: the bars do not vanish, they all render *full*. Width falls
+   * back to the fill's natural size inside its track, so every trait reads 100
+   * next to a number saying 44, while the ring falls the other way — --pct
+   * defaults to 0 and it draws empty next to a score of 66. Wrong in two
+   * directions at once, and neither looks broken enough to notice.
    *
    * CSSOM writes are not governed by style-src, so the value rides over as a
    * data attribute and is applied here once the markup is in the document.

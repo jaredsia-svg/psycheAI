@@ -7302,10 +7302,13 @@ try {
   check('every dimension draws a filled bar',
     (await page.locator('#report-body .section-card .bar-fill').count()) === 5);
   // Not just that the bars exist — that they are actually as wide as their
-  // numbers say. These widths used to be style="" attributes, and the CSP now
-  // refuses those: a refused inline style is not an error, it is a bar that
-  // renders at zero width beside a label reading 74. Counting the bars would
-  // pass against exactly that, so this measures them instead.
+  // numbers say. These widths used to be style="" attributes and the CSP now
+  // refuses those, so the value is applied from a data attribute after
+  // insertion instead. Verified by removing that applier: all five bars then
+  // render *full*, reading 100 against numbers of 72, 44, 61, 55 and 68, while
+  // the ring falls the other way and draws empty against a score of 66.
+  // Counting five bars passes against every one of those, which is why this
+  // measures them.
   const barGeometry = await page.evaluate(() => {
     const blocks = [...document.querySelectorAll('#report-body .section-card .trait-block')];
     return blocks.map(block => {
