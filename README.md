@@ -43,36 +43,43 @@ npm run mock              # http://localhost:3000, PSYCHEAI_MOCK=1
 Camera scanning needs HTTPS or `localhost`; pasting a link and uploading a photo of a code always
 work.
 
-### Recording an address before "Download full report", and who can see what
+### "Download full report", and the address list that used to stand in front of it
 
-"Download full report" still downloads the PDF straight to the reader's own device — typeset in the
-browser, exactly as it always was. What it does first is ask for an email address, which is posted to
-the server and recorded there before the download is let through.
+"Download full report" downloads the PDF straight to the reader's own device — typeset in the
+browser, written to a temporary object URL, never near the network. The button does that on the
+first click and asks for nothing first.
+
+It did not always. A dialog used to collect an email address, post it to `/api/record-email`, and
+let the download through only once recording succeeded. That bought the operator a mailing list at
+the price of putting a form in front of the one thing a reader had already paid for, and it is
+gone: the dialog, its copy, its styles, and the POST route that received the address. The route was
+removed rather than left in place unused, because an unauthenticated write endpoint that nothing
+calls is a spam target with no upside.
+
+What remains is the archive. `lib/recipients.js` and `GET /api/recipients` still exist, so addresses
+collected while the gate was up are still readable by whoever runs the box:
 
 ```bash
 export PSYCHEAI_ADMIN_TOKEN=...   # unset ⇒ the address list is refused, not open
 npm start
 ```
 
-**The operator gets every address, and never gets a report.** That is not a policy somebody has to
+The list lives in `data/recipients.jsonl` — append-only JSON lines, greppable, gitignored — behind a
+bearer token compared in constant time. With no `PSYCHEAI_ADMIN_TOKEN` set the route 404s rather
+than serving openly: a list of real people's contact details answering to anyone who guesses the
+path is worse than no route at all. Nothing new is written to that file, because nothing posts to it
+any more.
+
+**The operator never got a report, and still cannot.** That was never a policy somebody had to
 remember — the report is never passed to the server at all. `recipients.record()` takes an address
 and has no parameter a report could go in, so there is no code path that could write one to the
 store. A check asserts the function's arity for exactly that reason, and injecting a `report` field
 into the stored line fails a check.
 
-The address list is written to `data/recipients.jsonl` — append-only JSON lines, greppable by whoever
-owns the box, gitignored — and read back at `GET /api/recipients` behind a bearer token compared in
-constant time. With no `PSYCHEAI_ADMIN_TOKEN` set the route 404s rather than serving openly: a list of
-real people's contact details answering to anyone who guesses the path is worse than no route at all.
-
-One consequence worth accepting deliberately: a reader who mistypes their address does not get their
-download, and there is no fallback that lets it through anyway. That is on purpose — the point of
-asking is that an address is actually recorded before the file leaves.
-
-Emailing the report was tried in an earlier version — relaying the PDF through Amazon SES rather than
-downloading it — and pulled back out for now, since it needs a verified sending domain this project
-doesn't have yet. It may return once one exists; nothing about the current design forecloses it, since
-the address collection this section describes is exactly the piece such a feature would reuse.
+Emailing the report was tried in an earlier version — relaying the PDF through Amazon SES rather
+than downloading it — and pulled back out, since it needs a verified sending domain this project
+doesn't have. If it returns, address collection would have to return with it; what has been removed
+here is the *gate*, not the ability to ever ask again.
 
 ### One free analysis, then S$0.99 — and what actually stops a runaway bill
 
@@ -84,9 +91,10 @@ because only one of them is enforcement.
 **The daily ceiling is the enforcement** (`lib/budget.js`). A server-wide count
 of free calls per UTC day, refusing past `PSYCHEAI_DAILY_FREE_LIMIT` (default
 200 — sized against `COST_CAP`, so roughly US$50/day even if every run were
-pathological). It applies to `/api/analyse` and `/api/compatibility`, and paid
-calls skip it entirely: a busy day must not take away a run somebody has
-already been charged for. Recorded *after* the model returns, so a provider
+pathological). It applies to `/api/analyse`, and paid calls skip it entirely: a
+busy day must not take away a run somebody has already been charged for.
+`/api/compatibility` used to draw on it too and no longer does, because it is
+no longer free — see the compatibility section below. Recorded *after* the model returns, so a provider
 outage does not spend the budget on responses nobody received — the cost of
 that ordering is a small overshoot under concurrency, which is the safe
 direction to be wrong in.
@@ -1114,6 +1122,97 @@ SDK version — the real base class is `Anthropic.APIError`. `instanceof` an und
 so any Anthropic error not already special-cased above it (a 400, a 404, a fresh status code) would
 have crashed the error handler instead of returning a message. Fixed alongside the retry logic, with
 its own regression check.
+
+## The compatibility read is bought, not given
+
+Scanning someone's QR code and asking how you two get on used to be free, and it was the most
+expensive free thing in the app: a full model call weighing two complete profiles against each
+other, drawn from the same daily ceiling as everything else and available in unlimited quantity to
+anyone willing to scan again. It now costs **S$1.99**, priced level with the premium unlock because
+it is the same size of job.
+
+The money is asked for last. A reader picks the basis — romantic, family/friends, professional —
+and, for a professional read, whether they are colleagues, manage the other person, or report to
+them. Only then does the payment sheet open. Backing out at that point returns to the scan page
+exactly as backing out of either question does: nothing has been charged, and nothing has been sent
+to the model.
+
+Server-side, `POST /api/compatibility` is now shaped deliberately like `POST /api/premium-analysis`,
+because two paid routes that authorise differently is how one of them ends up wrong:
+
+- A valid `promoCode` short-circuits the whole thing, as it does for premium.
+- Otherwise a `paymentIntentId` is required, and `payments.verifyPaid(id, 'compatibility')`
+  re-retrieves it from Stripe and checks status, amount and currency against the product's own
+  price. `compatibility` is a **separate product** from `unlock` despite costing the same, precisely
+  so that the S$1.99 which bought premium sections cannot be re-presented to buy a compatibility
+  report. At the point of redemption the product name is the only thing that distinguishes them.
+- `premiumLedger` meters it under its own kind, so spending a payment here cannot eat the retries
+  belonging to anything else.
+- The result cache is consulted **before** the ledger, so a reader whose connection dropped while
+  the report was coming back gets it returned without spending a second use. Its key includes the
+  mode and stance, not just the two cards — the same pair read as colleagues and read as partners
+  are different reports, and keying on the pair alone would serve one where the other was asked for.
+- The response goes out through `sendJsonWhileWorking`, so this route now gets the keep-alive
+  heartbeat the other long calls already had. It was the one gap left when streaming went in, and
+  making the route paid is what made closing it non-optional.
+
+## Rate limits and single-use tickets
+
+A security researcher pointed out that `POST /api/create-payment-intent` accepted an empty body from
+anyone and returned a live PaymentIntent with a `client_secret`, with no cookie, no CSRF token and
+no rate limit — two probes, two real `pi_…` objects. The same was true of the three model routes,
+which cost budget rather than Stripe quota but cost something either way. Two mechanisms went in
+together, and it is worth being precise about which does what, because it is easy to credit a nonce
+with protection it does not provide.
+
+**`lib/ratelimit.js` is the ceiling.** A token bucket per caller per route — six payment intents per
+ten minutes, six analyses an hour, eight of each paid route — refusing with a `429` and a
+`Retry-After`. A bucket rather than a fixed window, because a fixed window lets a caller spend one
+window's allowance in its last second and the next window's in its first, which is twice the
+intended rate in a burst at exactly the moment a flood is most useful to whoever is running it.
+
+The dangerous part is deciding *who the caller is*. Behind a proxy the socket address is the
+proxy's, identical for everyone, so a limiter that used it would put every reader in the world in
+one bucket and lock them all out together. So `X-Forwarded-For` has to be read — but it is a request
+header, and a limiter that trusts its leftmost entry is defeated by typing a different number. Each
+proxy *appends* the address it saw, so the rightmost entry is the one written by the hop closest to
+us and the only one a remote caller cannot forge. That is the one counted, stepping back
+`PSYCHEAI_TRUST_PROXY` hops (default 1). Four checks cover this, including two that forge chains and
+confirm the forged entries are ignored.
+
+**`lib/nonce.js` raises the cost per attempt.** Every protected POST must carry a single-use ticket
+from `GET /api/nonce` in an `X-PsycheAI-Nonce` header. A blind `curl` now gets a `400` rather than a
+PaymentIntent; a captured request cannot be replayed; and a cross-site form POST cannot read the
+ticket it would need, which closes the drive-by CSRF shape. The header rather than the body, for
+three reasons: two of these routes carry somebody's evidence digest and do not need another field in
+it, the digest is the result cache's key so a per-request value in there would make every request a
+miss, and a custom header is exactly what a cross-origin form cannot set.
+
+What a nonce does **not** do is stop a determined attacker, who can fetch one and use it just as the
+page does. It doubles the traffic they need and puts the minting itself under a limit; the limiter
+is what sets the actual ceiling. Neither is worth much without the other, which is why they shipped
+together. The limit is spent *before* the ticket is checked, so guessing tickets is not free — the
+one way of probing this that must not be.
+
+The guarded routes live in one table (`API_GUARDS` in `server.js`) rather than as four copies of the
+same two checks inside four handlers, because a guard that lives inside the thing it guards is a
+guard somebody adds a fifth route without. A check names the routes in that table rather than
+counting them, so adding a costly endpoint and forgetting to guard it fails the suite.
+
+**A payment also stops being spendable.** `verifyPaid` gained a thirty-day redemption window, since
+without one an intent created today and completed at any point after — next week, next year — stays
+a live key to the paid routes, bounded only by the per-payment use cap. That cap says how *many*
+times a payment is worth something; the window says how *long*. It is built on `intent.created`, a
+field neither path through `retrievePaymentIntent` previously returned, and it fails open if that
+field ever goes missing — a Stripe response that stops carrying it should cost us a window we no
+longer enforce, not every reader their purchase. Two checks hold both paths to populating it, so the
+fail-open branch cannot quietly become the only branch.
+
+The per-payment retry allowance came down from five to three at the same time, for a reason that had
+already changed underneath it: the 30-minute result cache now serves a repeat of a *successful*
+generation before the ledger is touched, so the common retry — a reader whose connection died while
+the report was coming back — is free. What the number still covers is generations that genuinely
+failed, and three of those in a row is a broken provider, not a reader who needs a fourth.
 
 ## The sample report
 
@@ -3974,7 +4073,9 @@ lib/
   gemini.js           the Google GenAI SDK calls
   claude.js           the Anthropic SDK calls
   mock.js             canned analyses for tests and for clicking around
-server.js             static hosting + /api/analyse + /api/compatibility
+  ratelimit.js        per-caller token buckets on the routes that cost money
+  nonce.js            single-use tickets for those same routes
+server.js             static hosting, the API routes, and the guard table in front of them
 tools/                test suites, the synthetic export fixture, model listing
 ```
 

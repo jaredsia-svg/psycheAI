@@ -482,6 +482,16 @@
     // paying can always fix — so it says what it is rather than blaming them.
     analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
       'again tomorrow.',
+    // The compatibility read, priced level with the premium unlock because it
+    // is the same size of job: a full model call weighing two whole profiles
+    // against each other. The blurb says what the charge covers and, more
+    // usefully, what it does not — a reader who has just answered two
+    // questions about who this person is to them should not be wondering
+    // whether they are about to be billed again for changing their mind.
+    compatibilityDialogTitle: 'See how you two compare',
+    compatibilityDialogBlurb: 'A compatibility report is S$1.99. It reads both profiles against ' +
+      'each other on the basis you just chose and writes the result — a fresh call to the AI ' +
+      'model, the same size of job as the premium sections. Taken on this device.',
     premiumDialogTitle: 'Unlock premium sections',
     premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, what ' +
       'partner truly suits you and the career assessment. Taken on this device — Apple Pay or Google ' +

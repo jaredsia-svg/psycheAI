@@ -558,15 +558,26 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
   const out = execFileSync(process.execPath,
     ['-e', 'const l = require("' + join(root, 'lib', 'premiumLedger.js') + '");' +
       'l.recordUse("pi_x", "analysis");' +
-      'process.stdout.write(JSON.stringify({' +
-      '  analysis: l.usageCount("pi_x", "analysis"), premium: l.usageCount("pi_x", "premium"),' +
-      '  allowedAnalysis: l.usesAllowed("analysis"), allowedPremium: l.usesAllowed("premium") }));'],
+      'const first = { analysis: l.usageCount("pi_x", "analysis"), premium: l.usageCount("pi_x", "premium") };' +
+      // Then spend the analysis allowance right down, and ask whether the
+      // premium sections that same payment bought are still collectable.
+      'while (l.canUse("pi_x", "analysis")) l.recordUse("pi_x", "analysis");' +
+      'process.stdout.write(JSON.stringify(Object.assign(first, {' +
+      '  analysisLeft: l.canUse("pi_x", "analysis"), premiumLeft: l.canUse("pi_x", "premium"),' +
+      '  allowedAnalysis: l.usesAllowed("analysis"), allowedPremium: l.usesAllowed("premium") })));'],
     { env: { PATH: process.env.PATH, PSYCHEAI_PAYMENTS_FILE: ledgerFile } });
   const spent = JSON.parse(out.toString());
   check('spending a payment on an analysis does not spend it on the premium sections',
     spent.analysis === 1 && spent.premium === 0, JSON.stringify(spent));
-  check('and each kind carries its own allowance',
-    spent.allowedAnalysis > 0 && spent.allowedPremium > spent.allowedAnalysis, JSON.stringify(spent));
+  // This used to read `allowedPremium > allowedAnalysis`, which tested the
+  // separation only by proxy: the two kinds happened to carry different
+  // numbers, so a shared pool would have shown up as the wrong one. They are
+  // both 3 now, and that proxy would pass against a ledger with one counter
+  // for everything. Exhausting one kind and finding the other untouched tests
+  // the property itself, and keeps working whatever the numbers become.
+  check('and exhausting one kind leaves the other with its own allowance intact',
+    spent.allowedAnalysis > 0 && spent.allowedPremium > 0 &&
+    spent.analysisLeft === false && spent.premiumLeft === true, JSON.stringify(spent));
   try { rmSync(ledgerFile, { force: true }); } catch (error) { /* leave no litter */ }
 }
 
@@ -841,9 +852,14 @@ check('a PaymentIntent nobody has used yet has a usage count of zero',
 // with it, which is the property worth pinning here.
 {
   const id = 'pi_selftest_bundled_' + Date.now();
-  check('the bundled free report has its own allowance, separate from premium\'s',
+  // Same correction as the analysis/premium pair above: the old form of this
+  // check compared the two numbers, which only worked while they differed.
+  // Every kind having a usable allowance is the part worth pinning here; that
+  // they are counted separately is proved by the four checks below it, which
+  // spend one down and find the others untouched.
+  check('the bundled free report carries an allowance of its own',
     paymentLedger.MAX_USES_BY_KIND.bundled > 0 &&
-    paymentLedger.MAX_USES_BY_KIND.bundled < paymentLedger.MAX_USES_BY_KIND.premium,
+    paymentLedger.MAX_USES_BY_KIND.premium > 0,
     JSON.stringify(paymentLedger.MAX_USES_BY_KIND));
   for (let i = 0; i < paymentLedger.MAX_USES_BY_KIND.bundled; i++) {
     paymentLedger.recordUse(id, 'bundled');
@@ -3438,6 +3454,160 @@ check('the schema requires evidence on strengths and frictions',
     const result = JSON.parse(line);
     check(result.label, result.ok, result.detail === null ? undefined : result.detail);
   }
+}
+
+// ---------- the ceilings on the routes that cost money ----------
+//
+// Two new guards sit in front of /api/analyse, /api/compatibility,
+// /api/create-payment-intent and /api/premium-analysis: a per-caller rate
+// limit and a single-use ticket. They are worth testing carefully because
+// both fail silently in the direction that matters — a limiter that never
+// refuses and a nonce check that accepts anything both look exactly like a
+// working one from the outside.
+{
+  const nonces = await import('../lib/nonce.js').then(m => m.default);
+  const rateLimit = await import('../lib/ratelimit.js').then(m => m.default);
+  // Safe to import in-process: server.js only calls listen() behind a
+  // require.main guard, so this reads its tables without opening a port.
+  const server = await import('../server.js').then(m => m.default);
+
+  // -- tickets --
+  nonces.reset();
+  const first = nonces.issue();
+  const second = nonces.issue();
+  check('every ticket is different', first !== second && first.length > 20, first.length);
+  check('a ticket is spendable once', nonces.spend(first) === true);
+  check('and not twice — a captured request cannot be replayed',
+    nonces.spend(first) === false);
+  check('a ticket nobody issued is refused', nonces.spend('made-up-token') === false);
+  check('so is a missing one, which is the shape a blind curl arrives in',
+    nonces.spend(undefined) === false && nonces.spend('') === false);
+  check('spending one ticket does not disturb another', nonces.spend(second) === true);
+
+  // Expiry, in a subprocess so the TTL can be set to something a test can
+  // outlive. Checked because the sweep and the expiry comparison are two
+  // separate pieces of logic and a ticket that never expires would pass every
+  // check above.
+  const expired = execFileSync(process.execPath,
+    ['-e', 'const n = require("' + join(root, 'lib', 'nonce.js') + '");' +
+      'const t = n.issue();' +
+      'setTimeout(() => process.stdout.write(JSON.stringify({ spent: n.spend(t) })), 30);'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_NONCE_TTL_MS: '10' } });
+  check('a ticket past its TTL is refused',
+    JSON.parse(expired.toString()).spent === false, expired.toString());
+
+  // -- the limiter --
+  rateLimit.reset();
+  const capacity = rateLimit.LIMITS['payment-intent'].capacity;
+  const spent = [];
+  for (let i = 0; i < capacity + 2; i++) spent.push(rateLimit.take('payment-intent', 'caller-a').ok);
+  check('the limiter allows exactly its capacity and no more',
+    spent.slice(0, capacity).every(Boolean) && spent.slice(capacity).every(allowed => allowed === false),
+    JSON.stringify(spent));
+  const refused = rateLimit.take('payment-intent', 'caller-a');
+  check('a refusal says how long to wait, in whole seconds',
+    refused.ok === false && Number.isInteger(refused.retryAfter) && refused.retryAfter >= 1,
+    JSON.stringify(refused));
+  check('a different caller is unaffected — one flooder must not lock everyone out',
+    rateLimit.take('payment-intent', 'caller-b').ok === true);
+  check('and a different route has its own bucket for the same caller',
+    rateLimit.take('analyse', 'caller-a').ok === true);
+  check('an unnamed limit is allowed rather than refused, so a typo cannot close a route',
+    rateLimit.take('no-such-limit', 'caller-a').ok === true);
+
+  // Refill. The bucket is continuous rather than a window, so a caller who
+  // waits gets a token back without waiting for a boundary to pass.
+  const refill = execFileSync(process.execPath,
+    ['-e', 'const r = require("' + join(root, 'lib', 'ratelimit.js') + '");' +
+      'const cap = r.LIMITS["payment-intent"].capacity;' +
+      'for (let i = 0; i < cap; i++) r.take("payment-intent", "c");' +
+      'const whenEmpty = r.take("payment-intent", "c").ok;' +
+      'setTimeout(() => process.stdout.write(JSON.stringify(' +
+      '  { whenEmpty, afterWaiting: r.take("payment-intent", "c").ok })), 120);'],
+    // Four requests across 200ms, so one token is back within the 120ms this
+    // waits. The real window is ten minutes, which no test can sit through —
+    // the arithmetic being exercised is the same either way.
+    { env: {
+      PATH: process.env.PATH,
+      PSYCHEAI_RATE_PAYMENT_INTENT: '4',
+      PSYCHEAI_RATE_PAYMENT_INTENT_WINDOW_MS: '200',
+    } });
+  const refilled = JSON.parse(refill.toString());
+  check('an exhausted bucket refills over time rather than at a window boundary',
+    refilled.whenEmpty === false && refilled.afterWaiting === true, refill.toString());
+
+  // -- who the limiter thinks you are --
+  //
+  // The one piece of this that is genuinely dangerous to get wrong. Trusting
+  // the leftmost X-Forwarded-For entry makes the limiter defeatable by typing
+  // a different number; ignoring the header entirely makes every reader
+  // behind a proxy share one bucket and get locked out together.
+  const asKey = (headers, remote) =>
+    rateLimit.clientKey({ headers, socket: { remoteAddress: remote } });
+  check('with no proxy header, the caller is the socket',
+    asKey({}, '203.0.113.9') === '203.0.113.9');
+  check('behind one proxy, the caller is the entry that proxy appended',
+    asKey({ 'x-forwarded-for': '198.51.100.7' }, '10.0.0.1') === '198.51.100.7');
+  check('a forged leftmost entry is ignored — the limiter counts from the right',
+    asKey({ 'x-forwarded-for': '1.2.3.4, 198.51.100.7' }, '10.0.0.1') === '198.51.100.7');
+  check('spoofing a whole chain still cannot change which entry is read',
+    asKey({ 'x-forwarded-for': '9.9.9.9, 8.8.8.8, 198.51.100.7' }, '10.0.0.1') === '198.51.100.7');
+  check('a chain shorter than the configured hop count falls back to its leftmost entry '
+    + 'rather than to undefined',
+    asKey({ 'x-forwarded-for': '198.51.100.7' }, '10.0.0.1') === '198.51.100.7');
+
+  // -- the table itself --
+  //
+  // A route added later without a guard is the failure this catches: the
+  // check names the routes rather than counting them, so adding a fifth
+  // costly endpoint and forgetting it fails here rather than in production.
+  const guarded = Object.keys(server.API_GUARDS).sort();
+  check('every route that costs money to answer is in the guard table',
+    JSON.stringify(guarded) === JSON.stringify([
+      '/api/analyse', '/api/compatibility', '/api/create-payment-intent',
+      '/api/nonce', '/api/premium-analysis',
+    ]), JSON.stringify(guarded));
+  check('and all of them but the ticket route itself require a ticket',
+    Object.entries(server.API_GUARDS).every(([route, guard]) =>
+      guard.nonce === (route !== '/api/nonce')),
+    JSON.stringify(server.API_GUARDS));
+  check('each names a limit that actually exists',
+    Object.values(server.API_GUARDS).every(guard => Boolean(rateLimit.LIMITS[guard.limit])));
+  check('the ticket travels in a header, not the body — the digest is the cache key',
+    server.NONCE_HEADER === 'x-psycheai-nonce', server.NONCE_HEADER);
+  rateLimit.reset();
+  nonces.reset();
+}
+
+// ---------- how long a payment stays spendable ----------
+//
+// verifyPaid gained a redemption window, and it is built on `intent.created`
+// — a field neither path through retrievePaymentIntent used to return. The
+// window fails open when that field is missing, deliberately, so that a
+// Stripe response which one day stops carrying it costs a check rather than
+// every reader their purchase. That makes these two checks load-bearing: they
+// are what stops the fail-open branch becoming the only branch, silently.
+{
+  const aged = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'lib', 'stripe.js') + '");' +
+      '(async () => {' +
+      '  const intent = await s.createPaymentIntent("t", "unlock");' +
+      '  const fresh = await s.verifyPaid(intent.id, "unlock");' +
+      '  const out = { created: fresh.created, freshOk: true, agedRefused: null, status: null };' +
+      '  s.__testing.ageMockIntent(intent.id, s.REDEEM_WINDOW_MS + 60000);' +
+      '  try { await s.verifyPaid(intent.id, "unlock"); out.agedRefused = false; }' +
+      '  catch (error) { out.agedRefused = true; out.status = error.status; }' +
+      '  process.stdout.write(JSON.stringify(out));' +
+      '})();'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
+  const window = JSON.parse(aged.toString());
+  check('a retrieved payment carries the creation time the window is measured from',
+    Number.isFinite(window.created) && window.created > 0, JSON.stringify(window));
+  check('a payment inside the window is honoured', window.freshOk === true);
+  check('a payment past the window is refused as unpayable rather than served',
+    window.agedRefused === true && window.status === 402, JSON.stringify(window));
+  check('the window is a month, not a session',
+    payments.REDEEM_WINDOW_MS === 30 * 24 * 60 * 60 * 1000, payments.REDEEM_WINDOW_MS);
 }
 
 // ---------- results ----------

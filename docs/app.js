@@ -4319,7 +4319,13 @@
    * behind, in case the reader closes the dialog and tries again.
    */
   async function openPremiumDialog(button, product, preparedDigest) {
-    const kind = product === 'analysis' ? 'analysis' : 'unlock';
+    // Three products share this dialog now. `kind` is what the server is told
+    // and what verifyPaid checks the payment against, so a wrong value here
+    // sends a reader's S$1.99 to the wrong ledger — hence a lookup with an
+    // explicit default rather than a chain of ternaries that grows a bug each
+    // time a product is added.
+    const kind = product === 'analysis' ? 'analysis'
+      : product === 'compatibility' ? 'compatibility' : 'unlock';
     // The re-run button's own route to this same S$1.99 product, used only
     // when premium is already unlocked and the reader is adding/changing
     // data — see rerunWithAdditionalData. Ledgers and prices exactly like a
@@ -4349,6 +4355,7 @@
     }
     $('#premium-dialog-title').textContent =
       kind === 'analysis' ? TEXT.analysisDialogTitle
+        : kind === 'compatibility' ? TEXT.compatibilityDialogTitle
         : rerunAll ? TEXT.premiumRerunDialogTitle
         : TEXT.premiumDialogTitle;
     // By the time this sheet opens, the data offer has already been through,
@@ -4360,6 +4367,7 @@
       Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
     $('#premium-dialog-blurb').textContent =
       kind === 'analysis' ? TEXT.analysisDialogBlurb
+        : kind === 'compatibility' ? TEXT.compatibilityDialogBlurb
         : rerunAll ? TEXT.premiumRerunDialogBlurb
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
@@ -4418,9 +4426,14 @@
     // button actually triggered this dialog, not a requirement of the flow.
     if (button) button.disabled = true;
     try {
+      // Same single-use ticket the model routes carry, for the same reason:
+      // this route creates a real object in the Stripe account, so it must not
+      // answer a caller who has not been handed one. LLM.ticket throws the
+      // rate limiter's own message when it is the limiter refusing, which the
+      // catch below shows as-is.
       const response = await fetch('api/create-payment-intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': await LLM.ticket() },
         body: JSON.stringify({ product: kind }),
       });
       const intent = await response.json().catch(() => ({}));
@@ -4458,6 +4471,28 @@
    * path, so it is done in the `close` handler where every exit passes.
    */
   function askAnalysisPayment() {
+    return askPaymentFor('analysis', $('#rerun-with-data'));
+  }
+
+  /**
+   * The same ask, for a compatibility read. Resolves to `{ paymentIntentId }`
+   * or `{ promoCode }` once the money clears, or to null if the reader backs
+   * out — which the scan flow treats as "changed my mind", not as a failure.
+   *
+   * Opened only after the basis and stance questions have been answered, so a
+   * reader is never asked to pay before they know what they are buying.
+   */
+  function askCompatibilityPayment() {
+    return askPaymentFor('compatibility', null);
+  }
+
+  // Both of the above, and the shape is worth having once rather than twice:
+  // `onPaymentAuthorised` is global mutable state, and the one thing that must
+  // never go wrong is putting it back — a dialog that resolved a compatibility
+  // payment and left the callback pointing at the compatibility flow would
+  // send the next reader's premium unlock down it. The restore therefore lives
+  // in the `close` handler, which every exit passes through, cancelled or not.
+  function askPaymentFor(product, button) {
     return new Promise(resolve => {
       const dialog = $('#premium-dialog');
       if (dialog.open) { resolve(null); return; }
@@ -4471,7 +4506,7 @@
         onPaymentAuthorised = runPremiumAnalysis;
         if (!settled) resolve(null);
       }, { once: true });
-      openPremiumDialog($('#rerun-with-data'), 'analysis');
+      openPremiumDialog(button, product);
     });
   }
 
@@ -5013,6 +5048,13 @@
       if (!stance) { show('scan'); return true; }
     }
 
+    // Money last, after both questions — a reader should know what they are
+    // buying before they are asked to pay for it, and backing out here returns
+    // to the scan page exactly the way backing out of the questions does.
+    // Nothing has been charged and nothing has been sent.
+    const auth = await askCompatibilityPayment();
+    if (!auth) { show('scan'); return true; }
+
     $('#working-title').textContent = modelName() + ' is comparing you';
     $('#working-note').textContent =
       MODE_LABELS[mode] + ' compatibility. Two profile cards were sent — nothing else.';
@@ -5023,7 +5065,7 @@
     // with nothing else standing between a reader's back button and losing it.
     guardUnload(true);
     try {
-      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance);
+      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance, auth);
       const report = { ...result.data, mode: result.data.mode || mode, stance };
       const history = store.read(KEYS.history, []);
       history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });

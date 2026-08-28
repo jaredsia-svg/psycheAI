@@ -10,38 +10,77 @@
   // provider; the UI shows elapsed time rather than pretending otherwise.
   const TIMEOUT_MS = 10 * 60 * 1000;
 
+  // What a `fetch` rejection means, in words a reader can act on. Shared by
+  // the ticket request and the POST it precedes, because a dropped connection
+  // is a dropped connection whichever of the two was in flight when it went.
+  function networkError(error) {
+    if (error && error.name === 'AbortError') return new Error('The analysis took too long and was cancelled.');
+    // This branch used to say "Could not reach the PsycheAI server. Is it
+    // running?" for every failure that reached it, which sent readers — and
+    // whoever they reported it to — looking at a server that was almost
+    // always up and mid-sentence. `fetch` rejects here for the connection
+    // dying just as much as for nobody answering: a backgrounded phone
+    // discarding the page, a wifi-to-cellular handover, a proxy cutting a
+    // connection it thought was idle, a deploy restarting the process.
+    //
+    // The distinction a reader can act on is whether *they* are offline, so
+    // that is the one drawn. Everything else says the connection dropped,
+    // which is both true and the thing that suggests trying again — and adds
+    // that the work may already be done, because a retry inside the result
+    // cache's window returns the finished report for free.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return new Error('Your device is offline. Reconnect and try again — your data is still loaded.');
+    }
+    return new Error('The connection dropped before the analysis came back. ' +
+      'Try again — if it had already finished, you will get it straight away.');
+  }
+
+  /**
+   * A single-use ticket for the next protected POST.
+   *
+   * One extra round trip per paid call, which is the price of the endpoints no
+   * longer answering a blind `curl`. It is fetched immediately before the POST
+   * rather than once at startup because it is spent on use and because a page
+   * left open for an hour would otherwise hold an expired one — see
+   * lib/nonce.js for the TTL and for what a ticket does and does not prove.
+   */
+  async function ticket() {
+    let response;
+    try {
+      response = await fetch('/api/nonce', { cache: 'no-store' });
+    } catch (error) {
+      throw networkError(error);
+    }
+    if (!response.ok) {
+      const refusal = await response.json().catch(() => null);
+      // A 429 here is the rate limiter, and its message already says how long
+      // to wait — passing it through beats replacing it with something vaguer.
+      throw new Error((refusal && refusal.error) ||
+        'The server would not issue a one-time token (HTTP ' + response.status + ').');
+    }
+    const payload = await response.json().catch(() => null);
+    if (!payload || !payload.nonce) throw new Error('The server issued an unusable one-time token.');
+    return payload.nonce;
+  }
+
   async function post(path, body) {
+    // Outside the try below, so that a refusal to issue a ticket — a rate
+    // limit, most likely — reaches the reader as itself rather than being
+    // rewritten into "the connection dropped".
+    const nonce = await ticket();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     let response;
     try {
       response = await fetch(path, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
         body: JSON.stringify(body),
         signal: controller.signal,
       });
     } catch (error) {
       clearTimeout(timer);
-      if (error && error.name === 'AbortError') throw new Error('The analysis took too long and was cancelled.');
-      // This branch used to say "Could not reach the PsycheAI server. Is it
-      // running?" for every failure that reached it, which sent readers — and
-      // whoever they reported it to — looking at a server that was almost
-      // always up and mid-sentence. `fetch` rejects here for the connection
-      // dying just as much as for nobody answering: a backgrounded phone
-      // discarding the page, a wifi-to-cellular handover, a proxy cutting a
-      // connection it thought was idle, a deploy restarting the process.
-      //
-      // The distinction a reader can act on is whether *they* are offline, so
-      // that is the one drawn. Everything else says the connection dropped,
-      // which is both true and the thing that suggests trying again — and adds
-      // that the work may already be done, because a retry inside the result
-      // cache's window returns the finished report for free.
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        throw new Error('Your device is offline. Reconnect and try again — your data is still loaded.');
-      }
-      throw new Error('The connection dropped before the analysis came back. ' +
-        'Try again — if it had already finished, you will get it straight away.');
+      throw networkError(error);
     }
     clearTimeout(timer);
 
@@ -80,7 +119,11 @@
   // verifies and that does not draw on the daily free ceiling.
   const analyseProfile = (digest, auth) =>
     post('/api/analyse', Object.assign({ digest }, auth || {}));
-  const analyseCompatibility = (a, b, mode, stance) => post('/api/compatibility', { a, b, mode, stance });
+  // `auth` takes the same shape as the other two paid calls — `{ paymentIntentId }`
+  // or `{ promoCode }`. A compatibility read is a purchase now rather than a
+  // free draw on the daily ceiling, so the server refuses this without one.
+  const analyseCompatibility = (a, b, mode, stance, auth) =>
+    post('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}));
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds
   // (from psycheai_digest) travelling again, not a second upload of anything
@@ -88,5 +131,5 @@
   // ways server.js's handlePremiumAnalysis will accept unlocking this call.
   const analysePremium = (digest, auth) => post('/api/premium-analysis', Object.assign({ digest }, auth));
 
-  root.PsycheLLM = { status, analyseProfile, analyseCompatibility, analysePremium };
+  root.PsycheLLM = { status, ticket, analyseProfile, analyseCompatibility, analysePremium };
 })(typeof window !== 'undefined' ? window : globalThis);

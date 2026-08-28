@@ -4118,13 +4118,40 @@ try {
   // the same route behaviour without a page involved to log anything.
   const premiumUrl = 'http://localhost:' + PORT + '/api/premium-analysis';
   const minimalDigest = { coverage: { sources: ['instagram'] } };
-  async function tryPromo(promoCode) {
+  // Every protected route now wants a single-use ticket, so this fetches one
+  // the way the page does. Hitting the server directly like this is also the
+  // only place in either suite where the guard is exercised against a real
+  // listening server rather than against the module in isolation.
+  const ticketUrl = 'http://localhost:' + PORT + '/api/nonce';
+  async function ticket() {
+    const response = await fetch(ticketUrl);
+    return (await response.json()).nonce;
+  }
+  async function tryPromo(promoCode, nonce) {
+    const headers = { 'Content-Type': 'application/json' };
+    // `undefined` would be sent as the literal string, which the server would
+    // read as a token and refuse — a pass for the wrong reason. Omitting the
+    // header entirely is the shape a blind script actually arrives in.
+    if (nonce !== null) headers['X-PsycheAI-Nonce'] = nonce === undefined ? await ticket() : nonce;
     const response = await fetch(premiumUrl, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers,
       body: JSON.stringify({ digest: minimalDigest, promoCode }),
     });
     return { status: response.status, body: await response.json().catch(() => ({})) };
   }
+
+  // The guard itself, against the running server: no ticket, no analysis —
+  // whatever else the request carries. A valid promo code is used here
+  // deliberately, so the only thing standing between this call and a real
+  // generation is the missing header.
+  const noTicket = await tryPromo('jialatsia', null);
+  check('a request with no one-time token is refused before anything is generated',
+    noTicket.status === 400 && noTicket.body.nonceRequired === true, JSON.stringify(noTicket));
+  const staleTicket = await ticket();
+  await tryPromo('jialatsia', staleTicket);
+  const replayed = await tryPromo('jialatsia', staleTicket);
+  check('and a token cannot be spent twice, so a captured request cannot be replayed',
+    replayed.status === 400 && replayed.body.nonceRequired === true, JSON.stringify(replayed));
   const wrongPromo = await tryPromo('not-the-code');
   check('a wrong promo code is refused with a 402 and no analysis',
     wrongPromo.status === 402 && /not valid/i.test(wrongPromo.body.error || ''),
@@ -4466,48 +4493,29 @@ try {
     (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report',
     await page.locator('#export-pdf-bottom').innerText());
 
-  // The report is typeset by pdf.js and downloads straight to the reader's
-  // own device, exactly as it always did — what's new is that an address is
-  // recorded first. Intercept only that recording POST; the download itself
-  // is taken off the wire with Playwright's real download event, so what is
-  // checked below is still the actual artefact the browser wrote.
-  let postedEmail = '';
-  await page.route('**/api/record-email', async route => {
-    const sentBody = JSON.parse(route.request().postData() || '{}');
-    postedEmail = sentBody.email || '';
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"recorded":true}' });
-  });
+  // The report is typeset by pdf.js and downloads straight to the reader's own
+  // device. Nothing is asked for first: the download used to be gated behind an
+  // email address, and the pair of checks below is written so that restoring
+  // that gate fails them — a modal would swallow the click and the download
+  // event would never arrive, timing the wait out rather than passing quietly.
+  let recordingAttempts = 0;
+  const countRecording = request => {
+    if (/\/api\/record-email/.test(request.url())) recordingAttempts += 1;
+  };
+  page.on('request', countRecording);
 
-  await page.click('#export-pdf-bottom');
-  await page.waitForSelector('#mail-dialog[open]', { timeout: 15000 });
-  check('the report button asks for an address before downloading',
-    await page.locator('#mail-dialog').isVisible());
-  check('the dialog says the address is kept and the report is not',
-    /keep your email address/i.test(await page.locator('#mail-fineprint').innerText()) &&
-    /do not keep the report/i.test(await page.locator('#mail-fineprint').innerText()),
-    await page.locator('#mail-fineprint').innerText());
-
-  // An obvious typo is refused before anything is recorded or downloaded.
-  await page.fill('#mail-address', 'not-an-address');
-  await page.click('#mail-send');
-  await page.waitForTimeout(200);
-  check('an unusable address is refused without recording or downloading anything',
-    postedEmail === '' &&
-    /does not look like an email address/i.test(await page.locator('#mail-status').innerText()),
-    await page.locator('#mail-status').innerText());
-
-  await page.fill('#mail-address', 'reader@example.com');
   const pdfPath = join(shotDir, 'report.pdf');
   const [reportDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#mail-send'),
+    page.click('#export-pdf-bottom'),
   ]);
   await reportDownload.saveAs(pdfPath);
-  check('the address the reader typed is what gets posted',
-    postedEmail === 'reader@example.com', postedEmail);
+  check('the export button downloads on the first click, with nothing asked for first',
+    recordingAttempts === 0 && (await page.locator('dialog[open]').count()) === 0,
+    'record-email attempts: ' + recordingAttempts);
   check('the download is offered as a PDF named for the report',
     reportDownload.suggestedFilename() === 'psycheai-report.pdf', reportDownload.suggestedFilename());
-  await page.unroute('**/api/record-email');
+  page.off('request', countRecording);
   const pdf = readFileSync(pdfPath);
   const pdfText = pdf.toString('latin1');
   check('it is a real PDF', pdfText.startsWith('%PDF-1.'), pdfText.slice(0, 8));
@@ -7085,7 +7093,27 @@ try {
   await shot('3b-stance-picker');
   await page.click('#stance-dialog .mode-option[data-stance="superior"]');
 
+  // ---- and then the money, last ----
+  //
+  // A compatibility read is a S$1.99 purchase now. The sheet opens only after
+  // both questions have been answered, so a reader knows what they are buying
+  // before they are asked to pay — and, more importantly for this suite,
+  // nothing has been sent to the model yet. #premium-mock-pay stands in for
+  // the whole wallet round trip exactly as it does for the premium unlock.
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 30000 });
+  check('a comparison asks to be paid for once the questions are answered',
+    await page.locator('#premium-dialog').isVisible());
+  check('and the price it names is the compatibility one',
+    /S\$1\.99/.test(await page.locator('#premium-dialog-blurb').innerText()),
+    await page.locator('#premium-dialog-blurb').innerText());
+  check('nothing is sent to the model before the payment clears',
+    compatBodies.length === beforeModes, String(compatBodies.length));
+  await page.click('#premium-mock-pay');
+
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+  check('the paid comparison carries the payment that bought it',
+    Boolean(JSON.parse(compatBodies[compatBodies.length - 1]).paymentIntentId),
+    compatBodies[compatBodies.length - 1]);
   const reportText = await page.locator('#report-body').innerText();
   check('the chosen basis was sent to the server',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'professional',
@@ -8214,6 +8242,10 @@ try {
     await route.continue();
   });
   await page.click('#mode-dialog .mode-option[data-mode="platonic"]');
+  // Paid the same way as any other comparison — the unload guard being tested
+  // below goes up when the model call starts, which is now after the money.
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 30000 });
+  await page.click('#premium-mock-pay');
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
     await beforeunloadPrevented());

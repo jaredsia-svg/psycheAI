@@ -17,6 +17,8 @@ const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
 const budget = require('./lib/budget');
 const results = require('./lib/results');
+const rateLimit = require('./lib/ratelimit');
+const nonces = require('./lib/nonce');
 // Required directly rather than reached through provider.active: the paid
 // analysis is a fixed choice of its own, independent of whichever provider
 // the free report used, so a deployment with only XAI_API_KEY set still has
@@ -338,6 +340,14 @@ async function handleAnalyse(request, response) {
   });
 }
 
+// A single-use ticket for the routes below. Cheap to serve, rate-limited like
+// everything else, and deliberately tied to nothing: it identifies no one and
+// grants no privilege, it only proves the caller made a round trip and can
+// read our replies. See lib/nonce.js for what that is and is not worth.
+function handleNonce(response) {
+  sendJson(response, 200, { nonce: nonces.issue() });
+}
+
 // The amount is fixed in lib/stripe.js and never taken from the request — a
 // client is not trusted with what it pays. There is nothing else for the body
 // to carry: this route creates a PaymentIntent for exactly one product, the
@@ -459,26 +469,75 @@ async function handleCompatibility(request, response) {
     sendJson(response, 400, { error: 'Expected two profile cards, "a" and "b".' });
     return;
   }
-  // A compatibility read is a free model call like any other, so it draws on
-  // the same daily ceiling. It is not separately purchasable — there is no
-  // product for it — so an exhausted day simply says come back tomorrow.
-  if (!budget.canSpend()) {
-    sendJson(response, 503, {
-      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC.',
-      budgetExhausted: true,
+  // A compatibility read is now bought, not given.
+  //
+  // It used to draw on the same daily free ceiling as everything else, which
+  // made the most expensive call in the app — a full model run over two
+  // profile cards — the one thing anyone could have unlimited goes at for
+  // nothing. It is priced level with the premium unlock because it costs the
+  // same to produce.
+  //
+  // The shape below is deliberately the same as handlePremiumAnalysis's: a
+  // promo code short-circuits everything, a real payment is re-verified with
+  // Stripe rather than trusted from the client, the ledger caps how many
+  // times one payment can be spent, and the result cache is consulted before
+  // the ledger so that a reader whose connection died gets their report back
+  // without paying for it twice. Two paid routes that authorise differently
+  // is how one of them ends up wrong.
+  const engine = requireEngine(response);
+  if (!engine) return;
+  // Resolved once, up here, because they are part of the cache key: the same
+  // two cards read as colleagues and read as partners are different reports,
+  // and keying on the pair alone would serve one where the other was asked
+  // for. An unknown mode or stance falls back rather than 400ing — the basis
+  // is a presentation choice, not something worth failing a paid call over.
+  const mode = prompts.resolveMode(body.mode);
+  const stance = prompts.resolveStance(body.stance);
+  const cacheKey = { a, b, mode, stance };
+
+  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  if (promoCode) {
+    if (!isValidPromoCode(promoCode)) {
+      sendJson(response, 402, { error: 'That code is not valid.' });
+      return;
+    }
+    const cachedPromo = results.get('compatibility', cacheKey);
+    if (cachedPromo) {
+      sendJson(response, 200, cachedPromo);
+      return;
+    }
+    await sendJsonWhileWorking(response, async () => results.set('compatibility', cacheKey,
+      await engine.analyseCompatibility(a, b, mode, stance)));
+    return;
+  }
+
+  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
+  if (!paymentIntentId) {
+    sendJson(response, 402, { error: 'A compatibility report needs to be paid for.' });
+    return;
+  }
+  if (!payments.hasKey()) {
+    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+    return;
+  }
+  await payments.verifyPaid(paymentIntentId, 'compatibility');
+  if (!paymentLedger.canUse(paymentIntentId, 'compatibility')) {
+    sendJson(response, 429, {
+      error: 'This payment has already generated the maximum number of compatibility reports. ' +
+        'Contact support if yours failed to come through.',
     });
     return;
   }
-  const engine = requireEngine(response);
-  if (!engine) return;
-  // An unknown mode or stance falls back rather than 400ing — the basis is a
-  // presentation choice, not something worth failing a paid call over. The
-  // stance only means anything for a professional run; the resolver defaults
-  // it either way, so the engines never see an unexpected value.
-  const result = await engine.analyseCompatibility(
-    a, b, prompts.resolveMode(body.mode), prompts.resolveStance(body.stance));
-  budget.record('compatibility');
-  sendJson(response, 200, result);
+  const cachedPaid = results.get('compatibility', cacheKey);
+  if (cachedPaid) {
+    sendJson(response, 200, cachedPaid);
+    return;
+  }
+  await sendJsonWhileWorking(response, async () => {
+    const result = await engine.analyseCompatibility(a, b, mode, stance);
+    paymentLedger.recordUse(paymentIntentId, 'compatibility');
+    return results.set('compatibility', cacheKey, result);
+  });
 }
 
 function serveStatic(requestedPath, response) {
@@ -504,6 +563,33 @@ function serveStatic(requestedPath, response) {
   });
 }
 
+// What each costly route is protected by, in one table rather than as four
+// copies of the same two checks at the top of four handlers — a guard that
+// lives inside the thing it guards is a guard somebody adds a fifth route
+// without.
+//
+// `limit` names a bucket in lib/ratelimit.js; `nonce` says the request must
+// carry a live single-use ticket. The routes listed here are exactly the ones
+// that cost real money to answer: three of them spend model budget, and the
+// fourth creates an object in the Stripe account. /api/status and
+// /api/recipients are absent deliberately — the first is a cacheable fact
+// about the deployment, and the second has a token of its own.
+const API_GUARDS = {
+  '/api/nonce': { limit: 'nonce', nonce: false },
+  '/api/analyse': { limit: 'analyse', nonce: true },
+  '/api/compatibility': { limit: 'compatibility', nonce: true },
+  '/api/create-payment-intent': { limit: 'payment-intent', nonce: true },
+  '/api/premium-analysis': { limit: 'premium-analysis', nonce: true },
+};
+
+// The ticket travels in a header rather than in the body, for three reasons:
+// the body of two of these routes is somebody's evidence digest and does not
+// need one more field in it; the digest is the result cache's key, so a
+// per-request value in there would make every request a cache miss; and a
+// custom header cannot be set by the cross-site form POST that is the main
+// thing a nonce is closing off.
+const NONCE_HEADER = 'x-psycheai-nonce';
+
 const server = http.createServer((request, response) => {
   const url = new URL(request.url, 'http://localhost');
   const route = decodeURIComponent(url.pathname);
@@ -511,16 +597,43 @@ const server = http.createServer((request, response) => {
   if (route.startsWith('/api/')) {
     const handler =
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
-        : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
-          : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-            : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
-              : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
-                : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
-                  : null;
+        : route === '/api/nonce' && request.method === 'GET' ? () => handleNonce(response)
+          : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
+            : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
+              : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
+                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
+                  : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
+                    : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });
       return;
+    }
+
+    // Before the handler, and before the body is read: a refused request
+    // should cost us as little as the caller intended it to cost them.
+    const guard = API_GUARDS[route];
+    if (guard) {
+      // The limit is spent first, so that a wrong or missing ticket still
+      // costs a token. Checking the nonce first would make guessing tickets
+      // free, which is the one way to probe this that must not be.
+      const allowed = rateLimit.take(guard.limit, rateLimit.clientKey(request));
+      if (!allowed.ok) {
+        response.setHeader('Retry-After', String(allowed.retryAfter));
+        sendJson(response, 429, {
+          error: 'Too many requests from this connection. Try again in ' +
+            allowed.retryAfter + ' seconds.',
+          retryAfter: allowed.retryAfter,
+        });
+        return;
+      }
+      if (guard.nonce && !nonces.spend(request.headers[NONCE_HEADER])) {
+        sendJson(response, 400, {
+          error: 'This request is missing a valid one-time token. Reload the page and try again.',
+          nonceRequired: true,
+        });
+        return;
+      }
     }
     Promise.resolve()
       .then(handler)
@@ -585,4 +698,4 @@ if (require.main === module) {
 // writes bytes while it runs, and that what lands is still parseable JSON —
 // and driving it through a real socket would make the test about timing
 // rather than about the function.
-module.exports = { premiumEngine, isValidPromoCode, server, sendJsonWhileWorking };
+module.exports = { premiumEngine, isValidPromoCode, server, sendJsonWhileWorking, API_GUARDS, NONCE_HEADER };
