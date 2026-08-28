@@ -239,6 +239,19 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
     // as a pile of unrelated selector timeouts.
     PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-budget.jsonl'),
     PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+    // And the per-caller rate limits, for exactly the reason above. A suite
+    // drives dozens of analyses from one address in a few minutes, which is
+    // precisely the traffic those limits exist to refuse — left at their
+    // production values they start returning 429 partway through and the
+    // damage arrives as unrelated selector timeouts rather than as anything
+    // naming the limiter. Raised here rather than switched off, and the
+    // limiter is then tested where it can be tested honestly: against a
+    // second server further down, spawned with a deliberately tiny ceiling.
+    PSYCHEAI_RATE_ANALYSE: '100000',
+    PSYCHEAI_RATE_PREMIUM: '100000',
+    PSYCHEAI_RATE_COMPATIBILITY: '100000',
+    PSYCHEAI_RATE_PAYMENT_INTENT: '100000',
+    PSYCHEAI_RATE_NONCE: '100000',
   },
   stdio: 'ignore',
 });
@@ -4152,6 +4165,61 @@ try {
   const replayed = await tryPromo('jialatsia', staleTicket);
   check('and a token cannot be spent twice, so a captured request cannot be replayed',
     replayed.status === 400 && replayed.body.nonceRequired === true, JSON.stringify(replayed));
+
+  // ---- the rate limiter, against a real server ----
+  //
+  // The main server above runs with its ceilings raised to five zeroes, for
+  // the reason given where they are set: a suite is exactly the traffic the
+  // limiter exists to refuse. So the limiter gets its own server, on its own
+  // port, with a ceiling of two — small enough to hit deliberately in three
+  // requests, which is the only way to watch the dispatcher's 429 path
+  // without making every other check in this file flaky.
+  //
+  // lib/ratelimit.js is unit-tested in the self-test; what is tested here is
+  // the wiring: that the guard runs before the handler, that it answers 429
+  // rather than generating something, and that it sets Retry-After.
+  {
+    const limitedPort = PORT + 1;
+    const limited = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(limitedPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-ratelimit.jsonl'),
+        PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+        PSYCHEAI_RATE_PREMIUM: '2',
+        // Tickets must stay plentiful, or the first refusal would come from
+        // the nonce route instead and this would pass for the wrong reason.
+        PSYCHEAI_RATE_NONCE: '100000',
+      },
+      stdio: 'ignore',
+    });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const limitedUrl = 'http://localhost:' + limitedPort + '/api/premium-analysis';
+      const hit = async () => {
+        const nonce = await fetch('http://localhost:' + limitedPort + '/api/nonce')
+          .then(r => r.json()).then(d => d.nonce);
+        const response = await fetch(limitedUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
+          body: JSON.stringify({ digest: minimalDigest, promoCode: 'jialatsia' }),
+        });
+        await response.text();
+        return { status: response.status, retryAfter: response.headers.get('retry-after') };
+      };
+      const first = await hit();
+      const second = await hit();
+      const third = await hit();
+      check('a caller inside the limit is served',
+        first.status === 200 && second.status === 200,
+        JSON.stringify([first, second]));
+      check('the one past it is refused with a 429, not generated',
+        third.status === 429, JSON.stringify(third));
+      check('and the refusal says how long to wait',
+        Number(third.retryAfter) > 0, String(third.retryAfter));
+    } finally {
+      try { limited.kill(); } catch (error) { /* already gone */ }
+    }
+  }
   const wrongPromo = await tryPromo('not-the-code');
   check('a wrong promo code is refused with a 402 and no analysis',
     wrongPromo.status === 402 && /not valid/i.test(wrongPromo.body.error || ''),
