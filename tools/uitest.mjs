@@ -4237,17 +4237,26 @@ try {
     return !franchise.closest('.essence-noun') && fill !== 'rgba(0, 0, 0, 0)';
   }));
 
-  // The glance row came off this page: the psyche card above it already carries
-  // the type, the enneagram and the highest and lowest traits, so repeating
-  // them a few centimetres below was the same four facts twice. The PDF keeps
-  // its own copy — it has no card in front of it — so `glanceItems` stays.
+  // The glance row — type, highest trait, lowest trait, enneagram — came off
+  // this page because the psyche card above it already carried all four, and
+  // repeating them a few centimetres below was the same facts twice. The PDF
+  // kept its copy on the grounds that it had no card in front of it; page one
+  // is that card now, so the same reasoning applies there and it is gone from
+  // both. `glanceItems` and the four labels that fed it went with it rather
+  // than being left as copy nothing renders.
   check('the opening section no longer repeats the card as a glance row',
     (await page.locator('.glance').count()) === 0 &&
     (await page.locator('.glance-item').count()) === 0);
-  check('and the PDF still builds one, having no card of its own',
+  check('and the PDF does not build one either, now that it opens on the card',
     await page.evaluate(async () => {
-      const source = await fetch('pdf.js').then(r => r.text());
-      return /Copy\.glanceItems/.test(source);
+      const [pdf, copy] = await Promise.all([
+        fetch('pdf.js').then(r => r.text()),
+        fetch('copy.js').then(r => r.text()),
+      ]);
+      // Both the call and the thing it called: a renderer left behind with no
+      // caller is the kind of dead code that gets wired back up by accident.
+      return !/glanceItems/.test(pdf) && !/prototype\.glance\b/.test(pdf) &&
+        !/glanceItems/.test(copy) && !/glanceType/.test(copy);
     }));
   check('the summary prose still opens the section',
     await page.evaluate(() => {
@@ -5049,121 +5058,14 @@ try {
   check('both renderers read from the shared copy',
     sharing.appUsesCopy && sharing.pdfUsesCopy, JSON.stringify(sharing));
 
-  // The findings strip is a grid, and its row height has to be measured rather
-  // than assumed. "Openness to experience" and "Leans Anxious-Preoccupied" both
-  // wrap in a quarter-width column, and a fixed row height pushed the notes
-  // beneath them straight through the strip's bottom rule. A long note — the
-  // note under "Type" is the MBTI nickname — also ran across its neighbour.
-  //
-  // Uncompressed streams mean the drawn geometry can be read back out, so this
-  // checks positions rather than trusting that it looked right once.
-  const stripPath = join(shotDir, 'strip.pdf');
-  writeFileSync(stripPath, Buffer.from(await page.evaluate(async () => {
-    const trait = score => ({ score, band: 'high', reading: 'Reading.', evidence: [] });
-    const report = {
-      confidence: { score: 70, level: 'high', rationale: 'Rationale.' },
-      essence: { character: 'The Forum', franchise: 'Marvel', why: 'Why.' },
-      summary: 'Summary.',
-      bigFive: {
-        openness: trait(85), conscientiousness: trait(60), extraversion: trait(70),
-        agreeableness: trait(42), neuroticism: trait(55),
-      },
-      mbti: {
-        type: 'ENTP', confidence: 'moderate',
-        nickname: 'The Debater and Relentless Examiner of Everything',
-        letters: [], caveat: 'Caveat.',
-      },
-      // The glance strip's fourth column used to be attachment; it is
-      // Enneagram now, and needs a long enough nickname to keep this a real
-      // stress test of the strip rather than three easy columns.
-      enneagram: {
-        type: '9', wing: '1', nickname: 'The Peacemaker Who Avoids All Conflict',
-        confidence: 'moderate', why: 'Why.', caveat: 'Caveat.',
-      },
-      relationship: {
-        strengths: [], weaknesses: [],
-        attachment: {
-          style: 'Leans Anxious-Preoccupied with Avoidant Episodes',
-          why: 'Why.', derivedFrom: [], implications: [], caveat: 'Caveat.',
-        },
-      },
-    };
-    const blob = window.PsychePDF.build(report, { name: 'Sam', headline: 'A headline.' },
-      { date: '30 July 2026', model: 'mock' });
-    return Array.from(new Uint8Array(await blob.arrayBuffer()));
-  })));
-  const stripText = readFileSync(stripPath).toString('latin1');
-
-  // Coordinates are per page, so compare within one page: the stream that has
-  // the strip in it. Comparing across pages is meaningless and quietly wrong.
-  const stripPage = [...stripText.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
-    .map(match => match[1])
-    .find(content => content.includes('(TYPE) Tj')) || '';
-
-  // Every full-width hairline, and every string with the baseline it sits on.
-  const rules = [...stripPage.matchAll(/0\.7 w [\d.]+ ([\d.]+) m [\d.]+ [\d.]+ l S/g)]
-    .map(match => ({ y: Number(match[1]), at: match.index }));
-  // The font, size and letter-spacing each string was actually drawn with, so
-  // the widths below are measured rather than guessed at.
-  const drawn = [...stripPage.matchAll(
-    /(?:([\d.]+) Tc\n)?\/(F\d) ([\d.]+) Tf\n([\d.]+) ([\d.]+) Td\n\((.*?)\) Tj/g)]
-    .map(match => ({
-      tracking: Number(match[1] || 0),
-      bold: match[2] === 'F2',
-      size: Number(match[3]),
-      x: Number(match[4]),
-      y: Number(match[5]),
-      text: match[6],
-      at: match.index,
-    }));
-
-  check('the strip and its notes are on one page', Boolean(stripPage) && drawn.length > 4,
-    String(drawn.length));
-
-  // The strip is whatever was drawn between its two rules. Identifying it by
-  // stream position rather than by coordinate matters: a cell that has spilled
-  // past the bottom rule must still count as part of the strip, or the
-  // out-of-bounds check quietly excludes the very thing it is looking for.
-  const typeLabel = drawn.find(item => item.text === 'TYPE');
-  const topRule = typeLabel && [...rules].reverse().find(rule => rule.at < typeLabel.at);
-  const bottomRule = typeLabel && rules.find(rule => rule.at > typeLabel.at);
-  const inStrip = (topRule && bottomRule)
-    ? drawn.filter(item => item.at > topRule.at && item.at < bottomRule.at && item.text !== '')
-    : [];
-
-  check('the strip is bracketed by a rule above and below',
-    Boolean(topRule && bottomRule), JSON.stringify({ rules: rules.length }));
-  check('the strip holds all four cells and their notes', inStrip.length >= 8,
-    inStrip.length + ': ' + inStrip.map(item => item.text).join(' | '));
-
-  // PDF y counts up from the bottom, so "below the rule" means a smaller y.
-  const spilled = inStrip.filter(item => item.y <= bottomRule.y).map(item => item.text);
-  check('nothing in the strip is pushed through its bottom rule', spilled.length === 0,
-    JSON.stringify({ bottomRule: bottomRule && bottomRule.y, spilled }));
-
-  // And nothing overruns its column: four columns across the text width. This
-  // is what a long nickname broke, running clean across the column beside it.
-  const columnWidth = (595.28 - 54 * 2) / 4;
-  const widths = await page.evaluate(cells => cells.map(cell =>
-    window.PsychePDF.measure(window.PsychePDF.toWinAnsi(cell.text), cell.size, cell.bold, cell.tracking)),
-  inStrip.map(item => ({
-    text: item.text, size: item.size, bold: item.bold, tracking: item.tracking,
-  })));
-  const tooWide = inStrip
-    .map((item, index) => ({ text: item.text, over: Math.round(widths[index] - columnWidth) }))
-    .filter(item => item.over > 1);
-  check('no cell in the strip is wider than its column', tooWide.length === 0,
-    JSON.stringify(tooWide));
-
-  // Fitting must come from sizing the row, never from dropping a line: the
-  // cheap fix for a two-line value is to render one line of it, which loses
-  // half the finding without leaving a mark.
-  const stripWords = inStrip.map(item => item.text).join(' ').replace(/\s+/g, ' ');
-  for (const whole of ['The Peacemaker Who Avoids All Conflict',
-    'The Debater and Relentless Examiner of Everything', 'Openness to experience']) {
-    check('the strip shows ' + JSON.stringify(whole) + ' in full',
-      stripWords.includes(whole), stripWords.slice(0, 120));
-  }
+  // The findings strip's own checks lived here — a block that read the drawn
+  // geometry back out of the PDF to prove its measured row height, that nothing
+  // spilled through its bottom rule, and that a long nickname did not run
+  // across the column beside it. The strip is gone, so they are too: page one
+  // is the psyche card now and already carries the type, the enneagram and the
+  // highest and lowest traits, which is the same reason the strip came off the
+  // profile page earlier. What replaces them is the check a few hundred lines
+  // up asserting that neither renderer builds one any more.
 
   // Layout has to survive both a wordy model and an almost empty one. These
   // build in the page, which is also the only way to reach a long profile

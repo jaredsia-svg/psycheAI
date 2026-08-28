@@ -630,11 +630,6 @@
     dataSourcesContinue: 'Continue',
     dataSourcesBack: 'Back',
 
-    glanceType: 'Type',
-    glanceHighest: 'Highest',
-    glanceLowest: 'Lowest',
-    glanceEnneagram: 'Enneagram',
-
     // The compatibility report. It is two renderings of one document for the
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
@@ -659,40 +654,8 @@
     scanHistory: 'Your compatibility results',
   };
 
-  /**
-   * The headline findings, pulled straight out of the sections below rather
-   * than asked of the model a second time — restating them in a second field
-   * is tokens spent on something that can then disagree with itself.
-   */
-  function glanceItems(report) {
-    const items = [];
-    const source = report || {};
-
-    if (source.mbti && source.mbti.type) {
-      items.push({ label: TEXT.glanceType, value: source.mbti.type, note: source.mbti.nickname || '' });
-    }
-
-    const traits = Object.keys(TRAIT_LABELS)
-      .map(key => ({ key, item: source.bigFive && source.bigFive[key] }))
-      .filter(entry => entry.item && Number.isFinite(Number(entry.item.score)))
-      .sort((a, b) => b.item.score - a.item.score);
-    if (traits.length >= 2) {
-      const top = traits[0];
-      const bottom = traits[traits.length - 1];
-      items.push({ label: TEXT.glanceHighest, value: TRAIT_LABELS[top.key], note: top.item.score + '/100' });
-      items.push({ label: TEXT.glanceLowest, value: TRAIT_LABELS[bottom.key], note: bottom.item.score + '/100' });
-    }
-
-    if (source.enneagram && source.enneagram.type) {
-      const badge = source.enneagram.type + (source.enneagram.wing ? 'w' + source.enneagram.wing : '');
-      items.push({ label: TEXT.glanceEnneagram, value: badge, note: source.enneagram.nickname || '' });
-    }
-
-    return items;
-  }
-
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, ENNEAGRAM_DESCRIPTIONS, LOVE_LANGUAGE_ICONS, CARD_ICONS,
-    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, glanceItems,
+    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

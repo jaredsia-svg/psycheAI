@@ -2984,12 +2984,15 @@ The field is still called `noun` in profiles saved before this change, and profi
 localStorage indefinitely with no server copy to migrate, so both the page and the PDF fall back to
 it — covered by a check that stores an old-shape profile and renders it.
 
-Under the character sits a **glance strip** — MBTI type, highest and lowest Big Five trait, Enneagram
-type and wing — then a two-or-three-paragraph summary that lands the findings from every section
-below, so someone who reads only the opening still leaves with the answers. The strip is derived in
-`docs/copy.js` from the sections themselves rather than asked of the model a second time: restating
-them in another field costs tokens and creates something that can disagree with itself. A UI check
-compares the strip against the trait bars to prove it cannot.
+Under the character sits a two-or-three-paragraph summary that lands the findings from every section
+below, so someone who reads only the opening still leaves with the answers.
+
+A **glance strip** — MBTI type, highest and lowest Big Five trait, Enneagram type and wing — used to
+sit between the two. It came off the page once the psyche card moved above the report, since the card
+already carried all four and repeating them a few centimetres below was the same facts twice. It
+survived in the PDF a while longer on the grounds that the PDF had no card in front of it; page one is
+that card now, so it is gone from both, and `Copy.glanceItems` and the four labels that fed it went
+with it rather than sitting in `copy.js` as strings nothing renders.
 
 Then Big Five with per-trait evidence; interests, beliefs and values; relationship and career
 strengths and weaknesses — the **attachment** guess shows its working, naming the behavioural traces
@@ -3349,9 +3352,14 @@ correct: the card is width-bound there, so a narrower one is drawn *larger*. It 
 820px while the stats sat in three columns — four strength words will not fit a third of 700px — so
 the column count gives way instead, two-up on narrow. Body text went 12.1px to 13.6px.
 
-**The glance row is gone from the page.** It repeated the MBTI type, the enneagram and the highest
-and lowest traits a few centimetres under a card that already shows all four. The PDF keeps its own,
-having no card in front of it, so `Copy.glanceItems` stays and a check holds it there.
+**The glance row is gone from the page, and now from the PDF too.** It repeated the MBTI type, the
+enneagram and the highest and lowest traits a few centimetres under a card that already shows all
+four. The PDF kept its own while it had no card in front of it; once page one became that card the
+same reasoning applied there, and the strip, its renderer, `Copy.glanceItems` and its four labels all
+went. A check asserts neither renderer builds one — the call *and* the thing it called, because a
+renderer left behind with no caller is the kind of dead code that gets wired back up by accident.
+The block of geometry checks that proved the strip's row height, bottom rule and column widths went
+with it: 116 lines testing something that is no longer drawn.
 
 **Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
 goes because the comparison is to a character's temperament and naming the studio invites the reader
@@ -3896,7 +3904,7 @@ npm test           # 719 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1094 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1086 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

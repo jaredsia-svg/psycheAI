@@ -676,76 +676,6 @@
   };
 
   /**
-   * The headline findings strip under the essence, ruled top and bottom.
-   *
-   * The row height is measured, not assumed. "Openness to experience" and
-   * "Leans Anxious-Preoccupied" both wrap to two lines in a quarter-width
-   * column, and a fixed height pushed their notes through the bottom rule.
-   */
-  Report.prototype.glance = function (items) {
-    if (!items.length) return this;
-    const columns = Math.min(items.length, 4);
-    const gutter = 12;
-    const cellWidth = COLUMN / columns;
-    const textWidth = cellWidth - gutter;
-    const valueStyle = { size: 10.4, bold: true, color: INK };
-    const valueLeading = 12.4;
-
-    // Wrap every cell first, so the tallest one sets the height of the row.
-    // Notes wrap too: the note under "Type" is the MBTI nickname, and a long
-    // one ran straight across the neighbouring column.
-    const noteStyle = { size: 8.4, color: SOFT };
-    const noteLeading = 11;
-    const cells = items.map(item => ({
-      label: toWinAnsi(String(item.label).toUpperCase()),
-      lines: wrap(toWinAnsi(item.value), textWidth, valueStyle),
-      notes: item.note ? wrap(toWinAnsi(item.note), textWidth, noteStyle).slice(0, 2) : [],
-    }));
-    const rowCount = Math.ceil(cells.length / columns);
-    const rowHeights = [];
-    const rowValueLines = [];
-    for (let row = 0; row < rowCount; row++) {
-      const inRow = cells.slice(row * columns, row * columns + columns);
-      const tallest = Math.max(...inRow.map(cell => cell.lines.length));
-      const notes = Math.max(0, ...inRow.map(cell => cell.notes.length));
-      rowValueLines.push(tallest);
-      rowHeights.push(20 + tallest * valueLeading + (notes ? notes * noteLeading + 2 : 0) + 8);
-    }
-    const total = rowHeights.reduce((sum, height) => sum + height, 0);
-
-    this.need(total + 20);
-    this.space(4);
-    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
-    this.doc.y += 9;
-    const top = this.doc.y;
-
-    cells.forEach((cell, index) => {
-      const column = index % columns;
-      const row = Math.floor(index / columns);
-      const x = MARGIN + column * cellWidth;
-      const y = top + rowHeights.slice(0, row).reduce((sum, height) => sum + height, 0);
-      this.doc.draw(cell.label, x, y + 7, { size: 7.2, bold: true, color: SOFT, tracking: 1 });
-      let cursor = y + 20;
-      for (const line of cell.lines) {
-        this.doc.draw(line, x, cursor, valueStyle);
-        cursor += valueLeading;
-      }
-      // Notes start on a shared baseline per row, so they line up across
-      // columns even when one value wrapped and its neighbour did not.
-      let noteCursor = y + 20 + rowValueLines[row] * valueLeading;
-      for (const line of cell.notes) {
-        this.doc.draw(line, x, noteCursor, noteStyle);
-        noteCursor += noteLeading;
-      }
-    });
-
-    this.doc.y = top + total;
-    this.doc.hairline(this.doc.y, MARGIN, PAGE.width - MARGIN);
-    this.space(12);
-    return this;
-  };
-
-  /**
    * One MBTI axis: the lettered square, the pole it beat, the reasoning, and
    * what it looks like in their week. `counterEvidence` is a legacy field —
    * the tempering lives inside `why` now — kept so a report saved while it was
@@ -1366,7 +1296,13 @@
       if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
       out.space(8);
     }
-    out.glance(Copy.glanceItems(source));
+    // The glance strip — type, highest trait, lowest trait, enneagram — used to
+    // sit here. It came off the profile page a while ago because the psyche
+    // card above it already carried all four, and repeating them a few
+    // centimetres below was the same facts twice. The PDF kept its copy on the
+    // grounds that it had no card in front of it. It does now: page one is that
+    // card. So the same reasoning applies and the strip goes, leaving the
+    // essence to run straight into the summary.
     if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
 
     // 2. Big Five.
