@@ -338,27 +338,11 @@ async function handleAnalyse(request, response) {
   });
 }
 
-// The report is typeset and downloaded entirely client-side and never reaches
-// this endpoint at all — it exists only so an address can be recorded before
-// the browser lets the download through. `recipients.record` is given the
-// address and only the address; there is no parameter here an attachment
-// could go in, and no code path that could write one.
-async function handleRecordEmail(request, response) {
-  const body = await readJsonBody(request);
-  const address = recipients.validAddress(body && body.email);
-  if (!address) {
-    sendJson(response, 400, { error: 'That does not look like an email address.' });
-    return;
-  }
-  recipients.record(address);
-  sendJson(response, 200, { recorded: true });
-}
-
 // The amount is fixed in lib/stripe.js and never taken from the request — a
 // client is not trusted with what it pays. There is nothing else for the body
 // to carry: this route creates a PaymentIntent for exactly one product, the
 // "Let us roast you" unlock, and nothing report-shaped is anywhere near its
-// signature — same discipline as handleRecordEmail above.
+// signature.
 async function handleCreatePaymentIntent(request, response) {
   if (!payments.hasKey()) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
@@ -529,11 +513,10 @@ const server = http.createServer((request, response) => {
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
         : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
           : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-            : route === '/api/record-email' && request.method === 'POST' ? () => handleRecordEmail(request, response)
-              : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
-                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
-                  : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
-                    : null;
+            : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
+              : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
+                : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
+                  : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });

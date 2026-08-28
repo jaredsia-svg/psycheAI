@@ -353,24 +353,6 @@
     </button>
   </section>
 
-  <!-- The full report still downloads to the reader's own disk exactly as it
-     always did; what's new is that an address is recorded before the
-     download is let through. -->
-<dialog id="mail-dialog" class="mode-dialog" aria-labelledby="mail-dialog-title">
-  <h2 id="mail-dialog-title">Before you download</h2>
-  <p class="muted" id="mail-dialog-blurb"></p>
-  <label class="mail-field">
-    <span>Email address</span>
-    <input type="email" id="mail-address" autocomplete="email" inputmode="email"
-           placeholder="you@example.com" spellcheck="false">
-  </label>
-  <p class="mail-status" id="mail-status" hidden></p>
-  <p class="fineprint" id="mail-fineprint"></p>
-  <div class="btn-row">
-    <button class="btn btn-ghost" id="mail-cancel" type="button">Cancel</button>
-    <button class="btn" id="mail-send" type="button">Download my report</button>
-  </div>
-</dialog>
 
 <!-- The unlock flow for the four paid sections. Stripe.js
      itself is not loaded here — it is the one script in this app fetched

@@ -3514,101 +3514,29 @@
 
   // ---------- where the report goes ----------
   //
-  // The report itself never leaves the device — it is typeset in the browser
-  // and downloaded straight to disk, exactly as it always was. What is new is
-  // that the reader is asked for an address first, which is posted to the
-  // server and recorded there, and only there: `recipients.record` on the
-  // server side has no parameter an attachment could go in, so there is no
-  // code path that could send the report anywhere. This deliberately does not
-  // save the address anywhere on the device, and does not let the download
-  // through if recording the address fails — a silent download on failure
-  // would make it impossible to tell whether recording is working at all.
-  function askEmailAndDownload(event) {
-    const button = event.currentTarget;
+  // Straight to the reader's own disk, and nowhere else. The PDF is typeset in
+  // the browser by pdf.js and handed to a temporary object URL, so the file
+  // never touches the network and the server is never given anything
+  // report-shaped to store even by accident.
+  //
+  // Nothing is asked for first. The download used to be gated behind an email
+  // address, which bought the operator a mailing list at the cost of putting a
+  // form in front of the one thing the reader had already paid for; the gate is
+  // gone and the button now does what it says.
+  function exportPdf() {
     const profile = state.profile;
     if (!profile) return;
-
-    const dialog = $('#mail-dialog');
-    const input = $('#mail-address');
-    const status = $('#mail-status');
-    const sendButton = $('#mail-send');
-    const label = sendButton.textContent;
-
-    const say = (message, tone) => {
-      status.textContent = message || '';
-      status.hidden = !message;
-      status.className = 'mail-status' + (tone ? ' is-' + tone : '');
-    };
-
-    const close = () => dialog.close();
-
-    const downloadReport = () => {
-      const href = URL.createObjectURL(buildReportPdf(profile));
-      const link = document.createElement('a');
-      link.download = 'psycheai-report.pdf';
-      link.href = href;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 10000);
-    };
-
-    const send = async () => {
-      const address = input.value.trim();
-      // The same shape the server insists on, checked here first so an obvious
-      // typo costs a moment rather than a round trip.
-      if (!/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/.test(address)) {
-        say('That does not look like an email address.', 'bad');
-        input.focus();
-        return;
-      }
-      sendButton.disabled = true;
-      say(TEXT.mailSending);
-      try {
-        const response = await fetch('api/record-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: address }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'That address could not be recorded.');
-        downloadReport();
-        say(TEXT.mailSent, 'good');
-        sendButton.disabled = false;
-        sendButton.textContent = label;
-        setTimeout(() => { if (dialog.open) close(); }, 1400);
-        return;
-      } catch (error) {
-        say((error && error.message) || 'That address could not be recorded.', 'bad');
-      }
-      sendButton.disabled = false;
-      sendButton.textContent = label;
-    };
-
-    const onKey = keyEvent => { if (keyEvent.key === 'Enter') { keyEvent.preventDefault(); send(); } };
-
-    sendButton.addEventListener('click', send);
-    $('#mail-cancel').addEventListener('click', close);
-    input.addEventListener('keydown', onKey);
-    dialog.addEventListener('close', () => {
-      sendButton.removeEventListener('click', send);
-      $('#mail-cancel').removeEventListener('click', close);
-      input.removeEventListener('keydown', onKey);
-      sendButton.disabled = false;
-      sendButton.textContent = label;
-      button.focus();
-    }, { once: true });
-
-    $('#mail-dialog-blurb').textContent = TEXT.mailBlurb;
-    $('#mail-fineprint').textContent = TEXT.mailFine;
-    say('');
-    input.value = '';
-    if (typeof dialog.showModal === 'function') dialog.showModal();
-    else dialog.setAttribute('open', '');
-    input.focus();
+    const href = URL.createObjectURL(buildReportPdf(profile));
+    const link = document.createElement('a');
+    link.download = 'psycheai-report.pdf';
+    link.href = href;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Long enough for every browser to have started reading the blob, after
+    // which holding it open only costs memory.
+    setTimeout(() => URL.revokeObjectURL(href), 10000);
   }
-
-  const exportPdf = askEmailAndDownload;
 
   // ---------- psyche card: inline preview and full screen ----------
   //

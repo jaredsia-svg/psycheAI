@@ -219,13 +219,6 @@
     // ("Download"/"Share") rather than a place an error could borrow.
     cardImageError: 'Could not build the image',
 
-    // The report still downloads straight to the reader's device; the dialog
-    // just asks for an address first and says what happens to it.
-    mailBlurb: 'Tell us your email address before downloading your full report as a PDF.',
-    mailFine: 'We keep your email address. We do not keep the report — it is ' +
-      'built in your browser and downloaded straight to your device, never stored here.',
-    mailSending: 'Recording your address…',
-    mailSent: 'Downloading your report…',
     cardType: 'MBTI',
     cardEnneagram: 'Enneagram',
     cardBigFive: 'Big Five',
