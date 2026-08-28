@@ -109,11 +109,6 @@
   const WASH = [0.953, 0.914, 0.973];
   const PAPER = [0.980, 0.969, 0.984];
   const WHITE = [1, 1, 1];
-  // Text on the accent panel that should read as secondary without going grey:
-  // pure white for the name, this for the blurb and the small caps above it.
-  // Mixed towards the accent rather than towards black, so it recedes on the
-  // purple instead of muddying against it.
-  const CARD_SOFT = [0.898, 0.855, 0.949];
   // The page colours its strengths and weaknesses headings; so does this.
   const GOOD = [0.184, 0.490, 0.357];
   const WARN = [0.604, 0.357, 0.071];
@@ -939,19 +934,32 @@
     const padX = 22;
     const innerW = COLUMN - padX * 2;
 
-    // ---- measure the hero before drawing it, so its panel can be filled first
-    const nameStyle = { size: 23, bold: true, color: WHITE };
-    const franchiseStyle = { size: 9.6, color: CARD_SOFT };
-    const blurbStyle = { size: 9.4, color: CARD_SOFT };
-    const blurbLeading = 13.4;
-    // Room kept clear on the right for the confidence figure, so a long
-    // character name cannot run underneath it.
-    const nameLines = wrap(toWinAnsi(name), innerW - 62, nameStyle);
+    // ---- measure the head before drawing it, so its panel can be filled first
+    //
+    // The card was a purple slab with a magenta wedge across its foot, which is
+    // exactly what the band above it is. Two of them stacked read as one
+    // continuous block of colour with a page title floating in it, and the
+    // card — the thing actually worth looking at — lost any identity of its
+    // own.
+    //
+    // So it is paper now and the band keeps the colour. The contrast does the
+    // work the repetition was undoing: a saturated masthead, then a light card
+    // lifted off the page beneath it. The accent survives as detailing rather
+    // than as a fill — a rule across the top, the character's name set in it,
+    // the eyebrow in the second brand colour — which is quieter and, on a page
+    // that is otherwise all text, considerably better looking.
+    const nameStyle = { size: 26, bold: true, color: ACCENT };
+    const franchiseStyle = { size: 9.8, color: SOFT };
+    const blurbStyle = { size: 9.8, color: INK };
+    const blurbLeading = 14.6;
+    // Room kept clear on the right for the confidence pill, so a long character
+    // name cannot run underneath it.
+    const nameLines = wrap(toWinAnsi(name), innerW - 72, nameStyle);
     // Capped rather than trusted: `cardHighlights` is four sentences by schema,
     // but a model that ignored that must not push the card off the page.
     const blurbLines = wrap(toWinAnsi(blurb), innerW, blurbStyle).slice(0, 9);
-    const heroH = 22 + 12 + nameLines.length * 26 + (franchise ? 13 : 0) +
-      (blurbLines.length ? 8 + blurbLines.length * blurbLeading : 0) + 20;
+    const heroH = 30 + 14 + nameLines.length * 30 + (franchise ? 15 : 0) +
+      (blurbLines.length ? 10 + blurbLines.length * blurbLeading : 0) + 16;
 
     // ---- measure the three rows underneath it ----
     const letters = (mbti.letters || []).map(l =>
@@ -1001,45 +1009,56 @@
     const bodyH = 8 + statH + (chipH ? chipH + 1 : 0) + (loveH ? loveH + 1 : 0) + 8;
     const totalH = heroH + bodyH;
 
-    // ---- draw: body panel first, hero over its top, then all the text ----
+    // ---- draw: shadow, card, accent rule, then all the text ----
+    //
+    // A soft offset rectangle behind the card, which is the whole of the
+    // "lifted off the page" effect — this writer has no shadow operator, and
+    // three points of tint peeking out below the white does the job in print
+    // as well as a real one would.
+    doc.roundRect(MARGIN + 1, top + 3, COLUMN, totalH, 16, LINE);
     doc.roundRect(MARGIN, top, COLUMN, totalH, 16, WHITE);
-    doc.roundRect(MARGIN, top, COLUMN, heroH, 16, ACCENT);
-    // Squares off the hero's own bottom corners, so the colour meets the white
-    // body on a straight edge rather than showing two rounded notches. Drawn
-    // to exactly `heroH` and no further: an earlier +16 here put the panel's
-    // bottom edge below where the first row of labels starts, and printed
-    // "MBTI", "ENNEAGRAM" and "BIG FIVE" in grey on top of the purple.
-    doc.rect(MARGIN, top + heroH - 16, COLUMN, 16, ACCENT);
-    // The same darker wedge the band above uses, so the two read as one object.
-    doc.setFill(ACCENT_2);
-    doc.op(num(MARGIN) + ' ' + num(PAGE.height - top - heroH) + ' m ' +
-      num(MARGIN + COLUMN) + ' ' + num(PAGE.height - top - heroH) + ' l ' +
-      num(MARGIN + COLUMN) + ' ' + num(PAGE.height - top - heroH + 22) + ' l ' +
-      num(MARGIN) + ' ' + num(PAGE.height - top - heroH) + ' l f');
+    // The accent as a rule across the top rather than a slab behind
+    // everything: drawn as a rounded rect so it follows the card's own top
+    // corners, then cut back to five points with the card colour. A plain rect
+    // would square the corners off against the rounded card and leave two
+    // small notches of paper at the ends.
+    doc.roundRect(MARGIN, top, COLUMN, 16, 16, ACCENT);
+    doc.rect(MARGIN, top + 5, COLUMN, 11, WHITE);
 
     const x = MARGIN + padX;
-    doc.draw(toWinAnsi(String(TEXT.essenceLabel).toUpperCase()), x, top + 26,
-      { size: 6.8, bold: true, color: CARD_SOFT, tracking: 1.1 });
+    // The second brand colour, used once. It appears nowhere else on this page
+    // except in the band's wedge, which is what keeps the two related without
+    // the card copying the band outright.
+    doc.draw(toWinAnsi(String(TEXT.essenceLabel).toUpperCase()), x, top + 32,
+      { size: 6.8, bold: true, color: ACCENT_2, tracking: 1.1 });
     if (Number.isFinite(confidence) && confidence > 0) {
+      // A pill rather than bare text: on paper the figure needs something to
+      // sit in, or it reads as a stray number in the corner.
       const score = toWinAnsi(Math.round(confidence) + '/100');
-      const width = measure(score, 9.6, true);
-      doc.draw(score, MARGIN + COLUMN - padX - width, top + 26,
-        { size: 9.6, bold: true, color: WHITE });
+      const width = measure(score, 9.4, true);
+      const pillW = width + 18;
+      doc.roundRect(MARGIN + COLUMN - padX - pillW, top + 20, pillW, 19, 9.5, WASH);
+      doc.draw(score, MARGIN + COLUMN - padX - pillW + 9, top + 33,
+        { size: 9.4, bold: true, color: ACCENT });
     }
-    let cursor = top + 34;
+    let cursor = top + 40;
     for (const line of nameLines) {
-      doc.draw(line, x, cursor + 20, nameStyle);
-      cursor += 26;
+      doc.draw(line, x, cursor + 22, nameStyle);
+      cursor += 30;
     }
     if (franchise) {
       doc.draw(toWinAnsi(franchise), x, cursor + 18, franchiseStyle);
-      cursor += 13;
+      cursor += 15;
     }
-    cursor += 8;
+    cursor += 10;
     for (const line of blurbLines) {
       doc.draw(line, x, cursor + 16, blurbStyle);
       cursor += blurbLeading;
     }
+    // Separates the head from the rows the way the rows separate from each
+    // other, so the card is one system of hairlines rather than a coloured
+    // block sitting on top of a list.
+    doc.hairline(top + heroH - 1, x, MARGIN + COLUMN - padX);
 
     let rowTop = top + heroH + 8;
     statCells.forEach((cell, i) => cardColumn(doc, x + i * third, rowTop, third, cell.label, cell.lines, cell));
@@ -1077,7 +1096,13 @@
     const rows = out.contents;
     if (!rows.length) return;
     const rowHeight = 16.5;
-    const top = cardBottom + 32;
+    // 24 rather than 32. The card grew when it became a paper panel — bigger
+    // name, roomier blurb leading — and the list, which only draws when it
+    // fits above the colophon, was missing the guard below by about three
+    // points and silently not drawing at all. The gap is the cheapest thing on
+    // the page to give back, and there is more than enough clearance beneath
+    // the list either way.
+    const top = cardBottom + 24;
     // Two columns past six entries. A full report runs to a dozen sections,
     // and a single column of those is taller than the space the card leaves —
     // the list simply never drew. Splitting it halves the height and fills the

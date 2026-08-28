@@ -4536,6 +4536,34 @@ try {
   }
   // The report proper starts overleaf. A cover that ran into the first section
   // would not be a cover.
+  // ---- the card is paper, not a second copy of the masthead ----
+  //
+  // It used to be an accent-filled slab with the same magenta wedge across its
+  // foot that the band above it has. Stacked, the two read as one continuous
+  // block of colour with the page title floating in it, and the card — the
+  // thing worth looking at — had no identity of its own. It is a light panel
+  // now: the accent survives as a rule across the top and as the colour the
+  // character's name is set in.
+  //
+  // Checked on the colour the name is actually drawn in, which is the whole
+  // difference. `Doc.draw` emits the fill colour immediately before the text,
+  // so the last `rg` before the name's `Tj` is its colour: 0.482 0.247 0.627
+  // is ACCENT, 1 1 1 was the white it used to be reversed out in.
+  const nameColour = (() => {
+    const at = coverStream.indexOf('(Bruce Banner) Tj');
+    if (at < 0) return null;
+    const before = coverStream.slice(0, at);
+    const ops = [...before.matchAll(/([\d.]+ [\d.]+ [\d.]+) rg/g)];
+    return ops.length ? ops[ops.length - 1][1] : null;
+  })();
+  check('the character name is set in the accent, not reversed out of a panel',
+    nameColour === '0.482 0.247 0.627', String(nameColour));
+  // The band's wedge is one filled path ending `l f`; the card drew a second.
+  // Exactly one on the cover means the motif belongs to the masthead alone.
+  check('and the card does not repeat the masthead\'s wedge',
+    (coverStream.match(/ l f/g) || []).length === 1,
+    (coverStream.match(/ l f/g) || []).length + ' wedge paths');
+
   check('the report itself starts on page two',
     (pdfPages[1] || '').includes('(Who you are)'));
 

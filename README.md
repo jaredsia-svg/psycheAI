@@ -3513,11 +3513,32 @@ the whole block deleted.
 Removing that headline left the band with the title at the top and 70pt of empty purple under it, and
 then the report's first section heading immediately below — a paid document opening on dead space.
 Page one is now a real cover carrying the **psyche card**, the same object the reader sees on screen:
-the character and franchise over the four-sentence blurb on the accent panel, then the MBTI code with
-its per-axis strengths, the Enneagram type and wing, the five trait scores, the values/beliefs/
-interests row and the giving/receiving pair. It is the one thing in this product people actually
-share, and the only page of a nine-page PDF anybody would screenshot rather than read, so it is what
-the document should open on. The report proper starts on page two, under the running head.
+the character and franchise over the four-sentence blurb, then the MBTI code with its per-axis
+strengths, the Enneagram type and wing, the five trait scores, the values/beliefs/interests row and
+the giving/receiving pair. It is the one thing in this product people actually share, and the only
+page of a nine-page PDF anybody would screenshot rather than read, so it is what the document should
+open on. The report proper starts on page two, under the running head.
+
+**The card is paper, and the band keeps the colour.** It did not start that way: the card was an
+accent-filled panel with the same magenta wedge across its foot that the masthead above it has.
+Stacked, the two read as one continuous block of purple with the page title floating in it, and the
+card — the thing worth looking at — had no identity of its own. Contrast now does the work the
+repetition was undoing: a saturated masthead, then a light panel lifted off the page beneath it on
+three points of tinted offset, which is the whole of the shadow this writer can draw. The accent
+survives as detailing rather than as a fill — a five-point rule across the top, the character's name
+set in it, the confidence figure in a pale pill, the eyebrow in the second brand colour — and the
+wedge stays the masthead's alone.
+
+Two checks pin it, both on the drawn output rather than on the source. `Doc.draw` emits a fill colour
+immediately before each text run, so the last `rg` before the character name's `Tj` *is* its colour:
+the accent triple passes, the `1 1 1` it used to be reversed out in fails. And the wedge is a single
+filled path ending `l f`, so exactly one of those on the cover means the motif belongs to the band
+and the card is not copying it.
+
+Worth recording that the redesign broke something silently: the taller card pushed the contents list
+past the guard that only draws it when it fits above the colophon, and it stopped appearing at all.
+The existing checks caught that — but only after the render did, which is the order it should have
+happened in. The gap between card and list came down from 32pt to 24.
 
 The card's blurb is `report.cardHighlights`, the same field the on-screen card uses. `cardBlurb()` in
 `app.js` has two further fallbacks for reports written before that field existed, but both stitch
@@ -3875,7 +3896,7 @@ npm test           # 719 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1092 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1094 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
