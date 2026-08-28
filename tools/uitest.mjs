@@ -3345,6 +3345,18 @@ try {
   }));
   check('the confidence meter came with it',
     await page.locator('.confidence-card .confidence-fill').isVisible());
+  // And is filled to the score it prints, for the same reason the trait bars
+  // below are measured rather than counted.
+  const meter = await page.evaluate(() => {
+    const fill = document.querySelector('.confidence-card .confidence-fill');
+    const track = document.querySelector('.confidence-card .confidence-meter');
+    const text = (document.querySelector('.confidence-card p strong') || {}).textContent || '';
+    const shown = Number((/(\d+)\s*\/\s*100/.exec(text) || [])[1]);
+    const width = track.getBoundingClientRect().width;
+    return { shown, drawn: width ? Math.round(fill.getBoundingClientRect().width / width * 100) : 0 };
+  });
+  check('and the meter is filled to the confidence it prints',
+    meter.shown > 0 && Math.abs(meter.drawn - meter.shown) <= 2, JSON.stringify(meter));
 
   // ---- mental wellness ----
   //
@@ -7289,6 +7301,39 @@ try {
     compatBodies[compatBodies.length - 1]);
   check('every dimension draws a filled bar',
     (await page.locator('#report-body .section-card .bar-fill').count()) === 5);
+  // Not just that the bars exist — that they are actually as wide as their
+  // numbers say. These widths used to be style="" attributes, and the CSP now
+  // refuses those: a refused inline style is not an error, it is a bar that
+  // renders at zero width beside a label reading 74. Counting the bars would
+  // pass against exactly that, so this measures them instead.
+  const barGeometry = await page.evaluate(() => {
+    const blocks = [...document.querySelectorAll('#report-body .section-card .trait-block')];
+    return blocks.map(block => {
+      const fill = block.querySelector('.bar-fill');
+      const track = block.querySelector('.bar');
+      const shown = Number((block.querySelector('.trait-num') || {}).textContent);
+      const ratio = track.getBoundingClientRect().width
+        ? fill.getBoundingClientRect().width / track.getBoundingClientRect().width : 0;
+      return { shown, drawn: Math.round(ratio * 100) };
+    });
+  });
+  check('and each bar is drawn to the width its own number claims',
+    barGeometry.length === 5 &&
+    barGeometry.every(bar => bar.shown > 0 && Math.abs(bar.drawn - bar.shown) <= 2),
+    JSON.stringify(barGeometry));
+  // The ring is the same problem in a custom property rather than a width:
+  // --pct drives a conic-gradient, and an unset one is a ring drawn empty
+  // around a number that says 82.
+  const ringPct = await page.evaluate(() => {
+    const ring = document.querySelector('#report-body .ring, #view-report .ring');
+    if (!ring) return null;
+    return {
+      shown: Number((ring.querySelector('span') || {}).textContent),
+      pct: Number(getComputedStyle(ring).getPropertyValue('--pct')),
+    };
+  });
+  check('and the score ring carries the percentage it displays',
+    ringPct && ringPct.shown > 0 && ringPct.pct === ringPct.shown, JSON.stringify(ringPct));
   check('every dimension shows its reasoning',
     (await page.locator('#report-body .section-card .trait-reading').count()) === 5);
   check('every dimension cites what put it there',

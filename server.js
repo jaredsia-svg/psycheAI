@@ -672,12 +672,18 @@ const CSP = [
   // Scripts are all local files, plus Stripe.js, which app.js injects when a
   // reader actually reaches the payment sheet.
   "script-src 'self' https://js.stripe.com",
-  // 'unsafe-inline' is here for the handful of style="" attributes in
-  // index.html, and is the one genuine weakness in this policy: it means an
-  // injected style attribute would still apply. Styles cannot exfiltrate on
-  // their own the way scripts can, and removing it means moving those
-  // attributes into styles.css — worth doing, not worth blocking this on.
-  "style-src 'self' 'unsafe-inline'",
+  // No 'unsafe-inline', which took removing every inline style in the app.
+  // The seven static ones in index.html became .guide-mark-N classes; the
+  // three that carry a computed number — a trait bar's width, the confidence
+  // meter's width, the compatibility ring's --pct — travel as data attributes
+  // and are applied by applyDataStyles() in app.js, because CSSOM writes are
+  // not governed by this directive and style attributes are.
+  //
+  // The two <style> blocks app.js builds are both outside this policy and stay
+  // as they are: one goes into a file the reader downloads and opens from
+  // their own disk, the other sits inside an SVG loaded as an image, which is
+  // its own document governed by img-src.
+  "style-src 'self'",
   // data: for the SVG the psyche-card image is built from, blob: for every
   // object URL the app hands to a download link — the PDF, the card image,
   // the QR code.
@@ -707,6 +713,44 @@ function applySecurityHeaders(request, response) {
   // cross-origin requests leaks no path, and the shared-profile payload lives
   // in the URL fragment, which is never sent in a Referer header at all.
   response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Hardware and capability access, denied by default and granted only where
+  // this app actually uses something. A CSP governs what code may load; this
+  // governs what that code may reach for once loaded, which is a different
+  // question — an injected script under a strict CSP still inherits whatever
+  // the page is permitted to touch.
+  //
+  // Two grants, both real: the camera, for scanning a QR code, and the
+  // Payment Request API behind Apple Pay and Google Pay. `payment` names
+  // js.stripe.com as well as self, because the wallet sheet is opened from
+  // inside Stripe's own iframe rather than from our page — granting only
+  // `self` there would leave the sheet unable to open, which is exactly the
+  // kind of breakage a header like this causes quietly.
+  //
+  // Everything else is refused outright rather than left at the browser
+  // default, including things this app has no notion of: a feature that
+  // arrives in a future browser version is denied by omission.
+  response.setHeader('Permissions-Policy', [
+    'accelerometer=()',
+    'ambient-light-sensor=()',
+    'autoplay=()',
+    'battery=()',
+    'camera=(self)',
+    'display-capture=()',
+    'encrypted-media=()',
+    'geolocation=()',
+    'gyroscope=()',
+    'idle-detection=()',
+    'local-fonts=()',
+    'magnetometer=()',
+    'microphone=()',
+    'midi=()',
+    'payment=(self "https://js.stripe.com")',
+    'screen-wake-lock=()',
+    'serial=()',
+    'usb=()',
+    'xr-spatial-tracking=()',
+  ].join(', '));
 
   // HSTS only where it can mean anything, and — more importantly — never on
   // plain HTTP. A browser that accepts this header for localhost will refuse

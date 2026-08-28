@@ -545,6 +545,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   box-shadow: 0 0 0 2px rgba(255, 255, 255, .9);
   pointer-events: none;
 }
+
+/* Where each ring sits on its screenshot.
+   These were style="" attributes on the spans themselves until the CSP
+   went in: 'unsafe-inline' in style-src exists for inline attributes, and
+   seven of them were the only thing keeping it there. One class per step,
+   numbered to match guide/0N-*.jpg, so a rectangle and the picture it is
+   drawn over are found by the same number. */
+.guide-mark-1 { top: 43.3%; left: 2%; width: 92%; height: 18.9%; }
+.guide-mark-2 { top: 63.5%; left: 4%; width: 92%; height: 5.5%; }
+.guide-mark-3 { top: 55.8%; left: 3%; width: 94%; height: 14.6%; }
+.guide-mark-4 { top: 60.6%; left: 4%; width: 92%; height: 15.9%; }
+.guide-mark-5 { top: 69.9%; left: 4%; width: 92%; height: 19.4%; }
+.guide-mark-6 { top: 58.6%; left: 4%; width: 92%; height: 17.0%; }
+.guide-mark-7 { top: 70.4%; left: 4%; width: 92%; height: 25.8%; }
 .guide-shot figcaption {
   margin-bottom: .5rem; font-size: .84rem; line-height: 1.4; color: var(--ink-soft);
 }

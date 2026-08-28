@@ -137,6 +137,39 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
+  /**
+   * Applies the styles that cannot be written as markup.
+   *
+   * Three things in this app are positioned from data rather than from CSS: a
+   * trait bar's width, the confidence meter's width, and the compatibility
+   * ring's --pct. All three used to travel as style="" attributes inside
+   * generated HTML, and all three stopped working the moment the CSP dropped
+   * 'unsafe-inline' from style-src — silently, because a refused inline style
+   * is not an error, it is a bar that renders at zero width.
+   *
+   * CSSOM writes are not governed by style-src, so the value rides over as a
+   * data attribute and is applied here once the markup is in the document.
+   * Anything that writes innerHTML which might contain one of these has to
+   * call this afterwards, which is why the assignments go through setHtml
+   * below rather than being written out individually.
+   */
+  function applyDataStyles(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-fill]').forEach(node => {
+      node.style.width = Number(node.getAttribute('data-fill') || 0) + '%';
+    });
+    scope.querySelectorAll('[data-pct]').forEach(node => {
+      node.style.setProperty('--pct', String(Number(node.getAttribute('data-pct') || 0)));
+    });
+  }
+
+  /** innerHTML, plus the styles that had to be left out of it. */
+  function setHtml(element, html) {
+    element.innerHTML = html;
+    applyDataStyles(element);
+    return element;
+  }
+
   function paragraphs(text) {
     return String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean)
       .map(p => '<p>' + esc(p) + '</p>').join('');
@@ -941,8 +974,8 @@
   function revealRoast(cover, bonus) {
     const card = cover.closest('.bonus-card');
     const body = card.querySelector('.bonus-body');
-    body.innerHTML = bonusBodyHtml(bonus) +
-      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>';
+    setHtml(body, bonusBodyHtml(bonus) +
+      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>');
     body.hidden = false;
     cover.hidden = true;
   }
@@ -1002,7 +1035,7 @@
    */
   function mountPremiumTiers() {
     for (const slot of document.querySelectorAll('[data-premium-tier]')) {
-      slot.innerHTML = premiumTierHtml();
+      setHtml(slot, premiumTierHtml());
     }
   }
 
@@ -1032,7 +1065,7 @@
         if (!card || !data) continue;
         const cover = card.querySelector('.premium-cover');
         const body = card.querySelector('.premium-body');
-        body.innerHTML = section.body(data);
+        setHtml(body, section.body(data));
         body.hidden = false;
         cover.hidden = true;
         cover.querySelector('.premium-unlock').setAttribute('aria-expanded', 'true');
@@ -1064,7 +1097,7 @@
     const width = Math.min(100, Math.max(0, Math.round(Number(value) || 0)));
     return '<div class="trait-block">' +
       '<div class="trait-row"><span class="trait-label">' + esc(label) + '</span>' +
-      '<div class="bar"><div class="bar-fill" style="width:' + width + '%"></div></div>' +
+      '<div class="bar"><div class="bar-fill" data-fill="' + width + '"></div></div>' +
       '<span class="trait-num">' + width + '</span></div>' + (extra || '') + '</div>';
   }
 
@@ -1178,7 +1211,7 @@
       $('#sample-psyche-card').innerHTML = cardHtml;
       $('#sample-card-section').hidden = !cardHtml;
       $('#sample-card-title').textContent = TEXT.cardSection;
-      $('#sample-sections').innerHTML = reportSectionsHtml(report, { sample: true });
+      setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
       collapseSections($('#sample-body'));
       $('#sample-body').scrollTop = 0;
       if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -3226,7 +3259,7 @@
     // hide the page's own controls, not tidy its prose.
     html += '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
-      '<div class="confidence-meter"><div class="confidence-fill" style="width:' + Math.round(report.confidence.score) + '%"></div></div>' +
+      '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       esc(report.confidence.rationale) + '</p>' +
       (sample ? '' : sourcesUsedHtml()) +
@@ -3301,7 +3334,7 @@
     // handled by a delegated listener (see the document click handler
     // below) rather than bound here, because this element is replaced every
     // time the report renders.
-    $('#profile-body').innerHTML = reportSectionsHtml(report);
+    setHtml($('#profile-body'), reportSectionsHtml(report));
     collapseSections($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a
@@ -4791,8 +4824,8 @@
     $('#scan-status').textContent = '';
     $('#camera-holder').hidden = true;
     const history = store.read(KEYS.history, []);
-    $('#scan-history').innerHTML = history.length
-      ? '<div class="card"><h2>' + esc(TEXT.scanHistory) + '</h2>' + historyTable(history) + '</div>' : '';
+    setHtml($('#scan-history'), history.length
+      ? '<div class="card"><h2>' + esc(TEXT.scanHistory) + '</h2>' + historyTable(history) + '</div>' : '');
     paintQrCanvas('#qr-canvas-scan');
     $('#qr-contents').innerHTML = qrContentsBlock(state.profile && state.profile.card);
   }
@@ -5129,7 +5162,7 @@
 
     html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
-    $('#report-body').innerHTML = html;
+    setHtml($('#report-body'), html);
   }
 
   // One number for a whole pairing hides where the fit actually is, and a
@@ -5151,7 +5184,7 @@
     const value = Math.round(Number(report.score) || 0);
     const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
     return '<div class="card score-card score-single tier-' + tier + '">' +
-      '<div class="ring" style="--pct:' + value + '"><span>' + value + '</span></div>' +
+      '<div class="ring" data-pct="' + value + '"><span>' + value + '</span></div>' +
       '<div><h2>' + esc(label + TEXT.compatSuffix) + '</h2>' +
       '<p class="band">' + esc(report.band) + '</p>' +
       '<p>' + esc(report.verdict) + '</p></div></div>';
