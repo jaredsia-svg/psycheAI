@@ -1209,23 +1209,21 @@
       // at a glance. Same psycheCardHtml() the reader's own report uses, from
       // the same sample.json the sections below it come from.
       //
-      // Its head carries .card-head-toggle now, so it collapses like any other
-      // section — but it is reopened below, after collapseSections has been
-      // through. It used to be kept open by having no toggle at all, which
-      // achieved "open" by making it the one section a reader could not shut.
+      // Its head carries no .card-head-toggle, which is what keeps it open:
+      // collapseSections only shuts cards whose head has one, the same
+      // mechanism that leaves the confidence card alone.
       const cardHtml = psycheCardHtml(report);
       $('#sample-psyche-card').innerHTML = cardHtml;
+      // The same markup again for the full-screen copy, rather than moving the
+      // one node between two parents: fitCard scales by writing a transform on
+      // the element, and the preview and the full-screen view are scaled to
+      // different boxes at the same time.
+      $('#sample-psyche-card-full').innerHTML = cardHtml;
       $('#sample-card-section').hidden = !cardHtml;
       $('#sample-card-title').textContent = TEXT.cardSection;
+      $('#sample-card-hint').textContent = TEXT.cardHint;
       setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
       collapseSections($('#sample-body'));
-      // Reopened straight after, because the sample is supposed to open on the
-      // summary card — the one part of a report that reads at a glance, and
-      // the thing a reader came to look at. Everything below it stays shut.
-      // Note the accordion in the toggle handler: opening any other section
-      // will close this one, which is the same behaviour the real report has
-      // and is what stops the dialog growing into one long scroll.
-      setSectionOpen($('#sample-card-section'), true);
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
       // Both of these run after showModal, not before, and for the same
@@ -1270,8 +1268,14 @@
     // own frame is markup in index.html now rather than something showSample
     // builds, and wiping the container would take it away for good, leaving
     // every later open with no card at all.
+    // Closed with it, or a Back press that shuts the sample from underneath
+    // would leave the full-screen card stranded over the page with nothing
+    // behind it.
+    const full = $('#sample-card-dialog');
+    if (full && full.open) full.close();
     $('#sample-sections').innerHTML = '';
     $('#sample-psyche-card').innerHTML = '';
+    $('#sample-psyche-card-full').innerHTML = '';
     $('#sample-card-section').hidden = true;
     sampleReport = null;
   });
@@ -3630,6 +3634,13 @@
         window.innerWidth * 0.94, window.innerHeight * 0.96 - CARD_BAR_SPACE, 'screen');
     }
     layoutSampleCard();
+    // The sample's own full-screen view. No bar under it, unlike the reader's,
+    // so it gets the height the download row would otherwise take.
+    const sampleFull = $('#sample-card-dialog');
+    if (sampleFull && sampleFull.open) {
+      fitCard($('#sample-psyche-card-full'),
+        window.innerWidth * 0.94, window.innerHeight * 0.96, 'screen');
+    }
   }
 
   /**
@@ -3844,6 +3855,25 @@
     else dialog.setAttribute('open', '');
     layoutPsycheCard();
   }
+
+  // The sample's card, full screen. Opened over the sample dialog and closed
+  // back to it, so a reader who wanted a proper look at the card returns to
+  // the report they were reading rather than to the page behind it.
+  $('#sample-card-open').addEventListener('click', () => {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || dialog.open) return;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    // After it is shown, never before: fitCard measures the element, and a
+    // closed <dialog> is display:none with nothing to measure.
+    layoutPsycheCard();
+  });
+  // Any click that lands on the dialog itself rather than on the card is a
+  // click outside the image — the dialog fills the screen. Escape closes it
+  // natively, and either way the sample dialog is still open underneath.
+  $('#sample-card-dialog').addEventListener('click', event => {
+    if (event.target === $('#sample-card-dialog')) $('#sample-card-dialog').close();
+  });
 
   $('#psyche-card-open').addEventListener('click', openPsycheCard);
   $('#card-download').addEventListener('click', downloadCardImage);

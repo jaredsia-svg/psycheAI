@@ -851,6 +851,16 @@
   </div>
 </dialog>
 
+<!-- The sample card, full screen. A dialog of its own rather than a second
+     use of #card-dialog: that one carries download and share, which act on
+     "your" card and have nothing to act on here, and it holds the reader's own
+     card markup — borrowing it would mean swapping that out and putting it
+     back, with a sample left in it if anything went wrong in between. This has
+     no bar at all, so the card gets the whole screen. -->
+<dialog id="sample-card-dialog" class="card-dialog" aria-label="The sample psyche card">
+  <div class="card-dialog-frame"><div class="psyche-card" id="sample-psyche-card-full"></div></div>
+</dialog>
+
 <dialog id="sample-dialog" class="sample-dialog" aria-labelledby="sample-dialog-title">
   <header class="sample-dialog-head">
     <h2 id="sample-dialog-title">A sample report</h2>
@@ -868,20 +878,22 @@
        "your" card, and there is no reader's card here to act on. -->
   <div class="sample-dialog-body" id="sample-body">
     <section class="card section-card sample-card-section" id="sample-card-section" hidden>
-      <!-- The same head shape sectionHead() builds for every other section,
-           written out by hand because this one is markup rather than something
-           app.js renders. It has to match exactly: the delegated toggle
-           handler finds sections by `.card-head-toggle`, so a head that only
-           looks like the others would render a chevron that does nothing.
-           #sample-card-title moves onto the text span rather than the <h2>,
-           because setting textContent on the heading would wipe the button
-           inside it. -->
-      <div class="card-head card-head-toggle"><span class="card-icon" aria-hidden="true">🪪</span>
-        <div><h2><button class="card-toggle" type="button" aria-expanded="true">
-          <span class="card-toggle-text" id="sample-card-title"></span>
-          <span class="card-chevron" aria-hidden="true"></span>
-        </button></h2></div></div>
-      <div class="psyche-card-frame"><div class="psyche-card" id="sample-psyche-card"></div></div>
+      <!-- No .card-head-toggle, deliberately. collapseSections only shuts
+           cards whose head carries one, so the summary card stays open — the
+           same mechanism that keeps the confidence card open. It was briefly
+           collapsible and that was wrong: it is the thing the sample opens on
+           and the thing a reader came to look at, and the accordion in the
+           toggle handler meant opening any section below it shut the card. -->
+      <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
+        <div><h2 id="sample-card-title"></h2></div></div>
+      <!-- The same tap target the reader's own card gets on My Psyche, for the
+           same reason: at preview size the card is a thumbnail, and the detail
+           on it only becomes readable full screen. -->
+      <button class="psyche-card-slot" id="sample-card-open" type="button"
+              aria-label="Open the sample psyche card full screen">
+        <div class="psyche-card-frame"><div class="psyche-card" id="sample-psyche-card"></div></div>
+        <span class="psyche-card-hint" id="sample-card-hint"></span>
+      </button>
     </section>
     <div id="sample-sections"></div>
   </div>

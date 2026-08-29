@@ -479,49 +479,53 @@ try {
     await shut();
   }
 
-  // ---- the sample's summary card ----
+  // ---- the sample's summary card, and enlarging it ----
   //
-  // It used to be the one section a reader could not shut: no .card-head-toggle
-  // meant collapseSections skipped it, which achieved "always open" by removing
-  // the control rather than by setting a state. It collapses like everything
-  // else now and is reopened straight after, so the dialog still opens on it.
+  // At preview size the card is a thumbnail — the type on it is scaled well
+  // below readable — so the whole point of it is that it opens. This is the
+  // reader's own My Psyche behaviour, given to the sample.
   {
     await page.locator('#insight-sample').scrollIntoViewIfNeeded();
     await page.click('#insight-sample');
     await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
     await page.waitForTimeout(300);
-    const cardState = () => page.evaluate(() => {
-      const card = document.querySelector('#sample-card-section');
-      const toggle = card.querySelector('.card-toggle');
+
+    const state = () => page.evaluate(() => {
+      const preview = document.querySelector('#sample-psyche-card');
+      const full = document.querySelector('#sample-psyche-card-full');
       return {
-        collapsed: card.classList.contains('is-collapsed'),
-        expanded: toggle ? toggle.getAttribute('aria-expanded') : null,
-        drawn: card.querySelector('.psyche-card').getBoundingClientRect().height > 40,
+        sampleOpen: document.querySelector('#sample-dialog').open,
+        fullOpen: document.querySelector('#sample-card-dialog').open,
+        previewWidth: Math.round(preview.getBoundingClientRect().width),
+        fullWidth: Math.round(full.getBoundingClientRect().width),
       };
     });
-    check('the sample opens with its summary card expanded',
-      (await cardState()).collapsed === false && (await cardState()).drawn,
-      JSON.stringify(await cardState()));
-    check('and the card is expandable, with the chevron every other section has',
-      (await page.locator('#sample-card-section .card-head-toggle').count()) === 1 &&
-      (await page.locator('#sample-card-section .card-chevron').count()) === 1);
-    await page.click('#sample-card-section .card-head-toggle');
-    await page.waitForTimeout(250);
-    // aria-expanded as well as the class: the chevron is the visible half and
-    // this is the half a screen reader gets, and they are set in one place, so
-    // checking only the class would let them drift apart unnoticed.
-    check('clicking the head shuts it, and says so to a screen reader too',
-      (await cardState()).collapsed === true &&
-      (await cardState()).expanded === 'false' && !(await cardState()).drawn,
-      JSON.stringify(await cardState()));
-    await page.click('#sample-card-section .card-head-toggle');
-    await page.waitForTimeout(250);
-    check('and clicking again reopens it', (await cardState()).collapsed === false);
-    // The real report's card carries share and download; this one never has,
-    // because both act on "your" card and there is no reader's card here.
-    check('the sample card offers no share or download, which would act on nothing',
-      (await page.locator('#sample-card-section #card-share').count()) === 0 &&
-      (await page.locator('#sample-card-section #card-download').count()) === 0);
+
+    const before = await state();
+    check('the sample card sits in the report as a thumbnail, not full screen',
+      before.sampleOpen && !before.fullOpen && before.previewWidth > 0, JSON.stringify(before));
+
+    await page.click('#sample-card-open');
+    await page.waitForSelector('#sample-card-dialog[open]', { timeout: 15000 });
+    await page.waitForTimeout(400);
+    const magnified = await state();
+    // Bigger, not merely present: the enlarged copy is scaled by a transform
+    // rather than by CSS size, so a broken fit renders it at the preview's
+    // dimensions and would satisfy a check that only asked whether it existed.
+    check('tapping it opens the card larger than the thumbnail it came from',
+      magnified.fullOpen && magnified.fullWidth > magnified.previewWidth * 1.2,
+      JSON.stringify(magnified));
+    check('and the sample report stays open underneath it',
+      magnified.sampleOpen === true, JSON.stringify(magnified));
+
+    // A click on the dialog itself rather than on the card. Top-left corner,
+    // which is backdrop at any viewport this suite runs at.
+    await page.mouse.click(8, 8);
+    await page.waitForFunction(() => !document.querySelector('#sample-card-dialog').open,
+      { timeout: 15000 });
+    const after = await state();
+    check('clicking outside the image closes it, back to the sample report',
+      after.fullOpen === false && after.sampleOpen === true, JSON.stringify(after));
 
     const sampleText = (await page.locator('#sample-body').innerText()).replace(/\s+/g, ' ');
     check('the sample report is the Mulan one',
@@ -541,8 +545,17 @@ try {
       JSON.stringify(scores));
     check('and it is a high-confidence sample rather than a hedged one',
       Number(scores.onCard) >= 80, String(scores.onCard));
-    await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
+
+    // Closing the sample from underneath must take the full-screen card with
+    // it — a Back press does exactly that, and a card left open over the page
+    // with nothing behind it is the failure worth catching.
+    await page.click('#sample-card-open');
+    await page.waitForSelector('#sample-card-dialog[open]', { timeout: 15000 });
+    await page.evaluate(() => document.querySelector('#sample-dialog').close());
+    await page.waitForTimeout(400);
+    check('and closing the sample takes the enlarged card down with it',
+      await page.evaluate(() => !document.querySelector('#sample-card-dialog').open &&
+        !document.querySelector('#sample-dialog').open));
   }
 
   check('clicking the summary opens it',
@@ -1934,23 +1947,29 @@ try {
           document.querySelector('#sample-body').clientWidth + 1;
     }),
     await page.evaluate(() => document.querySelector('#sample-psyche-card').style.transform));
-  // The card section is a .section-card like the rest and now collapses like
-  // one. It used to be the exception — no .card-head-toggle at all, so
-  // collapseSections skipped it — which achieved "always open" by taking away
-  // the control rather than by setting a state. It has the head now and is
-  // reopened straight after the collapse, so it still *opens* open. The
-  // expand/collapse behaviour itself is exercised further down this file.
-  check('the summary card starts expanded, and can be shut like any other section',
+  // The card section is a .section-card like the rest, so it would collapse
+  // with them if its head carried a toggle. It deliberately does not — the
+  // same thing that keeps the confidence card open. It was briefly collapsible
+  // and that was wrong twice over: it is what the sample opens on, and the
+  // accordion in the toggle handler meant opening any section below it shut
+  // the card a reader had come to look at.
+  check('the summary card never collapses, the same as the confidence card',
     await page.evaluate(() => {
       const card = document.querySelector('#sample-card-section');
       return !card.classList.contains('is-collapsed') &&
-        card.querySelectorAll('.card-head-toggle').length === 1;
+        card.querySelectorAll('.card-head-toggle').length === 0;
     }));
-  // Full screen, download and share all act on "your" card. There is no
-  // reader's card here to act on, so the sample shows the frame alone.
-  check('the sample card offers no full-screen, download or share of its own',
-    (await page.locator('#sample-dialog .psyche-card-slot, #sample-dialog #card-download, ' +
-      '#sample-dialog #card-share').count()) === 0);
+  // Download and share act on "your" card and there is none here, so neither
+  // is offered. Full screen is different in kind — it acts on the image on the
+  // screen rather than on a reader's own card — and the sample card is a
+  // thumbnail whose detail is unreadable until it is enlarged, so it opens
+  // full screen exactly as the reader's own does.
+  check('the sample card offers no download or share, which would act on nothing',
+    (await page.locator('#sample-dialog #card-download, #sample-dialog #card-share')
+      .count()) === 0);
+  check('but it does open full screen, like the card on My Psyche',
+    (await page.locator('#sample-card-open').count()) === 1 &&
+    (await page.locator('#sample-card-open').isVisible()));
   // Everything below belongs to a report somebody owns. Offering any of it on
   // a stranger's sample is at best confusing and at worst destructive — the
   // delete button clears the reader's own stored profile. Each control is
