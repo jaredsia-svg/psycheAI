@@ -1209,15 +1209,23 @@
       // at a glance. Same psycheCardHtml() the reader's own report uses, from
       // the same sample.json the sections below it come from.
       //
-      // Its head carries no .card-head-toggle, which is what keeps it open:
-      // collapseSections only shuts cards whose head has one, the same
-      // mechanism that leaves the confidence card alone.
+      // Its head carries .card-head-toggle now, so it collapses like any other
+      // section — but it is reopened below, after collapseSections has been
+      // through. It used to be kept open by having no toggle at all, which
+      // achieved "open" by making it the one section a reader could not shut.
       const cardHtml = psycheCardHtml(report);
       $('#sample-psyche-card').innerHTML = cardHtml;
       $('#sample-card-section').hidden = !cardHtml;
       $('#sample-card-title').textContent = TEXT.cardSection;
       setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
       collapseSections($('#sample-body'));
+      // Reopened straight after, because the sample is supposed to open on the
+      // summary card — the one part of a report that reads at a glance, and
+      // the thing a reader came to look at. Everything below it stays shut.
+      // Note the accordion in the toggle handler: opening any other section
+      // will close this one, which is the same behaviour the real report has
+      // and is what stops the dialog growing into one long scroll.
+      setSectionOpen($('#sample-card-section'), true);
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
       // Both of these run after showModal, not before, and for the same

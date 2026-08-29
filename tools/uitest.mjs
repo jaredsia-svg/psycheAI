@@ -479,6 +479,72 @@ try {
     await shut();
   }
 
+  // ---- the sample's summary card ----
+  //
+  // It used to be the one section a reader could not shut: no .card-head-toggle
+  // meant collapseSections skipped it, which achieved "always open" by removing
+  // the control rather than by setting a state. It collapses like everything
+  // else now and is reopened straight after, so the dialog still opens on it.
+  {
+    await page.locator('#insight-sample').scrollIntoViewIfNeeded();
+    await page.click('#insight-sample');
+    await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+    await page.waitForTimeout(300);
+    const cardState = () => page.evaluate(() => {
+      const card = document.querySelector('#sample-card-section');
+      const toggle = card.querySelector('.card-toggle');
+      return {
+        collapsed: card.classList.contains('is-collapsed'),
+        expanded: toggle ? toggle.getAttribute('aria-expanded') : null,
+        drawn: card.querySelector('.psyche-card').getBoundingClientRect().height > 40,
+      };
+    });
+    check('the sample opens with its summary card expanded',
+      (await cardState()).collapsed === false && (await cardState()).drawn,
+      JSON.stringify(await cardState()));
+    check('and the card is expandable, with the chevron every other section has',
+      (await page.locator('#sample-card-section .card-head-toggle').count()) === 1 &&
+      (await page.locator('#sample-card-section .card-chevron').count()) === 1);
+    await page.click('#sample-card-section .card-head-toggle');
+    await page.waitForTimeout(250);
+    // aria-expanded as well as the class: the chevron is the visible half and
+    // this is the half a screen reader gets, and they are set in one place, so
+    // checking only the class would let them drift apart unnoticed.
+    check('clicking the head shuts it, and says so to a screen reader too',
+      (await cardState()).collapsed === true &&
+      (await cardState()).expanded === 'false' && !(await cardState()).drawn,
+      JSON.stringify(await cardState()));
+    await page.click('#sample-card-section .card-head-toggle');
+    await page.waitForTimeout(250);
+    check('and clicking again reopens it', (await cardState()).collapsed === false);
+    // The real report's card carries share and download; this one never has,
+    // because both act on "your" card and there is no reader's card here.
+    check('the sample card offers no share or download, which would act on nothing',
+      (await page.locator('#sample-card-section #card-share').count()) === 0 &&
+      (await page.locator('#sample-card-section #card-download').count()) === 0);
+
+    const sampleText = (await page.locator('#sample-body').innerText()).replace(/\s+/g, ' ');
+    check('the sample report is the Mulan one',
+      /Mulan/.test(sampleText) && !/Captain America/.test(sampleText),
+      sampleText.slice(0, 120));
+    // The card prints its own copy of the score rather than reading the
+    // report's, so the two can disagree — and did, the first time this was
+    // changed. Both are checked, against each other rather than a literal.
+    const scores = await page.evaluate(() => ({
+      onCard: ((document.querySelector('#sample-psyche-card').textContent || '')
+        .match(/(\d+)\s*\/\s*100/) || [])[1],
+      inReport: ((document.querySelector('#sample-body .confidence-card') || {}).textContent || '')
+        .replace(/\s+/g, ' ').match(/(\d+)\s*\/\s*100/),
+    }));
+    check('the card and the report agree on the confidence score',
+      scores.onCard && scores.inReport && scores.onCard === scores.inReport[1],
+      JSON.stringify(scores));
+    check('and it is a high-confidence sample rather than a hedged one',
+      Number(scores.onCard) >= 80, String(scores.onCard));
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
+  }
+
   check('clicking the summary opens it',
     await page.evaluate(() => document.querySelector('.optional-card').open) &&
     (await page.locator('.optional-card ol').first().isVisible()));
@@ -1868,14 +1934,17 @@ try {
           document.querySelector('#sample-body').clientWidth + 1;
     }),
     await page.evaluate(() => document.querySelector('#sample-psyche-card').style.transform));
-  // The card section is a .section-card like the rest, so it would collapse
-  // with them if its head carried a toggle. It deliberately does not — the
-  // same thing that keeps the confidence card open.
-  check('the summary card never collapses, the same as the confidence card',
+  // The card section is a .section-card like the rest and now collapses like
+  // one. It used to be the exception — no .card-head-toggle at all, so
+  // collapseSections skipped it — which achieved "always open" by taking away
+  // the control rather than by setting a state. It has the head now and is
+  // reopened straight after the collapse, so it still *opens* open. The
+  // expand/collapse behaviour itself is exercised further down this file.
+  check('the summary card starts expanded, and can be shut like any other section',
     await page.evaluate(() => {
       const card = document.querySelector('#sample-card-section');
       return !card.classList.contains('is-collapsed') &&
-        card.querySelectorAll('.card-head-toggle').length === 0;
+        card.querySelectorAll('.card-head-toggle').length === 1;
     }));
   // Full screen, download and share all act on "your" card. There is no
   // reader's card here to act on, so the sample shows the frame alone.
@@ -2749,8 +2818,26 @@ try {
   // by accident. docs/sample.json is the one fixture written as a real report.
   const sampleBlurb = String(sampleFixture.cardHighlights || '');
   const sampleFirst = sampleBlurb.split(/(?<=[.!?])\s+/)[0] || '';
-  check('the sample card blurb opens on why the character fits, before the personality read',
-    /duty|carry it without announcing/i.test(sampleFirst), sampleFirst);
+  //
+  // This matched /duty|carry it without announcing/ until the sample was
+  // rewritten from Captain America to Mulan, at which point it failed against
+  // copy that was doing exactly what it asks for. Wording is not the property;
+  // it was only ever a stand-in for one. Two things are actually being claimed,
+  // and both survive a rewrite:
+  //
+  //   · the sentence condenses essence.why, so it should share that paragraph's
+  //     distinctive words rather than being written independently of it;
+  //   · it comes *before* the personality read, so it should not already be
+  //     talking in trait vocabulary.
+  const distinctive = text => new Set(String(text).toLowerCase()
+    .split(/[^a-z]+/).filter(word => word.length >= 5));
+  const whyWords = distinctive(sampleFixture.essence.why);
+  const shared = [...distinctive(sampleFirst)].filter(word => whyWords.has(word));
+  check('the sample card blurb opens by condensing why the character fits',
+    shared.length >= 3, sampleFirst + ' || shared: ' + JSON.stringify(shared));
+  check('and gets there before the personality read, not in trait vocabulary',
+    !/conscientious|agreeab|extravers|introvers|openness|neurotic|\b[EI][NS][TF][JP]\b/i
+      .test(sampleFirst), sampleFirst);
   // ...without wasting that sentence restating the name printed directly above
   // it, which the schema explicitly forbids.
   check('and does not open by restating the character name the card already shows',

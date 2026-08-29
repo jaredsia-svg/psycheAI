@@ -868,8 +868,19 @@
        "your" card, and there is no reader's card here to act on. -->
   <div class="sample-dialog-body" id="sample-body">
     <section class="card section-card sample-card-section" id="sample-card-section" hidden>
-      <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
-        <div><h2 id="sample-card-title"></h2></div></div>
+      <!-- The same head shape sectionHead() builds for every other section,
+           written out by hand because this one is markup rather than something
+           app.js renders. It has to match exactly: the delegated toggle
+           handler finds sections by `.card-head-toggle`, so a head that only
+           looks like the others would render a chevron that does nothing.
+           #sample-card-title moves onto the text span rather than the <h2>,
+           because setting textContent on the heading would wipe the button
+           inside it. -->
+      <div class="card-head card-head-toggle"><span class="card-icon" aria-hidden="true">🪪</span>
+        <div><h2><button class="card-toggle" type="button" aria-expanded="true">
+          <span class="card-toggle-text" id="sample-card-title"></span>
+          <span class="card-chevron" aria-hidden="true"></span>
+        </button></h2></div></div>
       <div class="psyche-card-frame"><div class="psyche-card" id="sample-psyche-card"></div></div>
     </section>
     <div id="sample-sections"></div>
