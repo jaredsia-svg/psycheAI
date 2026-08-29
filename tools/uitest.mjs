@@ -1128,57 +1128,47 @@ try {
   check('and the cross closes it too',
     !(await page.evaluate(() => document.querySelector('#guide-dialog').open)));
 
-  // The guide's own hand-off: reopen it and use its closing "Start here"
-  // button, which should do the whole rest of the reader's job — close the
-  // dialog and land them on the upload box, rather than leave them to close
-  // it themselves and go hunting for the dropzone on a long page.
+  // The guide's own hand-off. This used to close the dialog and *scroll* to
+  // the upload card, and the check below it was forty lines of scroll-settling
+  // machinery — wait for the page to move, then for it to hold still for six
+  // consecutive polls, because the history restoration lands after the smooth
+  // scroll finishes easing and a shorter stillness window passed against the
+  // very bug it existed for.
+  //
+  // All of that is gone with the behaviour it measured. The button no longer
+  // scrolls anywhere: it opens the popout directly, because landing a reader
+  // who has just finished the walkthrough in front of a button they still have
+  // to find and press was the weaker half of the hand-off. What is left to
+  // check is simpler and stricter — the guide closes, and the thing it hands
+  // off to is actually open.
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.click('#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
-  check('the guide ends with a Start here button',
-    await page.locator('#guide-start').isVisible());
+  check('the guide ends with a Load your data button, the same one the page offers',
+    (await page.locator('#guide-start').isVisible()) &&
+    (await page.locator('#guide-start').innerText()).trim() ===
+      (await page.locator('#open-sources').innerText()).trim(),
+    await page.locator('#guide-start').innerText());
   await page.click('#guide-start');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
-  // Waits for the scroll to move and *then* stop, rather than for a fixed
-  // number of milliseconds. Two subtleties, both learned the hard way:
-  //
-  // A flat wait read the position mid-glide on a slow run and failed a card
-  // that was still travelling to exactly where it belonged. But simply
-  // polling for two equal readings is worse: the scroll does not begin until
-  // two frames after the history pop lands, so two equal readings are
-  // satisfied by the quiet period *before* it starts, and the check then
-  // measured the unscrolled page every time. Requiring movement first, then
-  // stability, is what distinguishes "has not started" from "has finished".
-  //
-  // Deliberately not waiting for the card to reach its final position: that
-  // would be waiting for the very thing the check then asserts, which always
-  // passes or hangs. This waits only for motion to stop, and the assertion
-  // below decides whether it stopped anywhere useful. The timeout is short and
-  // swallowed for the same reason — a page that never scrolls should fail the
-  // check with a real number in the message, not throw out of the run.
-  await page.waitForFunction(() => {
-    const y = Math.round(document.querySelector('.upload-card').getBoundingClientRect().top);
-    const s = window.__cardSettle || (window.__cardSettle = { last: null, moved: false, still: 0 });
-    if (s.last === null) { s.last = y; return false; }
-    if (y !== s.last) { s.moved = true; s.still = 0; s.last = y; return false; }
-    s.still += 1;
-    // Six still polls, not two. The history restoration lands *after* the
-    // smooth scroll has finished easing, so a short stillness window is
-    // satisfied at the end of the glide and reads a position the browser is
-    // about to yank back — which is exactly the bug this check exists for, and
-    // it passed against it. Six polls is 600ms of genuine quiet, long enough
-    // for the pop to arrive and reset the counter if it is going to.
-    return s.moved && s.still >= 6;
-  }, { timeout: 6000, polling: 100 }).catch(() => {});
-  check('Start here closes the guide and lands on the upload box',
+  // The popout has to survive the guide's history entry unwinding, which is
+  // what the two-frame wait in app.js is for: opening it before that pop lands
+  // gets it closed again as the entry unwinds. A plain assertion would race
+  // that, so this waits — and a failure here means the hand-off dropped the
+  // reader on the page with nothing open, which is the regression worth
+  // catching.
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+  check('and pressing it hands straight over to the data popout, guide closed behind it',
     !(await page.evaluate(() => document.querySelector('#guide-dialog').open)) &&
-    await page.evaluate(() => {
-      const nav = document.querySelector('.nav').getBoundingClientRect();
-      const card = document.querySelector('.upload-card').getBoundingClientRect();
-      return card.top >= nav.bottom - 4 && card.top < window.innerHeight / 2;
-    }),
-    await page.evaluate(() =>
-      'upload-card at ' + Math.round(document.querySelector('.upload-card').getBoundingClientRect().top)));
+    (await page.locator('#datasources-dialog').isVisible()));
+  check('the popout it opens is the first-run one, not the report page\'s',
+    (await page.locator('#datasources-dialog-title').innerText()) === 'Add your data',
+    await page.locator('#datasources-dialog-title').innerText());
+  // Put the page back as the rest of this file expects to find it: a modal
+  // left open here intercepts every click that follows, which is exactly how
+  // this block announced itself when the behaviour first changed.
+  await page.click('#datasources-back');
+  await page.waitForSelector('#datasources-dialog', { state: 'hidden', timeout: 15000 });
   await page.evaluate(() => window.scrollTo(0, 0));
 
   check('the underline is not the one links use, and every link here is a real destination',
