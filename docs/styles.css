@@ -729,9 +729,16 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 /* "(required)" / "(recommended)" beside a source's name. Inside the <strong>
    rather than after it so it wraps with the name on a narrow screen, but set
-   back to normal weight and the muted colour so it reads as a note about the
-   row rather than as part of what the row is called. */
-.mode-tag { font-weight: 500; font-size: .88em; color: var(--muted); }
+   back to normal weight and the soft ink so it reads as a note about the row
+   rather than as part of what the row is called.
+
+   var(--ink-soft), not var(--muted): the latter is what the *class* is called
+   and there is no custom property of that name. An undefined var() is invalid
+   at computed-value time, so the declaration was dropped and the colour simply
+   inherited — the tag rendered in full-strength ink, indistinguishable from
+   the name it was meant to sit behind, and nothing about the page looked
+   broken. Caught by the check that compares the two computed colours. */
+.mode-tag { font-weight: 500; font-size: .88em; color: var(--ink-soft); }
 
 .upload-actions { margin: 1.1rem 0 .2rem; }
 /* The status line under it is centred to match, or it hangs off one end of a
