@@ -357,6 +357,34 @@ try {
   // Instagram and Google are the two sources this entry point offers, and the
   // download instructions now follow the rows — a reader who cannot load a
   // Facebook export from here is not walked through making one.
+  // Which source is optional is the question a first-time reader actually has
+  // in front of this popout, and until now nothing on it answered: three rows
+  // that look alike read as three things to go and fetch, which is a reason to
+  // close the tab. Checked on the rendered text rather than the markup so a
+  // tag that is present but styled out of existence still fails.
+  const rowLabel = async source => (await page.locator(
+    '#datasources-dialog [data-datasource="' + source + '"] strong').innerText()).replace(/\s+/g, ' ').trim();
+  check('the Instagram row says it is required',
+    (await rowLabel('instagram')) === 'Instagram (required)', await rowLabel('instagram'));
+  check('and the Google row says it is recommended, not required',
+    (await rowLabel('google')) === 'Google Takeout (recommended)', await rowLabel('google'));
+  check('the qualifier is set back from the name rather than reading as part of it',
+    await page.evaluate(() => {
+      const row = document.querySelector('#datasources-dialog [data-datasource="instagram"]');
+      const name = row.querySelector('strong');
+      const tag = row.querySelector('.mode-tag');
+      if (!tag) return false;
+      const nameStyle = getComputedStyle(name);
+      const tagStyle = getComputedStyle(tag);
+      return Number(tagStyle.fontWeight) < Number(nameStyle.fontWeight) &&
+        tagStyle.color !== nameStyle.color;
+    }));
+  // The blurb no longer opens by telling the reader to load their data — the
+  // rows below it say that by existing. What it must still carry is the part
+  // they could not have guessed, which the check above this one covers.
+  check('the blurb does not spend its first line instructing the obvious',
+    !/^load your data below/i.test(askBlurb), askBlurb);
+
   check('the first-run popout offers Instagram and Google, not Facebook',
     (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2 &&
     (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === false);

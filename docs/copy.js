@@ -615,16 +615,21 @@
       'Nothing is sent anywhere until you review it on the next screen.',
     // The same popout opened from the welcome page, where there is nothing to
     // change yet — "Add or change" describes a report that does not exist and
-    // offers to replace data nobody has loaded. Facebook is left out of that
-    // entry point entirely (see askDataSources' `sources`), so the blurb names
-    // the two it does show rather than "a source".
+    // offers to replace data nobody has loaded.
     dataSourcesFirstTitle: 'Add your data',
     // This is the welcome card's old sub-line, moved. It was making its promise
     // one screen too early — above a button, about a review step two screens
     // away — where here it sits immediately before the thing it describes, at
     // the moment somebody is deciding whether to hand over their history.
-    dataSourcesFirstBlurb: 'Load your data below. Before any data is sent for analysis, you will ' +
-      'be able to review exactly what it contains and untick anything you are not comfortable sharing.',
+    //
+    // It opened "Load your data below." and no longer does. The rows are
+    // directly beneath it and each says what it wants, and one of them now
+    // says whether it is required — an instruction to do the obvious thing
+    // was spending the reader's first line of attention on the one part of
+    // this screen that needs no explaining. What is left is the part they
+    // could not have guessed.
+    dataSourcesFirstBlurb: 'Before any data is sent for analysis, you will be able to review ' +
+      'exactly what it contains and untick anything you are not comfortable sharing.',
     // The Instagram row's own line on that same popout. The markup's version
     // ends "to replace it", which is right on the report page and describes
     // replacing something that does not exist yet here.

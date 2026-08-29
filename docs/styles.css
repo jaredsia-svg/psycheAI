@@ -727,6 +727,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   border-color: var(--accent); background: var(--accent-soft);
   transition: border-color .15s ease, background .15s ease;
 }
+/* "(required)" / "(recommended)" beside a source's name. Inside the <strong>
+   rather than after it so it wraps with the name on a narrow screen, but set
+   back to normal weight and the muted colour so it reads as a note about the
+   row rather than as part of what the row is called. */
+.mode-tag { font-weight: 500; font-size: .88em; color: var(--muted); }
+
 .upload-actions { margin: 1.1rem 0 .2rem; }
 /* The status line under it is centred to match, or it hangs off one end of a
    button that now spans the whole card. */
