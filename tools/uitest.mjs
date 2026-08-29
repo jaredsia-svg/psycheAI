@@ -583,17 +583,30 @@ try {
   // scrolling or by uploading. The lede is back and has to keep naming the
   // frameworks — the price and the running time were in it briefly and came
   // out again, so they are not asserted here.
+  //
+  // Four frameworks, not six. Enneagram and attachment style are still in the
+  // report and are still named on the page further down; they came out of this
+  // line because a lede that lists everything reads as a specification rather
+  // than a claim. "and other insights" is doing that work now, so the check
+  // asserts the four that are named rather than every framework that exists.
   check('the hero lede names what actually comes back',
     await page.evaluate(() => {
       const lede = document.querySelector('#view-welcome .hero .lede');
       if (!lede) return false;
       const said = lede.textContent;
-      return /Big Five/.test(said) && /MBTI/.test(said) && /Enneagram/.test(said) &&
-        /attachment/i.test(said) && /love languages/i.test(said);
+      return /MBTI/.test(said) && /Big Five/.test(said) &&
+        /love languages/i.test(said) && /career strengths/i.test(said);
     }),
     (await page.locator('#view-welcome .hero .lede').count())
       ? (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim()
       : 'no lede');
+  // The claim the whole product rests on, and the one thing no quiz-based
+  // competitor can make: nothing was asked, the report comes off behaviour
+  // that already happened. Pinned because it is the sentence most likely to be
+  // softened by accident in a later rewrite.
+  check('and says the report needs no quiz, which is the actual differentiator',
+    /without any quiz/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
+    (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim());
   // The privacy badge moved out of the hero and down to the upload card, then
   // further down to sit under the thing that asks for the file — once the two
   // switches that used to sit between them moved into the review dialog, that
