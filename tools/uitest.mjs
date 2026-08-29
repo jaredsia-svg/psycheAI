@@ -337,10 +337,35 @@ try {
   check('there is no switch left promising DMs or photos on this page without review',
     (await page.locator('#include-dms').count()) === 0 &&
     (await page.locator('#include-images').count()) === 0);
-  check('the upload card explains that a review comes before anything is sent',
-    /review/i.test(await page.locator('.upload-card .card-sub').innerText()) &&
-    /before any data is sent/i.test(await page.locator('.upload-card .card-sub').innerText()),
-    await page.locator('.upload-card .card-sub').innerText().catch(() => 'missing'));
+  // That promise used to be made on this card and is now made one screen
+  // later, in the popout the button opens — immediately before the step it
+  // describes, rather than above a button while the review is two screens
+  // away. So this checks both halves: the card no longer says it, and the
+  // popout does. Checking only the second would pass if the line had been
+  // duplicated rather than moved.
+  check('the welcome card no longer makes the promise a screen too early',
+    (await page.locator('.upload-card .card-sub').count()) === 0);
+  await page.click('#open-sources');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+  const askBlurb = await page.locator('#datasources-dialog-blurb').innerText();
+  check('the popout explains that a review comes before anything is sent',
+    /review/i.test(askBlurb) && /before any data is sent/i.test(askBlurb) &&
+    /untick/i.test(askBlurb), askBlurb);
+  check('and it is titled for a reader who has nothing to change yet',
+    (await page.locator('#datasources-dialog-title').innerText()) === 'Add your data',
+    await page.locator('#datasources-dialog-title').innerText());
+  // Instagram and Google are the two sources this entry point offers, and the
+  // download instructions now follow the rows — a reader who cannot load a
+  // Facebook export from here is not walked through making one.
+  check('the first-run popout offers Instagram and Google, not Facebook',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2 &&
+    (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === false);
+  check('and its download instructions leave Facebook out to match',
+    (await page.locator('#datasources-dialog [data-help="facebook"]').isVisible()) === false);
+  check('the instructions offer the illustrated walkthrough at their foot',
+    await page.locator('#datasources-guide-open').count() === 1);
+  await page.click('#datasources-back');
+  await page.waitForSelector('#datasources-dialog', { state: 'hidden', timeout: 15000 });
 
   // The optional-sources card. Collapsed by default, because it is a page of
   // instructions for a step most readers will skip — but read with
