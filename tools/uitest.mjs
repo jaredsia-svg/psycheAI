@@ -415,47 +415,69 @@ try {
   // summary is a real control rather than a styled div — clicking it is what
   // a reader and a keyboard both do.
   await page.click('.optional-card > summary');
-  // ---- a dialog opens with the page behind it at the top ----
+  // ---- a popout opens at its own top, every time ----
   //
-  // A modal <dialog> is positioned against the viewport, so whatever the
-  // reader had scrolled to sits behind it — and closing it dropped them into
-  // the middle of a long page. Opening at the top makes that predictable.
+  // Both dialogs reset their scrolling body on open, and both resets were
+  // silently doing nothing: they ran *before* showModal, and a closed <dialog>
+  // is display:none — assigning scrollTop to an element that is not being
+  // rendered is a no-op. So each popout reopened wherever the reader had left
+  // it. Anyone who had read the guide to the end reopened on step 4 instead of
+  // "Open Download your information"; anyone who had scrolled the sample
+  // reopened halfway down somebody else's report instead of on the summary
+  // card.
   //
-  // Only the opening half is asserted. The closing half — that the reader is
-  // put back where they were — is real behaviour and is what the lift-after-
-  // pushState ordering in app.js exists to preserve, but it is the *browser's*
-  // scroll restoration doing it, off the history entry, and asserting a pixel
-  // value for it here proved flaky rather than informative: this suite expands
-  // and collapses sections around these checks, so the offset a restored entry
-  // lands on is not the offset it was recorded at, and the check failed
-  // against a page that was behaving correctly. A check that cries wolf is
-  // worse than no check, because it teaches everyone to skip the failure.
-  //
-  // What guards the ordering instead is the comment on liftPageBehindDialog,
-  // and the fact that getting it backwards is visible immediately by hand:
-  // open the guide from halfway down the page and close it.
-  //
-  // The position is read after the button is scrolled into view, not before.
-  // Playwright scrolls an element into view to click it, so setting the page
-  // to 900 and then clicking a button in the hero moves it straight back to 0
-  // — the "before" would be a position no reader was ever in. A reader can
-  // only click a button they can already see.
-  for (const opener of ['#guide-open', '#insight-sample']) {
-    const dialogId = opener === '#guide-open' ? '#guide-dialog' : '#sample-dialog';
-    await page.locator(opener).scrollIntoViewIfNeeded();
+  // Which is why this scrolls the popout down, closes it, and opens it again
+  // rather than just checking a fresh one: a first open is at the top whether
+  // the reset works or not, so only the second open can tell the difference.
+  // The check on the first item being in view is the one that survives a
+  // reordering of the content — scrollTop of 0 is only the right answer while
+  // the thing that belongs at the top is still first.
+  for (const [opener, dialogId, bodySel, firstSel, wanted] of [
+    ['#guide-open', '#guide-dialog', '.guide-body', '.guide-step h3', /Open\s*Download your information/i],
+    ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-card-section', /Summary card/i],
+  ]) {
+    const reopen = async () => {
+      await page.locator(opener).scrollIntoViewIfNeeded();
+      await page.click(opener);
+      await page.waitForSelector(dialogId + '[open]', { timeout: 20000 });
+      await page.waitForTimeout(250);
+    };
+    const shut = async () => {
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(id => !document.querySelector(id).open, dialogId, { timeout: 15000 });
+      await page.waitForTimeout(200);
+    };
+
+    await reopen();
+    // Far enough down to be past the first screen of either popout.
+    await page.evaluate(sel => { document.querySelector(sel).scrollTop = 800; }, dialogId + ' ' + bodySel);
     await page.waitForTimeout(150);
-    const before = await page.evaluate(() => Math.round(window.scrollY));
-    await page.click(opener);
-    await page.waitForSelector(dialogId + '[open]', { timeout: 20000 });
-    check(opener + ' opens with the page behind it scrolled to the top',
-      (await page.evaluate(() => Math.round(window.scrollY))) === 0,
-      'opened from ' + before + ', page now at ' +
-        (await page.evaluate(() => Math.round(window.scrollY))));
-    await page.keyboard.press('Escape');
-    await page.waitForFunction(id => !document.querySelector(id).open,
-      dialogId, { timeout: 15000 });
+    const left = await page.evaluate(sel =>
+      Math.round(document.querySelector(sel).scrollTop), dialogId + ' ' + bodySel);
+    check(opener + ' can be scrolled down, so reopening at the top means something',
+      left > 200, String(left));
+    await shut();
+    await reopen();
+
+    check(opener + ' reopens at the top of the popout, not where it was left',
+      (await page.evaluate(sel =>
+        Math.round(document.querySelector(sel).scrollTop), dialogId + ' ' + bodySel)) === 0,
+      'left at ' + left + ', reopened at ' + (await page.evaluate(sel =>
+        Math.round(document.querySelector(sel).scrollTop), dialogId + ' ' + bodySel)));
+    const atTop = await page.evaluate(sels => {
+      const [bodySel, firstSel] = sels;
+      const body = document.querySelector(bodySel).getBoundingClientRect();
+      const first = document.querySelector(firstSel);
+      const rect = first.getBoundingClientRect();
+      return {
+        text: (first.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60),
+        inView: rect.top >= body.top - 8 && rect.top < body.top + 140,
+      };
+    }, [dialogId + ' ' + bodySel, dialogId + ' ' + firstSel]);
+    check(opener + ' opens on the thing it is supposed to open on',
+      atTop.inView && wanted.test(atTop.text), JSON.stringify(atTop));
+    await shut();
   }
-  await page.evaluate(() => window.scrollTo(0, 0));
 
   check('clicking the summary opens it',
     await page.evaluate(() => document.querySelector('.optional-card').open) &&
