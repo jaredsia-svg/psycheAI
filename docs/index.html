@@ -233,17 +233,12 @@
 
   <div class="card upload-card">
     <h2>Start here</h2>
-    <!-- The two switches that used to live here — direct messages, a sample
-         of your photos — moved into the pre-send review dialog, where a
-         reader chooses with the real digest already in front of them rather
-         than blind, before the archive has even been opened. This line is
-         what tells them that choice is still coming, so removing the
-         switches does not read as removing the choice. The photo switch has
-         since gone entirely, along with the photographs: there is nothing
-         left to choose about them because none are sent. -->
-    <p class="card-sub">Load your data below. Before any data is sent for analysis, you
-      will be able to review exactly what it contains and untick anything you are not comfortable
-      sharing.</p>
+    <!-- The line that used to sit here — "you will be able to review exactly
+         what it contains" — moved into the Add your data popout, which is
+         where the reader is actually choosing to hand anything over. It said
+         "load your data below" while standing above a button that opens a
+         dialog, and a promise about a review step lands better one screen
+         later, immediately before the step it is promising. -->
     <div id="server-status" class="alert" hidden></div>
 
     <!-- A button opening the same "Add or change your data" popout the report
@@ -263,7 +258,7 @@
          genuinely faster than a picker. The card is the drop target now, so
          the box that used to advertise it is not needed. -->
     <div class="upload-actions">
-      <button class="btn btn-lg" id="open-sources" type="button">Load your data</button>
+      <button class="btn btn-lg btn-block" id="open-sources" type="button">Load your data</button>
       <p class="upload-loaded muted" id="upload-loaded" hidden></p>
     </div>
     <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
@@ -849,7 +844,11 @@
     </ol>
 
     <div class="guide-cta">
-      <button class="btn" id="guide-start" type="button">Start here</button>
+      <!-- The same button as the welcome card's, doing the same thing: this
+           used to say "Start here" and scroll to the upload card, which left
+           the reader looking at a button they then had to press themselves.
+           It opens the popout directly now. -->
+      <button class="btn btn-lg btn-block" id="guide-start" type="button">Load your data</button>
     </div>
   </div>
 </dialog>
@@ -1056,15 +1055,27 @@
             as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
             usually within minutes.</li>
       </ol>
-      <h3>Facebook</h3>
-      <ol>
-        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
-            <span class="ui-label">Accounts Centre</span> →
-            <span class="ui-label">Your information and permissions</span>.</li>
-        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
-        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
-            <span class="ui-label">JSON</span>.</li>
-      </ol>
+      <!-- Facebook's steps live in this same block but are hidden unless the
+           Facebook row is on offer — see askDataSources, which already hides
+           the row itself per entry point. Removing them outright would leave
+           the report page offering a source with no instructions for it. -->
+      <div class="help-facebook" data-help="facebook">
+        <h3>Facebook</h3>
+        <ol>
+          <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+              <span class="ui-label">Accounts Centre</span> →
+              <span class="ui-label">Your information and permissions</span>.</li>
+          <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+          <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+              <span class="ui-label">JSON</span>.</li>
+        </ol>
+      </div>
+      <!-- Written steps are enough for somebody who has done this before; the
+           reader who is lost wants to see the screens. Same walkthrough the
+           welcome page's "See illustration" opens, reachable from inside the
+           popout so nobody has to close it and go hunting. -->
+      <p class="help-illustrated"><a href="#" id="datasources-guide-open">See the illustrated
+        walkthrough</a> — every screen, with each tap ringed on it.</p>
     </div>
   </details>
 

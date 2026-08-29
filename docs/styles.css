@@ -586,6 +586,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    could not otherwise shorten. */
 .guide-cta { margin: 1.6rem 0 0; padding-top: 1rem; border-top: 1px solid var(--line); }
 
+/* Sits under the last set of steps inside the download-instructions
+   disclosure, separated from them so it reads as a way out of reading rather
+   than a fourth instruction. */
+.help-illustrated {
+  margin: 1.1rem 0 0; padding-top: .9rem; border-top: 1px solid var(--line);
+  font-size: .92rem; color: var(--muted);
+}
+.help-illustrated a { color: var(--accent); font-weight: 600; }
+
 .sample-dialog-body {
   flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain;
   padding: 1rem clamp(1rem, 3vw, 1.5rem) 1.2rem;
@@ -675,6 +684,13 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   .btn { color: var(--bg); }
 }
 .btn-lg { padding: .78rem 1.5rem; font-size: 1.02rem; }
+/* The one button a first-time reader has to find. It sat at its text width in
+   the middle of a card and read as one option among the paragraphs around it;
+   full width it reads as the thing to press, and on a phone it spans the
+   screen the way an app's primary action does. Kept full width at every size
+   rather than only on mobile — the card is narrow enough on a laptop that a
+   button spanning it still looks deliberate rather than stretched. */
+.btn-block { display: block; width: 100%; text-align: center; }
 .btn-ghost { background: transparent; color: var(--accent); border-color: var(--line); }
 .btn-ghost:hover { background: var(--accent-soft); }
 .btn-ghost.danger { color: var(--danger); }
@@ -712,6 +728,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   transition: border-color .15s ease, background .15s ease;
 }
 .upload-actions { margin: 1.1rem 0 .2rem; }
+/* The status line under it is centred to match, or it hangs off one end of a
+   button that now spans the whole card. */
+.upload-actions .upload-loaded { text-align: center; }
 /* Only present once something is loaded, which is when it has anything to
    say. Sits under the button rather than beside it so the button keeps the
    whole line at every width. */

@@ -619,8 +619,12 @@
     // entry point entirely (see askDataSources' `sources`), so the blurb names
     // the two it does show rather than "a source".
     dataSourcesFirstTitle: 'Add your data',
-    dataSourcesFirstBlurb: 'Load your Instagram export, and your Google Takeout too if you have it. ' +
-      'Nothing is sent anywhere until you review it on the next screen.',
+    // This is the welcome card's old sub-line, moved. It was making its promise
+    // one screen too early — above a button, about a review step two screens
+    // away — where here it sits immediately before the thing it describes, at
+    // the moment somebody is deciding whether to hand over their history.
+    dataSourcesFirstBlurb: 'Load your data below. Before any data is sent for analysis, you will ' +
+      'be able to review exactly what it contains and untick anything you are not comfortable sharing.',
     // The Instagram row's own line on that same popout. The markup's version
     // ends "to replace it", which is right on the report page and describes
     // replacing something that does not exist yet here.

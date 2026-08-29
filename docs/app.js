@@ -1298,32 +1298,24 @@
 
   $('#guide-open').addEventListener('click', showGuide);
   $('#guide-close').addEventListener('click', closeGuide);
-  // The guide's own way of saying "you're done reading, go do it" — closes
-  // the dialog and lands the reader on the upload box rather than leaving
-  // them to close it and scroll the rest of the page themselves.
+  // The guide's own call to action, and the welcome card's, are now the same
+  // action rather than one leading to the other. It used to scroll to the
+  // upload card, which left a reader who had just finished the walkthrough
+  // looking at a button they still had to find and press; it opens the popout
+  // directly instead.
   //
-  // The order here is load-bearing and was wrong at first. Closing the guide
-  // gives back the history entry it pushed, and the browser restores the
-  // scroll position that entry was created at — which is wherever the reader
-  // was standing when they opened the guide, and which lands *after* a scroll
-  // started before it. Scrolling first therefore raced the restoration and
-  // usually lost, dropping the reader back where they started with no sign
-  // anything had been tried. So the scroll waits for the pop to land, and only
-  // then moves the page.
+  // The frame juggling below is inherited from that scroll and still earns its
+  // place: closeGuide() pops the guide's history entry, and opening a second
+  // dialog before that has settled races the popstate handler — which would
+  // close the popout again as it unwinds the entry the guide left behind.
   $('#guide-start').addEventListener('click', () => {
-    const land = () => $('.upload-card')
-      .scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
     if (guideHistoryEntry) {
-      // Two frames rather than one: the first lets the popstate handler finish,
-      // the second lets the browser's own scroll restoration paint before this
-      // overrides it. `once` so a later Back press cannot re-trigger a scroll
-      // the reader did not ask for.
       window.addEventListener('popstate',
-        () => requestAnimationFrame(() => requestAnimationFrame(land)), { once: true });
+        () => requestAnimationFrame(() => requestAnimationFrame(startFromSources)), { once: true });
       closeGuide();
     } else {
       closeGuide();
-      land();
+      startFromSources();
     }
   });
 
@@ -1722,6 +1714,13 @@
   // faster than any picker. Nothing advertises it any more, which is the
   // trade — an accelerator for the people who already reach for it.
   $('#open-sources').addEventListener('click', startFromSources);
+  // Opens the walkthrough over the popout rather than instead of it: the
+  // reader came here to load a file and is stepping aside to see how, so the
+  // popout is left open underneath and is still there when the guide closes.
+  $('#datasources-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
   dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('is-over'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-over'));
   dropzone.addEventListener('drop', event => {
@@ -2489,6 +2488,15 @@
     // wants it, one screen later. Hidden rather than removed from the markup:
     // one dialog, two audiences.
     const offered = settings.sources || ['instagram', 'google', 'facebook'];
+    // The download instructions follow the rows. A reader on the welcome page
+    // is offered Instagram and Google, so being walked through a Facebook
+    // export they cannot load from here is noise; a reader on the report page
+    // is offered Facebook and would otherwise get a row with no instructions
+    // behind it. Hidden rather than deleted, for the same reason the row is:
+    // one dialog, two audiences.
+    for (const help of dialog.querySelectorAll('[data-help]')) {
+      help.hidden = !offered.includes(help.dataset.help);
+    }
     // A row's own sub-line has the same problem the title does: "Load a new
     // Instagram export .zip file here to replace it" describes replacing
     // something, and on a first upload there is nothing to replace. Overridden
