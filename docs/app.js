@@ -1228,6 +1228,7 @@
       layoutSampleCard();
       history.pushState({ psycheaiSample: true }, '');
       sampleHistoryEntry = true;
+      liftPageBehindDialog();
     } catch (error) {
       flash('#upload-error', (error && error.message) || 'The sample could not be loaded.');
     } finally {
@@ -1271,6 +1272,46 @@
   let guideHistoryEntry = false;
   const guideDialog = () => $('#guide-dialog');
 
+  /**
+   * Puts the page itself at the top behind a dialog that is opening.
+   *
+   * A modal <dialog> is positioned against the viewport, so whatever the
+   * reader had scrolled to sits behind it — and on a phone, closing the dialog
+   * drops them back into the middle of a long page with no idea where they
+   * are. Opening at the top means the page behind is always in the same place.
+   *
+   * Called *after* history.pushState, never before, and that order is the
+   * whole trick. pushState records the scroll position at the moment it runs,
+   * and closing these dialogs goes back to that entry — so scrolling first
+   * would record the top and permanently lose the reader's place, while
+   * scrolling second records where they actually were and hands it back when
+   * the dialog closes. Top while it is open, where they were once it is not.
+   *
+   * Instant rather than smooth: a glide behind a dialog that is already up is
+   * motion nobody asked to watch, and on close it would be racing the
+   * browser's own scroll restoration.
+   */
+  /**
+   * Puts the page itself at the top behind a dialog that is opening.
+   *
+   * A modal <dialog> is positioned against the viewport, so whatever the
+   * reader had scrolled to sits behind it. Opening at the top means the page
+   * behind is always in the same place rather than wherever they happened to
+   * be, which on a phone is the difference between closing the dialog and
+   * knowing where you are and closing it into the middle of a long page.
+   *
+   * Called *after* history.pushState, never before, and that order is the
+   * whole trick. pushState records the scroll position at the moment it runs,
+   * and closing these dialogs goes back to that entry — so scrolling first
+   * would record the top and permanently lose the reader's place, while
+   * scrolling second records where they actually were and lets the browser
+   * hand it back on close. Top while it is open, where they were once it is
+   * not, with no bookkeeping of our own.
+   */
+  function liftPageBehindDialog() {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
   function showGuide() {
     const dialog = guideDialog();
     if (dialog.open) return;
@@ -1279,6 +1320,7 @@
     else dialog.setAttribute('open', '');
     history.pushState({ psycheaiGuide: true }, '');
     guideHistoryEntry = true;
+    liftPageBehindDialog();
   }
 
   function closeGuide() {

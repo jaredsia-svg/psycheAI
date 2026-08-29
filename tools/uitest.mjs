@@ -415,6 +415,48 @@ try {
   // summary is a real control rather than a styled div — clicking it is what
   // a reader and a keyboard both do.
   await page.click('.optional-card > summary');
+  // ---- a dialog opens with the page behind it at the top ----
+  //
+  // A modal <dialog> is positioned against the viewport, so whatever the
+  // reader had scrolled to sits behind it — and closing it dropped them into
+  // the middle of a long page. Opening at the top makes that predictable.
+  //
+  // Only the opening half is asserted. The closing half — that the reader is
+  // put back where they were — is real behaviour and is what the lift-after-
+  // pushState ordering in app.js exists to preserve, but it is the *browser's*
+  // scroll restoration doing it, off the history entry, and asserting a pixel
+  // value for it here proved flaky rather than informative: this suite expands
+  // and collapses sections around these checks, so the offset a restored entry
+  // lands on is not the offset it was recorded at, and the check failed
+  // against a page that was behaving correctly. A check that cries wolf is
+  // worse than no check, because it teaches everyone to skip the failure.
+  //
+  // What guards the ordering instead is the comment on liftPageBehindDialog,
+  // and the fact that getting it backwards is visible immediately by hand:
+  // open the guide from halfway down the page and close it.
+  //
+  // The position is read after the button is scrolled into view, not before.
+  // Playwright scrolls an element into view to click it, so setting the page
+  // to 900 and then clicking a button in the hero moves it straight back to 0
+  // — the "before" would be a position no reader was ever in. A reader can
+  // only click a button they can already see.
+  for (const opener of ['#guide-open', '#insight-sample']) {
+    const dialogId = opener === '#guide-open' ? '#guide-dialog' : '#sample-dialog';
+    await page.locator(opener).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(150);
+    const before = await page.evaluate(() => Math.round(window.scrollY));
+    await page.click(opener);
+    await page.waitForSelector(dialogId + '[open]', { timeout: 20000 });
+    check(opener + ' opens with the page behind it scrolled to the top',
+      (await page.evaluate(() => Math.round(window.scrollY))) === 0,
+      'opened from ' + before + ', page now at ' +
+        (await page.evaluate(() => Math.round(window.scrollY))));
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(id => !document.querySelector(id).open,
+      dialogId, { timeout: 15000 });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+
   check('clicking the summary opens it',
     await page.evaluate(() => document.querySelector('.optional-card').open) &&
     (await page.locator('.optional-card ol').first().isVisible()));
@@ -425,11 +467,19 @@ try {
   const optionalOpen = await page.locator('.optional-card').innerText();
   check('it tells the reader to deselect everything but My Activity',
     /Deselect all/.test(optionalOpen) && /My Activity/.test(optionalOpen));
-  check('it names the HTML default and the JSON fix, which Takeout hides two menus deep',
-    /Multiple formats/.test(optionalOpen) && /JSON/.test(optionalOpen) &&
-    /Takeout ships HTML by default/.test(optionalOpen) &&
-    /cannot be read at all/.test(optionalOpen),
+  // The instruction still has to name both menus and both formats — that is
+  // the load-bearing part — but it says it once now rather than stating the
+  // fix and then explaining the default in a second sentence. The check
+  // follows the meaning rather than the old phrasing: "JSON, not HTML" carries
+  // everything "Takeout ships HTML by default, and an HTML export cannot be
+  // read at all" did, in a line a reader will actually finish.
+  check('it names the JSON fix Takeout hides two menus deep, and warns off HTML',
+    /Multiple formats/.test(optionalOpen) && /JSON, not HTML/i.test(optionalOpen),
     optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
+  check('and no longer explains the rationale twice over',
+    !/ships HTML by default/i.test(optionalOpen) &&
+    !/skips deselecting/i.test(optionalOpen),
+    optionalOpen.replace(/\s+/g, ' ').slice(0, 260));
 
   // ---- the format warning, said in one line rather than drawn ----
   //
