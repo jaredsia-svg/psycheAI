@@ -3720,6 +3720,42 @@ check('the schema requires evidence on strengths and frictions',
     payments.REDEEM_WINDOW_MS === 30 * 24 * 60 * 60 * 1000, payments.REDEEM_WINDOW_MS);
 }
 
+// ---------- saying a thing once ----------
+//
+// The report's length problem was never that any section was too long — it
+// was that four sections spelled out the same behaviour in full, because each
+// is told to cite evidence and none knows what the others already used.
+{
+  const profile = prompts.PROFILE_SYSTEM;
+  const schema = JSON.stringify(prompts.PROFILE_SCHEMA);
+  check('the prompt tells sections to cite a shared finding once and refer back',
+    /point back at it/i.test(profile) && /refers back in a clause/i.test(profile));
+  // The guard against over-correcting. "Do not repeat" read alone becomes "do
+  // not say", and a report that withholds its evidence to stay short is worse
+  // than one that repeats it.
+  check('and says plainly that this is about repetition, not withholding',
+    /about repetition, never withholding/i.test(profile), 'guard missing');
+  check('and that a back-reference alone does not make a case',
+    /not a licence to assert/i.test(profile));
+
+  // E/I is settled by the Big Five extraversion score before MBTI is written,
+  // so arguing it again a page later is the same evidence twice for a
+  // conclusion that was never open.
+  check('E/I is told to read off the Big Five score rather than re-derive it',
+    /E\/I is the exception and is deliberately shorter/i.test(schema) &&
+    /never in doubt/i.test(schema));
+  check('and the other three axes keep the full paragraph',
+    /the ones the number does not settle/i.test(schema));
+
+  // inPractice sits under a paragraph that is already concrete about the
+  // reader's week, which is exactly what makes it easy to write as a second
+  // telling of it. Its job is the consequence, and it is the only
+  // forward-looking line on the axis.
+  check('inPractice is defined as the forward-looking line, not a restatement',
+    /costs or buys them going forward/i.test(schema) &&
+    /it was a restatement and has failed/i.test(schema));
+}
+
 // ---------- two things the prompt must never print ----------
 //
 // Both are rules about wording rather than about structure, which makes them

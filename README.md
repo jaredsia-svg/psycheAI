@@ -4040,7 +4040,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 762 checks: synthesises a real ZIP export and runs
+npm test           # 768 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

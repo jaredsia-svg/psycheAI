@@ -148,7 +148,7 @@
   // those two letters were the ones readers reported as wrong, and the cost
   // is ~8,750 characters off the digest ceiling — a trade of some sampled
   // captions for two of the four letters being right more often.
-  const FIXED_INPUT_TOKENS = 20800;
+  const FIXED_INPUT_TOKENS = 21400;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to
