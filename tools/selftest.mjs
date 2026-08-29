@@ -3720,6 +3720,50 @@ check('the schema requires evidence on strengths and frictions',
     payments.REDEEM_WINDOW_MS === 30 * 24 * 60 * 60 * 1000, payments.REDEEM_WINDOW_MS);
 }
 
+// ---------- two things the prompt must never print ----------
+//
+// Both are rules about wording rather than about structure, which makes them
+// exactly the kind that erodes: nothing breaks when they are dropped, the
+// report just gets a little worse in a way only a reader notices.
+{
+  const both = prompts.PROFILE_SYSTEM + '\n' + prompts.PREMIUM_SYSTEM +
+    '\n' + JSON.stringify(prompts.PROFILE_SCHEMA) + '\n' + JSON.stringify(prompts.PREMIUM_SCHEMA);
+
+  // Attachment style, described rather than diagnosed. "Fearful-avoidant" and
+  // "disorganised" are categories out of instruments a clinician administers
+  // to someone who agreed to be assessed; printed off an Instagram export they
+  // are severe, unearned, and read as a verdict on a person rather than an
+  // account of a habit.
+  check('the prompt forbids the clinical attachment labels by name',
+    /fearful-avoidant/i.test(both) && /disorganised/i.test(both) &&
+    /dismissive-avoidant/i.test(both) && /anxious-preoccupied/i.test(both),
+    'named: ' + ['fearful-avoidant', 'disorganised', 'dismissive-avoidant', 'anxious-preoccupied']
+      .filter(label => new RegExp(label, 'i').test(both)).join(', '));
+  // Named in order to be banned, not offered as examples — so each one has to
+  // sit near a prohibition rather than near an "e.g.".
+  check('and names them only to rule them out',
+    [/fearful-avoidant/i, /disorganised/i, /dismissive-avoidant/i, /anxious-preoccupied/i]
+      .every(label => {
+        const at = both.search(label);
+        const window = both.slice(Math.max(0, at - 260), at);
+        return /never|not |no "/i.test(window);
+      }));
+  check('and offers the behavioural phrasing in its place',
+    /anxious-leaning/i.test(both) && /leans secure/i.test(both));
+
+  // Names of private individuals, including inside quoted evidence. The rule
+  // existed already but only inside one section's guidance, which left the
+  // quoting case open: a caption reproduced verbatim names somebody without
+  // saying anything about them, so it slips past a rule phrased as "do not
+  // describe or infer".
+  const quotedNameRule = /quoted evidence/i.test(both);
+  check('the prompt bans private names across the whole report, not one section',
+    quotedNameRule && (both.match(/No private individual's name appears/gi) || []).length === 2,
+    'occurrences: ' + (both.match(/No private individual's name appears/gi) || []).length);
+  check('and says what to write instead of the name',
+    /Describe the relationship, never the person/i.test(both));
+}
+
 // ---------- results ----------
 
 console.log('\nPsycheAI self-test');
