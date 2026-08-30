@@ -479,6 +479,82 @@ try {
     await shut();
   }
 
+  // ---- the other half: a source that really is about to be dropped ----
+  //
+  // The reader who reported this came back to the site — a fresh page load —
+  // and replaced their Instagram export. state.signals is null on a page that
+  // has just loaded and is only ever set by reading an archive, so there was
+  // no in-memory Google to carry forward and it genuinely was about to be
+  // dropped. The note was right; the tick beside it was not.
+  //
+  // Its own page, so the load really is fresh: the shared page above has been
+  // reading archives for thousands of checks and has exactly the in-memory
+  // state this case is defined by not having.
+  {
+    const coldPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await coldPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await coldPage.waitForTimeout(300);
+      const sample = await coldPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      // A stored report and a stored digest carrying Google — and nothing in
+      // memory, which is what a returning reader looks like.
+      await coldPage.evaluate(report => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report, card: report.card, payload: 'x', model: 'mock',
+          createdAt: new Date().toISOString(),
+        }));
+        localStorage.setItem('psycheai_digest', JSON.stringify({
+          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
+          google: { activity: [] },
+        }));
+      }, sample);
+      await coldPage.reload();
+      await coldPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+
+      await coldPage.locator('#rerun-with-data').scrollIntoViewIfNeeded();
+      await coldPage.click('#rerun-with-data');
+      await coldPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      await coldPage.waitForTimeout(300);
+      const googleRow = '#datasources-dialog .mode-option[data-datasource="google"]';
+      check('a returning reader sees Google ticked from the stored digest',
+        await coldPage.evaluate(sel => Boolean(document.querySelector(sel + ' .mode-added')), googleRow));
+      check('and no warning yet, because Instagram has not been touched',
+        await coldPage.evaluate(() => document.querySelector('#datasources-instagram-note').hidden));
+
+      const [cold] = await Promise.all([
+        coldPage.waitForEvent('filechooser', { timeout: 15000 }),
+        coldPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await cold.setFiles({ name: 'fresh.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await coldPage.waitForFunction(() => !document.querySelector('#datasources-instagram-note').hidden,
+        { timeout: 30000 });
+
+      // The whole point. With nothing in memory, Google is genuinely dropped —
+      // so the note appears *and* the tick goes. Reading them together is what
+      // the reader does, and they used to contradict each other.
+      check('replacing Instagram warns that Google will be dropped',
+        await coldPage.evaluate(() => !document.querySelector('#datasources-instagram-note').hidden));
+      check('and the Google tick goes with it, rather than contradicting the warning',
+        await coldPage.evaluate(sel => !document.querySelector(sel + ' .mode-added'), googleRow),
+        'tick still shown beside a note saying the data is gone');
+
+      // And reloading Google puts both back the way they were: the tick
+      // returns because there is now a real fragment behind it, and the note
+      // goes because the thing it was warning about has been done.
+      const [again] = await Promise.all([
+        coldPage.waitForEvent('filechooser', { timeout: 15000 }),
+        coldPage.click(googleRow),
+      ]);
+      again.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
+      await coldPage.waitForFunction(sel => Boolean(document.querySelector(sel + ' .mode-added')),
+        googleRow, { timeout: 30000 });
+      check('reloading Google restores its tick and withdraws the warning',
+        await coldPage.evaluate(() => document.querySelector('#datasources-instagram-note').hidden));
+    } finally {
+      await coldPage.close();
+    }
+  }
+
   // ---- collecting a purchase whose result never arrived ----
   //
   // A payment clears, the analysis is asked for, and the phone is closed or
@@ -7061,13 +7137,31 @@ try {
   ]);
   await chooserIG.setFiles({ name: 'instagram2.zip', mimeType: 'application/zip', buffer: buildExportZip() });
   // Instagram starts ticked already, so unlike Google or Facebook its row
-  // gaining .is-added is not a usable "finished" signal here — the note
-  // becoming visible is the one thing that only happens once the read
-  // actually succeeds.
-  await page.waitForFunction(() => !document.querySelector('#datasources-instagram-note').hidden,
-    { timeout: 30000 });
-  check('replacing Instagram shows the note about Google/Facebook starting fresh',
-    await page.evaluate(() => !document.querySelector('#datasources-instagram-note').hidden));
+  // gaining .is-added is not a usable "finished" signal here. The note is no
+  // longer one either — see below — so this waits for the row to stop
+  // reporting progress, which only happens once the read has finished.
+  await page.waitForFunction(() => {
+    const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+    return row && !row.classList.contains('is-loading');
+  }, { timeout: 30000 });
+  await page.waitForTimeout(300);
+  // This asserted the opposite until the predicate behind it was corrected,
+  // and the old assertion was wrong in a way the suite could not see.
+  //
+  // Google was loaded earlier in this same session, so it is held in
+  // state.signals.supplements — and the check twenty lines below proves it
+  // really does reach the request the replacement sends. Telling this reader
+  // "your Google data starts fresh, load it again" was false, and it sat
+  // directly above a green tick correctly saying Google was loaded. Two
+  // elements, one screen, opposite claims, and the true one was the tick.
+  //
+  // Nothing failed when that was wrong, because no check asserted the note
+  // stayed hidden when the data was safe. That gap is what this closes.
+  check('replacing Instagram does not warn about Google that is safely held in memory',
+    await page.evaluate(() => document.querySelector('#datasources-instagram-note').hidden));
+  check('and Google keeps its tick, because it really is still loaded',
+    await page.evaluate(() => Boolean(document.querySelector(
+      '#datasources-dialog .mode-option[data-datasource="google"] .mode-added'))));
   await continueFromDataSources(page);
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
   check('a replaced Instagram export changes nothing about the review\'s shape',

@@ -2645,12 +2645,56 @@
       if (label !== undefined) text.textContent = label || '';
     };
 
-    // Ticked whenever a row has anything at all — the seeded `true` for an
-    // already-loaded source, or a freshly read result. Never disabled once
-    // ticked: that is the whole difference from askSupplement's markAdded.
+    /**
+     * Which sources are ticked, and whether the "reload them" note is showing.
+     *
+     * These two used to be worked out separately and could therefore disagree
+     * — and did. A row's value is either the seeded `true`, meaning "this was
+     * in the digest when the popout opened", or an object, meaning "read just
+     * now". Replacing Instagram invalidates every seeded `true`: the old
+     * Google fragment belongs to the archive that was just swapped out and
+     * cannot be carried onto the new one. The note said exactly that, while
+     * the tick — which only asked whether the value was truthy — went on
+     * saying Google was loaded. A reader saw "your Google data starts afresh,
+     * load it again" directly above a green tick claiming it was already
+     * there.
+     *
+     * So both now read one predicate — and it is not the obvious one. "Was
+     * this tick seeded rather than freshly read" is the wrong question, and
+     * getting it wrong is easy: what actually decides whether Google survives
+     * an Instagram replacement is whether an *in-memory* copy of it exists for
+     * the caller to merge forward. addDataAndRerun reads
+     * `state.signals.supplements` before reassigning `state.signals` to the
+     * fresh Instagram read, so a source held there rides across the
+     * replacement untouched; one that exists only in the stored digest does
+     * not, because a fresh export carries no supplements of its own.
+     *
+     * The two cases look identical at the seed — `Boolean(digest.google)`
+     * short-circuits to `true` before it ever looks at the in-memory read — so
+     * both had to be asked about separately. `state.signals` is null on a page
+     * that has just loaded and is only ever set by reading an archive, which
+     * is exactly the difference:
+     *
+     *   · Google loaded earlier *this session* → in memory → survives → stays
+     *     ticked, no note.
+     *   · Google only in the stored digest, page freshly loaded → nothing in
+     *     memory → genuinely dropped → tick goes, note appears.
+     *
+     * The second is what a reader who comes back to the site and replaces
+     * their export hits, and it is the case that produced the complaint.
+     */
+    const carriedInMemory = source =>
+      Boolean(state.signals && state.signals.supplements && state.signals.supplements[source]) ||
+      Boolean(pendingDataSourceReads[source]) ||
+      typeof added[source] === 'object';
+
+    const isStale = source =>
+      replacedInstagram && Boolean(added[source]) && !carriedInMemory(source);
+
     const markAdded = () => {
       for (const button of buttons) {
-        const isAdded = Boolean(added[button.dataset.datasource]);
+        const source = button.dataset.datasource;
+        const isAdded = Boolean(added[source]) && !isStale(source);
         button.classList.toggle('is-added', isAdded);
         const tick = button.querySelector('.mode-added');
         if (isAdded && !tick) {
@@ -2664,17 +2708,15 @@
           tick.remove();
         }
       }
-      // The warning only means something when a row is ticked *without* a
-      // real fragment behind it — `added[source] === true`, the seeded
-      // "already in state.digest" mark, rather than an object. An object
-      // there — whether just read, or carried forward from an earlier
-      // attempt via pendingDataSourceReads — is exactly the "reload it here"
-      // the note asks for, already done, so warning about it would be noise.
+      // The same predicate the ticks use, so the two can never again say
+      // different things about the same row. An object there — whether just
+      // read, or carried forward from an earlier attempt via
+      // pendingDataSourceReads — is exactly the "reload it here" the note
+      // asks for, already done, so warning about it would be noise.
       // Recomputed on every call rather than fixed the moment Instagram is
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
-      $('#datasources-instagram-note').hidden = !(replacedInstagram &&
-        (added.google === true || added.facebook === true));
+      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
     };
 
     return new Promise(resolve => {
