@@ -85,13 +85,18 @@
    */
   async function post(path, body) {
     const first = await postOnce(path, body);
-    if (!first.nonceRefused) return first.payload;
+    if (!first.nonceRefused && !first.truncated) return first.payload;
     const second = await postOnce(path, body);
-    if (!second.nonceRefused) return second.payload;
-    // Twice in a row is not a restart — a deploy does not land in the second
-    // it takes to fetch a fresh ticket and send it. Something else is wrong,
-    // so this stops rather than looping, and says what the server said.
-    throw new Error('This request is missing a valid one-time token. Reload the page and try again.');
+    if (!second.nonceRefused && !second.truncated) return second.payload;
+    // Twice in a row is not a restart and not a coincidence of timing, so this
+    // stops rather than looping. Which message depends on which failure came
+    // back second, because they need different things from the reader: one is
+    // a page to reload, the other is a connection to be on.
+    if (second.nonceRefused) {
+      throw new Error('This request is missing a valid one-time token. Reload the page and try again.');
+    }
+    throw new Error('The connection dropped before the analysis came back. ' +
+      'Try again — if it had already finished, you will get it straight away.');
   }
 
   async function postOnce(path, body) {
@@ -115,18 +120,55 @@
     }
     clearTimeout(timer);
 
-    let payload = null;
+    // Read as text and parsed here rather than with response.json(), so that
+    // a body which never finished arriving can be told apart from one that
+    // arrived and was rubbish. Those are different failures with different
+    // advice, and response.json() collapses them into one.
+    let raw = '';
     try {
-      payload = await response.json();
+      raw = await response.text();
     } catch (error) {
-      throw new Error('The server sent back something that was not JSON (HTTP ' + response.status + ').');
+      // The stream died while being read: same thing as the truncation below.
+      throw networkError(error);
     }
+
+    let payload = null;
+    let truncated = false;
+    try {
+      payload = JSON.parse(raw);
+    } catch (error) {
+      // Nothing but whitespace is the signature of a cut stream, not of a
+      // broken server.
+      //
+      // A generating request commits its 200 before the work starts and then
+      // writes a space every fifteen seconds to hold the connection open (see
+      // sendJsonWhileWorking). A reader whose phone screen turns off, whose
+      // radio drops, or whose carrier times out an idle-looking socket is left
+      // holding exactly that: a 200 and a run of spaces, with the report that
+      // was supposed to follow never sent. Parsing it produced "the server
+      // sent back something that was not JSON", which blamed the server for a
+      // connection that dropped — and did it at the one moment the reader is
+      // most anxious, having just paid.
+      //
+      // Anything with real content in it is a different animal: an HTML error
+      // page from a proxy, a truncated body with half a report in it. That
+      // keeps the original message, because it really does mean something
+      // served something wrong.
+      if (raw.trim() === '') truncated = true;
+      else throw new Error('The server sent back something that was not JSON (HTTP ' + response.status + ').');
+    }
+    // Handed back for post() to retry once, the same way a refused ticket is.
+    // The work is very probably finished and sitting in the server's result
+    // cache, so the retry usually returns it immediately and costs nothing —
+    // and where it does not, it costs exactly what the reader pressing "try
+    // again" would have cost anyway.
+    if (truncated) return { truncated: true, payload: null };
     if (!response.ok) {
       // Reported rather than thrown, so post() above can decide whether this
       // is the one refusal worth a second attempt. Every other status still
       // throws from here.
       if (response.status === 400 && payload && payload.nonceRequired) {
-        return { nonceRefused: true, payload: null };
+        return { nonceRefused: true, truncated: false, payload: null };
       }
       throw new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').');
     }
@@ -136,7 +178,7 @@
     // model runs — so a failure part-way through can only be reported in the
     // body. See sendJsonWhileWorking in server.js.
     if (payload && payload.error) throw new Error(payload.error);
-    return { nonceRefused: false, payload };
+    return { nonceRefused: false, truncated: false, payload };
   }
 
   /** Whether the server has credentials, and which model it will use. */

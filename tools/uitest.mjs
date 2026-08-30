@@ -555,6 +555,88 @@ try {
     }
   }
 
+  // ---- a response that never finished arriving ----
+  //
+  // A generating request commits its 200 before the work starts and writes a
+  // space every fifteen seconds to hold the connection open. A phone whose
+  // screen goes off, or whose carrier times out a socket that looks idle, is
+  // left holding exactly that — a 200 and a run of spaces, with no report
+  // behind it. Parsing that produced "the server sent back something that was
+  // not JSON (HTTP 200)", which blamed the server for a dropped connection,
+  // at the moment a reader who has just paid is least able to shrug it off.
+  //
+  // Both halves are checked here, because the fix is a distinction rather than
+  // a message: whitespace means truncation and is retried silently, anything
+  // with real content in it still means a server served something wrong.
+  {
+    const cutPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await cutPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await cutPage.waitForTimeout(300);
+
+      // First attempt returns the keep-alive whitespace and nothing else, as a
+      // cut stream does; the second is let through to the real server.
+      let attempts = 0;
+      await cutPage.route('**/api/analyse', async route => {
+        attempts += 1;
+        if (attempts === 1) {
+          await route.fulfill({
+            status: 200, contentType: 'application/json; charset=utf-8', body: '     ',
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      const outcome = await cutPage.evaluate(async () => {
+        try {
+          const result = await window.PsycheLLM.analyseProfile(
+            { coverage: { sources: ['instagram'], digestChars: 900 } });
+          return { ok: true, hasReport: Boolean(result && result.data) };
+        } catch (error) { return { ok: false, message: String(error && error.message) }; }
+      });
+      check('a cut stream is retried rather than reported, and the report still arrives',
+        outcome.ok && outcome.hasReport, JSON.stringify(outcome));
+      check('and it really did take two attempts, so the retry is what saved it',
+        attempts === 2, String(attempts));
+
+      // Real content that is not JSON is a different failure — a proxy error
+      // page, say — and must not be retried into silence.
+      await cutPage.unroute('**/api/analyse');
+      await cutPage.route('**/api/analyse', route => route.fulfill({
+        status: 200, contentType: 'text/html', body: '<html>gateway is unwell</html>',
+      }));
+      const garbage = await cutPage.evaluate(async () => {
+        try {
+          await window.PsycheLLM.analyseProfile(
+            { coverage: { sources: ['instagram'], digestChars: 900 } });
+          return { threw: false };
+        } catch (error) { return { threw: true, message: String(error && error.message) }; }
+      });
+      check('a body with real rubbish in it still says the server served something wrong',
+        garbage.threw && /was not JSON/i.test(garbage.message), JSON.stringify(garbage));
+
+      // And a stream cut twice gives up on the connection rather than on the
+      // server — different advice, because the reader can act on one of them.
+      await cutPage.unroute('**/api/analyse');
+      await cutPage.route('**/api/analyse', route => route.fulfill({
+        status: 200, contentType: 'application/json; charset=utf-8', body: '   ',
+      }));
+      const twice = await cutPage.evaluate(async () => {
+        try {
+          await window.PsycheLLM.analyseProfile(
+            { coverage: { sources: ['instagram'], digestChars: 900 } });
+          return { threw: false };
+        } catch (error) { return { threw: true, message: String(error && error.message) }; }
+      });
+      check('cut twice, it blames the connection and not the server',
+        twice.threw && /connection dropped/i.test(twice.message) &&
+        !/was not JSON/i.test(twice.message), JSON.stringify(twice));
+    } finally {
+      await cutPage.close();
+    }
+  }
+
   // ---- collecting a purchase whose result never arrived ----
   //
   // A payment clears, the analysis is asked for, and the phone is closed or
