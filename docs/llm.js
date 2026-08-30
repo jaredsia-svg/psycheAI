@@ -63,7 +63,38 @@
     return payload.nonce;
   }
 
+  /**
+   * POST with a ticket, retrying once if the server does not recognise it.
+   *
+   * A refused ticket almost always means the server restarted: they are held
+   * in memory and nothing is written down, so every deploy invalidates every
+   * outstanding one. A reader who backgrounds their phone mid-analysis and
+   * comes back after a deploy has done nothing wrong and has nothing to fix,
+   * but used to be shown an error and asked to try again by hand.
+   *
+   * The retry is safe in a way most retries are not, and that is the whole
+   * reason it is allowed: the ticket is checked in the request dispatcher,
+   * *before* the handler runs. A `nonceRequired` refusal therefore proves no
+   * work was started, no model was called, no payment use was ledgered and no
+   * budget was spent — the request was turned away at the door. Retrying it
+   * cannot duplicate anything, because nothing happened.
+   *
+   * Once only, and only for this one refusal. Anything else — a rate limit, a
+   * failed payment, a provider outage — is a real answer and goes to the
+   * reader as it is.
+   */
   async function post(path, body) {
+    const first = await postOnce(path, body);
+    if (!first.nonceRefused) return first.payload;
+    const second = await postOnce(path, body);
+    if (!second.nonceRefused) return second.payload;
+    // Twice in a row is not a restart — a deploy does not land in the second
+    // it takes to fetch a fresh ticket and send it. Something else is wrong,
+    // so this stops rather than looping, and says what the server said.
+    throw new Error('This request is missing a valid one-time token. Reload the page and try again.');
+  }
+
+  async function postOnce(path, body) {
     // Outside the try below, so that a refusal to issue a ticket — a rate
     // limit, most likely — reaches the reader as itself rather than being
     // rewritten into "the connection dropped".
@@ -91,6 +122,12 @@
       throw new Error('The server sent back something that was not JSON (HTTP ' + response.status + ').');
     }
     if (!response.ok) {
+      // Reported rather than thrown, so post() above can decide whether this
+      // is the one refusal worth a second attempt. Every other status still
+      // throws from here.
+      if (response.status === 400 && payload && payload.nonceRequired) {
+        return { nonceRefused: true, payload: null };
+      }
       throw new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').');
     }
     // An `error` field on an otherwise-fine response is a real failure. A
@@ -99,7 +136,7 @@
     // model runs — so a failure part-way through can only be reported in the
     // body. See sendJsonWhileWorking in server.js.
     if (payload && payload.error) throw new Error(payload.error);
-    return payload;
+    return { nonceRefused: false, payload };
   }
 
   /** Whether the server has credentials, and which model it will use. */

@@ -453,6 +453,18 @@
     // The three states of coming back to an unlock that never arrived. Not one
     // string, because "you already paid" is the part that has to land first
     // and a reader skimming a dialog reads the title.
+    // Shown at startup when a purchase was made but its result never arrived.
+    // Deliberately says the payment is fine and names no price: somebody who
+    // has already paid and is being asked to press a button again needs to
+    // know they are collecting, not buying.
+    pendingAnalysisText: 'Your payment went through, but the analysis did not reach this device — ' +
+      'you probably closed the tab or lost signal while it was running. Nothing more to pay.',
+    pendingAnalysisLabel: 'Get the analysis you paid for',
+    pendingCompatText: 'Your payment went through, but the compatibility report did not reach this ' +
+      'device. Nothing more to pay, and you will not have to scan the code again.',
+    pendingCompatLabel: 'Get the report you paid for',
+    pendingNeedsInstagram: 'Your payment is still good, but your Instagram export is no longer on ' +
+      'this device. Load it again and the analysis you paid for will run without charging you.',
     premiumResumeLabel: 'Get the sections you paid for',
     premiumResumeTitle: 'You have already paid',
     premiumResumeBlurb: 'Your payment went through but the analysis did not reach this device — the ' +

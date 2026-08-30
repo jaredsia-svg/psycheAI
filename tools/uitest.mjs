@@ -479,6 +479,110 @@ try {
     await shut();
   }
 
+  // ---- collecting a purchase whose result never arrived ----
+  //
+  // A payment clears, the analysis is asked for, and the phone is closed or
+  // swapped away during the minutes it takes. The reader comes back to what
+  // looks like an ordinary page showing their previous report, with nothing
+  // anywhere saying a report they paid for is still owed.
+  //
+  // The record behind this is written *before* the call and cleared when the
+  // result lands, which is the only ordering that survives the case — one
+  // written on success would be written exactly when nobody needs it. Its own
+  // page, because seeding localStorage would otherwise disturb the profile the
+  // rest of this file has been building up.
+  {
+    const resumePage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await resumePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await resumePage.waitForTimeout(300);
+      const sample = await resumePage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      const seed = async (pending, withDigest = true) => {
+        await resumePage.evaluate(([report, pend, keepDigest]) => {
+          localStorage.setItem('psycheai_profile', JSON.stringify({
+            report, card: report.card, payload: 'x', model: 'mock',
+            createdAt: new Date().toISOString(),
+          }));
+          if (keepDigest) {
+            localStorage.setItem('psycheai_digest',
+              JSON.stringify({ coverage: { sources: ['instagram'], digestChars: 1000 } }));
+          } else localStorage.removeItem('psycheai_digest');
+          if (pend) localStorage.setItem('psycheai_pending', JSON.stringify(pend));
+          else localStorage.removeItem('psycheai_pending');
+        }, [sample, pending, withDigest]);
+        await resumePage.reload();
+        await resumePage.waitForTimeout(700);
+      };
+      const banner = () => resumePage.evaluate(() => {
+        const box = document.querySelector('#pending-work');
+        const go = document.querySelector('#pending-work-go');
+        return {
+          shown: Boolean(box) && !box.hidden,
+          text: (document.querySelector('#pending-work-text').textContent || '').trim(),
+          label: (go.textContent || '').trim(),
+          canPress: !go.hidden,
+        };
+      });
+
+      // Nothing owed: no offer. Checked first, because an offer that appears
+      // unconditionally would pass every check below it.
+      await seed(null);
+      check('a reader who owes nothing is offered nothing',
+        (await banner()).shown === false, JSON.stringify(await banner()));
+
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() });
+      const owed = await banner();
+      check('a paid analysis that never arrived is offered on the next visit',
+        owed.shown && owed.canPress, JSON.stringify(owed));
+      // Somebody who has already paid and is being asked to press a button
+      // again needs to know they are collecting, not buying.
+      check('and the offer says the payment is fine rather than naming a price',
+        /nothing more to pay/i.test(owed.text) && !/\$/.test(owed.text) &&
+        /paid for/i.test(owed.label), JSON.stringify(owed));
+
+      const analysePosts = [];
+      const watch = request => {
+        if (request.method() === 'POST' && /\/api\/analyse/.test(request.url())) {
+          analysePosts.push(request.postData() || '');
+        }
+      };
+      resumePage.on('request', watch);
+      await resumePage.click('#pending-work-go');
+      await resumePage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      resumePage.off('request', watch);
+      check('pressing it re-sends the same authorisation rather than asking for payment again',
+        analysePosts.length === 1 &&
+        JSON.parse(analysePosts[0]).promoCode === UITEST_PROMO,
+        JSON.stringify(analysePosts.map(body => Object.keys(JSON.parse(body)))));
+      check('and the record is cleared once the report is in hand',
+        await resumePage.evaluate(() => localStorage.getItem('psycheai_pending') === null));
+      check('so a second visit no longer offers it',
+        (await banner()).shown === false);
+
+      // The export is what the analysis is written from, and it lives only on
+      // the device. A button that could only fail is worse than no button, so
+      // the offer names the one thing that would fix it instead.
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() }, false);
+      const noExport = await banner();
+      check('with the export gone, the offer says so and offers no button to press',
+        noExport.shown && !noExport.canPress && /export is no longer on this device/i.test(noExport.text),
+        JSON.stringify(noExport));
+
+      // verifyPaid stops honouring an intent thirty days after it is created,
+      // so an older offer would fail at the server having promised at the
+      // browser.
+      await seed({
+        kind: 'analysis', auth: { promoCode: UITEST_PROMO },
+        at: Date.now() - 31 * 24 * 60 * 60 * 1000,
+      });
+      check('a purchase older than the payment window is withdrawn, not offered',
+        (await banner()).shown === false &&
+        await resumePage.evaluate(() => localStorage.getItem('psycheai_pending') === null));
+    } finally {
+      await resumePage.close();
+    }
+  }
+
   // ---- the sample's summary card, and enlarging it ----
   //
   // At preview size the card is a thumbnail — the type on it is scaled well

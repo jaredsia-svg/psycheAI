@@ -421,6 +421,18 @@
        screen, and throwing them back to the upload page to read an error
        message would look like they had lost it. -->
   <div id="profile-alert" class="alert no-print" hidden></div>
+  <!-- Shown when a payment cleared but the report it bought never reached this
+       device — a phone closed or backgrounded during the minutes a generation
+       takes. The record behind it is written before the call and cleared when
+       the result lands, so this can only appear for work genuinely still
+       owed. -->
+  <div id="pending-work" class="alert no-print" hidden>
+    <p id="pending-work-text"></p>
+    <div class="btn-row">
+      <button class="btn" id="pending-work-go" type="button"></button>
+      <button class="btn btn-ghost" id="pending-work-dismiss" type="button">Not now</button>
+    </div>
+  </div>
 
   <!-- #rerun-with-data and its price note now live inside the confidence
        card's "Sources used" subsection — see sourcesUsedHtml() in app.js —

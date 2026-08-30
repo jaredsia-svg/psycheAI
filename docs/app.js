@@ -30,6 +30,18 @@
     // `unlockReceipt` below. Listed here so `clearAll()` covers it — Delete
     // everything has to take the receipt with the report.
     unlock: 'psycheai_unlock',
+    // The same idea as `unlock` above, for the two purchases it does not
+    // cover. `unlock` works because premium sections are *detectably* missing:
+    // a receipt with no paid sections beside it means the reader paid and
+    // never collected. Neither of the other two products can be spotted that
+    // way. A paid re-run that never landed leaves the previous report sitting
+    // there looking complete, and a compatibility report that never landed
+    // leaves nothing at all — so the fact that one was paid for has to be
+    // written down before the call and cleared when it arrives.
+    //
+    // It holds the authorisation and the few things needed to ask again. Never
+    // a report: this is the record of an unfinished purchase, not a cache.
+    pending: 'psycheai_pending',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -53,6 +65,7 @@
     write(key, value) {
       try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (error) { return false; }
     },
+    remove(key) { try { localStorage.removeItem(key); } catch (error) { /* nothing to drop */ } },
     clearAll() { for (const key of Object.values(KEYS)) localStorage.removeItem(key); },
   };
 
@@ -858,6 +871,47 @@
 
   function rememberUnlock(auth) {
     store.write(KEYS.unlock, { ...auth, at: Date.now() });
+  }
+
+  /**
+   * Record a purchase whose result has not arrived yet.
+   *
+   * Written *before* the call and cleared when the result is in hand, which is
+   * the only ordering that survives the case it exists for: a phone closed,
+   * backgrounded or out of battery during the minutes a generation takes. A
+   * record written on success would be written exactly when nobody needs one.
+   *
+   * `kind` is 'analysis' or 'compatibility'. `context` carries whatever asking
+   * again requires — for a comparison, the other person's card and the basis
+   * chosen, since neither is stored anywhere else.
+   */
+  function rememberPending(kind, auth, context) {
+    store.write(KEYS.pending, { kind, auth, at: Date.now(), ...(context || {}) });
+  }
+
+  function clearPending() {
+    store.remove(KEYS.pending);
+  }
+
+  /**
+   * The unfinished purchase, if there is one and it is still redeemable.
+   *
+   * Bounded by the payment's own life rather than by a guess: verifyPaid stops
+   * honouring an intent thirty days after it was created, so an offer to
+   * collect something older than that would fail at the server having promised
+   * at the browser. A promo run carries no payment and no such limit, but the
+   * same window is applied — an offer to finish something from six weeks ago
+   * is confusing whether or not it would work.
+   */
+  const PENDING_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  function pendingWork() {
+    const saved = store.read(KEYS.pending, null);
+    if (!saved || typeof saved !== 'object' || !saved.kind || !saved.auth) return null;
+    if (!(Date.now() - Number(saved.at || 0) < PENDING_WINDOW_MS)) {
+      clearPending();
+      return null;
+    }
+    return saved;
   }
 
   /** True once there is something to fetch but nothing fetched yet. */
@@ -2920,8 +2974,15 @@
     // aborting the fetch and losing the analysis with no warning at all. The
     // same guard runPremiumAnalysis already carries for the same reason.
     guardUnload(true);
+    // Before the call, for the same reason rememberUnlock is: this exists to
+    // survive the tab dying *during* the call. Only for a paid run — a free
+    // one costs nothing to repeat and needs no record that it was owed.
+    if (auth) rememberPending('analysis', auth);
     try {
       const result = await LLM.analyseProfile(digest, auth || undefined);
+      // In hand. Nothing is owed any more, so the offer to collect it goes
+      // away before anything else can fail below and leave it standing.
+      clearPending();
       const payload = await Card.encodeCard(result.data.card);
       state.profile = {
         report: result.data,
@@ -5157,11 +5218,31 @@
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
+    await runComparison(other, mode, stance, auth);
+    return true;
+  }
+
+  /**
+   * The paid model call behind a comparison, and everything that happens to
+   * the result.
+   *
+   * Its own function so that resuming one can reach it. A reader whose phone
+   * died mid-comparison has already scanned the code and answered both
+   * questions; making them do that again to collect something they paid for
+   * would be the same unfairness the unlock receipt exists to remove.
+   */
+  async function runComparison(other, mode, stance, auth) {
     // Same reasoning as runAnalysis's own guard: this call runs for real time
     // with nothing else standing between a reader's back button and losing it.
     guardUnload(true);
+    // The comparison needs more than the payment to be asked for again: the
+    // other person's card came off a QR code that may be long gone, and the
+    // basis was chosen in two dialogs the reader would have to answer twice.
+    // All of it rides along, so resuming asks nothing of them.
+    rememberPending('compatibility', auth, { other, mode, stance });
     try {
       const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance, auth);
+      clearPending();
       const report = { ...result.data, mode: result.data.mode || mode, stance };
       const history = store.read(KEYS.history, []);
       history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });
@@ -5176,7 +5257,6 @@
       stopElapsed();
       guardUnload(false);
     }
-    return true;
   }
 
   // ══════════════ 4. compatibility report ══════════════
@@ -5295,6 +5375,57 @@
 
   window.addEventListener('hashchange', () => { consumeIncomingLink(); });
 
+  /**
+   * Offers to collect a purchase whose result never arrived.
+   *
+   * Shown at startup rather than waited for, because the case it covers is one
+   * where the reader is no longer watching: the tab was closed, the phone died,
+   * the app was swapped away and discarded. They come back to what looks like
+   * an ordinary page, and without this there is nothing anywhere telling them
+   * a report they paid for is still owed to them.
+   *
+   * Collecting is usually instant and always free. The server keeps finished
+   * results for thirty minutes keyed on the same digest, so a reader back
+   * within the window gets the report that was already written without a
+   * second model call; past it, the payment still has generations left on it
+   * and the ledger allows the re-run.
+   */
+  function offerPendingWork() {
+    const banner = $('#pending-work');
+    const pending = pendingWork();
+    if (!banner) return;
+    if (!pending) { banner.hidden = true; return; }
+
+    const needsDigest = pending.kind === 'analysis' && !state.digest;
+    $('#pending-work-text').textContent = needsDigest ? TEXT.pendingNeedsInstagram
+      : pending.kind === 'compatibility' ? TEXT.pendingCompatText : TEXT.pendingAnalysisText;
+    const go = $('#pending-work-go');
+    // Nothing to press when the export is gone: the message names the one
+    // thing that would fix it, and a button that could only fail is worse
+    // than no button.
+    go.hidden = needsDigest;
+    go.textContent = pending.kind === 'compatibility'
+      ? TEXT.pendingCompatLabel : TEXT.pendingAnalysisLabel;
+    go.onclick = () => {
+      banner.hidden = true;
+      if (pending.kind === 'compatibility') {
+        if (!pending.other || !state.profile) { clearPending(); return; }
+        $('#working-title').textContent = modelName() + ' is comparing you';
+        startElapsed('Assessing ' + state.profile.card.name + ' and ' + pending.other.name);
+        show('working');
+        runComparison(pending.other, pending.mode, pending.stance, pending.auth);
+        return;
+      }
+      runAnalysis(state.digest, pending.auth);
+    };
+    // Dismissing hides the offer for now and keeps the record: the payment is
+    // good for thirty days and the reader may simply not want the report this
+    // minute. Clearing it here would throw away the only evidence that
+    // anything is owed.
+    $('#pending-work-dismiss').onclick = () => { banner.hidden = true; };
+    banner.hidden = false;
+  }
+
   async function boot() {
     state.server = await LLM.status();
     // The server owns this number; the constant above is only what applies
@@ -5305,7 +5436,12 @@
     renderServerStatus();
 
     if (await consumeIncomingLink()) return;
-    if (state.profile) { renderProfile(); show('profile'); return; }
+    if (state.profile) {
+      renderProfile();
+      show('profile');
+      offerPendingWork();
+      return;
+    }
     show('welcome');
   }
 
