@@ -555,6 +555,84 @@ try {
     }
   }
 
+  // ---- the payment route gets the retry too ----
+  //
+  // It was the one protected route fetching a ticket by hand and posting it
+  // directly, so a ticket the server did not recognise — which is what every
+  // restart produces, and what a second server instance produces on every
+  // other request — reached the reader as "reload the page and try again"
+  // rather than being quietly asked for again.
+  //
+  // Driven through the unlock button rather than by calling the helper, and
+  // that distinction is the whole check. The first version called
+  // window.PsycheLLM.postWithTicket() directly, which exercises the helper's
+  // own retry — code that already worked — while saying nothing about whether
+  // the payment dialog uses it. Restoring the old hand-rolled fetch in app.js
+  // left it passing, because it never went through app.js at all.
+  //
+  // Its own page with a seeded report, rather than a point in the sequence
+  // above: this needs a rendered report carrying locked paid cards, and
+  // dropping it into the linear flow put it somewhere no unlock button exists
+  // yet.
+  {
+    const payPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await payPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await payPage.waitForTimeout(300);
+      const sample = await payPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await payPage.evaluate(report => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report, card: report.card, payload: 'x', model: 'mock',
+          createdAt: new Date().toISOString(),
+        }));
+        localStorage.setItem('psycheai_digest', JSON.stringify({
+          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
+          google: { activity: [] },
+        }));
+      }, sample);
+      await payPage.reload();
+      await payPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+
+      let refusals = 0;
+      await payPage.route('**/api/create-payment-intent', async route => {
+        refusals += 1;
+        if (refusals === 1) {
+          await route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'This request is missing a valid one-time token. Reload the page and try again.',
+              nonceRequired: true,
+            }),
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      const unlock = payPage.locator('.premium-unlock').first();
+      await unlock.scrollIntoViewIfNeeded();
+      await unlock.click();
+      // No skipPremiumDataOffer here, deliberately. The seeded digest already
+      // carries Google, and collectExtraDataForPremium() short-circuits the
+      // offer when it does — so waiting for that dialog waits for something
+      // that never opens, which is what hung the first version of this block.
+      await payPage.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
+      // Mock mode's stand-in for the wallet sheet appears only once a real
+      // PaymentIntent has come back, so its arrival is the proof that the
+      // refused first attempt was retried rather than surfaced to the reader.
+      const gotIntent = await payPage.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 })
+        .then(() => true).catch(() => false);
+      check('a payment sheet whose ticket is refused retries instead of showing the reader an error',
+        gotIntent, 'status said: ' +
+          (await payPage.locator('#premium-status').innerText().catch(() => '')).slice(0, 90));
+      check('and it really did take two attempts, so the retry is what carried it',
+        refusals === 2, String(refusals));
+    } finally {
+      await payPage.close();
+    }
+  }
+
   // ---- a response that never finished arriving ----
   //
   // A generating request commits its 200 before the work starts and writes a

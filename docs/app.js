@@ -4625,18 +4625,15 @@
     // button actually triggered this dialog, not a requirement of the flow.
     if (button) button.disabled = true;
     try {
-      // Same single-use ticket the model routes carry, for the same reason:
-      // this route creates a real object in the Stripe account, so it must not
-      // answer a caller who has not been handed one. LLM.ticket throws the
-      // rate limiter's own message when it is the limiter refusing, which the
-      // catch below shows as-is.
-      const response = await fetch('api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': await LLM.ticket() },
-        body: JSON.stringify({ product: kind }),
-      });
-      const intent = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error((intent && intent.error) || TEXT.premiumNotConfigured);
+      // Through the same helper the model routes use, rather than fetching a
+      // ticket and posting it by hand. This route creates a real object in the
+      // Stripe account so it must carry a ticket — but it was the only
+      // protected route doing that without the retry behind it, which made it
+      // the one place a ticket the server did not recognise still reached the
+      // reader as "reload the page and try again". A rate limit or a real
+      // failure still arrives here as itself; the catch below shows it.
+      const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind });
+      if (!intent) throw new Error(TEXT.premiumNotConfigured);
 
       if (intent.mock) {
         // The whole Stripe round trip stands in for a click here — mock mode

@@ -210,5 +210,13 @@
   // ways server.js's handlePremiumAnalysis will accept unlocking this call.
   const analysePremium = (digest, auth) => post('/api/premium-analysis', Object.assign({ digest }, auth));
 
-  root.PsycheLLM = { status, ticket, analyseProfile, analyseCompatibility, analysePremium };
+  root.PsycheLLM = {
+    status, ticket, analyseProfile, analyseCompatibility, analysePremium,
+    // Exported so the payment-intent call in app.js goes through the same
+    // ticket handling as everything else. It was fetching a ticket by hand and
+    // posting it directly, which meant it was the one protected route with no
+    // retry behind it — so a ticket the server did not recognise surfaced as
+    // "reload the page" instead of being quietly asked for again.
+    postWithTicket: post,
+  };
 })(typeof window !== 'undefined' ? window : globalThis);
