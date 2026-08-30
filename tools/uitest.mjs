@@ -1811,18 +1811,22 @@ try {
 
   // ---- the premium tier block ----
   //
-  // Shown in two places on the way in and built once from PAID_SECTIONS, so
-  // what it advertises cannot drift from what the report renders. That is the
-  // whole reason it is generated rather than written into index.html twice.
-  // A third mount used to sit as the sample dialog's own pinned footer; the
-  // paid sections render inline in the sample body now (their own covers,
-  // same as a real report), so that mount — and the compact variant of this
-  // block that existed only for it — is gone rather than kept beside a cover
-  // that already says the same thing.
+  // Built once from PAID_SECTIONS, so what it advertises cannot drift from what
+  // the report renders. That is the whole reason it is generated rather than
+  // written into index.html by hand.
+  //
+  // One slot now, on the welcome page. It used to have a second on the FAQ,
+  // under a "What you can expect?" card that the FAQ rewrite replaced: that
+  // page answers "what does it cost?" in a sentence naming the price now, and
+  // no longer enumerates the four sections the money buys. Worth knowing what
+  // that costs a reader — the enumeration was generated from the source of
+  // truth, so it could never be wrong, where a sentence can be — but the
+  // welcome page still carries the generated block, which is where somebody
+  // deciding whether to pay actually meets it.
   check('the premium tier is mounted in every slot that asks for one',
     (await page.locator('[data-premium-tier] .premium-tier').count()) ===
     (await page.locator('[data-premium-tier]').count()) &&
-    (await page.locator('[data-premium-tier]').count()) === 2,
+    (await page.locator('[data-premium-tier]').count()) === 1,
     (await page.locator('[data-premium-tier] .premium-tier').count()) + ' of ' +
     (await page.locator('[data-premium-tier]').count()) + ' slots filled');
   check('it names the four paid sections, by the titles the report uses',
@@ -8034,56 +8038,36 @@ try {
   await page.waitForSelector('#view-about:not([hidden])');
   const about = await page.locator('#view-about').innerText();
 
-  check('the about page is five sections',
-    (await page.locator('#view-about .card').count()) === 5,
+  check('the FAQ is three sections, not ten boxes to scroll past',
+    (await page.locator('#view-about .card').count()) === 3,
     String(await page.locator('#view-about .card').count()));
-  check('every about section has a glyph and a one-line purpose',
-    (await page.locator('#view-about .card-icon').count()) === 5 &&
-    (await page.locator('#view-about .card-sub').count()) === 5);
-  check('it opens on where the data goes', /Your data stays with you/.test(about));
-  // The privacy answer is a list of promises. It has to say where to go and
-  // verify them, in the same card, pointing at the same repository the footer
-  // does — two links that disagree about where the source lives is worse than
-  // one, since a reader who notices stops believing either.
-  check('the privacy answer says the promises can be verified, and where',
-    await page.evaluate(() => {
-      const card = document.querySelector('#view-about .card');
-      const link = card.querySelector('a[href*="github.com"]');
-      const foot = document.querySelector('.footer a[href*="github.com"]');
-      if (!link || !foot) return false;
-      return link.getAttribute('href') === foot.getAttribute('href') &&
-        /\bnoopener\b/.test(link.getAttribute('rel') || '') &&
-        /open source|source|code/i.test(card.innerText);
-    }),
-    // Both sides, since the check fails if either is missing or they disagree.
-    await page.evaluate(() => {
-      const href = s => { const a = document.querySelector(s); return a ? a.getAttribute('href') : 'none'; };
-      return 'privacy card: ' + href('#view-about .card a[href*="github.com"]') +
-        ' | footer: ' + href('.footer a[href*="github.com"]');
-    }));
-  check('the first section is asked as the question a reader would ask',
-    (await page.locator('#view-about .card-head h2').first().innerText()) === 'Where does my data go?',
-    await page.locator('#view-about .card-head h2').first().innerText());
+  check('each carries a glyph and a plain heading',
+    (await page.locator('#view-about .card-icon').count()) === 3 &&
+    (await page.locator('#view-about .card-head h2').count()) === 3);
+  check('the page is titled FAQ and says the shape of the thing in one line',
+    (await page.locator('#view-about h1').innerText()) === 'FAQ' &&
+    /stay in this browser on your device/i.test(
+      await page.locator('#view-about .lede').innerText()),
+    await page.locator('#view-about .lede').innerText());
 
-  // The explanation comes before the two lists: a reader wants the answer in
-  // prose first, and the lists are the detail underneath it.
-  check('the explanation is the first thing under that heading', await page.evaluate(() => {
-    const card = document.querySelector('#view-about .card');
-    const heading = [...card.querySelectorAll('h3')].find(h => h.textContent.trim() === 'Your data stays with you');
-    const split = card.querySelector('.split');
-    if (!heading || !split) return false;
-    return Boolean(heading.compareDocumentPosition(split) & Node.DOCUMENT_POSITION_FOLLOWING);
-  }));
-  // Read defensively: if the heading is renamed away this has to report that,
-  // not die on an undefined and take the rest of the run down with it.
-  check('and the two lists sit below it on screen', await page.evaluate(() => {
-    const card = document.querySelector('#view-about .card');
-    const heading = [...card.querySelectorAll('h3')].find(h => h.textContent.trim() === 'Your data stays with you');
-    const split = card.querySelector('.split');
-    if (!heading || !split) return false;
-    return heading.getBoundingClientRect().bottom <= split.getBoundingClientRect().top + 1;
-  }));
-  check('the old subsection heading is gone', !/Where it actually goes/.test(about));
+  // Every question keeps its own heading, in the order a reader meets them.
+  // Nothing else pins these, so a rename that only half-lands would otherwise
+  // go unnoticed.
+  const faqQuestions = await page.evaluate(() =>
+    [...document.querySelectorAll('#view-about .card > h3')].map(h => h.textContent.trim()));
+  check('every question is asked the way a reader would ask it', JSON.stringify(faqQuestions) ===
+    JSON.stringify([
+      'What is PsycheAI?',
+      'How long does it take?',
+      'What file do I need?',
+      'What data leaves this device?',
+      'Can anyone else access my data?',
+      'Can I verify this?',
+      'How accurate is it?',
+      'What does it cost?',
+      'How does the compatibility feature work?',
+      'I hardly post. Will it still work?',
+    ]), JSON.stringify(faqQuestions));
 
   // ---- the privacy claims have to match the code that implements them ----
   //
@@ -8093,15 +8077,6 @@ try {
   // server.js, and fail if the two ever part company.
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
 
-  check('the page explains that the file is reduced before anything is sent',
-    /summarize the contents locally/i.test(about) &&
-    /before sending it off for analysis/i.test(about));
-  // The page no longer names PsycheAI as the explicit hop in between — that
-  // sentence was cut in favour of a shorter device-to-model story. It still
-  // must not claim the opposite, that the summary reaches Gemini or Claude
-  // directly with no relay at all; that negative is held further down
-  // ("the page does not claim the summary skips the PsycheAI server"),
-  // against server.js actually being the relay it is.
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   check('the claim that nothing is written to disk holds in server.js',
@@ -8110,128 +8085,58 @@ try {
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account or stored pile of data to breach',
-    /no sign-up, no password to create/i.test(about) && /does not have a database/i.test(about) &&
-    /no\s+accumulated data for anyone to take/i.test(about));
-
-  // A page that only reassures is not trustworthy. The device-readability and
-  // self-hosting notes were cut as clutter; the one that remains is the one a
-  // reader cannot check for themselves, so it has to stay named.
-  check('the page names both model providers as the party that reads the summary',
-    /Gemini or Claude/.test(about) && !/Grok/i.test(about));
-  // The heading used to just say "Sent to be read" — accurate but ambiguous
-  // about *who* reads it, next to a list of items a human never sees.
-  check('the "sent" column names who actually reads it',
-    /Sent to be read by AI model/i.test(about));
-  check('the page admits their terms govern that, once it reaches them',
-    /their\s+terms apply/i.test(about));
-  // The paid-API/no-training claim carries its own hedge — "not ours to
-  // guarantee" — rather than a guarantee this app cannot actually make on
-  // Google's or Anthropic's behalf.
-  check('the page names paid API access as how the summary reaches the model',
-    /paid API access/i.test(about));
-  check('the training-data claim is attributed to their terms, not asserted as fact',
-    /excluded from model training/i.test(about) &&
-    /not ours to guarantee/i.test(about));
-  // No analytics claim: has to appear on both the moment-of-the-ask badge and
-  // in the FAQ's fuller explanation, worded the same way in both so a reader
-  // who checks the claim against the detail finds them saying the same thing.
-  check('the FAQ repeats the no-tracking claim from the badge, with more detail',
-    /No analytics, no trackers, no cookies/.test(about) &&
-    /session recording/i.test(about));
-
-  // The badge above the dropzone is the welcome page's own privacy claim, read
-  // at the moment somebody decides whether to upload their DMs. It has to
-  // survive being held next to the FAQ two clicks away, which names Gemini or
-  // Claude as the party that reads the summary. So it is held to the two
-  // things the code above proves: nothing is stored here, and the report is
-  // assembled on the device and never sent back. textContent rather than
-  // innerText because the welcome view is hidden while the FAQ is open.
-  const heroClaim = (await page.evaluate(
-    () => document.querySelector('#view-welcome .eyebrow').textContent)).replace(/\s+/g, ' ').trim();
-  check('the hero claims only what server.js can keep',
-    /kept on your device/i.test(heroClaim) && /never stored by PsycheAI/i.test(heroClaim), heroClaim);
-  // The summary does go to a model provider to be read. A hero that says
-  // otherwise would contradict the section above it on the same site.
-  check('the hero does not promise that nobody else reads the summary',
-    !/(no|nobody)\s*one?\s*else|not shared with anyone|only you can see your data/i.test(heroClaim),
-    heroClaim);
-
-  // Step two names the three model providers outright and repeats the
-  // no-storage promise. The storage half is what the server.js checks above
-  // prove. The naming half is held against the loader, so dropping or
-  // swapping a provider fails here rather than leaving this card telling the
-  // reader about a model the app can no longer reach.
-  const stepTwoClaim = (await page.evaluate(
-    () => document.querySelectorAll('#view-welcome .step-card')[1].textContent))
-    .replace(/\s+/g, ' ').trim();
-  const providerSource = readFileSync(join(root, 'lib', 'provider.js'), 'utf8');
-  // The page names only the two providers a reader is meant to know about;
-  // Grok stays a real, working option in lib/provider.js — this just checks
-  // the copy does not surface it, not that the loader stopped supporting it.
-  check('step two names the two providers shown to a reader, and not Grok',
-    /Gemini/.test(stepTwoClaim) && /Claude/.test(stepTwoClaim) && !/Grok/i.test(stepTwoClaim) &&
-    /'\.\/grok'/.test(providerSource) && /'\.\/gemini'/.test(providerSource) && /'\.\/claude'/.test(providerSource),
-    stepTwoClaim);
-  check('step two repeats that nothing is stored here',
-    /No data is stored by PsycheAI/i.test(stepTwoClaim), stepTwoClaim);
-
-  // These two sections are written for an adult with no technical background:
-  // no jargon, and no explaining-to-a-child similes either. Jargon creeping
-  // back in is the regression worth guarding, so the terms are held out.
-  const plainSections = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('#view-about .card')];
-    return cards.slice(0, 2).map(card => card.innerText).join('\n');
-  });
-  for (const term of ['bounded summary', 'archive', '.zip', 'API key', 'localStorage',
-    'end-to-end', 'payload', 'endpoint', 'proxy']) {
-    check('the privacy sections avoid the word ' + JSON.stringify(term),
-      !new RegExp(term.replace(/[.]/g, '\\.'), 'i').test(plainSections), term);
-  }
-  check('the second privacy section is asked as a question a reader would ask',
-    /Can anyone else access my data\?/.test(about));
+    /no sign-up, no password to create/i.test(about) && /has no database/i.test(about) &&
+    /no accumulated data for anyone to take/i.test(about));
+  check('the page names both model providers as the party that reads the digest',
+    /Google Gemini or Anthropic Claude/.test(about) && !/Grok/i.test(about));
+  check('and says plainly that no copy is kept on the server',
+    /keeps no copy of the zip, the digest or the report/i.test(about));
+  check('the page is honest that hosting and payment providers see something',
+    /Hosting and payment providers can see/i.test(about) &&
+    /They do not receive the data/i.test(about));
 
   // The two claims most likely to be quietly overstated later.
-  check('the page does not claim the summary skips the PsycheAI server',
+  check('the page does not claim the digest skips the PsycheAI server',
     !/never (?:sent|goes|reaches)[^.]{0,40}PsycheAI server/i.test(about) &&
     !/directly to (?:the model|Google|Anthropic|xAI)/i.test(about), about.slice(0, 1600));
   check('the page does not promise encryption it does not implement',
     !/end-to-end/i.test(about) && !/zero-knowledge/i.test(about));
-  check('stays-here and gets-sent are shown side by side',
+  check('never-sent and sent-after-review are shown side by side',
     (await page.locator('#view-about .split .ticks li').count()) >= 3 &&
-    (await page.locator('#view-about .split .sends li').count()) >= 2);
-  check('what you get back is a grid, not a paragraph',
-    (await page.locator('#view-about .tile').count()) === 8);
-  check('the QR and matching are one section now',
-    /How does compatibility testing work\?/.test(about) && /romantic/i.test(about) &&
-    /family \/ friends/i.test(about) && /professional/i.test(about));
+    (await page.locator('#view-about .split .sends li').count()) >= 1);
+  check('the media and the finished report are on the never-sent side',
+    await page.evaluate(() => {
+      const never = [...document.querySelectorAll('#view-about .split .ticks li')]
+        .map(li => li.textContent).join(' ');
+      return /images and videos/i.test(never) && /finished report/i.test(never) &&
+        /Instagram zip/i.test(never);
+    }));
 
-  // Every section is titled as a question a reader would actually ask, in the
-  // order they would ask them. Nothing else pins these, so a rename that only
-  // half-lands would otherwise go unnoticed.
-  check('every FAQ section is titled as a reader\'s question', await page.evaluate(() =>
-    [...document.querySelectorAll('#view-about .card-head h2')].map(h => h.textContent.trim())
-  ).then(titles => JSON.stringify(titles) === JSON.stringify([
-    'Where does my data go?',
-    'Can anyone else access my data?',
-    'What you can expect?',
-    'How does compatibility testing work?',
-    'What else should I know?',
-  ])), JSON.stringify(await page.evaluate(() =>
-    [...document.querySelectorAll('#view-about .card-head h2')].map(h => h.textContent.trim()))));
-  check('the compatibility section says up front what you do',
-    /Scan the QR code of your partner, family \/ friends, or colleagues/.test(about));
-  check('the old headings are all gone',
-    !/What you get back/.test(about) && !/Your code, and matching/.test(about) &&
-    !/The honest bit/.test(about) && !/No account, no database/.test(about));
-  check('how-it-works explains the work sub-question',
-    /manage/i.test(about) && /report to/i.test(about), about.slice(0, 400));
-  check('the limits are still stated', /not a diagnosis, not a background check/.test(about));
-  check('the guardrails are still listed',
-    (await page.locator('#view-about .nots li').count()) === 4);
-  check('prohibitions are not marked with ticks', await page.evaluate(() => {
-    const mark = getComputedStyle(document.querySelector('#view-about .nots li'), '::before');
-    return mark.content.includes('✕') || mark.content.includes('\\2715');
-  }));
+  // The answer to "what file do I need" ends by offering the pictures, for a
+  // reader who came to the FAQ to find out rather than to load anything yet.
+  check('the file answer offers the illustrated walkthrough',
+    (await page.locator('#faq-guide-open').count()) === 1);
+  await page.click('#faq-guide-open');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  check('and the link really opens it',
+    await page.evaluate(() => document.querySelector('#guide-dialog').open));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+
+  check('the compatibility answer says what the QR code actually is',
+    /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
+    /family\/friends/i.test(about) &&
+    /not a link to a file on a server/i.test(about));
+  check('the price is named, once, with what it buys',
+    /S\$1\.99/.test(about) && /first profile is written on the free path/i.test(about));
+  check('the limits are stated rather than implied',
+    /not a test\s+and not a diagnosis/i.test(about));
+  check('a thin account is answered honestly rather than reassured away',
+    /Thin data means a thinner, lower-confidence read/i.test(about));
+
+  // Written by renderAbout() on every boot. Dropping it from the markup makes
+  // that function throw on a null and takes boot down with it — which is
+  // exactly what happened while this page was being rewritten.
   check('the server status line survived the rewrite',
     (await page.locator('#about-status').innerText()).length > 0);
   check('no dev setup instructions are left on a user-facing page',

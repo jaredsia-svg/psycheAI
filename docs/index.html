@@ -518,150 +518,110 @@
 
 <!-- ══════════════ about ══════════════ -->
 <section id="view-about" class="view" hidden>
-  <header class="page-head"><h1>How PsycheAI works</h1></header>
+  <header class="page-head">
+    <h1>FAQ</h1>
+    <p class="lede">You upload your Instagram data. A short summary you can inspect beforehand is
+      sent to an AI model. Your data and the results stay in this browser on your device.</p>
+  </header>
 
+  <!-- Ten questions in three cards rather than ten, which is what "concise and
+       easy to read" asks for: every question keeps its own heading, but the
+       page is three things to scan rather than ten boxes to scroll past. -->
   <div class="card section-card">
-    <div class="card-head"><span class="card-icon">🔒</span><div>
-      <h2>Where does my data go?</h2>
-      <p class="card-sub">The file Instagram sends you is opened and read on your own device. It is
-        never uploaded.</p>
+    <div class="card-head"><span class="card-icon">📖</span><div>
+      <h2>The basics</h2>
     </div></div>
 
-    <h3>Your data stays with you</h3>
-    <p>After you drop your Instagram data onto the PsycheAI website, your device will summarize the
-      contents locally to a ~100kb file, which you can review the contents of, before sending it off
-      for analysis. The summary file is sent to Gemini or Claude for analysis and is only held
-      for the few seconds the request takes, and is never saved, stored or logged.</p>
+    <h3>What is PsycheAI?</h3>
+    <p>A reading of yourself already sitting in your Instagram (and Google) data. It writes your
+      interests, patterns, MBTI and Big Five, each tied to evidence from your data. It is not a test
+      and not a diagnosis.</p>
 
-    <p><strong>You do not have to take our word for any of this.</strong> The whole thing is open
-      source: <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">read
-      the code on GitHub</a> and check what it sends for yourself.</p>
+    <h3>How long does it take?</h3>
+    <p>Instagram often takes a few hours to prepare the data zip file. The analysis takes a few
+      minutes. Request the export first and come back when the email arrives.</p>
 
-    <div class="split">
-      <div>
-        <h3 class="h-good">Never leaves this device</h3>
-        <ul class="ticks">
-          <li>The file Instagram sends you</li>
-          <li>All of your videos</li>
-          <li>Every one of your photos — none are sent, ever</li>
-          <li>What other people said to you in messages — counted, then discarded unread</li>
-          <li>Your finished report</li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="h-warn">Sent to be read by AI model</h3>
-        <ul class="sends">
-          <li>A short summary: how often you post, when you post, and some of your own words</li>
-          <li>The same kind of summary of your Google or Facebook data, if you chose to add either —
-            never the export itself</li>
-        </ul>
-      </div>
-    </div>
+    <h3>What file do I need?</h3>
+    <p>Instagram → <span class="ui-label">Accounts Centre</span> →
+      <span class="ui-label">Your information and permissions</span> →
+      <span class="ui-label">Download your information</span>. Choose <strong>JSON</strong>, data
+      from your profile, download to this device. HTML will not parse. You do not give PsycheAI your
+      Instagram password. <a href="#" id="faq-guide-open">See the illustration</a> for more
+      detail.</p>
   </div>
 
   <div class="card section-card">
-    <div class="card-head"><span class="card-icon">🛡️</span><div>
-      <h2>Can anyone else access my data?</h2>
-      <p class="card-sub">There is no account and no list of users, so there is nothing for anyone to
-        steal.</p>
+    <div class="card-head"><span class="card-icon">🔒</span><div>
+      <h2>Your data</h2>
     </div></div>
 
-    <p><strong>There is nothing to steal.</strong> PsycheAI does not have a database. There is no
-      sign-up, no password to create, no email address, and no stored files. Nothing you send is
-      retained, so there is no accumulated data for anyone to take.</p>
+    <h3>What data leaves this device?</h3>
+    <div class="split">
+      <div>
+        <h3 class="h-good">Never sent</h3>
+        <ul class="ticks">
+          <li>The Instagram zip</li>
+          <li>Your media — images and videos</li>
+          <li>Other people’s messages</li>
+          <li>The finished report</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="h-warn">Sent, after you review it</h3>
+        <ul class="sends">
+          <li>A short digest of your words — posts, stories, captions, likes, searches, saves,
+            follows, your messages</li>
+        </ul>
+      </div>
+    </div>
+    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI keeps no
+      copy of the zip, the digest or the report on its servers. The report lives in your browser
+      until you press <strong>Delete everything</strong>.</p>
+    <p>Hosting and payment providers can see that the site was called, or that a payment happened.
+      They do not receive the data. There is no account.</p>
 
-    <p><strong>No analytics, no trackers, no cookies.</strong> No one can see that you visited, let
-      alone what you uploaded. There is no visitor count, no session recording, and nothing here
-      calls out to a third party to report that this page was even opened.</p>
+    <h3>Can anyone else access my data?</h3>
+    <p>PsycheAI has no database. There is no sign-up, no password to create, no email address and no
+      stored files. Nothing you send is retained, so there is no accumulated data for anyone to
+      take. No one can see that you visited, let alone what you uploaded.</p>
 
-    <p><strong>Your report belongs to you.</strong> It is stored inside your own browser, on your own
-      device. Other websites cannot read it, and neither can we — it is put together on your device
-      from the AI's reply, and never sent back to us. It stays there until you press
-      <strong>Delete everything</strong>, or clear your browser.</p>
-
-    <p><strong>Your QR code is not a link.</strong> The short version of your profile is contained
-      within the code itself. It does not refer to a file held anywhere else, so there is nothing
-      behind it to break into.</p>
-
-    <h3>What this page will not promise you</h3>
-    <p>Your summary is read by <strong>Gemini or Claude</strong> through paid API access, and once
-      it reaches them their terms apply. Both providers' terms for paid API use state that
-      customer inputs are excluded from model training, but that is their policy to keep, not ours to
-      guarantee.</p>
+    <h3>Can I verify this?</h3>
+    <p>The site is open source, so you can
+      <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">read
+      what the browser sends</a>. You can also open the review screen and untick anything before it
+      goes.</p>
   </div>
 
   <div class="card section-card">
     <div class="card-head"><span class="card-icon">📄</span><div>
-      <h2>What you can expect?</h2>
-      <p class="card-sub">One long report, written to you, with the evidence for every claim in it.</p>
+      <h2>The report</h2>
     </div></div>
 
-    <div class="tile-grid">
-      <div class="tile"><h4>Who you are most like</h4><p>A character anyone would recognise, and why that one and not a neighbouring one.</p></div>
-      <div class="tile"><h4>Big Five</h4><p>Five scores out of 100, each with what in your data put it there.</p></div>
-      <div class="tile"><h4>MBTI &amp; Enneagram</h4><p>Your type and how strongly each letter leans, plus a second lens on what drives you.</p></div>
-      <div class="tile"><h4>Values &amp; beliefs</h4><p>What you seem to hold to — and how firmly the data actually says so.</p></div>
-      <div class="tile"><h4>In relationships</h4><p>How you'd be to be close to, and your love languages — giving and receiving.</p></div>
-      <div class="tile"><h4>At work</h4><p>How you work, what you're good at, and what tends to hold you back.</p></div>
-      <div class="tile"><h4>Your Instagram habits</h4><p>When you post, how that changed over the years, and whether you publish more than you read.</p></div>
-      <div class="tile"><h4>A confidence score</h4><p>How much of the above to believe, and why.</p></div>
-    </div>
+    <h3>How accurate is it?</h3>
+    <p>It is a large language model reading traces and patterns in your data, not a lab result. You
+      can raise the report’s confidence by adding more sources. Instagram and Google together are
+      the ideal combination — Instagram reads your outward persona, the self you present; Google
+      reads your inward self, what you search and watch when no one is looking.</p>
 
-    <!-- Under the free tiles rather than mixed in among them, so the line
-         between "what you get" and "what you can buy" is where a reader can
-         see it. Same block as the one on the welcome page. -->
-    <div data-premium-tier></div>
+    <h3>What does it cost?</h3>
+    <p>The first profile is written on the free path. Deeper sections and each compatibility run are
+      <strong>S$1.99</strong> each. You see the price after you choose what you are asking, before
+      you pay.</p>
 
-    <p class="fineprint">Save the whole thing as a PDF from the button on your profile. Anything you
-      unlocked prints with it; anything you did not is simply absent from the file.</p>
-  </div>
+    <h3>How does the compatibility feature work?</h3>
+    <p>Each reader has a QR code summarising their PsycheAI results. The other person scans it,
+      chooses a romantic, family/friends or work basis, and gets a report. The QR code carries the
+      data itself — it is not a link to a file on a server.</p>
 
-  <div class="card section-card">
-    <div class="card-head"><span class="card-icon">💞</span><div>
-      <h2>How does compatibility testing work?</h2>
-      <p class="card-sub">Scan the QR code of your partner, family / friends, or colleagues.</p>
-    </div></div>
-    <p>Your profile is squeezed down to a handful of short phrases and packed <em>inside</em> the QR
-      code itself. That is the whole thing — the code is not a link to a profile, it is the profile.
-      Your long report is not in there and never travels with it.</p>
-    <p>When someone scans you, they first choose what they are asking:
-      <strong>romantic</strong>, <strong>family / friends</strong>, or
-      <strong>professional</strong>. Those are genuinely different questions — you can be a great
-      colleague and a poor housemate — so the report answers the one that was picked, in full,
-      rather than three at once. Pick professional and it asks one more: whether you are
-      <strong>colleagues</strong>, whether you <strong>manage</strong> them, or whether you
-      <strong>report to</strong> them. Managing someone and working for them are not the same
-      problem, and advice about delegation is useless to somebody with nobody to delegate to. It
-      comes back with a score, five scored dimensions chosen for what you asked, an honest verdict,
-      what works, what will rub, and specific advice for each of you about the other. Scan again to
-      ask a different question.</p>
-    <p>A compatibility report costs <strong>S$1.99</strong>, the same as the premium sections and
-      for the same reason: it is a full call to the AI model, weighing two whole profiles against
-      each other. You are asked once you have chosen the basis, so you know what you are buying
-      before you pay for it — and each report answers the one question you picked, so scanning
-      again to ask a different one is a new report.</p>
-    <p class="fineprint">Sharing your code is a choice you make one person at a time. Anyone you give
-      it to keeps what is in it, so treat it the way you would a photo of yourself.</p>
-  </div>
+    <h3>I hardly post. Will it still work?</h3>
+    <p>Yes, if the export has likes, saves, follows, searches or stories. A private account with zero
+      grid posts is common. Thin data means a thinner, lower-confidence read. Google data is the
+      single best add-on.</p>
 
-  <div class="card section-card">
-    <div class="card-head"><span class="card-icon">⚖️</span><div>
-      <h2>What else should I know?</h2>
-      <p class="card-sub">This is a mirror and a conversation starter. It is not a test.</p>
-    </div></div>
-    <p>Not a psychometric instrument, not a diagnosis, not a background check. It is a language model
-      reading traces of your behaviour, and it is often wrong — which is why it tells you how sure it
-      is. A low match score is a list of things worth talking about, not a reason to walk away. A
-      high one is not a promise.</p>
-
-    <h3>What it is told never to do</h3>
-    <ul class="nots">
-      <li>Say anything about other people in your data — they never agreed to this</li>
-      <li>Guess at your sexuality, health, immigration status or politics unless you said it yourself</li>
-      <li>Judge anyone by their appearance, or by who they follow</li>
-      <li>Treat one caption as a pattern — it says how many there were, so you can judge for yourself</li>
-    </ul>
-
+    <!-- Written by renderAbout() on every boot: which provider this particular
+         server is configured with, or that it is in mock mode, or that it
+         cannot be reached at all. Not decoration — dropping it from the markup
+         makes renderAbout() throw on a null and takes boot down with it. -->
     <p class="fineprint" id="about-status"></p>
   </div>
 </section>

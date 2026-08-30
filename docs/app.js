@@ -1799,6 +1799,12 @@
     event.preventDefault();
     showGuide();
   });
+  // The FAQ's "what file do I need" answer ends with the same offer, for the
+  // reader who came here to find out rather than to load anything yet.
+  $('#faq-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
   dropzone.addEventListener('dragover', event => { event.preventDefault(); dropzone.classList.add('is-over'); });
   dropzone.addEventListener('dragleave', () => dropzone.classList.remove('is-over'));
   dropzone.addEventListener('drop', event => {
