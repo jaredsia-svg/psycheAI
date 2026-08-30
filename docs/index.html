@@ -57,8 +57,8 @@
 
     <div class="hero-top">
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
-      <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights —
-        all derived from your Instagram (and Google) data without any quiz required.</p>
+      <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
+        all derived from your Instagram (and Google) data with no questionnaire required.</p>
       <div class="btn-row hero-actions">
         <button class="btn" id="hero-sample" type="button">See sample report</button>
         <button class="btn btn-outline" id="hero-start" type="button">Analyse my data</button>
@@ -518,11 +518,7 @@
 
 <!-- ══════════════ about ══════════════ -->
 <section id="view-about" class="view" hidden>
-  <header class="page-head">
-    <h1>FAQ</h1>
-    <p class="lede">You upload your Instagram data. A short summary you can inspect beforehand is
-      sent to an AI model. Your data and the results stay in this browser on your device.</p>
-  </header>
+  <header class="page-head"><h1>FAQ</h1></header>
 
   <!-- Ten questions in three cards rather than ten, which is what "concise and
        easy to read" asks for: every question keeps its own heading, but the
@@ -556,24 +552,10 @@
     </div></div>
 
     <h3>What data leaves this device?</h3>
-    <div class="split">
-      <div>
-        <h3 class="h-good">Never sent</h3>
-        <ul class="ticks">
-          <li>The Instagram zip</li>
-          <li>Your media — images and videos</li>
-          <li>Other people’s messages</li>
-          <li>The finished report</li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="h-warn">Sent, after you review it</h3>
-        <ul class="sends">
-          <li>A short digest of your words — posts, stories, captions, likes, searches, saves,
-            follows, your messages</li>
-        </ul>
-      </div>
-    </div>
+    <p><strong>Never sent:</strong> the Instagram zip data, your media (images / videos), other
+      people’s messages, the finished report.</p>
+    <p><strong>Sent, after you review it:</strong> a short digest of your words — posts, stories,
+      captions, likes, searches, saves, follows, your messages.</p>
     <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI keeps no
       copy of the zip, the digest or the report on its servers. The report lives in your browser
       until you press <strong>Delete everything</strong>.</p>
@@ -613,10 +595,6 @@
       chooses a romantic, family/friends or work basis, and gets a report. The QR code carries the
       data itself — it is not a link to a file on a server.</p>
 
-    <h3>I hardly post. Will it still work?</h3>
-    <p>Yes, if the export has likes, saves, follows, searches or stories. A private account with zero
-      grid posts is common. Thin data means a thinner, lower-confidence read. Google data is the
-      single best add-on.</p>
 
     <!-- Written by renderAbout() on every boot: which provider this particular
          server is configured with, or that it is in mock mode, or that it

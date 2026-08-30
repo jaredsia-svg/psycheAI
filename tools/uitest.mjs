@@ -1042,8 +1042,8 @@ try {
   // competitor can make: nothing was asked, the report comes off behaviour
   // that already happened. Pinned because it is the sentence most likely to be
   // softened by accident in a later rewrite.
-  check('and says the report needs no quiz, which is the actual differentiator',
-    /without any quiz/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
+  check('and says the report needs no questionnaire, which is the actual differentiator',
+    /no questionnaire/i.test(await page.locator('#view-welcome .hero .lede').innerText()),
     (await page.locator('#view-welcome .hero .lede').innerText()).replace(/\s+/g, ' ').trim());
   // The privacy badge moved out of the hero and down to the upload card, then
   // further down to sit under the thing that asks for the file — once the two
@@ -8044,11 +8044,10 @@ try {
   check('each carries a glyph and a plain heading',
     (await page.locator('#view-about .card-icon').count()) === 3 &&
     (await page.locator('#view-about .card-head h2').count()) === 3);
-  check('the page is titled FAQ and says the shape of the thing in one line',
+  check('the page is titled FAQ, and goes straight into the questions',
     (await page.locator('#view-about h1').innerText()) === 'FAQ' &&
-    /stay in this browser on your device/i.test(
-      await page.locator('#view-about .lede').innerText()),
-    await page.locator('#view-about .lede').innerText());
+    (await page.locator('#view-about .lede').count()) === 0,
+    String(await page.locator('#view-about .lede').count()) + ' intro lines');
 
   // Every question keeps its own heading, in the order a reader meets them.
   // Nothing else pins these, so a rename that only half-lands would otherwise
@@ -8066,7 +8065,6 @@ try {
       'How accurate is it?',
       'What does it cost?',
       'How does the compatibility feature work?',
-      'I hardly post. Will it still work?',
     ]), JSON.stringify(faqQuestions));
 
   // ---- the privacy claims have to match the code that implements them ----
@@ -8101,16 +8099,21 @@ try {
     !/directly to (?:the model|Google|Anthropic|xAI)/i.test(about), about.slice(0, 1600));
   check('the page does not promise encryption it does not implement',
     !/end-to-end/i.test(about) && !/zero-knowledge/i.test(about));
-  check('never-sent and sent-after-review are shown side by side',
-    (await page.locator('#view-about .split .ticks li').count()) >= 3 &&
-    (await page.locator('#view-about .split .sends li').count()) >= 1);
-  check('the media and the finished report are on the never-sent side',
+  // Prose rather than two columns of ticks. The distinction still has to be
+  // legible at a glance, which is what the labels carry now — so both are
+  // checked as labels rather than as list items, and the never-sent side is
+  // held to naming the three things a reader is most anxious about.
+  check('never-sent and sent-after-review are both labelled, in that order',
     await page.evaluate(() => {
-      const never = [...document.querySelectorAll('#view-about .split .ticks li')]
-        .map(li => li.textContent).join(' ');
-      return /images and videos/i.test(never) && /finished report/i.test(never) &&
-        /Instagram zip/i.test(never);
-    }));
+      const text = document.querySelector('#view-about').innerText;
+      const never = text.indexOf('Never sent:');
+      const sent = text.indexOf('Sent, after you review it:');
+      return never > -1 && sent > never;
+    }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
+  check('the media, the zip and the finished report are named as never sent',
+    /Never sent:[^]{0,200}?images \/ videos[^]{0,200}?finished report/i.test(about) &&
+    /Never sent:[^]{0,80}?Instagram zip/i.test(about),
+    about.slice(about.indexOf('Never sent'), about.indexOf('Never sent') + 200));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
   // reader who came to the FAQ to find out rather than to load anything yet.
@@ -8131,8 +8134,8 @@ try {
     /S\$1\.99/.test(about) && /first profile is written on the free path/i.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
-  check('a thin account is answered honestly rather than reassured away',
-    /Thin data means a thinner, lower-confidence read/i.test(about));
+  check('the question about a thin account is gone, not half-removed',
+    !/hardly post/i.test(about) && !/Thin data means/i.test(about));
 
   // Written by renderAbout() on every boot. Dropping it from the markup makes
   // that function throw on a null and takes boot down with it — which is
