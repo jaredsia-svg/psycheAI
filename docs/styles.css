@@ -768,6 +768,13 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   font-weight: 600; color: var(--ink);
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
 }
+/* Not on the FAQ. Everywhere else a .ui-label is a thing to go and tap while
+   following instructions, and the weight is what makes it findable mid-step.
+   The FAQ is read rather than followed — its answer to "what file do I need"
+   names the same path, but as a sentence — and a run of five semi-bold phrases
+   in one line reads as emphasis nobody asked for. The underline stays, so the
+   labels are still marked as screen names rather than prose. */
+#view-about .ui-label { font-weight: inherit; }
 /* The long way round, kept for when a deep link stops working — Meta and
    Google move these URLs, and a reader who follows a dead one must not be
    stranded. Set smaller and quieter than the step it sits under, so it reads

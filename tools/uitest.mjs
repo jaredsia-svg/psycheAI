@@ -1748,10 +1748,21 @@ try {
         labels.every(l => getComputedStyle(l).fontWeight === '400') &&
         labels.every(l => getComputedStyle(l).textDecorationLine === 'underline');
     }));
+  // Two exceptions, both deliberate, and this is the check that keeps them
+  // deliberate: the fallback footnote above, and the FAQ. Everywhere else a
+  // menu label is a thing to go and tap while following instructions, and the
+  // weight is what makes it findable mid-step.
+  //
+  // The FAQ is the second exception because that page is read rather than
+  // followed — its "what file do I need" answer names the same path as a
+  // sentence, where five semi-bold phrases in one line read as emphasis nobody
+  // asked for. The FAQ side is asserted on its own further down, so the two
+  // checks together still cover every label on the site rather than leaving
+  // the exception unwatched.
   check('while every other menu label on the page stays bold',
     await page.evaluate(() => {
       const labels = [...document.querySelectorAll('.ui-label')]
-        .filter(l => !l.closest('.step-fallback'));
+        .filter(l => !l.closest('.step-fallback') && !l.closest('#view-about'));
       return labels.length > 0 && labels.every(l => getComputedStyle(l).fontWeight === '600');
     }));
   // The first three titles are the report's own section names, read from
@@ -8117,6 +8128,41 @@ try {
 
   // The answer to "what file do I need" ends by offering the pictures, for a
   // reader who came to the FAQ to find out rather than to load anything yet.
+  // The FAQ is read rather than followed, so nothing in its answers is
+  // emphasised — the questions are the only heavy type on the page. Checked on
+  // computed weight rather than on the absence of <strong>, since the same
+  // emphasis arrives just as easily from a class.
+  check('nothing in the FAQ answers is bolded, only the questions',
+    await page.evaluate(() => {
+      const heavy = [...document.querySelectorAll('#view-about *')].filter(el => {
+        if (el.children.length || !el.textContent.trim()) return false;
+        if (el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3') return false;
+        if (el.closest('.card-head')) return false;
+        return Number(getComputedStyle(el).fontWeight) >= 600;
+      });
+      return heavy.map(el => el.tagName + ': ' + el.textContent.trim().slice(0, 40));
+    }).then(heavy => heavy.length === 0 ? true : JSON.stringify(heavy)) === true,
+    JSON.stringify(await page.evaluate(() =>
+      [...document.querySelectorAll('#view-about *')].filter(el =>
+        !el.children.length && el.textContent.trim() &&
+        !['H1', 'H2', 'H3'].includes(el.tagName) && !el.closest('.card-head') &&
+        Number(getComputedStyle(el).fontWeight) >= 600).map(el => el.textContent.trim().slice(0, 40)))));
+  // Scoped to this page, deliberately: a .ui-label everywhere else marks a
+  // thing to go and tap while following instructions, and the weight is what
+  // makes it findable mid-step. Both halves are checked, so unbolding the FAQ
+  // by restyling the class everywhere would fail here.
+  check('and the screen names it mentions stay underlined, just not heavy',
+    await page.evaluate(() => {
+      const inFaq = [...document.querySelectorAll('#view-about .ui-label')];
+      const outside = [...document.querySelectorAll('.ui-label')]
+        .filter(el => !el.closest('#view-about') && !el.closest('.step-fallback'));
+      if (!inFaq.length || !outside.length) return false;
+      const light = inFaq.every(el => Number(getComputedStyle(el).fontWeight) < 600 &&
+        getComputedStyle(el).textDecorationLine.includes('underline'));
+      const heavyElsewhere = outside.every(el => Number(getComputedStyle(el).fontWeight) >= 600);
+      return light && heavyElsewhere;
+    }));
+
   check('the file answer offers the illustrated walkthrough',
     (await page.locator('#faq-guide-open').count()) === 1);
   await page.click('#faq-guide-open');
