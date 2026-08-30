@@ -5487,6 +5487,28 @@
     show('welcome');
   }
 
+  // Coming back to the page is not always a page load.
+  //
+  // boot() runs once. A phone that suspends a tab and later restores it from
+  // memory resumes the same JavaScript context — no reload, no boot, and so no
+  // offer, even with a purchase sitting unclaimed in localStorage. That is
+  // exactly the path this whole feature exists for: the reader who closed
+  // everything mid-generation is the reader most likely to come back to a
+  // restored tab rather than a fresh one.
+  //
+  // Checked on every return to visibility rather than only at startup.
+  // offerPendingWork() is cheap and idempotent — it reads one localStorage key
+  // and either shows the banner or hides it — so running it more often costs
+  // nothing and closes the gap.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    // Only where the offer has somewhere to appear. Its banner lives inside
+    // #view-profile, so showing it while the reader is on the welcome or scan
+    // page would set `hidden = false` on something nobody can see, and it
+    // would then be sitting open the next time they did land on the report.
+    if (state.profile && !$('#view-profile').hidden) offerPendingWork();
+  });
+
   mountPremiumTiers();
   boot();
 })();

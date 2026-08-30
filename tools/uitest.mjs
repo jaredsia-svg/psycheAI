@@ -644,6 +644,25 @@ try {
         noExport.shown && !noExport.canPress && /export is no longer on this device/i.test(noExport.text),
         JSON.stringify(noExport));
 
+      // Coming back is not always a page load. A phone that suspends a tab and
+      // restores it from memory resumes the same context — no reload, no
+      // boot() — and the offer used to be made only at boot, so the reader
+      // most likely to need it was the one least likely to see it.
+      await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() });
+      await resumePage.evaluate(() => { document.querySelector('#pending-work').hidden = true; });
+      check('an offer dismissed or missed is not showing before the page is left',
+        (await banner()).shown === false);
+      await resumePage.evaluate(() => {
+        // What a restored tab looks like from the page's side: visibility
+        // returns without any navigation having happened.
+        Object.defineProperty(document, 'visibilityState',
+          { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await resumePage.waitForTimeout(200);
+      check('returning to a restored tab offers the purchase without needing a reload',
+        (await banner()).shown === true, JSON.stringify(await banner()));
+
       // verifyPaid stops honouring an intent thirty days after it is created,
       // so an older offer would fail at the server having promised at the
       // browser.
