@@ -164,7 +164,18 @@
   // lib/gemini.js's own copy by a check in tools/selftest.mjs, the same way
   // FIXED_INPUT_TOKENS above is held to the real prompt — this file cannot
   // require() a Node module, so it cannot read the real constant directly.
-  const MAX_OUTPUT_TOKENS = 16000;
+  // 18,000, raised from 16,000 because reports were coming back truncated:
+  // thinking is billed as output and shares this allowance with the report, so
+  // at thinkingLevel HIGH a long think plus a full report ran past 16,000 and
+  // Gemini returned finishReason MAX_TOKENS — an incomplete JSON the reader saw
+  // as "the analysis ran past its length limit".
+  //
+  // It is not a free number. charBudget below derives the digest ceiling from
+  // it, so every token added here is digest taken away: 16,000 bought 228,433
+  // characters and 18,000 buys 193,433. The heaviest realistic account measures
+  // 159,305, so the caps still bind before the ceiling — but the margin went
+  // from 30% to 18%, and tools/selftest.mjs holds it there deliberately.
+  const MAX_OUTPUT_TOKENS = 18000;
 
   /**
    * The largest digest that keeps one analysis under `costCap`.

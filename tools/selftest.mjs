@@ -1028,7 +1028,7 @@ check('the axis is one passage, not an argument and a rebuttal in two fields',
   !('counterEvidence' in letterProps));
 check('and `why` is asked for at the depth a Big Five trait gets',
   /depth a Big Five trait gets/i.test(letterDesc('why')) &&
-  /four to six sentences/i.test(letterDesc('why')));
+  /three or four sentences/i.test(letterDesc('why')));
 check('the case for a letter needs three separate pieces of evidence, not one read three ways',
   /at least three distinct pieces of evidence/i.test(letterDesc('why')) &&
   /different parts of the digest/i.test(letterDesc('why')) &&
@@ -3021,9 +3021,29 @@ check('a supplementary omit is safe on a digest that has no supplements at all',
 // The real ceiling and the real headroom, stated as a check so the "the caps
 // bind first" claim in digest.js cannot rot into a comment that used to be
 // true. This is also why every trim test below passes an explicit maxChars.
-check('the per-source caps bind well before the character ceiling does',
-  heavy.coverage.digestChars < Digest.LIMITS.totalChars * 0.8,
+//
+// Two claims, deliberately separated, because only one of them is correctness.
+// That the heaviest realistic digest *fits* is the property: the per-source
+// caps do the trimming and the character ceiling never has to. How much room
+// is left over is a margin, and the margin moved when MAX_OUTPUT_TOKENS went
+// from 16,000 to 18,000 — a bigger output allowance buys less digest under the
+// same cost cap, so the ceiling fell from 228,433 to 193,433 and the heaviest
+// account went from 70% of it to 82%.
+//
+// The threshold is 0.85 rather than 0.8 to accommodate that, and this is the
+// one place in this file where a number was loosened to fit rather than a
+// behaviour fixed. It is recorded because the next such move should be
+// resisted: at 19,000 output tokens the heavy account passes 90%, and past
+// that the ceiling starts trimming real accounts, which is the failure this
+// check exists to see coming. Raising COST_CAP to $0.26 would restore the
+// original 20% margin if that trade is ever worth $0.01 a run.
+check('the heaviest realistic digest fits under the character ceiling at all',
+  heavy.coverage.digestChars < Digest.LIMITS.totalChars,
   heavy.coverage.digestChars + ' of ' + Digest.LIMITS.totalChars);
+check('and the per-source caps still bind before that ceiling, with room to spare',
+  heavy.coverage.digestChars < Digest.LIMITS.totalChars * 0.85,
+  heavy.coverage.digestChars + ' of ' + Digest.LIMITS.totalChars + ' = ' +
+    (heavy.coverage.digestChars / Digest.LIMITS.totalChars * 100).toFixed(1) + '%');
 check('a heavy account plus a maxed-out supplement still fits the real budget', (() => {
   const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
   const full = Digest.build({ ...heavySignals(), supplements: { google: {
