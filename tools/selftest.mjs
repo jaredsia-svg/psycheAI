@@ -3800,6 +3800,34 @@ check('the schema requires evidence on strengths and frictions',
     /Describe the relationship, never the person/i.test(both));
 }
 
+// ---------- the price and the model it is a price for ----------
+//
+// docs/digest.js derives the digest ceiling from a pair of per-token rates, and
+// those rates belong to one specific model. The file says so in a comment and
+// then has no way to notice when the default model changes underneath it —
+// which is exactly what happened when the default moved from 3.7 to 3.8, and
+// what its own comment warns about ("re-run when a price or a model changes").
+//
+// This compares the model named beside PRICING with the default in
+// lib/gemini.js and fails when they part company. It checks names, not prices:
+// nothing here can know what Google charges, so this cannot tell you the rates
+// are right — only that somebody changed the model without looking at them.
+{
+  const digestSource = readFileSync(join(root, 'docs', 'digest.js'), 'utf8');
+  const geminiSource = readFileSync(join(root, 'lib', 'gemini.js'), 'utf8');
+
+  const defaultModel = (/GEMINI_MODEL \|\| '([^']+)'/.exec(geminiSource) || [])[1];
+  const pricedModel = (/const PRICING = \{\s*\n\s*\/\/ ([\w.-]+),/.exec(digestSource) || [])[1];
+
+  check('lib/gemini.js declares a default model',
+    Boolean(defaultModel), String(defaultModel));
+  check('and docs/digest.js names the model its pricing belongs to',
+    Boolean(pricedModel), String(pricedModel));
+  check('the digest budget is priced for the model that will actually be called',
+    defaultModel === pricedModel,
+    'gemini.js: ' + defaultModel + ' | digest.js pricing: ' + pricedModel);
+}
+
 // ---------- results ----------
 
 console.log('\nPsycheAI self-test');

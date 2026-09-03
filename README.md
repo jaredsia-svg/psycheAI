@@ -1105,7 +1105,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
-| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.7-flash`. |
+| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
@@ -1120,7 +1120,7 @@ npm run models:grok       # needs XAI_API_KEY
 npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
-`gemini-3.7-flash` is the default because it is generally available and cheap enough to re-run
+`gemini-3.8-flash` is the default because it is generally available and cheap enough to re-run
 freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
 
@@ -4040,7 +4040,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 768 checks: synthesises a real ZIP export and runs
+npm test           # 771 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

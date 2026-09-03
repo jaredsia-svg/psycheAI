@@ -66,7 +66,18 @@
   // not a guess — it is derived from a price, and the derivation is written
   // out so it can be re-run when a price or a model changes.
   const PRICING = {
-    // gemini-3.7-flash, the default model. Thinking is billed as output.
+    // gemini-3.8-flash, the default model. Thinking is billed as output.
+    //
+    // These two rates are carried over from gemini-3.7-flash and have NOT been
+    // re-checked against 3.8's published pricing. They are load-bearing: the
+    // digest ceiling below is derived from them, so if 3.8 costs more per token
+    // than this says, `charBudget` hands back a ceiling that quietly breaks the
+    // $0.25 cap rather than failing loudly. If it costs the same or less, the
+    // budget is merely conservative, which is the safe direction.
+    //
+    // The model named in this comment is held to lib/gemini.js's own default by
+    // a check in tools/selftest.mjs, so the pair cannot drift apart silently
+    // again — but that check compares names, not prices. Confirm the rates.
     inputPerToken: 1.50 / 1e6,
     outputPerToken: 7.50 / 1e6,
   };
