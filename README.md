@@ -1105,7 +1105,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
-| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.7-flash`. |
+| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to revert to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
@@ -1120,9 +1120,36 @@ npm run models:grok       # needs XAI_API_KEY
 npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
-`gemini-3.7-flash` is the default because it is generally available and cheap enough to re-run
+`gemini-3.8-flash` is the default because it is generally available and cheap enough to re-run
 freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
+
+### Which model, and going back
+
+Two ways back to `gemini-3.7-flash`, and the first needs no deploy:
+
+1. **Set `GEMINI_MODEL=gemini-3.7-flash` in the environment.** It overrides the default, takes
+   effect on the next request, and is the right lever if 3.8 turns out worse in production rather
+   than merely different. The digest budget stays priced for the default, which is safe here only
+   because the two models carry identical standard rates — see below.
+2. **Change the default**, which is two lines and nothing else: `DEFAULT_MODEL` in `lib/gemini.js`
+   and `PRICED_MODEL` in `docs/digest.js`. `MODEL_RATES` beside the second already carries both
+   models' rates, so nothing has to be looked up, and a check in `tools/selftest.mjs` fails if only
+   one of the two lines moves. Nothing else in the codebase names a model.
+
+**On the rates**, which are load-bearing rather than documentation: `docs/digest.js` *derives* the
+digest character ceiling from them, so a price that is too low hands back a ceiling that quietly
+breaks the `COST_CAP` rather than failing loudly. As of September 2026, `gemini-3.8-flash` sells at
+an introductory $0.75/$3.75 per million until 31 December 2026 and reverts to $1.50/$7.50 on
+1 January 2027 — which is what `gemini-3.7-flash` charges today. The table holds the **standard**
+rates for both. Budgeting at the introductory price would roughly double the ceiling now and then
+break the cap on New Year's Day with nothing to announce it; budgeting at the standard price is
+correct then and merely conservative until then. It also means the two models are interchangeable as
+far as the budget is concerned, so switching between them changes no other number in the app.
+
+A `PRICED_MODEL` with no entry in `MODEL_RATES` throws at load, naming the model and listing the
+alternatives, rather than surfacing as a `TypeError` from inside `charBudget` — the half-finished
+switch is the likeliest mistake here, since the two lines that must move live in different files.
 
 All three providers share the same prompts and the same output schemas (`lib/prompts.js`). Gemini's
 `responseJsonSchema` accepts real JSON Schema and Grok's `response_format` strict JSON schema mode
@@ -4093,7 +4120,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 796 checks: synthesises a real ZIP export and runs
+npm test           # 800 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;

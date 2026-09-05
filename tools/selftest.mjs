@@ -4100,8 +4100,8 @@ check('the schema requires evidence on strengths and frictions',
   const digestSource = readFileSync(join(root, 'docs', 'digest.js'), 'utf8');
   const geminiSource = readFileSync(join(root, 'lib', 'gemini.js'), 'utf8');
 
-  const defaultModel = (/GEMINI_MODEL \|\| '([^']+)'/.exec(geminiSource) || [])[1];
-  const pricedModel = (/const PRICING = \{\s*\n\s*\/\/ ([\w.-]+),/.exec(digestSource) || [])[1];
+  const defaultModel = (/const DEFAULT_MODEL = '([^']+)'/.exec(geminiSource) || [])[1];
+  const pricedModel = (/const PRICED_MODEL = '([^']+)'/.exec(digestSource) || [])[1];
 
   check('lib/gemini.js declares a default model',
     Boolean(defaultModel), String(defaultModel));
@@ -4110,6 +4110,36 @@ check('the schema requires evidence on strengths and frictions',
   check('the digest budget is priced for the model that will actually be called',
     defaultModel === pricedModel,
     'gemini.js: ' + defaultModel + ' | digest.js pricing: ' + pricedModel);
+  check('and that name actually resolves to a pair of rates',
+    Number.isFinite(Digest.PRICING && Digest.PRICING.inputPerToken) &&
+    Number.isFinite(Digest.PRICING && Digest.PRICING.outputPerToken) &&
+    Digest.PRICING.inputPerToken > 0 && Digest.PRICING.outputPerToken > 0,
+    JSON.stringify(Digest.PRICING));
+
+  // A name with no rates behind it is the likeliest mistake here, since the
+  // two lines that have to move live in different files. Checked by actually
+  // making it: without the guard this surfaces as "Cannot read properties of
+  // undefined (reading 'outputPerToken')" from inside charBudget, which names
+  // neither the model nor the file and would break the page for every reader,
+  // not only the person who typed it.
+  const bogus = digestSource.replace(/const PRICED_MODEL = '[^']+'/,
+    "const PRICED_MODEL = 'gemini-not-a-real-model'");
+  let thrown = '';
+  try {
+    new (await import('node:vm')).Script(bogus).runInNewContext({ window: {} });
+  } catch (error) {
+    thrown = (error && error.message) || String(error);
+  }
+  check('a model with no rates behind it fails by name rather than by TypeError',
+    /no per-token rates for "gemini-not-a-real-model"/.test(thrown), thrown.slice(0, 140));
+  check('and the message lists what it could have been instead',
+    /gemini-3\.8-flash/.test(thrown) && /gemini-3\.7-flash/.test(thrown), thrown.slice(0, 200));
+  // Every model the table prices must be one somebody could actually switch
+  // to by editing the two lines — a rate left behind for a model that no
+  // longer exists is a trap for whoever reverts next.
+  const priced = [...digestSource.matchAll(/^\s+'([\w.-]+)': \{ inputPerToken/gm)].map(m => m[1]);
+  check('the rate table carries both the current model and the one to revert to',
+    priced.includes(defaultModel) && priced.length >= 2, priced.join(', '));
 }
 
 // ---------- results ----------

@@ -65,20 +65,52 @@
   // supplements still lands about 20,000 characters under it. The ceiling is
   // not a guess — it is derived from a price, and the derivation is written
   // out so it can be re-run when a price or a model changes.
-  const PRICING = {
-    // gemini-3.7-flash, the default model. Thinking is billed as output.
-    //
-    // The model named on the line above is held to lib/gemini.js's own default
-    // by a check in tools/selftest.mjs. That check exists because these two
-    // rates are load-bearing and silent: the digest ceiling below is derived
-    // from them, so a default that moves to a pricier model without these
-    // moving too hands back a ceiling that quietly breaks the $0.25 cap rather
-    // than failing loudly. The check compares model names, not prices — it
-    // cannot tell you these numbers are right, only that nobody changed the
-    // model without looking at them.
-    inputPerToken: 1.50 / 1e6,
-    outputPerToken: 7.50 / 1e6,
+  // Per-token rates by model, in dollars per million. Thinking is billed as
+  // output on both.
+  //
+  // A table rather than a pair of loose numbers, so that changing the model is
+  // one edit and the price follows it. The old shape had the rates standing
+  // alone with the model named in a comment beside them, which is a price that
+  // can be wrong for the model it is being applied to — and silently, because
+  // the digest ceiling below is *derived* from these: a default that moves to a
+  // pricier model without them moving too hands back a ceiling that quietly
+  // breaks the $0.25 cap rather than failing loudly.
+  //
+  // These are the **standard** rates for both models, and for 3.8 that is
+  // deliberate rather than lazy. As of September 2026 gemini-3.8-flash is
+  // being sold at an introductory $0.75/$3.75 until 31 December 2026, after
+  // which it goes to the $1.50/$7.50 below — the same rates 3.7 charges today.
+  // Budgeting at the introductory price would roughly double the digest
+  // ceiling now and then break the cost cap on 1 January 2027, with nothing to
+  // announce it; budgeting at the standard price means the ceiling is correct
+  // then and merely conservative until then, which is the safe direction to be
+  // wrong in. It also means the two models are interchangeable as far as this
+  // budget is concerned, so switching between them changes no other number.
+  const MODEL_RATES = {
+    'gemini-3.8-flash': { inputPerToken: 1.50 / 1e6, outputPerToken: 7.50 / 1e6 },
+    'gemini-3.7-flash': { inputPerToken: 1.50 / 1e6, outputPerToken: 7.50 / 1e6 },
   };
+
+  // The other half of the switch in lib/gemini.js. Both lines have to move
+  // together, and a check in tools/selftest.mjs fails when only one of them
+  // does. That check compares model names, not prices: nothing here can know
+  // what Google charges, so it cannot tell you the rates above are right, only
+  // that nobody changed the model without looking at them.
+  const PRICED_MODEL = 'gemini-3.8-flash';
+  const PRICING = MODEL_RATES[PRICED_MODEL];
+  // A name with no rates behind it is a half-finished switch — the likeliest
+  // mistake anyone makes here, since the two lines that have to move live in
+  // different files. Left alone it surfaces four lines down as "Cannot read
+  // properties of undefined (reading 'outputPerToken')" inside charBudget,
+  // which says nothing about models and would break the page for every reader
+  // rather than only the person who typed it. Thrown here it names the model
+  // and the fix. Both are load-time failures on a constant, so neither can
+  // reach production past the suite — this one is simply readable.
+  if (!PRICING) {
+    throw new Error('docs/digest.js: no per-token rates for "' + PRICED_MODEL +
+      '". Add them to MODEL_RATES, or set PRICED_MODEL to one of: ' +
+      Object.keys(MODEL_RATES).join(', '));
+  }
 
   // Measured, not assumed. JSON with this much punctuation and this many
   // numbers runs denser than prose: the heavy digest is 156,346 characters
@@ -889,7 +921,7 @@
 
   root.PsycheDigest = {
     build, addSupplements,
-    LIMITS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS,
+    LIMITS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     omitMessages, omitCaptionsAndComments, omitActivity, omitAccounts, omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome, omitGeminiPrompts,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,
