@@ -2547,18 +2547,26 @@
   // this opens has always offered both Google and Facebook together (see
   // askSupplement), and a reader who came here for one may as well add the
   // other while the picker is up rather than opening this twice.
-  // A Google or Facebook export read inside askDataSources() but never
-  // carried through to a completed rerun — Back was pressed, or the popout
-  // was otherwise closed before Continue. Reading an archive is real work a
-  // reader already did; losing the tick the moment they step back from
-  // *continuing* the rerun would make Back read as "throw away what I just
-  // read" rather than its actual meaning, "not right now". Keyed by source,
-  // holding the same fragment `read()` produced so a later Continue can still
-  // send it. Cleared only when a genuinely new report replaces this one
-  // (handleFiles) or once a rerun actually commits the fragment into
-  // state.digest (rerunWithAdditionalData) — at that point state.digest
-  // already carries it permanently, so holding onto a second copy here would
-  // only be dead weight.
+  // An export read inside askDataSources() but never carried through to a
+  // completed run — Back was pressed, or the popout was otherwise closed
+  // before Continue. Reading an archive is real work a reader already did;
+  // losing the tick the moment they step back from *continuing* would make
+  // Back read as "throw away what I just read" rather than its actual
+  // meaning, "not right now". Keyed by source, holding the same value `read()`
+  // produced so a later Continue can still send it. Cleared only when a
+  // genuinely new report replaces this one (handleFiles) or once a run
+  // actually commits the value into state.digest — at that point state.digest
+  // and state.signals already carry it permanently, so holding a second copy
+  // here would only be dead weight.
+  //
+  // Instagram was left out of this for a long time, on the grounds that
+  // re-reading it is cheap and that every call already reflects state.digest.
+  // Both are true of a reader who has a report and false of the person this
+  // hurt: a first-timer has no digest at all, and `state.signals` is not set
+  // until *after* the popout resolves, so pressing Back on the popout they
+  // just loaded their export into threw the whole archive away and asked them
+  // to find the file again. "Cheap" was measured in machine time. The reader
+  // pays for it in going back to their downloads folder.
   let pendingDataSourceReads = {};
 
   /**
@@ -2572,11 +2580,16 @@
    * object keyed by source: `true` for a row that was already loaded and left
    * alone, or the freshly read result (Instagram's full `signals`, or a
    * Google/Facebook supplement fragment) for one that was just picked. The
-   * caller tells the two apart with `typeof value === 'object'`. A Google or
-   * Facebook row read successfully in an earlier call to this same function —
-   * even one that ended in Back — still resolves as that same fragment here,
-   * via pendingDataSourceReads; Instagram carries no such memory, since
-   * re-reading it is cheap and every call already reflects state.digest.
+   * caller tells the two apart with `typeof value === 'object'`. A row read
+   * successfully in an earlier call to this same function — even one that
+   * ended in Back — still resolves as that same value here, via
+   * pendingDataSourceReads, for all three sources.
+   *
+   * An uncommitted read outranks an already-committed one in that seed, and
+   * the order is load-bearing. Seeded the other way round, a reader who
+   * replaced an export, pressed Back and came again got `true` for that row —
+   * "you already have this one" — and their replacement was dropped on
+   * Continue without a word. The value in hand is always the newer answer.
    *
    * Nothing here touches state.digest, localStorage, or authoriseAnalysis —
    * reading an export is free, and Continue only hands the results back to
@@ -2640,13 +2653,17 @@
       // and a tick would then promise an archive the popout does not have;
       // with neither, the row is left unticked and reads as the one thing
       // still to do, which is what it is.
-      instagram: Boolean(digest || state.signals) || undefined,
-      google: Boolean(digest && digest.google) || pendingDataSourceReads.google || undefined,
-      facebook: Boolean(digest && digest.facebook) || pendingDataSourceReads.facebook || undefined,
+      instagram: pendingDataSourceReads.instagram || Boolean(digest || state.signals) || undefined,
+      google: pendingDataSourceReads.google || Boolean(digest && digest.google) || undefined,
+      facebook: pendingDataSourceReads.facebook || Boolean(digest && digest.facebook) || undefined,
     };
     let pending = '';
     let busy = false;
     let cancelled = false;
+    // Declared here and given its real value in the reset block below, with
+    // the rest of the per-opening state. Initialising it at the declaration
+    // instead looks right and does nothing: that block runs afterwards and
+    // overwrites it.
     let replacedInstagram = false;
 
     const say = (message, tone) => {
@@ -2773,6 +2790,11 @@
                 Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
             });
             replacedInstagram = true;
+            // Kept even if this call ends in Back, the same as the two below.
+            // The archive is minutes of the reader's phone doing real work and
+            // a trip to wherever they saved the file; a Back press means "not
+            // right now", not "discard that".
+            pendingDataSourceReads.instagram = added.instagram;
           } else {
             const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
             added[source] = await reader(files, {
@@ -2844,7 +2866,14 @@
 
       say('');
       cancelled = false;
-      replacedInstagram = false;
+      // True from the outset when an uncommitted Instagram read is being
+      // carried in, because from the stored digest's point of view the
+      // replacement is still pending — Back did not undo it, it deferred it.
+      // Flat `false` here dropped the note warning that a replaced Instagram
+      // takes Google with it, and put the Google tick back, on exactly the
+      // second visit where the reader has already been told once that it is
+      // fine.
+      replacedInstagram = Boolean(pendingDataSourceReads.instagram);
       $('#datasources-instagram-note').hidden = true;
       dialog.querySelector('.supplement-help').open = false;
       for (const button of buttons) setSourceProgress(button.dataset.datasource, null, '');

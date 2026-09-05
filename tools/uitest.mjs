@@ -803,6 +803,193 @@ try {
     }
   }
 
+  // ---- Back on a first upload keeps the archive ----
+  //
+  // pendingDataSourceReads has always carried a Google or Facebook read across
+  // a Back press, and deliberately never carried Instagram: re-reading it is
+  // cheap, and every call already reflects state.digest. Both of those are
+  // true of somebody who has a report and false of the person it hurt. A
+  // first-timer has no digest, and `state.signals` is not set until *after*
+  // the popout resolves — so pressing Back on the popout they had just loaded
+  // their export into threw the archive away, and reopening asked them to go
+  // and find the file again.
+  //
+  // The welcome page is the only place this is visible, because it is the only
+  // place Instagram's row starts unticked. The first check below establishes
+  // exactly that, so the ones after it are reading a signal that means
+  // something rather than a class that is always on.
+  {
+    const keepPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await keepPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await keepPage.evaluate(() => {
+        localStorage.removeItem('psycheai_runs');
+        localStorage.removeItem('psycheai_digest');
+        localStorage.removeItem('psycheai_profile');
+      });
+      await keepPage.reload({ waitUntil: 'load' });
+      await keepPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+
+      const igRow = '#datasources-dialog .mode-option[data-datasource="instagram"]';
+      const igTicked = () => keepPage.evaluate(sel =>
+        document.querySelector(sel).classList.contains('is-added'), igRow);
+
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('a first-timer opens the popout with Instagram genuinely unticked',
+        (await igTicked()) === false);
+
+      const [keepChooser] = await Promise.all([
+        keepPage.waitForEvent('filechooser', { timeout: 15000 }),
+        keepPage.click(igRow),
+      ]);
+      await keepChooser.setFiles({
+        name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+      });
+      // Bracketing the read by the row going busy and idle again, rather than
+      // by the tick: on this page the tick is the thing under test.
+      await keepPage.waitForFunction(sel => document.querySelector(sel).disabled, igRow, { timeout: 15000 });
+      await keepPage.waitForFunction(sel => !document.querySelector(sel).disabled, igRow, { timeout: 30000 });
+      check('and it ticks once the export has really been read', await igTicked());
+
+      await keepPage.click('#datasources-back');
+      await keepPage.waitForFunction(() => !document.querySelector('#datasources-dialog').open,
+        { timeout: 15000 });
+
+      let pickerReopened = false;
+      const notePicker = () => { pickerReopened = true; };
+      keepPage.on('filechooser', notePicker);
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      keepPage.off('filechooser', notePicker);
+      check('Back does not cost a first-timer the export they just loaded',
+        await igTicked(), 'Instagram unticked on reopen after Back');
+      check('and reopening asks for no file, because there is nothing to ask for',
+        pickerReopened === false);
+
+      // The tick has to be backed by the archive, not just drawn. Continuing
+      // from here must reach a finished report without the picker reappearing
+      // — a tick with nothing behind it would fail at the digest instead.
+      await continueFromDataSources(keepPage);
+      await answerReview(keepPage);
+      await keepPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      check('and the carried archive is real: Continue produces a report from it',
+        await keepPage.locator('#view-profile').isVisible());
+
+      // The other half of the same seed, and the one with a silent failure in
+      // it. Once a stored digest exists, a row's committed state and its
+      // uncommitted read can both be truthy at once — a reader replacing an
+      // export, pressing Back, and coming again. Seeded committed-first, the
+      // row resolved `true`, meaning "you already have this one", and the
+      // replacement they had just waited through was dropped on Continue
+      // without a word. The uncommitted read is always the newer answer.
+      //
+      // Made observable by marking the stored digest: a real one, produced by
+      // the run above, with a name no export contains. If the analysis that
+      // follows carries that name, the stored digest was reused and the fresh
+      // archive was thrown away.
+      const STALE = 'Stale Marker';
+      await keepPage.evaluate(marker => {
+        const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+        digest.profile.name = marker;
+        localStorage.setItem('psycheai_digest', JSON.stringify(digest));
+        localStorage.removeItem('psycheai_profile');
+        localStorage.removeItem('psycheai_runs');
+      }, STALE);
+      await keepPage.reload({ waitUntil: 'load' });
+      await keepPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+
+      const sent = [];
+      await keepPage.route('**/api/analyse', async route => {
+        sent.push(route.request().postData());
+        await route.continue();
+      });
+
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('a returning reader opens on a tick that comes from the stored digest',
+        await igTicked());
+      const [replaceChooser] = await Promise.all([
+        keepPage.waitForEvent('filechooser', { timeout: 15000 }),
+        keepPage.click(igRow),
+      ]);
+      await replaceChooser.setFiles({
+        name: 'instagram-replacement.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+      });
+      await keepPage.waitForFunction(sel => document.querySelector(sel).disabled, igRow, { timeout: 15000 });
+      await keepPage.waitForFunction(sel => !document.querySelector(sel).disabled, igRow, { timeout: 30000 });
+      await keepPage.click('#datasources-back');
+      await keepPage.waitForFunction(() => !document.querySelector('#datasources-dialog').open,
+        { timeout: 15000 });
+
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      await continueFromDataSources(keepPage);
+      await answerReview(keepPage);
+      await keepPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      const analysed = JSON.parse(sent[sent.length - 1] || '{}');
+      check('a replacement made before a Back is the one analysed, not the digest it replaced',
+        analysed.digest && analysed.digest.profile &&
+        analysed.digest.profile.name !== STALE,
+        'analysed name: ' + JSON.stringify(analysed.digest && analysed.digest.profile &&
+          analysed.digest.profile.name));
+
+      // Carrying the read across Back has to carry its consequences too.
+      // Replacing Instagram drops a Google export that exists only in the
+      // stored digest, and the popout says so — a note, and the Google tick
+      // withdrawn. Both are computed from `replacedInstagram`, which is reset
+      // per call, so on reopen the warning vanished while the replacement it
+      // warned about was still sitting there pending. A tick promising data
+      // that is about to be dropped is worse than the original bug: the reader
+      // has been told, once, that it is fine.
+      await keepPage.unroute('**/api/analyse');
+      await keepPage.evaluate(() => {
+        const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+        digest.google = { youtubeTopChannels: ['a channel'] };
+        localStorage.setItem('psycheai_digest', JSON.stringify(digest));
+        localStorage.removeItem('psycheai_profile');
+      });
+      await keepPage.reload({ waitUntil: 'load' });
+      await keepPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+
+      const googleRow = '#datasources-dialog .mode-option[data-datasource="google"]';
+      const state = () => keepPage.evaluate(sel => ({
+        google: document.querySelector(sel).classList.contains('is-added'),
+        note: !document.querySelector('#datasources-instagram-note').hidden,
+      }), googleRow);
+
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const before = await state();
+      check('Google rides in on the stored digest, unwarned about until anything changes',
+        before.google === true && before.note === false, JSON.stringify(before));
+
+      const [dropChooser] = await Promise.all([
+        keepPage.waitForEvent('filechooser', { timeout: 15000 }),
+        keepPage.click(igRow),
+      ]);
+      await dropChooser.setFiles({
+        name: 'instagram-again.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+      });
+      await keepPage.waitForFunction(sel => document.querySelector(sel).disabled, igRow, { timeout: 15000 });
+      await keepPage.waitForFunction(sel => !document.querySelector(sel).disabled, igRow, { timeout: 30000 });
+      const during = await state();
+      check('replacing Instagram warns that Google goes with it, and drops the tick',
+        during.google === false && during.note === true, JSON.stringify(during));
+
+      await keepPage.click('#datasources-back');
+      await keepPage.waitForFunction(() => !document.querySelector('#datasources-dialog').open,
+        { timeout: 15000 });
+      await keepPage.click('#open-sources');
+      await keepPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const after = await state();
+      check('and Back does not quietly withdraw that warning while the replacement still stands',
+        after.google === false && after.note === true, JSON.stringify(after));
+    } finally {
+      await keepPage.close();
+    }
+  }
+
   // ---- the way back for a first-time reader ----
   //
   // Somebody on their first run has no report page and no "run it again"
