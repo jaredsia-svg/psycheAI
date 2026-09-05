@@ -1115,6 +1115,25 @@
     answers the one you pick rather than a general one about working together.</p>
 </dialog>
 
+<!-- A failed analysis used to put the reader back on the welcome page with the
+     error somewhere down it, which on a phone means scrolling to find out what
+     happened and scrolling again to act on it. The remedy belongs where the
+     reader is standing: this opens over the waiting screen with the reason and
+     the one button that fixes it. #upload-retry on the welcome page stays as
+     the way back for somebody who closes this. -->
+<dialog id="analysis-error-dialog" class="mode-dialog" aria-labelledby="analysis-error-title">
+  <h2 id="analysis-error-title">That did not come through</h2>
+  <p class="muted" id="analysis-error-message"></p>
+  <div class="btn-row">
+    <button class="btn btn-block" id="analysis-error-retry" type="button">Try again</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost btn-block" id="analysis-error-close" type="button">Not now</button>
+  </div>
+  <p class="fineprint">Your data is still loaded — nothing needs uploading again, and a report that
+    already finished will come straight back.</p>
+</dialog>
+
 <dialog id="mode-dialog" class="mode-dialog" aria-labelledby="mode-dialog-title">
   <h2 id="mode-dialog-title">How should we compare you?</h2>
   <p class="muted" id="mode-dialog-sub"></p>

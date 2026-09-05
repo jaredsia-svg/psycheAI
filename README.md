@@ -1226,10 +1226,10 @@ us and the only one a remote caller cannot forge. That is the one counted, stepp
 `PSYCHEAI_TRUST_PROXY` hops (default 1). Four checks cover this, including two that forge chains and
 confirm the forged entries are ignored.
 
-**`lib/nonce.js` raises the cost per attempt.** Every protected POST must carry a single-use ticket
-from `GET /api/nonce` in an `X-PsycheAI-Nonce` header. A blind `curl` now gets a `400` rather than a
-PaymentIntent; a captured request cannot be replayed; and a cross-site form POST cannot read the
-ticket it would need, which closes the drive-by CSRF shape. The header rather than the body, for
+**`lib/nonce.js` raises the cost per attempt.** Every protected POST must carry a ticket from
+`GET /api/nonce` in an `X-PsycheAI-Nonce` header. A blind `curl` now gets a `400` rather than a
+PaymentIntent, and a cross-site form POST cannot read the ticket it would need, which closes the
+drive-by CSRF shape. The header rather than the body, for
 three reasons: two of these routes carry somebody's evidence digest and do not need another field in
 it, the digest is the result cache's key so a per-request value in there would make every request a
 miss, and a custom header is exactly what a cross-origin form cannot set.
@@ -1239,6 +1239,21 @@ page does. It doubles the traffic they need and puts the minting itself under a 
 is what sets the actual ceiling. Neither is worth much without the other, which is why they shipped
 together. The limit is spent *before* the ticket is checked, so guessing tickets is not free — the
 one way of probing this that must not be.
+
+**The tickets are signed rather than remembered**, and that was a correction rather than a
+refinement. They started as entries in a `Map`, which lives in one process — but a ticket is minted
+by one request and spent by another, and nothing routes those two to the same process: not with more
+than one instance, and not during the window of a zero-downtime deploy, which this repository enters
+on every push. Readers were being told to reload a page they had done nothing to. A ticket now
+carries its own expiry and randomness under an HMAC, keyed by `PSYCHEAI_NONCE_SECRET` or, unset, by
+a hash of the provider or Stripe key the deployment already has — identical across instances,
+stable across restarts, needing no configuration. Any process can verify what any other minted.
+
+The cost is exact and worth stating: single use is now enforced per process rather than across the
+deployment, so a replay landing on a *different* instance inside the ticket's ten minutes would be
+accepted. The round trip and the CSRF case — the two reasons the file exists — are untouched, and
+the limiter is unaffected. Being refused for nothing was a certainty; that replay is a hypothetical
+worth one request an attacker could have asked for anyway.
 
 The guarded routes live in one table (`API_GUARDS` in `server.js`) rather than as four copies of the
 same two checks inside four handlers, because a guard that lives inside the thing it guards is a
@@ -4040,7 +4055,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 784 checks: synthesises a real ZIP export and runs
+npm test           # 790 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -4049,7 +4064,7 @@ npm test           # 784 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1156 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1160 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are
@@ -4120,7 +4135,7 @@ lib/
   claude.js           the Anthropic SDK calls
   mock.js             canned analyses for tests and for clicking around
   ratelimit.js        per-caller token buckets on the routes that cost money
-  nonce.js            single-use tickets for those same routes
+  nonce.js            signed tickets for those same routes
 server.js             static hosting, the API routes, and the guard table in front of them
 tools/                test suites, the synthetic export fixture, model listing
 ```

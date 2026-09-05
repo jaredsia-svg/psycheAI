@@ -3754,6 +3754,59 @@ check('the schema requires evidence on strengths and frictions',
   check('a ticket past its TTL is refused',
     JSON.parse(expired.toString()).spent === false, expired.toString());
 
+  // The property the whole rewrite exists for, and the one that cannot be
+  // seen from inside a single process: a ticket minted by one instance has to
+  // be spendable by another. Tickets are minted by /api/nonce and spent by a
+  // separate POST, and nothing routes those two requests to the same process
+  // — not with more than one instance, and not during the zero-downtime
+  // window of a deploy, which this repository enters on every push. When they
+  // were remembered in a Map rather than signed, the reader was told to
+  // reload a page they had done nothing to.
+  //
+  // Two subprocesses, one key between them, exactly as two instances of the
+  // same service get one key from their shared environment.
+  const across = (mintEnv, spendEnv) => {
+    const minted = execFileSync(process.execPath,
+      ['-e', 'process.stdout.write(require("' + join(root, 'lib', 'nonce.js') + '").issue())'],
+      { env: { PATH: process.env.PATH, ...mintEnv } }).toString();
+    const out = execFileSync(process.execPath,
+      ['-e', 'process.stdout.write(JSON.stringify({ spent: require("' +
+        join(root, 'lib', 'nonce.js') + '").spend(process.argv[1]) }))', minted],
+      { env: { PATH: process.env.PATH, ...spendEnv } }).toString();
+    return { minted, spent: JSON.parse(out).spent };
+  };
+
+  const sharedKey = { GEMINI_API_KEY: 'a-key-both-instances-were-given' };
+  const shared = across(sharedKey, sharedKey);
+  check('a ticket minted by one instance is spendable by another',
+    shared.spent === true, JSON.stringify(shared).slice(0, 160));
+
+  // And the check that keeps the one above honest. A `spend` that returned
+  // true for anything would satisfy it just as well, so the same exchange has
+  // to fail when the two processes do not share a key.
+  const stranger = across(sharedKey, { GEMINI_API_KEY: 'a-completely-different-key' });
+  check('but not by a process that does not share the signing key',
+    stranger.spent === false, JSON.stringify(stranger).slice(0, 160));
+
+  // The explicit override, for a deployment that would rather name its own
+  // secret than have one derived from a provider key.
+  const explicit = across({ PSYCHEAI_NONCE_SECRET: 'set-by-hand' },
+    { PSYCHEAI_NONCE_SECRET: 'set-by-hand', GEMINI_API_KEY: 'ignored-because-explicit-wins' });
+  check('PSYCHEAI_NONCE_SECRET is preferred over a derived key when it is set',
+    explicit.spent === true, JSON.stringify(explicit).slice(0, 160));
+
+  // Tampering. The expiry is in the clear and is the field an attacker would
+  // reach for first, so extending it must invalidate the signature over it.
+  const live = nonces.issue();
+  const [stamp, ...rest] = live.split('.');
+  const postdated = [Number(stamp) + 60 * 60 * 1000, ...rest].join('.');
+  check('a ticket whose expiry has been edited is refused',
+    postdated !== live && nonces.spend(postdated) === false);
+  check('and so is one with the signature stripped off',
+    nonces.spend(live.slice(0, live.lastIndexOf('.'))) === false);
+  check('the untampered original still works, so the checks above refused the edit and not the ticket',
+    nonces.spend(live) === true);
+
   // -- the limiter --
   rateLimit.reset();
   const capacity = rateLimit.LIMITS['payment-intent'].capacity;

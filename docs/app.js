@@ -3110,23 +3110,57 @@
       renderProfile();
       show('profile');
     } catch (error) {
-      showUploadError((error && error.message) || 'The analysis failed.', { retry: true });
+      offerRetry((error && error.message) || 'The analysis failed.');
     } finally {
       stopElapsed();
       guardUnload(false);
     }
   }
 
+  /**
+   * Put the failure and its remedy in the same place, on top of wherever the
+   * reader already is.
+   *
+   * The welcome page's own error line is still written underneath, so closing
+   * this leaves a page that explains itself rather than one that looks as
+   * though nothing happened. But the dialog is what a reader on a phone
+   * actually meets: the alternative was an error somewhere down a long page,
+   * found by scrolling, acted on by scrolling back.
+   */
+  function offerRetry(message) {
+    showUploadError(message, { retry: true });
+    const dialog = $('#analysis-error-dialog');
+    if (!dialog || !lastAttempt) return;
+    $('#analysis-error-message').textContent = message;
+    if (typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
+    else dialog.setAttribute('open', '');
+  }
+
+  function closeRetryDialog() {
+    const dialog = $('#analysis-error-dialog');
+    if (!dialog) return;
+    if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+    else dialog.removeAttribute('open');
+  }
+
+  // Both buttons and the retry on the page below run the same two lines, so
+  // there is one definition of what trying again means.
+  async function retryLastAttempt() {
+    if (!lastAttempt) return;
+    closeRetryDialog();
+    flash('#upload-error', '');
+    $('#upload-retry').hidden = true;
+    await runAnalysis(lastAttempt.digest, lastAttempt.auth);
+  }
+
+  $('#analysis-error-retry').addEventListener('click', retryLastAttempt);
+  $('#analysis-error-close').addEventListener('click', closeRetryDialog);
+
   // One press, straight back into the same call. Deliberately not routed
   // through startFromSources: that reopens the popout and the review to
   // rebuild a digest this already holds, which is three steps for a reader who
   // asked for none of them and a different cache key at the end of it.
-  $('#upload-retry').addEventListener('click', async () => {
-    if (!lastAttempt) return;
-    flash('#upload-error', '');
-    $('#upload-retry').hidden = true;
-    await runAnalysis(lastAttempt.digest, lastAttempt.auth);
-  });
+  $('#upload-retry').addEventListener('click', retryLastAttempt);
 
   // ══════════════ 2. profile report ══════════════
 

@@ -1026,12 +1026,15 @@ try {
       // A 502 carrying a real message, not a dropped connection: this is about
       // what the page does once an analysis has genuinely failed, and a drop
       // would be swallowed by the retry inside docs/llm.js before it got here.
+      // Two failures, so both ways back get pressed: the page's button once
+      // the dialog has been dismissed, and the dialog's own button on the
+      // round after that.
       const bodies = [];
-      let failNext = true;
+      let failures = 2;
       await retryPage.route('**/api/analyse', async route => {
         bodies.push(route.request().postData());
-        if (failNext) {
-          failNext = false;
+        if (failures > 0) {
+          failures -= 1;
           await route.fulfill({
             status: 502,
             contentType: 'application/json; charset=utf-8',
@@ -1058,27 +1061,50 @@ try {
       await continueFromDataSources(retryPage);
       await answerReview(retryPage);
 
-      await retryPage.waitForSelector('#upload-retry:not([hidden])', { timeout: 30000 });
-      check('a failed analysis offers a retry right where the error is',
+      // The remedy has to arrive where the reader is standing. On a phone the
+      // old behaviour — welcome page, error somewhere down it — meant
+      // scrolling to find out what happened and scrolling back to act on it.
+      await retryPage.waitForSelector('#analysis-error-dialog[open]', { timeout: 30000 });
+      check('a failed analysis explains itself in front of the reader, not down the page',
+        await retryPage.locator('#analysis-error-dialog').isVisible());
+      check('and it carries the reason it failed rather than a generic line',
+        /provider fell over/i.test(await retryPage.locator('#analysis-error-message').innerText()),
+        await retryPage.locator('#analysis-error-message').innerText());
+      check('with the one button that fixes it, saying what it does',
+        /try again/i.test(await retryPage.locator('#analysis-error-retry').innerText()));
+
+      // Closing it must not strand anybody: the page underneath keeps the
+      // same offer, which is the way back for a reader who dismissed this.
+      await retryPage.click('#analysis-error-close');
+      await retryPage.waitForFunction(() => !document.querySelector('#analysis-error-dialog').open,
+        { timeout: 15000 });
+      check('dismissing it leaves the same retry on the page underneath',
         await retryPage.locator('#upload-retry').isVisible());
-      check('and the button says what it does',
-        /try again/i.test(await retryPage.locator('#upload-retry').innerText()));
+      check('and the error is still written there, so the page explains itself',
+        /provider fell over/i.test(await retryPage.locator('#upload-error').innerText()));
 
       await retryPage.click('#upload-retry');
+
+      // Second failure: this time the reader stays with the dialog and uses
+      // the button in it, which is the path somebody on a phone actually
+      // takes and the one the page button is only a fallback for.
+      await retryPage.waitForSelector('#analysis-error-dialog[open]', { timeout: 30000 });
+      await retryPage.click('#analysis-error-retry');
       await retryPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
-      check('pressing it produces the report without going back through the popout',
+      check('the button in the dialog produces the report without touching the page behind it',
         await retryPage.locator('#view-profile').isVisible());
-      check('and the retry is one press, not a second trip through review',
-        bodies.length === 2, 'analyse calls: ' + bodies.length);
+      check('and neither retry went back through the popout or the review',
+        bodies.length === 3, 'analyse calls: ' + bodies.length);
+      check('the dialog closes itself once the report is in hand',
+        await retryPage.evaluate(() => !document.querySelector('#analysis-error-dialog').open));
 
       // The whole point. Byte-identical means the server's cache key matches,
       // which is what turns a retry into a free lookup rather than a second
       // model call — and it is only true because the digest already in hand is
       // resent rather than rebuilt.
-      check('the retry sends the identical digest, so the server can recognise it',
-        bodies[0] === bodies[1],
-        bodies[0] === bodies[1] ? '' : 'first ' + String(bodies[0]).length +
-          ' chars, second ' + String(bodies[1]).length);
+      check('every retry sends the identical digest, so the server can recognise it',
+        bodies[0] === bodies[1] && bodies[1] === bodies[2],
+        'lengths: ' + bodies.map(b => String(b).length).join(', '));
 
       check('and the offer is withdrawn once the report is in hand',
         await retryPage.locator('#upload-retry').isHidden());
