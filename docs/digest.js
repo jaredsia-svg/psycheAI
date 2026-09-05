@@ -96,7 +96,7 @@
   // does. That check compares model names, not prices: nothing here can know
   // what Google charges, so it cannot tell you the rates above are right, only
   // that nobody changed the model without looking at them.
-  const PRICED_MODEL = 'gemini-3.8-flash';
+  const PRICED_MODEL = 'gemini-3.7-flash';
   const PRICING = MODEL_RATES[PRICED_MODEL];
   // A name with no rates behind it is a half-finished switch — the likeliest
   // mistake anyone makes here, since the two lines that have to move live in

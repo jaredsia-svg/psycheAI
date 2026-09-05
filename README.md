@@ -1105,7 +1105,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
-| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to revert to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
+| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.7-flash`. Setting this is the zero-deploy way to try `gemini-3.8-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
@@ -1120,18 +1120,27 @@ npm run models:grok       # needs XAI_API_KEY
 npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
-`gemini-3.8-flash` is the default because it is generally available and cheap enough to re-run
+`gemini-3.7-flash` is the default because it is generally available and cheap enough to re-run
 freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
 
 ### Which model, and going back
 
-Two ways back to `gemini-3.7-flash`, and the first needs no deploy:
+The default was moved to `gemini-3.8-flash` and moved back the same day. The model resolves and the
+key can reach it — a model ID that did not would produce *"Gemini has no model called …"*, since the
+404 branch of `asHttpError` is checked before the 503 one. What it produced instead was
+**"Gemini is overloaded right now and stayed unavailable after retrying automatically"**, which is
+Google declining to serve under load, three automatic retries deep. That is what a just-launched
+model looks like when everyone is trying it at once, and it is a good enough reason to sit on 3.7
+until the capacity settles. Nothing about the switch itself was wrong; it can go back whenever 3.8
+stops being busy.
 
-1. **Set `GEMINI_MODEL=gemini-3.7-flash` in the environment.** It overrides the default, takes
-   effect on the next request, and is the right lever if 3.8 turns out worse in production rather
-   than merely different. The digest budget stays priced for the default, which is safe here only
-   because the two models carry identical standard rates — see below.
+Two ways to move between them, and the first needs no deploy:
+
+1. **Set `GEMINI_MODEL` in the environment.** It overrides the default, takes effect on the next
+   request, and is the right lever for trying 3.8 again without a deploy — or for backing out of it
+   in a hurry. The digest budget stays priced for the default, which is safe in either direction
+   only because the two models carry identical standard rates — see below.
 2. **Change the default**, which is two lines and nothing else: `DEFAULT_MODEL` in `lib/gemini.js`
    and `PRICED_MODEL` in `docs/digest.js`. `MODEL_RATES` beside the second already carries both
    models' rates, so nothing has to be looked up, and a check in `tools/selftest.mjs` fails if only
