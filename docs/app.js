@@ -907,13 +907,30 @@
   }
 
   /**
-   * Write down an analysis that is running on the server right now.
+   * Write down a generation that is running on the server right now.
    *
-   * Only the key and when it started — never a report, and never the digest,
-   * which is already stored under its own key and does not need a second copy.
+   * `kind` says what the result is, because collecting one is not the same as
+   * collecting another: a free report replaces the profile wholesale, paid
+   * sections attach to the profile already on screen, and a compatibility read
+   * renders a comparison and belongs to no profile at all. A single resume
+   * path that guessed would eventually put one in the place of another.
+   *
+   * `context` carries whatever the collecting step needs and cannot rebuild —
+   * for a comparison, the other person's card and the basis it was run on,
+   * which exist nowhere else once the tab is gone.
+   *
+   * Only ever keys, kinds and small context: never a report, and never a
+   * digest, which is already stored under its own key and is far too big to
+   * want a second copy of in a quota this app has already run up against.
    */
-  function rememberJob(key, auth) {
-    store.write(KEYS.job, { key, auth: auth || null, at: Date.now() });
+  function rememberJob(key, kind, auth, context) {
+    store.write(KEYS.job, {
+      key,
+      kind: kind || 'analysis',
+      auth: auth || null,
+      at: Date.now(),
+      ...(context || {}),
+    });
   }
 
   function clearJob() {
@@ -3132,7 +3149,7 @@
     lastAttempt = { digest, auth };
     try {
       const result = await LLM.analyseProfile(digest, auth || undefined,
-        { onJob: key => rememberJob(key, auth) });
+        { onJob: key => rememberJob(key, 'analysis', auth) });
       await adoptProfile(result);
     } catch (error) {
       // Terminal: whatever the job was, it is not coming. Cleared so a later
@@ -3208,21 +3225,53 @@
   async function resumeRunningJob() {
     const job = runningJob();
     if (!job || resuming) return false;
+    // A comparison needs the other person's card to render at all, and a paid
+    // section needs a profile to attach to. Neither survives without them, so
+    // a record missing what its kind requires is dropped rather than resumed
+    // into a half-rendered screen.
+    if (job.kind === 'compatibility' && !(job.other && state.profile)) { clearJob(); return false; }
+    if (job.kind === 'premium' && !state.profile) { clearJob(); return false; }
+
     resuming = true;
-    $('#working-title').textContent = modelName() + ' is reading your profile';
+    const comparing = job.kind === 'compatibility';
+    $('#working-title').textContent = comparing
+      ? modelName() + ' is comparing you'
+      : modelName() + ' is reading your profile';
     $('#working-note').textContent = TEXT.resumingJob;
-    startElapsed('Analysing');
+    startElapsed(comparing ? 'Assessing ' + state.profile.card.name + ' and ' + job.other.name
+      : 'Analysing');
     show('working');
     // So the retry offer has something to repeat if this job turns out to be
-    // gone. The digest is the one that produced the job — it is what was
-    // stored before the call went out.
-    if (state.digest) lastAttempt = { digest: state.digest, auth: job.auth || null };
+    // gone. Only for the free report: the other two have offers of their own
+    // — an unlock receipt and a pending-purchase record — which know how to
+    // ask for the right thing, and a "Try again" that re-ran the free report
+    // in place of paid sections would be worse than no button.
+    if (job.kind === 'analysis' && state.digest) {
+      lastAttempt = { digest: state.digest, auth: job.auth || null };
+    }
     try {
-      await adoptProfile(await LLM.resumeJob(job.key));
+      const result = await LLM.resumeJob(job.key);
+      clearJob();
+      if (job.kind === 'premium') adoptPremium(result);
+      else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
+      else await adoptProfile(result);
       return true;
     } catch (error) {
       clearJob();
-      offerRetry((error && error.message) || 'The analysis failed.');
+      // Only the free report has a retry to offer. For the other two the
+      // honest move is to put the reader back where they were and let the
+      // offer that already exists for an uncollected purchase do its job —
+      // it is the one that knows a payment is involved.
+      if (job.kind === 'analysis') {
+        offerRetry((error && error.message) || 'The analysis failed.');
+      } else if (state.profile) {
+        renderProfile();
+        show('profile');
+        flash('#profile-alert', (error && error.message) || 'That did not come through.');
+        offerPendingWork();
+      } else {
+        offerRetry((error && error.message) || 'The analysis failed.');
+      }
       return false;
     } finally {
       resuming = false;
@@ -4498,7 +4547,23 @@
       // instead delivers nothing yet and the retry below covers both.
       if (needsFreeRefresh) {
         premiumStatus(TEXT.premiumRefreshingFree);
-        const refreshed = await LLM.analyseProfile(paidDigest, bundledAuth(auth));
+        // Recorded as an ordinary analysis, because that is what a page
+        // rejoining it can do with the result: adoptProfile delivers the
+        // refreshed free report, which is the expensive half to lose.
+        //
+        // What a resumed one does *not* restore is the two lines below —
+        // promoting paidDigest into state.digest and carrying the added
+        // supplements onto state.signals — because paidDigest lives in this
+        // closure and is far too big to write into the job record beside a
+        // key. So a reader who closes the app during this specific half of a
+        // bundled refresh gets their refreshed report and a stored digest that
+        // still lacks the source they just added; the popout shows it unticked
+        // and asks for it again. That is worse than the unbroken path and
+        // better than the alternative, which is losing the refreshed report
+        // outright — the unlock receipt would then fetch paid sections against
+        // the old digest with no free refresh at all.
+        const refreshed = await LLM.analyseProfile(paidDigest, bundledAuth(auth),
+          { onJob: key => rememberJob(key, 'analysis', auth) });
 
         // Committed the moment the call comes back, before the paid sections
         // are even asked for. The extra data has bought something now — this
@@ -4541,19 +4606,9 @@
       // send when it did not — reading state.digest here would be wrong the
       // moment this call reached here with an unpromoted digest still
       // pending.
-      const result = await LLM.analysePremium(paidDigest, auth);
-      if (state.profile) {
-        state.profile.premiumAnalysis = result.data;
-        // The provider and moment that wrote the paid sections, kept apart
-        // from the free report's own `model`/`createdAt` because a different
-        // call, on a different provider, wrote them — see renderAnalysedBy.
-        state.profile.premiumModel = result.model || '';
-        state.profile.premiumAt = new Date().toISOString();
-        // Best-effort: a browser too full to hold this still leaves the
-        // reader able to read what they paid for, on screen, for the rest of
-        // this visit — it just will not survive a reload.
-        store.write(KEYS.profile, state.profile);
-      }
+      const result = await LLM.analysePremium(paidDigest, auth,
+        { onJob: key => rememberJob(key, 'premium', auth) });
+      adoptPremium(result);
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
       // the re-run button that reads it — exactly as they were. False already
@@ -5499,14 +5554,9 @@
     // All of it rides along, so resuming asks nothing of them.
     rememberPending('compatibility', auth, { other, mode, stance });
     try {
-      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance, auth);
-      clearPending();
-      const report = { ...result.data, mode: result.data.mode || mode, stance };
-      const history = store.read(KEYS.history, []);
-      history.unshift({ when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report });
-      store.write(KEYS.history, history.slice(0, 25));
-      renderReport(report, other.name);
-      show('report');
+      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance, auth,
+        { onJob: key => rememberJob(key, 'compatibility', auth, { other, mode, stance }) });
+      adoptComparison(result, other, mode, stance);
     } catch (error) {
       renderScan();
       show('scan');
@@ -5515,6 +5565,52 @@
       stopElapsed();
       guardUnload(false);
     }
+  }
+
+  /**
+   * Take delivery of the paid sections, from the call that asked for them or
+   * from a page that rejoined it afterwards.
+   *
+   * Attaches to the profile already on screen rather than replacing it, which
+   * is the whole difference between this and adoptProfile: the free report is
+   * the thing these sections are being added to.
+   */
+  function adoptPremium(result) {
+    clearJob();
+    if (!state.profile) return;
+    state.profile.premiumAnalysis = result.data;
+    // The provider and moment that wrote the paid sections, kept apart from
+    // the free report's own `model`/`createdAt` because a different call, on a
+    // different provider, wrote them — see renderAnalysedBy.
+    state.profile.premiumModel = result.model || '';
+    state.profile.premiumAt = new Date().toISOString();
+    // Best-effort: a browser too full to hold this still leaves the reader
+    // able to read what they paid for, on screen, for the rest of this visit —
+    // it just will not survive a reload.
+    store.write(KEYS.profile, state.profile);
+  }
+
+  /**
+   * Take delivery of a finished comparison, from the call that asked for it or
+   * from a page that rejoined it afterwards.
+   *
+   * `mode` and `stance` are optional because a resumed job carries its own,
+   * off the record rather than out of the arguments the caller no longer has.
+   * The report's own `mode` still wins where the model set one, exactly as it
+   * did inline.
+   */
+  function adoptComparison(result, other, mode, stance) {
+    clearPending();
+    clearJob();
+    const basis = mode || result.data.mode;
+    const report = { ...result.data, mode: result.data.mode || basis, stance };
+    const history = store.read(KEYS.history, []);
+    history.unshift({
+      when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report,
+    });
+    store.write(KEYS.history, history.slice(0, 25));
+    renderReport(report, other.name);
+    show('report');
   }
 
   // ══════════════ 4. compatibility report ══════════════

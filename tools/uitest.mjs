@@ -882,8 +882,10 @@ try {
       check('and the page writes the job down while it is still running',
         typeof record.key === 'string' && /^analyse:[0-9a-f]{64}$/.test(record.key),
         JSON.stringify(record));
-      check('the record holds a key and a time, never a report',
-        Object.keys(record).sort().join(',') === 'at,auth,key', Object.keys(record).join(','));
+      check('the record holds a key, a kind and a time, never a report',
+        Object.keys(record).sort().join(',') === 'at,auth,key,kind', Object.keys(record).join(','));
+      check('and it names what the result is, so collecting it cannot guess wrong',
+        record.kind === 'analysis', String(record.kind));
       // The first poll is a couple of seconds behind the POST by design, so
       // this waits for it rather than assuming it has already happened.
       await waitForLength({ get length() { return polls; } }, 1, 20000);
@@ -908,6 +910,27 @@ try {
         await jobPage.locator('#view-profile').isVisible());
       check('and the job record is cleared once it has been collected',
         (await jobPage.evaluate(() => localStorage.getItem('psycheai_job'))) === null);
+
+      // The same treatment for "Add / change data & re-run analysis", which is
+      // the other way into an analysis and the one a returning reader uses.
+      // It reaches the same runAnalysis, so it was already a background job
+      // the day the first one was — but nothing said so, and a later edit that
+      // gave the re-run its own call would have taken the job record with it
+      // and passed every check in this file.
+      await clearRunCount(jobPage);
+      await startFreeRerun(jobPage);
+      await answerReview(jobPage);
+      await jobPage.waitForFunction(() => Boolean(localStorage.getItem('psycheai_job')),
+        { timeout: 30000 });
+      const rerunRecord = await jobPage.evaluate(() =>
+        JSON.parse(localStorage.getItem('psycheai_job')));
+      check('a re-run from the report page is a background job too',
+        /^analyse:[0-9a-f]{64}$/.test(rerunRecord.key) && rerunRecord.kind === 'analysis',
+        JSON.stringify(rerunRecord));
+      await jobPage.waitForFunction(() => localStorage.getItem('psycheai_job') === null,
+        { timeout: 60000 });
+      check('and it clears the record when the re-run lands, same as a first run',
+        await jobPage.locator('#view-profile').isVisible());
     } finally {
       await jobPage.close();
     }
@@ -4887,6 +4910,19 @@ try {
   check('a progress bar with a live seconds count shows while the paid call is in flight',
     await page.locator('#premium-progress .progress-bar.indeterminate').isVisible() &&
     /^\d+s$/.test((await page.locator('#premium-progress-time').innerText()).trim()));
+
+  // The paid sections are a background job like everything else, and the one
+  // most expensive to lose — the reader has already been charged. Its record
+  // is marked 'premium' rather than 'analysis' because collecting it attaches
+  // to the profile on screen instead of replacing it; a resume that guessed
+  // wrong here would overwrite a report with four sections that are not one.
+  const premiumJob = await page.waitForFunction(() => {
+    const raw = localStorage.getItem('psycheai_job');
+    return raw ? JSON.parse(raw) : null;
+  }, null, { timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => null);
+  check('the paid sections record a job of their own while they run',
+    Boolean(premiumJob) && premiumJob.kind === 'premium' &&
+    /^premium:[0-9a-f]{64}$/.test(premiumJob.key), JSON.stringify(premiumJob));
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
   await page.unroute('**/api/premium-analysis');
   check('the progress bar is gone once the dialog closes',
@@ -8411,7 +8447,27 @@ try {
     compatBodies.length === beforeModes, String(compatBodies.length));
   await page.click('#premium-mock-pay');
 
+  // A comparison is as long a call as an analysis and just as easy to close an
+  // app during, so it records a job of its own. Its record has to carry more
+  // than the analysis one: the other person's card came off a QR code that may
+  // be long gone, and the basis was chosen in two dialogs nobody wants to
+  // answer twice. Caught here rather than by a dedicated flow, because getting
+  // to a paid comparison is most of this file.
+  const compatJob = await page.waitForFunction(() => {
+    const raw = localStorage.getItem('psycheai_job');
+    return raw ? JSON.parse(raw) : null;
+  }, null, { timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => null);
+  check('a comparison records a job of its own while it runs',
+    Boolean(compatJob) && compatJob.kind === 'compatibility' &&
+    /^compatibility:[0-9a-f]{64}$/.test(compatJob.key), JSON.stringify(compatJob));
+  check('and it carries what rendering the result needs and nothing could rebuild',
+    Boolean(compatJob && compatJob.other && compatJob.other.name) &&
+    Boolean(compatJob.mode) && 'stance' in compatJob,
+    JSON.stringify(compatJob && Object.keys(compatJob)));
+
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+  check('the job record is cleared once the comparison is on screen',
+    (await page.evaluate(() => localStorage.getItem('psycheai_job'))) === null);
   check('the paid comparison carries the payment that bought it',
     Boolean(JSON.parse(compatBodies[compatBodies.length - 1]).paymentIntentId),
     compatBodies[compatBodies.length - 1]);

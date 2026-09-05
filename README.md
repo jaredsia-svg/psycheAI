@@ -1322,6 +1322,22 @@ checked at startup *and* on every return to visibility, because a suspended tab 
 resumes its JavaScript context without a reload, and a poll loop that stopped ticking while the phone
 slept is indistinguishable from one that never existed.
 
+Every long call works this way, not only the first upload: the free report, a re-run from **Add /
+change data & re-run analysis**, the paid sections, and a compatibility read. The record carries a
+`kind`, because collecting one is not the same as collecting another — a free report replaces the
+profile wholesale, paid sections attach to the one already on screen, and a comparison belongs to no
+profile at all — and a resume that guessed would eventually put one in the place of another. For a
+comparison it also carries the other person's card and the basis, which came off a QR code and two
+dialogs and exist nowhere else once the tab is gone.
+
+One case is deliberately partial and worth knowing about. A **bundled refresh** — the re-run that
+happens when premium is already unlocked, regenerating the free report and the paid sections
+together on one charge — records its free half, so a reader who closes the app gets that report
+back. What a resumed one cannot restore is the promotion of the newly-supplemented digest into
+storage, because that digest lives in a closure and is far too large to write beside a key. So the
+popout will show the source they just added as unticked and ask for it again. That is worse than
+the unbroken path and better than the alternative, which is losing the refreshed report outright.
+
 Four job states, and each sends the client somewhere different: `running` (wait), `done` (take the
 report), `failed` (show the reason), `unknown` (this process has no memory of it — start again).
 Folding any two together is how a reader ends up watching a spinner for a job that failed, so
@@ -4129,7 +4145,7 @@ npm test           # 800 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1169 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1176 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

@@ -376,15 +376,15 @@
   // `auth` takes the same shape as the other two paid calls — `{ paymentIntentId }`
   // or `{ promoCode }`. A compatibility read is a purchase now rather than a
   // free draw on the daily ceiling, so the server refuses this without one.
-  const analyseCompatibility = (a, b, mode, stance, auth) =>
-    run('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}));
+  const analyseCompatibility = (a, b, mode, stance, auth, opts) =>
+    run('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}), opts);
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds
   // (from psycheai_digest) travelling again, not a second upload of anything
   // new. `auth` is one of `{ paymentIntentId }` or `{ promoCode }` — the two
   // ways server.js's handlePremiumAnalysis will accept unlocking this call.
-  const analysePremium = (digest, auth) =>
-    run('/api/premium-analysis', Object.assign({ digest }, auth));
+  const analysePremium = (digest, auth, opts) =>
+    run('/api/premium-analysis', Object.assign({ digest }, auth), opts);
 
   /**
    * Rejoin a job this page did not start — one begun by a previous life of
