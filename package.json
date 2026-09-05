@@ -1,25 +1,27 @@
 {
-  "name": "kindred",
-  "version": "1.0.0",
-  "description": "Kindred — social-profile-powered romantic compatibility app with QR code matching",
-  "main": "server.js",
+  "name": "psycheai",
+  "version": "3.0.0",
+  "description": "Reads your Instagram data export with a language model into a detailed personality profile, tagged to a QR code, with romantic and platonic compatibility reports",
+  "private": true,
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "mock": "PSYCHEAI_MOCK=1 node server.js",
+    "test": "node tools/selftest.mjs",
+    "test:ui": "node tools/uitest.mjs",
+    "test:live": "node tools/livetest.mjs",
+    "models": "node tools/models.mjs",
+    "models:grok": "node tools/models-grok.mjs"
   },
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.11.1",
-    "ejs": "^3.1.10",
-    "express": "^4.19.2",
-    "express-session": "^1.18.0",
-    "jsqr": "^1.4.0",
-    "qrcode": "^1.5.4"
-  },
   "devDependencies": {
-    "esbuild": "^0.28.1"
+    "playwright": "1.56"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@google/genai": "^2.13.0",
+    "openai": "^7.4.0",
+    "stripe": "^22.5.0"
   }
 }

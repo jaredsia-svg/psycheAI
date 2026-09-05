@@ -1,131 +1,1187 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kindred — compatibility, decoded</title>
-  <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💞</text></svg>">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PsycheAI — the personality analysis you didn't know you needed</title>
+<meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code to compare on a romantic, family/friends or professional basis.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
 </head>
 <body>
+
 <nav class="nav">
-  <a class="brand" href="#" data-nav="home">💞 Kindred</a>
+  <a class="brand" href="#" data-nav="home">
+    <svg class="brand-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+      <circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/>
+    </svg>
+    <span>PsycheAI</span>
+  </a>
   <div class="nav-links">
-    <a href="#" data-nav="dashboard">My profile</a>
-    <a href="#" data-nav="scan">Scan a match</a>
+    <a href="#" data-nav="profile" id="nav-profile" hidden>My Psyche</a>
+    <a href="#" data-nav="scan" id="nav-scan" hidden>My Compatibility</a>
+    <a href="#" data-nav="about">FAQ</a>
   </div>
 </nav>
+
 <main class="container">
 
-  <!-- Welcome -->
-  <section id="view-welcome" class="view" hidden>
-    <div class="hero">
-      <h1>Know your chemistry <span class="accent">before the first date</span></h1>
-      <p class="lede">
-        Kindred builds a rich personality profile from your online presence and a science-informed
-        questionnaire — then turns it into a personal QR code. Scan someone else's code and get an
-        instant, honest read on your romantic compatibility, with practical advice on how to be
-        great together. Everything runs in your browser: your answers never leave your device.
-      </p>
-      <div class="cta-row">
-        <button class="btn btn-lg" data-nav="edit">Create my profile</button>
+<!-- ══════════════ welcome ══════════════ -->
+<section id="view-welcome" class="view" hidden>
+  <header class="hero">
+    <!-- Backdrop rather than an object in the layout: the mark alone, no
+         wordmark, blown up and bled off the right edge behind the text. The
+         nav carries the lockup a few centimetres above, so repeating the name
+         here would say it twice. Decorative, so it is hidden from assistive
+         tech and cannot be reached — the page is named in the nav and title.
+         Stroked with the same gradient the second line of the headline is
+         filled with. The solid fallback after the url() keeps it drawn if the
+         gradient ever fails to resolve, where a bare url() paints nothing. -->
+    <svg class="hero-mark" viewBox="0 0 140 140" fill="none" stroke-width="3"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="hero-mark-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop class="hero-mark-from" offset="0"/>
+          <stop class="hero-mark-to" offset="1"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+      <circle cx="70" cy="70" r="11" stroke="none"/>
+    </svg>
+
+    <div class="hero-top">
+      <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
+      <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
+        all derived from your Instagram (and Google) data with no questionnaire required.</p>
+      <div class="btn-row hero-actions">
+        <button class="btn" id="hero-sample" type="button">See sample report</button>
+        <button class="btn btn-outline" id="hero-start" type="button">Analyse my data</button>
       </div>
     </div>
-    <div class="features">
-      <div class="card feature"><div class="feature-icon">🪞</div><h3>A profile that's actually you</h3>
-        <p>Paste your bios and posts, answer Big Five personality, attachment-style, values and
-           love-language questions. Kindred blends it all into one profile.</p></div>
-      <div class="card feature"><div class="feature-icon">📱</div><h3>Your personal QR code</h3>
-        <p>Your whole profile lives inside your QR code — no account, no server, no database.
-           Show it at a party or set it as your lock screen.</p></div>
-      <div class="card feature"><div class="feature-icon">💘</div><h3>Real compatibility insight</h3>
-        <p>A weighted score across six dimensions — plus concrete "how to partner each other"
-           advice, not just a number.</p></div>
+  </header>
+
+  <!-- The steps row was the one block on this page with no heading of its own,
+       which left four <h3> cards hanging directly off the hero's <h1> — a
+       screen reader navigating by heading met level 3 with no level 2 above it.
+       The heading fixes the outline and names the section at the same time. -->
+  <h2 class="row-head">How it works</h2>
+  <div class="steps-row">
+    <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
+      <p>Download your data from Instagram (Google data is also recommended). See below for instructions.</p></div>
+    <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
+      <p>Your data is analysed by Gemini or Claude, which creates a report for you. No data is stored by PsycheAI.</p></div>
+    <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
+      <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
+    <div class="step-card"><span class="step-num">4</span><h3>Test compatibility</h3>
+      <p>Build better relationships with your partner, family, friends or colleagues by scanning their QR code.</p></div>
+  </div>
+
+  <!-- The four branches are the report's own sections, named as the report
+       names them, so a rename in copy.js fails a check rather than leaving
+       this page advertising a section the report no longer calls that. -->
+  <div class="card insight-card">
+    <!-- Same head shape as the how-to card's "See illustration" row: the
+         heading takes the flexible space and the button sits at its end,
+         wrapping underneath on a phone rather than cramming both onto one
+         line. Moved up from the foot of the card, where it sat below the
+         premium tier block — a reader asking "what do I get" should find the
+         answer to "can I see one" beside the question, not past the pitch. -->
+    <div class="insight-card-head">
+      <h2>What insights will I get?</h2>
+      <button class="btn btn-outline" id="insight-sample" type="button">See sample report</button>
     </div>
-  </section>
 
-  <!-- Scanned someone before having a profile -->
-  <section id="view-pending" class="view" hidden>
-    <div class="card notice">
-      <h1>💌 You scanned <span id="pending-name">someone</span>'s Kindred code!</h1>
-      <p>To see your compatibility report, you need your own profile first. It takes about five
-         minutes — your answers stay on your device.</p>
-      <button class="btn" data-nav="edit">Build my profile</button>
-    </div>
-  </section>
+    <div class="insight-map">
+      <p class="insight-hub">Your report</p>
+      <div class="insight-rail" aria-hidden="true"></div>
 
-  <!-- Profile editor -->
-  <section id="view-edit" class="view" hidden>
-    <h1 id="edit-title">Build your compatibility profile</h1>
-    <p class="lede">Five minutes now, better matches forever.</p>
-    <form id="profile-form" class="stack profile-form"></form>
-  </section>
-
-  <!-- Dashboard -->
-  <section id="view-dashboard" class="view" hidden>
-    <h1 id="dash-greeting">Hi 👋</h1>
-    <div class="grid-2">
-      <div class="card qr-card">
-        <h2>Your QR code</h2>
-        <p class="muted">Let someone scan this with Kindred to test your compatibility. Your whole
-           profile is encoded inside it.</p>
-        <canvas id="qr-canvas" class="qr-img"></canvas>
-        <p><button class="btn btn-ghost btn-sm" id="copy-link">Copy my profile link</button></p>
-        <button class="btn" data-nav="scan">Scan someone else's code →</button>
+      <div class="insight-branches">
+        <div class="insight-branch">
+          <div class="insight-head">
+            <span class="insight-icon" aria-hidden="true">🧩</span>
+            <h3>Who you are</h3>
+          </div>
+          <ul>
+            <li>The superhero / character you are most like</li>
+            <li>Big Five, MBTI and Enneagram</li>
+            <li>Values and beliefs</li>
+          </ul>
+        </div>
+        <div class="insight-branch">
+          <div class="insight-head">
+            <span class="insight-icon" aria-hidden="true">💞</span>
+            <h3>In relationships</h3>
+          </div>
+          <ul>
+            <li>Your love languages</li>
+            <li>Strengths and weaknesses</li>
+            <li>How you'd be to date</li>
+          </ul>
+        </div>
+        <div class="insight-branch">
+          <div class="insight-head">
+            <span class="insight-icon" aria-hidden="true">💼</span>
+            <h3>At work</h3>
+          </div>
+          <ul>
+            <li>How you work</li>
+            <li>Your strengths at work</li>
+            <li>What could hold you back</li>
+          </ul>
+        </div>
+        <div class="insight-branch">
+          <div class="insight-head">
+            <span class="insight-icon" aria-hidden="true">📊</span>
+            <h3>IG behaviour</h3>
+          </div>
+          <ul>
+            <li>Posting activity</li>
+            <li>App usage</li>
+            <li>How it changed over time</li>
+          </ul>
+        </div>
       </div>
-      <div class="card">
-        <h2>Your profile</h2>
-        <div id="dash-traits"></div>
-        <button class="btn btn-ghost btn-sm" data-nav="edit">Edit profile</button>
-      </div>
     </div>
-    <div class="card">
-      <h2>Match history <span class="muted" style="font-weight:400;font-size:0.85rem">(saved on this device)</span></h2>
-      <div id="dash-history"></div>
+
+    <!-- Below the diagram rather than a fifth branch in it: the four above are
+         what everyone gets, these four are what a payment adds, and folding
+         them into the same rail would say they were the same thing. Filled by
+         app.js's mountPremiumTiers from PAID_SECTIONS, so the section names
+         and the price here are the ones the report and the unlock button
+         actually use. -->
+    <div data-premium-tier></div>
+  </div>
+
+  <div class="card help help-card">
+    <div class="help-head">
+      <h2>How do I get my Instagram data?</h2>
+      <!-- The steps below stay: they are short, scannable, and enough for
+           somebody who has done this before. This opens the same journey in
+           pictures — every screen captured, every tap ringed on it — for the
+           reader who wants to see what they are about to be looking at rather
+           than read a description of it. A button rather than a second
+           disclosure because the guide is a place you go and come back from,
+           not more of this card. -->
+      <button class="btn btn-outline help-guide-open" id="guide-open" type="button">
+        See illustration
+      </button>
     </div>
+    <ol>
+      <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+            target="_blank" rel="noopener noreferrer">Download your information</a>.
+          <span class="step-fallback">If that link does not open it, go the long way: Instagram →
+            Settings → <span class="ui-label">Accounts Centre</span> →
+            <span class="ui-label">Your information and permissions</span> →
+            <span class="ui-label">Export / Download your information</span>.</span></li>
+      <li>Choose <span class="ui-label">Create Export</span> → Choose your Instagram account.</li>
+      <li>Set Date Range to <span class="ui-label">All time</span> for the best results.</li>
+      <li>Set Format to <span class="ui-label">JSON</span>, not HTML.</li>
+      <li>Set Media Quality to <span class="ui-label">lower quality</span> to save space on your
+          device. Start export.</li>
+      <li>Instagram emails you a download link, usually within a few hours. Download it to your
+          device and upload it below.</li>
+    </ol>
+
+    <!-- Inside the Instagram card rather than beside it, because the two are
+         one job — "get your data" — and a second card of the same weight read
+         as a second required step. Secondary on purpose: Instagram is needed
+         and this is not, so it sits after those steps, collapsed, and a reader
+         who stops at the numbered list above has everything they need. The
+         offer to add these comes later anyway, once their Instagram export has
+         already been read.
+
+         The JSON line is the load-bearing one. Takeout ships My Activity as
+         HTML unless you go into "Multiple formats" and change it, so the
+         default path produces an archive PsycheAI refuses — and the deselect
+         line is what stops somebody downloading fifty gigabytes of Photos and
+         Gmail they were never going to be asked for.
+
+         A native <details> rather than the JS disclosure the bonus section
+         uses: that one keeps its text out of the DOM because it is a consent
+         gate, where the only thing worth hiding here is the length. <details>
+         gets keyboard support, Find-in-page and a working control with no
+         script at all. -->
+    <details class="optional-card">
+      <summary>
+        <span class="optional-title">Recommended: Also add Google data for a more complete analysis</span>
+      </summary>
+
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
+              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
+            <span class="step-fallback">If that link does not work, go to
+              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
+              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
+              <span class="ui-label">My Activity</span> on its own.</span></li>
+        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records to JSON, not HTML.</strong></li>
+        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
+            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
+            usually within minutes.</li>
+      </ol>
+    </details>
+  </div>
+
+  <div class="card upload-card">
+    <h2>Start here</h2>
+    <!-- The line that used to sit here — "you will be able to review exactly
+         what it contains" — moved into the Add your data popout, which is
+         where the reader is actually choosing to hand anything over. It said
+         "load your data below" while standing above a button that opens a
+         dialog, and a promise about a review step lands better one screen
+         later, immediately before the step it is promising. -->
+    <div id="server-status" class="alert" hidden></div>
+
+    <!-- A button opening the same "Add or change your data" popout the report
+         page uses, rather than a dropzone that only ever took Instagram.
+         Two things fall out of sharing that popout, and the second is the
+         reason for the change:
+         · all three sources are offered in one place on the first upload,
+           instead of Instagram here and the other two in a later dialog;
+         · every source already loaded is ticked. An analysis that fails does
+           not lose anything — the digest is written to localStorage before the
+           model is called — but the welcome page had no way to say so, and no
+           way back in except the dropzone, which read as "upload it all
+           again". Now the reader reopens the popout, sees the ticks, and
+           presses Continue.
+         The file input stays for drag-and-drop, which is kept: an Instagram
+         export arrives as several .zip parts and dropping them together is
+         genuinely faster than a picker. The card is the drop target now, so
+         the box that used to advertise it is not needed. -->
+    <div class="upload-actions">
+      <button class="btn btn-lg btn-block" id="open-sources" type="button">Load your data</button>
+      <p class="upload-loaded muted" id="upload-loaded" hidden></p>
+    </div>
+    <input type="file" id="file-input" accept=".zip,application/zip" multiple hidden>
+
+    <!-- The promise sits at the point of the ask: this is the moment somebody
+         is deciding whether to hand over their Instagram history, not the
+         moment they arrive on the page. One bar covers both worries: what
+         PsycheAI does with the data once it has it, and whether PsycheAI can
+         see the reader at all. -->
+    <p class="eyebrow"><strong>Your data is kept on your device and is never stored by
+      PsycheAI.</strong> There are no analytics, no trackers, no cookies. No one can see that you
+      visited, let alone what you uploaded.</p>
+
+    <div id="upload-error" class="alert" hidden></div>
+    <!-- The way back from a failed analysis. It runs the digest already in
+         hand — no popout, no review, no rebuild — which is what makes it both
+         one press and free: the server keys its result cache on the digest, so
+         an unchanged one either returns the report that finished after the
+         connection died or joins the generation still producing it. The route
+         through "Continue with your data" above rebuilds the digest instead,
+         and a rebuilt digest is a different question. -->
+    <button id="upload-retry" class="btn btn-primary btn-block" hidden>Try again</button>
+  </div>
+</section>
+
+<!-- ══════════════ working ══════════════ -->
+<section id="view-working" class="view" hidden>
+  <div class="card centre">
+    <h2 id="working-title">Loading</h2>
+    <div class="progress"><div id="progress-bar" class="progress-bar"></div></div>
+    <p id="progress-label" class="muted">Opening the archive…</p>
+    <p class="fineprint" id="working-note"></p>
+  </div>
+</section>
+
+<!-- ══════════════ profile ══════════════ -->
+<section id="view-profile" class="view" hidden>
+  <!-- Print only. The downloadable report is typeset by pdf.js and does not
+       come through here, but Ctrl+P still works and wants a letterhead. -->
+  <header class="letterhead print-only">
+    <div class="letterhead-brand">
+      <svg class="letterhead-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+        <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+        <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+        <circle cx="70" cy="70" r="11" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="letterhead-word">PsycheAI</span>
+      <span class="letterhead-rule"></span>
+      <span class="letterhead-kind">Personality profile</span>
+    </div>
+    <h1 class="letterhead-name" id="letterhead-name"></h1>
+    <p class="letterhead-meta" id="letterhead-meta"></p>
+  </header>
+
+  <!-- Echoes the welcome hero rather than the plain .page-head every other
+       internal page uses: same warm gradient wash, same watermark mark bled
+       behind the text, so a reader landing here after the upload still feels
+       like the same product instead of stepping onto a bare utility screen.
+       Its own class rather than a second .hero-mark, deliberately — the
+       "one shared mark, four places" check that holds the nav, letterhead
+       and welcome-hero copies together counts every .hero-mark node in the
+       document, and a fifth one with the same class would inflate that count
+       rather than being covered by it. It gets the identical shape and the
+       same treatment through a shared selector in the stylesheet instead. -->
+  <header class="hero profile-hero screen-only">
+    <svg class="profile-hero-mark" viewBox="0 0 140 140" fill="none" stroke-width="3"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="profile-hero-mark-gradient" x1="0" y1="0" x2="1" y2="1">
+          <stop class="hero-mark-from" offset="0"/>
+          <stop class="hero-mark-to" offset="1"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
+      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
+      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
+      <circle cx="70" cy="70" r="11" stroke="none"/>
+    </svg>
+    <h1 id="profile-title">Your psyche</h1>
+  </header>
+
+  <!-- The card at a glance, above the written report. Built from the same
+       report object the sections below render, rendered as real elements rather
+       than a raster so it stays crisp at any scale and readable to a screen
+       reader. `screen-only`: the PDF already opens with the same material. -->
+  <section class="card section-card screen-only" id="psyche-card-section" hidden>
+    <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
+      <div><h2 id="psyche-card-title"></h2></div></div>
+    <button class="psyche-card-slot" id="psyche-card-open" type="button"
+            aria-label="Open your psyche card full screen">
+      <div class="psyche-card-frame"><div class="psyche-card" id="psyche-card"></div></div>
+      <span class="psyche-card-hint" id="psyche-card-hint"></span>
+    </button>
   </section>
 
-  <!-- Scan -->
-  <section id="view-scan" class="view" hidden>
-    <h1>Scan a match</h1>
-    <div id="scan-alert"></div>
-    <div class="grid-2">
-      <div class="card">
-        <h2>📷 Scan with camera</h2>
-        <p class="muted">Point your camera at another person's Kindred QR code.</p>
-        <div class="scanner-wrap"><video id="scan-video" playsinline muted></video><canvas id="scan-canvas" hidden></canvas></div>
-        <button class="btn" id="start-scan" type="button">Start camera</button>
-        <p class="muted" id="scan-status"></p>
-      </div>
-      <div class="card">
-        <h2>🔗 Or paste their link / code</h2>
-        <p class="muted">Ask them to tap "Copy my profile link" on their dashboard and send it to you.</p>
-        <form id="paste-form" class="stack">
-          <label>Their link or code <textarea id="paste-input" rows="4" placeholder="https://…#p=… or the long code" required></textarea></label>
-          <button class="btn" type="submit">Test our compatibility 💘</button>
-        </form>
-      </div>
-    </div>
-  </section>
 
-  <!-- Report -->
-  <section id="view-report" class="view" hidden>
-    <div id="report-root"></div>
-    <div class="cta-row">
-      <button class="btn" data-nav="scan">Scan another match</button>
-      <button class="btn btn-ghost" data-nav="dashboard">Back to my profile</button>
+<!-- The unlock flow for the four paid sections. Stripe.js
+     itself is not loaded here — it is the one script in this app fetched
+     from a CDN rather than vendored, since Stripe does not support a pinned
+     local copy, and it is injected on demand from app.js only once a reader
+     actually presses Unlock, rather than paid for by every visitor on every
+     page load. Mock mode never touches it at all: #premium-mock-pay stands
+     in for the whole Stripe round trip so the flow can be driven end to end
+     without a real card or a real key. Payment and generation are two
+     separate steps server-side — #premium-retry re-runs only the second one,
+     since a payment that already cleared should never need retaking just
+     because the model call after it failed. #premium-progress shows a live
+     seconds count while that second step is in flight, since a long
+     structured call with nothing else on screen reads as stalled otherwise.
+     The promo row at the bottom is a second, independent way to authorise
+     the same call — see server.js's handlePremiumAnalysis — for anyone who
+     should not need to pay at all.
+
+     #premium-card-fallback is the other one: a plain Stripe Card Element,
+     mounted only when canMakePayment() reports this browser has no
+     wallet-eligible card at all — no Apple Pay device, no Google Pay card
+     saved, or a domain Stripe has not been told to trust for either. Without
+     it a reader in that position had no way to pay at all short of a promo
+     code they do not have. See docs/app.js's mountCardFallback. -->
+
+<dialog id="card-dialog" class="card-dialog" aria-label="Your psyche card">
+    <div class="card-dialog-frame"><div class="psyche-card" id="psyche-card-full"></div></div>
+    <div class="card-dialog-bar">
+      <!-- Download on the left, share on the right, with a visible label
+           beside each icon — the label text and the fuller aria-label are
+           both set from docs/copy.js at render time; only the icon glyphs
+           are hardcoded here, since they are not language-dependent copy. -->
+      <div class="card-dialog-actions">
+        <button class="btn btn-icon-label" id="card-download" type="button">
+          <span class="btn-icon-glyph" aria-hidden="true">⬇</span><span class="btn-icon-text" id="card-download-label"></span>
+        </button>
+        <button class="btn btn-icon-label" id="card-share" type="button">
+          <span class="btn-icon-glyph" aria-hidden="true">⤴</span><span class="btn-icon-text" id="card-share-label"></span>
+        </button>
+      </div>
+      <p class="card-dialog-status" id="card-dialog-status" hidden></p>
+      <!-- Inside the bar, not a sibling of it: the bar is what gives this its
+           containing block, and that is what makes the gap between it and the
+           download/share buttons a fact of the layout rather than a
+           coincidence of widths on whichever phone you happen to be holding. -->
+      <button class="card-dialog-close" id="card-dialog-close" type="button" aria-label="Close">✕</button>
     </div>
-  </section>
+  </dialog>
+
+  <div id="profile-body"></div>
+
+  <dialog id="compat-dialog" class="mode-dialog compat-dialog" aria-labelledby="compat-dialog-title">
+    <button class="compat-dialog-close" id="compat-dialog-close" type="button" aria-label="Close">✕</button>
+    <div class="qr-panel">
+      <h2 class="qr-title" id="compat-dialog-title">Test your compatibility</h2>
+      <div class="qr-holder">
+        <canvas id="qr-canvas" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
+      </div>
+      <div class="qr-actions">
+        <p class="muted">Let someone scan this QR code or send them your QR code / link to understand
+          how compatible you both are.</p>
+        <div class="btn-row">
+          <button class="btn" id="copy-link">Copy my link</button>
+          <button class="btn btn-ghost" id="download-qr">Download QR Code</button>
+          <button class="btn btn-ghost" data-nav="scan">Scan your partner or friend →</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Anything that goes wrong while re-running belongs here rather than on
+       the welcome page's #upload-error: this reader already has a report on
+       screen, and throwing them back to the upload page to read an error
+       message would look like they had lost it. -->
+  <div id="profile-alert" class="alert no-print" hidden></div>
+  <!-- Shown when a payment cleared but the report it bought never reached this
+       device — a phone closed or backgrounded during the minutes a generation
+       takes. The record behind it is written before the call and cleared when
+       the result lands, so this can only appear for work genuinely still
+       owed. -->
+  <div id="pending-work" class="alert no-print" hidden>
+    <p id="pending-work-text"></p>
+    <div class="btn-row">
+      <button class="btn" id="pending-work-go" type="button"></button>
+      <button class="btn btn-ghost" id="pending-work-dismiss" type="button">Not now</button>
+    </div>
+  </div>
+
+  <!-- #rerun-with-data and its price note now live inside the confidence
+       card's "Sources used" subsection — see sourcesUsedHtml() in app.js —
+       rather than here, so the button sits beside the sources a re-run would
+       actually use. -->
+  <div class="cta-row no-print">
+    <button class="btn" id="export-pdf-bottom">Download full report</button>
+    <button class="btn" id="test-compat-open" type="button">Test compatibility</button>
+    <button class="btn btn-ghost danger" id="delete-profile">Delete everything</button>
+  </div>
+
+
+  <p class="fineprint" id="analysed-by"></p>
+
+</section>
+
+<!-- ══════════════ scan ══════════════ -->
+<section id="view-scan" class="view" hidden>
+  <header class="page-head">
+    <h1 id="scan-title">Your compatibility</h1>
+    <p class="muted">Scan someone's PsycheAI code to see how you fit — as a <strong>couple</strong>,
+      as <strong>family or friends</strong>, or as <strong>colleagues</strong>. You get a score, the
+      five things behind it, what works, what will grate, and what each of you could do
+      differently.</p>
+  </header>
+  <div id="scan-alert" class="alert" hidden></div>
+
+  <div id="scan-history"></div>
+
+  <div class="card">
+    <h2>Test your compatibility</h2>
+    <div class="btn-row">
+      <button class="btn" id="start-camera">Use camera</button>
+      <button class="btn btn-ghost" id="upload-qr">Upload QR code</button>
+      <input type="file" id="qr-file" accept="image/*" hidden>
+    </div>
+    <div id="camera-holder" hidden>
+      <video id="scan-video" playsinline muted></video>
+      <canvas id="scan-canvas" hidden></canvas>
+    </div>
+    <p id="scan-status" class="muted"></p>
+    <hr>
+    <label class="field">Or paste their link or code
+      <input type="text" id="paste-input" placeholder="https://…/#p=… or the raw code">
+    </label>
+    <button class="btn" id="paste-go">Analyze</button>
+  </div>
+
+  <div class="qr-panel card">
+    <h2 class="qr-title">My QR code</h2>
+    <div class="qr-holder">
+      <canvas id="qr-canvas-scan" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
+    </div>
+    <div class="qr-actions">
+      <p class="muted">This is yours — share the link or the code so someone can scan you back.</p>
+      <div class="btn-row">
+        <button class="btn" id="copy-link-scan">Copy my link</button>
+        <button class="btn btn-ghost" id="download-qr-scan">Download QR Code</button>
+      </div>
+    </div>
+  </div>
+  <div id="qr-contents"></div>
+</section>
+
+<!-- ══════════════ report ══════════════ -->
+<section id="view-report" class="view" hidden>
+  <header class="page-head screen-only">
+    <h1 id="report-title">Your compatibility report</h1>
+    <div class="btn-row no-print">
+      <button class="btn" id="export-compat-top">Download report</button>
+    </div>
+  </header>
+  <p class="muted" id="report-sub"></p>
+
+  <div id="report-body"></div>
+
+  <div class="cta-row">
+    <button class="btn" id="export-compat-bottom">Download report</button>
+    <button class="btn btn-ghost" data-nav="scan">Scan someone else</button>
+    <button class="btn btn-ghost" data-nav="profile">Back to my profile</button>
+  </div>
+</section>
+
+<!-- ══════════════ about ══════════════ -->
+<section id="view-about" class="view" hidden>
+  <header class="page-head"><h1>FAQ</h1></header>
+
+  <!-- Ten questions in three cards rather than ten, which is what "concise and
+       easy to read" asks for: every question keeps its own heading, but the
+       page is three things to scan rather than ten boxes to scroll past. -->
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">📖</span><div>
+      <h2>The basics</h2>
+    </div></div>
+
+    <h3>What is PsycheAI?</h3>
+    <p>A reading of yourself already sitting in your Instagram (and Google) data. It writes your
+      interests, patterns, MBTI and Big Five, each tied to evidence from your data. It is not a test
+      and not a diagnosis.</p>
+
+    <h3>How long does it take?</h3>
+    <p>Instagram often takes a few hours to prepare the data zip file. The analysis takes a few
+      minutes. Request the export first and come back when the email arrives.</p>
+
+    <h3>What file do I need?</h3>
+    <p>Instagram → <span class="ui-label">Accounts Centre</span> →
+      <span class="ui-label">Your information and permissions</span> →
+      <span class="ui-label">Download your information</span>. Choose JSON, data
+      from your profile, download to this device. HTML will not parse. You do not give PsycheAI your
+      Instagram password. <a href="#" id="faq-guide-open">See the illustration</a> for more
+      detail.</p>
+  </div>
+
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">🔒</span><div>
+      <h2>Your data</h2>
+    </div></div>
+
+    <h3>What data leaves this device?</h3>
+    <p>Never sent: the Instagram zip data, your media (images / videos), other
+      people’s messages, the finished report.</p>
+    <p>Sent, after you review it: a short digest of your words — posts, stories,
+      captions, likes, searches, saves, follows, your messages.</p>
+    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI keeps no
+      copy of the zip, the digest or the report on its servers. The report lives in your browser
+      until you press Delete everything.</p>
+    <p>Hosting and payment providers can see that the site was called, or that a payment happened.
+      They do not receive the data. There is no account.</p>
+
+    <h3>Can anyone else access my data?</h3>
+    <p>PsycheAI has no database. There is no sign-up, no password to create, no email address and no
+      stored files. Nothing you send is retained, so there is no accumulated data for anyone to
+      take. No one can see that you visited, let alone what you uploaded.</p>
+
+    <h3>Can I verify this?</h3>
+    <p>The site is open source, so you can
+      <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">read
+      what the browser sends</a>. You can also open the review screen and untick anything before it
+      goes.</p>
+  </div>
+
+  <div class="card section-card">
+    <div class="card-head"><span class="card-icon">📄</span><div>
+      <h2>The report</h2>
+    </div></div>
+
+    <h3>How accurate is it?</h3>
+    <p>It is a large language model reading traces and patterns in your data, not a lab result. You
+      can raise the report’s confidence by adding more sources. Instagram and Google together are
+      the ideal combination — Instagram reads your outward persona, the self you present; Google
+      reads your inward self, what you search and watch when no one is looking.</p>
+
+    <h3>What does it cost?</h3>
+    <p>The first profile is written on the free path. Deeper sections and each compatibility run are
+      S$1.99 each. You see the price after you choose what you are asking, before
+      you pay.</p>
+
+    <h3>How does the compatibility feature work?</h3>
+    <p>Each reader has a QR code summarising their PsycheAI results. The other person scans it,
+      chooses a romantic, family/friends or work basis, and gets a report. The QR code carries the
+      data itself — it is not a link to a file on a server.</p>
+
+
+    <!-- Written by renderAbout() on every boot: which provider this particular
+         server is configured with, or that it is in mock mode, or that it
+         cannot be reached at all. Not decoration — dropping it from the markup
+         makes renderAbout() throw on a null and takes boot down with it. -->
+    <p class="fineprint" id="about-status"></p>
+  </div>
+</section>
+
+<!-- Outside every .view section on purpose. It was nested inside
+     #view-profile, which meant the upload page could not show it at all:
+     that section carries [hidden] whenever another view is on screen, and a
+     <dialog> inside a display:none ancestor has no box to paint however
+     open it claims to be. It serves two flows now — the premium unlock from
+     the report, and paying for an analysis from the upload page — so it
+     belongs to neither of them. Modal dialogs render in the top layer, so
+     where it sits in the document does not affect how it looks.               -->
+<dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
+  <h2 id="premium-dialog-title"></h2>
+  <p class="muted" id="premium-dialog-blurb"></p>
+  <div id="premium-payment-request-button"></div>
+  <!-- Sits here, above the card fallback, rather than in its long-standing
+       spot after #premium-progress: the "no wallet" message is what the card
+       form is answering, so it has to read before the form does, not below
+       the button a reader has already pressed by the time they reach it. -->
+  <p class="premium-status" id="premium-status" hidden></p>
+  <div class="premium-card-fallback" id="premium-card-fallback" hidden>
+    <p class="premium-card-label" id="premium-card-label"></p>
+    <div id="premium-card-element"></div>
+    <p class="premium-card-error" id="premium-card-error" hidden></p>
+    <button class="btn" id="premium-card-pay" type="button"></button>
+  </div>
+  <button class="btn" id="premium-mock-pay" type="button" hidden></button>
+  <button class="btn" id="premium-retry" type="button" hidden></button>
+  <div class="premium-progress" id="premium-progress" hidden>
+    <div class="progress"><div class="progress-bar indeterminate"></div></div>
+    <p class="premium-progress-time" id="premium-progress-time"></p>
+  </div>
+  <div class="premium-promo">
+    <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
+    <div class="premium-promo-row">
+      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false">
+      <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
+  </div>
+</dialog>
 
 </main>
+
+<!-- ══════════════ basis picker ══════════════ -->
+<!-- Opens once a code has been read, before the model call, because the
+     report answers whichever question is chosen here and only that one. -->
+<!-- The sample report. A dialog rather than a view: it is something to look
+     into and step back out of, not somewhere to be, and it must never leave
+     the reader wondering whether the report they are reading is theirs. The
+     body is filled with the same section HTML a real report renders — the
+     download, delete and QR panels live outside that, so they are
+     absent here by construction rather than by hiding them one by one. -->
+<!-- The walkthrough behind "See illustration" in the how-to card. Same
+     dialog shape as the sample report — head, scrolling body, one cross —
+     because it is the same kind of thing: somewhere you go, look at, and come
+     back from.
+
+     The panels are real screenshots of the journey, taken on a phone and
+     shipped from docs/guide/. An earlier version drew them as CSS sketches; a
+     sketch tells you a list exists, a screenshot tells you what the row you
+     are hunting for actually looks like, which is the whole reason somebody
+     opens a guide rather than reading the six-line version in the card.
+
+     Every one has been redacted before shipping. The originals carried the
+     account holder's name, three handles, a phone number, an email address and
+     their profile photograph — none of which teaches anybody anything, and all
+     of which this is a public page for. The grey blocks are deliberate and the
+     platform labels beside them are untouched, because "the row that says
+     Instagram" is the instruction.
+
+     They are `loading="lazy"` and sit inside a closed dialog, so a reader who
+     never opens this never downloads the 250KB. -->
+<dialog id="guide-dialog" class="sample-dialog guide-dialog" aria-labelledby="guide-dialog-title">
+  <header class="sample-dialog-head">
+    <h2 id="guide-dialog-title">How do I get my Instagram data?</h2>
+    <button class="sample-close" id="guide-close" type="button" aria-label="Close the guide">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </header>
+  <div class="sample-dialog-body guide-body">
+    <ol class="guide-steps">
+      <li class="guide-step">
+        <h3><span class="guide-num">1</span>Open <a
+          href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+          target="_blank" rel="noopener noreferrer">Download your information</a></h3>
+        <p>The link above brings you to step 2. If it does not open, open your Instagram app and
+          follow the below steps.</p>
+        <div class="guide-shots">
+          <figure class="guide-shot">
+            <figcaption>Settings &rarr; tap <b>Accounts Centre</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/01-settings.jpg" width="480" height="466" loading="lazy" decoding="async"
+                   alt="Instagram&#8217;s Settings and activity screen. The Accounts Centre row near the top is ringed.">
+              <span class="guide-mark guide-mark-1" aria-hidden="true"></span>
+            </span>
+          </figure>
+          <figure class="guide-shot">
+            <figcaption>Tap <b>Your information and permissions</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/02-info-permissions.jpg" width="480" height="931" loading="lazy" decoding="async"
+                   alt="The Accounts Centre menu. The Your information and permissions row is ringed.">
+              <span class="guide-mark guide-mark-2" aria-hidden="true"></span>
+            </span>
+          </figure>
+          <figure class="guide-shot">
+            <figcaption>Tap <b>Export your information</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/03-export-your-information.jpg" width="480" height="466" loading="lazy" decoding="async"
+                   alt="The information and permissions screen. The Export your information row at the top is ringed.">
+              <span class="guide-mark guide-mark-3" aria-hidden="true"></span>
+            </span>
+          </figure>
+        </div>
+      </li>
+
+      <li class="guide-step">
+        <h3><span class="guide-num">2</span>Create export, then pick your Instagram profile</h3>
+        <div class="guide-shots">
+          <figure class="guide-shot">
+            <figcaption>Tap <b>Create export</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/04-create-export.jpg" width="480" height="401" loading="lazy" decoding="async"
+                   alt="The Export your information screen. The blue Create export button is ringed.">
+              <span class="guide-mark guide-mark-4" aria-hidden="true"></span>
+            </span>
+          </figure>
+          <figure class="guide-shot">
+            <figcaption>Tap <b>Instagram</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/05-pick-profile.jpg" width="480" height="433" loading="lazy" decoding="async"
+                   alt="The top of a list of profiles, showing the Facebook and Instagram rows in full. The Instagram row is ringed. Names and photos are redacted.">
+              <span class="guide-mark guide-mark-5" aria-hidden="true"></span>
+            </span>
+          </figure>
+          <figure class="guide-shot">
+            <figcaption>Choose <b>Export to device</b></figcaption>
+            <span class="guide-frame">
+              <img src="guide/06-export-to-device.jpg" width="480" height="401" loading="lazy" decoding="async"
+                   alt="A choice between Export to device and Export to external service. Export to device is ringed.">
+              <span class="guide-mark guide-mark-6" aria-hidden="true"></span>
+            </span>
+          </figure>
+        </div>
+      </li>
+
+      <li class="guide-step">
+        <h3><span class="guide-num">3</span>Change three settings, then start the export</h3>
+        <ul class="guide-settings">
+          <li>
+            <span class="guide-setting-name">Date range</span> &rarr;
+            <span class="guide-setting-value ui-label">All time</span>
+            <span class="guide-setting-why">&mdash; the whole history, not a recent slice</span>
+          </li>
+          <li class="is-warning">
+            <span class="guide-setting-name">Format</span> &rarr;
+            <span class="guide-setting-value ui-label">JSON</span>
+            <span class="guide-setting-why">&mdash; <strong>not HTML</strong>. An HTML export cannot
+              be read at all, and you only find out hours later</span>
+          </li>
+          <li>
+            <span class="guide-setting-name">Media quality</span> &rarr;
+            <span class="guide-setting-value ui-label">Lower quality</span>
+            <span class="guide-setting-why">&mdash; your photos are never read, so full resolution
+              is gigabytes for nothing</span>
+          </li>
+        </ul>
+        <p class="guide-then">Then tap <span class="ui-label">Start export</span>.</p>
+        <div class="guide-shots is-single">
+          <figure class="guide-shot">
+            <span class="guide-frame">
+              <img src="guide/07-confirm-export.jpg" width="480" height="866" loading="lazy" decoding="async"
+                   alt="The Confirm your export screen. The Date range, Format and Media quality rows are ringed. The account name and email are redacted.">
+              <span class="guide-mark guide-mark-7" aria-hidden="true"></span>
+            </span>
+          </figure>
+        </div>
+      </li>
+
+      <li class="guide-step">
+        <h3><span class="guide-num">4</span>Wait for the email, then upload the file</h3>
+        <p>Download the <code>.zip</code> to this device and upload it at the bottom of this page.</p>
+      </li>
+    </ol>
+
+    <div class="guide-cta">
+      <!-- The same button as the welcome card's, doing the same thing: this
+           used to say "Start here" and scroll to the upload card, which left
+           the reader looking at a button they then had to press themselves.
+           It opens the popout directly now. -->
+      <button class="btn btn-lg btn-block" id="guide-start" type="button">Load your data</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- The sample card, full screen. A dialog of its own rather than a second
+     use of #card-dialog: that one carries download and share, which act on
+     "your" card and have nothing to act on here, and it holds the reader's own
+     card markup — borrowing it would mean swapping that out and putting it
+     back, with a sample left in it if anything went wrong in between. This has
+     no bar at all, so the card gets the whole screen. -->
+<dialog id="sample-card-dialog" class="card-dialog" aria-label="The sample psyche card">
+  <div class="card-dialog-frame"><div class="psyche-card" id="sample-psyche-card-full"></div></div>
+</dialog>
+
+<dialog id="sample-dialog" class="sample-dialog" aria-labelledby="sample-dialog-title">
+  <header class="sample-dialog-head">
+    <h2 id="sample-dialog-title">A sample report</h2>
+    <button class="sample-close" id="sample-close" type="button" aria-label="Close the sample">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </header>
+  <!-- The summary card, above the sections, exactly as a real report opens.
+       Filled by showSample() from the same psycheCardHtml() the reader's own
+       report uses. Deliberately a plain frame rather than the report's
+       .psyche-card-slot button: full screen, download and share all act on
+       "your" card, and there is no reader's card here to act on. -->
+  <div class="sample-dialog-body" id="sample-body">
+    <section class="card section-card sample-card-section" id="sample-card-section" hidden>
+      <!-- No .card-head-toggle, deliberately. collapseSections only shuts
+           cards whose head carries one, so the summary card stays open — the
+           same mechanism that keeps the confidence card open. It was briefly
+           collapsible and that was wrong: it is the thing the sample opens on
+           and the thing a reader came to look at, and the accordion in the
+           toggle handler meant opening any section below it shut the card. -->
+      <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
+        <div><h2 id="sample-card-title"></h2></div></div>
+      <!-- The same tap target the reader's own card gets on My Psyche, for the
+           same reason: at preview size the card is a thumbnail, and the detail
+           on it only becomes readable full screen. -->
+      <button class="psyche-card-slot" id="sample-card-open" type="button"
+              aria-label="Open the sample psyche card full screen">
+        <div class="psyche-card-frame"><div class="psyche-card" id="sample-psyche-card"></div></div>
+        <span class="psyche-card-hint" id="sample-card-hint"></span>
+      </button>
+    </section>
+    <div id="sample-sections"></div>
+  </div>
+</dialog>
+
+<!-- Offered once the Instagram archive has already parsed, so a reader who
+     declines — or whose second archive fails — still has everything they came
+     with. The hidden file input lives inside the dialog because the picker has
+     to be opened synchronously from a button's own click handler: calling
+     .click() after an await has lost its user gesture and is blocked in Safari
+     and Firefox. See askSupplement. -->
+<dialog id="supplement-dialog" class="mode-dialog" aria-labelledby="supplement-dialog-title">
+  <h2 id="supplement-dialog-title">Add more data?</h2>
+  <!-- Rewritten by askSupplement for the re-run path, where there is no Skip
+       button and so nothing to skip to. Left as the first-upload wording here
+       so the markup still reads correctly on its own. -->
+  <p class="muted" id="supplement-dialog-blurb">You can add a Google or Facebook export to deepen the
+    analysis, or skip straight to it.</p>
+  <div class="mode-options">
+    <!-- The reading bar lives on the row that is being read, rather than in one
+         shared line underneath: with two sources the reader needs to see *which*
+         archive is being opened, and the row they just clicked is where they are
+         already looking. Spans rather than the divs the main progress bar uses,
+         because a <button> may only contain phrasing content. -->
+    <button class="mode-option" data-supplement="google" type="button">
+      <span class="mode-icon">🔍</span>
+      <span class="mode-body"><strong>Google Takeout</strong>
+        <span class="muted">Load your "My Activity" takeout .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="mode-option" data-supplement="facebook" type="button">
+      <span class="mode-icon">📘</span>
+      <span class="mode-body"><strong>Facebook</strong>
+        <span class="muted">Load your facebook .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+  </div>
+  <p class="supplement-status" id="supplement-status" hidden></p>
+
+  <!-- The same instructions the welcome page carries, repeated here because
+       this is the moment they are actually needed: a reader who reaches this
+       dialog without having requested either export has to leave, and the
+       previous page is behind a modal by then. Collapsed and scrolling inside
+       its own box so the dialog keeps its height whether it is open or shut —
+       .mode-dialog is capped at the viewport, and a page of instructions
+       inlined at full height would push the buttons off the bottom. -->
+  <details class="supplement-help">
+    <summary>See download instructions</summary>
+    <div class="supplement-help-body">
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
+              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
+            <span class="step-fallback">If that link does not work, go to
+              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
+              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
+              <span class="ui-label">My Activity</span> on its own.</span></li>
+        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records to JSON, not HTML.</strong></li>
+        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
+            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
+            usually within minutes.</li>
+      </ol>
+      <h3>Facebook</h3>
+      <ol>
+        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+            <span class="ui-label">Accounts Centre</span> →
+            <span class="ui-label">Your information and permissions</span>.</li>
+        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+            <span class="ui-label">JSON</span>.</li>
+        <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
+      </ol>
+    </div>
+  </details>
+
+  <!-- Back is always available and always on the left; the right-hand slot is
+       Skip while nothing has been added and Continue once something has. The
+       two never appear together: once an archive is in, "skip" would be a lie
+       about what happens next, since skipping and continuing resolve the same
+       way and the data is kept either way. -->
+  <div class="btn-row supplement-actions">
+    <button class="btn btn-ghost" id="supplement-back" type="button">Back</button>
+    <span class="btn-spacer"></span>
+    <button class="btn" id="supplement-skip" type="button">Skip this step</button>
+    <button class="btn" id="supplement-continue" type="button" hidden>Continue</button>
+  </div>
+  <input type="file" id="supplement-input" accept=".zip,application/zip" multiple hidden>
+</dialog>
+
+<!-- Opened by #rerun-with-data — "Add / change data & re-run analysis" — in
+     the confidence card's "Data sources" subsection. Unlike #supplement-dialog
+     above, every row here stays clickable once ticked: a source already
+     loaded can still be replaced, Instagram included, rather than only ever
+     being added once. See askDataSources() in app.js. The hidden file input
+     lives inside the dialog for the same reason supplement-input does — the
+     picker has to open synchronously from the row's own click. -->
+<dialog id="datasources-dialog" class="mode-dialog" aria-labelledby="datasources-dialog-title">
+  <h2 id="datasources-dialog-title">Add or change your data</h2>
+  <p class="muted" id="datasources-dialog-blurb">Load a fresh export to replace a source, or add one
+    you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
+  <div class="mode-options">
+    <button class="mode-option" data-datasource="instagram" type="button">
+      <span class="mode-icon">📷</span>
+      <span class="mode-body"><strong>Instagram <span class="mode-tag">(required)</span></strong>
+        <span class="muted">Load a new Instagram export .zip file here to replace it</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="mode-option" data-datasource="google" type="button">
+      <span class="mode-icon">🔍</span>
+      <span class="mode-body"><strong>Google Takeout <span class="mode-tag">(recommended)</span></strong>
+        <span class="muted">Load your "My Activity" takeout .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+    <button class="mode-option" data-datasource="facebook" type="button">
+      <span class="mode-icon">📘</span>
+      <span class="mode-body"><strong>Facebook</strong>
+        <span class="muted">Load your facebook .zip file here</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
+  </div>
+  <p class="supplement-status" id="datasources-status" hidden></p>
+  <!-- Shown only once a fresh Instagram export is actually picked — see the
+       reasoning at the call site in app.js for why previously loaded Google
+       or Facebook data cannot always be carried forward automatically onto a
+       replaced Instagram export. -->
+  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google and
+    Facebook data fresh too — reload them here as well if you want them included in this run.</p>
+
+  <details class="supplement-help">
+    <summary>See download instructions</summary>
+    <div class="supplement-help-body">
+      <h3>Instagram</h3>
+      <ol>
+        <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+              target="_blank" rel="noopener noreferrer">Download your information</a> — this goes
+            straight to the right page.
+            <span class="step-fallback">If that link does not open it, go the long way: Instagram →
+              Settings → <span class="ui-label">Accounts Centre</span> →
+              <span class="ui-label">Your information and permissions</span> →
+              <span class="ui-label">Export / Download your information</span>.</span></li>
+        <li>Choose <span class="ui-label">Create Export</span>, Date Range <span class="ui-label">All
+            time</span>, and <strong>Format JSON</strong> — an HTML export cannot be read.</li>
+      </ol>
+      <h3>Google Takeout</h3>
+      <ol>
+        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
+              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
+            <span class="step-fallback">If that link does not work, go to
+              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
+              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
+              <span class="ui-label">My Activity</span> on its own.</span></li>
+        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
+            change Activity records to JSON, not HTML.</strong></li>
+        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
+            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
+            usually within minutes.</li>
+      </ol>
+      <!-- Facebook's steps live in this same block but are hidden unless the
+           Facebook row is on offer — see askDataSources, which already hides
+           the row itself per entry point. Removing them outright would leave
+           the report page offering a source with no instructions for it. -->
+      <div class="help-facebook" data-help="facebook">
+        <h3>Facebook</h3>
+        <ol>
+          <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
+              <span class="ui-label">Accounts Centre</span> →
+              <span class="ui-label">Your information and permissions</span>.</li>
+          <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
+          <li>Set Date Range to <span class="ui-label">All time</span> and Format to
+              <span class="ui-label">JSON</span>.</li>
+        </ol>
+      </div>
+      <!-- Written steps are enough for somebody who has done this before; the
+           reader who is lost wants to see the screens. Same walkthrough the
+           welcome page's "See illustration" opens, reachable from inside the
+           popout so nobody has to close it and go hunting. -->
+      <p class="help-illustrated"><a href="#" id="datasources-guide-open">See the illustrated
+        walkthrough</a> — every screen, with each tap ringed on it.</p>
+    </div>
+  </details>
+
+  <div class="btn-row supplement-actions">
+    <button class="btn btn-ghost" id="datasources-back" type="button">Back</button>
+    <span class="btn-spacer"></span>
+    <button class="btn" id="datasources-continue" type="button">Continue</button>
+  </div>
+  <input type="file" id="datasources-input" accept=".zip,application/zip" multiple hidden>
+</dialog>
+
+<!-- The last stop before anything leaves the device. Its content is built
+     fresh in app.js from the real digest just produced — real counts, not a
+     description of what the app generally does — so "review" means what it
+     says. The two checkboxes are what "Include direct messages" and "Include
+     a sample of your photos" used to be on the main page; they moved here
+     because a choice made before you can see what it actually contains is
+     not an informed one. -->
+<dialog id="review-dialog" class="mode-dialog review-dialog" aria-labelledby="review-dialog-title">
+  <h2 id="review-dialog-title">Review what gets sent</h2>
+  <p class="muted">Choose which data gets analysed by Gemini or Claude. None of this data or the
+    results can be accessed by PsycheAI or others.</p>
+  <!-- The download row is written into #review-list itself, as its last
+       child, rather than placed here as static markup — it has to sit below
+       Photos, inside the same scroll region as the seven rows above it, not
+       float above the list where it would always be visible regardless of
+       scroll position. See reviewSwitch's caller in app.js. -->
+  <div class="review-list" id="review-list"></div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="review-cancel" type="button">Back</button>
+    <button class="btn" id="review-send" type="button">Send this</button>
+  </div>
+</dialog>
+
+<dialog id="stance-dialog" class="mode-dialog" aria-labelledby="stance-dialog-title">
+  <h2 id="stance-dialog-title">What is the working relationship?</h2>
+  <p class="muted" id="stance-dialog-sub"></p>
+  <div class="mode-options">
+    <button class="mode-option" data-stance="colleagues" type="button">
+      <span class="mode-icon">🤝</span>
+      <span><strong class="stance-option"></strong>
+        <span class="muted stance-blurb"></span>
+      </span>
+    </button>
+    <button class="mode-option" data-stance="superior" type="button">
+      <span class="mode-icon">🧭</span>
+      <span><strong class="stance-option"></strong>
+        <span class="muted stance-blurb"></span>
+      </span>
+    </button>
+    <button class="mode-option" data-stance="subordinate" type="button">
+      <span class="mode-icon">🎓</span>
+      <span><strong class="stance-option"></strong>
+        <span class="muted stance-blurb"></span>
+      </span>
+    </button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="stance-cancel" type="button">Cancel</button>
+  </div>
+  <p class="fineprint">Managing someone and reporting to them are different questions, so the report
+    answers the one you pick rather than a general one about working together.</p>
+</dialog>
+
+<!-- A failed analysis used to put the reader back on the welcome page with the
+     error somewhere down it, which on a phone means scrolling to find out what
+     happened and scrolling again to act on it. The remedy belongs where the
+     reader is standing: this opens over the waiting screen with the reason and
+     the one button that fixes it. #upload-retry on the welcome page stays as
+     the way back for somebody who closes this. -->
+<dialog id="analysis-error-dialog" class="mode-dialog" aria-labelledby="analysis-error-title">
+  <h2 id="analysis-error-title">That did not come through</h2>
+  <p class="muted" id="analysis-error-message"></p>
+  <div class="btn-row">
+    <button class="btn btn-block" id="analysis-error-retry" type="button">Try again</button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost btn-block" id="analysis-error-close" type="button">Not now</button>
+  </div>
+  <p class="fineprint">Your data is still loaded — nothing needs uploading again, and a report that
+    already finished will come straight back.</p>
+</dialog>
+
+<dialog id="mode-dialog" class="mode-dialog" aria-labelledby="mode-dialog-title">
+  <h2 id="mode-dialog-title">How should we compare you?</h2>
+  <p class="muted" id="mode-dialog-sub"></p>
+  <div class="mode-options">
+    <button class="mode-option" data-mode="romantic" type="button">
+      <span class="mode-icon">💞</span>
+      <span><strong>Romantic</strong>
+        <span class="muted">Life direction, values, emotional safety, and whether your days can coexist.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-mode="platonic" type="button">
+      <span class="mode-icon">🤝</span>
+      <span><strong>Family / Friends</strong>
+        <span class="muted">Shared interests, matching energy, and whether you'd enjoy a Saturday together.</span>
+      </span>
+    </button>
+    <button class="mode-option" data-mode="professional" type="button">
+      <span class="mode-icon">💼</span>
+      <span><strong>Professional / work</strong>
+        <span class="muted">Complementary strengths, standards, deadlines, and who ends up carrying whom.</span>
+      </span>
+    </button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="mode-cancel" type="button">Cancel</button>
+  </div>
+  <p class="fineprint">One basis per run — the report covers the one you pick, in full, rather than
+    three at once. Scan again to compare on another.</p>
+</dialog>
+
 <footer class="footer">
-  <p>Kindred runs entirely in your browser — profiles live in your QR code and matches are saved
-     only on your own device. Compatibility scores are a conversation starter, not a verdict. 💜</p>
+  <!-- Named the same as the nav link that goes to the same place. It read "how
+       it works" until now, which made one destination look like two. -->
+  <p>PsycheAI · <a href="#" data-nav="about">FAQ</a> ·
+    <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">Source
+      code on GitHub</a></p>
 </footer>
 
 <script src="vendor/qrcode.js"></script>
 <script src="vendor/jsqr.js"></script>
-<script src="engine.js"></script>
+<script src="zip.js"></script>
+<script src="instagram.js"></script>
+<script src="supplement.js"></script>
+<script src="digest.js"></script>
+<script src="card.js"></script>
+<script src="copy.js"></script>
+<script src="pdf.js"></script>
+<script src="llm.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

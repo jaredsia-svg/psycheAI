@@ -8961,7 +8961,15 @@ exports.VERSIONS = [
     {
         infoBits: 0x177EC,
         versionNumber: 23,
-        alignmentPatternCenters: [6, 30, 54, 74, 102],
+        // Upstream jsQR has 74 for the fourth centre here, which looks like a
+        // copy of version 22's row above. ISO/IEC 18004 spells version 23 as
+        // 6, 30, 54, 78, 102 - evenly spaced by 24, as every version is. With
+        // 74 the decoder probes 4 modules off the alignment pattern, never
+        // locks onto the sampling grid, and cannot read ANY version 23 symbol
+        // at any size, scale or mask. Version 23 is roughly a 1350-1470
+        // character payload, so whether a profile's code scanned came down to
+        // how long its text happened to be.
+        alignmentPatternCenters: [6, 30, 54, 78, 102],
         errorCorrectionLevels: [
             {
                 ecCodewordsPerBlock: 30,

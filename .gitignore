@@ -1,4 +1,6 @@
 node_modules/
-data/
+tools/screenshots/
 *.log
 .env
+# Collected email addresses. Real people's contact details — never commit it.
+data/
