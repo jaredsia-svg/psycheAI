@@ -271,6 +271,14 @@
       visited, let alone what you uploaded.</p>
 
     <div id="upload-error" class="alert" hidden></div>
+    <!-- The way back from a failed analysis. It runs the digest already in
+         hand — no popout, no review, no rebuild — which is what makes it both
+         one press and free: the server keys its result cache on the digest, so
+         an unchanged one either returns the report that finished after the
+         connection died or joins the generation still producing it. The route
+         through "Continue with your data" above rebuilds the digest instead,
+         and a rebuilt digest is a different question. -->
+    <button id="upload-retry" class="btn btn-primary btn-block" hidden>Try again</button>
   </div>
 </section>
 

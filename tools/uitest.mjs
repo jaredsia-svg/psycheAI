@@ -803,6 +803,114 @@ try {
     }
   }
 
+  // ---- the way back for a first-time reader ----
+  //
+  // Somebody on their first run has no report page and no "run it again"
+  // button; a failed analysis put them back on the welcome page with an error
+  // and a card reading "Continue with your data". That was a way back, but not
+  // an obvious one — the label describes loading data rather than retrying —
+  // and it went the long way round: popout, Continue, review, and a digest
+  // rebuilt from the archive at the end of it. Rebuilt is the expensive word.
+  // The server keys its result cache on the digest, so a rebuild asked a
+  // question the cache had never seen and paid for a report already sitting
+  // in it.
+  //
+  // Both halves are checked here, and the second is the one with the money in
+  // it: that the retry sends the identical bytes.
+  {
+    const retryPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await retryPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      // A genuine first-timer: no report, no digest, no free run spent. The
+      // journey is driven through the real chooser rather than seeded, because
+      // what is being checked is the way back from a failure on that journey,
+      // and a hand-written digest would be testing a shape rather than a path.
+      await retryPage.evaluate(() => {
+        localStorage.removeItem('psycheai_runs');
+        localStorage.removeItem('psycheai_digest');
+        localStorage.removeItem('psycheai_profile');
+      });
+      await retryPage.reload({ waitUntil: 'load' });
+      await retryPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+
+      check('nothing offers a retry before anything has been attempted',
+        await retryPage.locator('#upload-retry').isHidden());
+
+      // A 502 carrying a real message, not a dropped connection: this is about
+      // what the page does once an analysis has genuinely failed, and a drop
+      // would be swallowed by the retry inside docs/llm.js before it got here.
+      const bodies = [];
+      let failNext = true;
+      await retryPage.route('**/api/analyse', async route => {
+        bodies.push(route.request().postData());
+        if (failNext) {
+          failNext = false;
+          await route.fulfill({
+            status: 502,
+            contentType: 'application/json; charset=utf-8',
+            body: JSON.stringify({ error: 'The provider fell over.' }),
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      await retryPage.click('#open-sources');
+      await retryPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [retryChooser] = await Promise.all([
+        retryPage.waitForEvent('filechooser', { timeout: 15000 }),
+        retryPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await retryChooser.setFiles({
+        name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+      });
+      await retryPage.waitForFunction(() => {
+        const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+        return row && row.classList.contains('is-added');
+      }, null, { timeout: 30000 });
+      await continueFromDataSources(retryPage);
+      await answerReview(retryPage);
+
+      await retryPage.waitForSelector('#upload-retry:not([hidden])', { timeout: 30000 });
+      check('a failed analysis offers a retry right where the error is',
+        await retryPage.locator('#upload-retry').isVisible());
+      check('and the button says what it does',
+        /try again/i.test(await retryPage.locator('#upload-retry').innerText()));
+
+      await retryPage.click('#upload-retry');
+      await retryPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      check('pressing it produces the report without going back through the popout',
+        await retryPage.locator('#view-profile').isVisible());
+      check('and the retry is one press, not a second trip through review',
+        bodies.length === 2, 'analyse calls: ' + bodies.length);
+
+      // The whole point. Byte-identical means the server's cache key matches,
+      // which is what turns a retry into a free lookup rather than a second
+      // model call — and it is only true because the digest already in hand is
+      // resent rather than rebuilt.
+      check('the retry sends the identical digest, so the server can recognise it',
+        bodies[0] === bodies[1],
+        bodies[0] === bodies[1] ? '' : 'first ' + String(bodies[0]).length +
+          ' chars, second ' + String(bodies[1]).length);
+
+      check('and the offer is withdrawn once the report is in hand',
+        await retryPage.locator('#upload-retry').isHidden());
+
+      // Held in memory only, deliberately: after a reload the welcome card's
+      // own route back is the honest one, and a button promising to repeat an
+      // attempt this page no longer has would not work.
+      await retryPage.unroute('**/api/analyse');
+      await retryPage.evaluate(() => localStorage.removeItem('psycheai_profile'));
+      await retryPage.reload({ waitUntil: 'load' });
+      await retryPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+      check('and it does not linger across a reload, where it could not work',
+        await retryPage.locator('#upload-retry').isHidden());
+    } finally {
+      await retryPage.evaluate(() => localStorage.removeItem('psycheai_digest')).catch(() => {});
+      await retryPage.close();
+    }
+  }
+
   // ---- collecting a purchase whose result never arrived ----
   //
   // A payment clears, the analysis is asked for, and the phone is closed or

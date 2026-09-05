@@ -442,6 +442,45 @@ check('the key is order-sensitive, so only a byte-identical retry hits it',
   cache.reorderedHit === null,
   'reordered lookup: ' + JSON.stringify(cache.reorderedHit));
 
+// Digest.build stamps `generatedAt` with the millisecond it ran, so a digest
+// built a second time from the same archive — which is what the welcome page's
+// route back from a failed analysis does — differed from the first in that one
+// field and nothing else. Keyed on the whole object, that was a different
+// question: the reader was shown an error, pressed the only button offered,
+// and paid for a report already sitting in this cache.
+//
+// The checks below are two halves of one property, and the second is the one
+// that matters: stripping a field is only safe if it strips *that* field.
+const volatile = runInServer(`
+  const at = t => ({ schema: 'psycheai-digest/1', generatedAt: t, profile: { name: 'V' }, counts: { posts: 3 } });
+  results.set('analyse', at('2026-09-05T10:00:00.000Z'), { report: 'first' });
+  const later = results.get('analyse', at('2026-09-05T10:04:31.912Z'));
+  // Same shape, one real field changed: still a different question.
+  const changed = results.get('analyse',
+    { schema: 'psycheai-digest/1', generatedAt: '2026-09-05T10:00:00.000Z', profile: { name: 'V' }, counts: { posts: 4 } });
+  // A nested timestamp is not stripped — only the named top-level field is.
+  results.set('analyse', { profile: { name: 'N', generatedAt: 'a' } }, { report: 'nested' });
+  const nested = results.get('analyse', { profile: { name: 'N', generatedAt: 'b' } });
+  // And a digest with no such field at all still keys on itself.
+  results.set('analyse', { profile: { name: 'P' } }, { report: 'plain' });
+  const plain = results.get('analyse', { profile: { name: 'P' } });
+  return {
+    later: later && later.report,
+    changed,
+    nested,
+    plain: plain && plain.report,
+    keysMatch: results.keyFor('analyse', at('x')) === results.keyFor('analyse', at('y')),
+  };
+`, {});
+check('a digest rebuilt seconds later is the same question, not a new one',
+  volatile.later === 'first' && volatile.keysMatch === true, JSON.stringify(volatile));
+check('but a digest whose evidence actually changed is still a different one',
+  volatile.changed === null);
+check('and only the named top-level field is ignored, never one nested inside',
+  volatile.nested === null);
+check('a digest carrying no timestamp at all is unaffected',
+  volatile.plain === 'plain');
+
 // In-flight sharing. The settled cache above only catches a retry that arrives
 // after the first call finished; the drops readers actually report happen
 // during the minutes it is still running, when that cache is empty. Without
@@ -2446,6 +2485,24 @@ check('the opening no longer hardcodes the word Instagram',
 const digest = Digest.build(signals, { includeMessages: false });
 
 check('digest declares its schema', digest.schema === 'psycheai-digest/1');
+// The property lib/results.js's key-stripping rests on, checked against the
+// real builder rather than assumed from reading it: build the same archive
+// twice and the only thing that may differ is the timestamp. Any sampling that
+// reached for Math.random, any field derived from the clock, would break the
+// retry path silently — the reader would simply be charged twice with nothing
+// to see.
+{
+  const twice = [Digest.build(signals, { includeMessages: false }),
+    Digest.build(signals, { includeMessages: false })];
+  const stripped = twice.map(d => {
+    const copy = {};
+    for (const key of Object.keys(d)) if (key !== 'generatedAt') copy[key] = d[key];
+    return JSON.stringify(copy);
+  });
+  check('two builds of one archive differ only in when they were built',
+    stripped[0] === stripped[1],
+    'first difference at char ' + [...stripped[0]].findIndex((c, i) => c !== stripped[1][i]));
+}
 // The app no longer asks for a name, so the export's own must come through —
 // mojibake repaired, since that is the name the other person will read.
 check('digest takes the name from the export', digest.profile.name === 'Aleç', digest.profile.name);

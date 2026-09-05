@@ -691,6 +691,12 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    rather than only on mobile — the card is narrow enough on a laptop that a
    button spanning it still looks deliberate rather than stretched. */
 .btn-block { display: block; width: 100%; text-align: center; }
+/* The same trap .mode-progress[hidden] documents further down, and it caught
+   the welcome page's "Try again" the day it was added: `display:block` above is
+   an author rule, so it beats the UA's `[hidden]{display:none}` outright and
+   specificity never enters into it. A .btn-block the app has hidden stays on
+   screen without this. */
+.btn-block[hidden] { display: none; }
 .btn-ghost { background: transparent; color: var(--accent); border-color: var(--line); }
 .btn-ghost:hover { background: var(--accent-soft); }
 .btn-ghost.danger { color: var(--danger); }

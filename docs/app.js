@@ -1546,7 +1546,22 @@
     window.scrollTo(0, Math.min(scrollY, limit));
   }
 
-  function showUploadError(message) {
+  // The last analysis that was actually attempted, kept so that "Try again"
+  // can repeat it exactly rather than reassemble something equivalent.
+  //
+  // Byte-identity is the whole point. The server keys its result cache on the
+  // digest, so resending this object returns the report that finished after
+  // the reader's connection died, or attaches to the one still being
+  // generated. Rebuilding the digest from the archive instead — which is what
+  // the "Continue with your data" route does — produces a digest that differs
+  // and would pay for the same analysis a second time.
+  //
+  // In memory only. A reload has the stored digest and the welcome card's own
+  // route back, and a paid run that never landed is offered by the pending
+  // banner, which is a durable record because that one is owed money.
+  let lastAttempt = null;
+
+  function showUploadError(message, opts) {
     show('welcome');
     // Before the message, so the card behind it already reads "your data is
     // still here" by the time the reader looks up from the error. A failed
@@ -1555,6 +1570,13 @@
     // moment somebody is deciding whether they have to start over.
     refreshStartHere();
     flash('#upload-error', message);
+    // Offered only for a failed analysis, and only while the attempt it would
+    // repeat is still in hand. Every other caller of this function — an
+    // unreadable export, a digest that would not build — has nothing to retry
+    // and gets no button, because a button that reruns the thing that just
+    // failed for a reason retrying cannot fix is worse than no button.
+    const retry = $('#upload-retry');
+    if (retry) retry.hidden = !(opts && opts.retry && lastAttempt);
     $('#upload-error').scrollIntoView({ behavior: scrollBehaviour(), block: 'center' });
   }
 
@@ -3026,6 +3048,10 @@
     // survive the tab dying *during* the call. Only for a paid run — a free
     // one costs nothing to repeat and needs no record that it was owed.
     if (auth) rememberPending('analysis', auth);
+    // Held before the call rather than in the catch, and holding the digest
+    // object itself rather than a copy, so that a retry sends the same bytes
+    // the server already has an answer to.
+    lastAttempt = { digest, auth };
     try {
       const result = await LLM.analyseProfile(digest, auth || undefined);
       // In hand. Nothing is owed any more, so the offer to collect it goes
@@ -3055,12 +3081,23 @@
       renderProfile();
       show('profile');
     } catch (error) {
-      showUploadError((error && error.message) || 'The analysis failed.');
+      showUploadError((error && error.message) || 'The analysis failed.', { retry: true });
     } finally {
       stopElapsed();
       guardUnload(false);
     }
   }
+
+  // One press, straight back into the same call. Deliberately not routed
+  // through startFromSources: that reopens the popout and the review to
+  // rebuild a digest this already holds, which is three steps for a reader who
+  // asked for none of them and a different cache key at the end of it.
+  $('#upload-retry').addEventListener('click', async () => {
+    if (!lastAttempt) return;
+    flash('#upload-error', '');
+    $('#upload-retry').hidden = true;
+    await runAnalysis(lastAttempt.digest, lastAttempt.auth);
+  });
 
   // ══════════════ 2. profile report ══════════════
 
