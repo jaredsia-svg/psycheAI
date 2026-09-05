@@ -715,6 +715,94 @@ try {
     }
   }
 
+  // ---- a connection that died outright ----
+  //
+  // The commonest failure this client sees, and until recently the only one
+  // with no retry behind it: a refused ticket got one, a cut stream got one,
+  // and the case that actually happens to readers — a phone backgrounded, a
+  // handover between wifi and cellular, a proxy closing a socket that looks
+  // idle — went straight to the screen as "the connection dropped, try again".
+  // The advice was right, which is the tell: something whose remedy is to do
+  // exactly the same thing again belongs in the code.
+  //
+  // `route.abort()` is the honest simulation. It rejects the `fetch` the way a
+  // dead transport does, rather than returning a status the client could have
+  // reasoned about.
+  {
+    const dropPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await dropPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await dropPage.waitForTimeout(300);
+
+      let attempts = 0;
+      await dropPage.route('**/api/analyse', async route => {
+        attempts += 1;
+        if (attempts === 1) {
+          await route.abort('connectionreset');
+          return;
+        }
+        await route.continue();
+      });
+
+      const recovered = await dropPage.evaluate(async () => {
+        try {
+          const result = await window.PsycheLLM.analyseProfile(
+            { coverage: { sources: ['instagram'], digestChars: 900 } });
+          return { ok: true, hasReport: Boolean(result && result.data) };
+        } catch (error) { return { ok: false, message: String(error && error.message) }; }
+      });
+      check('a dropped connection is retried rather than shown to the reader',
+        recovered.ok && recovered.hasReport, JSON.stringify(recovered));
+      check('and it really did take two attempts, so the retry is what carried it',
+        attempts === 2, String(attempts));
+
+      // Dropped twice is a connection that is genuinely gone, and the reader
+      // needs to be told rather than watched over indefinitely.
+      await dropPage.unroute('**/api/analyse');
+      let both = 0;
+      await dropPage.route('**/api/analyse', async route => {
+        both += 1;
+        await route.abort('connectionreset');
+      });
+      const gaveUp = await dropPage.evaluate(async () => {
+        try {
+          await window.PsycheLLM.analyseProfile(
+            { coverage: { sources: ['instagram'], digestChars: 900 } });
+          return { threw: false };
+        } catch (error) { return { threw: true, message: String(error && error.message) }; }
+      });
+      check('dropped twice, it stops and says so instead of retrying forever',
+        gaveUp.threw && /connection dropped/i.test(gaveUp.message), JSON.stringify(gaveUp));
+      check('and it stopped at two attempts rather than looping', both === 2, String(both));
+
+      // The exception, and the reason this is opt-in per route rather than on
+      // by default. /api/create-payment-intent is the one call here that is
+      // not idempotent: a retry whose predecessor actually reached the server
+      // leaves a second live PaymentIntent behind in the Stripe account, which
+      // is the exact litter the nonce and rate-limit work went in to stop.
+      //
+      // Driven through PsycheLLM.postWithTicket, which is the function app.js
+      // calls for this route and the one that carries the default.
+      let payAttempts = 0;
+      await dropPage.route('**/api/create-payment-intent', async route => {
+        payAttempts += 1;
+        await route.abort('connectionreset');
+      });
+      const payment = await dropPage.evaluate(async () => {
+        try {
+          await window.PsycheLLM.postWithTicket('/api/create-payment-intent', { product: 'unlock' });
+          return { threw: false };
+        } catch (error) { return { threw: true, message: String(error && error.message) }; }
+      });
+      check('a dropped payment-intent call is not retried, so no second intent is created',
+        payAttempts === 1, String(payAttempts));
+      check('and the reader is told the connection dropped rather than left waiting',
+        payment.threw && /connection dropped/i.test(payment.message), JSON.stringify(payment));
+    } finally {
+      await dropPage.close();
+    }
+  }
+
   // ---- collecting a purchase whose result never arrived ----
   //
   // A payment clears, the analysis is asked for, and the phone is closed or

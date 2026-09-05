@@ -442,6 +442,77 @@ check('the key is order-sensitive, so only a byte-identical retry hits it',
   cache.reorderedHit === null,
   'reordered lookup: ' + JSON.stringify(cache.reorderedHit));
 
+// In-flight sharing. The settled cache above only catches a retry that arrives
+// after the first call finished; the drops readers actually report happen
+// during the minutes it is still running, when that cache is empty. Without
+// this, the retry starts a second model call for a question already being
+// answered.
+//
+// `produce` here counts its own invocations and resolves on a latch, so the
+// second and third callers are provably asking while the first is still in
+// flight rather than after it — a version of this test that awaited the first
+// call before making the others would pass against the settled cache alone and
+// prove nothing about the window that matters.
+const inFlight = runInServer(`
+  const d = { profile: { name: 'S' } };
+  let calls = 0;
+  let unlatch;
+  const latch = new Promise(r => { unlatch = r; });
+  const produce = async () => { calls += 1; await latch; return { report: 'shared' }; };
+
+  const first = results.share('analyse', d, produce);
+  const seenWhileRunning = Boolean(results.pending('analyse', d));
+  const second = results.share('analyse', d, produce);
+  const third = results.share('analyse', d, produce);
+  // A different question must not be answered by this one's work.
+  const other = results.pending('analyse', { profile: { name: 'T' } });
+  unlatch();
+  const all = await Promise.all([first, second, third]);
+  return {
+    calls,
+    seenWhileRunning,
+    other,
+    reports: all.map(r => r && r.report),
+    identical: all[0] === all[1] && all[1] === all[2],
+    clearedAfter: results.pending('analyse', d),
+    cachedAfter: (results.get('analyse', d) || {}).report,
+    stillRunning: results.runningCount(),
+  };
+`, {});
+check('a retry arriving mid-generation joins it instead of starting a second one',
+  inFlight.calls === 1, 'model calls: ' + inFlight.calls);
+check('and every waiter is handed the same finished report',
+  inFlight.identical === true &&
+  inFlight.reports.join(',') === 'shared,shared,shared', JSON.stringify(inFlight.reports));
+check('a generation in progress is visible while it runs, and gone once it lands',
+  inFlight.seenWhileRunning === true && inFlight.clearedAfter === null &&
+  inFlight.stillRunning === 0, JSON.stringify(inFlight));
+check('a different digest is not served by work running for another one',
+  inFlight.other === null);
+check('and the shared result is written to the cache exactly as a lone call would be',
+  inFlight.cachedAfter === 'shared');
+
+// A failure must not be sticky. If the registration outlived the rejection,
+// every later attempt at the same digest would subscribe to an error that had
+// already happened — the provider would recover and the reader would not.
+const inFlightFailure = runInServer(`
+  const d = { profile: { name: 'F' } };
+  let calls = 0;
+  const failing = async () => { calls += 1; throw new Error('provider fell over'); };
+  const both = await Promise.all([
+    results.share('analyse', d, failing).catch(e => e.message),
+    results.share('analyse', d, failing).catch(e => e.message),
+  ]);
+  const afterwards = await results.share('analyse', d, async () => { calls += 1; return { report: 'recovered' }; });
+  return { both, calls, afterwards: afterwards.report, cleared: results.pending('analyse', d) };
+`, {});
+check('a failed generation reaches everyone waiting on it',
+  inFlightFailure.both.join('|') === 'provider fell over|provider fell over',
+  JSON.stringify(inFlightFailure.both));
+check('and it is not cached or left registered, so the next attempt is a real one',
+  inFlightFailure.calls === 2 && inFlightFailure.afterwards === 'recovered' &&
+  inFlightFailure.cleared === null, JSON.stringify(inFlightFailure));
+
 const expiry = runInServer(`
   const d = { profile: { name: 'E' } };
   results.set('analyse', d, { report: 'stale' });

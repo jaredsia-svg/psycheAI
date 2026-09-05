@@ -168,6 +168,35 @@ async function sendJsonWhileWorking(response, produce) {
   }
 }
 
+/**
+ * Answer from what this process already has, if it has it: a report for this
+ * exact question that finished minutes ago, or one being generated right now.
+ *
+ * Returns a promise to await when it took the request, or null when there is
+ * nothing to serve and the caller should do the work itself.
+ *
+ * The decision is made synchronously and the awaiting is left to the caller,
+ * which is not a style preference. Every call site registers its own work with
+ * `results.share` immediately after a null from here, and an `await` in
+ * between would let a second request look, see nothing running, and start a
+ * duplicate generation a moment before the first one registered — the race
+ * this whole path exists to close. Keep the two adjacent.
+ *
+ * The in-flight case goes through `sendJsonWhileWorking` rather than
+ * `sendJson`, because attaching to work that started four minutes ago can
+ * still mean waiting minutes for it, and a silent connection is what the
+ * reader was retrying to escape in the first place.
+ */
+function servedFromMemory(response, kind, key) {
+  const cached = results.get(kind, key);
+  if (cached) {
+    sendJson(response, 200, cached);
+    return Promise.resolve();
+  }
+  const running = results.pending(kind, key);
+  return running ? sendJsonWhileWorking(response, () => running) : null;
+}
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -327,12 +356,13 @@ async function handleAnalyse(request, response) {
   if (!engine) return;
 
   // A report for this exact digest that finished minutes ago and never reached
-  // the reader — see lib/results.js. Returned before anything is spent: this
-  // is the same question already answered, so it costs neither the day's
-  // budget nor the reader's payment a second time.
-  const cached = results.get('analyse', body.digest);
-  if (cached) {
-    sendJson(response, 200, cached);
+  // the reader, or one still being generated for it — see lib/results.js.
+  // Consulted before anything is spent: this is the same question already
+  // being answered, so it costs neither the day's budget nor the reader's
+  // payment a second time.
+  const answered = servedFromMemory(response, 'analyse', body.digest);
+  if (answered) {
+    await answered;
     return;
   }
 
@@ -350,7 +380,13 @@ async function handleAnalyse(request, response) {
     return;
   }
   try {
-    await sendJsonWhileWorking(response, async () => {
+    // `results.share` registers this generation before it awaits anything, so
+    // a retry arriving while it runs attaches to it instead of starting a
+    // second one, and stores the result on success. Storing it matters even
+    // when the socket has already died — that is what makes the reader's next
+    // attempt free — and the recording below happens once however many
+    // connections end up waiting on this call.
+    await sendJsonWhileWorking(response, () => results.share('analyse', body.digest, async () => {
       const result = await engine.analyseProfile(body.digest);
 
       // Both recorded only after the call actually came back, so a provider
@@ -360,12 +396,8 @@ async function handleAnalyse(request, response) {
       } else {
         budget.record('analyse');
       }
-      // Stored last, and only on success. If the socket has already died this
-      // is the line that makes the reader's retry free — the whole point of
-      // the cache is that it is written even when nobody is left to receive
-      // the response it is about to be handed to.
-      return results.set('analyse', body.digest, result);
-    });
+      return result;
+    }));
   } finally {
     release();
   }
@@ -430,13 +462,13 @@ async function handlePremiumAnalysis(request, response) {
     }
     const engine = requirePremiumEngine(response);
     if (!engine) return;
-    const cachedPromo = results.get('premium', body.digest);
-    if (cachedPromo) {
-      sendJson(response, 200, cachedPromo);
+    const answeredPromo = servedFromMemory(response, 'premium', body.digest);
+    if (answeredPromo) {
+      await answeredPromo;
       return;
     }
-    await sendJsonWhileWorking(response, async () =>
-      results.set('premium', body.digest, await engine.analysePremium(body.digest)));
+    await sendJsonWhileWorking(response, () =>
+      results.share('premium', body.digest, () => engine.analysePremium(body.digest)));
     return;
   }
 
@@ -461,10 +493,12 @@ async function handlePremiumAnalysis(request, response) {
   // The most expensive thing in the product to lose to a dead socket: this one
   // was paid for. Served from the cache before the ledger is touched, so a
   // reader whose connection died collecting sections they had already bought
-  // gets them back without spending a second use of the same payment.
-  const cachedPaid = results.get('premium', body.digest);
-  if (cachedPaid) {
-    sendJson(response, 200, cachedPaid);
+  // gets them back without spending a second use of the same payment — and
+  // before the hold below, so that a reader who reconnects while their own
+  // generation is still running is handed it rather than told to wait.
+  const answeredPaid = servedFromMemory(response, 'premium', body.digest);
+  if (answeredPaid) {
+    await answeredPaid;
     return;
   }
   // Held across the generation, because canUse above read a count that
@@ -479,11 +513,11 @@ async function handlePremiumAnalysis(request, response) {
     return;
   }
   try {
-    await sendJsonWhileWorking(response, async () => {
+    await sendJsonWhileWorking(response, () => results.share('premium', body.digest, async () => {
       const result = await engine.analysePremium(body.digest);
       paymentLedger.recordUse(paymentIntentId, 'premium');
-      return results.set('premium', body.digest, result);
-    });
+      return result;
+    }));
   } finally {
     release();
   }
@@ -547,13 +581,13 @@ async function handleCompatibility(request, response) {
       sendJson(response, 402, { error: 'That code is not valid.' });
       return;
     }
-    const cachedPromo = results.get('compatibility', cacheKey);
-    if (cachedPromo) {
-      sendJson(response, 200, cachedPromo);
+    const answeredPromo = servedFromMemory(response, 'compatibility', cacheKey);
+    if (answeredPromo) {
+      await answeredPromo;
       return;
     }
-    await sendJsonWhileWorking(response, async () => results.set('compatibility', cacheKey,
-      await engine.analyseCompatibility(a, b, mode, stance)));
+    await sendJsonWhileWorking(response, () => results.share('compatibility', cacheKey,
+      () => engine.analyseCompatibility(a, b, mode, stance)));
     return;
   }
 
@@ -574,9 +608,9 @@ async function handleCompatibility(request, response) {
     });
     return;
   }
-  const cachedPaid = results.get('compatibility', cacheKey);
-  if (cachedPaid) {
-    sendJson(response, 200, cachedPaid);
+  const answeredPaid = servedFromMemory(response, 'compatibility', cacheKey);
+  if (answeredPaid) {
+    await answeredPaid;
     return;
   }
   // Same hold as the premium route, for the same reason.
@@ -588,11 +622,11 @@ async function handleCompatibility(request, response) {
     return;
   }
   try {
-    await sendJsonWhileWorking(response, async () => {
+    await sendJsonWhileWorking(response, () => results.share('compatibility', cacheKey, async () => {
       const result = await engine.analyseCompatibility(a, b, mode, stance);
       paymentLedger.recordUse(paymentIntentId, 'compatibility');
-      return results.set('compatibility', cacheKey, result);
-    });
+      return result;
+    }));
   } finally {
     release();
   }

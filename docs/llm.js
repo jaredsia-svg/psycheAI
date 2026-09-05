@@ -10,6 +10,11 @@
   // provider; the UI shows elapsed time rather than pretending otherwise.
   const TIMEOUT_MS = 10 * 60 * 1000;
 
+  // How long to wait before retrying a connection that died. Long enough for a
+  // network handover or a woken radio to settle, short enough that a reader
+  // watching an elapsed timer does not notice it happened.
+  const RETRY_PAUSE_MS = 1200;
+
   // What a `fetch` rejection means, in words a reader can act on. Shared by
   // the ticket request and the POST it precedes, because a dropped connection
   // is a dropped connection whichever of the two was in flight when it went.
@@ -33,6 +38,29 @@
     }
     return new Error('The connection dropped before the analysis came back. ' +
       'Try again — if it had already finished, you will get it straight away.');
+  }
+
+  /**
+   * Whether a failed `fetch` is worth one silent second attempt.
+   *
+   * A dropped connection is the commonest failure this client sees and, until
+   * this existed, the only one with no retry behind it: a refused ticket got
+   * one, a cut stream got one, and the case that actually happens — a phone
+   * backgrounded, a wifi-to-cellular handover, a proxy closing a socket that
+   * looks idle — put the whole thing in front of the reader and asked them to
+   * press a button. The advice was sound, which is the tell: anything whose
+   * remedy is "do exactly that again" belongs in the code rather than in a
+   * message.
+   *
+   * Two failures are excluded because retrying them is not free. A timeout has
+   * already spent ten minutes, and a second one would spend ten more before
+   * saying the same thing. Being offline is a fact about the device, not about
+   * the connection, and the reader needs to hear it rather than watch another
+   * attempt fail.
+   */
+  function worthRetrying(error) {
+    if (error && error.name === 'AbortError') return false;
+    return !(typeof navigator !== 'undefined' && navigator.onLine === false);
   }
 
   /**
@@ -82,12 +110,29 @@
    * Once only, and only for this one refusal. Anything else — a rate limit, a
    * failed payment, a provider outage — is a real answer and goes to the
    * reader as it is.
+   *
+   * `opts.retryOnDrop` extends the same treatment to a connection that died
+   * outright, which is safe for a different reason: those routes are keyed on
+   * the digest, so lib/results.js hands the retry either the finished report
+   * or the generation still running for it. It is off by default and stays off
+   * for /api/create-payment-intent, which is the one route here that is not
+   * idempotent — a retry there could leave a second PaymentIntent behind.
    */
-  async function post(path, body) {
-    const first = await postOnce(path, body);
-    if (!first.nonceRefused && !first.truncated) return first.payload;
-    const second = await postOnce(path, body);
-    if (!second.nonceRefused && !second.truncated) return second.payload;
+  async function post(path, body, opts) {
+    const retryOnDrop = Boolean(opts && opts.retryOnDrop);
+    // `dropped` is only ever reported when this call asked for it; otherwise
+    // postOnce throws on a dead connection exactly as it always did.
+    const again = outcome => outcome.nonceRefused || outcome.truncated || outcome.dropped;
+    const first = await postOnce(path, body, retryOnDrop);
+    if (!again(first)) return first.payload;
+    // A pause before the second attempt, but only after a dropped connection.
+    // The other two failures leave the transport working — the server refused
+    // a ticket, or cut a body — and waiting would only add delay. A drop is
+    // the transport itself going away, and retrying in the same instant asks
+    // the same dead radio, mid-handover, to do the thing it just failed at.
+    if (first.dropped) await new Promise(resolve => setTimeout(resolve, RETRY_PAUSE_MS));
+    const second = await postOnce(path, body, retryOnDrop);
+    if (!again(second)) return second.payload;
     // Twice in a row is not a restart and not a coincidence of timing, so this
     // stops rather than looping. Which message depends on which failure came
     // back second, because they need different things from the reader: one is
@@ -99,7 +144,7 @@
       'Try again — if it had already finished, you will get it straight away.');
   }
 
-  async function postOnce(path, body) {
+  async function postOnce(path, body, retryOnDrop) {
     // Outside the try below, so that a refusal to issue a ticket — a rate
     // limit, most likely — reaches the reader as itself rather than being
     // rewritten into "the connection dropped".
@@ -116,6 +161,7 @@
       });
     } catch (error) {
       clearTimeout(timer);
+      if (retryOnDrop && worthRetrying(error)) return { dropped: true, payload: null };
       throw networkError(error);
     }
     clearTimeout(timer);
@@ -129,6 +175,7 @@
       raw = await response.text();
     } catch (error) {
       // The stream died while being read: same thing as the truncation below.
+      if (retryOnDrop && worthRetrying(error)) return { dropped: true, payload: null };
       throw networkError(error);
     }
 
@@ -162,13 +209,13 @@
     // cache, so the retry usually returns it immediately and costs nothing —
     // and where it does not, it costs exactly what the reader pressing "try
     // again" would have cost anyway.
-    if (truncated) return { truncated: true, payload: null };
+    if (truncated) return { truncated: true, dropped: false, payload: null };
     if (!response.ok) {
       // Reported rather than thrown, so post() above can decide whether this
       // is the one refusal worth a second attempt. Every other status still
       // throws from here.
       if (response.status === 400 && payload && payload.nonceRequired) {
-        return { nonceRefused: true, truncated: false, payload: null };
+        return { nonceRefused: true, truncated: false, dropped: false, payload: null };
       }
       throw new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').');
     }
@@ -178,7 +225,7 @@
     // model runs — so a failure part-way through can only be reported in the
     // body. See sendJsonWhileWorking in server.js.
     if (payload && payload.error) throw new Error(payload.error);
-    return { nonceRefused: false, truncated: false, payload };
+    return { nonceRefused: false, truncated: false, dropped: false, payload };
   }
 
   /** Whether the server has credentials, and which model it will use. */
@@ -196,19 +243,25 @@
   // `{ paymentIntentId }` or `{ promoCode }`. Absent, this is the free run
   // every reader gets; present, it is a purchased re-run that the server
   // verifies and that does not draw on the daily free ceiling.
+  // `retryOnDrop` on all three of these and on none of the others: they are
+  // the long calls, they are the ones a phone drops halfway through, and they
+  // are keyed on their own input server-side, so asking again is either free
+  // or a seat next to work already running.
+  const RETRY_DROPS = { retryOnDrop: true };
   const analyseProfile = (digest, auth) =>
-    post('/api/analyse', Object.assign({ digest }, auth || {}));
+    post('/api/analyse', Object.assign({ digest }, auth || {}), RETRY_DROPS);
   // `auth` takes the same shape as the other two paid calls — `{ paymentIntentId }`
   // or `{ promoCode }`. A compatibility read is a purchase now rather than a
   // free draw on the daily ceiling, so the server refuses this without one.
   const analyseCompatibility = (a, b, mode, stance, auth) =>
-    post('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}));
+    post('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}), RETRY_DROPS);
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds
   // (from psycheai_digest) travelling again, not a second upload of anything
   // new. `auth` is one of `{ paymentIntentId }` or `{ promoCode }` — the two
   // ways server.js's handlePremiumAnalysis will accept unlocking this call.
-  const analysePremium = (digest, auth) => post('/api/premium-analysis', Object.assign({ digest }, auth));
+  const analysePremium = (digest, auth) =>
+    post('/api/premium-analysis', Object.assign({ digest }, auth), RETRY_DROPS);
 
   root.PsycheLLM = {
     status, ticket, analyseProfile, analyseCompatibility, analysePremium,
