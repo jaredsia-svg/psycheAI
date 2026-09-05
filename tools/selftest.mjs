@@ -552,6 +552,81 @@ check('and it is not cached or left registered, so the next attempt is a real on
   inFlightFailure.calls === 2 && inFlightFailure.afterwards === 'recovered' &&
   inFlightFailure.cleared === null, JSON.stringify(inFlightFailure));
 
+// Looking a job up by its key, which is the polling half of a background
+// analysis. The client holds the key it was handed and nothing else — it
+// cannot be asked to resend the whole digest on a timer just so the server can
+// work out which job it means.
+//
+// Four states, and each one leads the client somewhere different: wait, take
+// the report, show the error, or start again. Folding any two of them together
+// is how a reader ends up watching a spinner for a job that failed.
+const jobStates = runInServer(`
+  const d = { profile: { name: 'J' } };
+  const key = results.keyFor('analyse', d);
+  const unknownBefore = results.lookup(key).status;
+
+  let unlatch;
+  const latch = new Promise(r => { unlatch = r; });
+  const work = results.share('analyse', d, async () => { await latch; return { report: 'polled' }; });
+  const whileRunning = results.lookup(key).status;
+  unlatch();
+  await work;
+  const afterDone = results.lookup(key);
+
+  // A second job, failed, so the poll can carry the reason rather than the
+  // client having to guess from a job that simply stopped existing.
+  const f = { profile: { name: 'K' } };
+  const failKey = results.keyFor('analyse', f);
+  await results.share('analyse', f, async () => { throw new Error('the provider fell over'); })
+    .catch(() => {});
+  const afterFail = results.lookup(failKey);
+
+  // And a fresh attempt clears the last one's failure, so a poll is never
+  // told about the run before the one it is watching.
+  const retry = results.share('analyse', f, async () => ({ report: 'second time' }));
+  const whileRetrying = results.lookup(failKey).status;
+  await retry;
+
+  return {
+    unknownBefore,
+    whileRunning,
+    doneStatus: afterDone.status,
+    doneValue: afterDone.value && afterDone.value.report,
+    failStatus: afterFail.status,
+    failError: afterFail.error,
+    whileRetrying,
+    finally: results.lookup(failKey).value.report,
+  };
+`, {});
+check('a job nobody has started is unknown, not failed — the client starts it rather than reporting it',
+  jobStates.unknownBefore === 'unknown');
+check('a job in flight reports as running',
+  jobStates.whileRunning === 'running', jobStates.whileRunning);
+check('and once it lands the poll carries the report itself',
+  jobStates.doneStatus === 'done' && jobStates.doneValue === 'polled', JSON.stringify(jobStates));
+check('a failed job is remembered long enough to say why',
+  jobStates.failStatus === 'failed' && /provider fell over/.test(jobStates.failError || ''),
+  JSON.stringify(jobStates));
+check('and a fresh attempt clears it, so a poll never hears about the run before',
+  jobStates.whileRetrying === 'running' && jobStates.finally === 'second time',
+  JSON.stringify(jobStates));
+
+// The failure record has a life of its own, far shorter than a result's: it
+// exists to carry one message to a client already waiting for it, not to
+// accumulate a log. Past it the job reads as unknown, which sends the client
+// to start again rather than to an error about something long over.
+const failureExpiry = runInServer(`
+  const d = { profile: { name: 'X' } };
+  const key = results.keyFor('analyse', d);
+  await results.share('analyse', d, async () => { throw new Error('gone wrong'); }).catch(() => {});
+  const before = results.lookup(key).status;
+  await new Promise(r => setTimeout(r, 120));
+  return { before, after: results.lookup(key).status };
+`, { PSYCHEAI_RESULT_FAILURE_TTL_MS: '60' });
+check('a remembered failure expires into "unknown" rather than lingering',
+  failureExpiry.before === 'failed' && failureExpiry.after === 'unknown',
+  JSON.stringify(failureExpiry));
+
 const expiry = runInServer(`
   const d = { profile: { name: 'E' } };
   results.set('analyse', d, { report: 'stale' });
@@ -3876,11 +3951,19 @@ check('the schema requires evidence on strengths and frictions',
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
       '/api/analyse', '/api/compatibility', '/api/create-payment-intent',
-      '/api/nonce', '/api/premium-analysis',
+      '/api/nonce', '/api/premium-analysis', '/api/result',
     ]), JSON.stringify(guarded));
-  check('and all of them but the ticket route itself require a ticket',
+  // Two routes are rate-limited without a ticket, and both are named here
+  // rather than left to a rule, because "which reads are exempt" is exactly
+  // the judgement that should not be quietly extended by a later edit.
+  // /api/nonce is where tickets come from and cannot require one. /api/result
+  // is polled dozens of times per analysis and would exhaust a reader's own
+  // nonce allowance; what stands in for the ticket there is the job key,
+  // which is a hash of the digest and so cannot be produced without it.
+  const TICKETLESS = ['/api/nonce', '/api/result'];
+  check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
-      guard.nonce === (route !== '/api/nonce')),
+      guard.nonce === !TICKETLESS.includes(route)),
     JSON.stringify(server.API_GUARDS));
   check('each names a limit that actually exists',
     Object.values(server.API_GUARDS).every(guard => Boolean(rateLimit.LIMITS[guard.limit])));

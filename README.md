@@ -1270,10 +1270,48 @@ longer enforce, not every reader their purchase. Two checks hold both paths to p
 fail-open branch cannot quietly become the only branch.
 
 The per-payment retry allowance came down from five to three at the same time, for a reason that had
-already changed underneath it: the 30-minute result cache now serves a repeat of a *successful*
+already changed underneath it: the result cache now serves a repeat of a *successful*
 generation before the ledger is touched, so the common retry — a reader whose connection died while
 the report was coming back — is free. What the number still covers is generations that genuinely
 failed, and three of those in a row is a broken provider, not a reader who needs a fourth.
+
+## The analysis outlives the page that asked for it
+
+An analysis takes about three minutes, and for most of this app's life the browser had to hold one
+connection open for all of them. Everything built to survive that connection dying — the keep-alive
+whitespace, the retry on a cut stream, the retry on a dropped socket, the result cache behind both —
+was a way of recovering from a design in which a phone being a phone was a failure.
+
+So the connection stopped being load-bearing. `POST /api/analyse` with `background: true` starts the
+work and returns `202 { job }` at once; `GET /api/result?job=…` says what has become of it. The work
+runs in the server process whether or not anybody is listening — which was **always** true, since
+Node never aborted a handler when the client disconnected, and which used to be useless because the
+only thing that knew how to collect the result was a closure inside a page about to be discarded.
+
+The key is therefore written to `localStorage` while the job is still running, and that single line
+is what turns "I closed the app" from a loss into a pause. The next page to open — thirty seconds
+later or two hours later — finds the job, returns to the waiting screen, and picks it up. It is
+checked at startup *and* on every return to visibility, because a suspended tab restored from memory
+resumes its JavaScript context without a reload, and a poll loop that stopped ticking while the phone
+slept is indistinguishable from one that never existed.
+
+Four job states, and each sends the client somewhere different: `running` (wait), `done` (take the
+report), `failed` (show the reason), `unknown` (this process has no memory of it — start again).
+Folding any two together is how a reader ends up watching a spinner for a job that failed, so
+failures are remembered briefly and separately for exactly that reason. A poll that cannot reach the
+server is not counted as any of them: it is the condition the whole design exists to sit through, and
+only a run of consecutive failures long enough to mean something other than "the phone is asleep"
+gives up.
+
+`/api/result` is rate-limited but carries no ticket, which is a deliberate exception and is named as
+one in the guard-table check. A three-minute job polled every few seconds is dozens of requests, and
+a ticket apiece would exhaust the reader's own nonce allowance and turn the fix into a new failure.
+What stands in for the ticket is the job key itself: a SHA-256 of the digest, which cannot be
+produced without already holding the evidence it names.
+
+The blocking form still works and is still tested, because during a rollout a browser holding an
+already-loaded `docs/llm.js` and a freshly-deployed server are the same reader, mid-analysis, and a
+response shape the page cannot parse would break them.
 
 ## The sample report
 
@@ -4055,7 +4093,7 @@ on every read, whether it came from the camera, a photo of a code, a pasted link
 ## Tests
 
 ```bash
-npm test           # 790 checks: synthesises a real ZIP export and runs
+npm test           # 796 checks: synthesises a real ZIP export and runs
                    # unzip → parse → digest → card → QR → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
@@ -4064,7 +4102,7 @@ npm test           # 790 checks: synthesises a real ZIP export and runs
                    # every branch of provider selection; and drives the
                    # automatic-retry logic against fake SDKs standing in for
                    # all three real providers
-npm run test:ui    # 1160 checks: drives the real UI in Chromium against a
+npm run test:ui    # 1169 checks: drives the real UI in Chromium against a
                    # mock-mode server, upload through to a compatibility report.
                    # Decodes and re-encodes the fixture's real PNGs, and asserts
                    # against the actual request body that the images sent are

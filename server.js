@@ -187,14 +187,97 @@ async function sendJsonWhileWorking(response, produce) {
  * still mean waiting minutes for it, and a silent connection is what the
  * reader was retrying to escape in the first place.
  */
-function servedFromMemory(response, kind, key) {
+function servedFromMemory(response, kind, key, background) {
   const cached = results.get(kind, key);
   if (cached) {
     sendJson(response, 200, cached);
     return Promise.resolve();
   }
   const running = results.pending(kind, key);
-  return running ? sendJsonWhileWorking(response, () => running) : null;
+  if (!running) return null;
+  // A background caller is told where to look rather than made to wait: it
+  // already knows how to poll, and the job it would have started is the one
+  // already in flight.
+  if (background) {
+    sendJson(response, 202, { job: results.keyFor(kind, key), status: 'running' });
+    return Promise.resolve();
+  }
+  return sendJsonWhileWorking(response, () => running);
+}
+
+/**
+ * Run one generation, either holding the connection open for it or handing
+ * back a job to poll for.
+ *
+ * The blocking form is the original and is kept working for a page that was
+ * loaded before this deployed — during a rollout the browser holding an old
+ * docs/llm.js and the server running new code are the same reader, and a
+ * response shape it cannot parse would break them mid-analysis.
+ *
+ * The background form is what the app asks for now. The connection carries the
+ * job key and closes; the work goes on in this process regardless of who is
+ * still listening, because it always did — Node never aborted a handler when
+ * the client disconnected, which is precisely why the result cache had to
+ * exist. What changes is that the reader is no longer required to be there
+ * when it lands.
+ *
+ * `settle` runs when the work finishes either way, which is where a ledger
+ * hold has to be released: in the background form the handler returns long
+ * before the model does, so a `finally` around this would let go of the hold
+ * while the generation it guards is still running.
+ */
+function generate(response, opts) {
+  const { background, kind, key, produce, settle } = opts;
+  const work = results.share(kind, key, produce);
+  if (settle) work.then(settle, settle);
+  if (!background) return sendJsonWhileWorking(response, () => work);
+  sendJson(response, 202, { job: results.keyFor(kind, key), status: 'running' });
+  return Promise.resolve();
+}
+
+/**
+ * Whether this caller wants a job back rather than a held connection.
+ *
+ * A field in the body rather than a route of its own, so that the payment,
+ * budget and ledger checks above each call site are not duplicated into a
+ * second handler that could drift from the first. It sits beside `digest`
+ * rather than inside it, so the cache key — which is the digest alone — is
+ * untouched by it.
+ */
+function wantsBackground(body) {
+  return Boolean(body && body.background === true);
+}
+
+// What has become of a job somebody started. Deliberately unguarded by a
+// nonce: it is a read, it costs nothing to serve, and a client polling a
+// three-minute analysis every few seconds would otherwise need a ticket per
+// poll and exhaust its own allowance. What stands in for the ticket is the key
+// itself — a SHA-256 of the digest, which cannot be produced without the
+// digest, so possession of it already means possession of the evidence.
+function handleResult(response, url) {
+  const job = String(url.searchParams.get('job') || '');
+  if (!/^[a-z-]+:[0-9a-f]{64}$/.test(job)) {
+    sendJson(response, 400, { error: 'That is not a job key.' });
+    return;
+  }
+  const found = results.lookup(job);
+  if (found.status === 'done') {
+    sendJson(response, 200, Object.assign({ status: 'done' }, found.value));
+    return;
+  }
+  if (found.status === 'failed') {
+    sendJson(response, 200, { status: 'failed', error: found.error });
+    return;
+  }
+  if (found.status === 'running') {
+    sendJson(response, 200, { status: 'running' });
+    return;
+  }
+  // Not a failure and not a refusal: this process has no memory of the job,
+  // because it restarted or because the result aged out. Its own state, so
+  // the client can start the work again rather than reporting an error it
+  // cannot act on.
+  sendJson(response, 200, { status: 'unknown' });
 }
 
 function readJsonBody(request) {
@@ -360,7 +443,8 @@ async function handleAnalyse(request, response) {
   // Consulted before anything is spent: this is the same question already
   // being answered, so it costs neither the day's budget nor the reader's
   // payment a second time.
-  const answered = servedFromMemory(response, 'analyse', body.digest);
+  const background = wantsBackground(body);
+  const answered = servedFromMemory(response, 'analyse', body.digest, background);
   if (answered) {
     await answered;
     return;
@@ -379,14 +463,21 @@ async function handleAnalyse(request, response) {
     });
     return;
   }
-  try {
-    // `results.share` registers this generation before it awaits anything, so
-    // a retry arriving while it runs attaches to it instead of starting a
-    // second one, and stores the result on success. Storing it matters even
-    // when the socket has already died — that is what makes the reader's next
-    // attempt free — and the recording below happens once however many
-    // connections end up waiting on this call.
-    await sendJsonWhileWorking(response, () => results.share('analyse', body.digest, async () => {
+  // `results.share`, inside generate(), registers this generation before it
+  // awaits anything, so a retry arriving while it runs attaches to it instead
+  // of starting a second one, and stores the result on success. Storing it
+  // matters even when the socket has already died — that is what makes the
+  // reader's next attempt free — and the recording below happens once however
+  // many connections end up waiting on this call.
+  //
+  // The hold is released by `settle` rather than by a `finally`: a background
+  // request returns as soon as the job exists, minutes before the model does.
+  await generate(response, {
+    background,
+    kind: 'analyse',
+    key: body.digest,
+    settle: release,
+    produce: async () => {
       const result = await engine.analyseProfile(body.digest);
 
       // Both recorded only after the call actually came back, so a provider
@@ -397,10 +488,8 @@ async function handleAnalyse(request, response) {
         budget.record('analyse');
       }
       return result;
-    }));
-  } finally {
-    release();
-  }
+    },
+  });
 }
 
 // A single-use ticket for the routes below. Cheap to serve, rate-limited like
@@ -454,6 +543,7 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 400, { error: 'Expected a "digest" object.' });
     return;
   }
+  const background = wantsBackground(body);
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   if (promoCode) {
     if (!isValidPromoCode(promoCode)) {
@@ -462,13 +552,17 @@ async function handlePremiumAnalysis(request, response) {
     }
     const engine = requirePremiumEngine(response);
     if (!engine) return;
-    const answeredPromo = servedFromMemory(response, 'premium', body.digest);
+    const answeredPromo = servedFromMemory(response, 'premium', body.digest, background);
     if (answeredPromo) {
       await answeredPromo;
       return;
     }
-    await sendJsonWhileWorking(response, () =>
-      results.share('premium', body.digest, () => engine.analysePremium(body.digest)));
+    await generate(response, {
+      background,
+      kind: 'premium',
+      key: body.digest,
+      produce: () => engine.analysePremium(body.digest),
+    });
     return;
   }
 
@@ -496,7 +590,7 @@ async function handlePremiumAnalysis(request, response) {
   // gets them back without spending a second use of the same payment — and
   // before the hold below, so that a reader who reconnects while their own
   // generation is still running is handed it rather than told to wait.
-  const answeredPaid = servedFromMemory(response, 'premium', body.digest);
+  const answeredPaid = servedFromMemory(response, 'premium', body.digest, background);
   if (answeredPaid) {
     await answeredPaid;
     return;
@@ -512,15 +606,17 @@ async function handlePremiumAnalysis(request, response) {
     });
     return;
   }
-  try {
-    await sendJsonWhileWorking(response, () => results.share('premium', body.digest, async () => {
+  await generate(response, {
+    background,
+    kind: 'premium',
+    key: body.digest,
+    settle: release,
+    produce: async () => {
       const result = await engine.analysePremium(body.digest);
       paymentLedger.recordUse(paymentIntentId, 'premium');
       return result;
-    }));
-  } finally {
-    release();
-  }
+    },
+  });
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -575,19 +671,24 @@ async function handleCompatibility(request, response) {
   const stance = prompts.resolveStance(body.stance);
   const cacheKey = { a, b, mode, stance };
 
+  const background = wantsBackground(body);
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   if (promoCode) {
     if (!isValidPromoCode(promoCode)) {
       sendJson(response, 402, { error: 'That code is not valid.' });
       return;
     }
-    const answeredPromo = servedFromMemory(response, 'compatibility', cacheKey);
+    const answeredPromo = servedFromMemory(response, 'compatibility', cacheKey, background);
     if (answeredPromo) {
       await answeredPromo;
       return;
     }
-    await sendJsonWhileWorking(response, () => results.share('compatibility', cacheKey,
-      () => engine.analyseCompatibility(a, b, mode, stance)));
+    await generate(response, {
+      background,
+      kind: 'compatibility',
+      key: cacheKey,
+      produce: () => engine.analyseCompatibility(a, b, mode, stance),
+    });
     return;
   }
 
@@ -608,7 +709,7 @@ async function handleCompatibility(request, response) {
     });
     return;
   }
-  const answeredPaid = servedFromMemory(response, 'compatibility', cacheKey);
+  const answeredPaid = servedFromMemory(response, 'compatibility', cacheKey, background);
   if (answeredPaid) {
     await answeredPaid;
     return;
@@ -621,15 +722,17 @@ async function handleCompatibility(request, response) {
     });
     return;
   }
-  try {
-    await sendJsonWhileWorking(response, () => results.share('compatibility', cacheKey, async () => {
+  await generate(response, {
+    background,
+    kind: 'compatibility',
+    key: cacheKey,
+    settle: release,
+    produce: async () => {
       const result = await engine.analyseCompatibility(a, b, mode, stance);
       paymentLedger.recordUse(paymentIntentId, 'compatibility');
       return result;
-    }));
-  } finally {
-    release();
-  }
+    },
+  });
 }
 
 function serveStatic(requestedPath, response) {
@@ -668,6 +771,13 @@ function serveStatic(requestedPath, response) {
 // about the deployment, and the second has a token of its own.
 const API_GUARDS = {
   '/api/nonce': { limit: 'nonce', nonce: false },
+  // Rate-limited but not ticketed. A poll is a read that costs nothing to
+  // serve, and a client watching a three-minute analysis makes dozens of them
+  // — a ticket apiece would exhaust its own nonce allowance and turn the fix
+  // into a new failure. The job key does the work a ticket would: it is a
+  // SHA-256 of the digest, so it cannot be produced without already having the
+  // evidence it names.
+  '/api/result': { limit: 'result', nonce: false },
   '/api/analyse': { limit: 'analyse', nonce: true },
   '/api/compatibility': { limit: 'compatibility', nonce: true },
   '/api/create-payment-intent': { limit: 'payment-intent', nonce: true },
@@ -854,12 +964,13 @@ function routeRequest(route, url, request, response) {
     const handler =
       route === '/api/status' && request.method === 'GET' ? () => handleStatus(response)
         : route === '/api/nonce' && request.method === 'GET' ? () => handleNonce(response)
-          : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
-            : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-              : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
-                : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
-                  : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
-                    : null;
+          : route === '/api/result' && request.method === 'GET' ? () => handleResult(response, url)
+            : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
+              : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
+                : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
+                  : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
+                    : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
+                      : null;
 
     if (!handler) {
       sendJson(response, 404, { error: 'No such endpoint.' });

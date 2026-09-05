@@ -42,6 +42,19 @@
     // It holds the authorisation and the few things needed to ask again. Never
     // a report: this is the record of an unfinished purchase, not a cache.
     pending: 'psycheai_pending',
+    // An analysis running on the server right now, by the key the server
+    // handed back when it started.
+    //
+    // This is what turns "I closed the app" from a loss into a pause. The work
+    // does not live in this tab any more — it lives on the server, which was
+    // always true and used to be useless, because the only thing that knew how
+    // to collect it was a closure inside a page that had just been discarded.
+    // Written down, the next page to open picks the job back up and waits for
+    // it, whether that is thirty seconds later or two hours.
+    //
+    // A key and a timestamp, and for a paid run the authorisation needed to
+    // ask again if the server has forgotten. Never a report.
+    job: 'psycheai_job',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -891,6 +904,42 @@
 
   function clearPending() {
     store.remove(KEYS.pending);
+  }
+
+  /**
+   * Write down an analysis that is running on the server right now.
+   *
+   * Only the key and when it started — never a report, and never the digest,
+   * which is already stored under its own key and does not need a second copy.
+   */
+  function rememberJob(key, auth) {
+    store.write(KEYS.job, { key, auth: auth || null, at: Date.now() });
+  }
+
+  function clearJob() {
+    store.remove(KEYS.job);
+  }
+
+  /**
+   * The job still worth rejoining, if there is one.
+   *
+   * Bounded by the server's own result window rather than by a guess: past it
+   * the server has forgotten the job, and an offer to rejoin one would sit
+   * there polling for something that no longer exists. Kept a little under
+   * four hours so the browser gives up slightly before the server does, which
+   * is the right way round — a page that stops looking is a page that offers
+   * the reader a button, and a page that keeps looking at nothing is a
+   * spinner that never ends.
+   */
+  const JOB_WINDOW_MS = 3.5 * 60 * 60 * 1000;
+  function runningJob() {
+    const saved = store.read(KEYS.job, null);
+    if (!saved || typeof saved !== 'object' || typeof saved.key !== 'string' || !saved.key) return null;
+    if (!(Date.now() - Number(saved.at || 0) < JOB_WINDOW_MS)) {
+      clearJob();
+      return null;
+    }
+    return saved;
   }
 
   /**
@@ -3082,38 +3131,102 @@
     // the server already has an answer to.
     lastAttempt = { digest, auth };
     try {
-      const result = await LLM.analyseProfile(digest, auth || undefined);
-      // In hand. Nothing is owed any more, so the offer to collect it goes
-      // away before anything else can fail below and leave it standing.
-      clearPending();
-      const payload = await Card.encodeCard(result.data.card);
-      state.profile = {
-        report: result.data,
-        card: Card.shape(result.data.card),
-        payload,
-        model: result.model,
-        createdAt: new Date().toISOString(),
-      };
-      // Counted only once the report is really in hand, so a provider outage
-      // never spends somebody's free run. Kept outside KEYS on purpose — see
-      // RUNS_KEY — so "Delete everything" cannot roll it back to zero.
-      recordRun();
-      if (!store.write(KEYS.profile, state.profile)) {
-        flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
-      }
-
-      const pending = sessionStorage.getItem('psycheai_pending');
-      if (pending) {
-        sessionStorage.removeItem('psycheai_pending');
-        if (await runMatch(pending)) return;
-      }
-      renderProfile();
-      show('profile');
+      const result = await LLM.analyseProfile(digest, auth || undefined,
+        { onJob: key => rememberJob(key, auth) });
+      await adoptProfile(result);
     } catch (error) {
+      // Terminal: whatever the job was, it is not coming. Cleared so a later
+      // visit does not sit polling for something the server has already given
+      // up on — the reader is being offered a retry instead, which is a better
+      // answer than a spinner.
+      clearJob();
       offerRetry((error && error.message) || 'The analysis failed.');
     } finally {
       stopElapsed();
       guardUnload(false);
+    }
+  }
+
+  /**
+   * Take delivery of a finished report, from wherever it arrived.
+   *
+   * Extracted from runAnalysis because there are two ways in now: the call
+   * that started the work, and a page that rejoined it after the tab that
+   * started it was closed. Both have to store, count and render identically —
+   * two copies of this would be two chances for a resumed report to be worth
+   * slightly less than a waited-for one.
+   */
+  async function adoptProfile(result) {
+    // In hand. Nothing is owed any more, so the offers to collect it go away
+    // before anything else can fail below and leave them standing.
+    clearPending();
+    clearJob();
+    const payload = await Card.encodeCard(result.data.card);
+    state.profile = {
+      report: result.data,
+      card: Card.shape(result.data.card),
+      payload,
+      model: result.model,
+      createdAt: new Date().toISOString(),
+    };
+    // Counted only once the report is really in hand, so a provider outage
+    // never spends somebody's free run. Kept outside KEYS on purpose — see
+    // RUNS_KEY — so "Delete everything" cannot roll it back to zero.
+    recordRun();
+    if (!store.write(KEYS.profile, state.profile)) {
+      flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
+    }
+
+    const pending = sessionStorage.getItem('psycheai_pending');
+    if (pending) {
+      sessionStorage.removeItem('psycheai_pending');
+      if (await runMatch(pending)) return;
+    }
+    renderProfile();
+    show('profile');
+  }
+
+  /**
+   * Rejoin an analysis this page did not start.
+   *
+   * The whole point of the job record. A reader who runs an analysis and then
+   * closes everything is not losing anything any more — the work carries on
+   * where it always did, on the server, and the next page to open goes back to
+   * the waiting screen and picks it up. Thirty seconds later or two hours
+   * later makes no difference to it.
+   *
+   * Nothing is offered and nothing is asked: this is not a purchase awaiting
+   * collection, it is a report already being written, so the honest thing to
+   * show is the same waiting screen they left.
+   */
+  // One at a time. resumeRunningJob() is reached from boot and from every
+  // return to visibility, and a phone that is put down and picked up three
+  // times would otherwise have three loops polling the same job and three
+  // reports racing to be adopted.
+  let resuming = false;
+
+  async function resumeRunningJob() {
+    const job = runningJob();
+    if (!job || resuming) return false;
+    resuming = true;
+    $('#working-title').textContent = modelName() + ' is reading your profile';
+    $('#working-note').textContent = TEXT.resumingJob;
+    startElapsed('Analysing');
+    show('working');
+    // So the retry offer has something to repeat if this job turns out to be
+    // gone. The digest is the one that produced the job — it is what was
+    // stored before the call went out.
+    if (state.digest) lastAttempt = { digest: state.digest, auth: job.auth || null };
+    try {
+      await adoptProfile(await LLM.resumeJob(job.key));
+      return true;
+    } catch (error) {
+      clearJob();
+      offerRetry((error && error.message) || 'The analysis failed.');
+      return false;
+    } finally {
+      resuming = false;
+      stopElapsed();
     }
   }
 
@@ -5581,6 +5694,14 @@
     renderServerStatus();
 
     if (await consumeIncomingLink()) return;
+    // Before the report below, because a job still running is newer than
+    // whatever is stored: a reader who re-ran their analysis and closed the
+    // app would otherwise be shown the previous report and left to work out
+    // for themselves that the new one was still coming.
+    if (runningJob()) {
+      resumeRunningJob();
+      return;
+    }
     if (state.profile) {
       renderProfile();
       show('profile');
@@ -5610,6 +5731,13 @@
     // page would set `hidden = false` on something nobody can see, and it
     // would then be sitting open the next time they did land on the report.
     if (state.profile && !$('#view-profile').hidden) offerPendingWork();
+    // A suspended tab restored from memory resumes its JavaScript context but
+    // not necessarily its timers, and a poll loop that stopped ticking while
+    // the phone slept is indistinguishable from one that never existed. This
+    // is idempotent — `resuming` guards it — so calling it on every return is
+    // free, and it is what makes putting the phone down for an hour and
+    // picking it up again land on the report rather than on a dead spinner.
+    if (runningJob()) resumeRunningJob();
   });
 
   mountPremiumTiers();

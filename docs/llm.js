@@ -243,28 +243,162 @@
   // `{ paymentIntentId }` or `{ promoCode }`. Absent, this is the free run
   // every reader gets; present, it is a purchased re-run that the server
   // verifies and that does not draw on the daily free ceiling.
-  // `retryOnDrop` on all three of these and on none of the others: they are
-  // the long calls, they are the ones a phone drops halfway through, and they
-  // are keyed on their own input server-side, so asking again is either free
-  // or a seat next to work already running.
-  const RETRY_DROPS = { retryOnDrop: true };
-  const analyseProfile = (digest, auth) =>
-    post('/api/analyse', Object.assign({ digest }, auth || {}), RETRY_DROPS);
+  // ---------- background jobs ----------
+  //
+  // An analysis takes minutes, and until this existed the browser had to hold
+  // one connection open for all of them. Every recovery mechanism in this file
+  // — the drop retry, the cut-stream retry, the result cache behind them —
+  // exists to survive that connection dying, which is to say: to recover from
+  // a design where a phone being a phone was a failure.
+  //
+  // So the connection stops being load-bearing. The POST starts the work and
+  // comes back at once with a key; the report is collected by asking for it.
+  // A poll that fails is just a poll that fails — the next one is a few
+  // seconds away, the work is still running on the server whether or not
+  // anybody is watching, and a screen that went dark for ten minutes rejoins
+  // exactly where it left off instead of arriving to an error.
+  //
+  // The server still answers the old way when asked to, and this still reads
+  // that answer, because during a rollout an already-loaded page and a
+  // freshly-deployed server are the same reader mid-analysis.
+
+  // Fast enough that a report which lands early is not left sitting, slow
+  // enough that a three-minute job is tens of requests rather than hundreds.
+  // Widened after the first half-minute because that is when the odds of it
+  // being finished stop being negligible and the cost of asking starts to
+  // accumulate.
+  const POLL_FAST_MS = 2500;
+  const POLL_SLOW_MS = 6000;
+  const POLL_WIDENS_AFTER_MS = 30 * 1000;
+
+  // A poll that cannot reach the server is not a failure — it is the exact
+  // condition this whole design exists to sit through. Only a run of them
+  // long enough to mean something other than "the phone is asleep" gives up,
+  // and while asleep no polls happen at all, so this counts real attempts
+  // against a real network rather than elapsed time.
+  const POLL_FAILURES_TOLERATED = 8;
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Ask what has become of a job. Returns the server's state object, or null
+   * when the question could not be put at all.
+   *
+   * Null rather than a throw, because "could not ask" and "asked, and the news
+   * is bad" need different handling here and a throw would flatten them.
+   */
+  async function pollOnce(job) {
+    try {
+      const response = await fetch('/api/result?job=' + encodeURIComponent(job), { cache: 'no-store' });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Wait for a job, however long the reader takes to come back to it.
+   *
+   * `restart` is called if the server turns out never to have heard of the
+   * job — it restarted, or the result aged out of its cache. That is not an
+   * error the reader can act on, so the work is simply started again rather
+   * than reported.
+   */
+  async function collect(job, restart) {
+    const startedAt = Date.now();
+    const deadline = startedAt + TIMEOUT_MS;
+    let failures = 0;
+    let restarted = false;
+
+    for (;;) {
+      await sleep(Date.now() - startedAt < POLL_WIDENS_AFTER_MS ? POLL_FAST_MS : POLL_SLOW_MS);
+      const state = await pollOnce(job);
+
+      if (!state) {
+        failures += 1;
+        if (failures > POLL_FAILURES_TOLERATED) {
+          throw new Error('The connection dropped before the analysis came back. ' +
+            'Try again — if it had already finished, you will get it straight away.');
+        }
+        continue;
+      }
+      // One reachable answer resets the count: the run that matters is a
+      // consecutive one, and a single dropped poll in the middle of a healthy
+      // sequence says nothing.
+      failures = 0;
+
+      if (state.status === 'done') return state;
+      if (state.status === 'failed') throw new Error(state.error || 'The analysis failed.');
+      if (state.status === 'unknown') {
+        // Once only. A second disappearance is a server that cannot hold a
+        // job long enough to finish it, and starting a third would spend the
+        // reader's money on a loop.
+        if (restarted || !restart) throw new Error('The analysis did not survive on the server. Try again.');
+        restarted = true;
+        const revived = await restart();
+        if (revived && revived.status !== 'running') return revived;
+        job = (revived && revived.job) || job;
+        continue;
+      }
+      if (Date.now() > deadline) {
+        throw new Error('The analysis took too long and was cancelled.');
+      }
+    }
+  }
+
+  /**
+   * Start one of the long calls and see it through, whatever the connection
+   * does in between.
+   *
+   * The POST is where `retryOnDrop` still earns its place: it is the one
+   * request in this sequence that must actually arrive, since nothing has
+   * been started until it does.
+   */
+  async function run(path, body, opts) {
+    const start = () => post(path, Object.assign({ background: true }, body), { retryOnDrop: true });
+    const started = await start();
+    // A server that predates background jobs, or one answering from its cache,
+    // returns the finished report rather than a job key. Both are already the
+    // thing being waited for.
+    if (!started || !started.job) return started;
+    // Handed up before the wait, not after it, so a caller can write the key
+    // down while the job is still running — which is the only time writing it
+    // down is any use.
+    if (opts && typeof opts.onJob === 'function') opts.onJob(started.job);
+    return collect(started.job, start);
+  }
+
+  const analyseProfile = (digest, auth, opts) =>
+    run('/api/analyse', Object.assign({ digest }, auth || {}), opts);
   // `auth` takes the same shape as the other two paid calls — `{ paymentIntentId }`
   // or `{ promoCode }`. A compatibility read is a purchase now rather than a
   // free draw on the daily ceiling, so the server refuses this without one.
   const analyseCompatibility = (a, b, mode, stance, auth) =>
-    post('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}), RETRY_DROPS);
+    run('/api/compatibility', Object.assign({ a, b, mode, stance }, auth || {}));
   // digest is resent rather than referenced — the server keeps no copy of it
   // between calls, so this is the same digest the browser already holds
   // (from psycheai_digest) travelling again, not a second upload of anything
   // new. `auth` is one of `{ paymentIntentId }` or `{ promoCode }` — the two
   // ways server.js's handlePremiumAnalysis will accept unlocking this call.
   const analysePremium = (digest, auth) =>
-    post('/api/premium-analysis', Object.assign({ digest }, auth), RETRY_DROPS);
+    run('/api/premium-analysis', Object.assign({ digest }, auth));
+
+  /**
+   * Rejoin a job this page did not start — one begun by a previous life of
+   * this tab, before it was closed or reloaded.
+   *
+   * No `restart` behind it, deliberately. A page that has just opened cannot
+   * know whether the reader still wants the thing, and quietly spending a
+   * model call on that assumption is worse than saying the job is gone and
+   * offering the button.
+   */
+  const resumeJob = job => collect(job, null);
 
   root.PsycheLLM = {
-    status, ticket, analyseProfile, analyseCompatibility, analysePremium,
+    status, ticket, analyseProfile, analyseCompatibility, analysePremium, resumeJob,
     // Exported so the payment-intent call in app.js goes through the same
     // ticket handling as everything else. It was fetching a ticket by hand and
     // posting it directly, which meant it was the one protected route with no

@@ -803,6 +803,116 @@ try {
     }
   }
 
+  // ---- the analysis outlives the page that asked for it ----
+  //
+  // The connection used to be load-bearing: one POST held open for the whole
+  // three minutes, with every recovery mechanism in docs/llm.js existing to
+  // survive it dying. It does not have to be. The POST now starts a job and
+  // returns a key; the report is collected by asking for it, and the work runs
+  // on the server whether or not anybody is listening — which was always true
+  // and used to be useless, because the only thing that knew how to collect it
+  // was a closure inside a page about to be discarded.
+  //
+  // So the key is written down. This is the check that the writing down works:
+  // a reader starts an analysis, the phone is closed hard enough to lose the
+  // page entirely, and what opens next finds the job and waits for it instead
+  // of showing a stale report or asking them to start over.
+  {
+    const jobPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await jobPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await jobPage.evaluate(() => {
+        localStorage.removeItem('psycheai_runs');
+        localStorage.removeItem('psycheai_digest');
+        localStorage.removeItem('psycheai_profile');
+        localStorage.removeItem('psycheai_job');
+      });
+      await jobPage.reload({ waitUntil: 'load' });
+      await jobPage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+
+      // The job really is started by the POST rather than completed by it.
+      // Held at "running" so the reload below happens while it is genuinely
+      // in flight; the work itself has already been done for real by the
+      // server behind this route, which is what the resumed page then finds.
+      let holdRunning = true;
+      let polls = 0;
+      let started = null;
+      await jobPage.route('**/api/analyse', async route => {
+        const response = await route.fetch();
+        const body = await response.json().catch(() => null);
+        if (body && body.job) started = body;
+        await route.fulfill({ response, json: body });
+      });
+      await jobPage.route('**/api/result*', async route => {
+        polls += 1;
+        if (holdRunning) {
+          await route.fulfill({
+            status: 200, contentType: 'application/json; charset=utf-8',
+            body: JSON.stringify({ status: 'running' }),
+          });
+          return;
+        }
+        await route.continue();
+      });
+
+      await jobPage.click('#open-sources');
+      await jobPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [jobChooser] = await Promise.all([
+        jobPage.waitForEvent('filechooser', { timeout: 15000 }),
+        jobPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await jobChooser.setFiles({
+        name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
+      });
+      await jobPage.waitForFunction(() => {
+        const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+        return row && row.classList.contains('is-added');
+      }, null, { timeout: 30000 });
+      await continueFromDataSources(jobPage);
+      await answerReview(jobPage);
+
+      // Written down while it is still running, which is the only time
+      // writing it down is any use.
+      await jobPage.waitForFunction(() => Boolean(localStorage.getItem('psycheai_job')),
+        { timeout: 30000 });
+      const record = await jobPage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_job')));
+      check('the POST hands back a job rather than holding the connection open',
+        Boolean(started && started.job) && started.status === 'running',
+        JSON.stringify(started));
+      check('and the page writes the job down while it is still running',
+        typeof record.key === 'string' && /^analyse:[0-9a-f]{64}$/.test(record.key),
+        JSON.stringify(record));
+      check('the record holds a key and a time, never a report',
+        Object.keys(record).sort().join(',') === 'at,auth,key', Object.keys(record).join(','));
+      // The first poll is a couple of seconds behind the POST by design, so
+      // this waits for it rather than assuming it has already happened.
+      await waitForLength({ get length() { return polls; } }, 1, 20000);
+      check('and it is genuinely polling rather than still waiting on the POST',
+        polls > 0, 'polls: ' + polls);
+
+      // The phone goes away hard: not a backgrounded tab, a page that no
+      // longer exists. Nothing of the analysis survives in this browser except
+      // the line in localStorage.
+      await jobPage.reload({ waitUntil: 'load' });
+      holdRunning = false;
+      await jobPage.waitForSelector('#view-working:not([hidden])', { timeout: 20000 });
+      check('what opens next goes back to waiting rather than to a stale page',
+        await jobPage.locator('#view-working').isVisible());
+      check('and says the work carried on without the page being open',
+        /kept running|does not need this page/i.test(
+          await jobPage.locator('#working-note').innerText()),
+        await jobPage.locator('#working-note').innerText());
+
+      await jobPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      check('the report the first page started arrives at the second one',
+        await jobPage.locator('#view-profile').isVisible());
+      check('and the job record is cleared once it has been collected',
+        (await jobPage.evaluate(() => localStorage.getItem('psycheai_job'))) === null);
+    } finally {
+      await jobPage.close();
+    }
+  }
+
   // ---- Back on a first upload keeps the archive ----
   //
   // pendingDataSourceReads has always carried a Google or Facebook read across
@@ -6454,9 +6564,19 @@ try {
   // it is the inverse claim, which is the one the privacy copy now makes.
   const sentBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
 
+  // The allowlist is named rather than counted, so a field added later has to
+  // be argued for here. `background` is a boolean asking for a job key back
+  // instead of a held connection — it carries nothing about the reader, and
+  // it sits beside the digest rather than inside it so the server's cache key
+  // is untouched by it.
   check('the request carries a digest and nothing else',
-    Object.keys(sentBody).every(k => k === 'digest' || k === 'paymentIntentId' || k === 'promoCode'),
+    Object.keys(sentBody).every(k =>
+      k === 'digest' || k === 'paymentIntentId' || k === 'promoCode' || k === 'background'),
     Object.keys(sentBody).join(','));
+  check('and the only field beside the digest is a boolean, not more evidence',
+    sentBody.background === true && Object.keys(sentBody).every(k =>
+      k === 'digest' || typeof sentBody[k] !== 'object'),
+    JSON.stringify(Object.keys(sentBody).map(k => k + ':' + typeof sentBody[k])));
   check('no image field is sent, empty or otherwise', sentBody.images === undefined);
   check('and no encoded bytes are hiding in the body',
     !analyseBodies[analyseBodies.length - 1].includes('iVBORw0KGgo') &&

@@ -465,6 +465,12 @@
     pendingCompatLabel: 'Get the report you paid for',
     pendingNeedsInstagram: 'Your payment is still good, but your Instagram export is no longer on ' +
       'this device. Load it again and the analysis you paid for will run without charging you.',
+    // Shown to somebody who put their phone down mid-analysis and came back.
+    // It says the two things they need: nothing was lost, and there is nothing
+    // for them to do — because the instinct on returning to a waiting screen
+    // is to assume it has been stuck there the whole time and to start again.
+    resumingJob: 'Your analysis kept running while you were away — it does not need this page to ' +
+      'be open. Picking it back up now; it will appear as soon as it is finished.',
     premiumResumeLabel: 'Get the sections you paid for',
     premiumResumeTitle: 'You have already paid',
     premiumResumeBlurb: 'Your payment went through but the analysis did not reach this device — the ' +
