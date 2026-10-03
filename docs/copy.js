@@ -406,11 +406,30 @@
     // the same reason: one string, so the landing page cannot drift from the
     // unlock button.
     //
-    // Stated as "four more sections" rather than "unlock the full report",
-    // because the free report is a whole report and calling it partial to
-    // sell the rest would be a lie about what somebody already has.
-    premiumTierTitle: 'Four more sections',
-    premiumTierBlurb: 'These four sections provide you with deeper insights:',
+    // The free run is the summary card and nothing else now, so the offer is
+    // the writing behind the card plus the four sections — and says that, in
+    // that order, rather than pretending the card is a whole report.
+    premiumTierTitle: 'The full report',
+    premiumTierBlurb: 'Your summary card is free. One unlock explains every part of it, and adds four more sections:',
+    // Shown under a free card, in place of the written report — see
+    // fullReportLockedHtml in docs/app.js.
+    fullReportTitle: 'Unlock the full report',
+    fullReportBlurb: 'Your card shows the conclusions. The full report shows the working — every score, ' +
+      'letter and type explained from your own data:',
+    fullReportPlus: 'And four sections the card does not cover:',
+    fullReportPdf: 'This file carries your summary card. The full report — every score, letter and ' +
+      'type explained from your own data, the roast, and four more sections on wellness, attachment, ' +
+      'the partner who suits you and your career — is part of the S$1.99 unlock in the app.',
+    explainWho: 'Why that character, and the long read on who you are.',
+    explainBigFive: 'What each of your five scores is built on, with the evidence.',
+    explainTypesTitle: 'MBTI & Enneagram',
+    explainTypes: 'Letter by letter — why each one, how strongly, and what it costs or buys you.',
+    explainListsTitle: 'Interests, values & beliefs',
+    explainLists: 'Where each one shows up, and whether it is rising or fading.',
+    explainPeopleTitle: 'In relationships & at work',
+    explainPeople: 'Your strengths, blind spots and love languages, explained.',
+    explainActivity: 'What your posting rhythm, timing and feed say about you.',
+    explainRoast: 'The least charitable read of you — behind a cover, for when you want it.',
     // The sample report's paid sections show their real covers now — same
     // title, same blurb, same price mentioned in the blurb — but the button
     // underneath is inert (see paidCard's `sample` option) and disabled, so it
@@ -423,7 +442,7 @@
     // behind it and why somebody might want to skip it, not what it costs.
     bonusCoverTitle: 'This roast is deliberately unkind',
     bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above — ' +
-      'deliberately unkind, not a diagnosis, and free with the rest of this report. Read it if you ' +
+      'deliberately unkind, not a diagnosis, and part of your full report. Read it if you ' +
       'want the truth without the softening; skip it if you do not.',
     // The button that opens the cover, and the one that puts it back. Unlike
     // the paid sections' `.premium-unlock`, clicking this never reaches a
@@ -461,6 +480,8 @@
     // the same reason app.js shows elapsed time on the free analysis: a
     // still sentence next to a spinning bar reads as stalled.
     premiumGenerating: 'Writing your four sections… this may take a few minutes.',
+    // The first of the unlock's two calls: the written report behind the card.
+    premiumExplaining: 'Writing the full report behind your card… this may take a few minutes.',
     // The three states of coming back to an unlock that never arrived. Not one
     // string, because "you already paid" is the part that has to land first
     // and a reader skimming a dialog reads the title.
@@ -482,7 +503,7 @@
     // is to assume it has been stuck there the whole time and to start again.
     resumingJob: 'Your analysis kept running while you were away — it does not need this page to ' +
       'be open. Picking it back up now; it will appear as soon as it is finished.',
-    premiumResumeLabel: 'Get the sections you paid for',
+    premiumResumeLabel: 'Get the report you paid for',
     premiumResumeTitle: 'You have already paid',
     premiumResumeBlurb: 'Your payment went through but the analysis did not reach this device — the ' +
       'tab closed, the connection dropped, or the device slept while it was being written. Fetching ' +
@@ -503,8 +524,8 @@
     // bundles the four paid sections back in, at the unlock's own S$1.99
     // rather than the plain re-run's S$0.99, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
-    analysisPriceNoteUnlocked: 'Your premium sections are unlocked, so re-running costs S$1.99 and ' +
-      'refreshes everything — the free report and all four premium sections.',
+    analysisPriceNoteUnlocked: 'Your full report is unlocked, so re-running costs S$1.99 and ' +
+      'refreshes everything — your card, the full report and all four premium sections.',
     analysisFreeNote: 'Your first analysis is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
@@ -521,26 +542,27 @@
     compatibilityDialogBlurb: 'A compatibility report is S$1.99. It reads both profiles against ' +
       'each other on the basis you just chose and writes the result — a fresh call to the AI ' +
       'model, the same size of job as the premium sections. Taken on this device.',
-    premiumDialogTitle: 'Unlock premium sections',
-    premiumDialogBlurb: 'One charge opens the mental wellness read, your attachment style, what ' +
-      'partner truly suits you and the career assessment. Taken on this device — Apple Pay or Google ' +
-      'Pay, whichever this browser offers.',
+    premiumDialogTitle: 'Unlock the full report',
+    premiumDialogBlurb: 'One charge explains your whole card — every score, letter and type — and ' +
+      'opens the roast, the mental wellness read, your attachment style, what partner truly suits you ' +
+      'and the career assessment. Taken on this device — Apple Pay or Google Pay, whichever this ' +
+      'browser offers.',
     // Shown instead of the above when the reader added a Google or Facebook
     // export on the way here. The same S$1.99 now also rewrites the free
     // sections against that data, so the price is doing more and says so
     // before it is agreed to rather than after.
-    premiumDialogBlurbWithData: 'One charge opens the mental wellness read, your attachment style, ' +
-      'what partner truly suits you and the career assessment — and, because you added more data, ' +
-      'rewrites the rest of your report with it at no extra cost. Taken on this device — Apple Pay or ' +
-      'Google Pay, whichever this browser offers.',
+    premiumDialogBlurbWithData: 'One charge writes your full report and opens the roast, the mental ' +
+      'wellness read, your attachment style, what partner truly suits you and the career assessment — ' +
+      'and, because you added more data, redraws your card from it at no extra cost. Taken on this ' +
+      'device — Apple Pay or Google Pay, whichever this browser offers.',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
     // be the wrong verb for sections they already have. Same S$1.99, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
     premiumRerunDialogTitle: 'Re-run your full analysis',
-    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data — the free ' +
-      'report and all four premium sections together. Taken on this device — Apple Pay or Google Pay, ' +
+    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data — your card, ' +
+      'the full report and all four premium sections together. Taken on this device — Apple Pay or Google Pay, ' +
       'whichever this browser offers.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
@@ -566,7 +588,7 @@
     // Shown between the two calls an unlock-with-added-data makes. Says
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
-    premiumRefreshingFree: 'Paid sections are ready. Rewriting the rest of your report with the new data — no extra charge…',
+    premiumRefreshingFree: 'Writing your full report from the new data — your card is redrawn with it at no extra charge…',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',

@@ -857,6 +857,127 @@
     return unlocked;
   }
 
+  // ---------- the card is free; the explanation of it is paid for ----------
+  //
+  // A free run returns the summary card and nothing else: the type, the
+  // scores, the character, the lists — the conclusions — with none of the
+  // writing that explains them. Every explanation is part of the S$1.99 unlock,
+  // written by a second call that is handed the card and told to explain it
+  // rather than to decide it again (server.js's handleAnalyse, `anchor`).
+  //
+  // The same rule as PAID_SECTIONS above applies, and for the same reason:
+  // the explanations are not in the page before they are bought because the
+  // server never wrote them. There is nothing behind the locked block to
+  // view-source.
+
+  /**
+   * Whether this profile carries the written report, not just its card.
+   *
+   * `explained` is set when a bought full report is adopted. The second test is
+   * for a profile saved before the card was split from its explanation, when
+   * every free run returned the whole report: that reader has the writing
+   * already, and taking it away from them on a reload would be a strange way
+   * to introduce a paywall.
+   */
+  function hasExplanations(profile) {
+    if (!profile || !profile.report) return false;
+    if (profile.explained) return true;
+    return typeof profile.report.summary === 'string' && profile.report.summary.trim().length > 0;
+  }
+
+  /**
+   * The full report, with the card's conclusions laid back over it.
+   *
+   * The second call is told to keep every one of them, and nearly always does.
+   * This is what makes "nearly" into "always" for the parts the reader has
+   * already seen and may already have shared: the type, the letters, the
+   * scores, the character and the order of the lists on the card. The writing
+   * underneath is the full report's own — only the labels are pinned.
+   */
+  function overlayCard(full, card) {
+    if (!card) return full;
+    const out = JSON.parse(JSON.stringify(full));
+    out.essence = Object.assign({}, out.essence, {
+      character: (card.essence || {}).character || (out.essence || {}).character,
+      franchise: (card.essence || {}).franchise || (out.essence || {}).franchise,
+      icon: (card.essence || {}).icon || (out.essence || {}).icon,
+    });
+    if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
+    if (card.confidence) {
+      out.confidence = Object.assign({}, out.confidence,
+        { score: card.confidence.score, level: card.confidence.level });
+    }
+    for (const trait of Object.keys(card.bigFive || {})) {
+      const pinned = card.bigFive[trait] || {};
+      out.bigFive = out.bigFive || {};
+      out.bigFive[trait] = Object.assign({}, out.bigFive[trait], { score: pinned.score, band: pinned.band });
+    }
+    if (card.mbti) {
+      out.mbti = Object.assign({}, out.mbti,
+        { type: card.mbti.type, nickname: card.mbti.nickname || (out.mbti || {}).nickname });
+      if ((card.mbti.letters || []).length) out.mbti.letters = card.mbti.letters.map(letter => {
+        const written = ((full.mbti || {}).letters || []).find(l => l && l.axis === letter.axis) || {};
+        return Object.assign({}, written, { axis: letter.axis, choice: letter.choice, strength: letter.strength });
+      });
+    }
+    if (card.enneagram) {
+      out.enneagram = Object.assign({}, out.enneagram, {
+        type: card.enneagram.type, wing: card.enneagram.wing,
+        nickname: card.enneagram.nickname || (out.enneagram || {}).nickname,
+      });
+    }
+    // Lists keep the card's entries in the card's order, each carrying the full
+    // report's writing about it where there is any, and then whatever further
+    // entries the full report added.
+    const pinList = (pinned, written, key) => {
+      const rows = written || [];
+      const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+      const kept = (pinned || []).map(item =>
+        Object.assign({}, rows.find(row => row && same(row[key], item[key])) || {}, item));
+      const extra = rows.filter(row => row && !(pinned || []).some(item => same(item[key], row[key])));
+      return kept.concat(extra);
+    };
+    if (card.interests) out.interests = pinList(card.interests, full.interests, 'name');
+    if (card.values) out.values = pinList(card.values, full.values, 'value');
+    if (card.beliefs) out.beliefs = pinList(card.beliefs, full.beliefs, 'belief');
+    const love = (card.relationship && card.relationship.loveLanguages) || null;
+    if (love) {
+      const written = ((full.relationship || {}).loveLanguages) || {};
+      out.relationship = Object.assign({}, out.relationship);
+      out.relationship.loveLanguages = Object.assign({}, written, {
+        receiving: pinList(love.receiving, written.receiving, 'language'),
+        giving: pinList(love.giving, written.giving, 'language'),
+      });
+    }
+    return out;
+  }
+
+  /**
+   * Take delivery of a bought full report.
+   *
+   * `replaceCard` is for the one case where the card should move: the reader
+   * added a source on the way to paying, so the full report was written from
+   * more evidence than the card was, without an anchor, and its own
+   * conclusions are the better ones. Otherwise the card stays exactly as it
+   * was — its QR payload included — and the writing is laid under it.
+   */
+  async function adoptFullReport(result, replaceCard) {
+    if (!state.profile) return;
+    if (replaceCard) {
+      state.profile.report = result.data;
+      state.profile.card = Card.shape(result.data.card);
+      state.profile.payload = await Card.encodeCard(result.data.card);
+      state.profile.model = result.model;
+      state.profile.createdAt = new Date().toISOString();
+    } else {
+      const card = state.profile.freeReport || state.profile.report;
+      state.profile.freeReport = card;
+      state.profile.report = overlayCard(result.data, card);
+    }
+    state.profile.explained = true;
+    store.write(KEYS.profile, state.profile);
+  }
+
   /**
    * The reader's proof that they already paid, kept on their device.
    *
@@ -1009,7 +1130,10 @@
 
   /** True once there is something to fetch but nothing fetched yet. */
   function hasUnfetchedUnlock() {
-    return Boolean(unlockReceipt()) && !Object.keys(paidAnalysis()).length;
+    // Either half of the purchase still owed: the written report behind the
+    // card, or the four sections after it.
+    return Boolean(unlockReceipt()) &&
+      (!Object.keys(paidAnalysis()).length || !hasExplanations(state.profile));
   }
 
   function paidAnalysis() {
@@ -1094,6 +1218,53 @@
       '</div>';
   }
 
+  /**
+   * What the unlock explains, in the order the written report runs. The
+   * other half of the offer to PAID_SECTIONS: those are four sections the
+   * card does not touch, these are the writing behind what the card shows.
+   * Titles come from the same TEXT keys the report's own section heads use,
+   * so the offer and the thing bought cannot name a section differently.
+   */
+  const EXPLAINED_SECTIONS = [
+    { icon: '👤', title: () => TEXT.whoYouAre, blurb: () => TEXT.explainWho },
+    { icon: '📊', title: () => TEXT.bigFive, blurb: () => TEXT.explainBigFive },
+    { icon: '🧭', title: () => TEXT.explainTypesTitle, blurb: () => TEXT.explainTypes },
+    { icon: '✨', title: () => TEXT.explainListsTitle, blurb: () => TEXT.explainLists },
+    { icon: '💞', title: () => TEXT.explainPeopleTitle, blurb: () => TEXT.explainPeople },
+    { icon: '📱', title: () => TEXT.activity, blurb: () => TEXT.explainActivity },
+    { icon: '🕳️', title: () => TEXT.bonus, blurb: () => TEXT.explainRoast },
+  ];
+
+  function tierItemsHtml(rows, blurbOf) {
+    return rows.map(row =>
+      '<li class="premium-tier-item">' +
+      '<span class="premium-tier-icon" aria-hidden="true">' + row.icon + '</span>' +
+      '<span class="premium-tier-text"><strong>' + esc(row.title()) + '</strong>' +
+      '<span>' + esc(blurbOf(row)) + '</span>' +
+      '</span></li>').join('');
+  }
+
+  /**
+   * Everything under a free card: one block, one button, naming every
+   * explanation and every premium section the unlock opens. Built on the same
+   * `.premium-tier` look as the four-section block, and the button is the same
+   * `.premium-unlock`, so the purchase it starts is the one purchase there is.
+   */
+  function fullReportLockedHtml() {
+    return '<div class="premium-tier paid-consolidated full-report-locked">' +
+      '<div class="premium-tier-head">' +
+      '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
+      '<h3>' + esc(TEXT.fullReportTitle) + '</h3>' +
+      '</div>' +
+      '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
+      '<ul class="premium-tier-list">' + tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) + '</ul>' +
+      '<p class="premium-tier-blurb">' + esc(TEXT.fullReportPlus) + '</p>' +
+      '<ul class="premium-tier-list">' + tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>' +
+      '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
+      premiumUnlockLabel(false) + '</button>' +
+      '</div>';
+  }
+
   function bonusBodyHtml(analysis) {
     return '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
       '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) +
@@ -1171,12 +1342,8 @@
    * already says the same thing.
    */
   function premiumTierHtml() {
-    const items = PAID_SECTIONS.map(section =>
-      '<li class="premium-tier-item">' +
-      '<span class="premium-tier-icon" aria-hidden="true">' + section.icon + '</span>' +
-      '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
-      '<span>' + esc(section.coverTitle()) + '</span>' +
-      '</span></li>').join('');
+    const items = tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) +
+      tierItemsHtml(PAID_SECTIONS, section => section.coverTitle());
     return '<div class="premium-tier">' +
       '<div class="premium-tier-head">' +
       '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
@@ -3381,7 +3548,7 @@
     // a record missing what its kind requires is dropped rather than resumed
     // into a half-rendered screen.
     if (job.kind === 'compatibility' && !(job.other && state.profile)) { clearJob(); return false; }
-    if (job.kind === 'premium' && !state.profile) { clearJob(); return false; }
+    if ((job.kind === 'premium' || job.kind === 'explain') && !state.profile) { clearJob(); return false; }
 
     resuming = true;
     const comparing = job.kind === 'compatibility';
@@ -3404,7 +3571,14 @@
       const result = await LLM.resumeJob(job.key);
       clearJob();
       if (job.kind === 'premium') adoptPremium(result);
-      else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
+      else if (job.kind === 'explain') {
+        // The written half of an unlock. The four sections are still owed, and
+        // the receipt already offers to fetch them; this only puts what came
+        // back under the card the reader has.
+        await adoptFullReport(result, Boolean(job.replaceCard));
+        renderProfile();
+        show('profile');
+      } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
       else await adoptProfile(result);
       return true;
     } catch (error) {
@@ -3624,6 +3798,16 @@
 
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
+    // The free report is the card above this and nothing else. What sits
+    // under it is the offer of everything that explains it, and the
+    // confidence card, which holds the page's own controls.
+    if (!sample && options && options.explained === false) {
+      const unlocked = paidAnalysis();
+      return fullReportLockedHtml() +
+        (Object.keys(unlocked).length
+          ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
+        confidenceCardHtml(report, false);
+    }
     // Every section of the report body is a disclosure; sectionHead's other
     // caller — the scan page's QR-contents block — is not, so the default
     // stays off there and this local alias turns it on for the report only.
@@ -3816,11 +4000,21 @@
     // source or runs again, which are the things a reader comes back to the
     // bottom of the report to *do*. Shutting those behind a disclosure would
     // hide the page's own controls, not tidy its prose.
-    html += '<div class="card section-card confidence-card">' +
+    html += confidenceCardHtml(report, sample);
+
+    return html;
+  }
+
+  // Confidence closes the report rather than opening it: read after the
+  // whole thing, it says how much of what you just read to believe. Shared by
+  // the full report and the card-only one, which both end on it.
+  function confidenceCardHtml(report, sample) {
+    return '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
       '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
-      esc(report.confidence.rationale) + '</p>' +
+      // The card carries no rationale — that is part of the written report.
+      (report.confidence.rationale ? esc(report.confidence.rationale) : '') + '</p>' +
       // What the score was read off, beside the score. This is what makes the
       // number checkable rather than asserted: a reader who is told "88/100,
       // comprehensive fourteen-year archive" has no way to know the model saw
@@ -3834,8 +4028,6 @@
         : '') +
       (sample ? '' : sourcesUsedHtml()) +
       '</div>';
-
-    return html;
   }
 
   /**
@@ -3904,7 +4096,7 @@
     // handled by a delegated listener (see the document click handler
     // below) rather than bound here, because this element is replaced every
     // time the report renders.
-    setHtml($('#profile-body'), reportSectionsHtml(report));
+    setHtml($('#profile-body'), reportSectionsHtml(report, { explained: hasExplanations(profile) }));
     collapseSections($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a
@@ -4112,6 +4304,8 @@
       // The roast prints only for the reader who bought it. Unpaid, the key is
       // absent and the section does not exist in the file at all.
       unlocked: unlockedSections(profile),
+      // A free profile prints its card and the offer, not empty sections.
+      cardOnly: !hasExplanations(profile),
     });
   }
 
@@ -4645,7 +4839,10 @@
    * route already accepts one on its own terms.
    */
   function bundledAuth(auth) {
-    if (auth.promoCode) return { promoCode: auth.promoCode };
+    // `product` travels with a promo code too: the server reads it to decide
+    // between the card and the full report, and a code without it would buy a
+    // second copy of the card the reader already has.
+    if (auth.promoCode) return { promoCode: auth.promoCode, product: 'unlock' };
     return { paymentIntentId: auth.paymentIntentId, product: 'unlock' };
   }
 
@@ -4690,42 +4887,46 @@
     // By the time a charge clears, the reader has already loaded their extra
     // data and reviewed it, so there is nothing left to ask here.
     const paidDigest = pendingPremiumDigest || state.digest;
-    // Data was added on the way to this unlock, so the free sections above
-    // are about to be describing less evidence than the paid ones below
-    // them. This S$1.99 refreshes both rather than leaving that gap and
-    // charging S$0.99 to close it.
-    const needsFreeRefresh = Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
-    let refreshedFree = false;
+    // Data was added on the way to this unlock, so the card is about to be
+    // describing less evidence than the report written under it. This S$1.99
+    // redraws the card from the new data as well rather than leaving that gap
+    // and charging S$0.99 to close it.
+    const dataChanged = Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
+    // The written report is the first half of what this purchase buys. Skipped
+    // on a retry that already has it, and on a profile saved before the card
+    // was split from its explanation — that reader has the writing already.
+    const needsExplain = dataChanged || !hasExplanations(state.profile);
+    let explained = false;
 
     startProgress();
     guardUnload(true);
     try {
-      // The free report goes first, deliberately. Whichever call runs second
-      // can fail with the first already delivered and nothing owed; if this
-      // order were reversed, a failure here would leave a paid-for free
-      // report undelivered and no honest way to retry it — the re-run button
-      // charges, and charging to recover something already paid for is the
-      // exact unfairness this whole branch exists to remove. Failing here
-      // instead delivers nothing yet and the retry below covers both.
-      if (needsFreeRefresh) {
-        premiumStatus(TEXT.premiumRefreshingFree);
-        // Recorded as an ordinary analysis, because that is what a page
-        // rejoining it can do with the result: adoptProfile delivers the
-        // refreshed free report, which is the expensive half to lose.
+      // The full report goes first, deliberately. Whichever call runs second
+      // can fail with the first already delivered and nothing owed; and the
+      // full report is the bigger half of what was bought, so it is the half
+      // to have in hand soonest. A failure here delivers nothing yet, and the
+      // retry below covers both.
+      if (needsExplain) {
+        premiumStatus(dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumExplaining);
+        // The card the reader already has, for the server to sanitise and the
+        // model to explain. None when the data changed: a card read from less
+        // evidence is not one to hold a fuller report to.
+        const anchor = dataChanged ? null : (state.profile && (state.profile.freeReport || state.profile.report));
+        const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {});
+        // Recorded under its own kind, because collecting it is not the same as
+        // collecting a free card: it attaches to the profile on screen rather
+        // than replacing it. A page rejoining it gets the report and, from the
+        // receipt, the offer to fetch the four sections still owed.
         //
-        // What a resumed one does *not* restore is the two lines below —
-        // promoting paidDigest into state.digest and carrying the added
-        // supplements onto state.signals — because paidDigest lives in this
-        // closure and is far too big to write into the job record beside a
-        // key. So a reader who closes the app during this specific half of a
-        // bundled refresh gets their refreshed report and a stored digest that
-        // still lacks the source they just added; the popout shows it unticked
-        // and asks for it again. That is worse than the unbroken path and
-        // better than the alternative, which is losing the refreshed report
-        // outright — the unlock receipt would then fetch paid sections against
-        // the old digest with no free refresh at all.
-        const refreshed = await LLM.analyseProfile(paidDigest, bundledAuth(auth),
-          { onJob: key => rememberJob(key, 'analysis', auth) });
+        // What a resumed one does *not* restore is promoting paidDigest into
+        // state.digest — paidDigest lives in this closure and is far too big to
+        // write into the job record beside a key. So a reader who closes the
+        // app during this specific half of a bundled refresh gets their
+        // report and a stored digest that still lacks the source they just
+        // added; the popout shows it unticked and asks for it again. That is
+        // worse than the unbroken path and better than losing the report.
+        const full = await LLM.analyseProfile(paidDigest, request,
+          { onJob: key => rememberJob(key, 'explain', auth, { replaceCard: dataChanged }) });
 
         // Committed the moment the call comes back, before the paid sections
         // are even asked for. The extra data has bought something now — this
@@ -4739,26 +4940,21 @@
         // variable here anyway would still be one stray future caller away
         // from crashing on a null it was reset to while this await was
         // pending.
-        const added = paidDigest.__addedSupplements;
-        delete paidDigest.__addedSupplements;
-        if (added && state.signals) state.signals.supplements = added;
-        state.digest = paidDigest;
-        writeDigest(paidDigest);
-        pendingPremiumDigest = null;
-
-        if (state.profile) {
-          state.profile.report = refreshed.data;
-          state.profile.card = Card.shape(refreshed.data.card);
-          state.profile.payload = await Card.encodeCard(refreshed.data.card);
-          state.profile.model = refreshed.model;
-          state.profile.createdAt = new Date().toISOString();
-          store.write(KEYS.profile, state.profile);
+        if (dataChanged) {
+          const added = paidDigest.__addedSupplements;
+          delete paidDigest.__addedSupplements;
+          if (added && state.signals) state.signals.supplements = added;
+          state.digest = paidDigest;
+          writeDigest(paidDigest);
+          pendingPremiumDigest = null;
+          // A new card really was drawn, so it counts like any other run — see
+          // RUNS_KEY. It costs this reader nothing either way: they cannot
+          // reach an unlock without having run one already.
+          recordRun();
         }
-        // A free report really was generated, so it counts like any other —
-        // see RUNS_KEY. It costs this reader nothing either way: they cannot
-        // reach an unlock without having run one already.
-        recordRun();
-        refreshedFree = true;
+        clearJob();
+        await adoptFullReport(full, dataChanged);
+        explained = true;
       }
 
       premiumStatus(TEXT.premiumGenerating);
@@ -4783,16 +4979,16 @@
         state.digest = paidDigest;
         writeDigest(paidDigest);
       }
-      if (refreshedFree) {
+      if (explained) {
         // Every section changed, not just the paid ones, so the whole report
         // is redrawn rather than having the paid bodies spliced into a page
-        // still showing the pre-refresh free sections. renderProfile renders
+        // still showing the locked block. renderProfile renders
         // the paid cards from state.profile.premiumAnalysis, which is set
         // above, and calls renderAnalysedBy itself.
         renderProfile();
         // renderProfile shuts every section, this one included — and this is
         // the one moment that is wrong, for the same reason revealPaid opens
-        // what it injects: the reader has just paid for these four.
+        // what it injects: the reader has just paid for these.
         openPaidSections();
       } else {
         revealPaid(result.data);
@@ -4803,7 +4999,7 @@
         // The confidence card's own re-run price note was written before this
         // unlock — paidAnalysis() now returns four sections where it returned
         // none, and the note has to say S$1.99 from this point on, not the
-        // S$0.99 it showed a moment ago. renderProfile (the refreshedFree
+        // S$0.99 it showed a moment ago. renderProfile (the explained
         // branch above) already redraws this along with everything else, so
         // this only has to happen on the path that skips it.
         const sources = document.querySelector('.trust-sources');
@@ -5044,7 +5240,7 @@
     // ever reached: asking Stripe for a second PaymentIntent here is how a
     // reader ends up charged twice for one unlock.
     const receipt = kind === 'unlock' ? unlockReceipt() : null;
-    if (receipt && !Object.keys(paidAnalysis()).length) {
+    if (receipt && hasUnfetchedUnlock()) {
       $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
       $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
       const resume = $('#premium-retry');

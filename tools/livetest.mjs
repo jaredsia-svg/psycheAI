@@ -85,8 +85,31 @@ let compat = null;
 if (runFree) {
   console.log('Provider: ' + status.provider + ' · model: ' + status.model);
   console.log('Sending a ' + digest.coverage.digestChars + '-char digest…');
+  // The free run first: the card alone, on the digest the server derives.
+  // This is the only place the five-cent ceiling meets a real model — the
+  // suites prove the arithmetic, and this says what the thinking actually
+  // spent and whether the output cap left the card room to finish.
+  const D = globalThis.PsycheDigest;
+  const freeDigest = D.forFree(digest);
+  const cardStarted = Date.now();
+  const cardRun = await engine.analyseCard(freeDigest);
+  const cardCost = cardRun.usage.inputTokens * D.PRICING.inputPerToken +
+    cardRun.usage.outputTokens * D.PRICING.outputPerToken;
+  console.log('  card in ' + Math.round((Date.now() - cardStarted) / 1000) + 's, ' +
+    cardRun.usage.inputTokens + ' input / ' + cardRun.usage.outputTokens + ' output tokens (' +
+    (cardRun.usage.thinkingTokens || 0) + ' thinking), $' + cardCost.toFixed(4));
+  check('the card call costs no more than five cents', cardCost <= D.FREE_COST_CAP, '$' + cardCost.toFixed(4));
+  check('and used less of its output cap than it was given',
+    cardRun.usage.outputTokens < D.FREE_MAX_OUTPUT_TOKENS,
+    cardRun.usage.outputTokens + ' of ' + D.FREE_MAX_OUTPUT_TOKENS);
+  check('the card carries every field of its schema',
+    Object.keys(prompts.FREE_SCHEMA.properties).every(key => key in cardRun.data),
+    Object.keys(cardRun.data).join(','));
+  const anchor = prompts.anchorFrom(cardRun.data);
+  check('and enough of a conclusion to anchor the full report to', Boolean(anchor));
+
   const started = Date.now();
-  const profile = await engine.analyseProfile(digest);
+  const profile = await engine.analyseProfile(digest, anchor);
   console.log('  profile in ' + Math.round((Date.now() - started) / 1000) + 's, ' +
     profile.usage.inputTokens + ' input / ' + profile.usage.outputTokens + ' output tokens');
 
@@ -113,6 +136,11 @@ if (runFree) {
   check('each trait cites evidence',
     Object.values(report.bigFive).every(t => Array.isArray(t.evidence) && t.evidence.length > 0));
   check('mbti is a real type', prompts.MBTI_TYPES.includes(report.mbti.type), report.mbti.type);
+  // The app pins these on the page regardless; this says how often the model
+  // keeps them on its own, which is what decides whether the writing under a
+  // pinned label argues for it or against it.
+  check('the full report kept the card\'s type, as it was told to',
+    !anchor || report.mbti.type === anchor.mbtiType, report.mbti.type + ' vs ' + (anchor && anchor.mbtiType));
   check('mbti explains all four letters', (report.mbti.letters || []).length === 4);
   check('relationship strengths and weaknesses are both filled',
     report.relationship.strengths.length > 0 && report.relationship.weaknesses.length > 0);

@@ -1258,205 +1258,217 @@
     const cardBottom = cover(doc, source, who, stamp);
     out.page();
 
-    // 1. Who you are — essence, the headline findings, then the summary.
-    out.sectionTitle(TEXT.whoYouAre);
-    const essence = source.essence || {};
-    // `noun` is the name this field had before it held a character, so a
-    // profile saved before that change still prints.
-    const essenceName = essence.character || essence.noun;
-    if (essenceName) {
-      out.eyebrow(TEXT.essenceLabel);
-      const nameStyle = { size: 23, bold: true, color: ACCENT };
-      const franchiseStyle = { size: 10, color: SOFT };
-      const franchise = essence.franchise ? toWinAnsi(essence.franchise) : '';
-      const lines = wrap(toWinAnsi(essenceName), COLUMN, nameStyle);
+    // The written report, sections 1 to 9a. A free profile has the card and
+    // none of this — the explanations are what the unlock buys, and the server
+    // never wrote them — so its PDF says what the unlock adds instead of
+    // printing a run of empty headings.
+    const writeExplanations = () => {
+      // 1. Who you are — essence, the headline findings, then the summary.
+      out.sectionTitle(TEXT.whoYouAre);
+      const essence = source.essence || {};
+      // `noun` is the name this field had before it held a character, so a
+      // profile saved before that change still prints.
+      const essenceName = essence.character || essence.noun;
+      if (essenceName) {
+        out.eyebrow(TEXT.essenceLabel);
+        const nameStyle = { size: 23, bold: true, color: ACCENT };
+        const franchiseStyle = { size: 10, color: SOFT };
+        const franchise = essence.franchise ? toWinAnsi(essence.franchise) : '';
+        const lines = wrap(toWinAnsi(essenceName), COLUMN, nameStyle);
 
-      // The franchise trails the last line of the name, but only if it fits
-      // there. A name whose last line nearly fills the column would otherwise
-      // push it straight past the right margin — "Nick Wilde and Judy Hopps of
-      // Zootopia" runs 48pt over. When it will not fit, it takes its own line.
-      const lastWidth = measure(lines[lines.length - 1], nameStyle.size, true);
-      const franchiseWidth = franchise ? measure(franchise, franchiseStyle.size, false) : 0;
-      const franchiseFitsBeside = franchise && lastWidth + 9 + franchiseWidth <= COLUMN;
+        // The franchise trails the last line of the name, but only if it fits
+        // there. A name whose last line nearly fills the column would otherwise
+        // push it straight past the right margin — "Nick Wilde and Judy Hopps of
+        // Zootopia" runs 48pt over. When it will not fit, it takes its own line.
+        const lastWidth = measure(lines[lines.length - 1], nameStyle.size, true);
+        const franchiseWidth = franchise ? measure(franchise, franchiseStyle.size, false) : 0;
+        const franchiseFitsBeside = franchise && lastWidth + 9 + franchiseWidth <= COLUMN;
 
-      lines.forEach((line, index) => {
-        out.need(30);
-        doc.draw(line, MARGIN, doc.y + 18, nameStyle);
-        if (franchiseFitsBeside && index === lines.length - 1) {
-          doc.draw(franchise, MARGIN + lastWidth + 9, doc.y + 18, franchiseStyle);
+        lines.forEach((line, index) => {
+          out.need(30);
+          doc.draw(line, MARGIN, doc.y + 18, nameStyle);
+          if (franchiseFitsBeside && index === lines.length - 1) {
+            doc.draw(franchise, MARGIN + lastWidth + 9, doc.y + 18, franchiseStyle);
+          }
+          doc.y += 28;
+        });
+        if (franchise && !franchiseFitsBeside) {
+          out.need(16);
+          doc.draw(franchise, MARGIN, doc.y + 8, franchiseStyle);
+          doc.y += 15;
         }
-        doc.y += 28;
-      });
-      if (franchise && !franchiseFitsBeside) {
-        out.need(16);
-        doc.draw(franchise, MARGIN, doc.y + 8, franchiseStyle);
-        doc.y += 15;
+        out.space(2);
+        if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
+        out.space(8);
       }
-      out.space(2);
-      if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
-      out.space(8);
-    }
-    // The glance strip — type, highest trait, lowest trait, enneagram — used to
-    // sit here. It came off the profile page a while ago because the psyche
-    // card above it already carried all four, and repeating them a few
-    // centimetres below was the same facts twice. The PDF kept its copy on the
-    // grounds that it had no card in front of it. It does now: page one is that
-    // card. So the same reasoning applies and the strip goes, leaving the
-    // essence to run straight into the summary.
-    if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
+      // The glance strip — type, highest trait, lowest trait, enneagram — used to
+      // sit here. It came off the profile page a while ago because the psyche
+      // card above it already carried all four, and repeating them a few
+      // centimetres below was the same facts twice. The PDF kept its copy on the
+      // grounds that it had no card in front of it. It does now: page one is that
+      // card. So the same reasoning applies and the strip goes, leaving the
+      // essence to run straight into the summary.
+      if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
 
-    // 2. Big Five.
-    const five = source.bigFive || {};
-    out.sectionTitle(TEXT.bigFive, TEXT.bigFiveSub);
-    for (const key of Object.keys(TRAIT_LABELS)) {
-      const trait = five[key];
-      if (!trait) continue;
-      out.need(84);
-      out.bar(TRAIT_LABELS[key] + ' · ' + (trait.band || ''), trait.score);
-      if (trait.reading) out.body(trait.reading, { size: 9.9, leading: 14.4 });
-      out.tags(trait.evidence);
-      out.space(4);
-    }
-
-    // 3. MBTI.
-    const mbti = source.mbti;
-    if (mbti) {
-      out.sectionTitle(TEXT.mbtiPrefix + (mbti.type || '') + (mbti.nickname ? '  ' + mbti.nickname : ''),
-        TEXT.mbtiConfidence + (mbti.confidence || ''));
-      for (const letter of mbti.letters || []) {
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
-          letter.strength, letter.why, letter.inPractice, letter.counterEvidence);
+      // 2. Big Five.
+      const five = source.bigFive || {};
+      out.sectionTitle(TEXT.bigFive, TEXT.bigFiveSub);
+      for (const key of Object.keys(TRAIT_LABELS)) {
+        const trait = five[key];
+        if (!trait) continue;
+        out.need(84);
+        out.bar(TRAIT_LABELS[key] + ' · ' + (trait.band || ''), trait.score);
+        if (trait.reading) out.body(trait.reading, { size: 9.9, leading: 14.4 });
+        out.tags(trait.evidence);
+        out.space(4);
       }
-      out.fineprint(mbti.caveat);
-    }
 
-    // 4. Enneagram — a short second lens beside MBTI, not a wall of its own.
-    const enneagram = source.enneagram;
-    if (enneagram) {
-      const badge = (enneagram.type || '') + (enneagram.wing ? 'w' + enneagram.wing : '');
-      out.sectionTitle(TEXT.enneagramPrefix + badge + (enneagram.nickname ? '  ' + enneagram.nickname : ''),
-        TEXT.mbtiConfidence + (enneagram.confidence || ''));
-      if (enneagram.why) out.body(enneagram.why, { size: 10.2, leading: 15 });
-      out.fineprint(enneagram.caveat);
-    }
-
-  // Page/PDF parity for the trajectory chip — see trajectoryPill in app.js.
-  // The PDF's tile takes one pill, so the two are joined rather than stacked:
-  // "core · Dormant since 2019". Falls back to the intensity alone on a report
-  // written before these fields existed.
-  const trajectoryTag = item => {
-    const trajectory = String((item && item.trajectory) || '').trim();
-    if (!trajectory) return '';
-    const year = String((item && item.lastSeen) || '').trim();
-    const label = (TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory;
-    const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
-    return stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
-  };
-  const tilePill = (item, intensity) => {
-    const tag = trajectoryTag(item);
-    if (!intensity) return tag;
-    return tag ? intensity + ' · ' + tag : intensity;
-  };
-
-    // 5. Interests.
-    out.sectionTitle(TEXT.interests);
-    const interests = source.interests || [];
-    if (interests.length) {
-      for (const item of interests) out.tile(item.name, tilePill(item, item.intensity), item.detail, item.evidence);
-    } else {
-      out.muted(TEXT.interestsEmpty);
-    }
-
-    // 6. Values and beliefs, together, as the page groups them.
-    out.sectionTitle(TEXT.valuesBeliefs, TEXT.valuesBeliefsSub);
-    out.h3(TEXT.values);
-    const values = source.values || [];
-    if (values.length) {
-      for (const item of values) out.tile(item.value, tilePill(item, ''), item.detail, item.evidence);
-    } else {
-      out.muted(TEXT.valuesEmpty);
-    }
-    out.h3(TEXT.beliefs);
-    const beliefs = source.beliefs || [];
-    if (beliefs.length) {
-      for (const item of beliefs) {
-        out.tile(item.belief, item.confidence ? item.confidence + TEXT.confidenceSuffix : '',
-          item.detail, item.evidence);
+      // 3. MBTI.
+      const mbti = source.mbti;
+      if (mbti) {
+        out.sectionTitle(TEXT.mbtiPrefix + (mbti.type || '') + (mbti.nickname ? '  ' + mbti.nickname : ''),
+          TEXT.mbtiConfidence + (mbti.confidence || ''));
+        for (const letter of mbti.letters || []) {
+          out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
+            letter.strength, letter.why, letter.inPractice, letter.counterEvidence);
+        }
+        out.fineprint(mbti.caveat);
       }
-    } else {
-      out.muted(TEXT.beliefsEmpty);
-    }
 
-    // 7. In relationships.
-    const relationship = source.relationship;
-    if (relationship) {
-      out.sectionTitle(TEXT.relationships);
-      out.h3(TEXT.strengths, GOOD);
-      out.points(relationship.strengths);
-      out.h3(TEXT.weaknesses, WARN);
-      out.points(relationship.weaknesses);
+      // 4. Enneagram — a short second lens beside MBTI, not a wall of its own.
+      const enneagram = source.enneagram;
+      if (enneagram) {
+        const badge = (enneagram.type || '') + (enneagram.wing ? 'w' + enneagram.wing : '');
+        out.sectionTitle(TEXT.enneagramPrefix + badge + (enneagram.nickname ? '  ' + enneagram.nickname : ''),
+          TEXT.mbtiConfidence + (enneagram.confidence || ''));
+        if (enneagram.why) out.body(enneagram.why, { size: 10.2, leading: 15 });
+        out.fineprint(enneagram.caveat);
+      }
 
-      // The attachment read used to print here, inside "In relationships".
-      // It is its own section further down now, matching the page.
-      const love = relationship.loveLanguages;
-      if (love) {
-        const columns = [
-          [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
-          [TEXT.loveGiving, TEXT.loveGivingBlurb, love.giving],
-        ].filter(entry => (entry[2] || []).some(item => item && item.language));
-        if (columns.length) {
-          out.h3(TEXT.loveHead);
-          for (const [title, blurb, list] of columns) {
-            out.h3(title);
-            out.muted(blurb);
-            for (const item of list.filter(entry => entry && entry.language)) {
-              out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.inPractice);
-              if (item.why) {
-                out.body(item.why, { x: MARGIN + 10, width: COLUMN - 10, size: 9.2, color: SOFT, leading: 13.2 });
-                out.space(4);
+    // Page/PDF parity for the trajectory chip — see trajectoryPill in app.js.
+    // The PDF's tile takes one pill, so the two are joined rather than stacked:
+    // "core · Dormant since 2019". Falls back to the intensity alone on a report
+    // written before these fields existed.
+    const trajectoryTag = item => {
+      const trajectory = String((item && item.trajectory) || '').trim();
+      if (!trajectory) return '';
+      const year = String((item && item.lastSeen) || '').trim();
+      const label = (TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory;
+      const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
+      return stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
+    };
+    const tilePill = (item, intensity) => {
+      const tag = trajectoryTag(item);
+      if (!intensity) return tag;
+      return tag ? intensity + ' · ' + tag : intensity;
+    };
+
+      // 5. Interests.
+      out.sectionTitle(TEXT.interests);
+      const interests = source.interests || [];
+      if (interests.length) {
+        for (const item of interests) out.tile(item.name, tilePill(item, item.intensity), item.detail, item.evidence);
+      } else {
+        out.muted(TEXT.interestsEmpty);
+      }
+
+      // 6. Values and beliefs, together, as the page groups them.
+      out.sectionTitle(TEXT.valuesBeliefs, TEXT.valuesBeliefsSub);
+      out.h3(TEXT.values);
+      const values = source.values || [];
+      if (values.length) {
+        for (const item of values) out.tile(item.value, tilePill(item, ''), item.detail, item.evidence);
+      } else {
+        out.muted(TEXT.valuesEmpty);
+      }
+      out.h3(TEXT.beliefs);
+      const beliefs = source.beliefs || [];
+      if (beliefs.length) {
+        for (const item of beliefs) {
+          out.tile(item.belief, item.confidence ? item.confidence + TEXT.confidenceSuffix : '',
+            item.detail, item.evidence);
+        }
+      } else {
+        out.muted(TEXT.beliefsEmpty);
+      }
+
+      // 7. In relationships.
+      const relationship = source.relationship;
+      if (relationship) {
+        out.sectionTitle(TEXT.relationships);
+        out.h3(TEXT.strengths, GOOD);
+        out.points(relationship.strengths);
+        out.h3(TEXT.weaknesses, WARN);
+        out.points(relationship.weaknesses);
+
+        // The attachment read used to print here, inside "In relationships".
+        // It is its own section further down now, matching the page.
+        const love = relationship.loveLanguages;
+        if (love) {
+          const columns = [
+            [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
+            [TEXT.loveGiving, TEXT.loveGivingBlurb, love.giving],
+          ].filter(entry => (entry[2] || []).some(item => item && item.language));
+          if (columns.length) {
+            out.h3(TEXT.loveHead);
+            for (const [title, blurb, list] of columns) {
+              out.h3(title);
+              out.muted(blurb);
+              for (const item of list.filter(entry => entry && entry.language)) {
+                out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.inPractice);
+                if (item.why) {
+                  out.body(item.why, { x: MARGIN + 10, width: COLUMN - 10, size: 9.2, color: SOFT, leading: 13.2 });
+                  out.space(4);
+                }
               }
             }
+            out.fineprint(love.caveat);
           }
-          out.fineprint(love.caveat);
         }
       }
-    }
 
-    // 8. At work.
-    const career = source.career;
-    if (career) {
-      out.sectionTitle(TEXT.work);
-      out.h3(TEXT.strengths, GOOD);
-      out.points(career.strengths);
-      out.h3(TEXT.weaknesses, WARN);
-      out.points(career.weaknesses);
-      out.h3(TEXT.howYouWork);
-      if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
-      // "Where you would thrive" printed a list of ideal environments here.
-      // It was cut from both renderings together.
-      out.h3(TEXT.holdBack);
-      if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
-    }
-
-    // 9. Instagram behaviour. After the personality sections, because it is the
-    // evidence underneath them rather than another verdict.
-    const activity = source.activity;
-    if (activity) {
-      out.sectionTitle(TEXT.activity);
-      for (const [label, key] of Copy.ACTIVITY_FACETS) {
-        const part = activity[key];
-        if (!part) continue;
-        out.facet(label, part.headline, part.detail);
+      // 8. At work.
+      const career = source.career;
+      if (career) {
+        out.sectionTitle(TEXT.work);
+        out.h3(TEXT.strengths, GOOD);
+        out.points(career.strengths);
+        out.h3(TEXT.weaknesses, WARN);
+        out.points(career.weaknesses);
+        out.h3(TEXT.howYouWork);
+        if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
+        // "Where you would thrive" printed a list of ideal environments here.
+        // It was cut from both renderings together.
+        out.h3(TEXT.holdBack);
+        if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
       }
-    }
 
-    // 9a. The roast. Free, printed unconditionally, right after the digital
-    // footprint it draws on — matching the page, which puts it there for
-    // the same reason. Unlike the paid sections below, there is no gate to
-    // check: on screen it sits behind a cover the reader clicks through,
-    // and a PDF has no cover, so the print simply carries what the reader
-    // already has, the same way every other free section here does.
-    if (source.bonus) renderRoast(out, source.bonus);
+      // 9. Instagram behaviour. After the personality sections, because it is the
+      // evidence underneath them rather than another verdict.
+      const activity = source.activity;
+      if (activity) {
+        out.sectionTitle(TEXT.activity);
+        for (const [label, key] of Copy.ACTIVITY_FACETS) {
+          const part = activity[key];
+          if (!part) continue;
+          out.facet(label, part.headline, part.detail);
+        }
+      }
+
+      // 9a. The roast. Free, printed unconditionally, right after the digital
+      // footprint it draws on — matching the page, which puts it there for
+      // the same reason. Unlike the paid sections below, there is no gate to
+      // check: on screen it sits behind a cover the reader clicks through,
+      // and a PDF has no cover, so the print simply carries what the reader
+      // already has, the same way every other free section here does.
+      if (source.bonus) renderRoast(out, source.bonus);
+    };
+    if (stamp.cardOnly) {
+      out.sectionTitle(TEXT.fullReportTitle);
+      out.body(TEXT.fullReportPdf, { size: 10.4, leading: 15.4 });
+    } else {
+      writeExplanations();
+    }
 
     // 9b. Whatever was bought, in the position it holds on the page — after
     // the behaviour read, before matches and the confidence close. The list is

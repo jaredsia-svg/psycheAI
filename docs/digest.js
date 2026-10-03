@@ -378,10 +378,14 @@
    * allowed to, rather than holding on average and quietly breaking on the
    * accounts that give it the most to chew on.
    */
-  function charBudget(costCap) {
-    const worstOutputCost = MAX_OUTPUT_TOKENS * PRICING.outputPerToken;
+  function charBudget(costCap, fixedTokens, outputTokens) {
+    // Defaults are the full call's. The free call passes its own, since it
+    // sends a smaller prompt and schema and caps its output lower.
+    const fixed = fixedTokens == null ? FIXED_INPUT_TOKENS : fixedTokens;
+    const output = outputTokens == null ? MAX_OUTPUT_TOKENS : outputTokens;
+    const worstOutputCost = output * PRICING.outputPerToken;
     const inputTokens = (costCap - worstOutputCost) / PRICING.inputPerToken;
-    const forDigest = inputTokens - FIXED_INPUT_TOKENS;
+    const forDigest = inputTokens - fixed;
     return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
   }
 
@@ -437,6 +441,62 @@
   // one budget now. Restoring a paid deeper tier means adding caps and a way
   // to choose them, which was always the honest version of that promise.
   LIMITS.totalChars = charBudget(COST_CAP);
+
+  // ---------- the free call's budget ----------
+  //
+  // The free tier is the summary card and nothing else, and it costs at most
+  // five cents. Not on average: at most. The same worst-case arithmetic as the
+  // full call above — every token of the output cap reserved as if the model
+  // thinks for all of it — so the cap holds on the account that gives the
+  // model the most to chew on, not just the typical one.
+  //
+  // At $0.75/$3.75 the three numbers below leave room for about 34,000
+  // characters of digest:
+  //
+  //   output   8,000 × $3.75/M  = $0.0300   (the card plus HIGH thinking)
+  //   prompt  16,900 × $0.75/M  = $0.0127   (FREE_SYSTEM + FREE_SCHEMA)
+  //   digest   the remaining $0.0073, ≈ 9,800 tokens
+  //
+  // The output cap is the number to tune, and the one to tune carefully. The
+  // card itself is about 600 tokens; the rest is thinking, at the same HIGH
+  // level the full report uses. Too low and the card comes back truncated —
+  // the MAX_TOKENS failure the full call hit at 16,000 — so this starts
+  // generous and `npm run usage` says how much of it real runs actually use.
+  // Every 1,000 tokens it comes down buys about 3,500 characters of digest.
+  const FREE_COST_CAP = 0.05;
+  const FREE_MAX_OUTPUT_TOKENS = 8000;
+  // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
+  // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 16,655.
+  const FREE_FIXED_INPUT_TOKENS = 16900;
+  LIMITS.freeTotalChars = charBudget(FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS);
+
+  // What the free call keeps of each list, sized to land a heavy account under
+  // the ceiling above with the trim loop left as a backstop rather than doing
+  // the work. Roughly a quarter of the full digest, spent where the card's
+  // conclusions come from: their own messages and captions first, because
+  // that is where type and temperament are read; the complete counts and
+  // histograms whole, because they cost almost nothing and are the
+  // best-evidenced thing in the digest; ranked lists cut to their heads.
+  const FREE_LIMITS = {
+    ownMessages: 80,
+    captions: 70,
+    comments: 10,
+    likedCaptions: 10,
+    likedAccounts: 15,
+    savedAccounts: 15,
+    engagedWith: 20,
+    topics: 40,
+    adInterests: 20,
+    youtubeChannels: 20,
+    youtubeTitles: 10,
+    youtubeSearches: 15,
+    googleSearches: 25,
+    fbPosts: 20,
+    fbComments: 10,
+    fbFriends: 30,
+    fbSearches: 15,
+    fbMessages: 30,
+  };
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -1501,7 +1561,7 @@
   // willing to touch. So it now trims whichever sample list is currently
   // costing the most, repeatedly, which also keeps the trimming proportional
   // instead of gutting captions to spare a list of account names.
-  function trimToBudget(digest, maxChars) {
+  function trimToBudget(digest, maxChars, floors) {
     const trimmable = [
       // The reader's own messages, which were missing from this list entirely
       // while Facebook's equivalent sat in the supplement list below. It is
@@ -1543,10 +1603,13 @@
       ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
       ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
     ];
-    const FLOOR = 20;
+    // The free digest passes lower floors: its whole budget is a fifth of
+    // this one's, and a floor of twenty captions alone would spend a third of
+    // it on an account that writes long ones.
+    const FLOOR = floors && floors.floor != null ? floors.floor : 20;
     // Supplements shrink further than Instagram lists do before the loop gives
     // up on them, which is the second half of "additions go first".
-    const SUPPLEMENT_FLOOR = 10;
+    const SUPPLEMENT_FLOOR = floors && floors.supplementFloor != null ? floors.supplementFloor : 10;
 
     let encoded = JSON.stringify(digest);
     while (encoded.length > maxChars) {
@@ -1579,19 +1642,158 @@
       encoded = JSON.stringify(digest);
     }
 
-    digest.coverage.sampling.captions.shown = digest.samples.captions.length;
-    if (digest.coverage.sampling.likedCaptions) {
-      digest.coverage.sampling.likedCaptions.shown = digest.samples.likedPostCaptions.length;
-    }
-    digest.coverage.sampling.comments.shown = digest.samples.comments.length;
-    // Refreshed like the three above, now that this list is trimmable: a
-    // "shown" that still claimed the pre-trim count would misreport the
-    // sampling to the reader reviewing it and to the model reading coverage.
-    if (digest.coverage.sampling.ownMessages && digest.directMessages) {
-      digest.coverage.sampling.ownMessages.shown = digest.directMessages.ownMessageSample.length;
-    }
+    restateShown(digest);
     digest.coverage.digestChars = encoded.length;
 
+    return digest;
+  }
+
+  // Every `coverage.sampling.*.shown`, recounted from the list it describes.
+  //
+  // It used to be four of them, restated by hand after the trim — captions,
+  // liked captions, comments, own messages — while the loop also shortened the
+  // ranked account and topic lists and left their `shown` claiming the
+  // pre-trim length. A "shown" that overstates what is in the digest is the
+  // one coverage error that matters: the model reads "shown equals available"
+  // as "you are reading everything", and sets its confidence by it. One table,
+  // so a list that becomes trimmable cannot be missed again.
+  const SHOWN_FROM = {
+    captions: d => d.samples && d.samples.captions,
+    comments: d => d.samples && d.samples.comments,
+    likedCaptions: d => d.samples && d.samples.likedPostCaptions,
+    topics: d => d.instagramTopics,
+    likedAccounts: d => d.mostLikedAccounts,
+    savedAccounts: d => d.mostSavedAccounts,
+    engagedWith: d => d.mostEngagedWith,
+    ownMessages: d => d.directMessages && d.directMessages.ownMessageSample,
+    youtubeTitles: d => d.google && d.google.videoTitleSample,
+    googleSearchTerms: d => d.google && d.google.topGoogleSearches,
+    youtubeSearchTerms: d => d.google && d.google.topYoutubeSearches,
+    youtubeChannels: d => d.google && d.google.topChannels,
+    facebookPosts: d => d.facebook && d.facebook.postSample,
+    facebookFriends: d => d.facebook && d.facebook.friends,
+  };
+  function restateShown(digest) {
+    const sampling = digest.coverage && digest.coverage.sampling;
+    if (!sampling) return digest;
+    for (const key of Object.keys(sampling)) {
+      const entry = sampling[key];
+      const read = SHOWN_FROM[key];
+      if (!read || !entry || typeof entry !== 'object') continue;
+      const list = read(digest);
+      if (Array.isArray(list)) entry.shown = list.length;
+    }
+    return digest;
+  }
+
+  // ---------- the free digest ----------
+  //
+  // What the free call is shown, derived from the full digest rather than
+  // built separately, so the reader reviews one digest, the free card and the
+  // paid report are read from the same evidence, and nothing needs the
+  // original archive a second time.
+  //
+  // Called by the server, not just the browser. This is where the five-cent
+  // ceiling is actually held: the digest arrives from a client, and a client
+  // that sent its full digest — or one with a megabyte of padding in a field
+  // nobody expected — must cost exactly what an honest one does. So this does
+  // not deep-copy the input and prune it. It builds a new object out of the
+  // fields it knows, clamps every string in them, and leaves anything else on
+  // the floor. What comes out is bounded by construction; the size check in
+  // server.js is the backstop for the one thing construction cannot bound,
+  // which is the count of keys inside the few objects copied whole.
+  const FREE_STRING_MAX = 700;
+  function clampStrings(value, depth) {
+    if (typeof value === 'string') return value.length > FREE_STRING_MAX ? value.slice(0, FREE_STRING_MAX) : value;
+    if (value === null || typeof value !== 'object') {
+      return typeof value === 'number' || typeof value === 'boolean' ? value : null;
+    }
+    // A digest is four levels deep at most. Anything deeper is not one.
+    if (depth > 6) return null;
+    if (Array.isArray(value)) return value.slice(0, 400).map(v => clampStrings(v, depth + 1));
+    const out = {};
+    for (const key of Object.keys(value).slice(0, 200)) out[key] = clampStrings(value[key], depth + 1);
+    return out;
+  }
+  function listOf(value) { return Array.isArray(value) ? value : []; }
+  function plain(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
+  function head(list, n) { return listOf(list).slice(0, n); }
+
+  function forFree(input, options) {
+    const opts = options || {};
+    const d = plain(input) || {};
+    const L = FREE_LIMITS;
+    const samples = plain(d.samples) || {};
+    const coverage = plain(d.coverage) || {};
+    const out = {
+      schema: 'psycheai-digest/1',
+      profile: plain(d.profile) || {},
+      counts: plain(d.counts) || {},
+      rhythm: plain(d.rhythm) || {},
+      samples: {
+        // Spread across the list rather than its head: captions are sampled
+        // by year, and the first seventy would be the most recent years only.
+        captions: sampleEvenly(listOf(samples.captions), L.captions),
+        comments: sampleEvenly(listOf(samples.comments), L.comments),
+        likedPostCaptions: sampleEvenly(listOf(samples.likedPostCaptions), L.likedCaptions),
+      },
+      // Ranked lists, strongest first, so the head is the right cut.
+      instagramTopics: head(d.instagramTopics, L.topics),
+      instagramAdInterests: head(d.instagramAdInterests, L.adInterests),
+      mostLikedAccounts: head(d.mostLikedAccounts, L.likedAccounts),
+      mostSavedAccounts: head(d.mostSavedAccounts, L.savedAccounts),
+      mostEngagedWith: head(d.mostEngagedWith, L.engagedWith),
+      coverage: {
+        filesRead: coverage.filesRead,
+        filesSeen: coverage.filesSeen,
+        directMessagesIncluded: Boolean(coverage.directMessagesIncluded),
+        stillsInArchive: coverage.stillsInArchive,
+        samplingNote: coverage.samplingNote,
+        sources: listOf(coverage.sources),
+        // Copied entry by entry rather than whole: `available` is the
+        // denominator the confidence score is read against, and it stays the
+        // full archive's — the free call is shown less of the same account,
+        // not a smaller account. `shown` is restated below.
+        sampling: plain(coverage.sampling) || {},
+      },
+    };
+    const dm = plain(d.directMessages);
+    if (dm) {
+      out.directMessages = {
+        threads: dm.threads, groupThreads: dm.groupThreads,
+        activeThreads: dm.activeThreads, activeGroupThreads: dm.activeGroupThreads,
+        totalMessages: dm.totalMessages, sentByUser: dm.sentByUser,
+        receivedByUser: dm.receivedByUser, averageSentLength: dm.averageSentLength,
+        note: dm.note,
+        // Evenly across the sample, which keeps the spread over threads and
+        // between the recent and the longest halves that sampleMessages chose.
+        ownMessageSample: sampleEvenly(listOf(dm.ownMessageSample), L.ownMessages),
+      };
+    }
+    const g = plain(d.google);
+    if (g) {
+      out.google = {
+        note: g.note, span: g.span, counts: plain(g.counts) || {},
+        topChannels: head(g.topChannels, L.youtubeChannels),
+        videoTitleSample: sampleEvenly(listOf(g.videoTitleSample), L.youtubeTitles),
+        topYoutubeSearches: head(g.topYoutubeSearches, L.youtubeSearches),
+        topGoogleSearches: head(g.topGoogleSearches, L.googleSearches),
+      };
+    }
+    const f = plain(d.facebook);
+    if (f) {
+      out.facebook = {
+        note: f.note, span: f.span, counts: plain(f.counts) || {},
+        postSample: sampleEvenly(listOf(f.postSample), L.fbPosts),
+        commentSample: sampleEvenly(listOf(f.commentSample), L.fbComments),
+        friends: sampleEvenly(listOf(f.friends), L.fbFriends),
+        topSearches: head(f.topSearches, L.fbSearches),
+        ownMessageSample: sampleEvenly(listOf(f.ownMessageSample), L.fbMessages),
+      };
+    }
+    const digest = clampStrings(out, 0);
+    restateShown(digest);
+    trimToBudget(digest, opts.maxChars || LIMITS.freeTotalChars, { floor: 10, supplementFloor: 0 });
     return digest;
   }
 
@@ -1732,8 +1934,8 @@
   }
 
   root.PsycheDigest = {
-    build, addSupplements,
-    LIMITS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
+    build, addSupplements, forFree,
+    LIMITS, FREE_LIMITS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,
     omitTopics,

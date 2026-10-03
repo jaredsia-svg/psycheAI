@@ -81,6 +81,74 @@ than downloading it — and pulled back out, since it needs a verified sending d
 doesn't have. If it returns, address collection would have to return with it; what has been removed
 here is the *gate*, not the ability to ever ask again.
 
+### The free run is the summary card; everything that explains it is the unlock
+
+**The free tier costs at most US$0.05 a run**, and it gets there by changing what the free run is
+rather than how hard the model thinks about it. A free run returns the **summary card** — the
+character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
+interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
+card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
+sections are the **S$1.99 unlock**.
+
+**Two calls, one set of conclusions.**
+
+- **The card call** (`analyseCard`, kind `card`) runs `FREE_SYSTEM` against `FREE_SCHEMA` in
+  `lib/prompts.js`. `FREE_SYSTEM` is `PROFILE_SYSTEM` with only the writing sections cut out —
+  "spell each piece of evidence out once", the activity, bonus and roast instructions — and a short
+  preamble saying this call writes conclusions only. The scoring rules are kept, so the card is
+  reached by the same reasoning the full report uses. Each cut is made on marker text and throws if a
+  marker goes missing, so an edit to the main prompt cannot quietly leave the card prompt half-cut.
+  Thinking stays at `HIGH`. The card is cheaper because it reads less and writes less, not because
+  it thinks less.
+- **The full report** (`analyseProfile`, kind `analyse`) runs the unchanged `PROFILE_SYSTEM`. It is
+  handed the free card as an **anchor** and told to explain those conclusions rather than reach its
+  own. The browser then lays the card's labels back over what comes back (`overlayCard` in
+  `docs/app.js`): type, letters, scores, character, and the order of the card's lists. The card a
+  reader has seen, and may already have shared, therefore never changes when they pay. The writing
+  under each label is the full report's own.
+
+The anchor is client-sent, so `anchorFrom` rebuilds it field by field before it reaches a prompt.
+Every field is bounded, angle brackets and control characters are stripped, scores are clamped to
+0–100, and an anchor with no type and no scores counts as no anchor. The one case that runs
+**without** an anchor is a reader who added Google or Facebook data on the way to paying. That
+card was read from less evidence than the report is, so the report reaches its own conclusions and
+the card is redrawn from them.
+
+**Where five cents comes from.** It uses the same worst-case arithmetic as the full call's
+`COST_CAP`, with its own three numbers in `docs/digest.js`:
+
+| | tokens | at $0.75 / $3.75 per M |
+|---|---|---|
+| output cap (`FREE_MAX_OUTPUT_TOKENS`, card plus HIGH thinking) | 8,000 | $0.0300 |
+| card prompt plus schema (`FREE_FIXED_INPUT_TOKENS`, measured at 16,655) | 16,900 | $0.0127 |
+| free digest (`LIMITS.freeTotalChars` ≈ 34,000 characters) | ≈ 9,800 | $0.0073 |
+
+The output cap is the number to tune, and `npm run usage` reports how much of it real card calls
+use. If card calls start failing on `MAX_TOKENS`, raise `CARD_MAX_OUTPUT_TOKENS` in
+`lib/gemini.js` and `FREE_MAX_OUTPUT_TOKENS` together. A selftest check holds the two equal. Each
+1,000 tokens added takes about 3,500 characters off the free digest, and the ceiling holds either
+way.
+
+**The server derives the free digest itself.** `server.js` loads `docs/digest.js` at boot and runs
+`Digest.forFree` on whatever it is posted. `forFree` does not prune a copy of the input. It builds a
+new object out of the fields it knows and clamps every string in them, so unknown fields and
+padding never reach the model. Its own per-list caps (`FREE_LIMITS`) cut the lists: the reader's
+own messages and captions are kept, spread across the sample, while ranked lists are cut to their
+heads. The trim loop then backstops the result to `freeTotalChars`. The one thing construction
+cannot bound — the number of keys inside the few objects copied whole — is caught by a size check,
+which refuses the request with a 413. Honest exports never reach that check. The card is cached on
+the free digest, so a re-run over the same evidence is answered from the card already made, at no
+cost.
+
+**The paywall is enforced server-side, not just in the page.** `/api/analyse` with
+`product: 'unlock'` returns the full report only with a verified unlock PaymentIntent or a valid
+promo code, and refuses with a 402 otherwise. Before this change that request fell through to the
+free path, which was harmless while both paths produced the same report. With the split it would
+have given the paid half away. The unlock is always two calls on one authorisation. The anchored
+full report comes first (ledger kind `bundled`), then the four premium sections. Each is retried
+on its own, and a retry skips whichever half has already arrived. Profiles saved before the split
+already carry the whole report, and keep it.
+
 ### One free analysis, then S$0.99 — and what actually stops a runaway bill
 
 Every free report is a real, metered call to a model, and until recently
@@ -90,7 +158,7 @@ because only one of them is enforcement.
 
 **The daily ceiling is the enforcement** (`lib/budget.js`). A server-wide count
 of free calls per UTC day, refusing past `PSYCHEAI_DAILY_FREE_LIMIT` (default
-200 — sized against `COST_CAP`, so roughly US$50/day even if every run were
+200 — sized against `FREE_COST_CAP`, so roughly US$10/day even if every run were
 pathological). It applies to `/api/analyse`, and paid calls skip it entirely: a
 busy day must not take away a run somebody has already been charged for.
 `/api/compatibility` used to draw on it too and no longer does, because it is

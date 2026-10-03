@@ -102,6 +102,30 @@ async function continueFromDataSources(page) {
 
 // The whole re-run action with a free analysis in hand: open the popout,
 // change nothing, and go straight through to the review dialog.
+// The written report under a free card, fetched the way the unlock fetches it
+// — `product: 'unlock'`, a code, and the card as the anchor — then stored as
+// the app stores an adopted one and the page reloaded onto it. For the many
+// checks in this file that read the written report rather than the unlock
+// flow; the flow itself has its own block.
+async function explainStoredProfile(page) {
+  await page.evaluate(async promo => {
+    const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
+    const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
+    const full = await window.PsycheLLM.analyseProfile(digest,
+      { promoCode: promo, product: 'unlock', anchor: profile.report });
+    profile.freeReport = profile.report;
+    profile.report = full.data;
+    profile.explained = true;
+    localStorage.setItem('psycheai_profile', JSON.stringify(profile));
+  }, UITEST_PROMO);
+  // What this page has recorded about itself goes with it across the reload:
+  // the waiting-screen titles are read further down, long after this.
+  const carried = await page.evaluate(() => window.__titles || null);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+  if (carried) await page.evaluate(titles => { window.__titles = titles; }, carried);
+}
+
 async function startFreeRerun(page) {
   await clearRunCount(page);
   await openDataSourcesPopout(page);
@@ -885,8 +909,10 @@ try {
       check('the POST hands back a job rather than holding the connection open',
         Boolean(started && started.job) && started.status === 'running',
         JSON.stringify(started));
+      // `card:` — a free run is the summary card, cached and keyed apart from
+      // the full report so one can never be served for the other.
       check('and the page writes the job down while it is still running',
-        typeof record.key === 'string' && /^analyse:[0-9a-f]{64}$/.test(record.key),
+        typeof record.key === 'string' && /^card:[0-9a-f]{64}$/.test(record.key),
         JSON.stringify(record));
       check('the record holds a key, a kind and a time, never a report',
         Object.keys(record).sort().join(',') === 'at,auth,key,kind', Object.keys(record).join(','));
@@ -923,18 +949,30 @@ try {
       // the day the first one was — but nothing said so, and a later edit that
       // gave the re-run its own call would have taken the job record with it
       // and passed every check in this file.
+      //
+      // Read off the request rather than off a job record. The server derives
+      // the free digest itself, and a re-run over the same evidence derives the
+      // same one — so it is answered from the card already made, at once and
+      // for nothing, and no job is ever started to write down. That is the
+      // cache doing its job; what this check is about is that the re-run *asks*
+      // to be a job, so that on new evidence it would be one.
+      const rerunBodies = [];
+      const onRerunRequest = request => {
+        if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) {
+          rerunBodies.push(JSON.parse(request.postData() || '{}'));
+        }
+      };
+      jobPage.on('request', onRerunRequest);
       await clearRunCount(jobPage);
       await startFreeRerun(jobPage);
       await answerReview(jobPage);
-      await jobPage.waitForFunction(() => Boolean(localStorage.getItem('psycheai_job')),
-        { timeout: 30000 });
-      const rerunRecord = await jobPage.evaluate(() =>
-        JSON.parse(localStorage.getItem('psycheai_job')));
-      check('a re-run from the report page is a background job too',
-        /^analyse:[0-9a-f]{64}$/.test(rerunRecord.key) && rerunRecord.kind === 'analysis',
-        JSON.stringify(rerunRecord));
-      await jobPage.waitForFunction(() => localStorage.getItem('psycheai_job') === null,
-        { timeout: 60000 });
+      await waitForLength(rerunBodies, 1, 30000);
+      jobPage.off('request', onRerunRequest);
+      check('a re-run from the report page asks for a background job too',
+        rerunBodies.length > 0 && rerunBodies[0].background === true,
+        JSON.stringify(rerunBodies.map(body => body.background)));
+      await jobPage.waitForFunction(() => localStorage.getItem('psycheai_job') === null &&
+        !document.querySelector('#view-profile').hidden, null, { timeout: 60000 });
       check('and it clears the record when the re-run lands, same as a first run',
         await jobPage.locator('#view-profile').isVisible());
     } finally {
@@ -2388,10 +2426,14 @@ try {
     (await page.locator('[data-premium-tier]').count()) === 1,
     (await page.locator('[data-premium-tier] .premium-tier').count()) + ' of ' +
     (await page.locator('[data-premium-tier]').count()) + ' slots filled');
-  check('it names the four paid sections, by the titles the report uses',
+  // Every explanation the unlock writes, then the four sections it adds — the
+  // free run is the card alone, so the offer is the whole written report.
+  check('it names every explanation and the four paid sections, by the titles the report uses',
     await page.evaluate(() => {
       const T = window.PsycheCopy.TEXT;
-      const want = [T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
+      const want = [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
+        T.explainPeopleTitle, T.activity, T.bonus,
+        T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
       const got = [...document.querySelectorAll('#view-welcome .premium-tier-item strong')]
         .map(node => node.textContent.trim());
       return want.length === got.length && want.every((title, i) => title === got[i]);
@@ -3425,6 +3467,85 @@ try {
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
+
+  // ---- the free report is the summary card, and only the card ----
+  //
+  // Everything that explains the card is the S$1.99 unlock. The rule this
+  // holds is the same one the four premium sections have always had: the
+  // writing is not in the page because the server never wrote it, so the
+  // check reads the stored report as well as the screen — a locked block over
+  // explanations sitting in localStorage would pass a screen-only check.
+  const freeState = await page.evaluate(() => {
+    const body = document.querySelector('#profile-body');
+    const T = window.PsycheCopy.TEXT;
+    return {
+      cardShown: !document.querySelector('#psyche-card-section').hidden &&
+        document.querySelector('#psyche-card').innerHTML.length > 0,
+      locked: body.querySelectorAll('.full-report-locked').length,
+      unlockButtons: body.querySelectorAll('.premium-unlock').length,
+      sections: [...body.querySelectorAll('.section-card')].map(c => c.className),
+      roast: body.querySelectorAll('.bonus-card').length,
+      titles: [...body.querySelectorAll('.full-report-locked .premium-tier-item strong')]
+        .map(node => node.textContent.trim()),
+      want: [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
+        T.explainPeopleTitle, T.activity, T.bonus,
+        T.wellness, T.attachment, T.idealPartner, T.careerAssessment],
+      stored: JSON.parse(localStorage.getItem('psycheai_profile')),
+    };
+  });
+  const freeReport = freeState.stored.report;
+  check('a free run shows the summary card', freeState.cardShown);
+  check('and under it one locked block offering the full report, with one button',
+    freeState.locked === 1 && freeState.unlockButtons === 1,
+    JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
+  check('no written section is on the page — only the card that holds the controls',
+    freeState.sections.length === 1 && /confidence-card/.test(freeState.sections[0]),
+    JSON.stringify(freeState.sections));
+  check('the roast is not on a free page at all', freeState.roast === 0);
+  check('the block names every explanation and every premium section the unlock opens',
+    JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));
+  check('and the explanations never reached this browser — the stored report is the card alone',
+    !freeReport.summary && !freeReport.bonus && !freeReport.activity && !freeReport.career &&
+    !freeReport.bigFive.openness.reading && !(freeReport.mbti.letters[0] || {}).why &&
+    !freeReport.essence.why && freeState.stored.explained !== true,
+    Object.keys(freeReport).join(','));
+  check('while the card carries every conclusion the card face shows',
+    Boolean(freeReport.mbti.type && freeReport.enneagram.type && freeReport.essence.character &&
+      freeReport.cardHighlights && Number.isFinite(freeReport.bigFive.openness.score) &&
+      freeReport.card && freeReport.card.name),
+    JSON.stringify({ mbti: freeReport.mbti.type, character: freeReport.essence.character }));
+
+  // The download is not gated, so a free reader gets a PDF too — of what they
+  // have: the card on its cover page and what the unlock adds, rather than a
+  // run of section headings with nothing under them.
+  const [freePdfDownload] = await Promise.all([
+    page.waitForEvent('download', { timeout: 30000 }),
+    page.click('#export-pdf-bottom'),
+  ]);
+  const freePdfPath = join(shotDir, 'report-free.pdf');
+  await freePdfDownload.saveAs(freePdfPath);
+  const freePdf = readFileSync(freePdfPath).toString('latin1');
+  const pdfCopy = await page.evaluate(() => {
+    const T = window.PsycheCopy.TEXT;
+    return { offer: T.fullReportTitle, who: T.whoYouAre, fiveSub: T.bigFiveSub };
+  });
+  const inPdf = label => freePdf.includes('(' + label + ')') || freePdf.includes('(' + label.toUpperCase() + ')');
+  check('a free profile\'s PDF carries the card and the offer, not empty sections',
+    freePdf.startsWith('%PDF-1.') && inPdf(pdfCopy.offer) && !inPdf(pdfCopy.who) && !inPdf(pdfCopy.fiveSub),
+    JSON.stringify({ offer: inPdf(pdfCopy.offer), who: inPdf(pdfCopy.who), fiveSub: inPdf(pdfCopy.fiveSub) }));
+
+  // From here on the suite reads the written report, so this profile gets it
+  // the way a reader who paid does: from the server, which refuses it without
+  // a payment or a code, anchored to the card above. Stored the way the app
+  // stores it, and the page reloaded onto it.
+  await explainStoredProfile(page);
+  check('with a code, the server writes the full report the card is anchored to',
+    await page.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
+      return stored.explained === true && typeof stored.report.summary === 'string' &&
+        stored.report.mbti.type === stored.freeReport.mbti.type &&
+        stored.report.essence.character === stored.freeReport.essence.character;
+    }));
 
   // ---- the report opens as an index, not a scroll ----
   //
@@ -4835,7 +4956,8 @@ try {
       return document.activeElement === document.querySelector('#premium-promo-input');
     }));
   check('the unlock dialog opens with a title and a blurb naming all four sections',
-    /Unlock premium sections/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Unlock the full report/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /explains your whole card/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /mental wellness read, your attachment style, what partner truly suits you/i
       .test(await page.locator('#premium-dialog-blurb').innerText()),
@@ -6759,7 +6881,11 @@ try {
   // as JPEG, checked for size, order, dating and byte-uniqueness, and asserted
   // never to be persisted. All of it went with the photographs. What replaces
   // it is the inverse claim, which is the one the privacy copy now makes.
-  const sentBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  // The free run's request, not the unlock's that the suite made after it —
+  // that one carries the card it explains, and is checked on its own below.
+  const freeBodies = analyseBodies.filter(body => JSON.parse(body).product !== 'unlock');
+  const sentBody = JSON.parse(freeBodies[freeBodies.length - 1]);
+  const unlockBody = JSON.parse(analyseBodies.find(body => JSON.parse(body).product === 'unlock'));
 
   // The allowlist is named rather than counted, so a field added later has to
   // be argued for here. `background` is a boolean asking for a job key back
@@ -6776,10 +6902,18 @@ try {
     JSON.stringify(Object.keys(sentBody).map(k => k + ':' + typeof sentBody[k])));
   check('no image field is sent, empty or otherwise', sentBody.images === undefined);
   check('and no encoded bytes are hiding in the body',
-    !analyseBodies[analyseBodies.length - 1].includes('iVBORw0KGgo') &&
-    !analyseBodies[analyseBodies.length - 1].includes('/9j/'));
+    !freeBodies[freeBodies.length - 1].includes('iVBORw0KGgo') &&
+    !freeBodies[freeBodies.length - 1].includes('/9j/'));
   check('the whole request stays inside the server\'s limit',
-    Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) < 24 * 1024 * 1024);
+    Buffer.byteLength(freeBodies[freeBodies.length - 1]) < 24 * 1024 * 1024);
+  // The unlock's request adds exactly two things: which product, and the card
+  // to explain — the model's own output coming back, not more evidence.
+  check('the unlock request adds only the product and the card it explains',
+    Object.keys(unlockBody).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
+      'product', 'anchor'].includes(k)) &&
+    unlockBody.product === 'unlock' && unlockBody.anchor && unlockBody.anchor.card &&
+    unlockBody.anchor.summary === undefined,
+    Object.keys(unlockBody).join(','));
   // Much smaller than it used to be — a dozen JPEGs were most of it.
   check('and is now a fraction of what it was when photographs rode along',
     Buffer.byteLength(analyseBodies[analyseBodies.length - 1]) < 500000,
@@ -7670,7 +7804,8 @@ try {
     }));
   check('and the report itself is still on screen — only the evidence went',
     (await page.locator('#view-profile').isVisible()) &&
-    (await page.locator('#profile-body .section-card').count()) > 5);
+    (await page.locator('#psyche-card .psyche-card, #psyche-card > *').count()) > 0 &&
+    (await page.locator('#profile-body .confidence-card').count()) === 1);
   // A different message from the ordinary "add Google to raise confidence"
   // hint, which is beside the point when the primary source is what is gone.
   check('the note explains what happened rather than offering to raise confidence',
@@ -8274,8 +8409,8 @@ try {
   // The price is buying more than usual here, and the sheet has to say so
   // before it is agreed to — finding out afterwards that a charge covered
   // extra is fine; finding out afterwards that it was needed is not.
-  check('the sheet says this charge also rewrites the free sections with the new data',
-    /rewrites the rest of your report/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
+  check('the sheet says this charge also redraws the card with the new data',
+    /redraws your card/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /no extra cost/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
   const digestBeforePaying = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
@@ -8313,10 +8448,15 @@ try {
   // further S$0.99 — charging twice over for one decision to hand over more
   // data. So the same authorisation runs both calls.
   await waitForLength(analyseBodies, analysesBeforeUnlock + 1, 40000);
-  check('adding data at the unlock also rewrites the free sections, on the same authorisation',
+  check('adding data at the unlock writes the full report and redraws the card, on the same authorisation',
     analyseBodies.length === analysesBeforeUnlock + 1,
-    (analyseBodies.length - analysesBeforeUnlock) + ' free analyses');
+    (analyseBodies.length - analysesBeforeUnlock) + ' report calls');
   const bundledBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
+  // No anchor: the card was read from less evidence than this report is, so
+  // holding the report to it would hold the better reading to the worse one.
+  check('and it is asked for as the full report, not anchored to the card the new data supersedes',
+    bundledBody.product === 'unlock' && bundledBody.anchor === undefined,
+    JSON.stringify({ product: bundledBody.product, anchor: Boolean(bundledBody.anchor) }));
   check('the bundled free run is made against the enriched digest as well',
     Boolean(bundledBody.digest.google) && bundledBody.digest.samples.captions.length > 0,
     JSON.stringify({ google: Boolean(bundledBody.digest.google),
@@ -8378,13 +8518,33 @@ try {
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   await openAllSections(page);
   const analysesBeforeBareUnlock = analyseBodies.length;
+  const cardBeforeBareUnlock = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')));
+  // The model is told to keep the card's conclusions and the mock always does,
+  // which would leave the page's own pinning untested. So the full report is
+  // made to disagree on its way in — a different type, a different score —
+  // and the card the reader already had still has to be what they see.
+  const disagree = body => {
+    if (body && body.data && typeof body.data.summary === 'string') {
+      body.data.mbti.type = 'ESTP';
+      body.data.bigFive.openness.score = 3;
+      body.data.essence.character = 'Somebody Else';
+    }
+    return body;
+  };
+  const rewriteFull = async route => {
+    const response = await route.fetch();
+    const body = await response.json().catch(() => null);
+    await route.fulfill({ response, json: disagree(body) });
+  };
+  await page.route('**/api/result*', rewriteFull);
+  await page.route('**/api/analyse', rewriteFull);
   await openUnlockPayment(page);
   // The inverse of the promise above: with nothing added there is nothing to
   // rewrite, so the sheet must not claim otherwise. A blurb that advertised
   // a rewrite on every unlock would be the easy way to make the check above
   // pass while telling most readers something untrue.
-  check('with no data added the sheet makes no claim about rewriting anything',
-    !/rewrites the rest of your report/i.test(await page.locator('#premium-dialog-blurb').innerText()),
+  check('with no data added the sheet makes no claim about redrawing anything',
+    !/redraws your card/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
   await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
@@ -8393,9 +8553,42 @@ try {
     return Boolean(p && p.premiumAnalysis);
   }, { timeout: 40000 });
   await page.waitForTimeout(500);
-  check('an unlock with no data added rewrites nothing and sends no free analysis',
-    analyseBodies.length === analysesBeforeBareUnlock,
-    (analyseBodies.length - analysesBeforeBareUnlock) + ' free analyses');
+  // One call for the written report, anchored to the card on screen — and the
+  // card itself left exactly as it was, QR payload and all. The reader may
+  // already have shared it.
+  const bareBodies = analyseBodies.slice(analysesBeforeBareUnlock).map(body => JSON.parse(body));
+  check('an unlock with no data added asks once for the full report, anchored to the card',
+    bareBodies.length === 1 && bareBodies[0].product === 'unlock' &&
+    bareBodies[0].promoCode === UITEST_PROMO &&
+    bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type,
+    JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
+  const afterBareUnlock = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')));
+  check('and the card the reader had is the card they keep',
+    afterBareUnlock.payload === cardBeforeBareUnlock.payload &&
+    afterBareUnlock.createdAt === cardBeforeBareUnlock.createdAt &&
+    afterBareUnlock.report.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
+    afterBareUnlock.report.cardHighlights === cardBeforeBareUnlock.report.cardHighlights &&
+    JSON.stringify(Object.keys(afterBareUnlock.report.bigFive).map(k => afterBareUnlock.report.bigFive[k].score)) ===
+      JSON.stringify(Object.keys(cardBeforeBareUnlock.report.bigFive).map(k => cardBeforeBareUnlock.report.bigFive[k].score)),
+    JSON.stringify({ samePayload: afterBareUnlock.payload === cardBeforeBareUnlock.payload }));
+  await page.unroute('**/api/result*', rewriteFull);
+  await page.unroute('**/api/analyse', rewriteFull);
+  check('even when the written report came back disagreeing with it',
+    afterBareUnlock.report.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
+    afterBareUnlock.report.bigFive.openness.score === cardBeforeBareUnlock.report.bigFive.openness.score &&
+    afterBareUnlock.report.essence.character === cardBeforeBareUnlock.report.essence.character &&
+    !/ESTP|Somebody Else/.test(await page.locator('#psyche-card').innerText()),
+    JSON.stringify({ type: afterBareUnlock.report.mbti.type, character: afterBareUnlock.report.essence.character }));
+  // And the writing kept is the full report's own — only the labels are pinned.
+  check('with the explanation underneath still the one the full report wrote',
+    typeof afterBareUnlock.report.mbti.letters[0].why === 'string' &&
+    afterBareUnlock.report.mbti.letters[0].why.length > 20 &&
+    typeof afterBareUnlock.report.bigFive.openness.reading === 'string');
+  check('with the written report laid under it, roast and all',
+    afterBareUnlock.explained === true && typeof afterBareUnlock.report.summary === 'string' &&
+    Boolean(afterBareUnlock.report.bonus) &&
+    (await page.locator('#profile-body .bonus-card').count()) === 1 &&
+    (await page.locator('#profile-body .full-report-locked').count()) === 0);
 
   // ---- the free allowance, and paying past it ----
   //
@@ -8839,8 +9032,12 @@ try {
 
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
+  // Reads only. readFileSync is the one other call allowed, and only because
+  // the server loads docs/digest.js once at boot to derive the free digest
+  // itself — a read of its own code, not of anybody's data.
   check('the claim that nothing is written to disk holds in server.js',
-    (serverSource.match(/fs\.\w+/g) || []).every(call => call === 'fs.readFile'),
+    (serverSource.match(/fs\.\w+/g) || []).every(call => call === 'fs.readFile' || call === 'fs.readFileSync') &&
+    (serverSource.match(/fs\.readFileSync/g) || []).length === 1,
     (serverSource.match(/fs\.\w+/g) || []).join(', '));
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
@@ -8978,6 +9175,11 @@ try {
 
   // A model told to send exactly one emoji will occasionally send a sentence.
   // Drive the real render path with a bad one rather than trusting the guard.
+  // The essence block it renders into is part of the written report, which
+  // this profile — a free card, from the allowance checks above — does not
+  // have until it is unlocked.
+  await explainStoredProfile(page);
+  await openAllSections(page);
   await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
     saved.report.essence.icon = 'a lighthouse, probably';
@@ -9826,7 +10028,11 @@ try {
 
   check('no console errors anywhere in the flow', consoleErrors.length === 0, consoleErrors.join(' | '));
 } catch (error) {
-  failures.push('threw: ' + error.message);
+  // Where in this file, as well as what: a timeout's message names the
+  // locator and nothing else, and this suite is ten thousand lines long.
+  const at = (String(error && error.stack).match(/uitest\.mjs:\d+/) || [''])[0];
+  if (process.env.UITEST_STACK) console.error(error && error.stack);
+  failures.push('threw: ' + error.message + (at ? ' (at ' + at + ')' : ''));
   if (shots) { try { await page.screenshot({ path: join(shotDir, 'failure.png'), fullPage: true }); } catch (e) { /* ignore */ } }
 } finally {
   await browser.close();

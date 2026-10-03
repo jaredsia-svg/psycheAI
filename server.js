@@ -42,6 +42,19 @@ const PREMIUM_PROVIDER = process.env.PSYCHEAI_PREMIUM_PROVIDER || 'gemini';
 const PREMIUM_ENGINES = { anthropic: claude, gemini };
 
 const ROOT = path.join(__dirname, 'docs');
+
+// The browser's digest module, loaded here so the free call's five-cent ceiling
+// is held where the money is spent. The free digest is derived on this side
+// from whatever the client sent — a client that posts its full digest, or a
+// padded one, gets exactly the card an honest client gets for exactly what an
+// honest client costs. Run as a script rather than required because it is a
+// browser file: it hangs itself off `globalThis` and exports nothing.
+const Digest = (() => {
+  const vm = require('node:vm');
+  const file = path.join(__dirname, 'docs', 'digest.js');
+  vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
+  return globalThis.PsycheDigest;
+})();
 const PORT = Number(process.env.PORT) || 3000;
 
 // How many free-report generations a reader gets before the app asks them to
@@ -362,17 +375,20 @@ function requirePremiumEngine(response) {
   return engine;
 }
 
-// The browser already caps and downscales, but the endpoint is open to anyone
-// who can reach it, so re-check the shape here rather than forwarding whatever
-// arrives to a metered API.
-// The free report, and the one route with two ways in.
+// The free summary card, the full report, and the one route with three ways in.
 //
-// Without payment it is free, and bounded only by the server-wide daily
-// ceiling in lib/budget.js. With a paymentIntentId or a promo code it is a
-// purchased re-run, verified against Stripe the same way the premium route
-// verifies its own, and it does *not* count against the free ceiling — the
-// reader has paid for that call, so a busy day must not take it away from
-// them after the charge cleared.
+// Without payment it is the card: conclusions only, from a free digest this
+// handler derives itself, held to FREE_COST_CAP. Bounded otherwise only by the
+// server-wide daily ceiling in lib/budget.js.
+//
+// With an 'analysis' payment or a promo code it is the same card, bought — a
+// re-run past the free allowance, verified against Stripe and not counted
+// against the free ceiling, because the reader has paid for that call.
+//
+// With an 'unlock' payment or a promo code it is the full report: every
+// explanation behind the card, written to explain the card the reader already
+// has (`anchor`) rather than to reach its own conclusions afresh. That is the
+// S$1.99 purchase, alongside the four sections on /api/premium-analysis.
 //
 // What this deliberately does NOT do is decide whose first run it is. That
 // would need the server to recognise a returning device, which is exactly
@@ -380,10 +396,10 @@ function requirePremiumEngine(response) {
 // per-device allowance is the browser's own claim, made in docs/app.js, and
 // what the server enforces is narrower and honest: a payment presented here
 // must be real, must be for the right product, and must not already have been
-// spent. See the README for the limits of that split.
+// spent — and the full report is never produced without one.
 async function handleAnalyse(request, response) {
   const body = await readJsonBody(request);
-  if (!body || typeof body.digest !== 'object' || body.digest === null) {
+  if (!body || typeof body.digest !== 'object' || body.digest === null || Array.isArray(body.digest)) {
     sendJson(response, 400, { error: 'Expected a "digest" object.' });
     return;
   }
@@ -393,11 +409,8 @@ async function handleAnalyse(request, response) {
   const paying = Boolean(promoCode || paymentIntentId);
 
   // Which purchase is being spent here. 'analysis' is the ordinary S$0.99
-  // re-run. 'unlock' is the S$1.99 premium purchase paying for the free
-  // report as well, which it does in exactly one case: the reader added a
-  // Google or Facebook export inside the unlock flow, so the paid sections
-  // are about to describe evidence the free ones above them have never seen.
-  // Refreshing them together is what that S$1.99 now buys.
+  // re-run of the free card. 'unlock' is the S$1.99 premium purchase, and it is
+  // the only thing that buys the full report.
   //
   // Naming the product cannot be used to pay less for more: verifyPaid checks
   // the retrieved PaymentIntent's amount against *this* product's price, so
@@ -406,6 +419,15 @@ async function handleAnalyse(request, response) {
   // retries.
   const product = body.product === 'unlock' ? 'unlock' : 'analysis';
   const ledgerKind = product === 'unlock' ? 'bundled' : 'analysis';
+  const full = product === 'unlock';
+
+  // The paywall itself. Before this, 'unlock' with no payment fell through to
+  // the free path, which was harmless while both produced the same report. Now
+  // it would hand the paid half of the product to anyone who typed the word.
+  if (full && !paying) {
+    sendJson(response, 402, { error: 'The full report is part of the premium unlock.' });
+    return;
+  }
 
   if (promoCode && !isValidPromoCode(promoCode)) {
     sendJson(response, 402, { error: 'That code is not valid.' });
@@ -436,16 +458,43 @@ async function handleAnalyse(request, response) {
     return;
   }
 
+  // What the model is actually sent, and under which cache key. The card is
+  // keyed on the free digest rather than the one posted, so two clients that
+  // posted different supersets of the same evidence share one card; the full
+  // report is keyed on the digest *and* the card it explains, so a report
+  // written to explain one card is never served to a reader holding another.
+  let kind;
+  let key;
+  let call;
+  if (full) {
+    const anchor = prompts.anchorFrom(body.anchor);
+    kind = 'analyse';
+    key = anchor ? Object.assign({}, body.digest, { anchor }) : body.digest;
+    call = engine => engine.analyseProfile(body.digest, anchor);
+  } else {
+    const freeDigest = Digest.forFree(body.digest);
+    // The backstop for the one thing forFree cannot bound by construction —
+    // the number of keys in the few objects it copies whole. An honest digest
+    // never gets here; the trim loop lands every real export under the line.
+    if (JSON.stringify(freeDigest).length > Digest.LIMITS.freeTotalChars) {
+      sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+      return;
+    }
+    kind = 'card';
+    key = freeDigest;
+    call = engine => engine.analyseCard(freeDigest);
+  }
+
   const engine = requireEngine(response);
   if (!engine) return;
 
-  // A report for this exact digest that finished minutes ago and never reached
-  // the reader, or one still being generated for it — see lib/results.js.
-  // Consulted before anything is spent: this is the same question already
-  // being answered, so it costs neither the day's budget nor the reader's
-  // payment a second time.
+  // A result for this exact question that finished minutes ago and never
+  // reached the reader, or one still being generated for it — see
+  // lib/results.js. Consulted before anything is spent: this is the same
+  // question already being answered, so it costs neither the day's budget nor
+  // the reader's payment a second time.
   const background = wantsBackground(body);
-  const answered = servedFromMemory(response, 'analyse', body.digest, background);
+  const answered = servedFromMemory(response, kind, key, background);
   if (answered) {
     await answered;
     return;
@@ -475,24 +524,24 @@ async function handleAnalyse(request, response) {
   // request returns as soon as the job exists, minutes before the model does.
   await generate(response, {
     background,
-    kind: 'analyse',
-    key: body.digest,
+    kind,
+    key,
     settle: release,
     produce: async () => {
-      const result = await engine.analyseProfile(body.digest);
+      const result = await call(engine);
 
       // What it cost, from what the provider reported. Recorded for every run
       // rather than only the free ones: the budget below meters free calls,
       // and a spend ledger that could not see the paid half would answer "what
       // does a run cost" with half the runs.
-      usage.record('analyse', result, paying);
+      usage.record(kind, result, paying);
 
       // Both recorded only after the call actually came back, so a provider
       // outage neither spends the day's budget nor burns the reader's payment.
       if (paying) {
         if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
       } else {
-        budget.record('analyse');
+        budget.record(kind);
       }
       return result;
     },
