@@ -385,10 +385,12 @@ function requirePremiumEngine(response) {
 // re-run past the free allowance, verified against Stripe and not counted
 // against the free ceiling, because the reader has paid for that call.
 //
-// With an 'unlock' payment or a promo code it is the full report: every
-// explanation behind the card, written to explain the card the reader already
-// has (`anchor`) rather than to reach its own conclusions afresh. That is the
-// S$1.99 purchase, alongside the four sections on /api/premium-analysis.
+// With an 'unlock' payment or a promo code it is the full premium report, in
+// one call: every explanation behind the card, written to explain the card the
+// reader already has (`anchor`) rather than to reach its own conclusions
+// afresh, plus the roast and the four premium sections. That is the S$1.99
+// purchase. /api/premium-analysis still answers for a page loaded before this
+// deployed, and for nothing else.
 //
 // What this deliberately does NOT do is decide whose first run it is. That
 // would need the server to recognise a returning device, which is exactly
@@ -468,9 +470,11 @@ async function handleAnalyse(request, response) {
   let call;
   if (full) {
     const anchor = prompts.anchorFrom(body.anchor);
-    kind = 'analyse';
+    // One call for everything the unlock buys: the written report and the
+    // four premium sections in a single response (FULL_SCHEMA).
+    kind = 'full';
     key = anchor ? Object.assign({}, body.digest, { anchor }) : body.digest;
-    call = engine => engine.analyseProfile(body.digest, anchor);
+    call = engine => engine.analyseFull(body.digest, anchor);
   } else {
     const freeDigest = Digest.forFree(body.digest);
     // The backstop for the one thing forFree cannot bound by construction —
@@ -485,7 +489,10 @@ async function handleAnalyse(request, response) {
     call = engine => engine.analyseCard(freeDigest);
   }
 
-  const engine = requireEngine(response);
+  // The full report is paid for, so it runs on the paid engine — the fixed
+  // choice PSYCHEAI_PREMIUM_PROVIDER names — the same as the premium sections
+  // always have. The card runs on whichever provider is active.
+  const engine = full ? requirePremiumEngine(response) : requireEngine(response);
   if (!engine) return;
 
   // A result for this exact question that finished minutes ago and never
@@ -573,7 +580,7 @@ async function handleCreatePaymentIntent(request, response) {
   // fallback to the cheaper one.
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
-  const label = product === 'analysis' ? 'PsycheAI — additional analysis' : 'PsycheAI — roast unlock';
+  const label = product === 'analysis' ? 'PsycheAI — additional analysis' : 'PsycheAI — full premium report';
   sendJson(response, 200, await payments.createPaymentIntent(label, product));
 }
 

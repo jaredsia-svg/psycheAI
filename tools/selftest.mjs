@@ -4829,16 +4829,18 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // copy of the real generation cap is a duplicated literal, same as
   // FIXED_INPUT_TOKENS above. Held to lib/gemini.js's own constant here so a
   // change to one alone silently under-costs the other.
-  check('the digest budget\'s output cap matches lib/gemini.js\'s real one',
-    Digest.MAX_OUTPUT_TOKENS === gemini.MAX_OUTPUT_TOKENS,
-    Digest.MAX_OUTPUT_TOKENS + ' vs ' + gemini.MAX_OUTPUT_TOKENS);
+  // The full digest is read by one call only now — the unlock's, which has its
+  // own cap — so that is the constant it is held to.
+  check('the digest budget\'s output cap matches the cap the unlock\'s one call really sends',
+    Digest.MAX_OUTPUT_TOKENS === gemini.FULL_MAX_OUTPUT_TOKENS,
+    Digest.MAX_OUTPUT_TOKENS + ' vs ' + gemini.FULL_MAX_OUTPUT_TOKENS);
 
   // The constant against the thing it is supposed to be measuring. digest.js
   // runs in the browser and cannot import lib/prompts.js, so nothing there can
   // catch this drifting — it went stale by nearly 3,000 tokens before anyone
   // noticed, which quietly bought a bigger digest than COST_CAP pays for.
   const fixedActual = Math.round(
-    (prompts.PROFILE_SYSTEM.length + JSON.stringify(prompts.PROFILE_SCHEMA).length) / CHARS_PER_TOKEN);
+    (prompts.FULL_SYSTEM.length + JSON.stringify(prompts.FULL_SCHEMA).length) / CHARS_PER_TOKEN);
   check('the fixed-prompt reserve is not smaller than the prompt actually sent',
     Digest.FIXED_INPUT_TOKENS >= fixedActual,
     Digest.FIXED_INPUT_TOKENS + ' reserved vs ' + fixedActual + ' real');
@@ -4869,8 +4871,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // And the cap was halved with the price, so the full call reads the same
   // evidence it always did. Left at $0.25 the ceiling would have quadrupled
   // for no reason except that a price was fixed.
-  check('the full-call cap was halved with the price, keeping the ceiling where it was',
-    Digest.COST_CAP === 0.125 && Digest.LIMITS.totalChars > 180000 && Digest.LIMITS.totalChars < 195000,
+  // $0.17 for the one call that writes the whole premium report — the written
+  // report and the four sections used to be two calls at up to $0.125 and
+  // about $0.115 — with the digest ceiling where it was.
+  check('the unlock\'s one call is capped at $0.17, keeping the digest ceiling where it was',
+    Digest.COST_CAP === 0.17 && Digest.LIMITS.totalChars > 175000 && Digest.LIMITS.totalChars < 195000,
     Digest.COST_CAP + ' -> ' + Digest.LIMITS.totalChars);
 }
 
@@ -4926,6 +4931,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const keyBefore = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = keyBefore || 'test-key';
     await gemini.analyseCard({ profile: {} });
+    const cardConfig = sentConfig;
+    await gemini.analyseFull({ profile: {} }, null);
+    const fullConfig = sentConfig;
+    sentConfig = cardConfig;
     process.env.GEMINI_API_KEY = keyBefore;
     if (keyBefore === undefined) delete process.env.GEMINI_API_KEY;
     gemini.__testing.reset();
@@ -4933,6 +4942,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       Boolean(sentConfig) && sentConfig.maxOutputTokens === gemini.CARD_MAX_OUTPUT_TOKENS &&
       sentConfig.thinkingConfig && sentConfig.thinkingConfig.thinkingLevel === 'HIGH',
       JSON.stringify(sentConfig && { max: sentConfig.maxOutputTokens, thinking: sentConfig.thinkingConfig }));
+    check('the unlock\'s one call sends the merged schema, its own cap, and the same HIGH thinking',
+      Boolean(fullConfig) && fullConfig.responseJsonSchema === prompts.FULL_SCHEMA &&
+      fullConfig.systemInstruction === prompts.FULL_SYSTEM &&
+      fullConfig.maxOutputTokens === gemini.FULL_MAX_OUTPUT_TOKENS &&
+      fullConfig.thinkingConfig.thinkingLevel === 'HIGH',
+      JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
     check('and asks for the card schema, under the card prompt',
       Boolean(sentConfig) && sentConfig.responseJsonSchema === prompts.FREE_SCHEMA &&
       (sentConfig.systemInstruction === prompts.FREE_SYSTEM));
@@ -4982,6 +4997,21 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     JSON.stringify({ dms: worstFree.directMessages.ownMessageSample.length, captions: worstFree.samples.captions.length }));
   check('and forFree leaves the full digest it was handed untouched',
     JSON.stringify(worstFull) === worstFullText);
+  // The browser sends the free digest and the server cuts it again; the second
+  // cut has to change nothing, or the card a reader's page asked for and the
+  // card the server cached would be read from two different digests.
+  const firstDiff = (x, y) => {
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if (x[i] !== y[i]) return x.slice(Math.max(0, i - 120), i + 60) + ' ≠ ' + y.slice(Math.max(0, i - 120), i + 60);
+    }
+    return 'same';
+  };
+  const recut = JSON.stringify(Digest.forFree(worstFree));
+  const heavyOnce = JSON.stringify(Digest.forFree(heavyWithDms));
+  const heavyTwice = JSON.stringify(Digest.forFree(Digest.forFree(heavyWithDms)));
+  check('cutting a free digest again changes nothing',
+    recut === worstFreeText && heavyTwice === heavyOnce,
+    firstDiff(worstFreeText, recut) + ' | ' + firstDiff(heavyOnce, heavyTwice));
   check('the same digest always gives the same free digest, so the card cache can find it',
     JSON.stringify(Digest.forFree(worstFull)) === worstFreeText);
 
@@ -5150,6 +5180,26 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     anchoredMock.mbti.type === 'ISTP' && anchoredMock.card.mbti === 'ISTP');
 }
 
+// ---------- the full premium report: one call ----------
+{
+  const full = prompts.FULL_SYSTEM;
+  check('the unlock\'s prompt is the whole profile prompt and the premium sections, in one',
+    full.includes('# The roast') && full.includes('# The four premium sections') &&
+    full.includes('# Hard limits for the four premium sections') &&
+    /wellness section is a behavioural read, not a health assessment/i.test(full));
+  check('and no longer tells either half that the other is a separate call it never sees',
+    !/separate paid pass/.test(full) && !/free half is already written/.test(full) &&
+    !/never sees this text/.test(full));
+  check('the merged schema asks for every field of both, and all of them are required',
+    Object.keys(prompts.PROFILE_SCHEMA.properties).concat(prompts.PREMIUM_KEYS)
+      .every(key => key in prompts.FULL_SCHEMA.properties && prompts.FULL_SCHEMA.required.includes(key)) &&
+    Boolean(prompts.FULL_SCHEMA.$defs && prompts.FULL_SCHEMA.$defs.point),
+    prompts.FULL_SCHEMA.required.join(','));
+  const merged = (await mock.analyseFull(digest, null)).data;
+  check('the mock\'s one call is shaped like the merged schema',
+    Object.keys(prompts.FULL_SCHEMA.properties).every(key => key in merged), Object.keys(merged).join(','));
+}
+
 // ---------- the routes: the card is free, the full report is not ----------
 //
 // Against a real server in a real subprocess, because what matters is what a
@@ -5227,9 +5277,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     JSON.stringify(routes.unpaid));
   check('and so is asking with a code that is not the code',
     Boolean(routes.wrongCode) && routes.wrongCode.status === 402, JSON.stringify(routes.wrongCode));
-  check('with a real code it is the full report, roast and all',
+  check('with a real code it is the full premium report in one response — roast, and all four sections',
     Boolean(routes.full) && routes.full.status === 200 && typeof data(routes.full).summary === 'string' &&
-    Boolean(data(routes.full).bonus), JSON.stringify(routes.full && routes.full.status));
+    Boolean(data(routes.full).bonus) && prompts.PREMIUM_KEYS.every(key => Boolean(data(routes.full)[key])),
+    JSON.stringify(routes.full && Object.keys(data(routes.full))));
   check('written to the card it was handed, not to a card of its own',
     data(routes.full).mbti && data(routes.full).mbti.type === 'ISTP' &&
     data(routes.full).bigFive.openness.score === 12,

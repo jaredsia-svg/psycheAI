@@ -348,7 +348,11 @@
   // what the tag is, that a difference in register across tags is a finding,
   // and the two readings the sample's shape does not support. Measured at
   // 22,953.
-  const FIXED_INPUT_TOKENS = 23200;
+  // Raised to 34,500 when the unlock became one call: the profile prompt and
+  // the premium prompt joined, the two schemas merged (FULL_SYSTEM and
+  // FULL_SCHEMA in lib/prompts.js). Measured at 33,125. It is the only call
+  // that reads this digest — the free card has its own reserve below.
+  const FIXED_INPUT_TOKENS = 34500;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to
@@ -366,7 +370,12 @@
   // characters and 18,000 buys 193,433. The heaviest realistic account measures
   // 159,305, so the caps still bind before the ceiling — but the margin went
   // from 30% to 18%, and tools/selftest.mjs holds it there deliberately.
-  const MAX_OUTPUT_TOKENS = 18000;
+  //
+  // 28,000 now, for the one call that writes the whole premium report: the
+  // written report and the four premium sections used to be two calls with
+  // 18,000 each, and are one response with this between them. A typical run
+  // spends about half of it. Held to lib/gemini.js's FULL_MAX_OUTPUT_TOKENS.
+  const MAX_OUTPUT_TOKENS = 28000;
 
   /**
    * The largest digest that keeps one analysis under `costCap`.
@@ -399,7 +408,14 @@
   // decided the paid call should read four times as much, but because a price
   // was fixed. Halving the cap keeps the evidence where it was at half the
   // money, which is the change that was actually wanted.
-  const COST_CAP = 0.125;
+  //
+  // Raised to $0.17 when the unlock became one call. The written report and
+  // the four premium sections used to cost up to $0.125 and about $0.115 as
+  // two calls over the same digest; as one they share a single digest and a
+  // single reading of it, so the same evidence costs $0.17 at most rather than
+  // $0.24. Every cent of the rise is the merged prompt and the larger output
+  // cap — the digest ceiling stays where it was, about 180,000 characters.
+  const COST_CAP = 0.17;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
@@ -1643,7 +1659,11 @@
     }
 
     restateShown(digest);
-    digest.coverage.digestChars = encoded.length;
+    // Measured after the restatement, not before it: a "shown" that went from
+    // 20 to 0 changes the length, and a size that described the draft rather
+    // than the digest is a size that is wrong by a few characters on exactly
+    // the accounts that were trimmed.
+    digest.coverage.digestChars = JSON.stringify(digest).length;
 
     return digest;
   }
@@ -1728,8 +1748,6 @@
     const out = {
       schema: 'psycheai-digest/1',
       profile: plain(d.profile) || {},
-      counts: plain(d.counts) || {},
-      rhythm: plain(d.rhythm) || {},
       samples: {
         // Spread across the list rather than its head: captions are sampled
         // by year, and the first seventy would be the most recent years only.
@@ -1757,6 +1775,11 @@
         sampling: plain(coverage.sampling) || {},
       },
     };
+    // Absent stays absent. A reader who unticked "Activity & timing" sent no
+    // counts and no rhythm, and an empty object in their place would read to
+    // the model as an account with nothing in it rather than as an opt-out.
+    if (plain(d.counts)) out.counts = d.counts;
+    if (plain(d.rhythm)) out.rhythm = d.rhythm;
     const dm = plain(d.directMessages);
     if (dm) {
       out.directMessages = {

@@ -961,8 +961,25 @@
    * conclusions are the better ones. Otherwise the card stays exactly as it
    * was — its QR payload included — and the writing is laid under it.
    */
+  // The four premium sections arrive in the same response as the written
+  // report, and are filed apart from it — under `premiumAnalysis`, where
+  // PAID_SECTIONS, unlockedSections and the PDF have always looked for them.
+  const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
+
   async function adoptFullReport(result, replaceCard) {
     if (!state.profile) return;
+    const written = Object.assign({}, result.data);
+    const premium = {};
+    for (const key of PREMIUM_KEYS) {
+      if (written[key]) premium[key] = written[key];
+      delete written[key];
+    }
+    if (Object.keys(premium).length) {
+      state.profile.premiumAnalysis = premium;
+      state.profile.premiumModel = result.model || '';
+      state.profile.premiumAt = new Date().toISOString();
+    }
+    result = Object.assign({}, result, { data: written });
     if (replaceCard) {
       state.profile.report = result.data;
       state.profile.card = Card.shape(result.data.card);
@@ -2536,7 +2553,17 @@
   // own row list, reused here so the category names and detail lines in this
   // table are read from the same place the checklist itself was, not typed
   // out a second time where they could drift.
-  function buildDigestPreviewHtml(rows, decision, preview) {
+  // `keptChars` is set for a free run: the size of the full digest this device
+  // keeps for a later unlock, which is not what this run sends and is said so,
+  // so a reader comparing this file to what they loaded is not left wondering
+  // where the rest went.
+  function buildDigestPreviewHtml(rows, decision, preview, keptChars) {
+    const sentKb = Math.max(1, Math.round(JSON.stringify(preview).length / 1000));
+    const sizeNote = keptChars
+      ? 'This is what the free summary card is read from: about ' + sentKb + ' KB. The fuller ' +
+        'digest built from the same data (about ' + Math.round(keptChars / 1000) + ' KB) stays on ' +
+        'this device and is sent only if you unlock the full premium report.'
+      : 'About ' + sentKb + ' KB.';
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
@@ -2564,6 +2591,7 @@
       '<h2>Full digest</h2>' +
       '<p class="muted">The exact object that is sent. Nothing accompanies it — no photographs, no ' +
       'files, nothing from your archive that is not written out below.</p>' +
+      '<p class="muted digest-size">' + esc(sizeNote) + '</p>' +
       '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
       '</body></html>';
   }
@@ -2597,6 +2625,14 @@
     // "send it to the model", never "and also pay for it" — a reader should
     // not discover a charge was coming after they already agreed to send.
     const paymentDue = Boolean(options && options.paymentDue);
+    // What this review is about to send. A free run — the summary card — sends
+    // the free digest, a fraction of the full one, and that is what every count
+    // below and the download describe. Only the unlock sends the full digest,
+    // and its reviews pass `full`. The checkboxes act on the full digest either
+    // way, because that is what is kept on this device for a later unlock.
+    const full = Boolean(options && options.full);
+    const fullDigest = digest;
+    digest = full ? fullDigest : Digest.forFree(fullDigest);
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
@@ -2762,9 +2798,11 @@
       // this writes is the digest and nothing else.
       const download = () => {
         const decision = currentDecision();
-        const preview = applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision);
+        const decided = applyReviewDecision(JSON.parse(JSON.stringify(fullDigest)), decision);
+        const preview = full ? decided : Digest.forFree(decided);
 
-        const html = buildDigestPreviewHtml(rows, decision, preview);
+        const html = buildDigestPreviewHtml(rows, decision, preview,
+          full ? null : JSON.stringify(decided).length);
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -3362,7 +3400,7 @@
     let decision;
     try {
       decision = await askReview(digest,
-        { paymentDue: alreadyUnlocked || mustPayForAnalysis() });
+        { paymentDue: alreadyUnlocked || mustPayForAnalysis(), full: alreadyUnlocked });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -3425,9 +3463,15 @@
   }
 
   async function runAnalysis(digest, auth) {
+    // The free run is the summary card, and it is sent the free digest — the
+    // full one stays on this device for an unlock. The server derives the same
+    // thing again from whatever it is sent, so this is not what holds the cost
+    // down; it is what keeps the rest of the evidence on the device until it
+    // is needed, and makes the size quoted here the size that left it.
+    const sent = Digest.forFree(digest);
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
-      'A ' + Math.round((digest.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
+      'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
       'analysis. It usually takes up to three minutes for the personality analysis to be ' +
       'completed. Please be patient.';
     startElapsed('Analysing');
@@ -3448,7 +3492,7 @@
     // the server already has an answer to.
     lastAttempt = { digest, auth };
     try {
-      const result = await LLM.analyseProfile(digest, auth || undefined,
+      const result = await LLM.analyseProfile(sent, auth || undefined,
         { onJob: key => rememberJob(key, 'analysis', auth) });
       await adoptProfile(result);
     } catch (error) {
@@ -3548,7 +3592,10 @@
     // a record missing what its kind requires is dropped rather than resumed
     // into a half-rendered screen.
     if (job.kind === 'compatibility' && !(job.other && state.profile)) { clearJob(); return false; }
-    if ((job.kind === 'premium' || job.kind === 'explain') && !state.profile) { clearJob(); return false; }
+    if ((job.kind === 'premium' || job.kind === 'full' || job.kind === 'explain') && !state.profile) {
+      clearJob();
+      return false;
+    }
 
     resuming = true;
     const comparing = job.kind === 'compatibility';
@@ -3571,13 +3618,14 @@
       const result = await LLM.resumeJob(job.key);
       clearJob();
       if (job.kind === 'premium') adoptPremium(result);
-      else if (job.kind === 'explain') {
-        // The written half of an unlock. The four sections are still owed, and
-        // the receipt already offers to fetch them; this only puts what came
-        // back under the card the reader has.
+      else if (job.kind === 'full' || job.kind === 'explain') {
+        // The unlock's one call: the written report and the four premium
+        // sections, laid under the card the reader has. ('explain' is the
+        // record a page from the previous deploy wrote for the same thing.)
         await adoptFullReport(result, Boolean(job.replaceCard));
         renderProfile();
         show('profile');
+        openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
       else await adoptProfile(result);
       return true;
@@ -4050,7 +4098,7 @@
     const lines = ['Analysed by ' + esc(profile.model || 'the model') + ' on ' +
       esc(new Date(profile.createdAt).toLocaleString()) + '.'];
     if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
-      lines.push('Premium sections analysed by ' + esc(profile.premiumModel) + ' on ' +
+      lines.push('Full premium report written by ' + esc(profile.premiumModel) + ' on ' +
         esc(new Date(profile.premiumAt).toLocaleString()) + '.');
     }
     $('#analysed-by').innerHTML = lines.join('<br>');
@@ -4799,7 +4847,7 @@
 
     // Payment is unconditionally the next step here — this review sits inside
     // the S$1.99 unlock itself, never reached without one due.
-    const decision = await askReview(enriched, { paymentDue: true });
+    const decision = await askReview(enriched, { paymentDue: true, full: true });
     // Escape or Back at the review drops the addition rather than the unlock:
     // they have seen what the extra data contains and declined to send it, so
     // the paid call proceeds on the digest it would have used anyway.
@@ -4892,119 +4940,61 @@
     // redraws the card from the new data as well rather than leaving that gap
     // and charging S$0.99 to close it.
     const dataChanged = Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
-    // The written report is the first half of what this purchase buys. Skipped
-    // on a retry that already has it, and on a profile saved before the card
-    // was split from its explanation — that reader has the writing already.
-    const needsExplain = dataChanged || !hasExplanations(state.profile);
-    let explained = false;
 
     startProgress();
     guardUnload(true);
     try {
-      // The full report goes first, deliberately. Whichever call runs second
-      // can fail with the first already delivered and nothing owed; and the
-      // full report is the bigger half of what was bought, so it is the half
-      // to have in hand soonest. A failure here delivers nothing yet, and the
-      // retry below covers both.
-      if (needsExplain) {
-        premiumStatus(dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumExplaining);
-        // The card the reader already has, for the server to sanitise and the
-        // model to explain. None when the data changed: a card read from less
-        // evidence is not one to hold a fuller report to.
-        const anchor = dataChanged ? null : (state.profile && (state.profile.freeReport || state.profile.report));
-        const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {});
-        // Recorded under its own kind, because collecting it is not the same as
-        // collecting a free card: it attaches to the profile on screen rather
-        // than replacing it. A page rejoining it gets the report and, from the
-        // receipt, the offer to fetch the four sections still owed.
-        //
-        // What a resumed one does *not* restore is promoting paidDigest into
-        // state.digest — paidDigest lives in this closure and is far too big to
-        // write into the job record beside a key. So a reader who closes the
-        // app during this specific half of a bundled refresh gets their
-        // report and a stored digest that still lacks the source they just
-        // added; the popout shows it unticked and asks for it again. That is
-        // worse than the unbroken path and better than losing the report.
-        const full = await LLM.analyseProfile(paidDigest, request,
-          { onJob: key => rememberJob(key, 'explain', auth, { replaceCard: dataChanged }) });
+      // One call for everything this purchase buys: the written report behind
+      // the card, the roast, and the four premium sections, in one response.
+      premiumStatus(dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumGenerating);
+      // The card the reader already has, for the server to sanitise and the
+      // model to explain. None when the data changed: a card read from less
+      // evidence is not one to hold a fuller report to.
+      const anchor = dataChanged ? null : (state.profile && (state.profile.freeReport || state.profile.report));
+      const request = Object.assign({}, bundledAuth(auth), anchor ? { anchor } : {});
+      // Recorded under its own kind, because collecting it is not the same as
+      // collecting a free card: it attaches to the profile on screen rather
+      // than replacing it.
+      //
+      // What a resumed one does *not* restore is promoting paidDigest into
+      // state.digest — paidDigest lives in this closure and is far too big to
+      // write into the job record beside a key. So a reader who closes the app
+      // during an unlock that added data gets their report and a stored digest
+      // that still lacks the source they just added; the popout shows it
+      // unticked and asks for it again. That is worse than the unbroken path
+      // and better than losing the report.
+      const full = await LLM.analyseProfile(paidDigest, request,
+        { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
 
-        // Committed the moment the call comes back, before the paid sections
-        // are even asked for. The extra data has bought something now — this
-        // report — so both it and the digest behind it are kept whatever
-        // happens next, and a retry sees the work already done rather than
-        // paying for it twice.
-        //
-        // Reads paidDigest, the snapshot taken before this await, rather than
-        // the shared pendingPremiumDigest variable again: premiumRunInFlight
-        // stops another call from touching it now, but reading the mutable
-        // variable here anyway would still be one stray future caller away
-        // from crashing on a null it was reset to while this await was
-        // pending.
-        if (dataChanged) {
-          const added = paidDigest.__addedSupplements;
-          delete paidDigest.__addedSupplements;
-          if (added && state.signals) state.signals.supplements = added;
-          state.digest = paidDigest;
-          writeDigest(paidDigest);
-          pendingPremiumDigest = null;
-          // A new card really was drawn, so it counts like any other run — see
-          // RUNS_KEY. It costs this reader nothing either way: they cannot
-          // reach an unlock without having run one already.
-          recordRun();
-        }
-        clearJob();
-        await adoptFullReport(full, dataChanged);
-        explained = true;
-      }
-
-      premiumStatus(TEXT.premiumGenerating);
-      // paidDigest, not state.digest directly: the refresh branch above sets
-      // state.digest to paidDigest the moment it promotes it, so the two
-      // already agree whenever that branch ran, and paidDigest is what to
-      // send when it did not — reading state.digest here would be wrong the
-      // moment this call reached here with an unpromoted digest still
-      // pending.
-      const result = await LLM.analysePremium(paidDigest, auth,
-        { onJob: key => rememberJob(key, 'premium', auth) });
-      adoptPremium(result);
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
-      // the re-run button that reads it — exactly as they were. False already
-      // whenever the refresh above ran, since that branch just set
-      // state.digest to this same paidDigest.
-      if (paidDigest !== state.digest) {
+      // the re-run button that reads it — exactly as they were.
+      //
+      // Reads paidDigest, the snapshot taken before the await, rather than the
+      // shared pendingPremiumDigest variable again: a reopened dialog resets
+      // that, and reading it here would be one stray caller away from a null.
+      if (dataChanged) {
         const added = paidDigest.__addedSupplements;
         delete paidDigest.__addedSupplements;
         if (added && state.signals) state.signals.supplements = added;
         state.digest = paidDigest;
         writeDigest(paidDigest);
+        pendingPremiumDigest = null;
+        // A new card really was drawn, so it counts like any other run — see
+        // RUNS_KEY. It costs this reader nothing either way: they cannot reach
+        // an unlock without having run one already.
+        recordRun();
       }
-      if (explained) {
-        // Every section changed, not just the paid ones, so the whole report
-        // is redrawn rather than having the paid bodies spliced into a page
-        // still showing the locked block. renderProfile renders
-        // the paid cards from state.profile.premiumAnalysis, which is set
-        // above, and calls renderAnalysedBy itself.
-        renderProfile();
-        // renderProfile shuts every section, this one included — and this is
-        // the one moment that is wrong, for the same reason revealPaid opens
-        // what it injects: the reader has just paid for these.
-        openPaidSections();
-      } else {
-        revealPaid(result.data);
-        // After revealPaid, not before: if injecting the sections themselves
-        // ever threw, the footer would otherwise have already started claiming
-        // Claude wrote sections the page does not show.
-        if (state.profile) renderAnalysedBy(state.profile);
-        // The confidence card's own re-run price note was written before this
-        // unlock — paidAnalysis() now returns four sections where it returned
-        // none, and the note has to say S$1.99 from this point on, not the
-        // S$0.99 it showed a moment ago. renderProfile (the explained
-        // branch above) already redraws this along with everything else, so
-        // this only has to happen on the path that skips it.
-        const sources = document.querySelector('.trust-sources');
-        if (sources) sources.outerHTML = sourcesUsedHtml();
-      }
+      clearJob();
+      await adoptFullReport(full, dataChanged);
+      // Every section changed, so the whole report is redrawn rather than
+      // having bodies spliced into a page still showing the locked block.
+      // renderProfile calls renderAnalysedBy and redraws the re-run price
+      // note, which says S$1.99 from this point on.
+      renderProfile();
+      // renderProfile shuts every section, and this is the one moment that is
+      // wrong: the reader has just paid for the four premium ones.
+      openPaidSections();
       dialog.close();
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumGenerationFailed, 'bad');
@@ -5056,7 +5046,7 @@
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
-      total: { label: 'PsycheAI roast unlock', amount: intent.amount },
+      total: { label: 'PsycheAI full premium report', amount: intent.amount },
       requestPayerName: false,
       requestPayerEmail: false,
     });

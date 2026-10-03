@@ -88,9 +88,9 @@ rather than how hard the model thinks about it. A free run returns the **summary
 character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
 card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
-sections are the **S$1.99 unlock**.
+sections are the **S$1.99 unlock: the full premium report**, written by **one** model call.
 
-**Two calls, one set of conclusions.**
+**Two calls in total, one set of conclusions.**
 
 - **The card call** (`analyseCard`, kind `card`) runs `FREE_SYSTEM` against `FREE_SCHEMA` in
   `lib/prompts.js`. `FREE_SYSTEM` is `PROFILE_SYSTEM` with only the writing sections cut out —
@@ -100,9 +100,15 @@ sections are the **S$1.99 unlock**.
   marker goes missing, so an edit to the main prompt cannot quietly leave the card prompt half-cut.
   Thinking stays at `HIGH`. The card is cheaper because it reads less and writes less, not because
   it thinks less.
-- **The full report** (`analyseProfile`, kind `analyse`) runs the unchanged `PROFILE_SYSTEM`. It is
-  handed the free card as an **anchor** and told to explain those conclusions rather than reach its
-  own. The browser then lays the card's labels back over what comes back (`overlayCard` in
+- **The full premium report** (`analyseFull`, kind `full`) runs `FULL_SYSTEM` against `FULL_SCHEMA`.
+  That is `PROFILE_SYSTEM` and `PREMIUM_SYSTEM` joined, with their schemas merged, so the written
+  report, the roast and the four premium sections come back in a single response. It used to be two
+  calls, and the four sections were written by a pass that never saw the report above them. The two
+  "this is written by a separate call" notes are rewritten to point down the same response, again on
+  marker text that throws if it goes missing. The browser files the four sections under
+  `premiumAnalysis`, where the page and the PDF have always looked for them. The call runs on the
+  paid engine (`PSYCHEAI_PREMIUM_PROVIDER`). It is handed the free card as an **anchor** and told to
+  explain those conclusions rather than reach its own. The browser then lays the card's labels back over what comes back (`overlayCard` in
   `docs/app.js`): type, letters, scores, character, and the order of the card's lists. The card a
   reader has seen, and may already have shared, therefore never changes when they pay. The writing
   under each label is the full report's own.
@@ -129,8 +135,12 @@ use. If card calls start failing on `MAX_TOKENS`, raise `CARD_MAX_OUTPUT_TOKENS`
 1,000 tokens added takes about 3,500 characters off the free digest, and the ceiling holds either
 way.
 
-**The server derives the free digest itself.** `server.js` loads `docs/digest.js` at boot and runs
-`Digest.forFree` on whatever it is posted. `forFree` does not prune a copy of the input. It builds a
+**What a free run sends is the free digest.** The browser still builds the full digest (about 180 KB
+on a heavy account with Google data) and keeps it on the device for the unlock. A free run sends
+`Digest.forFree` of it, and the review's counts and its download describe that, not the full one. The
+download says how big the full one is and that it stays behind. **The server cuts it again
+regardless.** `server.js` loads `docs/digest.js` at boot and runs `Digest.forFree` on whatever it is
+posted. Cutting twice changes nothing, which a check holds. `forFree` does not prune a copy of the input. It builds a
 new object out of the fields it knows and clamps every string in them, so unknown fields and
 padding never reach the model. Its own per-list caps (`FREE_LIMITS`) cut the lists: the reader's
 own messages and captions are kept, spread across the sample, while ranked lists are cut to their
@@ -140,14 +150,26 @@ which refuses the request with a 413. Honest exports never reach that check. The
 the free digest, so a re-run over the same evidence is answered from the card already made, at no
 cost.
 
+**The full premium report's ceiling is $0.17**, and the full digest stays where it was (about
+180,000 characters):
+
+| | tokens | at $0.75 / $3.75 per M |
+|---|---|---|
+| output cap (`FULL_MAX_OUTPUT_TOKENS`, report plus four sections plus thinking) | 28,000 | $0.1050 |
+| merged prompt plus schema (`FIXED_INPUT_TOKENS`, measured at 33,125) | 34,500 | $0.0259 |
+| full digest (`LIMITS.totalChars` ≈ 182,600 characters) | ≈ 52,200 | $0.0391 |
+
+The two calls it replaces could cost up to about $0.24 together, because each one paid for its own
+copy of the digest.
+
 **The paywall is enforced server-side, not just in the page.** `/api/analyse` with
 `product: 'unlock'` returns the full report only with a verified unlock PaymentIntent or a valid
 promo code, and refuses with a 402 otherwise. Before this change that request fell through to the
 free path, which was harmless while both paths produced the same report. With the split it would
-have given the paid half away. The unlock is always two calls on one authorisation. The anchored
-full report comes first (ledger kind `bundled`), then the four premium sections. Each is retried
-on its own, and a retry skips whichever half has already arrived. Profiles saved before the split
-already carry the whole report, and keep it.
+have given the paid half away. The unlock is one call on one authorisation (ledger kind
+`bundled`, three uses for retries). `/api/premium-analysis` still answers for pages loaded before
+this change and is otherwise unused. Profiles saved before the split already carry the whole
+report, and keep it.
 
 ### One free analysis, then S$0.99 — and what actually stops a runaway bill
 

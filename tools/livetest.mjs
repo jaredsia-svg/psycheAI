@@ -109,7 +109,8 @@ if (runFree) {
   check('and enough of a conclusion to anchor the full report to', Boolean(anchor));
 
   const started = Date.now();
-  const profile = await engine.analyseProfile(digest, anchor);
+  // The unlock's one call: written report and four premium sections together.
+  const profile = await engine.analyseFull(digest, anchor);
   console.log('  profile in ' + Math.round((Date.now() - started) / 1000) + 's, ' +
     profile.usage.inputTokens + ' input / ' + profile.usage.outputTokens + ' output tokens');
 
@@ -121,15 +122,15 @@ if (runFree) {
   if (typeof profile.usage.cachedTokens === 'number') {
     console.log('  cached input on this call: ' + profile.usage.cachedTokens + ' tokens' +
       (profile.usage.cachedTokens ? '' : ' (cold — the cache is created by this call)'));
-    const again = await engine.analyseProfile(digest);
+    const again = await engine.analyseFull(digest, anchor);
     const hit = again.usage.cachedTokens || 0;
     console.log('  second call cached: ' + hit + ' of ' + again.usage.inputTokens + ' input tokens' +
       (hit ? ' — cache is live' : ' — NOT being served from cache, worth investigating'));
   }
 
   report = profile.data;
-  check('every top-level section is present',
-    Object.keys(prompts.PROFILE_SCHEMA.properties).every(key => key in report),
+  check('every top-level section is present, the four premium ones included',
+    Object.keys(prompts.FULL_SCHEMA.properties).every(key => key in report),
     Object.keys(report).join(','));
   check('big five scores are in range',
     Object.values(report.bigFive).every(t => t.score >= 0 && t.score <= 100));

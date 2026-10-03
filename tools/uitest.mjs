@@ -111,8 +111,14 @@ async function explainStoredProfile(page) {
   await page.evaluate(async promo => {
     const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
     const digest = JSON.parse(localStorage.getItem('psycheai_digest'));
-    const full = await window.PsycheLLM.analyseProfile(digest,
-      { promoCode: promo, product: 'unlock', anchor: profile.report });
+    // No anchor: the app's own unlock sends one, and a request identical to
+    // it here would be answered from the server's cache later instead of
+    // running the job the unlock checks are watching. The mock writes the
+    // same conclusions either way.
+    const full = await window.PsycheLLM.analyseProfile(digest, { promoCode: promo, product: 'unlock' });
+    // The written report only. The four premium sections arrive in the same
+    // response, and are dropped so the checks that unlock them still can.
+    for (const key of ['wellness', 'attachment', 'idealPartner', 'careerAssessment']) delete full.data[key];
     profile.freeReport = profile.report;
     profile.report = full.data;
     profile.explained = true;
@@ -3424,6 +3430,18 @@ try {
   check('the file says plainly that nothing rides alongside the digest',
     /no photographs, no files/.test(html1) && !/data:image\//.test(html1),
     (/<p class="muted">The exact object[^<]*/.exec(html1) || ['none'])[0]);
+  // A free run sends the free digest, so that is what this file is — and it
+  // says so, with the size of the fuller one that stays behind. A reader who
+  // loaded a big export and got a small file should not have to guess why.
+  check('a free run\'s file is the free digest, and says the fuller one stays on this device',
+    /what the free summary card is read from: about \d+ KB/.test(html1) &&
+    /stays on this device and is sent only if you unlock the full premium report/.test(html1) &&
+    JSON.stringify(preview1).length <= await page.evaluate(() => window.PsycheDigest.LIMITS.freeTotalChars) &&
+    // The fixture is small enough that its full digest fits under the free
+    // ceiling too, so size alone cannot tell them apart. These two fields can:
+    // the full digest carries them and forFree never copies them.
+    preview1.generatedAt === undefined && preview1.coverage.sections === undefined,
+    (/<p class="muted digest-size">[^<]*/.exec(html1) || ['none'])[0]);
 
   await page.uncheck('#review-dms');
   await page.uncheck('#review-topics');
@@ -3539,7 +3557,7 @@ try {
   // a payment or a code, anchored to the card above. Stored the way the app
   // stores it, and the page reloaded onto it.
   await explainStoredProfile(page);
-  check('with a code, the server writes the full report the card is anchored to',
+  check('with a code, the server writes the full report, to the same conclusions as the card',
     await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
       return stored.explained === true && typeof stored.report.summary === 'string' &&
@@ -4956,7 +4974,7 @@ try {
       return document.activeElement === document.querySelector('#premium-promo-input');
     }));
   check('the unlock dialog opens with a title and a blurb naming all four sections',
-    /Unlock the full report/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Unlock the full premium report/.test(await page.locator('#premium-dialog-title').innerText()) &&
     /explains your whole card/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
     /mental wellness read, your attachment style, what partner truly suits you/i
@@ -5109,7 +5127,9 @@ try {
   // one request is deliberately slowed down, the standard way to make a
   // transient loading state observable without changing the app's own
   // timing for everyone else.
-  await page.route('**/api/premium-analysis', async route => {
+  // The unlock is one call to /api/analyse now — the written report and the
+  // four premium sections in one response — so that is the one held back.
+  await page.route('**/api/analyse', async route => {
     await new Promise(resolve => setTimeout(resolve, 700));
     await route.continue();
   });
@@ -5141,13 +5161,22 @@ try {
     const raw = localStorage.getItem('psycheai_job');
     return raw ? JSON.parse(raw) : null;
   }, null, { timeout: 30000 }).then(handle => handle.jsonValue()).catch(() => null);
-  check('the paid sections record a job of their own while they run',
-    Boolean(premiumJob) && premiumJob.kind === 'premium' &&
-    /^premium:[0-9a-f]{64}$/.test(premiumJob.key), JSON.stringify(premiumJob));
+  check('the unlock records a job of its own while it runs',
+    Boolean(premiumJob) && premiumJob.kind === 'full' &&
+    /^full:[0-9a-f]{64}$/.test(premiumJob.key), JSON.stringify(premiumJob));
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 10000 });
-  await page.unroute('**/api/premium-analysis');
+  await page.unroute('**/api/analyse');
   check('the progress bar is gone once the dialog closes',
     !(await page.locator('#premium-progress').isVisible()));
+  // The unlock redraws the whole report — its written sections are the new
+  // response's too — and a redraw arrives shut, bar the four just paid for.
+  // Everything below reads section bodies, so they are opened again here.
+  const shutAfterUnlock = await page.evaluate(() =>
+    [...document.querySelectorAll('#profile-body .section-card:not(.paid-card):not(.confidence-card)')]
+      .every(card => card.classList.contains('is-collapsed')));
+  check('the redrawn report arrives shut, the way every render does',
+    shutAfterUnlock);
+  await openAllSections(page);
   if (shots) await page.locator('#profile-body .ideal-partner-card').screenshot({ path: join(shotDir, '2c-premium-unlocked-crop.png') });
   const unlocked = await page.evaluate(() => {
     const card = document.querySelector('#profile-body .ideal-partner-card');
@@ -5306,7 +5335,7 @@ try {
       const p = JSON.parse(s); return JSON.stringify({ premiumModel: p.premiumModel, premiumAt: p.premiumAt });
     }));
   check('the footer grows a second line the moment the unlock succeeds, with no reload needed',
-    /^Analysed by mock on .+\nPremium sections analysed by mock on .+\.$/
+    /^Analysed by mock on .+\nFull premium report written by mock on .+\.$/
       .test((await page.locator('#analysed-by').innerText()).trim()),
     await page.locator('#analysed-by').innerText());
   check('the two lines are visually separate, not one run-on sentence',
@@ -5426,7 +5455,7 @@ try {
         /honest verdict on what kind of partner/i.test(card.innerText);
     }));
   check('and the two-line footer survives the reload with it',
-    /^Analysed by mock on .+\nPremium sections analysed by mock on .+\.$/
+    /^Analysed by mock on .+\nFull premium report written by mock on .+\.$/
       .test((await page.locator('#analysed-by').innerText()).trim()),
     await page.locator('#analysed-by').innerText());
 
@@ -5522,7 +5551,7 @@ try {
   const consoleErrors = [];
   const captureError = message => { if (message.type() === 'error') consoleErrors.push(message.text()); };
   page.on('console', captureError);
-  await page.route('**/api/premium-analysis', async route => {
+  await page.route('**/api/analyse', async route => {
     await new Promise(resolve => setTimeout(resolve, 800));
     await route.continue();
   });
@@ -5568,7 +5597,7 @@ try {
     return Boolean(profile && profile.premiumAnalysis);
   }, { timeout: 20000 });
   page.off('console', captureError);
-  await page.unroute('**/api/premium-analysis');
+  await page.unroute('**/api/analyse');
   check('the run closes the sheet itself once it lands, with no null-dereference crash',
     !consoleErrors.some(text => /__addedSupplements/.test(text)) &&
     !(await page.locator('#premium-dialog').isVisible()) &&
@@ -5585,6 +5614,7 @@ try {
       });
     }) && intentRequests === 0,
     intentRequests + ' create-payment-intent requests during recovery');
+  await openAllSections(page);
 
 
   // ---- the promo-code bypass, against the running server directly ----
@@ -6487,7 +6517,7 @@ try {
   // otherwise a reader who saves the PDF loses the one place that says a
   // second provider wrote the sections they paid for.
   check('the downloaded PDF also names both providers, not just the free one',
-    /Analysed by mock on/i.test(pdfProse) && /Premium sections analysed by mock on/i.test(pdfProse));
+    /Analysed by mock on/i.test(pdfProse) && /Full premium report written by mock on/i.test(pdfProse));
 
   // The other half of the rule, and the one that actually enforces the
   // paywall: build the same report with nothing unlocked and the section does
@@ -6892,6 +6922,14 @@ try {
   // instead of a held connection — it carries nothing about the reader, and
   // it sits beside the digest rather than inside it so the server's cache key
   // is untouched by it.
+  // The free run sends the free digest and keeps the full one: what left the
+  // device is exactly forFree of what was stored, not the stored digest.
+  check('a free run sends the free digest, and keeps the full one on the device',
+    await page.evaluate(sent => {
+      const stored = JSON.parse(localStorage.getItem('psycheai_digest'));
+      return JSON.stringify(window.PsycheDigest.forFree(stored)) === JSON.stringify(sent) &&
+        JSON.stringify(stored).length > JSON.stringify(sent).length;
+    }, sentBody.digest));
   check('the request carries a digest and nothing else',
     Object.keys(sentBody).every(k =>
       k === 'digest' || k === 'paymentIntentId' || k === 'promoCode' || k === 'background'),
@@ -6906,13 +6944,13 @@ try {
     !freeBodies[freeBodies.length - 1].includes('/9j/'));
   check('the whole request stays inside the server\'s limit',
     Buffer.byteLength(freeBodies[freeBodies.length - 1]) < 24 * 1024 * 1024);
-  // The unlock's request adds exactly two things: which product, and the card
-  // to explain — the model's own output coming back, not more evidence.
+  // The unlock's request adds at most two things: which product, and the card
+  // to explain — the model's own output coming back, not more evidence. (This
+  // one is the suite's own, unanchored; the app's anchor is checked where the
+  // app makes the call.)
   check('the unlock request adds only the product and the card it explains',
     Object.keys(unlockBody).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor'].includes(k)) &&
-    unlockBody.product === 'unlock' && unlockBody.anchor && unlockBody.anchor.card &&
-    unlockBody.anchor.summary === undefined,
+      'product', 'anchor'].includes(k)) && unlockBody.product === 'unlock',
     Object.keys(unlockBody).join(','));
   // Much smaller than it used to be — a dozen JPEGs were most of it.
   check('and is now a fraction of what it was when photographs rode along',
@@ -8303,7 +8341,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('the dialog names this as a full re-run rather than a first unlock',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your full analysis');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your full premium report');
   check('and says the charge regenerates everything, not just the paid sections',
     /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
@@ -8319,15 +8357,18 @@ try {
   // the request count actually landing is the only wait that means what it
   // says.
   await waitForLength(analyseBodies, analysesBeforeSend + 1, 60000);
-  await waitForLength(rerunPremiumBodies, 1, 60000);
+  await page.waitForTimeout(300);
   page.off('request', noteRerunPremium);
-  check('rerunning sends exactly one more free-report request, against the enriched digest',
-    analyseBodies.length === analysesBeforeSend + 1,
+  // One call regenerates the whole premium report — card, written report and
+  // the four sections — so there is exactly one request, and no second one to
+  // the old premium route.
+  check('rerunning sends exactly one request for the whole premium report, against the enriched digest',
+    analyseBodies.length === analysesBeforeSend + 1 &&
+    Boolean(JSON.parse(analyseBodies[analyseBodies.length - 1]).digest.facebook),
     (analyseBodies.length - analysesBeforeSend) + ' new requests');
-  check('and exactly one premium request, against the same enriched digest',
-    rerunPremiumBodies.length === 1 && Boolean(rerunPremiumBodies[0].digest.facebook),
-    JSON.stringify({ count: rerunPremiumBodies.length, facebook: Boolean(rerunPremiumBodies[0] && rerunPremiumBodies[0].digest.facebook) }));
-  check('both requests were authorised by the same unlock-tier charge, not a second S$0.99',
+  check('and no separate premium request at all',
+    rerunPremiumBodies.length === 0, String(rerunPremiumBodies.length));
+  check('it was authorised by the unlock-tier charge, not a second S$0.99',
     JSON.parse(analyseBodies[analyseBodies.length - 1]).product === 'unlock' &&
     !JSON.parse(analyseBodies[analyseBodies.length - 1]).promoCode,
     analyseBodies[analyseBodies.length - 1]);
@@ -8427,7 +8468,12 @@ try {
   }, { timeout: 40000 });
   page.off('request', notePremium);
 
-  const enrichedPaidBody = premiumBodies[premiumBodies.length - 1];
+  // One call: the request that wrote the premium sections is the same one that
+  // wrote the report, and nothing goes to the old premium route.
+  check('the unlock makes one call for everything, not a second one for the premium sections',
+    premiumBodies.length === 0, String(premiumBodies.length));
+  await waitForLength(analyseBodies, 1, 40000);
+  const enrichedPaidBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   check('the paid call is made against the enriched digest',
     Boolean(enrichedPaidBody.digest.google),
     JSON.stringify(Object.keys(enrichedPaidBody.digest)));
@@ -8560,7 +8606,10 @@ try {
   check('an unlock with no data added asks once for the full report, anchored to the card',
     bareBodies.length === 1 && bareBodies[0].product === 'unlock' &&
     bareBodies[0].promoCode === UITEST_PROMO &&
-    bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type,
+    bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
+    Boolean(bareBodies[0].anchor.card) && bareBodies[0].anchor.summary === undefined &&
+    Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
+      'product', 'anchor'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
   const afterBareUnlock = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')));
   check('and the card the reader had is the card they keep',

@@ -1505,7 +1505,7 @@
     // that unlocked before this pair existed prints the one line it always
     // had rather than a line naming a model with no date, or vice versa.
     if (stamp.premiumModel && stamp.premiumDate) {
-      out.fineprint('Premium sections analysed by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
+      out.fineprint('Full premium report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
 
     // Last, because it is the only block whose content depends on the whole
