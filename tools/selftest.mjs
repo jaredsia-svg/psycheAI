@@ -4814,8 +4814,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // The `images * 258` term came out with the photographs. Its absence is the
   // whole of what the removal bought: the same cap now pays for 12,642 more
   // characters of text, which the ceiling check below reads directly.
+  // Rates read off the digest's own table rather than typed here. These used
+  // to be literals — $1.50 and $7.50 — and they were wrong by a factor of two
+  // for as long as they existed, in step with the table they were checking,
+  // so the arithmetic agreed with itself and neither agreed with the bill. The
+  // rates are pinned to the real numbers once, separately, below.
+  const IN_RATE = Digest.PRICING.inputPerToken;
+  const OUT_RATE = Digest.PRICING.outputPerToken;
   const worstCost = ((Digest.LIMITS.totalChars / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS)
-    * (1.50 / 1e6) + Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6);
+    * IN_RATE + Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
   check('a full digest plus maximum output stays under the cap',
     worstCost <= Digest.COST_CAP + 1e-6, '$' + worstCost.toFixed(4) + ' vs $' + Digest.COST_CAP.toFixed(2));
   // digest.js cannot require() lib/gemini.js — it runs in the browser — so its
@@ -4841,15 +4848,30 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the budget is not needlessly conservative either',
     worstCost > Digest.COST_CAP - 0.01, '$' + worstCost.toFixed(4));
   check('a tighter cap buys a smaller digest', Digest.charBudget(0.25) < Digest.charBudget(0.50));
-  check('a cap below the worst-case output alone buys nothing', Digest.charBudget(0.10) === 0);
+  check('a cap below the worst-case output alone buys nothing',
+    Digest.charBudget(Digest.MAX_OUTPUT_TOKENS * OUT_RATE - 0.001) === 0);
   // What dropping the photographs actually bought, stated as a number rather
   // than asserted in a comment: 14 images at 258 tokens each, times 3.5 chars
   // per token. If someone reinstates an image reserve, this is what fails.
   check('the freed image reserve really did go back to the text budget',
     Digest.charBudget(Digest.COST_CAP) ===
-      Math.floor((((Digest.COST_CAP - Digest.MAX_OUTPUT_TOKENS * (7.50 / 1e6)) / (1.50 / 1e6))
+      Math.floor((((Digest.COST_CAP - Digest.MAX_OUTPUT_TOKENS * OUT_RATE) / IN_RATE)
         - Digest.FIXED_INPUT_TOKENS) * CHARS_PER_TOKEN),
     String(Digest.charBudget(Digest.COST_CAP)));
+  // The price itself, pinned once. $0.75 in and $3.75 out per million for
+  // both Flash models, confirmed as what Google charges. Every cost number in
+  // the app derives from these two figures, so a change to them is a decision
+  // and should fail here rather than flow silently into every ceiling.
+  check('Flash is priced at $0.75 in and $3.75 out per million tokens',
+    Object.values(Digest.MODEL_RATES).every(r =>
+      Math.abs(r.inputPerToken * 1e6 - 0.75) < 1e-9 && Math.abs(r.outputPerToken * 1e6 - 3.75) < 1e-9),
+    JSON.stringify(Digest.MODEL_RATES));
+  // And the cap was halved with the price, so the full call reads the same
+  // evidence it always did. Left at $0.25 the ceiling would have quadrupled
+  // for no reason except that a price was fixed.
+  check('the full-call cap was halved with the price, keeping the ceiling where it was',
+    Digest.COST_CAP === 0.125 && Digest.LIMITS.totalChars > 180000 && Digest.LIMITS.totalChars < 195000,
+    Digest.COST_CAP + ' -> ' + Digest.LIMITS.totalChars);
 }
 
 // ---------- the spend ledger ----------

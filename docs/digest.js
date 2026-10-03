@@ -211,19 +211,22 @@
   // pricier model without them moving too hands back a ceiling that quietly
   // breaks the $0.25 cap rather than failing loudly.
   //
-  // These are the **standard** rates for both models, and for 3.8 that is
-  // deliberate rather than lazy. As of September 2026 gemini-3.8-flash is
-  // being sold at an introductory $0.75/$3.75 until 31 December 2026, after
-  // which it goes to the $1.50/$7.50 below — the same rates 3.7 charges today.
-  // Budgeting at the introductory price would roughly double the digest
-  // ceiling now and then break the cost cap on 1 January 2027, with nothing to
-  // announce it; budgeting at the standard price means the ceiling is correct
-  // then and merely conservative until then, which is the safe direction to be
-  // wrong in. It also means the two models are interchangeable as far as this
-  // budget is concerned, so switching between them changes no other number.
+  // $0.75 in and $3.75 out per million, for both models, confirmed as what
+  // Google actually charges and treated as permanent.
+  //
+  // These read $1.50 and $7.50 for a long time, on the belief that $0.75/$3.75
+  // was an introductory price on 3.8 that would end on 31 December and that
+  // budgeting at the higher figure was the safe direction to be wrong in. It
+  // was wrong in a direction with a cost of its own: every figure derived from
+  // here — the digest ceiling, the cost cap, `npm run usage` — was out by a
+  // factor of two, and the free tier was designed against a price nobody was
+  // paying. If the price does move, these two lines and lib/usage.js's RATES
+  // are what change, and a check in tools/selftest.mjs fails until both agree.
+  // The two models are still priced the same, so switching between them
+  // changes no other number.
   const MODEL_RATES = {
-    'gemini-3.8-flash': { inputPerToken: 1.50 / 1e6, outputPerToken: 7.50 / 1e6 },
-    'gemini-3.7-flash': { inputPerToken: 1.50 / 1e6, outputPerToken: 7.50 / 1e6 },
+    'gemini-3.8-flash': { inputPerToken: 0.75 / 1e6, outputPerToken: 3.75 / 1e6 },
+    'gemini-3.7-flash': { inputPerToken: 0.75 / 1e6, outputPerToken: 3.75 / 1e6 },
   };
 
   // The other half of the switch in lib/gemini.js. Both lines have to move
@@ -382,7 +385,17 @@
     return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
   }
 
-  const COST_CAP = 0.25;
+  // The most one *full* analysis may cost — the paid, explained report, which
+  // is the only call that now sees the whole digest. The free call has a cap of
+  // its own, FREE_COST_CAP below, and a much smaller digest to go with it.
+  //
+  // Halved from $0.25 when the rates above were corrected to half what they
+  // used to say. Left at $0.25, the ceiling this derives would have jumped
+  // from about 188,000 characters to about 770,000 — not because anybody
+  // decided the paid call should read four times as much, but because a price
+  // was fixed. Halving the cap keeps the evidence where it was at half the
+  // money, which is the change that was actually wanted.
+  const COST_CAP = 0.125;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
