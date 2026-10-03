@@ -85,14 +85,14 @@ let compat = null;
 if (runFree) {
   console.log('Provider: ' + status.provider + ' · model: ' + status.model);
   console.log('Sending a ' + digest.coverage.digestChars + '-char digest…');
-  // The free run first: the card alone, on the digest the server derives.
+  // The free run first: the card alone, on the same digest the unlock reads.
   // This is the only place the five-cent ceiling meets a real model — the
   // suites prove the arithmetic, and this says what the thinking actually
   // spent and whether the output cap left the card room to finish.
   const D = globalThis.PsycheDigest;
-  const freeDigest = D.forFree(digest);
+  const sent = D.forModel(digest);
   const cardStarted = Date.now();
-  const cardRun = await engine.analyseCard(freeDigest);
+  const cardRun = await engine.analyseCard(sent);
   const cardCost = cardRun.usage.inputTokens * D.PRICING.inputPerToken +
     cardRun.usage.outputTokens * D.PRICING.outputPerToken;
   console.log('  card in ' + Math.round((Date.now() - cardStarted) / 1000) + 's, ' +
@@ -110,7 +110,7 @@ if (runFree) {
 
   const started = Date.now();
   // The unlock's one call: written report and four premium sections together.
-  const profile = await engine.analyseFull(digest, anchor);
+  const profile = await engine.analyseFull(sent, anchor);
   console.log('  profile in ' + Math.round((Date.now() - started) / 1000) + 's, ' +
     profile.usage.inputTokens + ' input / ' + profile.usage.outputTokens + ' output tokens');
 
@@ -122,7 +122,7 @@ if (runFree) {
   if (typeof profile.usage.cachedTokens === 'number') {
     console.log('  cached input on this call: ' + profile.usage.cachedTokens + ' tokens' +
       (profile.usage.cachedTokens ? '' : ' (cold — the cache is created by this call)'));
-    const again = await engine.analyseFull(digest, anchor);
+    const again = await engine.analyseFull(sent, anchor);
     const hit = again.usage.cachedTokens || 0;
     console.log('  second call cached: ' + hit + ' of ' + again.usage.inputTokens + ' input tokens' +
       (hit ? ' — cache is live' : ' — NOT being served from cache, worth investigating'));

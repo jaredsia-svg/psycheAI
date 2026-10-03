@@ -83,14 +83,15 @@ here is the *gate*, not the ability to ever ask again.
 
 ### The free run is the summary card; everything that explains it is the unlock
 
-**The free tier costs at most US$0.05 a run**, and it gets there by changing what the free run is
+**The free tier costs at most US$0.06 a run**, and it gets there by changing what the free run is
 rather than how hard the model thinks about it. A free run returns the **summary card** — the
 character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
 card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
 sections are the **S$1.99 unlock: the full premium report**, written by **one** model call.
 
-**Two calls in total, one set of conclusions.**
+**Two calls in total, one digest, one set of conclusions.** Both calls read the same digest — the
+same file, byte for byte — so the only difference between them is what they are asked to write.
 
 - **The card call** (`analyseCard`, kind `card`) runs `FREE_SYSTEM` against `FREE_SCHEMA` in
   `lib/prompts.js`. `FREE_SYSTEM` is `PROFILE_SYSTEM` with only the writing sections cut out —
@@ -98,8 +99,8 @@ sections are the **S$1.99 unlock: the full premium report**, written by **one** 
   preamble saying this call writes conclusions only. The scoring rules are kept, so the card is
   reached by the same reasoning the full report uses. Each cut is made on marker text and throws if a
   marker goes missing, so an edit to the main prompt cannot quietly leave the card prompt half-cut.
-  Thinking stays at `HIGH`. The card is cheaper because it reads less and writes less, not because
-  it thinks less.
+  Thinking stays at `HIGH`. The card is cheaper because it writes less, not because it reads less
+  or thinks less.
 - **The full premium report** (`analyseFull`, kind `full`) runs `FULL_SYSTEM` against `FULL_SCHEMA`.
   That is `PROFILE_SYSTEM` and `PREMIUM_SYSTEM` joined, with their schemas merged, so the written
   report, the roast and the four premium sections come back in a single response. It used to be two
@@ -108,7 +109,8 @@ sections are the **S$1.99 unlock: the full premium report**, written by **one** 
   marker text that throws if it goes missing. The browser files the four sections under
   `premiumAnalysis`, where the page and the PDF have always looked for them. The call runs on the
   paid engine (`PSYCHEAI_PREMIUM_PROVIDER`). It is handed the free card as an **anchor** and told to
-  explain those conclusions rather than reach its own. The browser then lays the card's labels back over what comes back (`overlayCard` in
+  explain those conclusions rather than reach its own — conclusions reached from the same evidence
+  it is reading. The browser then lays the card's labels back over what comes back (`overlayCard` in
   `docs/app.js`): type, letters, scores, character, and the order of the card's lists. The card a
   reader has seen, and may already have shared, therefore never changes when they pay. The writing
   under each label is the full report's own.
@@ -117,50 +119,39 @@ The anchor is client-sent, so `anchorFrom` rebuilds it field by field before it 
 Every field is bounded, angle brackets and control characters are stripped, scores are clamped to
 0–100, and an anchor with no type and no scores counts as no anchor. The one case that runs
 **without** an anchor is a reader who added Google or Facebook data on the way to paying. That
-card was read from less evidence than the report is, so the report reaches its own conclusions and
-the card is redrawn from them.
+card was read from a digest without that source, so the report reaches its own conclusions and the
+card is redrawn from them.
 
-**Where five cents comes from.** It uses the same worst-case arithmetic as the full call's
-`COST_CAP`, with its own three numbers in `docs/digest.js`:
+**One digest of 80,000 characters.** `DIGEST_CHARS` in `docs/digest.js` is the decision; both cost
+ceilings follow from it. The per-list caps are sized so a heavy account lands near it through the
+caps themselves — 200 captions, 180 of their own messages from their ten main conversations, 60
+comments, 25 liked captions, 100 topics, 50 ad interests — with the trim loop as the backstop for
+the account that is heavy everywhere at once. At $0.75 / $3.75 per million tokens, worst case:
 
-| | tokens | at $0.75 / $3.75 per M |
+| | free card | full premium report |
 |---|---|---|
-| output cap (`FREE_MAX_OUTPUT_TOKENS`, card plus HIGH thinking) | 8,000 | $0.0300 |
-| card prompt plus schema (`FREE_FIXED_INPUT_TOKENS`, measured at 16,655) | 16,900 | $0.0127 |
-| free digest (`LIMITS.freeTotalChars` ≈ 34,000 characters) | ≈ 9,800 | $0.0073 |
+| output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
+| prompt plus schema | 16,900 → $0.0127 | 34,500 → $0.0259 |
+| the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
+| **at most** | **$0.0598** (`FREE_COST_CAP` $0.06) | **$0.1480** (`COST_CAP` $0.15) |
 
-The output cap is the number to tune, and `npm run usage` reports how much of it real card calls
-use. If card calls start failing on `MAX_TOKENS`, raise `CARD_MAX_OUTPUT_TOKENS` in
-`lib/gemini.js` and `FREE_MAX_OUTPUT_TOKENS` together. A selftest check holds the two equal. Each
-1,000 tokens added takes about 3,500 characters off the free digest, and the ceiling holds either
-way.
+A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
+digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.
+Each 10,000 characters added to the digest costs each call about $0.002. The free card's output cap
+is the number to tune, and `npm run usage` reports how much of it real card calls use; if card calls
+fail on `MAX_TOKENS`, raise `CARD_MAX_OUTPUT_TOKENS` in `lib/gemini.js` and `FREE_MAX_OUTPUT_TOKENS`
+together (a check holds them equal).
 
-**What a free run sends is the free digest.** The browser still builds the full digest (about 180 KB
-on a heavy account with Google data) and keeps it on the device for the unlock. A free run sends
-`Digest.forFree` of it, and the review's counts and its download describe that, not the full one. The
-download says how big the full one is and that it stays behind. **The server cuts it again
-regardless.** `server.js` loads `docs/digest.js` at boot and runs `Digest.forFree` on whatever it is
-posted. Cutting twice changes nothing, which a check holds. `forFree` does not prune a copy of the input. It builds a
-new object out of the fields it knows and clamps every string in them, so unknown fields and
-padding never reach the model. Its own per-list caps (`FREE_LIMITS`) cut the lists: the reader's
-own messages and captions are kept, spread across the sample, while ranked lists are cut to their
-heads. The trim loop then backstops the result to `freeTotalChars`. The one thing construction
-cannot bound — the number of keys inside the few objects copied whole — is caught by a size check,
-which refuses the request with a 413. Honest exports never reach that check. The card is cached on
-the free digest, so a re-run over the same evidence is answered from the card already made, at no
-cost.
-
-**The full premium report's ceiling is $0.17**, and the full digest stays where it was (about
-180,000 characters):
-
-| | tokens | at $0.75 / $3.75 per M |
-|---|---|---|
-| output cap (`FULL_MAX_OUTPUT_TOKENS`, report plus four sections plus thinking) | 28,000 | $0.1050 |
-| merged prompt plus schema (`FIXED_INPUT_TOKENS`, measured at 33,125) | 34,500 | $0.0259 |
-| full digest (`LIMITS.totalChars` ≈ 182,600 characters) | ≈ 52,200 | $0.0391 |
-
-The two calls it replaces could cost up to about $0.24 together, because each one paid for its own
-copy of the digest.
+**What leaves the device is `Digest.forModel` of the reviewed digest**, for the free run and the
+unlock alike, and the review's download is that same object; it says both calls read it. **The
+server applies it again regardless.** `server.js` loads `docs/digest.js` at boot and runs
+`Digest.forModel` on whatever it is posted, for both calls. Applying it twice changes nothing, which a
+check holds. It does not prune a copy of the input: it builds a new object out of the fields it knows
+and clamps every string in them, so unknown fields and padding never reach the model, and the trim
+loop brings anything over the line back under it. The one thing construction cannot bound — the
+number of keys inside the few objects copied whole — is caught by a size check, which refuses the
+request with a 413. Honest exports never reach that check. The card is cached on what was sent, so a
+re-run over the same evidence is answered from the card already made, at no cost.
 
 **The paywall is enforced server-side, not just in the page.** `/api/analyse` with
 `product: 'unlock'` returns the full report only with a verified unlock PaymentIntent or a valid
@@ -180,7 +171,7 @@ because only one of them is enforcement.
 
 **The daily ceiling is the enforcement** (`lib/budget.js`). A server-wide count
 of free calls per UTC day, refusing past `PSYCHEAI_DAILY_FREE_LIMIT` (default
-200 — sized against `FREE_COST_CAP`, so roughly US$10/day even if every run were
+200 — sized against `FREE_COST_CAP`, so roughly US$12/day even if every run were
 pathological). It applies to `/api/analyse`, and paid calls skip it entirely: a
 busy day must not take away a run somebody has already been charged for.
 `/api/compatibility` used to draw on it too and no longer does, because it is

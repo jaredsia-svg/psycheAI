@@ -12,13 +12,16 @@
   //
   // These were raised 4x after measuring a real export: the per-section caps
   // were binding at roughly a fifth of the total budget, so the model was
-  // seeing far less than it could have. Both providers have a 1M-token
-  // context, so a digest this size is still comfortable — a heavy account
-  // lands around 150KB, which is well inside it.
+  // seeing far less than it could have. They have since come back down, to
+  // size one 80,000-character digest that the free card and the full premium
+  // report both read — see DIGEST_CHARS.
   const LIMITS = {
     // Captions, drawn per year rather than from one pile — see sampleCaptions
     // for why, and for what the old rule was actually spending its budget on.
-    captions: 560,
+    // 200 since the free card and the full report started reading one shared
+    // 80,000-character digest — see DIGEST_CHARS. Captions and messages are
+    // most of any real digest, so these two caps are what size it.
+    captions: 200,
     // No single year may take more than a quarter of the sample. The old rule
     // gave the newest year 43% of the places on a measured fourteen-year
     // archive, and the first seven years 54 between them.
@@ -37,11 +40,11 @@
     // is left, the same complementary split the message sampler uses.
     captionRecentShare: 0.5,
     // The floor a caption must clear. Higher than the four characters every
-    // other text list uses, because the caption cap binds hard — 560 places
+    // other text list uses, because the caption cap binds hard — 200 places
     // against 3,800 captions on a heavy account — and a slot spent on an emoji
     // or a one-word story overlay is a slot not spent on a sentence.
     captionChars: 30,
-    comments: 360,
+    comments: 60,
     // The floor a comment has to clear. Thirty, the same as a caption, and for
     // the same reason: the cap binds and a slot spent on "nice one" is a slot
     // not spent on a sentence. Comments used to run on the default four, which
@@ -50,7 +53,7 @@
     commentChars: 30,
     // Messages, drawn per conversation rather than from one pile — see
     // sampleMessages for how the places are shared out and why.
-    messages: 300,
+    messages: 180,
     // Only the ten conversations they use most. Everything below that is the
     // one-off end of an inbox: a reply to a stranger, a delivery courier, a
     // group somebody was added to once. Those messages are real but they are
@@ -111,7 +114,10 @@
     // archive. The randomness inside the window is what stops fifty places
     // going to a fortnight — a heavy month would otherwise fill the sample
     // and read as a year.
-    likedCaptions: 50,
+    // 25 since the shared 80,000-character digest: at about 260 characters
+    // each these are the most expensive items in it, and they are not the
+    // reader's own words.
+    likedCaptions: 25,
     // Twelve months, anchored to their newest liked post rather than to the
     // clock. Anchoring to the clock would empty this for anyone dormant for a
     // year, and worse, would move the sample every day — the result cache keys
@@ -132,8 +138,8 @@
     // twenty — and a save is if anything the stronger signal per item, since it
     // is something somebody meant to come back to.
     savedAuthors: 15,
-    topics: 400,
-    adInterests: 400,
+    topics: 100,
+    adInterests: 50,
     // The ceiling on one caption, past which it is clipped rather than
     // dropped. Set to 400 for a while, on the reasoning that a 400-character
     // caption is already several paragraphs. Back to 600 because the reasoning
@@ -398,9 +404,9 @@
     return Math.max(0, Math.floor(forDigest * CHARS_PER_TOKEN));
   }
 
-  // The most one *full* analysis may cost — the paid, explained report, which
-  // is the only call that now sees the whole digest. The free call has a cap of
-  // its own, FREE_COST_CAP below, and a much smaller digest to go with it.
+  // The most one *full* analysis may cost — the paid full premium report. The
+  // free card reads the same digest and has a cap of its own, FREE_COST_CAP
+  // below, because it writes so much less.
   //
   // Halved from $0.25 when the rates above were corrected to half what they
   // used to say. Left at $0.25, the ceiling this derives would have jumped
@@ -415,7 +421,11 @@
   // single reading of it, so the same evidence costs $0.17 at most rather than
   // $0.24. Every cent of the rise is the merged prompt and the larger output
   // cap — the digest ceiling stays where it was, about 180,000 characters.
-  const COST_CAP = 0.17;
+  //
+  // $0.15 since the free card and the full report read one shared 80,000-
+  // character digest: the cap no longer sizes the digest, it states what the
+  // full call can cost with it — see DIGEST_CHARS below.
+  const COST_CAP = 0.15;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
@@ -439,80 +449,51 @@
   // not just the first. That is the trade: fewer pictures, more words, and one
   // kind of report instead of two.
 
-  // One digest, one ceiling, derived from the price rather than typed.
+  // ---------- one digest, read by both calls ----------
   //
-  // This used to be a `DEPTHS` map with `standard` and `comprehensive`
-  // entries — two sets of per-source caps and two `totalChars` values, chosen
-  // by a depth picker between the supplement offer and the review. The picker
-  // was removed (comprehensive had never gone on sale, so it was a question
-  // with one available answer), and for a while the second set of caps was
-  // kept on the reasoning that putting the feature on sale should mean adding
-  // a way to choose it rather than rebuilding it.
+  // The free summary card and the full premium report read the same digest —
+  // the same file, byte for byte, not a cut-down copy for the card. Two
+  // digests meant two readings of different evidence, and a card whose
+  // conclusions the fuller evidence might not have reached; one digest means
+  // the only difference between the two calls is what they are asked to
+  // write. Its size is the decision, typed rather than derived, and the two
+  // cost ceilings below follow from it.
   //
-  // That reasoning did not survive contact with the cost work: an unreachable
-  // second budget is a second number everyone has to reason about, and it was
-  // actively misleading — two budget checks fired against `comprehensive`
-  // during the wellness and career-coaching changes, describing headroom on a
-  // path no reader can reach while the real one had 28% to spare. So there is
-  // one budget now. Restoring a paid deeper tier means adding caps and a way
-  // to choose them, which was always the honest version of that promise.
-  LIMITS.totalChars = charBudget(COST_CAP);
+  // 80,000 characters. At $0.75/$3.75 per million that is about 22,900
+  // tokens, $0.017 of each call. The caps above are sized so a heavy account
+  // lands near it through the caps themselves — captions and their own
+  // messages are most of any real digest — and the trim loop is the backstop
+  // for the account that is heavy everywhere at once.
+  const DIGEST_CHARS = 80000;
+  LIMITS.totalChars = DIGEST_CHARS;
 
-  // ---------- the free call's budget ----------
+  // ---------- what each call can cost, at most ----------
   //
-  // The free tier is the summary card and nothing else, and it costs at most
-  // five cents. Not on average: at most. The same worst-case arithmetic as the
-  // full call above — every token of the output cap reserved as if the model
-  // thinks for all of it — so the cap holds on the account that gives the
-  // model the most to chew on, not just the typical one.
+  // Worst case, not average: every token of each output cap reserved as if
+  // the model thinks for all of it, against a digest at its full 80,000.
   //
-  // At $0.75/$3.75 the three numbers below leave room for about 34,000
-  // characters of digest:
+  //   free card     8,000 out  × $3.75/M = $0.0300
+  //                 16,900 prompt + 22,857 digest × $0.75/M = $0.0298
+  //                 at most $0.0598                    → FREE_COST_CAP $0.06
   //
-  //   output   8,000 × $3.75/M  = $0.0300   (the card plus HIGH thinking)
-  //   prompt  16,900 × $0.75/M  = $0.0127   (FREE_SYSTEM + FREE_SCHEMA)
-  //   digest   the remaining $0.0073, ≈ 9,800 tokens
+  //   full report  28,000 out  × $3.75/M = $0.1050
+  //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
+  //                 at most $0.1480                    → COST_CAP $0.15
   //
-  // The output cap is the number to tune, and the one to tune carefully. The
-  // card itself is about 600 tokens; the rest is thinking, at the same HIGH
-  // level the full report uses. Too low and the card comes back truncated —
-  // the MAX_TOKENS failure the full call hit at 16,000 — so this starts
-  // generous and `npm run usage` says how much of it real runs actually use.
-  // Every 1,000 tokens it comes down buys about 3,500 characters of digest.
-  const FREE_COST_CAP = 0.05;
+  // A check in tools/selftest.mjs holds both: charBudget at each cap must
+  // cover DIGEST_CHARS, so raising the digest, a prompt or an output cap past
+  // what its ceiling pays for fails there rather than on the bill.
+  //
+  // The free output cap is the number to tune, and the one to tune carefully.
+  // The card itself is about 600 tokens; the rest is thinking, at the same
+  // HIGH level the full report uses. Too low and the card comes back
+  // truncated, so this starts generous and `npm run usage` says how much of it
+  // real runs use.
+  const FREE_COST_CAP = 0.06;
   const FREE_MAX_OUTPUT_TOKENS = 8000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 16,655.
   const FREE_FIXED_INPUT_TOKENS = 16900;
-  LIMITS.freeTotalChars = charBudget(FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS);
-
-  // What the free call keeps of each list, sized to land a heavy account under
-  // the ceiling above with the trim loop left as a backstop rather than doing
-  // the work. Roughly a quarter of the full digest, spent where the card's
-  // conclusions come from: their own messages and captions first, because
-  // that is where type and temperament are read; the complete counts and
-  // histograms whole, because they cost almost nothing and are the
-  // best-evidenced thing in the digest; ranked lists cut to their heads.
-  const FREE_LIMITS = {
-    ownMessages: 80,
-    captions: 70,
-    comments: 10,
-    likedCaptions: 10,
-    likedAccounts: 15,
-    savedAccounts: 15,
-    engagedWith: 20,
-    topics: 40,
-    adInterests: 20,
-    youtubeChannels: 20,
-    youtubeTitles: 10,
-    youtubeSearches: 15,
-    googleSearches: 25,
-    fbPosts: 20,
-    fbComments: 10,
-    fbFriends: 30,
-    fbSearches: 15,
-    fbMessages: 30,
-  };
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -909,10 +890,23 @@
         if (!handed) break;
         left -= handed;
       }
-      for (let i = 0; left > 0 && i < sizes.length; i++) {
-        const give = Math.min(roomOf(i), left);
-        quota[i] += give;
-        left -= give;
+      // What the proportional passes could not split into whole places goes
+      // out one at a time, heaviest group first, round after round. It used
+      // to go to the first group with room until that group was full, which
+      // a cap that divided evenly never showed: 560 places over sixteen equal
+      // years is 35 each, but 200 is 12 each with 8 over, and all 8 went to
+      // the oldest year — 20 places against everybody else's 12.
+      const order = sizes.map((_, i) => i).sort((a, b) => sizes[b] - sizes[a] || a - b);
+      while (left > 0) {
+        let given = 0;
+        for (const i of order) {
+          if (left <= 0) break;
+          if (roomOf(i) <= 0) continue;
+          quota[i] += 1;
+          left -= 1;
+          given += 1;
+        }
+        if (!given) break;
       }
     };
     fill(cap);
@@ -1619,9 +1613,9 @@
       ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
       ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
     ];
-    // The free digest passes lower floors: its whole budget is a fifth of
-    // this one's, and a floor of twenty captions alone would spend a third of
-    // it on an account that writes long ones.
+    // forModel passes lower floors: it only ever trims a request that is over
+    // the line, which no honest digest is, so how far it can cut matters more
+    // than how gently.
     const FLOOR = floors && floors.floor != null ? floors.floor : 20;
     // Supplements shrink further than Instagram lists do before the loop gives
     // up on them, which is the second half of "additions go first".
@@ -1706,25 +1700,25 @@
     return digest;
   }
 
-  // ---------- the free digest ----------
+  // ---------- what a model call is sent ----------
   //
-  // What the free call is shown, derived from the full digest rather than
-  // built separately, so the reader reviews one digest, the free card and the
-  // paid report are read from the same evidence, and nothing needs the
-  // original archive a second time.
+  // The digest exactly as both calls read it — the free summary card and the
+  // full premium report get this same object, from the same stored digest, so
+  // the two are written from identical evidence.
   //
-  // Called by the server, not just the browser. This is where the five-cent
-  // ceiling is actually held: the digest arrives from a client, and a client
-  // that sent its full digest — or one with a megabyte of padding in a field
-  // nobody expected — must cost exactly what an honest one does. So this does
-  // not deep-copy the input and prune it. It builds a new object out of the
-  // fields it knows, clamps every string in them, and leaves anything else on
-  // the floor. What comes out is bounded by construction; the size check in
-  // server.js is the backstop for the one thing construction cannot bound,
+  // Called by the server, not just the browser. This is where the cost
+  // ceilings are actually held: the digest arrives from a client, and a client
+  // that sent one with a megabyte of padding in a field nobody expected must
+  // cost exactly what an honest one does. So this does not deep-copy the input
+  // and prune it. It builds a new object out of the fields it knows, clamps
+  // every string in them, and leaves anything else on the floor. For an honest
+  // digest that changes nothing but a timestamp and a list of file sections;
+  // what comes out is bounded by construction either way, and the size check
+  // in server.js is the backstop for the one thing construction cannot bound,
   // which is the count of keys inside the few objects copied whole.
-  const FREE_STRING_MAX = 700;
+  const STRING_MAX = 700;
   function clampStrings(value, depth) {
-    if (typeof value === 'string') return value.length > FREE_STRING_MAX ? value.slice(0, FREE_STRING_MAX) : value;
+    if (typeof value === 'string') return value.length > STRING_MAX ? value.slice(0, STRING_MAX) : value;
     if (value === null || typeof value !== 'object') {
       return typeof value === 'number' || typeof value === 'boolean' ? value : null;
     }
@@ -1737,30 +1731,30 @@
   }
   function listOf(value) { return Array.isArray(value) ? value : []; }
   function plain(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
-  function head(list, n) { return listOf(list).slice(0, n); }
 
-  function forFree(input, options) {
+  function forModel(input, options) {
     const opts = options || {};
     const d = plain(input) || {};
-    const L = FREE_LIMITS;
     const samples = plain(d.samples) || {};
     const coverage = plain(d.coverage) || {};
+    // Every list is copied as it came: Digest.build has already sampled each
+    // one to its cap, and this is the same digest for the card and for the
+    // full report. What this adds is the bound — known fields only, every
+    // string clamped — and the trim loop if a request is somehow over the
+    // line, which an honest digest never is.
     const out = {
       schema: 'psycheai-digest/1',
       profile: plain(d.profile) || {},
       samples: {
-        // Spread across the list rather than its head: captions are sampled
-        // by year, and the first seventy would be the most recent years only.
-        captions: sampleEvenly(listOf(samples.captions), L.captions),
-        comments: sampleEvenly(listOf(samples.comments), L.comments),
-        likedPostCaptions: sampleEvenly(listOf(samples.likedPostCaptions), L.likedCaptions),
+        captions: listOf(samples.captions),
+        comments: listOf(samples.comments),
+        likedPostCaptions: listOf(samples.likedPostCaptions),
       },
-      // Ranked lists, strongest first, so the head is the right cut.
-      instagramTopics: head(d.instagramTopics, L.topics),
-      instagramAdInterests: head(d.instagramAdInterests, L.adInterests),
-      mostLikedAccounts: head(d.mostLikedAccounts, L.likedAccounts),
-      mostSavedAccounts: head(d.mostSavedAccounts, L.savedAccounts),
-      mostEngagedWith: head(d.mostEngagedWith, L.engagedWith),
+      instagramTopics: listOf(d.instagramTopics),
+      instagramAdInterests: listOf(d.instagramAdInterests),
+      mostLikedAccounts: listOf(d.mostLikedAccounts),
+      mostSavedAccounts: listOf(d.mostSavedAccounts),
+      mostEngagedWith: listOf(d.mostEngagedWith),
       coverage: {
         filesRead: coverage.filesRead,
         filesSeen: coverage.filesSeen,
@@ -1768,10 +1762,8 @@
         stillsInArchive: coverage.stillsInArchive,
         samplingNote: coverage.samplingNote,
         sources: listOf(coverage.sources),
-        // Copied entry by entry rather than whole: `available` is the
-        // denominator the confidence score is read against, and it stays the
-        // full archive's — the free call is shown less of the same account,
-        // not a smaller account. `shown` is restated below.
+        // `available` is the denominator the confidence score is read
+        // against — the whole archive's. `shown` is restated below.
         sampling: plain(coverage.sampling) || {},
       },
     };
@@ -1788,35 +1780,33 @@
         totalMessages: dm.totalMessages, sentByUser: dm.sentByUser,
         receivedByUser: dm.receivedByUser, averageSentLength: dm.averageSentLength,
         note: dm.note,
-        // Evenly across the sample, which keeps the spread over threads and
-        // between the recent and the longest halves that sampleMessages chose.
-        ownMessageSample: sampleEvenly(listOf(dm.ownMessageSample), L.ownMessages),
+        ownMessageSample: listOf(dm.ownMessageSample),
       };
     }
     const g = plain(d.google);
     if (g) {
       out.google = {
         note: g.note, span: g.span, counts: plain(g.counts) || {},
-        topChannels: head(g.topChannels, L.youtubeChannels),
-        videoTitleSample: sampleEvenly(listOf(g.videoTitleSample), L.youtubeTitles),
-        topYoutubeSearches: head(g.topYoutubeSearches, L.youtubeSearches),
-        topGoogleSearches: head(g.topGoogleSearches, L.googleSearches),
+        topChannels: listOf(g.topChannels),
+        videoTitleSample: listOf(g.videoTitleSample),
+        topYoutubeSearches: listOf(g.topYoutubeSearches),
+        topGoogleSearches: listOf(g.topGoogleSearches),
       };
     }
     const f = plain(d.facebook);
     if (f) {
       out.facebook = {
         note: f.note, span: f.span, counts: plain(f.counts) || {},
-        postSample: sampleEvenly(listOf(f.postSample), L.fbPosts),
-        commentSample: sampleEvenly(listOf(f.commentSample), L.fbComments),
-        friends: sampleEvenly(listOf(f.friends), L.fbFriends),
-        topSearches: head(f.topSearches, L.fbSearches),
-        ownMessageSample: sampleEvenly(listOf(f.ownMessageSample), L.fbMessages),
+        postSample: listOf(f.postSample),
+        commentSample: listOf(f.commentSample),
+        friends: listOf(f.friends),
+        topSearches: listOf(f.topSearches),
+        ownMessageSample: listOf(f.ownMessageSample),
       };
     }
     const digest = clampStrings(out, 0);
     restateShown(digest);
-    trimToBudget(digest, opts.maxChars || LIMITS.freeTotalChars, { floor: 10, supplementFloor: 0 });
+    trimToBudget(digest, opts.maxChars || LIMITS.totalChars, { floor: 10, supplementFloor: 0 });
     return digest;
   }
 
@@ -1957,8 +1947,8 @@
   }
 
   root.PsycheDigest = {
-    build, addSupplements, forFree,
-    LIMITS, FREE_LIMITS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
+    build, addSupplements, forModel,
+    LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,
     omitTopics,

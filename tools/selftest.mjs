@@ -3055,8 +3055,10 @@ check('the sample arrives in chronological order',
     Object.keys(perYear).length === 16 &&
     Math.max(...counts) - Math.min(...counts) <= 1,
     JSON.stringify(perYear));
+  // Within one place, not equal: 200 places over sixteen years is twelve each
+  // with eight over, and those eight go out one at a time.
   check('and the newest year no longer takes the sample from the oldest',
-    perYear[2025] === perYear[2010], perYear[2025] + ' vs ' + perYear[2010]);
+    Math.abs(perYear[2025] - perYear[2010]) <= 1, perYear[2025] + ' vs ' + perYear[2010]);
 }
 
 // ---------- captions: damped shares, and a cap on any one year ----------
@@ -3190,8 +3192,8 @@ check('the sample arrives in chronological order',
   // here reads the constant to build its expectation and so passes at any
   // value — which is exactly how a limit moved from 100 to 250 once went
   // unnoticed in this block.
-  check('fifty liked captions, clipped at four hundred characters',
-    Digest.LIMITS.likedCaptions === 50 && Digest.LIMITS.likedCaptionChars === 400,
+  check('twenty-five liked captions, clipped at four hundred characters',
+    Digest.LIMITS.likedCaptions === 25 && Digest.LIMITS.likedCaptionChars === 400,
     JSON.stringify([Digest.LIMITS.likedCaptions, Digest.LIMITS.likedCaptionChars]));
   check('the liked captions are sampled to their own limit',
     got.length === Digest.LIMITS.likedCaptions, String(got.length));
@@ -3301,7 +3303,7 @@ check('the sample arrives in chronological order',
 //
 // Two oversized sets, so the measurement has something to get wrong: S is
 // barely over the ceiling and oldest, L is three times over it and sits in the
-// middle. They are 400 captions competing for the longest half's 280 places.
+// middle. They are 400 captions competing for the longest half's 100 places.
 {
   const HOUR = 3600;
   const base = Date.UTC(2024, 0, 1) / 1000;
@@ -3340,7 +3342,7 @@ check('the sample arrives in chronological order',
   // S, being older and so earlier in the chronological order the sort is
   // stable against. Measured whole, L wins on its merits.
   check('the longest half ranks captions on their real length, not the clipped one',
-    longs.length === 200, longs.length + ' of 200');
+    longs.length === 100, longs.length + ' of 100');
 }
 
 // ---------- My Activity titles, cleaned ----------
@@ -3927,8 +3929,8 @@ check('the sample arrives in chronological order',
   }
   // Filler, then two oversized sets: S is barely over the ceiling and sits
   // earlier in time, L is far over it and sits later. Together they are 240
-  // messages competing for the longest half's 150 places, which is what makes
-  // the check below discriminating — with 75 of each they would both fit and
+  // messages competing for the longest half's 90 places, which is what makes
+  // the check below discriminating — with 45 of each they would both fit and
   // the measurement being tested would not matter.
   for (let i = 0; i < 200; i++) {
     ownTexts.push({ text: 'F' + i + ' ' + 'f'.repeat(150), ts: now - (400 + i) * DAY });
@@ -3968,7 +3970,7 @@ check('the sample arrives in chronological order',
   // messages a third their size. Measured whole, L wins on its merits, which
   // is what "longest" has to mean for the half to be worth having.
   check('the longest half ranks on the real length, not the clipped one',
-    longs.length === 120, longs.length + ' of 120');
+    longs.length === 90, longs.length + ' of 90');
 }
 
 // Links in the reader's own messages. A shared ride-tracking link is not
@@ -4460,14 +4462,14 @@ const heavyMessages = Digest.build(heavyMessagesSignals, { includeMessages: true
   check('but how many were asked still is',
     withGoogle.google.counts.prompts > 0, String(withGoogle.google.counts.prompts));
 }
-check('the DM cap is 300, drawn from the ten conversations they write in most',
-  Digest.LIMITS.messages === 300 && Digest.LIMITS.messageTopThreads === 10,
+check('the DM cap is 180, drawn from the ten conversations they write in most',
+  Digest.LIMITS.messages === 180 && Digest.LIMITS.messageTopThreads === 10,
   JSON.stringify([Digest.LIMITS.messages, Digest.LIMITS.messageTopThreads]));
 check('no conversation takes more than a fifth, and each is split down the middle',
   Digest.LIMITS.messageThreadCap === 0.20 && Digest.LIMITS.messageRecentShare === 0.5,
   JSON.stringify([Digest.LIMITS.messageThreadCap, Digest.LIMITS.messageRecentShare]));
 check('a heavy account caps DMs at that limit',
-  heavyMessages.directMessages.ownMessageSample.length === 300,
+  heavyMessages.directMessages.ownMessageSample.length === 180,
   heavyMessages.directMessages.ownMessageSample.length + ' messages');
 
 // ---------- the 4-character floor ----------
@@ -4573,9 +4575,10 @@ check('and it is no longer the old hardcoded number', Digest.LIMITS.totalChars !
 // run. Was 150,000, which stopped applying any pressure once the raw follow
 // list came out of the digest — that list was most of the difference, and a
 // budget the fixture already fits under makes every check below it vacuous.
-// Measured at 120,716 for the heavy account with no messages; 90,000 leaves
-// the loop real work to do.
-const TRIM_BUDGET = 90000;
+// Measured at 120,716 for the heavy account with no messages; 90,000 left
+// the loop real work to do. Then the caps came down to size one shared
+// 80,000-character digest, and the same account measures 41,573 — so 30,000.
+const TRIM_BUDGET = 30000;
 const hugeGoogle = {
   ...google,
   videoTitles: Array.from({ length: 4000 }, (_, i) =>
@@ -4753,16 +4756,22 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     // caption floor is thirty characters now: the old fixture's "Short caption
     // 12" is below it and the whole list vanished. Same total size, so the
     // list is still the small one the loop must leave alone.
-    captions: many(100, i => 'Caption number ' + i + ', deliberately short.'),
+    // Sixty since the caps came down — under the caption cap of 200, so the
+    // list is still the small one the loop must leave alone.
+    captions: many(60, i => 'Caption number ' + i + ', deliberately short.'),
     // A hundred, and each longer, for the same reason the captions beside
     // them were changed: the comment floor is thirty now and "Short comment
     // 12" is below it, so the whole list vanished. Same total size, so this is
     // still the small list the loop must leave alone.
-    comments: many(100, i => 'A comment, deliberately short, number ' + i),
+    // Forty, under the comment cap of 60, for the same reason.
+    comments: many(40, i => 'A comment, deliberately short, number ' + i),
     messages: {
       total: 20000, threads: 200, groupThreads: 10, sent: 12000, received: 8000,
       avgSentLength: 120,
-      ownTexts: many(4000, i => 'A message long enough to matter to the budget, number ' + i),
+      // Long, so the 180 the cap keeps are by far the largest list: at 180
+      // short ones the fixture fitted the ceiling and the loop did nothing.
+      ownTexts: many(4000, i => 'A message long enough to matter to the budget, number ' + i + '. ' +
+        'It goes on about the day and the plan and who said what. '.repeat(4)),
     },
     // 40,000, lowered from 60,000. Dropping Instagram's search list and the
     // Gemini prompt text took roughly 6,000 characters out of this fixture, so
@@ -4778,7 +4787,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       monstrous.directMessages.ownMessageSample.length,
     JSON.stringify(monstrous.coverage.sampling.ownMessages));
   check('trimming does not gut the short lists to spare the long one',
-    monstrous.samples.captions.length === 100 && monstrous.samples.comments.length === 100,
+    monstrous.samples.captions.length === 60 && monstrous.samples.comments.length === 40,
     monstrous.samples.captions.length + ' captions, ' + monstrous.samples.comments.length + ' comments');
 }
 
@@ -4788,13 +4797,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const many = (n, make) => Array.from({ length: n }, (_, i) => make(i));
   const ordinary = Digest.build({
     ...heavySignals(),
-    captions: many(300, i => 'Caption number ' + i + '. A sentence about the day.'),
-    comments: many(200, i => 'Comment number ' + i + ', a reply to somebody.'),
+    // Under the caps of 200 captions and 60 comments.
+    captions: many(150, i => 'Caption number ' + i + '. A sentence about the day.'),
+    comments: many(50, i => 'Comment number ' + i + ', a reply to somebody.'),
     following: many(900, i => ({ name: 'account_number_' + i, ts: 0 })),
   }, { includeMessages: false });
 
   check('an ordinary account gets every caption and comment',
-    ordinary.samples.captions.length === 300 && ordinary.samples.comments.length === 200,
+    ordinary.samples.captions.length === 150 && ordinary.samples.comments.length === 50,
     ordinary.samples.captions.length + '/' + ordinary.samples.comments.length);
   check('and coverage then reports the whole of it, not a fraction',
     ordinary.coverage.sampling.captions.shown === ordinary.coverage.sampling.captions.available &&
@@ -4871,38 +4881,46 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // And the cap was halved with the price, so the full call reads the same
   // evidence it always did. Left at $0.25 the ceiling would have quadrupled
   // for no reason except that a price was fixed.
-  // $0.17 for the one call that writes the whole premium report — the written
-  // report and the four sections used to be two calls at up to $0.125 and
-  // about $0.115 — with the digest ceiling where it was.
-  check('the unlock\'s one call is capped at $0.17, keeping the digest ceiling where it was',
-    Digest.COST_CAP === 0.17 && Digest.LIMITS.totalChars > 175000 && Digest.LIMITS.totalChars < 195000,
+  // $0.15 for the one call that writes the whole premium report, with the one
+  // 80,000-character digest both calls read. The cap states what the call can
+  // cost; it no longer sizes the digest, which DIGEST_CHARS does.
+  check('the unlock\'s one call is capped at $0.15 with the shared 80,000-character digest',
+    Digest.COST_CAP === 0.15 && Digest.LIMITS.totalChars === 80000,
     Digest.COST_CAP + ' -> ' + Digest.LIMITS.totalChars);
 }
 
-// ---------- the free card: five cents, held where the money is spent ----------
+// ---------- one digest, both calls, and what each can cost ----------
 //
-// The free run is the summary card and nothing else, on a digest the server
-// derives itself with Digest.forFree. Everything here is about that ceiling
-// holding for the export — or the request — that gives the model the most to
-// read, not the typical one.
+// The free summary card and the full premium report read the same digest —
+// Digest.forModel of what was built, applied again by the server to whatever
+// it is posted. Everything here is about the two ceilings holding for the
+// export — or the request — that gives the model the most to read, and about
+// the two calls really reading the same thing.
 {
   const CHARS_PER_TOKEN = 3.5;
   const IN_RATE = Digest.PRICING.inputPerToken;
   const OUT_RATE = Digest.PRICING.outputPerToken;
-  const L_PIN = limits => limits.ownMessages === 80 && limits.captions === 70 &&
-    limits.comments === 10 && limits.likedCaptions === 10 && limits.likedAccounts === 15 &&
-    limits.engagedWith === 20 && limits.topics === 40 && limits.googleSearches === 25;
-
   // -- the arithmetic --
-  const freeWorst = ((Digest.LIMITS.freeTotalChars / CHARS_PER_TOKEN) + Digest.FREE_FIXED_INPUT_TOKENS)
-    * IN_RATE + Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
-  check('a full free digest plus maximum output stays under five cents',
-    Digest.FREE_COST_CAP === 0.05 && freeWorst <= 0.05 + 1e-6, '$' + freeWorst.toFixed(4));
-  check('and spends nearly all of it, rather than leaving the card short of evidence',
-    freeWorst > 0.049, '$' + freeWorst.toFixed(4));
-  check('the free digest is the size that buys: about 34,000 characters',
-    Digest.LIMITS.freeTotalChars > 30000 && Digest.LIMITS.freeTotalChars < 38000,
-    String(Digest.LIMITS.freeTotalChars));
+  const DIG = Digest.LIMITS.totalChars;
+  const freeWorst = ((DIG / CHARS_PER_TOKEN) + Digest.FREE_FIXED_INPUT_TOKENS) * IN_RATE +
+    Digest.FREE_MAX_OUTPUT_TOKENS * OUT_RATE;
+  const fullWorst = ((DIG / CHARS_PER_TOKEN) + Digest.FIXED_INPUT_TOKENS) * IN_RATE +
+    Digest.MAX_OUTPUT_TOKENS * OUT_RATE;
+  check('one digest of 80,000 characters, for the card and the full report alike',
+    Digest.DIGEST_CHARS === 80000 && DIG === 80000 && Digest.LIMITS.freeTotalChars === undefined &&
+    Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
+    String(DIG));
+  check('with it, the free card costs at most six cents',
+    Digest.FREE_COST_CAP === 0.06 && freeWorst <= 0.06 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('and the full premium report at most fifteen cents',
+    Digest.COST_CAP === 0.15 && fullWorst <= 0.15 + 1e-6, '$' + fullWorst.toFixed(4));
+  check('both ceilings are what the calls can really cost, not padding',
+    freeWorst > 0.059 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
+  check('and each ceiling still covers the digest, so neither call outgrows its price',
+    Digest.charBudget(Digest.COST_CAP) >= DIG &&
+    Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= DIG,
+    Digest.charBudget(Digest.COST_CAP) + ' / ' +
+      Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
   // The same two duplicated constants the full call has, held the same way.
   check('the free output reserve matches the cap lib/gemini.js really sends',
     Digest.FREE_MAX_OUTPUT_TOKENS === gemini.CARD_MAX_OUTPUT_TOKENS,
@@ -4987,74 +5005,67 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   };
   const worstFull = Digest.build(worstSignals, { includeMessages: true });
   const worstFullText = JSON.stringify(worstFull);
-  const worstFree = Digest.forFree(worstFull);
+  const worstFree = Digest.forModel(worstFull);
   const worstFreeText = JSON.stringify(worstFree);
-  check('the heaviest honest export lands under the free ceiling',
-    worstFreeText.length <= Digest.LIMITS.freeTotalChars,
-    worstFreeText.length + ' vs ' + Digest.LIMITS.freeTotalChars);
+  check('the heaviest honest export lands under the 80,000-character line',
+    worstFullText.length <= DIG && worstFreeText.length <= DIG,
+    worstFullText.length + ' / ' + worstFreeText.length + ' vs ' + DIG);
+  // What is sent is what was built: forModel normalises, it does not cut.
+  check('what both calls are sent is the evidence that was built, list for list',
+    JSON.stringify(worstFree.samples) === JSON.stringify(worstFull.samples) &&
+    JSON.stringify(worstFree.directMessages.ownMessageSample) ===
+      JSON.stringify(worstFull.directMessages.ownMessageSample) &&
+    JSON.stringify(worstFree.google) === JSON.stringify(worstFull.google) &&
+    JSON.stringify(worstFree.facebook) === JSON.stringify(worstFull.facebook));
   check('without emptying it: their own messages and captions are still the bulk of it',
     worstFree.directMessages.ownMessageSample.length >= 10 && worstFree.samples.captions.length >= 10,
     JSON.stringify({ dms: worstFree.directMessages.ownMessageSample.length, captions: worstFree.samples.captions.length }));
-  check('and forFree leaves the full digest it was handed untouched',
+  check('and forModel leaves the digest it was handed untouched',
     JSON.stringify(worstFull) === worstFullText);
-  // The browser sends the free digest and the server cuts it again; the second
-  // cut has to change nothing, or the card a reader's page asked for and the
-  // card the server cached would be read from two different digests.
+  // The browser sends forModel of its digest and the server applies it again;
+  // the second pass has to change nothing, or the page and the server would
+  // be talking about two different digests.
   const firstDiff = (x, y) => {
     for (let i = 0; i < Math.max(x.length, y.length); i++) {
       if (x[i] !== y[i]) return x.slice(Math.max(0, i - 120), i + 60) + ' ≠ ' + y.slice(Math.max(0, i - 120), i + 60);
     }
     return 'same';
   };
-  const recut = JSON.stringify(Digest.forFree(worstFree));
-  const heavyOnce = JSON.stringify(Digest.forFree(heavyWithDms));
-  const heavyTwice = JSON.stringify(Digest.forFree(Digest.forFree(heavyWithDms)));
-  check('cutting a free digest again changes nothing',
+  const recut = JSON.stringify(Digest.forModel(worstFree));
+  const heavyOnce = JSON.stringify(Digest.forModel(heavyWithDms));
+  const heavyTwice = JSON.stringify(Digest.forModel(Digest.forModel(heavyWithDms)));
+  check('bounding a digest twice changes nothing',
     recut === worstFreeText && heavyTwice === heavyOnce,
     firstDiff(worstFreeText, recut) + ' | ' + firstDiff(heavyOnce, heavyTwice));
-  check('the same digest always gives the same free digest, so the card cache can find it',
-    JSON.stringify(Digest.forFree(worstFull)) === worstFreeText);
+  check('the same digest always gives the same request, so the result cache can find it',
+    JSON.stringify(Digest.forModel(worstFull)) === worstFreeText);
 
-  // Pinned as numbers, not only against their own constants — a check that
-  // read `Math.min(L.ownMessages, available)` passed at any value of the cap.
-  // These are the choices; changing one is a decision, and should fail here.
-  check('the free caps are the ones chosen: their own words first, the rest cut to a head',
-    L_PIN(Digest.FREE_LIMITS), JSON.stringify(Digest.FREE_LIMITS));
-  check('and the heavy fixture really is bigger than them, so the checks below are not vacuous',
-    heavyWithDms.directMessages.ownMessageSample.length > Digest.FREE_LIMITS.ownMessages &&
-    heavyWithDms.samples.captions.length > Digest.FREE_LIMITS.captions &&
-    heavyWithDms.samples.comments.length > Digest.FREE_LIMITS.comments);
-
+  // Pinned as numbers, not only against their own constants. These are the
+  // caps that size the one digest at 80,000 characters; changing one is a
+  // decision, and should fail here.
+  check('the caps are the ones chosen to land a heavy account near 80,000 characters',
+    Digest.LIMITS.captions === 200 && Digest.LIMITS.messages === 180 &&
+    Digest.LIMITS.likedCaptions === 25 && Digest.LIMITS.comments === 60 &&
+    Digest.LIMITS.topics === 100 && Digest.LIMITS.adInterests === 50,
+    JSON.stringify({ captions: Digest.LIMITS.captions, messages: Digest.LIMITS.messages,
+      liked: Digest.LIMITS.likedCaptions, comments: Digest.LIMITS.comments,
+      topics: Digest.LIMITS.topics, ads: Digest.LIMITS.adInterests }));
   // On an ordinary heavy account the trim loop should have nothing to do: the
   // per-list caps are what size it, and the loop is the backstop.
-  const ordinary = Digest.forFree(heavyWithDms);
-  const L = Digest.FREE_LIMITS;
-  check('on an ordinary heavy account the free caps bind, not the trim loop',
-    ordinary.samples.captions.length === L.captions &&
-    ordinary.directMessages.ownMessageSample.length === 80 &&
-    ordinary.samples.comments.length === L.comments &&
-    ordinary.mostLikedAccounts.length === Math.min(L.likedAccounts, heavyWithDms.mostLikedAccounts.length) &&
-    JSON.stringify(ordinary).length <= Digest.LIMITS.freeTotalChars,
-    JSON.stringify({ captions: ordinary.samples.captions.length, dms: ordinary.directMessages.ownMessageSample.length,
-      chars: JSON.stringify(ordinary).length }));
-  // Spread across the list, not its head: captions are ordered by year, and
-  // the first seventy would be the latest year or two only.
-  check('captions are drawn from across the sample, not just its head',
-    ordinary.samples.captions[ordinary.samples.captions.length - 1] !==
-      heavyWithDms.samples.captions[ordinary.samples.captions.length - 1] &&
-    ordinary.samples.captions.includes(heavyWithDms.samples.captions[heavyWithDms.samples.captions.length - Math.ceil(heavyWithDms.samples.captions.length / L.captions)]),
-    ordinary.samples.captions.slice(-1)[0]);
-  // The denominator stays the archive's. The free call reads less of the same
-  // account, not a smaller account, and its confidence has to know that.
-  const sampling = ordinary.coverage.sampling;
-  check('coverage says how much the free call is shown, against the whole archive',
-    sampling.captions.shown === ordinary.samples.captions.length &&
-    sampling.captions.available === heavyWithDms.coverage.sampling.captions.available &&
-    sampling.ownMessages.shown === ordinary.directMessages.ownMessageSample.length &&
-    sampling.ownMessages.available === heavyWithDms.coverage.sampling.ownMessages.available &&
-    sampling.engagedWith.shown === ordinary.mostEngagedWith.length,
-    JSON.stringify({ captions: sampling.captions, ownMessages: sampling.ownMessages, engaged: sampling.engagedWith }));
-  check('every "shown" in the free digest matches the list it describes',
+  check('on an ordinary heavy account the caps bind, not the trim loop',
+    heavyWithDms.samples.captions.length === 200 &&
+    heavyWithDms.directMessages.ownMessageSample.length === Math.min(180, heavyWithDms.coverage.sampling.ownMessages.available) &&
+    heavyWithDms.samples.comments.length === 60 &&
+    JSON.stringify(heavyWithDms).length <= DIG,
+    JSON.stringify({ captions: heavyWithDms.samples.captions.length,
+      dms: heavyWithDms.directMessages.ownMessageSample.length, chars: JSON.stringify(heavyWithDms).length }));
+  // The denominator stays the archive's, so confidence is read against it.
+  const sampling = Digest.forModel(heavyWithDms).coverage.sampling;
+  check('coverage says how much is shown, against the whole archive',
+    sampling.captions.shown === 200 && sampling.captions.available === 4000 &&
+    sampling.ownMessages.available === heavyWithDms.coverage.sampling.ownMessages.available,
+    JSON.stringify({ captions: sampling.captions, ownMessages: sampling.ownMessages }));
+  check('every "shown" in what is sent matches the list it describes',
     Object.entries(worstFree.coverage.sampling).every(([key, entry]) => {
       const lists = {
         captions: worstFree.samples.captions, comments: worstFree.samples.comments,
@@ -5071,33 +5082,33 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 
   // -- a request that is not an honest digest --
   //
-  // The server derives the free digest from whatever it is posted, so the
-  // ceiling has to hold against padding as well as against size.
+  // The server bounds whatever it is posted, so the ceilings have to hold
+  // against padding as well as against size.
   const padded = JSON.parse(JSON.stringify(heavyWithDms));
   padded.padding = 'x'.repeat(2000000);
   padded.samples.captions = padded.samples.captions.map(c => c + 'y'.repeat(50000));
   padded.profile.bio = 'z'.repeat(1000000);
   padded.coverage.extra = Array.from({ length: 5000 }, (_, i) => 'pad ' + i);
-  const paddedFree = Digest.forFree(padded);
+  const paddedFree = Digest.forModel(padded);
   const paddedText = JSON.stringify(paddedFree);
   check('fields nobody asked for are left on the floor',
     paddedFree.padding === undefined && paddedFree.coverage.extra === undefined);
   check('and a padded string is clamped rather than sent',
     paddedFree.profile.bio.length <= 700 && paddedFree.samples.captions.every(c => c.length <= 700));
   check('so a padded request costs no more than an honest one',
-    paddedText.length <= Digest.LIMITS.freeTotalChars, String(paddedText.length));
+    paddedText.length <= DIG, String(paddedText.length));
   // The one thing construction cannot bound: how many keys sit inside the few
   // objects copied whole. Each is clamped, but two hundred clamped strings is
   // still a lot of text — which is what the server's size check is for.
   const stuffed = Object.assign({}, heavyWithDms, {
     counts: Object.fromEntries(Array.from({ length: 200 }, (_, i) => ['k' + i, 'v'.repeat(5000)])),
   });
-  check('a digest stuffed with keys is still over the line after forFree, so the server must refuse it',
-    JSON.stringify(Digest.forFree(stuffed)).length > Digest.LIMITS.freeTotalChars);
+  check('a digest stuffed with keys is still over the line after forModel, so the server must refuse it',
+    JSON.stringify(Digest.forModel(stuffed)).length > DIG);
   check('and nothing that is not an object gets past it',
-    JSON.stringify(Digest.forFree(null)).length < 2000 &&
-    JSON.stringify(Digest.forFree(['an', 'array'])).length < 2000 &&
-    JSON.stringify(Digest.forFree({ samples: 'not a list', directMessages: 7 })).length < 2000);
+    JSON.stringify(Digest.forModel(null)).length < 2000 &&
+    JSON.stringify(Digest.forModel(['an', 'array'])).length < 2000 &&
+    JSON.stringify(Digest.forModel({ samples: 'not a list', directMessages: 7 })).length < 2000);
 
   // -- the trim loop restates every "shown" now, not four of them --
   //
@@ -5243,6 +5254,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       out.full = await post({ digest, product: 'unlock', promoCode: '${promo}',
         anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
       out.padded = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000) }) });
+      out.paddedCard = await post({ digest: Object.assign({}, digest, {
+        samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
+          Array.from({ length: 300 }, (_, i) => 'extra caption ' + i)) }) }) });
+      out.paddedFull = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000),
+        samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
+          Array.from({ length: 300 }, (_, i) => 'extra caption ' + i)) }) }),
+        product: 'unlock', promoCode: '${promo}',
+        anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
       out.notObject = await post({ digest: ['a', 'b'] });
       out.stuffed = await post({ digest: Object.assign({}, digest, {
         counts: Object.fromEntries(Array.from({ length: 200 }, (_, i) => ['k' + i, 'v'.repeat(5000)])),
@@ -5266,12 +5285,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     !(data(routes.free).mbti.letters || []).some(letter => letter.why),
     JSON.stringify(routes.free && Object.keys(data(routes.free))));
   // The mock reports how many captions it was shown, which is what makes this
-  // checkable: the posted digest carries 560, the free one at most 70.
-  check('the card is read from the free digest the server derived, not the one posted',
-    /^\d+ of \d+ captions$/.test(String((data(routes.free).confidence || {}).basedOn && data(routes.free).confidence.basedOn[0])) &&
-    Number(data(routes.free).confidence.basedOn[0].split(' ')[0]) === Digest.FREE_LIMITS.captions &&
-    heavyWithDms.samples.captions.length > Digest.FREE_LIMITS.captions,
-    JSON.stringify(data(routes.free).confidence));
+  // checkable: the card and the full report must have read the same digest,
+  // all 200 of the captions the heavy fixture was built with.
+  const basedOn = r => String(((data(r).confidence || {}).basedOn || [])[0]);
+  check('the card and the full premium report are read from the same digest',
+    basedOn(routes.free) === basedOn(routes.full) &&
+    basedOn(routes.free) === heavyWithDms.samples.captions.length + ' of ' +
+      heavyWithDms.samples.captions.length + ' captions',
+    basedOn(routes.free) + ' / ' + basedOn(routes.full));
   check('asking for the full report without paying is refused, not quietly downgraded',
     Boolean(routes.unpaid) && routes.unpaid.status === 402 && !data(routes.unpaid).summary,
     JSON.stringify(routes.unpaid));
@@ -5289,7 +5310,19 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.padded) && routes.padded.status === 200 &&
     JSON.stringify(data(routes.padded)) === JSON.stringify(data(routes.free)),
     JSON.stringify(routes.padded && routes.padded.status));
-  check('a digest forFree cannot bound is refused, not sent at whatever it costs',
+  // The paid call is bounded the same way: padding is dropped, and a list
+  // stuffed past what Digest.build would ever produce is trimmed back under
+  // the line rather than read at whatever it costs.
+  check('a free request with a list stuffed past any real digest is bounded before it is read',
+    Boolean(routes.paddedCard) && routes.paddedCard.status === 200 &&
+    Number(basedOn(routes.paddedCard).split(' ')[0]) <= 400,
+    JSON.stringify(routes.paddedCard && routes.paddedCard.status) + ' ' + basedOn(routes.paddedCard));
+  check('a padded paid request is bounded too, never read at the size it was sent',
+    Boolean(routes.paddedFull) && routes.paddedFull.status === 200 &&
+    basedOn(routes.paddedFull) !== '500 of 500 captions' &&
+    Number(basedOn(routes.paddedFull).split(' ')[0]) <= 400,
+    JSON.stringify(routes.paddedFull && routes.paddedFull.status) + ' ' + basedOn(routes.paddedFull));
+  check('a digest forModel cannot bound is refused, not sent at whatever it costs',
     Boolean(routes.stuffed) && routes.stuffed.status === 413, JSON.stringify(routes.stuffed && routes.stuffed.status));
   check('a digest that is not an object is refused before anything is spent',
     Boolean(routes.notObject) && routes.notObject.status === 400, JSON.stringify(routes.notObject));

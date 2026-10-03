@@ -2553,17 +2553,12 @@
   // own row list, reused here so the category names and detail lines in this
   // table are read from the same place the checklist itself was, not typed
   // out a second time where they could drift.
-  // `keptChars` is set for a free run: the size of the full digest this device
-  // keeps for a later unlock, which is not what this run sends and is said so,
-  // so a reader comparing this file to what they loaded is not left wondering
-  // where the rest went.
-  function buildDigestPreviewHtml(rows, decision, preview, keptChars) {
+  function buildDigestPreviewHtml(rows, decision, preview) {
+    // One digest serves both calls, and the file says so: a reader comparing
+    // the free card with the premium report should know both read this.
     const sentKb = Math.max(1, Math.round(JSON.stringify(preview).length / 1000));
-    const sizeNote = keptChars
-      ? 'This is what the free summary card is read from: about ' + sentKb + ' KB. The fuller ' +
-        'digest built from the same data (about ' + Math.round(keptChars / 1000) + ' KB) stays on ' +
-        'this device and is sent only if you unlock the full premium report.'
-      : 'About ' + sentKb + ' KB.';
+    const sizeNote = 'About ' + sentKb + ' KB. This same digest is what both your free summary card ' +
+      'and the full premium report are read from.';
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
@@ -2625,14 +2620,6 @@
     // "send it to the model", never "and also pay for it" — a reader should
     // not discover a charge was coming after they already agreed to send.
     const paymentDue = Boolean(options && options.paymentDue);
-    // What this review is about to send. A free run — the summary card — sends
-    // the free digest, a fraction of the full one, and that is what every count
-    // below and the download describe. Only the unlock sends the full digest,
-    // and its reviews pass `full`. The checkboxes act on the full digest either
-    // way, because that is what is kept on this device for a later unlock.
-    const full = Boolean(options && options.full);
-    const fullDigest = digest;
-    digest = full ? fullDigest : Digest.forFree(fullDigest);
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
@@ -2798,11 +2785,11 @@
       // this writes is the digest and nothing else.
       const download = () => {
         const decision = currentDecision();
-        const decided = applyReviewDecision(JSON.parse(JSON.stringify(fullDigest)), decision);
-        const preview = full ? decided : Digest.forFree(decided);
+        // Exactly what a model call is sent: the free card and the full premium
+        // report both read this same object.
+        const preview = Digest.forModel(applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision));
 
-        const html = buildDigestPreviewHtml(rows, decision, preview,
-          full ? null : JSON.stringify(decided).length);
+        const html = buildDigestPreviewHtml(rows, decision, preview);
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -3400,7 +3387,7 @@
     let decision;
     try {
       decision = await askReview(digest,
-        { paymentDue: alreadyUnlocked || mustPayForAnalysis(), full: alreadyUnlocked });
+        { paymentDue: alreadyUnlocked || mustPayForAnalysis() });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -3463,12 +3450,9 @@
   }
 
   async function runAnalysis(digest, auth) {
-    // The free run is the summary card, and it is sent the free digest — the
-    // full one stays on this device for an unlock. The server derives the same
-    // thing again from whatever it is sent, so this is not what holds the cost
-    // down; it is what keeps the rest of the evidence on the device until it
-    // is needed, and makes the size quoted here the size that left it.
-    const sent = Digest.forFree(digest);
+    // The same digest the unlock will send, so the card and the full premium
+    // report read identical evidence. The server bounds it again either way.
+    const sent = Digest.forModel(digest);
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
@@ -4847,7 +4831,7 @@
 
     // Payment is unconditionally the next step here — this review sits inside
     // the S$1.99 unlock itself, never reached without one due.
-    const decision = await askReview(enriched, { paymentDue: true, full: true });
+    const decision = await askReview(enriched, { paymentDue: true });
     // Escape or Back at the review drops the addition rather than the unlock:
     // they have seen what the extra data contains and declined to send it, so
     // the paid call proceeds on the digest it would have used anyway.
@@ -4963,7 +4947,7 @@
       // that still lacks the source they just added; the popout shows it
       // unticked and asks for it again. That is worse than the unbroken path
       // and better than losing the report.
-      const full = await LLM.analyseProfile(paidDigest, request,
+      const full = await LLM.analyseProfile(Digest.forModel(paidDigest), request,
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
 
       // The extra data is kept only now, because only now has it bought

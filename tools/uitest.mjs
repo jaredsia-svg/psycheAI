@@ -3430,16 +3430,15 @@ try {
   check('the file says plainly that nothing rides alongside the digest',
     /no photographs, no files/.test(html1) && !/data:image\//.test(html1),
     (/<p class="muted">The exact object[^<]*/.exec(html1) || ['none'])[0]);
-  // A free run sends the free digest, so that is what this file is — and it
-  // says so, with the size of the fuller one that stays behind. A reader who
-  // loaded a big export and got a small file should not have to guess why.
-  check('a free run\'s file is the free digest, and says the fuller one stays on this device',
-    /what the free summary card is read from: about \d+ KB/.test(html1) &&
-    /stays on this device and is sent only if you unlock the full premium report/.test(html1) &&
-    JSON.stringify(preview1).length <= await page.evaluate(() => window.PsycheDigest.LIMITS.freeTotalChars) &&
-    // The fixture is small enough that its full digest fits under the free
-    // ceiling too, so size alone cannot tell them apart. These two fields can:
-    // the full digest carries them and forFree never copies them.
+  // The file is exactly what a model call is sent — Digest.forModel of the
+  // reviewed digest — and it says so, including that the free card and the
+  // full premium report both read this one digest. The fixture's digest
+  // carries `generatedAt` and `coverage.sections`; forModel never copies
+  // either, so their absence is what proves the file is the sent object.
+  check('the file is the one digest both calls read, and says so',
+    /About \d+ KB\. This same digest is what both your free summary card and the full premium report are read from\./
+      .test(html1) &&
+    JSON.stringify(preview1).length <= await page.evaluate(() => window.PsycheDigest.LIMITS.totalChars) &&
     preview1.generatedAt === undefined && preview1.coverage.sections === undefined,
     (/<p class="muted digest-size">[^<]*/.exec(html1) || ['none'])[0]);
 
@@ -6922,13 +6921,12 @@ try {
   // instead of a held connection — it carries nothing about the reader, and
   // it sits beside the digest rather than inside it so the server's cache key
   // is untouched by it.
-  // The free run sends the free digest and keeps the full one: what left the
-  // device is exactly forFree of what was stored, not the stored digest.
-  check('a free run sends the free digest, and keeps the full one on the device',
+  // What left the device is exactly forModel of what was stored — the same
+  // object the unlock sends, so the card and the premium report read it alike.
+  check('a free run sends the one digest, exactly as the unlock will',
     await page.evaluate(sent => {
       const stored = JSON.parse(localStorage.getItem('psycheai_digest'));
-      return JSON.stringify(window.PsycheDigest.forFree(stored)) === JSON.stringify(sent) &&
-        JSON.stringify(stored).length > JSON.stringify(sent).length;
+      return JSON.stringify(window.PsycheDigest.forModel(stored)) === JSON.stringify(sent);
     }, sentBody.digest));
   check('the request carries a digest and nothing else',
     Object.keys(sentBody).every(k =>
@@ -8611,6 +8609,14 @@ try {
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
       'product', 'anchor'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
+  // The same file, byte for byte: the digest the unlock sends is the digest
+  // the free card was read from moments before, not a larger one.
+  const cardRequest = JSON.parse(analyseBodies[analysesBeforeBareUnlock - 1]);
+  check('the unlock sends exactly the digest the free card was read from',
+    cardRequest.product !== 'unlock' && bareBodies.length === 1 &&
+    JSON.stringify(bareBodies[0].digest) === JSON.stringify(cardRequest.digest),
+    JSON.stringify({ card: JSON.stringify(cardRequest.digest).length,
+      unlock: bareBodies[0] ? JSON.stringify(bareBodies[0].digest).length : null }));
   const afterBareUnlock = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')));
   check('and the card the reader had is the card they keep',
     afterBareUnlock.payload === cardBeforeBareUnlock.payload &&

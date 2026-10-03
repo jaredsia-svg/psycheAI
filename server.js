@@ -43,11 +43,10 @@ const PREMIUM_ENGINES = { anthropic: claude, gemini };
 
 const ROOT = path.join(__dirname, 'docs');
 
-// The browser's digest module, loaded here so the free call's five-cent ceiling
-// is held where the money is spent. The free digest is derived on this side
-// from whatever the client sent — a client that posts its full digest, or a
-// padded one, gets exactly the card an honest client gets for exactly what an
-// honest client costs. Run as a script rather than required because it is a
+// The browser's digest module, loaded here so the cost ceilings are held where
+// the money is spent. What the model reads is derived on this side from
+// whatever the client sent — a client that posts a padded digest gets exactly
+// what an honest client gets, for exactly what an honest client costs. Run as a script rather than required because it is a
 // browser file: it hangs itself off `globalThis` and exports nothing.
 const Digest = (() => {
   const vm = require('node:vm');
@@ -377,8 +376,8 @@ function requirePremiumEngine(response) {
 
 // The free summary card, the full report, and the one route with three ways in.
 //
-// Without payment it is the card: conclusions only, from a free digest this
-// handler derives itself, held to FREE_COST_CAP. Bounded otherwise only by the
+// Without payment it is the card: conclusions only, from the same digest the
+// full report reads, held to FREE_COST_CAP. Bounded otherwise only by the
 // server-wide daily ceiling in lib/budget.js.
 //
 // With an 'analysis' payment or a promo code it is the same card, bought — a
@@ -460,11 +459,20 @@ async function handleAnalyse(request, response) {
     return;
   }
 
-  // What the model is actually sent, and under which cache key. The card is
-  // keyed on the free digest rather than the one posted, so two clients that
-  // posted different supersets of the same evidence share one card; the full
-  // report is keyed on the digest *and* the card it explains, so a report
-  // written to explain one card is never served to a reader holding another.
+  // What the model is sent, and under which cache key. Both calls read the
+  // same digest — Digest.forModel of whatever was posted, which for an honest
+  // client is exactly the digest it reviewed — so the card and the full
+  // premium report are written from identical evidence. The full report is
+  // keyed on the digest *and* the card it explains, so a report written to
+  // explain one card is never served to a reader holding another.
+  const sent = Digest.forModel(body.digest);
+  // The backstop for the one thing forModel cannot bound by construction —
+  // the number of keys in the few objects it copies whole. An honest digest
+  // never gets here; Digest.build lands every real export under the line.
+  if (JSON.stringify(sent).length > Digest.LIMITS.totalChars) {
+    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+    return;
+  }
   let kind;
   let key;
   let call;
@@ -473,20 +481,12 @@ async function handleAnalyse(request, response) {
     // One call for everything the unlock buys: the written report and the
     // four premium sections in a single response (FULL_SCHEMA).
     kind = 'full';
-    key = anchor ? Object.assign({}, body.digest, { anchor }) : body.digest;
-    call = engine => engine.analyseFull(body.digest, anchor);
+    key = anchor ? Object.assign({}, sent, { anchor }) : sent;
+    call = engine => engine.analyseFull(sent, anchor);
   } else {
-    const freeDigest = Digest.forFree(body.digest);
-    // The backstop for the one thing forFree cannot bound by construction —
-    // the number of keys in the few objects it copies whole. An honest digest
-    // never gets here; the trim loop lands every real export under the line.
-    if (JSON.stringify(freeDigest).length > Digest.LIMITS.freeTotalChars) {
-      sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
-      return;
-    }
     kind = 'card';
-    key = freeDigest;
-    call = engine => engine.analyseCard(freeDigest);
+    key = sent;
+    call = engine => engine.analyseCard(sent);
   }
 
   // The full report is paid for, so it runs on the paid engine — the fixed
