@@ -5847,6 +5847,20 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     prompts.STRUCTURED_FULL_SCHEMA.properties.cardHighlights === prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights &&
     /Exactly four sentences/.test(prompts.CLASSIC_FREE_SCHEMA.properties.cardHighlights.description));
   {
+    // Gemini answers a schema with an empty-string enum value with a bare 400
+    // INVALID_ARGUMENT — this is what broke the first paid structured report.
+    const emptyEnums = [];
+    const walk = (schema, path) => {
+      if (!schema || typeof schema !== 'object') return;
+      if (Array.isArray(schema.enum) && schema.enum.some(v => v === '')) emptyEnums.push(path);
+      for (const [key, value] of Object.entries(schema)) {
+        if (value && typeof value === 'object') walk(value, path + '.' + key);
+      }
+    };
+    for (const name of Object.keys(prompts).filter(key => /SCHEMA$/.test(key))) walk(prompts[name], name);
+    check('no schema sent to a model has an empty string among its enum values', !emptyEnums.length, emptyEnums.join(', '));
+  }
+  {
     const order = Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties);
     check('the structured write-up is written after the patterns it sits above, and told not to repeat them',
       order.indexOf('cardHighlights') > order.indexOf('patterns') &&

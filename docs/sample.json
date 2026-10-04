@@ -526,7 +526,7 @@
       "strength": "High standards",
       "overused": "Quietly redoing other people's work",
       "level": "mild",
-      "pattern": "",
+      "pattern": "none",
       "detail": "You care how a thing is done. Under time pressure that tips into fixing it yourself rather than saying what was wrong.",
       "earlySigns": [
         "Re-checking a task you already delegated",
