@@ -352,10 +352,10 @@
     // cover is the version that sells worst *and* informs least.
     wellnessCoverTitle: 'Six dimensions, read from your behaviour',
     wellnessCoverBlurb: 'Sleep and rhythm, cognitive load, social connection, physical activity, ' +
-      'emotional processing and meaning — each with the evidence behind it, an honest confidence ' +
+      'emotional processing and meaning – each with the evidence behind it, an honest confidence ' +
       'level, and concrete suggestions. A behavioural read, never a health assessment.',
     attachmentCoverTitle: 'How you are to be close to',
-    attachmentCoverBlurb: 'Your likely attachment style with the working shown — which traces point ' +
+    attachmentCoverBlurb: 'Your likely attachment style with the working shown – which traces point ' +
       'there, which style was considered and rejected, and what it means in practice for you and for ' +
       'whoever is close to you.',
 
@@ -367,7 +367,7 @@
       'than guessed at — and what to be careful of.',
     idealPartnerCoverTitle: 'What kind of partner truly suits you',
     idealPartnerCoverBlurb: 'What you actually need in a partner to be well, argued from your ' +
-      'attachment style rather than a wishlist of adjectives — what to be careful of, and an honest ' +
+      'attachment style rather than a wishlist of adjectives – what to be careful of, and an honest ' +
       'verdict on what suits you.',
     idealPartnerNeeds: 'What you actually need',
     idealPartnerCarefulOf: 'What to be careful of',
@@ -375,7 +375,7 @@
 
     careerCoverTitle: 'A career coach on your edge',
     careerCoverBlurb: 'Where you appear to be, the thing you do reliably that most people do not, ' +
-      'what you are visibly not using, the pattern most likely to cost you — and actions to take ' +
+      'what you are visibly not using, the pattern most likely to cost you – and actions to take ' +
       'this week, this quarter and this year.',
     // The title of the free click-to-reveal section now, not a paid one —
     // see `bonusCoverTitle` above and `roastBlock()` in docs/app.js. No
@@ -414,22 +414,38 @@
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
     fullReportTitle: 'Unlock the full premium report',
-    fullReportBlurb: 'Your card shows the conclusions. The full premium report shows the working — every score, ' +
-      'letter and type explained from your own data:',
-    fullReportPlus: 'And four sections the card does not cover:',
-    fullReportPdf: 'This file carries your summary card. The full premium report — every score, letter and ' +
-      'type explained from your own data, the roast, and four more sections on wellness, attachment, ' +
-      'the partner who suits you and your career — is part of the S$1.99 unlock in the app.',
-    explainWho: 'Why that character, and the long read on who you are.',
-    explainBigFive: 'What each of your five scores is built on, with the evidence.',
+    // One list, one offer: the explanations behind the card and the four
+    // sections it does not touch, read as the single report they are bought as.
+    // Each line says what that part of the report actually contains, at the
+    // length the four premium covers already run to, so the reader is deciding
+    // on specifics rather than on section names.
+    fullReportBlurb: 'Your card shows the conclusions. The full premium report shows the working – every ' +
+      'score, letter and type explained from your own data – and goes further, into your wellness, your ' +
+      'attachment style, the partner who suits you and your career:',
+    explainWho: 'Why that character fits you and not a neighbouring one, then the long read on who you ' +
+      'are – the patterns that run through years of your posts and messages, drawn together into a ' +
+      'portrait specific enough that it could not be anyone else\'s.',
+    explainBigFive: 'Each of your five scores taken apart – what pushed it up, what held it down, and the ' +
+      'evidence behind it, counted, from your captions, messages and rhythm. Including where the case is ' +
+      'thinner than the number suggests.',
     explainTypesTitle: 'MBTI & Enneagram',
-    explainTypes: 'Letter by letter — why each one, how strongly, and what it costs or buys you.',
+    explainTypes: 'Letter by letter – the behaviours that put each one there, the evidence that pulls the ' +
+      'other way, and how firmly it holds. Then your enneagram type and wing in plain language, and what ' +
+      'both look like in your ordinary week.',
     explainListsTitle: 'Interests, values & beliefs',
-    explainLists: 'Where each one shows up, and whether it is rising or fading.',
+    explainLists: 'What you actually care about, with the evidence for each – where it shows up, how ' +
+      'often and since when. Each is marked as lasting, rising, fading or dormant, so you can see which ' +
+      'passions are current and which are history.',
     explainPeopleTitle: 'In relationships & at work',
-    explainPeople: 'Your strengths, blind spots and love languages, explained.',
-    explainActivity: 'What your posting rhythm, timing and feed say about you.',
-    explainRoast: 'The least charitable read of you — behind a cover, for when you want it.',
+    explainPeople: 'How you are to date, be close to and work with – your real strengths and the blind ' +
+      'spots that cost you, each with its evidence. Plus how you show love and how you want to receive ' +
+      'it, and where those two do not match.',
+    explainActivity: 'What your posting rhythm, timing and feed say about you – when you are active, how ' +
+      'that has changed over the years, what you consume against what you publish, and what your habits ' +
+      'show that you would not have said yourself.',
+    explainRoast: 'The least charitable, most honest-friend read of you – the patterns you would rather not ' +
+      'see, said plainly, with the advice nobody softens. Kept behind a cover of its own, so you only read ' +
+      'it when you want to.',
     // The sample report's paid sections show their real covers now — same
     // title, same blurb, same price mentioned in the blurb — but the button
     // underneath is inert (see paidCard's `sample` option) and disabled, so it
@@ -466,7 +482,7 @@
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: 'S$1.99',
-    premiumUnlockPrefix: 'Unlock the full premium report — ',
+    premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
     // reason: a long structured response with thinking enabled. The dialog

@@ -3504,6 +3504,8 @@ try {
       roast: body.querySelectorAll('.bonus-card').length,
       titles: [...body.querySelectorAll('.full-report-locked .premium-tier-item strong')]
         .map(node => node.textContent.trim()),
+      lists: body.querySelectorAll('.full-report-locked .premium-tier-list').length,
+      lockedText: body.querySelector('.full-report-locked').innerText,
       want: [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
         T.explainPeopleTitle, T.activity, T.bonus,
         T.wellness, T.attachment, T.idealPartner, T.careerAssessment],
@@ -3521,6 +3523,14 @@ try {
   check('the roast is not on a free page at all', freeState.roast === 0);
   check('the block names every explanation and every premium section the unlock opens',
     JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));
+  // One list, not the explanations and then "four sections the card does not
+  // cover" as an afterthought — and the block's dashes are en dashes.
+  check('as one list of all eleven, with no second heading splitting it',
+    freeState.lists === 1 && !/four sections the card does not cover/i.test(freeState.lockedText),
+    String(freeState.lists));
+  check('and its copy uses en dashes, not em dashes',
+    !/—/.test(freeState.lockedText) && /–/.test(freeState.lockedText),
+    (freeState.lockedText.match(/.{0,30}—.{0,30}/) || ['none'])[0]);
   check('and the explanations never reached this browser — the stored report is the card alone',
     !freeReport.summary && !freeReport.bonus && !freeReport.activity && !freeReport.career &&
     !freeReport.bigFive.openness.reading && !(freeReport.mbti.letters[0] || {}).why &&

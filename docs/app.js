@@ -1274,9 +1274,10 @@
       '<h3>' + esc(TEXT.fullReportTitle) + '</h3>' +
       '</div>' +
       '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
-      '<ul class="premium-tier-list">' + tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) + '</ul>' +
-      '<p class="premium-tier-blurb">' + esc(TEXT.fullReportPlus) + '</p>' +
-      '<ul class="premium-tier-list">' + tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>' +
+      // One list: the explanations and the four premium sections are one
+      // purchase, and splitting them made the four read as an afterthought.
+      '<ul class="premium-tier-list">' + tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) +
+      tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
       premiumUnlockLabel(false) + '</button>' +
       '</div>';
@@ -1359,8 +1360,10 @@
    * already says the same thing.
    */
   function premiumTierHtml() {
+    // The same descriptions the locked block under a free card uses, so the
+    // offer reads the same on the way in as at the moment of paying.
     const items = tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) +
-      tierItemsHtml(PAID_SECTIONS, section => section.coverTitle());
+      tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb());
     return '<div class="premium-tier">' +
       '<div class="premium-tier-head">' +
       '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
