@@ -5385,6 +5385,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         product: 'unlock', promoCode: '${promo}',
         anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
       out.notObject = await post({ digest: ['a', 'b'] });
+      out.status = await (await fetch(base + '/api/status')).json();
       out.stuffed = await post({ digest: Object.assign({}, digest, {
         counts: Object.fromEntries(Array.from({ length: 200 }, (_, i) => ['k' + i, 'v'.repeat(5000)])),
       }) });
@@ -5401,6 +5402,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   }
   const data = r => (r && r.json && r.json.data) || {};
   check('the routes subprocess ran', !routes.crashed, routes.crashed);
+  check('the status route says which build is running',
+    Boolean(routes.status && routes.status.build) && /^[0-9a-f]{7}$/.test(routes.status.build.shortCommit) &&
+    Boolean(routes.status.build.version) && !Number.isNaN(Date.parse(routes.status.build.startedAt)),
+    JSON.stringify(routes.status && routes.status.build));
   check('a free request gets the card: conclusions, and no writing',
     Boolean(routes.free) && routes.free.status === 200 && Boolean(data(routes.free).mbti) &&
     data(routes.free).summary === undefined && data(routes.free).bonus === undefined &&
@@ -5523,6 +5528,34 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     out.split('\n').slice(-6).join(' | '));
   check('and it says what a real run would cost before sending anything',
     !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
+}
+
+// ---------- the build in the footer ----------
+//
+// Which commit a page is running, from Render's environment when deployed and
+// from .git otherwise. Two of its values become a link in the footer, so what
+// is not a hash or an owner/name slug must never get that far.
+{
+  const version = await import('../lib/version.js').then(m => m.default || m);
+  const sha = 'a'.repeat(40);
+  const onRender = version.describe({ RENDER: 'true', RENDER_GIT_COMMIT: sha,
+    RENDER_GIT_BRANCH: 'main', RENDER_GIT_REPO_SLUG: 'someone/elsewhere' }, root);
+  check('on Render, the build is the commit Render deployed, linked to its repository',
+    onRender.commit === sha && onRender.shortCommit === 'aaaaaaa' && onRender.branch === 'main' &&
+    onRender.url === 'https://github.com/someone/elsewhere/commit/' + sha && onRender.platform === 'render' &&
+    onRender.version === JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
+    JSON.stringify(onRender));
+  const local = version.describe({}, root);
+  check('off Render it reads .git, so a local or test server names its commit too',
+    /^[0-9a-f]{40}$/.test(local.commit) && local.url.endsWith('/commit/' + local.commit) &&
+    local.url.startsWith('https://github.com/' + version.DEFAULT_REPO + '/') && local.platform === '',
+    JSON.stringify(local));
+  const hostile = version.describe({ RENDER_GIT_COMMIT: 'javascript:alert(1)',
+    RENDER_GIT_REPO_SLUG: 'evil.com/x?y=<script>', RENDER_GIT_BRANCH: 'a b <c>' }, join(tmpdir(), 'no-such-repo'));
+  check('anything that is not a hash or an owner/name slug is dropped, not linked',
+    hostile.commit === '' && hostile.url === '' && hostile.branch === '', JSON.stringify(hostile));
+  check('and a missing .git is "unknown", not a server that will not start',
+    version.fromGit(join(tmpdir(), 'no-such-repo')).commit === '');
 }
 
 // ---------- the spend ledger ----------

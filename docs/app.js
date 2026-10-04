@@ -6115,6 +6115,44 @@
     banner.hidden = false;
   }
 
+  /**
+   * The build this page is running, in the footer: package version, the short
+   * commit linked to it on GitHub, and when the server started serving it.
+   * Hidden when the server did not say, rather than showing a blank version.
+   * Built with textContent and a validated href, never innerHTML — the values
+   * come from the server, which checks them, and are treated as text anyway.
+   */
+  function renderBuild(build) {
+    const slot = $('#footer-version');
+    if (!slot) return;
+    const b = build && typeof build === 'object' ? build : null;
+    if (!b || (!b.version && !b.shortCommit)) { slot.hidden = true; return; }
+    slot.textContent = '';
+    const parts = [];
+    if (b.version) parts.push('v' + b.version);
+    slot.append(parts.join(''));
+    if (b.shortCommit) {
+      slot.append((parts.length ? ' · ' : '') + 'build ');
+      if (/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{7,40}$/.test(b.url || '')) {
+        const link = document.createElement('a');
+        link.href = b.url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = b.shortCommit;
+        if (b.branch) link.title = 'Branch ' + b.branch;
+        slot.append(link);
+      } else {
+        slot.append(b.shortCommit);
+      }
+    }
+    const started = b.startedAt ? new Date(b.startedAt) : null;
+    if (started && !Number.isNaN(started.getTime())) {
+      slot.append(' · running since ' + started.toLocaleString(undefined,
+        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    }
+    slot.hidden = false;
+  }
+
   async function boot() {
     state.server = await LLM.status();
     // The server owns this number; the constant above is only what applies
@@ -6123,6 +6161,7 @@
     // setting the allowance to undefined and making every run look free.
     if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
     renderServerStatus();
+    renderBuild(state.server.build);
 
     if (await consumeIncomingLink()) return;
     // Before the report below, because a job still running is newer than

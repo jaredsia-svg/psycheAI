@@ -20,6 +20,9 @@ const results = require('./lib/results');
 const usage = require('./lib/usage');
 const rateLimit = require('./lib/ratelimit');
 const nonces = require('./lib/nonce');
+const version = require('./lib/version');
+// Read once: the build does not change while the process runs.
+const BUILD = version.describe();
 // Required directly rather than reached through provider.active: the paid
 // analysis is a fixed choice of its own, independent of whichever provider
 // the free report used, so a deployment with only XAI_API_KEY set still has
@@ -328,6 +331,9 @@ async function handleStatus(response) {
     // costs after that. Served rather than hard-coded in docs/app.js so the
     // price on the button and the price Stripe charges cannot drift apart.
     freeAnalyses: FREE_ANALYSES,
+    // Which build this is — the commit, the branch and when it started — so
+    // the footer can say what a reader is running. See lib/version.js.
+    build: BUILD,
   });
 }
 

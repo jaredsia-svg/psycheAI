@@ -2426,6 +2426,23 @@ try {
   // truth, so it could never be wrong, where a sentence can be — but the
   // welcome page still carries the generated block, which is where somebody
   // deciding whether to pay actually meets it.
+  // The build, in the footer, so a reader reporting a problem can name the
+  // commit they are on. The test server runs from this checkout, so it is
+  // read from .git — the same path a local server takes.
+  const footerBuild = await page.evaluate(() => {
+    const el = document.querySelector('#footer-version');
+    const link = el && el.querySelector('a');
+    return el ? { hidden: el.hidden, text: el.textContent, href: link && link.href, rel: link && link.rel } : null;
+  });
+  check('the footer says which version and build the page is running',
+    Boolean(footerBuild) && !footerBuild.hidden &&
+    /^v\d+\.\d+\.\d+ · build [0-9a-f]{7} · running since .+/.test(footerBuild.text),
+    JSON.stringify(footerBuild));
+  check('and the build links to that commit on GitHub, in a new tab, without an opener',
+    Boolean(footerBuild && footerBuild.href) &&
+    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{40}$/.test(footerBuild.href) &&
+    /noopener/.test(footerBuild.rel),
+    footerBuild && footerBuild.href);
   check('the premium tier is mounted in every slot that asks for one',
     (await page.locator('[data-premium-tier] .premium-tier').count()) ===
     (await page.locator('[data-premium-tier]').count()) &&
