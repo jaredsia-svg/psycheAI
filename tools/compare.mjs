@@ -17,7 +17,7 @@
 // more often than that.
 //
 //   npm run compare -- digest.html --runs 3 \
-//     --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:LOW
+//     --configs gemini-3.8-flash:MEDIUM,gemini-3.8-flash:LOW
 //
 // Every run is a real model call and costs real money: about five cents each
 // at the production setting. The total is printed before anything is sent.
@@ -67,18 +67,23 @@ async function digestFrom(path) {
   return Digest.forModel(digest);
 }
 
-/** `model:thinking` pairs, comma separated. A bare thinking level keeps the default model. */
-export function parseConfigs(text, defaultModel) {
+/**
+ * `model:thinking` pairs, comma separated. A bare thinking level keeps the
+ * default model, a bare model keeps the default level — production's, which
+ * the engine reports, so the baseline is what readers actually get.
+ */
+export function parseConfigs(text, defaultModel, defaultLevel) {
+  const level = defaultLevel || 'MEDIUM';
   const items = String(text || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (!items.length) return [{ model: defaultModel, thinkingLevel: 'HIGH' }];
+  if (!items.length) return [{ model: defaultModel, thinkingLevel: level }];
   return items.map(item => {
     const at = item.lastIndexOf(':');
     if (at < 0) {
       return /^[A-Z]+$/.test(item)
         ? { model: defaultModel, thinkingLevel: item }
-        : { model: item, thinkingLevel: 'HIGH' };
+        : { model: item, thinkingLevel: level };
     }
-    return { model: item.slice(0, at) || defaultModel, thinkingLevel: item.slice(at + 1).toUpperCase() || 'HIGH' };
+    return { model: item.slice(0, at) || defaultModel, thinkingLevel: item.slice(at + 1).toUpperCase() || level };
   });
 }
 
@@ -203,7 +208,7 @@ async function main() {
   }
 
   const runs = Math.max(1, Math.min(10, Number(option('runs', 3)) || 3));
-  const configs = parseConfigs(option('configs', ''), engine.MODEL);
+  const configs = parseConfigs(option('configs', ''), engine.MODEL, engine.THINKING_LEVEL);
   const digest = await digestFrom(path);
   const calls = runs * configs.length;
   console.log('\n  PsycheAI card comparison');

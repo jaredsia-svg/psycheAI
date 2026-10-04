@@ -104,7 +104,7 @@ same file, byte for byte — so the only difference between them is what they ar
   summary, strengths and weaknesses, attachment, rhythm, energy and work style. The ten card fields
   that repeat its own conclusions (type, enneagram, scores, lists, love languages, confidence) are
   copied from its answer by `withCard`, so they cannot disagree with it and are not paid for twice
-  at the output rate. Thinking stays at `HIGH`.
+  at the output rate. Both calls think at the same level, `MEDIUM`.
 - **The full premium report** (`analyseFull`, kind `full`) runs `FULL_SYSTEM` against `FULL_SCHEMA`.
   That is `PROFILE_SYSTEM` and `PREMIUM_SYSTEM` joined, with their schemas merged, so the written
   report, the roast and the four premium sections come back in a single response. It used to be two
@@ -137,14 +137,14 @@ time sets the ceiling on how well anything else can agree with it.
 
 ```
 GEMINI_API_KEY=... npm run compare -- psycheai-digest-preview.html --runs 3 \
-  --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:LOW
+  --configs gemini-3.8-flash:MEDIUM,gemini-3.8-flash:LOW
 ```
 
 The digest can be the review screen's "Download what's being sent" file, a digest saved as JSON, or
 an Instagram export zip. Each real run costs about five cents and the total is printed first;
 `--mock` runs the whole tool against `lib/mock.js` for nothing. The model and thinking overrides it
 uses are options on `analyseCard` that production never passes, and a selftest check holds the
-default at HIGH on the configured model.
+default at MEDIUM on the configured model.
 
 **One digest of 80,000 characters.** `DIGEST_CHARS` in `docs/digest.js` is the decision; both cost
 ceilings follow from it. The per-list caps are sized so a heavy account lands near it through the
@@ -1217,7 +1217,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
-| `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` or `HIGH` (default). Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which can cut the answer off (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
+| `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
@@ -1253,8 +1253,8 @@ cap, and an answer bigger than the ~4% left over is cut off as `MAX_TOKENS`, whi
 lost. The card (about 700 tokens against 8,000) and the full report (about 10,000 against 28,000)
 are both bigger than that. A larger cap does not help, because the thinking grows into it. A level
 that stops on its own does: on the same measurements `MEDIUM` thought about 2,500 tokens and `LOW`
-about 1,400. Set `PSYCHEAI_GEMINI_THINKING` to change it with no deploy, and measure the change with
-`npm run compare` first. A cut-off call is now recorded in `npm run usage`, with its cost.
+about 1,400. **So both calls think at `MEDIUM`**, on `gemini-3.8-flash`. `PSYCHEAI_GEMINI_THINKING`
+changes the level with no deploy; measure a change with `npm run compare` first. A cut-off call is now recorded in `npm run usage`, with its cost.
 
 Two ways to move between them, and the first needs no deploy:
 

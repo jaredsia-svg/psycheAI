@@ -486,7 +486,7 @@
   //
   // The free output cap is the number to tune, and the one to tune carefully.
   // The card itself is about 600 tokens; the rest is thinking, at the same
-  // HIGH level the full report uses. Too low and the card comes back
+  // level the full report uses (MEDIUM). Too low and the card comes back
   // truncated, so this starts generous and `npm run usage` says how much of it
   // real runs use.
   // $0.052 since the card got a prompt of its own: 13,137 tokens of the full

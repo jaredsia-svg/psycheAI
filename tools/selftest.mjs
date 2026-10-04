@@ -4965,21 +4965,21 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     process.env.GEMINI_API_KEY = keyBefore;
     if (keyBefore === undefined) delete process.env.GEMINI_API_KEY;
     gemini.__testing.reset();
-    check('the card call sends its own output cap, with HIGH thinking like the full report',
+    check('the card call sends its own output cap, at MEDIUM thinking like the full report',
       Boolean(sentConfig) && sentConfig.maxOutputTokens === gemini.CARD_MAX_OUTPUT_TOKENS &&
-      sentConfig.thinkingConfig && sentConfig.thinkingConfig.thinkingLevel === 'HIGH',
+      sentConfig.thinkingConfig && sentConfig.thinkingConfig.thinkingLevel === 'MEDIUM',
       JSON.stringify(sentConfig && { max: sentConfig.maxOutputTokens, thinking: sentConfig.thinkingConfig }));
-    check('the unlock\'s one call sends the merged schema, its own cap, and the same HIGH thinking',
+    check('the unlock\'s one call sends the merged schema, its own cap, and the same MEDIUM thinking',
       Boolean(fullConfig) && fullConfig.responseJsonSchema === prompts.FULL_SCHEMA &&
       fullConfig.systemInstruction === prompts.FULL_SYSTEM &&
       fullConfig.maxOutputTokens === gemini.FULL_MAX_OUTPUT_TOKENS &&
-      fullConfig.thinkingConfig.thinkingLevel === 'HIGH',
+      fullConfig.thinkingConfig.thinkingLevel === 'MEDIUM',
       JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
     // The overrides exist for tools/compare.mjs. Production passes nothing,
-    // and nothing must be what it gets: HIGH thinking on the default model.
-    check('compare\'s overrides reach the request, and production keeps HIGH without them',
+    // and nothing must be what it gets: MEDIUM thinking on the default model.
+    check('compare\'s overrides reach the request, and production keeps MEDIUM without them',
       overrideConfig.thinkingConfig.thinkingLevel === 'LOW' && overrideModel === 'gemini-test-lite' &&
-      defaultRequest.config.thinkingConfig.thinkingLevel === 'HIGH' && defaultRequest.model === gemini.MODEL,
+      defaultRequest.config.thinkingConfig.thinkingLevel === 'MEDIUM' && defaultRequest.model === gemini.MODEL,
       JSON.stringify({ override: overrideConfig.thinkingConfig, plain: defaultRequest.config.thinkingConfig }));
     check('a real engine\'s card comes back completed from its own answer',
       Boolean(cardAnswer && cardAnswer.data && cardAnswer.data.card) &&
@@ -5510,12 +5510,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     rows[1].against.runs === 2 && rows[1].against.type === 1 &&
     Math.abs(rows[0].cost - 0.045) < 1e-9 && rows[1].cost === 0.02 && rows[0].thinking === 5500,
     JSON.stringify(rows.map(r => ({ runs: r.against.runs, type: r.against.type, cost: r.cost }))));
-  const configs = compare.parseConfigs('gemini-3.7-flash:HIGH, LOW, gemini-x-lite', 'gemini-3.7-flash');
+  const configs = compare.parseConfigs('gemini-3.7-flash:HIGH, LOW, gemini-x-lite', 'gemini-3.7-flash', 'MEDIUM');
   check('configs read as model:thinking, with either half defaulting',
     JSON.stringify(configs) === JSON.stringify([
       { model: 'gemini-3.7-flash', thinkingLevel: 'HIGH' }, { model: 'gemini-3.7-flash', thinkingLevel: 'LOW' },
-      { model: 'gemini-x-lite', thinkingLevel: 'HIGH' }]) &&
-    JSON.stringify(compare.parseConfigs('', 'm')) === JSON.stringify([{ model: 'm', thinkingLevel: 'HIGH' }]),
+      { model: 'gemini-x-lite', thinkingLevel: 'MEDIUM' }]) &&
+    JSON.stringify(compare.parseConfigs('', 'm', 'MEDIUM')) === JSON.stringify([{ model: 'm', thinkingLevel: 'MEDIUM' }]),
     JSON.stringify(configs));
   // The review screen's download is the file a reader has to hand, and it
   // escapes the digest into a <pre>; reading it back has to give the object.
@@ -5534,7 +5534,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     out = String((error.stdout || '') + (error.stderr || '') || error.message);
   }
   check('the tool runs end to end, and the mock agrees with itself completely',
-    /mock:HIGH \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%.*0 of 2/.test(out),
+    /mock:MEDIUM \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%.*0 of 2/.test(out),
     out.split('\n').slice(-6).join(' | '));
   check('and it says what a real run would cost before sending anything',
     !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
@@ -5573,12 +5573,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     'process.stdout.write(JSON.stringify(require(' + JSON.stringify(join(root, 'lib', 'gemini.js')) + ').THINKING_LEVEL))'],
     { encoding: 'utf8', env: Object.assign({ PATH: process.env.PATH }, value === undefined ? {} : { PSYCHEAI_GEMINI_THINKING: value }),
       stdio: ['ignore', 'pipe', 'ignore'] }));
-  check('the thinking level is HIGH unless the server is told otherwise',
-    levelFor(undefined) === 'HIGH' && levelFor('') === 'HIGH');
+  // MEDIUM: at HIGH, Gemini 3 Flash thinks until its cap is nearly spent and
+  // cut the card and the full report off on 3.8. Pinned to the word, because
+  // a default that drifted back to HIGH would look fine until the first run.
+  check('the thinking level is MEDIUM unless the server is told otherwise',
+    levelFor(undefined) === 'MEDIUM' && levelFor('') === 'MEDIUM' && gemini.THINKING_LEVEL === 'MEDIUM');
   check('and PSYCHEAI_GEMINI_THINKING sets it, in any case',
-    levelFor('medium') === 'MEDIUM' && levelFor('LOW') === 'LOW' && levelFor('Minimal') === 'MINIMAL');
+    levelFor('high') === 'HIGH' && levelFor('LOW') === 'LOW' && levelFor('Minimal') === 'MINIMAL');
   check('a value that is not a level is ignored rather than taking the site down',
-    levelFor('maximum') === 'HIGH');
+    levelFor('maximum') === 'MEDIUM');
 
   const store = join(tmpdir(), 'psycheai-selftest-failed-' + process.pid + '.jsonl');
   try { rmSync(store); } catch (error) { /* not there */ }

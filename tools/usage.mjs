@@ -51,8 +51,9 @@ if (!t.calls) {
 } else if (t.failedBy.MAX_TOKENS) {
   console.log('\n  Calls are being cut off at their output cap (MAX_TOKENS). At thinking level HIGH,');
   console.log('  Gemini 3 thinks until the cap is nearly spent, so a bigger cap only buys more');
-  console.log('  thinking. Set PSYCHEAI_GEMINI_THINKING=MEDIUM (no deploy needed) and compare first:');
-  console.log('  npm run compare -- <digest> --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:MEDIUM');
+  console.log('  thinking. The default is MEDIUM; if PSYCHEAI_GEMINI_THINKING is set to HIGH, unset it.');
+  console.log('  Still cut off at MEDIUM? Compare LOW before changing it:');
+  console.log('  npm run compare -- <digest> --configs gemini-3.8-flash:MEDIUM,gemini-3.8-flash:LOW');
 } else if (t.thinkingShare > 0.5) {
   console.log('\n  Most of the output bill is thinking, and output bills at five times');
   console.log('  input. thinkingLevel is set in lib/gemini.js; lowering it is the only');
