@@ -17,7 +17,7 @@
 // more often than that.
 //
 //   npm run compare -- digest.html --runs 3 \
-//     --configs gemini-3.7-flash:HIGH,gemini-3.7-flash:LOW
+//     --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:LOW
 //
 // Every run is a real model call and costs real money: about five cents each
 // at the production setting. The total is printed before anything is sent.

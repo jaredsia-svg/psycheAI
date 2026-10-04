@@ -137,7 +137,7 @@ time sets the ceiling on how well anything else can agree with it.
 
 ```
 GEMINI_API_KEY=... npm run compare -- psycheai-digest-preview.html --runs 3 \
-  --configs gemini-3.7-flash:HIGH,gemini-3.7-flash:LOW
+  --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:LOW
 ```
 
 The digest can be the review screen's "Download what's being sent" file, a digest saved as JSON, or
@@ -339,7 +339,7 @@ paid call entirely independently of that choice. Mock mode is the one exception:
 `PSYCHEAI_MOCK=1`, `provider.active` is already the mock module and `premiumEngine()` follows it there
 rather than demanding a real key just to click through the flow.
 
-**Gemini 3.7 Flash is the current choice, on price** — the same four sections cost a fraction as much
+**Gemini 3.8 Flash is the current choice, on price** — the same four sections cost a fraction as much
 to generate as they did on Claude. **Set `PSYCHEAI_PREMIUM_PROVIDER=anthropic` to revert to Claude
 Sonnet 5** (`PREMIUM_MODEL` in `lib/claude.js`) with no code change — that is the whole reason the
 provider is a runtime switch rather than a single `require('./lib/claude')`: Claude follows the
@@ -1217,7 +1217,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
-| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.7-flash`. Setting this is the zero-deploy way to try `gemini-3.8-flash` — see [Which model, and going back](#which-model-and-going-back). |
+| `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
@@ -1232,20 +1232,17 @@ npm run models:grok       # needs XAI_API_KEY
 npm run models            # needs GEMINI_API_KEY, lists Gemini's
 ```
 
-`gemini-3.7-flash` is the default because it is generally available and cheap enough to re-run
-freely. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
+`gemini-3.8-flash` is the default, at the same price as 3.7. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
 
 ### Which model, and going back
 
-The default was moved to `gemini-3.8-flash` and moved back the same day. The model resolves and the
-key can reach it — a model ID that did not would produce *"Gemini has no model called …"*, since the
-404 branch of `asHttpError` is checked before the 503 one. What it produced instead was
-**"Gemini is overloaded right now and stayed unavailable after retrying automatically"**, which is
-Google declining to serve under load, three automatic retries deep. That is what a just-launched
-model looks like when everyone is trying it at once, and it is a good enough reason to sit on 3.7
-until the capacity settles. Nothing about the switch itself was wrong; it can go back whenever 3.8
-stops being busy.
+The default is `gemini-3.8-flash`. It was made the default once before and moved back the same day:
+the model resolved and the key could reach it, but Google answered **"Gemini is overloaded right now
+and stayed unavailable after retrying automatically"** — declining to serve under launch load, three
+automatic retries deep, rather than anything wrong with the switch. It is the default again now that
+launch traffic has had time to settle. If the overload errors come back, `GEMINI_MODEL=gemini-3.7-flash`
+returns to 3.7 on the next request with no deploy.
 
 Two ways to move between them, and the first needs no deploy:
 
@@ -1258,15 +1255,13 @@ Two ways to move between them, and the first needs no deploy:
    models' rates, so nothing has to be looked up, and a check in `tools/selftest.mjs` fails if only
    one of the two lines moves. Nothing else in the codebase names a model.
 
-**On the rates**, which are load-bearing rather than documentation: `docs/digest.js` *derives* the
-digest character ceiling from them, so a price that is too low hands back a ceiling that quietly
-breaks the `COST_CAP` rather than failing loudly. As of September 2026, `gemini-3.8-flash` sells at
-an introductory $0.75/$3.75 per million until 31 December 2026 and reverts to $1.50/$7.50 on
-1 January 2027 — which is what `gemini-3.7-flash` charges today. The table holds the **standard**
-rates for both. Budgeting at the introductory price would roughly double the ceiling now and then
-break the cap on New Year's Day with nothing to announce it; budgeting at the standard price is
-correct then and merely conservative until then. It also means the two models are interchangeable as
-far as the budget is concerned, so switching between them changes no other number in the app.
+**On the rates**, which are load-bearing rather than documentation: `docs/digest.js` checks both
+cost ceilings against them, so a price that is too low would let a ceiling break quietly rather than
+fail loudly. Both models are budgeted at $0.75 in and $3.75 out per million tokens — the price treated
+as permanent for both — so the two are interchangeable as far as every budget is concerned, and
+switching between them changes no other number in the app. If Google's price for either changes,
+`MODEL_RATES` in `docs/digest.js` and `RATES` in `lib/usage.js` are the two places to change it; a
+selftest check fails if they disagree.
 
 A `PRICED_MODEL` with no entry in `MODEL_RATES` throws at load, naming the model and listing the
 alternatives, rather than surfacing as a `TypeError` from inside `charBudget` — the half-finished

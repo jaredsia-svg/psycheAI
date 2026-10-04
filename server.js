@@ -32,7 +32,7 @@ const nonces = require('./lib/nonce');
 const claude = require('./lib/claude');
 const gemini = require('./lib/gemini');
 
-// Which engine the paid pass runs on. Gemini 3.7 Flash is the current choice,
+// Which engine the paid pass runs on. Gemini 3.8 Flash is the current choice,
 // on price — the same four sections cost a fraction as much to generate.
 // Set PSYCHEAI_PREMIUM_PROVIDER=anthropic to put it back on Claude Sonnet 5,
 // which is what this ran on before: that model is more expensive but follows
