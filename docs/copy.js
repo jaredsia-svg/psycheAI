@@ -776,23 +776,26 @@
 
     // One line per section: what it measures, before anything about you.
     definitions: {
-      summary: 'The whole report in a few paragraphs, and the character you most resemble in temperament.',
-      patterns: 'The two or three behaviours that explain the most about you. Every section below shows where each one appears.',
-      bigFive: 'Five broad traits, each a spectrum with no good or bad end. Both ends are described; the shaded band is where most people land.',
-      mbti: 'A popular four-letter type system: a quick read of your temperament. The Big Five below measures the same traits in finer grain.',
-      motivators: 'Ten basic human values from Schwartz\'s research on motivation, ranked against each other. Higher means it shows up more in what you actually do.',
-      interests: 'What you keep coming back to, and whether each interest is current, growing or history.',
-      values: 'What you hold to, in your own terms – values and beliefs together, each with how firmly the data says so.',
-      relationships: 'How you attach, what you bring and where it gets hard, how you give and want care, and who suits you.',
-      attachment: 'How you tend to behave when you get close to someone. A guess from behaviour, and the most changeable thing in this report.',
-      idealPartner: 'What you actually need in a partner, argued from your attachment read.',
-      work: 'How you work, what sets you apart, what holds you back, and what you are not using. What to do about it is in your plan.',
-      wellness: 'Six behavioural dimensions read from how you use these accounts. Not a health assessment.',
-      development: 'Built from the findings above: what to lean into, what to work on, and where each one came from.',
-      pressurePoints: 'Strengths that turn costly when overused, under pressure or when tired. The level says how clearly your data already shows the cost, not how you compare with anyone.',
+      // One short line where a section needs saying what it is; none where
+      // the title already does.
+      summary: '',
+      patterns: 'The behaviours that explain the most about you.',
+      bigFive: 'Five research-backed traits. The shaded band is where most people land.',
+      mbti: 'A popular type system – descriptive, not clinically validated.',
+      motivators: 'Schwartz\'s ten basic values, ranked by how much each shows in what you do.',
+      interests: '',
+      values: '',
+      relationships: '',
+      attachment: 'A guess from behaviour, and the most changeable read here.',
+      idealPartner: '',
+      work: '',
+      wellness: 'A read of online behaviour, not a health assessment.',
+      development: '',
+      pressurePoints: 'Strengths that turn costly when overused. The level is how clearly your data shows the cost.',
       activity: 'The behaviour underneath every finding above: when you are active, what you post, and what you take in.',
-      method: 'What this report read, how much of it, and how far to trust it.',
+      method: '',
     },
+
 
     // The structured layout's own section titles, where they differ.
     titles: {
@@ -828,7 +831,7 @@
       bigFive: 'Big Five', mbti: 'MBTI', motivators: 'Motivators',
       interests: 'Interests', values: 'Values & beliefs', beliefs: 'Values & beliefs', relationships: 'Relationships',
       attachment: 'Attachment', idealPartner: 'Ideal partner', work: 'How you work',
-      wellness: 'Wellbeing', activity: 'Digital footprint',
+      wellness: 'Wellbeing',
     },
 
     // Both ends of each Big Five spectrum, so neither reads as the bad one.
@@ -889,9 +892,6 @@
     ],
 
     // The web page's furniture for the structured layout.
-    partNavLabel: 'Parts of this report',
-    partNavShort: { overview: 'Overview', who: '1 · You', drives: '2 · Drives', connect: '3 · Connect',
-      together: '4 · Next', appendix: 'Roast' },
     yourScore: 'Your score',
     flags: { high: 'Highest', low: 'Lowest' },
     // One marker per interest for where it is heading, keyed by trajectory.
@@ -904,7 +904,7 @@
     notYetUsing: 'Not yet using: ',
     // The structured wellbeing section's one line of context, in place of the
     // classic report's paragraph. Still says what this is not, and who to ask.
-    wellnessNote: 'A read of online behaviour, not a health assessment. If anything here weighs on you, a GP or qualified professional can help.',
+    wellnessNote: 'If anything here weighs on you, a GP or qualified professional can help.',
     // The card's own labels in the structured layout.
     cardStandFor: 'What you stand for',
     cardInto: 'What you are into',
@@ -927,10 +927,9 @@
     fromWellbeing: 'Wellbeing',
     atBest: 'At its best',
     overusedPrefix: 'Overused: ',
-    coverageTitle: 'Read word for word',
     // Everything the digest carries complete, beside the text it samples —
     // so "180 of 9,741 messages" is not read as all the analysis saw.
-    countedInFull: 'Counted in full',
+    sourcesHint: 'Adding Google or Facebook raises confidence.',
     fullCounts: {
       messages: 'messages', conversations: 'conversations', posts: 'posts', stories: 'stories',
       commentsWritten: 'comments written', postsLiked: 'posts liked', postsSaved: 'posts saved',
@@ -940,14 +939,8 @@
     fullAcross: ' across ',
     fullTiming: 'Activity timing across ',
     spanYears: ' years', spanMonths: ' months',
-    // Keys of coverage.sampling in docs/digest.js, in the order they are shown.
-    coverageLabels: {
-      captions: 'Captions', comments: 'Comments', ownMessages: 'Your messages', likedCaptions: 'Liked captions',
-      engagedWith: 'Accounts you engage with', youtubeTitles: 'YouTube titles', youtubeChannels: 'YouTube channels',
-      googleSearchTerms: 'Google searches', youtubeSearchTerms: 'YouTube searches', facebookPosts: 'Facebook posts',
-    },
 
-    // The method section that closes Part 4.
+    // The method section after Part 4 (the PDF's method page still uses these rows).
     methodSources: 'Sources read',
     methodCoverage: 'What the evidence covers',
     methodModel: 'Written by',

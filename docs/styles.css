@@ -2260,10 +2260,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .pattern-badge { width: 2.1rem; height: 2.1rem; font-size: 1rem; }
 .pattern-dot { width: 1.15rem; height: 1.15rem; font-size: .68rem; margin-right: .35rem; flex: none; }
 .pattern-where, .origin, .motive-top { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: .4rem 0 0; }
-.connects {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
-  margin-top: 1.1rem; padding-top: .8rem; border-top: 1px dashed var(--line);
-}
 .connects-label {
   font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-soft); margin-right: .25rem;
@@ -2412,29 +2408,14 @@ p.connects-label { margin: .8rem 0 .2rem; }
    build on, amber to work on or watch — rather than a pattern's colour. */
 .pressure-item { border-left: 3px solid var(--warn); }
 
-/* Part headings with a large numeral, and a sticky nav across the parts. */
-.report-part { display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem; align-items: end; }
+/* Part headings: a large numeral beside the title. */
+.report-part { display: grid; grid-template-columns: auto 1fr; gap: .2rem 1rem; align-items: center; }
 .part-num {
   font-size: clamp(2.6rem, 8vw, 3.6rem); font-weight: 800; line-height: .9; letter-spacing: -.04em;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.part-nav {
-  position: sticky; top: 3.4rem; z-index: 10;
-  display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none;
-  margin: 0 0 .6rem; padding: .45rem; border-radius: 999px;
-  background: color-mix(in srgb, var(--bg-alt) 90%, transparent); backdrop-filter: blur(8px);
-  border: 1px solid var(--line); box-shadow: var(--shadow);
-}
-.part-nav::-webkit-scrollbar { display: none; }
-#sample-sections .part-nav { top: 0; }
-.part-nav-item {
-  flex: none; border: 0; border-radius: 999px; padding: .3rem .8rem; cursor: pointer;
-  background: transparent; color: var(--ink-soft); font: inherit; font-size: .82rem; font-weight: 600;
-}
-.part-nav-item:hover { color: var(--accent); }
-.part-nav-item.is-current { background: var(--accent); color: var(--bg-alt); }
-.report-part { scroll-margin-top: 7rem; }
+.report-part { scroll-margin-top: 5rem; }
 
 /* What a section found, in its head — shown even when it is shut, so the
    closed report reads as a summary. The definition shows only when open. */
@@ -2568,8 +2549,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 
 /* Wellbeing: six tiles coloured by band — no scores, the band is the read. */
 .wellness-tiles { display: grid; gap: .7rem; }
+/* Two across, three down. */
 @media (min-width: 640px) { .wellness-tiles { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 900px) { .wellness-tiles { grid-template-columns: repeat(3, 1fr); } }
 .wellness-tile { padding: .8rem .9rem; border-radius: 12px; border: 1px solid var(--line); border-top: 4px solid var(--line); background: var(--bg); }
 .wellness-tile-steady { border-top-color: var(--good); }
 .wellness-tile-mixed { border-top-color: var(--warn); }
@@ -2590,19 +2571,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .gauge-ends { display: flex; justify-content: space-between; gap: 1rem; margin-top: .3rem; font-size: .78rem; color: var(--ink-soft); }
 .gauge-ends span:last-child { text-align: right; font-weight: 600; color: var(--ink); }
 
-/* Evidence and method: how much of each source was read. */
-.coverage { display: grid; gap: .4rem; margin: .4rem 0 1rem; }
-.coverage-row { display: grid; grid-template-columns: 11rem 1fr 7.5rem; gap: .7rem; align-items: center; font-size: .85rem; }
-.coverage-num { text-align: right; }
-.coverage-num { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-/* "Read from", in two groups: what was counted in full, what was read word for word. */
+/* "Read from": what was counted in full. */
 .evidence-read { border-left: 3px solid var(--accent-soft); padding-left: .9rem; margin-bottom: 1rem; }
 .evidence-read .essence-label { font-size: .72rem; margin-top: .2rem; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
-.evidence-read .counted-full { margin-bottom: .8rem; }
-@media (max-width: 460px) {
-  .coverage-row { grid-template-columns: 1fr auto; }
-  .coverage-row .bar { grid-column: 1 / -1; grid-row: 2; }
-}
+.evidence-read .counted-full { margin-bottom: .2rem; }
 
 /* The roast as its own room: dark, and it fades in when revealed. */
 .layout-structured .bonus-card { background: #1d1624; color: #f1ebf5; border-color: #322a3c; }
@@ -2743,20 +2715,25 @@ details.more[open] > summary::after { content: ' ▴'; }
 .essence-emblem { width: 60%; height: 60%; }
 
 /* ---------- four parts, each one box ----------
-   The part's numbered heading is the only toggle; the sections inside are
-   always open, set apart by a rule rather than drawn as cards in a card. */
-.part-card { padding-top: 1.2rem; }
-.part-card-head { display: block; cursor: pointer; margin-bottom: .4rem; }
+   The part's numbered heading is the only toggle, and the only gradient: the
+   box's own top edge. The sections inside are set apart by one faint rule
+   each — the same rule under the part's heading — rather than drawn as cards
+   in a card, each with a gradient bar repeating the box's. */
+.part-card { padding-top: 1.1rem; }
+.part-card-head { display: block; cursor: pointer; margin-bottom: 0; }
 .part-card .report-part { margin: 0; padding: 0; border: 0; }
-.part-card .part-title { margin: .1rem 0 .2rem; }
+.part-card .part-title { margin: 0; }
 .part-card .part-title .card-toggle { font-size: inherit; }
-.section-card.part-card.is-collapsed .part-intro { display: none; }
+.part-card:not(.is-collapsed) > .part-card-head { padding-bottom: .9rem; border-bottom: 1px solid var(--line); }
 .part-body > .card {
   background: none; box-shadow: none; border: 0; border-radius: 0; margin: 0;
-  padding: 1.4rem 0 .6rem; border-top: 1px solid var(--line);
+  padding: 1.5rem 0 .4rem; border-top: 1px solid var(--line);
 }
-.part-body > .card:first-child { border-top: 0; padding-top: .6rem; }
-.part-body > .card .card-head { margin-bottom: .6rem; }
+.part-body > .card::before { display: none; }
+.part-body > .card:first-child { border-top: 0; }
+.part-body > .card > .card-head { margin-bottom: .8rem; align-items: center; }
+.part-body > .card > .card-head .card-icon { width: 1.9rem; height: 1.9rem; font-size: .95rem; }
+.part-body > .card > .card-head h2 { font-size: 1.2rem; }
 
 /* MBTI and the Big Five: the scale on the left, the reading on the right. */
 .reading-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem 1.4rem; align-items: start; }

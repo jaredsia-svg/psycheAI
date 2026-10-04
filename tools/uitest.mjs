@@ -10142,8 +10142,8 @@ try {
       await seed(true);
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
-      check('structured: the report runs overview, four parts, then the appendix',
-        parts.join() === 'overview,who,drives,connect,together,appendix', parts.join());
+      check('structured: the report runs the overview, then four parts',
+        parts.join() === 'overview,who,drives,connect,together', parts.join());
       const shape = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
         const parts = Array.from(body.querySelectorAll('.part-card'));
@@ -10166,10 +10166,11 @@ try {
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
       const subs = await sp.$$eval('#profile-body .section-card .card-sub', nodes => nodes.map(n => n.textContent));
-      check('structured: every section opens with what it measures',
-        subs.some(t => /Five broad traits, each a spectrum/.test(t)) &&
-        subs.some(t => /Schwartz/.test(t)) && subs.some(t => /not how you compare with anyone/.test(t)) &&
-        subs.some(t => /How you attach/.test(t)), subs.length + ' sub-lines');
+      // A line under a title only where the title does not already say it.
+      check('structured: a short line only under the sections whose title needs one',
+        subs.some(t => /^Five research-backed traits/.test(t)) && subs.some(t => /not clinically validated/.test(t)) &&
+        subs.some(t => /Schwartz/.test(t)) && subs.some(t => /how clearly your data shows the cost/.test(t)) &&
+        subs.length <= 7 && subs.every(t => t.length <= 100), JSON.stringify(subs));
 
       const cardFace = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card');
@@ -10237,14 +10238,19 @@ try {
       check('structured: three signature patterns, each with where it shows up',
         (await sp.locator('#profile-body .pattern').count()) === 3 &&
         (await sp.locator('#profile-body .pattern .pattern-where').count()) === 3);
-      const chipCount = await sp.locator('#profile-body .connects .pattern-chip').count();
-      check('structured: sections link back to the patterns they show', chipCount >= 8, chipCount + ' chips');
+      check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
+        (await sp.locator('#profile-body .connects').count()) === 0 &&
+        !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
+      check('structured: no digital footprint section, no part nav, no appendix heading, no MBTI caveat line',
+        !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
+        (await sp.locator('#profile-body .part-nav, #profile-body [data-part="appendix"]').count()) === 0 &&
+        !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
       await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.add('is-collapsed')));
-      await sp.locator('#profile-body .connects .pattern-chip[data-pattern="p3"]').first().evaluate(b => b.click());
+      await sp.locator('#profile-body .origin .pattern-chip[data-pattern="p1"]').first().evaluate(b => b.click());
       await sp.waitForTimeout(200);
       check('structured: a pattern chip opens the overview on that pattern',
         await sp.evaluate(() => {
-          const target = document.querySelector('#profile-body [data-pattern-card="p3"]');
+          const target = document.querySelector('#profile-body [data-pattern-card="p1"]');
           return !target.closest('.part-card').classList.contains('is-collapsed') && target.classList.contains('is-highlighted');
         }));
       check('structured: pattern evidence sits in boxes that fit their text, not pills that clip it',
@@ -10270,7 +10276,8 @@ try {
         (await sp.locator('#profile-body .development-card .timeline-col').count()) === 3 &&
         (await sp.locator('#profile-body .development-card .plan-step').count()) === 10);
       check('structured: every development item says where it came from',
-        (await sp.locator('#profile-body .dev-item .origin').count()) === 4);
+        (await sp.locator('#profile-body .dev-item .origin').count()) === 4 &&
+        !/Raised by/i.test(await sp.locator('#profile-body .development-card').textContent()));
       const levels = await sp.$$eval('#profile-body .pressure-level', nodes =>
         nodes.map(n => n.querySelectorAll('.pressure-step.is-on').length));
       check('structured: pressure points show their level as a three-step meter',
@@ -10280,18 +10287,19 @@ try {
         /Finishes things/.test(work) && /You finish what other people announce/.test(work) &&
         (await sp.locator('#profile-body .work-card[data-paid="careerAssessment"]').count()) === 1 &&
         (await sp.locator('#profile-body .paid-card[data-paid="careerAssessment"]').count()) === 1);
-      const method = await sp.locator('#profile-body .method-card').innerText();
-      check('structured: the method section names the sources, the format and the writer',
-        /Sources read/.test(method) && /Structured report, v1/.test(method) && /Written by/.test(method));
+      const method = await sp.locator('#profile-body .method-card').textContent();
+      check('structured: the method section is short: the score, what it read, the sources — no build or format rows',
+        /Confidence/.test(method) && !/Sources read|Structured report, v1|Written by|Report format|Build/.test(method) &&
+        (await sp.locator('#profile-body .method-card .method-list').count()) === 0, method.slice(0, 300));
       const order = await sp.evaluate(() => {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
         const together = document.querySelector('#profile-body .part-card[data-part-card="together"]');
-        return [at('.part-card[data-part-card="together"]'), at('[data-part="appendix"]'), at('.bonus-card'),
-          together && together.lastElementChild.lastElementChild.classList.contains('method-card') ? 1 : 0];
+        return [at('.part-card[data-part-card="together"]'), at('.method-card'), at('.bonus-card'),
+          together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: the roast is an appendix after the method, not mid-report',
-        order[0] >= 0 && order[0] < order[1] && order[1] < order[2] && order[3] === 1, order.join());
+      check('structured: the method stands apart after Part 4, and the roast comes last',
+        order[0] >= 0 && order[0] < order[1] && order[1] < order[2] && order[3] === 0, order.join());
       // Without a digest on the device, "Read from" is the model's own summary.
       const basedOnChips = await sp.$$eval('#profile-body .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
       check('structured: with no digest on the device, Read from falls back to the model\'s own summary',
@@ -10313,16 +10321,16 @@ try {
         return {
           text: card.textContent,
           full: Array.from(card.querySelectorAll('.counted-full .ev')).map(n => n.textContent),
-          bars: card.querySelectorAll('.evidence-read .coverage-row').length,
+          bars: card.querySelectorAll('.coverage-row, .bar').length,
           summaryChips: card.querySelectorAll('.trait-evidence:not(.counted-full) .ev').length,
         };
       });
       check('structured: with the digest, Read from lists what was counted in full',
-        /Counted in full/.test(evidence.text) && evidence.full.includes('9,741 messages across 38 conversations') &&
+        evidence.full.includes('9,741 messages across 38 conversations') &&
         evidence.full.includes('12,340 posts liked') && evidence.full.includes('Activity timing across 7 years') &&
         evidence.full.includes('18,200 YouTube videos watched'), evidence.full.join(' | '));
-      check('structured: and what was read word for word, in place of the model\'s shorter summary',
-        /Read word for word/.test(evidence.text) && evidence.bars === 3 && evidence.summaryChips === 0,
+      check('structured: under one label, with no word-for-word chart, in place of the model\'s shorter summary',
+        !/Read word for word|Counted in full/.test(evidence.text) && evidence.bars === 0 && evidence.summaryChips === 0,
         JSON.stringify({ bars: evidence.bars, chips: evidence.summaryChips }));
       if (process.env.PSYCHEAI_SHOTS) {
         await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.remove('is-collapsed')));
@@ -10341,9 +10349,9 @@ try {
         const card = document.querySelector('#profile-body .confidence-card');
         return card ? { text: card.textContent, bars: card.querySelectorAll('.coverage-row').length } : null;
       });
-      check('structured: the free view\'s trust card shows the same counted-in-full and word-for-word evidence',
-        Boolean(freeTrust) && /Counted in full/.test(freeTrust.text) && /9,741 messages across 38 conversations/.test(freeTrust.text) &&
-        freeTrust.bars === 3, freeTrust && freeTrust.text.slice(0, 200));
+      check('structured: the free view\'s trust card shows the same counted-in-full evidence',
+        Boolean(freeTrust) && /9,741 messages across 38 conversations/.test(freeTrust.text) &&
+        freeTrust.bars === 0, freeTrust && freeTrust.text.slice(0, 200));
       await seed(true);
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
       if (process.env.PSYCHEAI_SHOTS) {
@@ -10356,12 +10364,15 @@ try {
         const q = sel => body.querySelectorAll(sel);
         return {
           structuredClass: body.classList.contains('layout-structured'),
-          nav: Array.from(q('.part-nav .part-nav-item')).map(b => b.getAttribute('data-part-target')),
+          nav: q('.part-nav').length,
           numerals: Array.from(q('.report-part .part-num')).map(n => n.textContent),
           patternColours: Array.from(q('.pattern-chip')).map(c => getComputedStyle(c).borderColor)
             .filter((c, i, all) => all.indexOf(c) === i).length,
           threadMap: q('.thread-map').length,
           results: q('.card-result').length,
+          partWords: q('.part-card .part-label, .part-card .part-intro').length,
+          innerBars: Array.from(q('.part-body > .card')).filter(c => getComputedStyle(c, '::before').display !== 'none').length,
+          wellnessCols: (() => { const t = body.querySelector('.wellness-tiles'); return t ? getComputedStyle(t).gridTemplateColumns.split(' ').length : 0; })(),
           sliders: Array.from(q('.mbti-slider .slider-marker')).map(m => m.textContent + '@' + m.style.left),
           whys: q('.mbti-slider .trait-text .trait-reading').length,
           faint: q('.mbti-slider .slider-ends .is-faint').length,
@@ -10379,13 +10390,16 @@ try {
           flags: Array.from(q('.trait-flag')).map(n => n.textContent),
         };
       });
-      check('structured: a sticky nav across the parts, and numbered part headings',
-        visuals.structuredClass && visuals.nav.join() === 'overview,who,drives,connect,together,appendix' &&
+      check('structured: numbered part headings and no nav bar above them',
+        visuals.structuredClass && visuals.nav === 0 &&
         visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
       check('structured: sections inside a part carry no one-line result of their own — they are open',
         visuals.results === 0, String(visuals.results));
+      check('structured: a part heading is its numeral and title, and the sections inside it draw no gradient bar of their own',
+        visuals.partWords === 0 && visuals.innerBars === 0, JSON.stringify([visuals.partWords, visuals.innerBars]));
+      check('structured: wellbeing as two tiles across, three down', visuals.wellnessCols === 2, String(visuals.wellnessCols));
       check('structured: MBTI as four sliders, each marker pushed towards its letter by its strength',
         visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%', visuals.sliders.join());
       check('structured: MBTI and the Big Five as rows, the scale on the left and the reading beside it, in full',
@@ -10489,16 +10503,30 @@ try {
         .map(token => token.replace(/\)\s*Tj$/, '').slice(1)).join(' ').replace(/\s+/g, ' ');
       const structuredPdf = prose(await pdfOf('structured'));
       const classicPdf = prose(await pdfOf('classic'));
-      check('structured PDF: about page, parts, patterns, motivators, plan, pressure, method, appendix',
-        ['About this report', 'PART 1', 'Who you are', 'Your signature patterns', 'What motivates you',
-          'Development plan', 'Under pressure', 'Evidence and method', 'APPENDIX', 'The unvarnished read']
-          .every(s => structuredPdf.includes(s)) &&
-          structuredPdf.indexOf('MBTI: ') < structuredPdf.indexOf('Five broad traits, each a spectrum'),
-        ['About this report', 'PART 1', 'Your signature patterns', 'What motivates you', 'Development plan',
-          'Under pressure', 'Evidence and method', 'APPENDIX'].filter(s => !structuredPdf.includes(s)).join(', '));
-      check('structured PDF: the running head carries the date and the method page the build',
+      // The PDF follows the page: same order, same words, nothing the page dropped.
+      // The last match of each: the cover's contents list, written into page
+      // one, names the parts first. MBTI and wellbeing by their definitions,
+      // since both words recur on the card and in the plan.
+      const at = text => structuredPdf.lastIndexOf(text);
+      const pdfOrder = ['Your report at a glance', 'Your signature patterns', 'Who you are', 'not clinically validated',
+        'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
+        'Values & Beliefs', 'How you connect and work', 'Attachment style', 'What you bring', 'Who suits you',
+        'What holds you back', 'Putting it together', 'Development plan', 'Your plan', 'Under pressure',
+        'Evidence and method', 'Let us roast you'];
+      check('structured PDF: the page\'s sections in the page\'s order',
+        pdfOrder.every((text, i, all) => at(text) >= 0 && (i === 0 || at(text) > at(all[i - 1]))),
+        pdfOrder.map(text => text + '@' + at(text)).join(', '));
+      check('structured PDF: none of what the page dropped',
+        !['About this report', 'PART 1', 'APPENDIX', 'The unvarnished read', 'CONNECTS TO', 'RAISED BY', 'Digital footprint',
+          'Your digital footprint', 'Sources read', 'REPORT FORMAT', 'Structured report, v1', 'BUILD'].some(t => structuredPdf.includes(t)) &&
+          !/\bBelief\b/.test(structuredPdf) &&
+          !structuredPdf.includes(sampleReport.mbti.caveat.slice(0, 40)),
+        ['About this report', 'PART 1', 'APPENDIX', 'CONNECTS TO', 'RAISED BY', 'Digital footprint', 'Sources read', 'BUILD', 'Belief']
+          .filter(t => structuredPdf.includes(t)).join(', '));
+      check('structured PDF: the running head carries the date, and the cover card is the story card\'s',
         /Sample · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
-        /v3\.0\.0 · abc1234|v3\.0\.0 \\267 abc1234/.test(structuredPdf));
+        structuredPdf.includes('WHAT YOU STAND FOR') && structuredPdf.includes('WHAT YOU ARE INTO') &&
+        !structuredPdf.includes('Extraversion  52'));
       check('structured PDF: the spectrums name both poles',
         structuredPdf.includes('Prefers the familiar and proven') && structuredPdf.includes('Seeks out new ideas and experiences'));
       check('structured PDF: no Enneagram anywhere, the cover card included',

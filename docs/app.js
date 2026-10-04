@@ -686,7 +686,7 @@
   function loveLanguageColumn(title, blurb, items) {
     const rows = (items || []).filter(item => item && item.language);
     if (!rows.length) return '';
-    return '<div><h3>' + title + '</h3><p class="muted love-blurb">' + blurb + '</p>' +
+    return '<div><h3>' + title + '</h3>' + (blurb ? '<p class="muted love-blurb">' + blurb + '</p>' : '') +
       rows.map(item =>
         '<div class="love-row love-' + esc(item.strength || 'secondary') + '">' +
         '<span class="love-icon">' + (LOVE_LANGUAGE_ICONS[item.language] || '💗') + '</span>' +
@@ -699,9 +699,11 @@
   function loveLanguageBlock(languages, options) {
     if (!languages) return '';
     const withCaveat = !options || options.caveat !== false;
+    // The structured layout's boxes need no line under each heading saying what it means.
+    const blurbs = !options || options.blurbs !== false;
     const columns =
-      loveLanguageColumn(TEXT.loveReceiving, TEXT.loveReceivingBlurb, languages.receiving) +
-      loveLanguageColumn(TEXT.loveGiving, TEXT.loveGivingBlurb, languages.giving);
+      loveLanguageColumn(TEXT.loveReceiving, blurbs ? TEXT.loveReceivingBlurb : '', languages.receiving) +
+      loveLanguageColumn(TEXT.loveGiving, blurbs ? TEXT.loveGivingBlurb : '', languages.giving);
     if (!columns) return '';
     return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3><div class="split love-split">' + columns + '</div>' +
       (withCaveat && languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
@@ -1771,7 +1773,7 @@
       $('#sample-card-hint').textContent = TEXT.cardHint;
       setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
       collapseSections($('#sample-body'));
-      watchPartNav($('#sample-sections'));
+      markStructured($('#sample-sections'));
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
       // Both of these run after showModal, not before, and for the same
@@ -2300,19 +2302,6 @@
     target.classList.add('is-highlighted');
     setTimeout(() => target.classList.remove('is-highlighted'), 1600);
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-
-  // The structured layout's part nav: jump to a part, in whichever report
-  // (the reader's own or the sample) the nav belongs to.
-  document.addEventListener('click', event => {
-    const item = event.target.closest('.part-nav-item');
-    if (!item) return;
-    const scope = item.closest('.part-nav').parentElement;
-    const target = scope && scope.querySelector('.report-part[data-part="' + item.getAttribute('data-part-target') + '"]');
-    if (!target) return;
-    const card = target.closest('.part-card');
-    if (card) setSectionOpen(card, true);
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   // Ticking an action off the plan. Kept on this device only, by a hash of
@@ -4001,7 +3990,7 @@
   // on a reload as much as in the session that uploaded it. Adding or
   // replacing a source is not done from here any more — see
   // askDataSources() — so a row is purely a status line, no button.
-  function sourcesUsedHtml() {
+  function sourcesUsedHtml(brief) {
     const digest = state.digest;
     const rows = [
       // Not hardcoded true, which it was. Instagram is required to produce a
@@ -4036,7 +4025,7 @@
       // when the evidence the report was written from is the thing that has
       // gone. This one says what happened and what re-running will ask for.
       (!digest ? '<p class="muted">' + esc(TEXT.sourcesInstagramLost) + '</p>'
-        : anyMissing ? '<p class="muted">' + esc(TEXT.sourcesUsedHint) + '</p>' : '') +
+        : anyMissing ? '<p class="muted">' + esc(brief ? Copy.STRUCTURED.sourcesHint : TEXT.sourcesUsedHint) + '</p>' : '') +
       '<ul class="source-list">' + rowsHtml + '</ul>' +
       '<div class="btn-row">' +
       '<button class="btn" id="rerun-with-data" type="button">' + esc(TEXT.rerunAnalysis) + '</button>' +
@@ -4214,14 +4203,6 @@
       esc(pattern.name) + '</button>';
   }
 
-  /** The "Connects to" row closing a section: the patterns that show up in it. */
-  function connectsHtml(patterns, sectionKey) {
-    const here = patterns.filter(p => (p.showsUpIn || []).includes(sectionKey));
-    if (!here.length) return '';
-    return '<div class="connects"><span class="connects-label">' + esc(Copy.STRUCTURED.connectsTo) + '</span>' +
-      here.map(patternChip).join('') + '</div>';
-  }
-
   function sectionNameChips(keys) {
     const names = Copy.STRUCTURED.sectionNames;
     // Values and beliefs are one section on the page, so they are one chip.
@@ -4233,24 +4214,10 @@
 
   const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
 
-  function partHeadHtml(key) {
-    const part = Copy.STRUCTURED.parts[key];
-    const at = PART_ORDER.indexOf(key);
-    // A large numeral for the four parts, the overview's 00 and none for the
-    // appendix, which sits outside the numbered report on purpose.
-    const numeral = key === 'appendix' ? '' : String(Math.max(0, at)).padStart(2, '0');
-    return '<div class="report-part" data-part="' + esc(key) + '">' +
-      (numeral ? '<span class="part-num" aria-hidden="true">' + numeral + '</span>' : '') +
-      '<div><span class="part-label">' + esc(part.label) + '</span>' +
-      '<h2 class="part-title">' + esc(part.title) + '</h2>' +
-      '<p class="part-intro">' + esc(part.intro) + '</p></div></div>';
-  }
-
   /**
    * One part of the structured report as a single box that opens and shuts:
    * its numbered heading is the toggle, and every section inside stays open.
-   * The heading keeps `.report-part`, which the part nav scrolls to and
-   * watchPartNav observes.
+   * Numeral and title only: the sections inside say what they are.
    */
   function partCardHtml(key, inner, startOpen) {
     const part = Copy.STRUCTURED.parts[key];
@@ -4259,21 +4226,10 @@
       (startOpen ? ' data-start-open' : '') + '>' +
       '<div class="card-head card-head-toggle part-card-head"><div class="report-part" data-part="' + esc(key) + '">' +
       '<span class="part-num" aria-hidden="true">' + numeral + '</span>' +
-      '<div><span class="part-label">' + esc(part.label) + '</span>' +
       '<h2 class="part-title"><button class="card-toggle" type="button" aria-expanded="true">' +
       '<span class="card-toggle-text">' + esc(part.title) + '</span><span class="card-chevron" aria-hidden="true"></span>' +
-      '</button></h2>' +
-      '<p class="part-intro">' + esc(part.intro) + '</p></div></div></div>' +
+      '</button></h2></div></div>' +
       '<div class="part-body">' + inner + '</div></section>';
-  }
-
-  /** The sticky row of parts at the top of the report; watchPartNav lights the current one. */
-  function partNavHtml(hasAppendix) {
-    const S = Copy.STRUCTURED;
-    const keys = PART_ORDER.concat(hasAppendix ? ['appendix'] : []);
-    return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' + keys.map(key =>
-      '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '">' +
-      esc(S.partNavShort[key]) + '</button>').join('') + '</nav>';
   }
 
   function patternsCardHtml(patterns) {
@@ -4622,7 +4578,7 @@
     const S = Copy.STRUCTURED;
     // Love languages first: the most concrete thing here, and the one a reader
     // is most likely to act on tomorrow.
-    let html = loveLanguageBlock(relationship.loveLanguages, { caveat: false });
+    let html = loveLanguageBlock(relationship.loveLanguages, { caveat: false, blurbs: false });
     if (relationship.loveLanguages) html += '<p class="fineprint touch-note">' + esc(S.touchNote) + '</p>';
     if (attachment) {
       // The model's own caveat is left out: the map is labelled a leaning,
@@ -4669,11 +4625,8 @@
   function itemOrigin(item, byId) {
     const S = Copy.STRUCTURED;
     const pattern = byId[item.pattern];
-    const raised = sectionNameChips(item.raisedBy);
-    if (!pattern && !raised) return '';
-    return '<p class="origin">' +
-      (pattern ? '<span class="connects-label">' + esc(S.fromPattern) + '</span>' + patternChip(pattern) : '') +
-      (raised ? '<span class="connects-label">' + esc(S.raisedBy) + '</span>' + raised : '') + '</p>';
+    if (!pattern) return '';
+    return '<p class="origin"><span class="connects-label">' + esc(S.fromPattern) + '</span>' + patternChip(pattern) + '</p>';
   }
 
   /**
@@ -4744,35 +4697,15 @@
       '</div>').join('') + '</div>';
   }
 
-  /** How much of each source the report actually read, as bars. */
-  function coverageBarsHtml() {
-    const S = Copy.STRUCTURED;
-    const sampling = state.digest && state.digest.coverage && state.digest.coverage.sampling;
-    if (!sampling) return '';
-    const rows = Object.keys(S.coverageLabels).map(key => {
-      const entry = sampling[key];
-      const shown = Number(entry && entry.shown);
-      const available = Number(entry && entry.available);
-      if (!(available > 0) || !Number.isFinite(shown)) return '';
-      const pct = Math.max(1, Math.min(100, Math.round(shown / available * 100)));
-      return '<div class="coverage-row"><span class="coverage-label">' + esc(S.coverageLabels[key]) + '</span>' +
-        '<div class="bar"><div class="bar-fill" data-fill="' + pct + '"></div></div>' +
-        '<span class="coverage-num">' + esc(shown.toLocaleString() + ' of ' + available.toLocaleString()) + '</span></div>';
-    }).filter(Boolean);
-    if (!rows.length) return '';
-    return '<p class="essence-label">' + esc(S.coverageTitle) + '</p><div class="coverage">' + rows.join('') + '</div>';
-  }
-
   /**
    * What the digest carries complete — counts and timing over the whole
-   * archive — as chips. Without these, the sampled numbers below read as if
-   * 180 messages were all the analysis saw, when every message was counted.
+   * archive — as chips, so a sample of 180 messages is not read as all the
+   * analysis saw when every message was counted.
    */
-  function countedInFullHtml() {
+  function countedInFull(digest) {
     const S = Copy.STRUCTURED;
     const L = S.fullCounts;
-    const digest = state.digest;
-    if (!digest) return '';
+    if (!digest) return [];
     const num = value => (Number(value) > 0 ? Number(value).toLocaleString() : '');
     const items = [];
     const add = (value, label) => { if (num(value)) items.push(num(value) + ' ' + label); };
@@ -4804,65 +4737,54 @@
       add(f.posts, L.facebookPosts);
       add(f.comments, L.facebookComments);
     }
+    return items;
+  }
+
+  function countedInFullHtml() {
+    const items = countedInFull(state.digest);
     if (!items.length) return '';
-    return '<p class="essence-label">' + esc(S.countedInFull) + '</p>' +
-      '<p class="trait-evidence counted-full">' + items.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>';
+    return '<p class="trait-evidence counted-full">' + items.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>';
   }
 
   /**
-   * The confidence score and what it rests on. With the digest on this
-   * device, that is everything counted in full and everything read word for
-   * word, taken from the digest itself; the model's own two-to-four line
-   * summary of the same is the fallback for the sample and for a report whose
-   * digest is gone.
+   * The confidence score and what it rests on: with the digest on this
+   * device, everything it counted in full; without one (the sample, or a
+   * report whose digest is gone), the model's own two-to-four line summary.
    */
   function methodEvidenceHtml(report, sample) {
     const full = sample ? '' : countedInFullHtml();
-    const bars = sample ? '' : coverageBarsHtml();
-    if (!full && !bars) return confidenceBodyHtml(report);
+    if (!full) return confidenceBodyHtml(report);
     const withoutSummary = Object.assign({}, report,
       { confidence: Object.assign({}, report.confidence, { basedOn: [] }) });
     return confidenceBodyHtml(withoutSummary) +
       '<p class="essence-label evidence-head">' + esc(TEXT.confidenceBasedOn) + '</p>' +
-      '<div class="evidence-read">' + full + bars + '</div>';
+      '<div class="evidence-read">' + full + '</div>';
   }
 
   /** What was read, by whom, from which build — the closing section of Part 4. */
+  /**
+   * How far to trust the report, after the four parts and apart from them:
+   * the score, why, what was counted, and the sources with the button that
+   * adds one. What model and build wrote it is in the footer and the PDF.
+   */
   function methodCardHtml(report, sample) {
     const S = Copy.STRUCTURED;
-    const digest = state.digest;
-    const sources = [TEXT.sourceInstagram]
-      .concat(digest && digest.google ? [TEXT.sourceGoogle] : [])
-      .concat(digest && digest.facebook ? [TEXT.sourceFacebook] : []);
-    const profile = sample ? null : state.profile;
-    const writers = profile
-      ? [profile.model, profile.premiumModel].filter(Boolean).filter((m, i, all) => all.indexOf(m) === i).join(', ')
-      : '';
-    const build = state.server && state.server.build;
-    const rows = [
-      sample ? null : [S.methodSources, sources.join(', ')],
-      [S.methodFormat, S.methodFormatValue],
-      writers ? [S.methodModel, writers] : null,
-      build && build.shortCommit ? [S.methodBuild, (build.version ? 'v' + build.version + ' · ' : '') + build.shortCommit] : null,
-    ].filter(Boolean);
     return '<div class="card section-card confidence-card method-card">' +
-      sectionHead('🎯', esc(S.titles.method), esc(S.definitions.method)) +
+      sectionHead('🎯', esc(S.titles.method), '') +
       methodEvidenceHtml(report, sample) +
-      '<dl class="method-list">' + rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' +
-      (sample ? '' : sourcesUsedHtml()) + '</div>';
+      (sample ? '' : sourcesUsedHtml(true)) + '</div>';
   }
 
   function structuredSectionsHtml(report, options) {
     const S = Copy.STRUCTURED;
     const sample = Boolean(options && options.sample);
     const patterns = signaturePatterns(report);
-    const connects = key => connectsHtml(patterns, key);
     // Sections inside a part do not open and shut on their own: the part does.
     const head = (icon, title, defKey) =>
       sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', false, '');
     const unlocked = sample ? {} : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
-    let html = partNavHtml(Boolean(report.bonus));
+    let html = '';
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -4883,13 +4805,13 @@
     // No type nickname ("The Protagonist"): the reader already has one
     // character to identify with, and a second label competes with it.
     part = '<div class="card section-card mbti-card">' +
-      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type), 'mbti') +
+      head('🧭', 'MBTI', 'mbti') +
       '<div class="type-hero"><span class="type-code">' + esc(mbti.type) + '</span></div>' +
-      mbtiSlidersHtml(mbti) + '<p class="fineprint">' + esc(mbti.caveat) + '</p>' + connects('mbti') + '</div>';
+      mbtiSlidersHtml(mbti) + '</div>';
     part += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive') +
-      bigFiveStructuredHtml(report.bigFive) + connects('bigFive') + '</div>';
+      bigFiveStructuredHtml(report.bigFive) + '</div>';
     part += paidCard(paid('wellness'), unlocked, { sample, flat: true, title: S.titles.wellness, sub: S.definitions.wellness,
-      extra: connects('wellness'), body: wellnessStructuredBody });
+      body: wellnessStructuredBody });
     html += partCardHtml('who', part);
 
     // Part 2: what drives you.
@@ -4897,14 +4819,12 @@
     const motivators = motivatorsHtml(report.motivators);
     if (motivators) {
       part += '<div class="card section-card motivators-card">' +
-        head('🧲', esc(S.titles.motivators), 'motivators') + motivators + connects('motivators') + '</div>';
+        head('🧲', esc(S.titles.motivators), 'motivators') + motivators + '</div>';
     }
     part += '<div class="card section-card">' + head('✨', esc(TEXT.interests), 'interests') +
-      interestsStructuredHtml(report.interests) + connects('interests') + '</div>';
+      interestsStructuredHtml(report.interests) + '</div>';
     part += '<div class="card section-card">' + head('🧿', esc(TEXT.valuesBeliefs), 'values') +
-      standForHtml(report) + connectsHtml(patterns.map(p => Object.assign({}, p, {
-        showsUpIn: ['values', 'beliefs'].some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
-      })), 'merged') + '</div>';
+      standForHtml(report) + '</div>';
     html += partCardHtml('drives', part);
 
     // Part 3: how you connect and work.
@@ -4912,14 +4832,10 @@
     const attachment = unlocked.attachment;
     const idealPartner = unlocked.idealPartner;
     const closeness = attachment || idealPartner;
-    const connectsAny = keys => connectsHtml(patterns.map(p => Object.assign({}, p, {
-      showsUpIn: keys.some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
-    })), 'merged');
     part = '<div class="card section-card relationships-card' +
       (closeness ? ' paid-card attachment-card" data-paid="attachment' : '') + '">' +
       head('💞', esc(TEXT.relationships), 'relationships') +
-      relationshipsStructuredBody(relationship, attachment, idealPartner) +
-      connectsAny(['relationships', 'attachment', 'idealPartner']) + '</div>';
+      relationshipsStructuredBody(relationship, attachment, idealPartner) + '</div>';
     // Locked (the sample), the two premium halves keep their own covers.
     if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
     if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
@@ -4928,7 +4844,7 @@
     const career = report.career || {};
     const coaching = unlocked.careerAssessment;
     part += '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
-      head('💼', esc(S.titles.work), 'work') + workStructuredBody(career, coaching) + connects('work') + '</div>';
+      head('💼', esc(S.titles.work), 'work') + workStructuredBody(career, coaching) + '</div>';
     if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
     html += partCardHtml('connect', part);
 
@@ -4947,39 +4863,18 @@
       part += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints') +
         pressurePointsHtml(report.pressurePoints, patterns) + '</div>';
     }
-    if (report.activity) {
-      part += '<div class="card section-card">' + head('📱', esc(S.titles.footprint), 'activity') +
-        activityFacetsHtml(report.activity) + connects('activity') + '</div>';
-    }
-    part += methodCardHtml(report, sample);
     html += partCardHtml('together', part);
+    html += methodCardHtml(report, sample);
 
-    // Appendix: the roast, after the method rather than in the middle of the
+    // The roast last, after the method rather than in the middle of the
     // report, so the professional read is whole before the unkind one starts.
-    if (report.bonus) html += partHeadHtml('appendix') + roastBlock(report.bonus, { flat: true });
+    if (report.bonus) html += roastBlock(report.bonus, { flat: true });
     return html;
   }
 
-  /**
-   * Lights the part the reader is in on the sticky part nav. Called after a
-   * structured report is written into `root`; a no-op for any other layout.
-   */
-  let partObserver = null;
-  function watchPartNav(root) {
-    if (!root) return;
-    root.classList.toggle('layout-structured', Boolean(root.querySelector('.part-nav')));
-    const nav = root.querySelector('.part-nav');
-    if (!nav || typeof IntersectionObserver !== 'function') return;
-    if (partObserver) partObserver.disconnect();
-    const light = key => nav.querySelectorAll('.part-nav-item').forEach(button =>
-      button.classList.toggle('is-current', button.getAttribute('data-part-target') === key));
-    partObserver = new IntersectionObserver(entries => {
-      const visible = entries.filter(e => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-      if (visible) light(visible.target.getAttribute('data-part'));
-    }, { rootMargin: '-20% 0px -70% 0px' });
-    root.querySelectorAll('.report-part').forEach(part => partObserver.observe(part));
-    light('overview');
+  /** Marks a report root as structured, for the styles that only that layout uses. */
+  function markStructured(root) {
+    if (root) root.classList.toggle('layout-structured', Boolean(root.querySelector('.part-card')));
   }
 
   function reportSectionsHtml(report, options) {
@@ -5134,7 +5029,7 @@
     return '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
       (reportLayout() === 'structured' ? methodEvidenceHtml(report, sample) : confidenceBodyHtml(report)) +
-      (sample ? '' : sourcesUsedHtml()) +
+      (sample ? '' : sourcesUsedHtml(reportLayout() === 'structured')) +
       '</div>';
   }
 
@@ -5226,7 +5121,7 @@
     // time the report renders.
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained: hasExplanations(profile) }));
     collapseSections($('#profile-body'));
-    watchPartNav($('#profile-body'));
+    markStructured($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -5445,6 +5340,8 @@
       sources: [TEXT.sourceInstagram]
         .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
         .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : []),
+      // What the evidence page's "Read from" lists, the same as the page's.
+      counted: countedInFull(state.digest),
     });
   }
 

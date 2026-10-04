@@ -3240,12 +3240,13 @@ here is either this app's own or a published academic model.
 
 | | Sections |
 |---|---|
-| **Overview** | Executive summary · **Your signature patterns** (the PDF still opens with an About page) |
+| **Overview** | Executive summary · **Your signature patterns** |
 | **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
 | **Part 3 – How you connect and work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
-| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) · Your digital footprint · Evidence and method |
-| **Appendix** | The roast, after the method rather than mid-report |
+| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) |
+| **After Part 4** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
+| **Last** | The roast, after the method rather than mid-report, with no heading of its own |
 
 **No Enneagram, and the patterns are on the free card.** The structured layout drops the Enneagram
 from both calls, the card and the PDF; its column on the summary card now names the two or three
@@ -3263,14 +3264,20 @@ art or logo. A report from before the catalogue keeps its emoji. The summary car
 1080 × 1920 story, the same on screen and in the export; a report whose content runs long is scaled
 down just enough to fit, rather than clipped.
 
-Every section follows one template: a definition line saying what it measures, the read, the chart
-or detail, and a "Connects to" row of the signature patterns it shows. A pattern chip jumps to the
-pattern. **Only the parts open and shut** — the overview (open from the start) and the four parts are
+Each signature pattern lists the sections it shows up in; the sections themselves no longer carry a
+"Connects to" row back. A pattern chip on a plan item or pressure point jumps to the pattern. There is no part nav, and no digital footprint section (it restated what the other
+sections already say). **Only the parts open and shut** — the overview (open from the start) and the four parts are
 the report's five disclosures, and every section inside a part is shown whole, with no "More" behind
 any of it. MBTI and the Big Five are rows with the scale on the left and the reading beside it; the
-MBTI pole not chosen is faint. Values and beliefs are one list with no tag saying which is which, and
-no section carries a Premium badge. The PDF follows the same order, with an about page after the cover, a divider per part, the
-date in the running head, and the build and sources on the method page.
+MBTI pole not chosen is faint. A section has a line under its title only where the title does not
+already say what it is. Values and beliefs are one list with no tag saying which is which, and
+no section carries a Premium badge. The PDF follows the page section for section: numbered part
+dividers with no labels or intros, no about page, no "Connects to" or "Raised by", no digital
+footprint, wellbeing at the end of Part 1, relationships and work each as one section, every action
+on one plan by step, and an evidence page after Part 4 that lists what was counted in full (passed in
+as `meta.counted`) with no build or format rows. Its cover card is the story card's: the two-sentence
+write-up, the type as letters, the Big Five without extraversion, and what they stand for beside what
+they are into.
 
 The model writes four more fields for it — `patterns`, `motivators`, `development` and
 `pressurePoints` (`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of every classic field, so the

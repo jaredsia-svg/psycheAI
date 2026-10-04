@@ -856,7 +856,13 @@
     // `cardHighlights` existed, but both of them stitch text out of fields
     // this file would have to re-derive; `card.summary` is the shaped card's
     // own line and is never empty, so it is the one fallback kept here.
-    const blurb = String(report.cardHighlights || card.summary || '').trim();
+    const fullBlurb = String(report.cardHighlights || card.summary || '').trim();
+    // The structured card's write-up is two sentences on why they are like the
+    // character; a report written before that keeps its first two, as the
+    // story card on the page does.
+    const blurb = structured
+      ? (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim()
+      : fullBlurb;
     const mbti = report.mbti || {};
     const enneagram = report.enneagram || {};
     const five = report.bigFive || {};
@@ -894,8 +900,9 @@
       (blurbLines.length ? 10 + blurbLines.length * blurbLeading : 0) + 16;
 
     // ---- measure the three rows underneath it ----
-    const letters = (mbti.letters || []).map(l =>
-      toWinAnsi(String(l.choice || '') + '  ' + String(l.strength || '')));
+    const letters = (mbti.letters || []).map(l => toWinAnsi(structured
+      ? String(l.choice || '') + '  ' + ((Copy.MBTI_POLES[l.choice] || {}).name || '') + (l.strength ? ' · ' + l.strength : '')
+      : String(l.choice || '') + '  ' + String(l.strength || '')));
     const enneagramBadge = enneagram.type && !structured
       ? String(enneagram.type) + (enneagram.wing ? 'w' + enneagram.wing : '') : '';
     // The structured layout has no Enneagram: its column holds the signature
@@ -906,8 +913,10 @@
         .sort((a, b) => a.id.localeCompare(b.id))
         .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 3 - 12, { size: 9, bold: true }))
       : [];
+    // Extraversion is the E of the type beside it, so the structured card
+    // leaves it out of the Big Five, as the story card does.
     const fiveRows = Object.keys(TRAIT_LABELS)
-      .filter(key => five[key])
+      .filter(key => five[key] && !(structured && key === 'extraversion'))
       .map(key => toWinAnsi(TRAIT_LABELS[key] + '  ' + Math.round(Number(five[key].score) || 0)));
 
     const third = innerW / 3;
@@ -922,7 +931,7 @@
     // where the code is the finding and the strengths are how firmly each
     // letter was picked. Drawn as a `lead` rather than as another line, so the
     // two weights cannot be confused for one list.
-    const typeCell = { label: TEXT.cardType, lead: mbti.type ? toWinAnsi(mbti.type) : '',
+    const typeCell = { label: TEXT.cardType, lead: mbti.type && !structured ? toWinAnsi(mbti.type) : '',
       lines: letters, style: { size: 9.2, color: INK }, leading: 12 };
     const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: 11.6 };
     // Structured: the patterns lead, the type in the middle, as on screen.
@@ -931,11 +940,19 @@
         typeCell, fiveCell]
       : [typeCell, { label: TEXT.cardEnneagram, lead: enneagramBadge ? toWinAnsi(enneagramBadge) : '',
         lines: [enneagram.nickname && toWinAnsi(enneagram.nickname)].filter(Boolean) }, fiveCell];
-    const chipCells = [
-      { label: TEXT.cardValues, lines: wrapCell(titles(report.values, 3).join(' · '), third, smallStyle), style: smallStyle },
-      { label: TEXT.cardBeliefs, lines: wrapCell(titles(report.beliefs, 2).join(' · '), third, smallStyle), style: smallStyle },
-      { label: TEXT.cardInterests, lines: wrapCell(titles(report.interests, 3).join(' · '), third, smallStyle), style: smallStyle },
-    ];
+    // Structured: values and beliefs as one "what you stand for", beside what
+    // they are into — the story card's two panels.
+    const chipCells = structured
+      ? [{ label: Copy.STRUCTURED.cardStandFor, style: smallStyle,
+        lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).join(' · '), innerW / 2, smallStyle) },
+      { label: Copy.STRUCTURED.cardInto, style: smallStyle,
+        lines: wrapCell(titles(report.interests, 3).join(' · '), innerW / 2, smallStyle) }]
+      : [
+        { label: TEXT.cardValues, lines: wrapCell(titles(report.values, 3).join(' · '), third, smallStyle), style: smallStyle },
+        { label: TEXT.cardBeliefs, lines: wrapCell(titles(report.beliefs, 2).join(' · '), third, smallStyle), style: smallStyle },
+        { label: TEXT.cardInterests, lines: wrapCell(titles(report.interests, 3).join(' · '), third, smallStyle), style: smallStyle },
+      ];
+    const chipWidth = innerW / chipCells.length;
     const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean).join(' · ');
     const half = innerW / 2;
     const loveCells = [
@@ -1007,7 +1024,7 @@
     rowTop += statH;
     if (chipH) {
       doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
-      chipCells.forEach((cell, i) => cardColumn(doc, x + i * third, rowTop, third, cell.label, cell.lines, cell));
+      chipCells.forEach((cell, i) => cardColumn(doc, x + i * chipWidth, rowTop, chipWidth, cell.label, cell.lines, cell));
       rowTop += chipH;
     }
     if (loveH) {
@@ -1538,11 +1555,12 @@
 
   // ---------- the structured report layout ----------
   //
-  // The same document the page draws in its structured layout: an about page
-  // after the cover, an overview with the signature patterns, four parts with
-  // a divider each, a definition line under every section title, the Big
-  // Five on spectrums, the motivators chart, the development plan and the
-  // pressure points, then the method page, and the roast as an appendix.
+  // The same document the page draws in its structured layout, in the same
+  // order and the same words: the overview with the signature patterns, four
+  // numbered parts, a short line under a section title only where the title
+  // needs one, the Big Five on spectrums, the motivators chart, relationships
+  // and work each as one section, the development plan with every action on
+  // one plan, the pressure points, then the evidence page and the roast.
   // Chosen by `meta.layout`; the classic build above is untouched.
 
   /** One Big Five trait on a spectrum, the page's .bipolar. */
@@ -1609,24 +1627,27 @@
     return this;
   };
 
-  /** A part divider, recorded in the cover's contents in place of sections. */
-  Report.prototype.part = function (part) {
+  /**
+   * A part divider — its numeral and title, as the page's part heading has —
+   * recorded in the cover's contents in place of sections.
+   */
+  Report.prototype.part = function (part, numeral) {
     // Enough for the divider and the first section's own keep-together
     // reserve, so a part never ends a page with its first section overleaf.
     this.need(330);
-    this.contents.push({ title: part.label + ' · ' + part.title, page: this.doc.pageNumber });
+    this.contents.push({ title: (numeral ? numeral + '  ' : '') + part.title, page: this.doc.pageNumber });
     this.space(22);
     this.doc.rect(MARGIN, this.doc.y, COLUMN, 2, ACCENT);
-    this.space(14);
-    this.doc.draw(toWinAnsi(String(part.label).toUpperCase()), MARGIN, this.doc.y + 8,
-      { size: 8, bold: true, color: ACCENT, tracking: 1.4 });
-    this.space(14);
-    const style = { size: 22, bold: true, color: INK };
-    for (const line of wrap(toWinAnsi(part.title), COLUMN, style)) {
-      this.doc.draw(line, MARGIN, this.doc.y + 18, style);
-      this.doc.y += 26;
-    }
-    this.body(part.intro, { size: 10, color: SOFT, leading: 14 });
+    this.space(12);
+    const numStyle = { size: 30, bold: true, color: ACCENT };
+    const titleStyle = { size: 22, bold: true, color: INK };
+    const number = numeral ? toWinAnsi(numeral) : '';
+    const numberWidth = number ? measure(number, 30, true) + 12 : 0;
+    const lines = wrap(toWinAnsi(part.title), COLUMN - numberWidth, titleStyle);
+    const top = this.doc.y;
+    if (number) this.doc.draw(number, MARGIN, top + 28, numStyle);
+    lines.forEach((line, i) => this.doc.draw(line, MARGIN + numberWidth, top + 25 + i * 26, titleStyle));
+    this.doc.y = top + Math.max(36, 10 + lines.length * 26);
     this.space(4);
     return this;
   };
@@ -1655,48 +1676,42 @@
     const out = new Report(doc, { name: who.name || 'Your profile', date: stamp.date || '' });
     out.partsOnly = true;
     const def = key => S.definitions[key];
+    // A section on its own, outside the parts — listed in the contents itself.
+    const standalone = (title, sub) => {
+      out.partsOnly = false;
+      out.sectionTitle(title, sub);
+      out.partsOnly = true;
+    };
 
     const patterns = (Array.isArray(source.patterns) ? source.patterns : [])
       .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
       .sort((a, b) => a.id.localeCompare(b.id));
     const byId = Object.fromEntries(patterns.map(p => [p.id, p]));
     const chip = p => p.id.replace('p', '') + '  ' + p.name;
-    const connects = key => {
-      const here = patterns.filter(p => (p.showsUpIn || []).includes(key));
-      if (here.length) { out.space(4); out.labelled(S.connectsTo, here.map(chip).join('   ·   '), { color: ACCENT }); }
-    };
+    // Where a plan item or pressure point came from: its pattern, and nothing
+    // more — the page dropped the "raised by" sections and the "connects to"
+    // rows, and so does this.
     const origin = item => {
       const pattern = byId[item.pattern];
-      const raised = (item.raisedBy || []).map(key => S.sectionNames[key]).filter(Boolean);
       if (pattern) out.labelled(S.fromPattern, chip(pattern), { indent: 10, color: ACCENT });
-      if (raised.length) out.labelled(S.raisedBy, raised.join(', '), { indent: 10 });
     };
+    const sectionNames = keys => (keys || []).map(key => S.sectionNames[key]).filter(Boolean)
+      .filter((name, i, all) => all.indexOf(name) === i);
     const unlocked = stamp.unlocked || {};
-    const paid = key => PAID_SECTIONS.find(section => section.key === key);
+    const numeral = key => String(['overview', 'who', 'drives', 'connect', 'together'].indexOf(key)).padStart(2, '0');
 
     const cardBottom = cover(doc, source, who, stamp);
 
-    // About this report: its own page, straight after the cover.
+    // 00: the summary and the signature patterns.
     out.page();
-    out.contents.push({ title: S.titles.about, page: doc.pageNumber });
-    out.space(6);
-    out.doc.draw(toWinAnsi(S.titles.about), MARGIN, doc.y + 16, { size: 20, bold: true, color: INK });
-    doc.y += 30;
-    for (const [title, body] of S.about) {
-      out.h3(title);
-      out.body(body, { size: 10, leading: 15 });
-    }
-    out.h3('Reading a spectrum');
-    out.bipolar('Example trait · moderate', 58, ['One end of the spectrum', 'The other end'], S.typicalBand);
-    out.fineprint('The shaded band is the typical range (estimated); the dot is the score; the line marks 50.');
-
-    // Overview.
-    out.page();
-    out.part(S.parts.overview);
+    out.part(S.parts.overview, numeral('overview'));
     out.sectionTitle(S.titles.summary, def('summary'));
+    const headline = String((source.card && source.card.headline) || '').trim();
+    if (headline) out.body(headline, { size: 13, bold: true, italic: true, leading: 18 });
     const essence = source.essence || {};
     const essenceName = essence.character || essence.noun;
     if (essenceName) {
+      out.space(4);
       out.eyebrow(TEXT.essenceLabel);
       const nameStyle = { size: 20, bold: true, color: ACCENT };
       for (const line of wrap(toWinAnsi(essenceName + (essence.franchise ? '  (' + essence.franchise + ')' : '')), COLUMN, nameStyle)) {
@@ -1724,25 +1739,25 @@
         }
         out.body(p.line, { x: MARGIN + 30, width: COLUMN - 30, size: 10, leading: 14.4 });
         out.tags(p.evidence, { x: MARGIN + 30, width: COLUMN - 30, size: 8.5 });
-        const where = (p.showsUpIn || []).map(key => S.sectionNames[key]).filter(Boolean);
+        const where = sectionNames(p.showsUpIn);
         if (where.length) out.labelled(S.showsUpIn, where.join(', '), { indent: 30 });
         out.space(8);
       }
     }
 
-    // Part 1: who you are.
-    out.part(S.parts.who);
-    // MBTI first, as on the page.
+    // 01: who you are. MBTI first, then the Big Five, then wellbeing.
+    out.part(S.parts.who, numeral('who'));
     const mbti = source.mbti;
     if (mbti) {
-      out.sectionTitle(TEXT.mbtiPrefix + (mbti.type || '') + (mbti.nickname ? '  ' + mbti.nickname : ''), def('mbti'));
-      out.fineprint(TEXT.mbtiConfidence + (mbti.confidence || ''));
-      for (const letter of mbti.letters || []) {
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis),
-          letter.strength, letter.why, letter.inPractice, letter.counterEvidence);
+      out.sectionTitle('MBTI', def('mbti'));
+      if (mbti.type) {
+        out.need(40);
+        doc.draw(toWinAnsi(mbti.type), MARGIN, doc.y + 26, { size: 30, bold: true, color: ACCENT, tracking: 2 });
+        doc.y += 38;
       }
-      out.fineprint(mbti.caveat);
-      connects('mbti');
+      for (const letter of mbti.letters || []) {
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice);
+      }
     }
     out.sectionTitle(TEXT.bigFive, def('bigFive'));
     const five = source.bigFive || {};
@@ -1755,16 +1770,29 @@
       out.tags(trait.evidence);
       out.space(6);
     }
-    connects('bigFive');
+    const wellness = unlocked.wellness;
+    if (wellness) {
+      out.sectionTitle(S.titles.wellness, def('wellness'));
+      for (const [label, key] of Copy.WELLNESS_FACETS) {
+        const facet = wellness[key];
+        if (!facet) continue;
+        out.facet(label, facet.band, facet.reading);
+        out.tags(facet.evidence);
+        if (facet.confidence) out.fineprint(TEXT.wellnessConfidence + facet.confidence);
+      }
+      if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
+      out.fineprint(S.wellnessNote);
+    }
 
-    // Part 2: what drives you.
-    out.part(S.parts.drives);
+    // 02: what drives you.
+    out.part(S.parts.drives, numeral('drives'));
     const motives = {};
     for (const row of ((source.motivators || {}).scores) || []) {
       if (row && S.motivators[row.value]) motives[row.value] = row;
     }
     if (Object.keys(motives).length) {
       out.sectionTitle(S.titles.motivators, def('motivators'));
+      if (source.motivators.reading) out.note(source.motivators.reading);
       const colours = { openness: ACCENT_2, enhancement: WARN, conservation: GOOD, transcendence: ACCENT };
       for (const group of Object.keys(S.motivatorGroups)) {
         const rows = Object.keys(S.motivators).filter(key => S.motivators[key].group === group && motives[key]);
@@ -1778,99 +1806,114 @@
           out.motiveRow(S.motivators[key].label, S.motivators[key].meaning, motives[key].score, colours[group], motives[key].line);
         }
       }
-      if (source.motivators.reading) out.note(source.motivators.reading);
-      connects('motivators');
     }
-    const tilePill = (item, intensity) => {
+    const trend = item => {
       const trajectory = String((item && item.trajectory) || '').trim();
       const year = String((item && item.lastSeen) || '').trim();
       const label = trajectory ? ((TEXT.trajectoryLabels && TEXT.trajectoryLabels[trajectory]) || trajectory) : '';
       const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
-      const tag = label && stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
-      if (!intensity) return tag;
-      return tag ? intensity + ' · ' + tag : intensity;
+      return label && stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
     };
     out.sectionTitle(TEXT.interests, def('interests'));
     const interests = source.interests || [];
     if (interests.length) {
-      for (const item of interests) out.tile(item.name, tilePill(item, item.intensity), item.detail, item.evidence);
+      for (const item of interests) {
+        out.tile(item.name, [item.intensity, trend(item)].filter(Boolean).join(' · '), item.detail, item.evidence);
+      }
     } else {
       out.muted(TEXT.interestsEmpty);
     }
-    connects('interests');
+    // Values and beliefs as one list, drawn alike, as on the page: no
+    // subsections and no tag saying which list the model filed each under.
     out.sectionTitle(TEXT.valuesBeliefs, def('values'));
-    out.h3(TEXT.values);
-    const values = source.values || [];
-    if (values.length) {
-      for (const item of values) out.tile(item.value, tilePill(item, ''), item.detail, item.evidence);
+    const values = (source.values || []).filter(item => item && item.value);
+    const words = text => String(text || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3);
+    const valueWords = new Set(values.flatMap(item => words(item.value)));
+    const beliefs = (source.beliefs || []).filter(item => item && item.belief &&
+      !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
+    if (values.length || beliefs.length) {
+      for (const item of values) out.tile(item.value, trend(item), item.detail, item.evidence);
+      for (const item of beliefs) out.tile(item.belief, '', item.detail, item.evidence);
     } else {
       out.muted(TEXT.valuesEmpty);
     }
-    out.h3(TEXT.beliefs);
-    const beliefs = source.beliefs || [];
-    if (beliefs.length) {
-      for (const item of beliefs) {
-        out.tile(item.belief, item.confidence ? item.confidence + TEXT.confidenceSuffix : '', item.detail, item.evidence);
-      }
-    } else {
-      out.muted(TEXT.beliefsEmpty);
-    }
-    connects('values');
 
-    // Part 3: how you connect and work.
-    out.part(S.parts.connect);
-    const relationship = source.relationship;
-    if (relationship) {
-      out.sectionTitle(TEXT.relationships, def('relationships'));
-      out.h3(TEXT.strengths, GOOD);
-      out.points(relationship.strengths);
-      out.h3(TEXT.weaknesses, WARN);
-      out.points(relationship.weaknesses);
-      const love = relationship.loveLanguages;
-      if (love) {
-        const columns = [
-          [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
-          [TEXT.loveGiving, TEXT.loveGivingBlurb, love.giving],
-        ].filter(entry => (entry[2] || []).some(item => item && item.language));
-        if (columns.length) {
-          out.h3(TEXT.loveHead);
-          for (const [title, blurb, list] of columns) {
-            out.h3(title);
-            out.muted(blurb);
-            for (const item of list.filter(entry => entry && entry.language)) {
-              out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''), item.inPractice);
-            }
+    // 03: how you connect and work.
+    out.part(S.parts.connect, numeral('connect'));
+    const relationship = source.relationship || {};
+    const attachment = unlocked.attachment;
+    const idealPartner = unlocked.idealPartner;
+    out.sectionTitle(TEXT.relationships, def('relationships'));
+    // Love languages first, then attachment, what they bring and where it
+    // gets hard, and who suits them — one section, as on the page.
+    const love = relationship.loveLanguages;
+    if (love) {
+      const columns = [[TEXT.loveReceiving, love.receiving], [TEXT.loveGiving, love.giving]]
+        .filter(entry => (entry[1] || []).some(item => item && item.language));
+      if (columns.length) {
+        out.h3(TEXT.loveHead);
+        for (const [title, list] of columns) {
+          out.eyebrow(title, SOFT);
+          for (const item of list.filter(entry => entry && entry.language)) {
+            out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''),
+              [item.inPractice, item.why].filter(Boolean).join(' '));
           }
-          out.fineprint(love.caveat);
         }
+        out.fineprint(S.touchNote);
       }
-      connects('relationships');
     }
-    if (unlocked.attachment) { paid('attachment').render(out, unlocked.attachment, { sub: def('attachment') }); connects('attachment'); }
-    if (unlocked.idealPartner) { paid('idealPartner').render(out, unlocked.idealPartner, { sub: def('idealPartner') }); connects('idealPartner'); }
-    const career = source.career;
-    if (career || unlocked.careerAssessment) {
-      out.sectionTitle(S.titles.work, def('work'));
-      if (career) {
-        out.h3(TEXT.strengths, GOOD);
-        out.points(career.strengths);
-        out.h3(TEXT.weaknesses, WARN);
-        out.points(career.weaknesses);
-        out.h3(TEXT.howYouWork);
-        if (career.workStyle) out.body(career.workStyle, { size: 10, leading: 15 });
-        out.h3(TEXT.holdBack);
-        if (career.watchOuts) out.body(career.watchOuts, { size: 10, leading: 15 });
+    if (attachment) {
+      out.h3(S.howYouAttach);
+      if (attachment.style) out.body(attachment.style, { size: 10.6, bold: true, leading: 15 });
+      if (attachment.styleTone) out.body(attachment.styleTone, { size: 10, bold: true, leading: 15 });
+      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
+      out.tags(attachment.derivedFrom);
+      if ((attachment.implications || []).length) {
+        out.eyebrow(S.inPractice, SOFT);
+        out.points(attachment.implications);
       }
-      if (unlocked.careerAssessment) paid('careerAssessment').render(out, unlocked.careerAssessment, { bodyOnly: true });
-      connects('work');
     }
-    if (unlocked.wellness) {
-      paid('wellness').render(out, unlocked.wellness, { title: S.titles.wellness, sub: def('wellness') });
-      connects('wellness');
+    out.h3(S.whatYouBring, GOOD);
+    out.points(relationship.strengths);
+    out.h3(S.whereItGetsHard, WARN);
+    out.points(relationship.weaknesses);
+    if (idealPartner) {
+      out.h3(S.whoSuitsYou);
+      if (idealPartner.summary) out.body(idealPartner.summary, { size: 10.4, italic: true, leading: 15 });
+      out.eyebrow(TEXT.idealPartnerNeeds, GOOD);
+      out.points(idealPartner.needs);
+      out.eyebrow(TEXT.idealPartnerCarefulOf, WARN);
+      out.points(idealPartner.carefulOf);
     }
+    // How you work: the description and the coach's read as one section —
+    // the edge, the other strengths with what is not yet used, and one list
+    // of what holds them back. The actions are on the plan.
+    const career = source.career || {};
+    const coaching = unlocked.careerAssessment;
+    out.sectionTitle(S.titles.work, def('work'));
+    for (const text of [career.workStyle, coaching && coaching.situation].filter(Boolean)) {
+      out.body(text, { size: 10, leading: 15 });
+      out.space(4);
+    }
+    if (coaching && coaching.edge) {
+      out.eyebrow(TEXT.careerEdge, ACCENT);
+      out.h3(coaching.edge.headline);
+      if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
+      out.tags(coaching.edge.evidence);
+    }
+    const strengths = (career.strengths || []).concat(coaching && coaching.underused
+      ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
+    const holding = [].concat(
+      coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
+      career.weaknesses || [],
+      career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
+    out.h3(coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, GOOD);
+    out.points(strengths);
+    out.h3(S.whatHoldsYouBack, WARN);
+    out.points(holding);
 
-    // Part 4: putting it together.
-    out.part(S.parts.together);
+    // 04: putting it together.
+    out.part(S.parts.together, numeral('together'));
     const development = source.development || {};
     const buildOn = (development.buildOn || []).filter(item => item && item.title);
     const develop = (development.develop || []).filter(item => item && item.title);
@@ -1882,19 +1925,32 @@
       }
       if (develop.length) {
         out.h3(S.titles.develop, WARN);
-        const order = Object.keys(TEXT.careerHorizons);
         for (const item of develop) {
           out.point(item.title, item.detail);
-          const actions = (item.actions || []).filter(a => a && a.step)
-            .sort((a, b) => order.indexOf(a.horizon) - order.indexOf(b.horizon));
-          for (const action of actions) {
-            out.labelled(TEXT.careerHorizons[action.horizon] || action.horizon, action.step,
-              { indent: 10, color: INK, size: 9.6, labelColor: ACCENT });
-          }
           if (item.reflect) out.labelled(S.reflect, item.reflect, { indent: 10, italic: true, color: INK, size: 9.6 });
           origin(item);
           out.space(6);
         }
+      }
+      // Every action in the report on one plan, a row per step: the develop
+      // areas', the work coaching's and the wellbeing suggestions'.
+      const actions = develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
+        .map(a => ({ horizon: a.horizon, step: a.step, from: item.title })))
+        .concat(((coaching && coaching.actions) || []).filter(a => a && a.title)
+          .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork })))
+        .concat(((wellness && wellness.suggestions) || []).filter(a => a && a.title)
+          .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing })));
+      if (actions.length) {
+        out.h3(S.titles.plan);
+        const horizons = Object.keys(TEXT.careerHorizons);
+        horizons.forEach((horizon, i) => {
+          const here = actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon)));
+          if (!here.length) return;
+          out.eyebrow(TEXT.careerHorizons[horizon], ACCENT);
+          for (const action of here) {
+            out.point(action.step, [action.detail, action.from].filter(Boolean).join(' — '));
+          }
+        });
       }
     }
     const pressure = (source.pressurePoints || []).filter(item => item && item.strength);
@@ -1922,19 +1978,11 @@
         doc.hairline(doc.y, MARGIN, PAGE.width - MARGIN);
       }
     }
-    const activity = source.activity;
-    if (activity) {
-      out.sectionTitle(S.titles.footprint, def('activity'));
-      for (const [label, key] of Copy.ACTIVITY_FACETS) {
-        const part = activity[key];
-        if (part) out.facet(label, part.headline, part.detail);
-      }
-      connects('activity');
-    }
 
-    // Evidence and method.
+    // Evidence and method, after the parts and apart from them: the score,
+    // why, and what was counted in full. No build, format or writer rows.
     const confidence = source.confidence || {};
-    out.sectionTitle(S.titles.method, def('method'));
+    standalone(S.titles.method, def('method'));
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
     out.need(40);
     doc.roundRect(MARGIN, doc.y, COLUMN, 7, 3.5, LINE);
@@ -1942,28 +1990,21 @@
     doc.y += 18;
     out.body(TEXT.trustScore + score + '/100 (' + (confidence.level || '') + ').', { size: 10.4, bold: true, leading: 15 });
     if (confidence.rationale) out.body(confidence.rationale, { size: 10, leading: 15 });
-    if ((confidence.basedOn || []).length) {
+    const readFrom = (stamp.counted || []).length ? stamp.counted : (confidence.basedOn || []);
+    if (readFrom.length) {
       out.eyebrow(TEXT.confidenceBasedOn, SOFT);
-      out.tags(confidence.basedOn);
+      out.tags(readFrom);
     }
-    out.space(6);
-    const rows = [
-      (stamp.sources || []).length ? [S.methodSources, stamp.sources.join(', ')] : null,
-      [S.methodFormat, S.methodFormatValue],
-      [S.methodModel, [stamp.model, stamp.premiumModel].filter(Boolean)
-        .filter((m, i, all) => all.indexOf(m) === i).join(', ') || 'the model'],
-      stamp.build ? [S.methodBuild, stamp.build] : null,
-    ].filter(Boolean);
-    for (const [label, value] of rows) out.labelled(label, value, { color: INK, size: 9.6 });
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Full premium report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
 
-    // Appendix: the roast, after the method.
+    // The roast last, with no heading of its own beyond its section title.
     if (source.bonus) {
-      out.part(S.parts.appendix);
+      out.partsOnly = false;
       renderRoast(out, source.bonus);
+      out.partsOnly = true;
     }
 
     coverContents(doc, out, cardBottom);
