@@ -696,14 +696,15 @@
         '<p class="love-why">' + esc(item.why) + '</p></div></div>').join('') + '</div>';
   }
 
-  function loveLanguageBlock(languages) {
+  function loveLanguageBlock(languages, options) {
     if (!languages) return '';
+    const withCaveat = !options || options.caveat !== false;
     const columns =
       loveLanguageColumn(TEXT.loveReceiving, TEXT.loveReceivingBlurb, languages.receiving) +
       loveLanguageColumn(TEXT.loveGiving, TEXT.loveGivingBlurb, languages.giving);
     if (!columns) return '';
     return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3><div class="split love-split">' + columns + '</div>' +
-      (languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
+      (withCaveat && languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
   }
 
   // Every section opens the same way: a glyph, a title and a line saying what
@@ -757,7 +758,7 @@
     // this file does not already assume.
     for (const head of root.querySelectorAll('.card-head-toggle')) {
       const card = head.closest('.section-card');
-      if (card) setSectionOpen(card, false);
+      if (card) setSectionOpen(card, card.hasAttribute('data-start-open'));
     }
   }
 
@@ -1364,12 +1365,15 @@
   function paidCard(section, unlocked, options) {
     const sample = Boolean(options && options.sample);
     const data = unlocked[section.key];
-    const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    // `flat` is the structured layout's: a section inside a part, so no
+    // toggle of its own and no Premium badge on its heading.
+    const flat = Boolean(options && options.flat);
+    const badge = flat ? '' : ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
       sectionHead(section.icon, esc(options && options.title ? options.title : section.title()) + badge,
-        esc(options && options.sub ? options.sub : section.sub()), true,
-        data && options && options.result ? options.result(data) : '') +
+        esc(options && options.sub ? options.sub : section.sub()), !flat,
+        !flat && data && options && options.result ? options.result(data) : '') +
       '<div class="premium-cover"' + (data ? ' hidden' : '') + '>' +
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
@@ -1498,8 +1502,11 @@
   // decided not to read this should not have it on their page at all, so
   // the cover ships alone and revealRoast() injects the writing on the
   // click, reading it from the report object rather than out of the page.
-  function roastBlock(bonus) {
+  function roastBlock(bonus, options) {
     if (!bonus) return '';
+    // The structured layout's appendix: the roast already waits behind its
+    // own reveal, so it is not a disclosure as well.
+    const flat = Boolean(options && options.flat);
     return '<div class="card section-card bonus-card">' +
       // Same splice paidCard uses for its "Premium" badge: sectionHead
       // concatenates whatever it is handed into the <h2>, so a title with
@@ -1508,7 +1515,7 @@
       // see .bonus-badge in styles.css.
       sectionHead('🕳️', esc(TEXT.bonus) +
         ' <span class="mode-badge bonus-badge">' + esc(TEXT.bonusBadge) + '</span>',
-      esc(TEXT.bonusSub), true) +
+      esc(TEXT.bonusSub), !flat) +
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
       '<p>' + esc(TEXT.bonusCoverBlurb) + '</p>' +
@@ -2288,7 +2295,7 @@
     const scope = chip.closest('#sample-body') || chip.closest('#profile-body') || document;
     const target = scope.querySelector('[data-pattern-card="' + chip.getAttribute('data-pattern') + '"]');
     if (!target) return;
-    const card = target.closest('.section-card');
+    const card = target.closest('.part-card') || target.closest('.section-card');
     if (card) setSectionOpen(card, true);
     target.classList.add('is-highlighted');
     setTimeout(() => target.classList.remove('is-highlighted'), 1600);
@@ -2302,7 +2309,10 @@
     if (!item) return;
     const scope = item.closest('.part-nav').parentElement;
     const target = scope && scope.querySelector('.report-part[data-part="' + item.getAttribute('data-part-target') + '"]');
-    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!target) return;
+    const card = target.closest('.part-card');
+    if (card) setSectionOpen(card, true);
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   // Ticking an action off the plan. Kept on this device only, by a hash of
@@ -4214,9 +4224,11 @@
 
   function sectionNameChips(keys) {
     const names = Copy.STRUCTURED.sectionNames;
-    const list = (keys || []).filter(key => names[key]);
+    // Values and beliefs are one section on the page, so they are one chip.
+    const list = (keys || []).filter(key => names[key]).map(key => names[key])
+      .filter((name, i, all) => all.indexOf(name) === i);
     if (!list.length) return '';
-    return list.map(key => '<span class="section-chip">' + esc(names[key]) + '</span>').join('');
+    return list.map(name => '<span class="section-chip">' + esc(name) + '</span>').join('');
   }
 
   const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
@@ -4234,6 +4246,27 @@
       '<p class="part-intro">' + esc(part.intro) + '</p></div></div>';
   }
 
+  /**
+   * One part of the structured report as a single box that opens and shuts:
+   * its numbered heading is the toggle, and every section inside stays open.
+   * The heading keeps `.report-part`, which the part nav scrolls to and
+   * watchPartNav observes.
+   */
+  function partCardHtml(key, inner, startOpen) {
+    const part = Copy.STRUCTURED.parts[key];
+    const numeral = String(Math.max(0, PART_ORDER.indexOf(key))).padStart(2, '0');
+    return '<section class="card section-card part-card" data-part-card="' + esc(key) + '"' +
+      (startOpen ? ' data-start-open' : '') + '>' +
+      '<div class="card-head card-head-toggle part-card-head"><div class="report-part" data-part="' + esc(key) + '">' +
+      '<span class="part-num" aria-hidden="true">' + numeral + '</span>' +
+      '<div><span class="part-label">' + esc(part.label) + '</span>' +
+      '<h2 class="part-title"><button class="card-toggle" type="button" aria-expanded="true">' +
+      '<span class="card-toggle-text">' + esc(part.title) + '</span><span class="card-chevron" aria-hidden="true"></span>' +
+      '</button></h2>' +
+      '<p class="part-intro">' + esc(part.intro) + '</p></div></div></div>' +
+      '<div class="part-body">' + inner + '</div></section>';
+  }
+
   /** The sticky row of parts at the top of the report; watchPartNav lights the current one. */
   function partNavHtml(hasAppendix) {
     const S = Copy.STRUCTURED;
@@ -4243,24 +4276,10 @@
       esc(S.partNavShort[key]) + '</button>').join('') + '</nav>';
   }
 
-  function aboutCardHtml() {
-    const S = Copy.STRUCTURED;
-    return '<div class="card section-card about-card">' +
-      sectionHead('📘', esc(S.titles.about), '', true) +
-      '<div class="about-grid">' + S.about.map(([title, body], i) =>
-        '<div class="about-tile"><span class="about-icon" aria-hidden="true">' + esc(S.aboutIcons[i] || '') + '</span>' +
-        '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p></div>').join('') + '</div>' +
-      // One meaning per colour, said once, and held to everywhere below.
-      '<div class="colour-key"><h3>' + esc(S.colourKeyTitle) + '</h3><ul>' + S.colourKey.map(([kind, text]) =>
-        '<li><span class="swatch swatch-' + esc(kind) + '" aria-hidden="true"></span>' + esc(text) + '</li>').join('') +
-      '</ul></div></div>';
-  }
-
   function patternsCardHtml(patterns) {
     const S = Copy.STRUCTURED;
     return '<div class="card section-card patterns-card">' +
-      sectionHead('🧵', esc(S.titles.patterns), esc(S.definitions.patterns), true,
-        patterns.map(p => esc(p.name)).join(' · ')) +
+      sectionHead('🧵', esc(S.titles.patterns), esc(S.definitions.patterns), false, '') +
       '<div class="pattern-list">' + patterns.map(p =>
         '<div class="pattern' + patternClass(p.id) + '" data-pattern-card="' + esc(p.id) + '">' +
         '<span class="pattern-badge" aria-hidden="true">' + esc(patternNumber(p.id)) + '</span>' +
@@ -4271,15 +4290,12 @@
         '</div></div>').join('') + '</div></div>';
   }
 
-  /** One sentence shown, the rest of a reading and its evidence behind "More". */
-  function readingWithMore(text, evidenceItems) {
-    const sentences = splitSentences(text);
-    const first = sentences.shift() || '';
-    const rest = sentences.join(' ');
-    const ev = evidence(evidenceItems);
-    return (first ? '<p class="trait-reading">' + esc(first) + '</p>' : '') +
-      (rest || ev ? '<details class="more"><summary>' + esc(Copy.STRUCTURED.more) + '</summary>' +
-        (rest ? '<p class="trait-reading">' + esc(rest) + '</p>' : '') + ev + '</details>' : '');
+  /**
+   * A reading in full, with its evidence under it. Nothing behind a "More":
+   * a report with a disclosure in every block read as a page of buttons.
+   */
+  function readingFull(text, evidenceItems) {
+    return (text ? '<p class="trait-reading">' + esc(text) + '</p>' : '') + evidence(evidenceItems);
   }
 
   /** One Big Five trait on a spectrum: both poles named, the typical band shaded. */
@@ -4288,8 +4304,8 @@
     const score = Math.min(100, Math.max(0, Math.round(Number(item.score) || 0)));
     const poles = S.poles[trait] || ['', ''];
     const band = S.typicalBand;
-    return '<div class="trait-block bipolar' + (mark ? ' is-' + mark : '') + '">' +
-      '<div class="bipolar-head"><span class="trait-label">' + esc(TRAIT_LABELS[trait]) +
+    return '<div class="trait-block bipolar reading-row' + (mark ? ' is-' + mark : '') + '">' +
+      '<div class="trait-viz"><div class="bipolar-head"><span class="trait-label">' + esc(TRAIT_LABELS[trait]) +
       (item.band ? ' · ' + esc(item.band) : '') +
       (mark ? ' <span class="trait-flag">' + esc(S.flags[mark]) + '</span>' : '') + '</span>' +
       '<span class="trait-num">' + score + '</span></div>' +
@@ -4298,8 +4314,8 @@
       '<span class="bipolar-band" data-left="' + band[0] + '" data-fill="' + (band[1] - band[0]) + '"></span>' +
       '<span class="bipolar-mid"></span>' +
       '<span class="bipolar-marker" data-left="' + score + '"></span></div>' +
-      '<div class="bipolar-poles"><span>' + esc(poles[0]) + '</span><span>' + esc(poles[1]) + '</span></div>' +
-      readingWithMore(item.reading, item.evidence) + '</div>';
+      '<div class="bipolar-poles"><span>' + esc(poles[0]) + '</span><span>' + esc(poles[1]) + '</span></div></div>' +
+      '<div class="trait-text">' + readingFull(item.reading, item.evidence) + '</div></div>';
   }
 
   /** The highest and lowest of the five, by score. */
@@ -4326,8 +4342,9 @@
 
   /**
    * MBTI as four sliders, one per axis: the two poles at the ends and a marker
-   * pushed towards the chosen one by how firmly it was chosen. The letter's
-   * whole case sits behind "Why"; what it means going forward stays in view.
+   * pushed towards the chosen one by how firmly it was chosen, the pole not
+   * chosen faint. The slider sits on the left and the case for the letter on
+   * the right, all of it in view — the same row the Big Five uses.
    */
   const AXIS_POLES = { 'E/I': ['E', 'I'], 'N/S': ['N', 'S'], 'T/F': ['T', 'F'], 'J/P': ['J', 'P'] };
   const STRENGTH_REACH = { slight: 16, moderate: 30, clear: 44 };
@@ -4342,21 +4359,20 @@
       const position = 50 + (toRight ? reach : -reach);
       const left = Copy.MBTI_POLES[pair[0]] || { name: pair[0] };
       const right = Copy.MBTI_POLES[pair[1]] || { name: pair[1] };
-      return '<div class="mbti-slider">' +
-        '<div class="slider-ends">' +
-          '<span class="' + (!toRight ? 'is-chosen' : '') + '"><b>' + esc(pair[0]) + '</b> ' + esc(left.name) + '</span>' +
-          '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
-          '<span class="' + (toRight ? 'is-chosen' : '') + '">' + esc(right.name) + ' <b>' + esc(pair[1]) + '</b></span>' +
+      return '<div class="mbti-slider reading-row">' +
+        '<div class="trait-viz"><div class="slider-ends">' +
+          '<span class="' + (!toRight ? 'is-chosen' : 'is-faint') + '"><b>' + esc(pair[0]) + '</b> ' + esc(left.name) + '</span>' +
+          '<span class="' + (toRight ? 'is-chosen' : 'is-faint') + '">' + esc(right.name) + ' <b>' + esc(pair[1]) + '</b></span>' +
         '</div>' +
         '<div class="slider-track" role="img" aria-label="' + esc((toRight ? right.name : left.name) + ', ' + (letter.strength || '')) + '">' +
           '<span class="slider-mid"></span><span class="slider-marker" data-left="' + position + '">' + esc(letter.choice || '') + '</span>' +
         '</div>' +
+        (letter.strength ? '<p class="slider-strength"><span class="pill pill-' + esc(letter.strength) + '">' +
+          esc(letter.strength) + '</span></p>' : '') + '</div>' +
+        '<div class="trait-text">' +
+        (letter.why ? '<p class="trait-reading">' + esc(letter.why) + '</p>' : '') +
         (letter.inPractice ? '<p class="slider-practice">' + esc(letter.inPractice) + '</p>' : '') +
-        ((letter.why || letter.counterEvidence)
-          ? '<details class="more"><summary>' + esc(S.why) + '</summary>' +
-            '<p>' + esc(letter.why) + '</p>' +
-            (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') + '</details>' : '') +
-        '</div>';
+        '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -4438,15 +4454,7 @@
       '<span class="rose-key rose-key-' + esc(group) + '">' + esc(S.motivatorGroups[group]) + '</span>').join('') + '</p>';
     return '<div class="motive-top-grid">' + motivatorCircleSvg(scores) +
       '<div>' + legend + (motivators.reading ? '<div class="callout">' + paragraphs(motivators.reading) + '</div>' : '') +
-      '</div></div>' +
-      '<details class="more"><summary>' + esc(S.allTen) + '</summary>' + bars + '</details>';
-  }
-
-  function topMotivators(motivators, n) {
-    const S = Copy.STRUCTURED;
-    return ((motivators && motivators.scores) || []).filter(row => row && S.motivators[row.value])
-      .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, n)
-      .map(row => S.motivators[row.value].label);
+      '</div></div>' + bars;
   }
 
   /** Interests with one marker for where each is heading, instead of two pills. */
@@ -4469,46 +4477,24 @@
   }
 
   /**
-   * Values and beliefs as one list, no subsections: both answer "what do you
-   * hold to", and a belief carries a small tag and its confidence rather than
-   * a heading of its own.
+   * Values and beliefs as one list of what they stand for: every entry drawn
+   * the same way, with no tag saying which list the model filed it under —
+   * the line between the two was the model's, not the reader's. A belief that
+   * only restates a value already listed is left out.
    */
   function standForHtml(report) {
     const values = (report.values || []).filter(item => item && item.value);
-    const beliefs = (report.beliefs || []).filter(item => item && item.belief);
-    if (!values.length && !beliefs.length) return '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
-    return '<div class="tile-grid">' +
-      values.map(item => '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
-        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') +
-      beliefs.map(item => '<div class="tile tile-belief"><h4>' + esc(item.belief) +
-        '<span class="pill pill-belief">' + esc(Copy.STRUCTURED.beliefTag) + '</span>' +
-        (item.confidence ? '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span>' : '') + '</h4>' +
-        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') +
-      '</div>';
-  }
-
-  /** Receiving on the left, giving on the right, so where the two differ shows. */
-  function loveMirrorHtml(languages) {
-    const S = Copy.STRUCTURED;
-    if (!languages) return '';
-    const weight = { primary: 3, secondary: 2, minor: 1 };
-    const level = (list, name) => {
-      const row = (list || []).find(item => item && item.language === name);
-      return row ? weight[row.strength] || 1 : 0;
-    };
-    const names = Object.keys(LOVE_LANGUAGE_ICONS);
-    const rows = names.filter(name => level(languages.receiving, name) || level(languages.giving, name));
-    if (!rows.length) return '';
-    const bar = (n, side) => '<span class="mirror-bar mirror-' + side + '"><span class="mirror-fill" data-fill="' +
-      Math.round(n / 3 * 100) + '"></span></span>';
-    return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3>' +
-      '<div class="love-mirror"><p class="mirror-heads"><span>' + esc(S.loveReceives) + '</span><span></span><span>' +
-      esc(S.loveGives) + '</span></p>' +
-      rows.map(name => '<div class="mirror-row">' + bar(level(languages.receiving, name), 'in') +
-        '<span class="mirror-name"><span aria-hidden="true">' + esc(LOVE_LANGUAGE_ICONS[name] || '') + '</span> ' +
-        esc(name) + '</span>' + bar(level(languages.giving, name), 'out') + '</div>').join('') + '</div>' +
-      '<details class="more"><summary>' + esc(S.more) + '</summary>' + loveLanguageBlock(languages)
-        .replace('<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3>', '') + '</details>';
+    const words = text => String(text || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3);
+    const valueWords = new Set(values.flatMap(item => words(item.value)));
+    const beliefs = (report.beliefs || []).filter(item => item && item.belief &&
+      !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
+    const items = values.map(item => ({ title: item.value, pill: trajectoryPill(item), detail: item.detail, evidence: item.evidence }))
+      .concat(beliefs.map(item => ({ title: item.belief, pill: '', detail: item.detail, evidence: item.evidence })));
+    if (!items.length) return '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
+    return '<div class="tile-grid">' + items.map(item =>
+      '<div class="tile"><h4>' + esc(item.title) + item.pill + '</h4>' +
+      (item.detail ? '<p>' + esc(item.detail) + '</p>' : '') +
+      (item.evidence ? '<p class="tile-ev">' + esc(item.evidence) + '</p>' : '') + '</div>').join('') + '</div>';
   }
 
   /**
@@ -4563,7 +4549,8 @@
   }
 
   /**
-   * Actions on a three-step timeline: this week, this quarter, this year. Used
+   * Actions on a three-step timeline, one row per step: this week, this
+   * quarter, this year. Used
    * by the development plan and by How you work, so every action in the
    * report reads the same way. Each can be ticked off on this device.
    */
@@ -4582,7 +4569,7 @@
     return '<div class="timeline">' + horizons.map((horizon, i) => {
       const here = items.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon)));
       return '<div class="timeline-col"><p class="timeline-head"><span class="timeline-dot" aria-hidden="true"></span>' +
-        esc(TEXT.careerHorizons[horizon]) + '</p>' +
+        esc(TEXT.careerHorizons[horizon]) + '</p><div class="timeline-steps">' +
         (here.length ? here.map(a => {
           const text = a.step || a.title;
           const key = planKey(text);
@@ -4591,7 +4578,7 @@
             (sample ? ' disabled' : '') + '>' +
             '<span><b>' + esc(text) + '</b>' + (a.detail ? '<small>' + esc(a.detail) + '</small>' : '') +
             (a.from ? '<small class="plan-from">' + esc(a.from) + '</small>' : '') + '</span></label>';
-        }).join('') : '<p class="muted timeline-empty">' + esc(S.nothingYet) + '</p>') + '</div>';
+        }).join('') : '<p class="muted timeline-empty">' + esc(S.nothingYet) + '</p>') + '</div></div>';
     }).join('') + '</div>';
   }
 
@@ -4635,16 +4622,17 @@
     const S = Copy.STRUCTURED;
     // Love languages first: the most concrete thing here, and the one a reader
     // is most likely to act on tomorrow.
-    let html = loveMirrorHtml(relationship.loveLanguages);
+    let html = loveLanguageBlock(relationship.loveLanguages, { caveat: false });
     if (relationship.loveLanguages) html += '<p class="fineprint touch-note">' + esc(S.touchNote) + '</p>';
     if (attachment) {
+      // The model's own caveat is left out: the map is labelled a leaning,
+      // and the about card already says none of this is a clinical read.
       html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
         '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
         (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
-        readingWithMore(attachment.why, attachment.derivedFrom) + '</div></div>' +
+        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>' +
         ((attachment.implications || []).length
-          ? '<details class="more"><summary>' + esc(S.inPractice) + '</summary>' + points(attachment.implications) + '</details>' : '') +
-        '<p class="fineprint">' + esc(attachment.caveat) + '</p>';
+          ? '<h4 class="sub-head">' + esc(S.inPractice) + '</h4>' + points(attachment.implications) : '');
     }
     html += '<div class="split"><div><h3 class="h-good">' + esc(S.whatYouBring) + '</h3>' + points(relationship.strengths) + '</div>' +
       '<div><h3 class="h-warn">' + esc(S.whereItGetsHard) + '</h3>' + points(relationship.weaknesses) + '</div></div>';
@@ -4661,25 +4649,15 @@
       const band = String(facet.band || '').replace(/\s+/g, '-').toLowerCase();
       html += '<div class="wellness-tile wellness-tile-' + esc(band) + '">' +
         '<div class="wellness-head"><span class="wellness-label">' + label + '</span>' + wellnessBand(facet.band) + '</div>' +
-        readingWithMore(facet.reading, facet.evidence) +
+        readingFull(facet.reading, facet.evidence) +
         '<p class="wellness-confidence">' + esc(TEXT.wellnessConfidence) + esc(facet.confidence) + '</p></div>';
     }
     html += '</div>';
     if (wellness.overall) html += '<div class="callout"><h3>' + esc(TEXT.wellnessOverall) + '</h3>' + paragraphs(wellness.overall) + '</div>';
     // The suggestions are on the development plan's timeline, with every
     // other action in the report.
-    html += '<p class="fineprint wellness-caveat">' + esc(TEXT.wellnessCaveat) + '</p>';
+    html += '<p class="fineprint">' + esc(Copy.STRUCTURED.wellnessNote) + '</p>';
     return html;
-  }
-
-  function wellnessResult(wellness) {
-    const counts = {};
-    for (const [, key] of Copy.WELLNESS_FACETS) {
-      const band = wellness[key] && wellness[key].band;
-      if (band) counts[band] = (counts[band] || 0) + 1;
-    }
-    return ['steady', 'mixed', 'under strain', 'not enough evidence'].filter(b => counts[b])
-      .map(b => counts[b] + ' ' + b).join(' · ');
   }
 
   function horizonPill(horizon) {
@@ -4785,6 +4763,70 @@
     return '<p class="essence-label">' + esc(S.coverageTitle) + '</p><div class="coverage">' + rows.join('') + '</div>';
   }
 
+  /**
+   * What the digest carries complete — counts and timing over the whole
+   * archive — as chips. Without these, the sampled numbers below read as if
+   * 180 messages were all the analysis saw, when every message was counted.
+   */
+  function countedInFullHtml() {
+    const S = Copy.STRUCTURED;
+    const L = S.fullCounts;
+    const digest = state.digest;
+    if (!digest) return '';
+    const num = value => (Number(value) > 0 ? Number(value).toLocaleString() : '');
+    const items = [];
+    const add = (value, label) => { if (num(value)) items.push(num(value) + ' ' + label); };
+    const dm = digest.directMessages;
+    if (dm && num(dm.totalMessages)) {
+      items.push(num(dm.totalMessages) + ' ' + L.messages +
+        (num(dm.activeThreads) ? S.fullAcross + num(dm.activeThreads) + ' ' + L.conversations : ''));
+    }
+    const c = digest.counts || {};
+    add(c.posts, L.posts);
+    add(c.stories, L.stories);
+    add(c.commentsWritten, L.commentsWritten);
+    add(c.postsLiked, L.postsLiked);
+    add(c.postsSaved, L.postsSaved);
+    add(c.following, L.following);
+    const days = Number(digest.rhythm && digest.rhythm.spanDays);
+    if (days >= 60) {
+      const years = Math.round(days / 365.25);
+      items.push(S.fullTiming + (years >= 2 ? years + S.spanYears : Math.round(days / 30.44) + S.spanMonths));
+    }
+    const g = digest.google && digest.google.counts;
+    if (g) {
+      add(g.watched, L.watched);
+      add(g.googleSearches, L.googleSearches);
+      add(g.youtubeSearches, L.youtubeSearches);
+    }
+    const f = digest.facebook && digest.facebook.counts;
+    if (f) {
+      add(f.posts, L.facebookPosts);
+      add(f.comments, L.facebookComments);
+    }
+    if (!items.length) return '';
+    return '<p class="essence-label">' + esc(S.countedInFull) + '</p>' +
+      '<p class="trait-evidence counted-full">' + items.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>';
+  }
+
+  /**
+   * The confidence score and what it rests on. With the digest on this
+   * device, that is everything counted in full and everything read word for
+   * word, taken from the digest itself; the model's own two-to-four line
+   * summary of the same is the fallback for the sample and for a report whose
+   * digest is gone.
+   */
+  function methodEvidenceHtml(report, sample) {
+    const full = sample ? '' : countedInFullHtml();
+    const bars = sample ? '' : coverageBarsHtml();
+    if (!full && !bars) return confidenceBodyHtml(report);
+    const withoutSummary = Object.assign({}, report,
+      { confidence: Object.assign({}, report.confidence, { basedOn: [] }) });
+    return confidenceBodyHtml(withoutSummary) +
+      '<p class="essence-label evidence-head">' + esc(TEXT.confidenceBasedOn) + '</p>' +
+      '<div class="evidence-read">' + full + bars + '</div>';
+  }
+
   /** What was read, by whom, from which build — the closing section of Part 4. */
   function methodCardHtml(report, sample) {
     const S = Copy.STRUCTURED;
@@ -4805,8 +4847,7 @@
     ].filter(Boolean);
     return '<div class="card section-card confidence-card method-card">' +
       sectionHead('🎯', esc(S.titles.method), esc(S.definitions.method)) +
-      confidenceBodyHtml(report) +
-      (sample ? '' : coverageBarsHtml()) +
+      methodEvidenceHtml(report, sample) +
       '<dl class="method-list">' + rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' +
       (sample ? '' : sourcesUsedHtml()) + '</div>';
   }
@@ -4816,122 +4857,106 @@
     const sample = Boolean(options && options.sample);
     const patterns = signaturePatterns(report);
     const connects = key => connectsHtml(patterns, key);
-    const head = (icon, title, defKey, result) =>
-      sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', true, result || '');
+    // Sections inside a part do not open and shut on their own: the part does.
+    const head = (icon, title, defKey) =>
+      sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', false, '');
     const unlocked = sample ? {} : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
     let html = partNavHtml(Boolean(report.bonus));
 
-    // Overview.
-    html += partHeadHtml('overview');
-    html += aboutCardHtml();
+    // Overview, part 00: the summary and the signature patterns, open from
+    // the start. Each part is one box, and the sections inside it are always
+    // open — four disclosures in the whole report rather than one per section.
     const headline = String((report.card && report.card.headline) || '').trim();
-    html += '<div class="card section-card summary-card">' +
-      head('👤', esc(S.titles.summary), 'summary', headline ? esc(headline) : '') +
+    let part = '<div class="card section-card summary-card">' +
+      head('👤', esc(S.titles.summary), 'summary') +
       (headline ? '<p class="pull-quote">' + esc(headline) + '</p>' : '') +
       essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
-    if (patterns.length) html += patternsCardHtml(patterns);
+    if (patterns.length) part += patternsCardHtml(patterns);
+    html += partCardHtml('overview', part, true);
 
     // Part 1: who you are. MBTI first: the type is what most readers know and
     // look for. The model still writes the Big Five first (the E/I letter is
     // checked against the extraversion score); only the page order changed.
-    html += partHeadHtml('who');
+    // Wellbeing closes it: it is a read of the person, not of how they relate.
     const mbti = report.mbti || {};
     // No type nickname ("The Protagonist"): the reader already has one
     // character to identify with, and a second label competes with it.
-    html += '<div class="card section-card mbti-card">' +
-      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type), 'mbti',
-        esc(TEXT.mbtiConfidence + (mbti.confidence || ''))) +
+    part = '<div class="card section-card mbti-card">' +
+      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type), 'mbti') +
       '<div class="type-hero"><span class="type-code">' + esc(mbti.type) + '</span></div>' +
       mbtiSlidersHtml(mbti) + '<p class="fineprint">' + esc(mbti.caveat) + '</p>' + connects('mbti') + '</div>';
-    const ends = bigFiveExtremes(report.bigFive);
-    html += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive',
-      ends.high ? esc(S.flags.high + ': ' + TRAIT_LABELS[ends.high.trait] + ' ' + ends.high.score + ' · ' +
-        S.flags.low + ': ' + TRAIT_LABELS[ends.low.trait] + ' ' + ends.low.score) : '') +
+    part += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive') +
       bigFiveStructuredHtml(report.bigFive) + connects('bigFive') + '</div>';
+    part += paidCard(paid('wellness'), unlocked, { sample, flat: true, title: S.titles.wellness, sub: S.definitions.wellness,
+      extra: connects('wellness'), body: wellnessStructuredBody });
+    html += partCardHtml('who', part);
 
     // Part 2: what drives you.
-    html += partHeadHtml('drives');
+    part = '';
     const motivators = motivatorsHtml(report.motivators);
     if (motivators) {
-      html += '<div class="card section-card motivators-card">' +
-        head('🧲', esc(S.titles.motivators), 'motivators', esc(topMotivators(report.motivators, 3).join(' · '))) +
-        motivators + connects('motivators') + '</div>';
+      part += '<div class="card section-card motivators-card">' +
+        head('🧲', esc(S.titles.motivators), 'motivators') + motivators + connects('motivators') + '</div>';
     }
-    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests), 'interests',
-      esc((report.interests || []).slice(0, 3).map(i => i && i.name).filter(Boolean).join(' · '))) +
+    part += '<div class="card section-card">' + head('✨', esc(TEXT.interests), 'interests') +
       interestsStructuredHtml(report.interests) + connects('interests') + '</div>';
-    html += '<div class="card section-card">' + head('🧿', esc(TEXT.valuesBeliefs), 'values',
-      esc((report.values || []).slice(0, 3).map(v => v && v.value).filter(Boolean).join(' · '))) +
+    part += '<div class="card section-card">' + head('🧿', esc(TEXT.valuesBeliefs), 'values') +
       standForHtml(report) + connectsHtml(patterns.map(p => Object.assign({}, p, {
         showsUpIn: ['values', 'beliefs'].some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
       })), 'merged') + '</div>';
+    html += partCardHtml('drives', part);
 
     // Part 3: how you connect and work.
-    html += partHeadHtml('connect');
     const relationship = report.relationship || {};
-    const love = relationship.loveLanguages || {};
-    const firstLanguage = list => ((list || []).find(l => l && l.language) || {}).language || '';
     const attachment = unlocked.attachment;
     const idealPartner = unlocked.idealPartner;
     const closeness = attachment || idealPartner;
-    const premiumBadge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
     const connectsAny = keys => connectsHtml(patterns.map(p => Object.assign({}, p, {
       showsUpIn: keys.some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
     })), 'merged');
-    html += '<div class="card section-card relationships-card' +
+    part = '<div class="card section-card relationships-card' +
       (closeness ? ' paid-card attachment-card" data-paid="attachment' : '') + '">' +
-      head('💞', esc(TEXT.relationships) + (closeness ? premiumBadge : ''), 'relationships',
-        esc([attachment && attachment.style,
-          firstLanguage(love.receiving) ? S.loveReceives + ': ' + firstLanguage(love.receiving) : ''].filter(Boolean).join(' · '))) +
+      head('💞', esc(TEXT.relationships), 'relationships') +
       relationshipsStructuredBody(relationship, attachment, idealPartner) +
       connectsAny(['relationships', 'attachment', 'idealPartner']) + '</div>';
     // Locked (the sample), the two premium halves keep their own covers.
-    if (!attachment) html += paidCard(paid('attachment'), unlocked, { sample });
-    if (!idealPartner) html += paidCard(paid('idealPartner'), unlocked, { sample });
+    if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
+    if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
     // How you work: the description and the coach's read as one section.
     // Locked, the coach's read keeps its own cover below.
     const career = report.career || {};
     const coaching = unlocked.careerAssessment;
-    html += '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
-      head('💼', esc(S.titles.work) + (coaching ? premiumBadge : ''), 'work',
-        coaching && coaching.edge ? esc(TEXT.careerEdge + ': ' + coaching.edge.headline) : '') +
-      workStructuredBody(career, coaching) + connects('work') + '</div>';
-    if (!coaching) html += paidCard(paid('careerAssessment'), unlocked, { sample });
-    html += paidCard(paid('wellness'), unlocked, { sample, title: S.titles.wellness, sub: S.definitions.wellness,
-      extra: connects('wellness'), body: wellnessStructuredBody, result: wellnessResult });
+    part += '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
+      head('💼', esc(S.titles.work), 'work') + workStructuredBody(career, coaching) + connects('work') + '</div>';
+    if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
+    html += partCardHtml('connect', part);
 
     // Part 4: putting it together.
-    html += partHeadHtml('together');
+    part = '';
     const workActions = ((coaching && coaching.actions) || []).filter(a => a && a.title)
       .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork }));
     const wellnessActions = ((unlocked.wellness && unlocked.wellness.suggestions) || []).filter(a => a && a.title)
       .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing }));
     const development = developmentHtml(report.development, patterns, sample, workActions.concat(wellnessActions));
     if (development) {
-      const develop = ((report.development && report.development.develop) || []).filter(i => i && i.title);
-      html += '<div class="card section-card development-card">' + head('🌱', esc(S.titles.development), 'development',
-        develop.length ? esc(S.titles.develop + ': ' + develop.map(i => i.title).join(' · ')) : '') +
+      part += '<div class="card section-card development-card">' + head('🌱', esc(S.titles.development), 'development') +
         development + '</div>';
     }
-    const pressure = (report.pressurePoints || []).filter(item => item && item.strength);
-    if (pressure.length) {
-      const order = ['marked', 'moderate', 'mild'];
-      const worst = pressure.slice().sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level))[0];
-      html += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints',
-        esc(S.watchMost + ': ' + worst.strength + ' → ' + worst.overused)) +
+    if ((report.pressurePoints || []).some(item => item && item.strength)) {
+      part += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints') +
         pressurePointsHtml(report.pressurePoints, patterns) + '</div>';
     }
     if (report.activity) {
-      html += '<div class="card section-card">' + head('📱', esc(S.titles.footprint), 'activity',
-        esc((report.activity.rhythm && report.activity.rhythm.headline) || '')) +
+      part += '<div class="card section-card">' + head('📱', esc(S.titles.footprint), 'activity') +
         activityFacetsHtml(report.activity) + connects('activity') + '</div>';
     }
-    html += methodCardHtml(report, sample);
+    part += methodCardHtml(report, sample);
+    html += partCardHtml('together', part);
 
     // Appendix: the roast, after the method rather than in the middle of the
     // report, so the professional read is whole before the unkind one starts.
-    if (report.bonus) html += partHeadHtml('appendix') + roastBlock(report.bonus);
+    if (report.bonus) html += partHeadHtml('appendix') + roastBlock(report.bonus, { flat: true });
     return html;
   }
 
@@ -5108,7 +5133,7 @@
   function confidenceCardHtml(report, sample) {
     return '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
-      confidenceBodyHtml(report) +
+      (reportLayout() === 'structured' ? methodEvidenceHtml(report, sample) : confidenceBodyHtml(report)) +
       (sample ? '' : sourcesUsedHtml()) +
       '</div>';
   }

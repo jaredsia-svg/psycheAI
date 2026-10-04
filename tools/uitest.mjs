@@ -10144,8 +10144,27 @@ try {
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
       check('structured: the report runs overview, four parts, then the appendix',
         parts.join() === 'overview,who,drives,connect,together,appendix', parts.join());
-      check('structured: it opens on an about-this-report card that says it is not diagnostic',
-        /not a clinical or diagnostic tool/.test(await sp.locator('#profile-body .about-card').textContent()));
+      const shape = await sp.evaluate(() => {
+        const body = document.querySelector('#profile-body');
+        const parts = Array.from(body.querySelectorAll('.part-card'));
+        const who = body.querySelector('.part-card[data-part-card="who"] .part-body');
+        return {
+          toggles: body.querySelectorAll('.card-head-toggle').length,
+          parts: parts.map(p => p.getAttribute('data-part-card') + ':' + (p.classList.contains('is-collapsed') ? 'shut' : 'open')),
+          inner: body.querySelectorAll('.part-body .card-head-toggle').length,
+          about: body.querySelectorAll('.about-card').length,
+          badges: body.querySelectorAll('.part-card .mode-badge').length,
+          whoLast: who ? who.lastElementChild.className : '',
+          more: body.querySelectorAll('details.more').length,
+        };
+      });
+      check('structured: the overview and the four parts are the only disclosures, and only the overview starts open',
+        shape.toggles === 5 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:shut,drives:shut,connect:shut,together:shut', JSON.stringify(shape));
+      check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
+        shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
+      check('structured: wellbeing closes Who you are',
+        /wellness-card/.test(shape.whoLast), shape.whoLast);
       const subs = await sp.$$eval('#profile-body .section-card .card-sub', nodes => nodes.map(n => n.textContent));
       check('structured: every section opens with what it measures',
         subs.some(t => /Five broad traits, each a spectrum/.test(t)) &&
@@ -10197,7 +10216,9 @@ try {
         (await sp.evaluate(() => {
           const card = Array.from(document.querySelectorAll('#profile-body .section-card'))
             .find(c => /Values & Beliefs/.test(c.querySelector('h2').textContent));
-          return card && card.querySelectorAll('h3').length === 0 && card.querySelectorAll('.tile-belief').length === 1;
+          // One list: the sample's three values and its belief, drawn alike, with no tag saying which is which.
+          return card && card.querySelectorAll('h3').length === 0 && card.querySelectorAll('.tile').length === 4 &&
+            card.querySelectorAll('.pill-belief, .tile-belief').length === 0 && !/\bBelief\b/.test(card.textContent);
         })));
       check('structured: MBTI opens Part 1, above the Big Five',
         typeFirst[0] >= 0 && typeFirst[0] < typeFirst[1], typeFirst.join());
@@ -10218,13 +10239,18 @@ try {
         (await sp.locator('#profile-body .pattern .pattern-where').count()) === 3);
       const chipCount = await sp.locator('#profile-body .connects .pattern-chip').count();
       check('structured: sections link back to the patterns they show', chipCount >= 8, chipCount + ' chips');
-      await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.add('is-collapsed')));
+      await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.add('is-collapsed')));
       await sp.locator('#profile-body .connects .pattern-chip[data-pattern="p3"]').first().evaluate(b => b.click());
       await sp.waitForTimeout(200);
-      check('structured: a pattern chip opens the patterns section on that pattern',
+      check('structured: a pattern chip opens the overview on that pattern',
         await sp.evaluate(() => {
           const target = document.querySelector('#profile-body [data-pattern-card="p3"]');
-          return !target.closest('.section-card').classList.contains('is-collapsed') && target.classList.contains('is-highlighted');
+          return !target.closest('.part-card').classList.contains('is-collapsed') && target.classList.contains('is-highlighted');
+        }));
+      check('structured: pattern evidence sits in boxes that fit their text, not pills that clip it',
+        await sp.evaluate(() => {
+          const chips = Array.from(document.querySelectorAll('#profile-body .pattern .ev'));
+          return chips.length > 0 && chips.every(c => getComputedStyle(c).borderRadius === '8px');
         }));
       check('structured: chips are buttons, so the hash a shared card arrives on is never written',
         (await sp.evaluate(() => location.hash)) === '' &&
@@ -10260,10 +10286,70 @@ try {
       const order = await sp.evaluate(() => {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
-        return [at('.method-card'), at('[data-part="appendix"]'), at('.bonus-card')];
+        const together = document.querySelector('#profile-body .part-card[data-part-card="together"]');
+        return [at('.part-card[data-part-card="together"]'), at('[data-part="appendix"]'), at('.bonus-card'),
+          together && together.lastElementChild.lastElementChild.classList.contains('method-card') ? 1 : 0];
       });
       check('structured: the roast is an appendix after the method, not mid-report',
-        order[0] >= 0 && order[0] < order[1] && order[1] < order[2], order.join());
+        order[0] >= 0 && order[0] < order[1] && order[1] < order[2] && order[3] === 1, order.join());
+      // Without a digest on the device, "Read from" is the model's own summary.
+      const basedOnChips = await sp.$$eval('#profile-body .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
+      check('structured: with no digest on the device, Read from falls back to the model\'s own summary',
+        basedOnChips.length === (sampleReport.confidence.basedOn || []).length && basedOnChips.length > 0, basedOnChips.join(' | '));
+      // With one, it is everything counted in full and everything read word for word.
+      await sp.evaluate(() => localStorage.setItem('psycheai_digest', JSON.stringify({
+        coverage: { sources: ['instagram', 'google'], sampling: {
+          captions: { shown: 200, available: 441 }, ownMessages: { shown: 180, available: 9741 },
+          comments: { shown: 60, available: 1203 } } },
+        counts: { posts: 441, stories: 1320, commentsWritten: 1203, postsLiked: 12340, postsSaved: 620, following: 1020 },
+        rhythm: { spanDays: 2400 },
+        directMessages: { totalMessages: 9741, activeThreads: 38 },
+        google: { counts: { watched: 18200, googleSearches: 5200, youtubeSearches: 410 } },
+      })));
+      await sp.reload({ waitUntil: 'load' });
+      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const evidence = await sp.evaluate(() => {
+        const card = document.querySelector('#profile-body .method-card');
+        return {
+          text: card.textContent,
+          full: Array.from(card.querySelectorAll('.counted-full .ev')).map(n => n.textContent),
+          bars: card.querySelectorAll('.evidence-read .coverage-row').length,
+          summaryChips: card.querySelectorAll('.trait-evidence:not(.counted-full) .ev').length,
+        };
+      });
+      check('structured: with the digest, Read from lists what was counted in full',
+        /Counted in full/.test(evidence.text) && evidence.full.includes('9,741 messages across 38 conversations') &&
+        evidence.full.includes('12,340 posts liked') && evidence.full.includes('Activity timing across 7 years') &&
+        evidence.full.includes('18,200 YouTube videos watched'), evidence.full.join(' | '));
+      check('structured: and what was read word for word, in place of the model\'s shorter summary',
+        /Read word for word/.test(evidence.text) && evidence.bars === 3 && evidence.summaryChips === 0,
+        JSON.stringify({ bars: evidence.bars, chips: evidence.summaryChips }));
+      if (process.env.PSYCHEAI_SHOTS) {
+        await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.remove('is-collapsed')));
+        await sp.locator('#profile-body .method-card').screenshot({ path: process.env.PSYCHEAI_SHOTS + '/method-card.png' });
+      }
+      // The free view ends on the trust card rather than the method card, and
+      // is where most readers meet this — so it reads the digest the same way.
+      await sp.evaluate(() => {
+        const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
+        delete stored.explained; delete stored.premiumAnalysis; delete stored.premiumModel; delete stored.premiumAt;
+        localStorage.setItem('psycheai_profile', JSON.stringify(stored));
+      });
+      await sp.reload({ waitUntil: 'load' });
+      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const freeTrust = await sp.evaluate(() => {
+        const card = document.querySelector('#profile-body .confidence-card');
+        return card ? { text: card.textContent, bars: card.querySelectorAll('.coverage-row').length } : null;
+      });
+      check('structured: the free view\'s trust card shows the same counted-in-full and word-for-word evidence',
+        Boolean(freeTrust) && /Counted in full/.test(freeTrust.text) && /9,741 messages across 38 conversations/.test(freeTrust.text) &&
+        freeTrust.bars === 3, freeTrust && freeTrust.text.slice(0, 200));
+      await seed(true);
+      await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
+      if (process.env.PSYCHEAI_SHOTS) {
+        await sp.screenshot({ path: process.env.PSYCHEAI_SHOTS + '/structured-open.png', fullPage: true });
+      }
+
       // The web report's visual layer.
       const visuals = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
@@ -10275,12 +10361,15 @@ try {
           patternColours: Array.from(q('.pattern-chip')).map(c => getComputedStyle(c).borderColor)
             .filter((c, i, all) => all.indexOf(c) === i).length,
           threadMap: q('.thread-map').length,
-          colourKey: q('.about-card .colour-key li').length,
-          results: Array.from(q('.section-card .card-result')).map(n => n.textContent),
+          results: q('.card-result').length,
           sliders: Array.from(q('.mbti-slider .slider-marker')).map(m => m.textContent + '@' + m.style.left),
-          whys: q('.mbti-slider details.more').length,
+          whys: q('.mbti-slider .trait-text .trait-reading').length,
+          faint: q('.mbti-slider .slider-ends .is-faint').length,
+          rows: q('.reading-row > .trait-viz + .trait-text').length,
           wedges: q('.motive-rose .rose-wedge').length,
-          mirror: q('.love-mirror .mirror-row').length,
+          loveBoxes: q('.relationships-card .love-split').length,
+          mirror: q('.love-mirror').length,
+          planRows: q('.development-card .timeline-col > .timeline-steps').length,
           attachMap: q('.attach-map .attach-blob').length,
           partnerCols: q('.partner-need, .partner-careful').length,
           wellnessTiles: q('.wellness-tile').length,
@@ -10295,20 +10384,20 @@ try {
         visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
-      check('structured: About this report says what each colour means',
-        visuals.colourKey === 4, String(visuals.colourKey));
-      check('structured: a shut section still says what it found',
-        visuals.results.length >= 12 && visuals.results.some(t => /^Highest: Conscientiousness 84/.test(t)) &&
-        visuals.results.some(t => /Care for your people/.test(t)) && visuals.results.some(t => /4 steady/.test(t)),
-        JSON.stringify(visuals.results));
+      check('structured: sections inside a part carry no one-line result of their own — they are open',
+        visuals.results === 0, String(visuals.results));
       check('structured: MBTI as four sliders, each marker pushed towards its letter by its strength',
-        visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%' && visuals.whys === 4, visuals.sliders.join());
+        visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%', visuals.sliders.join());
+      check('structured: MBTI and the Big Five as rows, the scale on the left and the reading beside it, in full',
+        visuals.rows === 9 && visuals.whys === 4, JSON.stringify([visuals.rows, visuals.whys]));
+      check('structured: the MBTI letter not chosen is faint', visuals.faint === 4, String(visuals.faint));
+      check('structured: the plan reads as one row per step', visuals.planRows === 3, String(visuals.planRows));
       check('structured: the Big Five flags the highest and lowest trait',
         visuals.flags.join() === 'Highest,Lowest', visuals.flags.join());
       check('structured: Schwartz\'s circle draws all ten values',
         visuals.wedges === 10);
-      check('structured: love languages mirrored, receiving against giving',
-        visuals.mirror === 3, String(visuals.mirror));
+      check('structured: love languages as the two boxes, with no bars',
+        visuals.loveBoxes === 1 && visuals.mirror === 0, JSON.stringify([visuals.loveBoxes, visuals.mirror]));
       check('structured: attachment on the two-axis map, labelled approximate',
         visuals.attachMap === 1 && /Approximate/.test(await sp.locator('#profile-body .attach-map figcaption').textContent()));
       check('structured: ideal partner as need against careful-of, wellbeing as six tiles',
@@ -10324,7 +10413,7 @@ try {
         const plan = body.querySelector('.development-card .timeline');
         return {
           separateCards: body.querySelectorAll('.paid-card[data-paid="idealPartner"], .attachment-card:not(.relationships-card)').length,
-          rel: rel ? ['How you attach', 'What you bring', 'Where it gets hard', 'Who suits you']
+          rel: rel ? ['Attachment style', 'What you bring', 'Where it gets hard', 'Who suits you']
             .every(h => rel.textContent.includes(h)) && Boolean(rel.querySelector('.attach-map')) : false,
           holding: work ? Array.from(work.querySelectorAll('.h-warn + dl dt')).map(dt => dt.textContent) : [],
           workHeads: work ? Array.from(work.querySelectorAll('h3')).map(h => h.textContent) : [],
@@ -10337,7 +10426,7 @@ try {
       check('structured: love languages lead the section, with the note on physical touch',
         await sp.evaluate(() => {
           const rel = document.querySelector('#profile-body .relationships-card');
-          const love = rel.querySelector('.love-mirror');
+          const love = rel.querySelector('.love-split');
           const attach = rel.querySelector('.attach-map');
           return Boolean(love && attach && (love.compareDocumentPosition(attach) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
             /Physical touch cannot be verified from online data/.test(rel.textContent);
@@ -10369,8 +10458,8 @@ try {
         (await sp.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('psycheai_plan') || '{}')).length)) === 1);
       // Charts sit at zero while their section is shut, and grow when it opens.
       const shutWidth = await sp.evaluate(() => {
-        const card = document.querySelector('#profile-body .motivators-card');
-        return card.classList.contains('is-collapsed') ? getComputedStyle(card.querySelector('.bar-fill')).width : 'open';
+        const card = document.querySelector('#profile-body .part-card[data-part-card="drives"]');
+        return card.classList.contains('is-collapsed') ? getComputedStyle(card.querySelector('.motivators-card .bar-fill')).width : 'open';
       });
       check('structured: a shut section\'s bars are held at zero until it opens', shutWidth === '0px', shutWidth);
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
@@ -10379,6 +10468,10 @@ try {
       await sp.waitForTimeout(200);
       const spill = await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       check('structured: no sideways scroll on a phone', spill <= 1, spill + 'px');
+      const phoneRows = await sp.evaluate(() => Array.from(document.querySelectorAll('#profile-body .reading-row'))
+        .map(r => getComputedStyle(r).gridTemplateColumns.split(' ').length));
+      check('structured: on a phone each MBTI and Big Five row stacks the scale above its reading',
+        phoneRows.length === 9 && phoneRows.every(n => n === 1), phoneRows.join());
       await sp.setViewportSize({ width: 1100, height: 900 });
 
       const pdfOf = layout => sp.evaluate(async layout => {

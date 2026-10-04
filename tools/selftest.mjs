@@ -5921,6 +5921,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       /under about 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
+    check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
+      /a belief never restates a value/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /a belief is a commitment no value already names/.test(prompts.STRUCTURED_FULL_SYSTEM));
   }
 
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');

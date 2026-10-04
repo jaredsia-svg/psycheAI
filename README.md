@@ -3240,10 +3240,10 @@ here is either this app's own or a published academic model.
 
 | | Sections |
 |---|---|
-| **Overview** | About this report (fixed copy: what it reads, how to read the scales, what it cannot see) · Executive summary · **Your signature patterns** |
-| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs |
+| **Overview** | Executive summary · **Your signature patterns** (the PDF still opens with an About page) |
+| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
-| **Part 3 – How you connect and work** | In relationships · Attachment style · Ideal partner · **How you work** (the description and the coach's read, one section instead of two) · Wellbeing |
+| **Part 3 – How you connect and work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
 | **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) · Your digital footprint · Evidence and method |
 | **Appendix** | The roast, after the method rather than mid-report |
 
@@ -3265,7 +3265,11 @@ down just enough to fit, rather than clipped.
 
 Every section follows one template: a definition line saying what it measures, the read, the chart
 or detail, and a "Connects to" row of the signature patterns it shows. A pattern chip jumps to the
-pattern. The PDF follows the same order, with an about page after the cover, a divider per part, the
+pattern. **Only the parts open and shut** — the overview (open from the start) and the four parts are
+the report's five disclosures, and every section inside a part is shown whole, with no "More" behind
+any of it. MBTI and the Big Five are rows with the scale on the left and the reading beside it; the
+MBTI pole not chosen is faint. Values and beliefs are one list with no tag saying which is which, and
+no section carries a Premium badge. The PDF follows the same order, with an about page after the cover, a divider per part, the
 date in the running head, and the build and sources on the method page.
 
 The model writes four more fields for it — `patterns`, `motivators`, `development` and
