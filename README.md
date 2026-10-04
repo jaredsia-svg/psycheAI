@@ -3462,6 +3462,17 @@ it:
   since 2021" — the reader knows who their friends are, and a handle written into a PDF they may
   hand to somebody else drags in a person who never agreed to any of this.
 
+  The prompt asks for this, and the server also checks it after the model has written
+  (`lib/privacy.js`), because a real report still listed three friends' handles with their like
+  counts. Every report is scrubbed before it is stored or served. The check removes any handle
+  the digest itself supplied (liked, saved and commented-on accounts, plus @handles in the
+  reader's own writing) and Facebook friends' full names, replacing them with "an account" or
+  "a friend". A handle is removed only where the text uses it as a name: written with an @,
+  followed by a count, or containing a digit, an underscore or a dot. A handle that is also an
+  ordinary word in the digest ("travel") keeps its ordinary uses. Public channels and brands the
+  model names from elsewhere are left alone. The log records how often this happens, never what
+  was removed.
+
 ### Mental wellness
 
 Six behavioural dimensions, sitting directly under the behaviour read that evidences them: **sleep and rhythm**, **cognitive load**, **social connection**, **emotional

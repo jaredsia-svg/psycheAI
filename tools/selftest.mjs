@@ -5627,6 +5627,98 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     version.fromGit(join(tmpdir(), 'no-such-repo')).commit === '');
 }
 
+// ---------- private names out of a finished report ----------
+//
+// The prompts forbid naming private individuals and a real report did it
+// anyway — "such as bryanfooooo x28, yuhanchong x23, and gweesx x22", copied
+// straight off the ranked lists. lib/privacy.js checks after the model has
+// written. These are the shapes that leak, and the ones that must survive.
+{
+  const privacy = await import('../lib/privacy.js').then(m => m.default || m);
+  const leakDigest = {
+    mostEngagedWith: [{ name: 'bryanfooooo', count: 28 }, { name: 'yuhanchong', count: 23 },
+      { name: 'gweesx', count: 22 }, { name: 'travel', count: 5 }],
+    mostLikedAccounts: [{ name: 'bob_99', count: 3 }, { name: 'PsycheUser', count: 1 }],
+    samples: { captions: ['[2020] the MR2 owned by @carcollector. love to travel'], comments: [] },
+    instagramTopics: [{ name: 'Travel' }],
+    facebook: { friends: ['Bryan Foo', 'Ann'] },
+  };
+  const names = privacy.namesIn(leakDigest);
+  check('the names a digest supplies are its ranked accounts, the @handles in their writing, and full names of friends',
+    ['bryanfooooo', 'yuhanchong', 'gweesx', 'travel', 'bob_99', 'carcollector'].every(h => names.handles.includes(h)) &&
+    !names.handles.includes('PsycheUser') && names.people.join() === 'Bryan Foo',
+    JSON.stringify(names));
+  check('a handle the digest\'s own text uses as a word is recognised as one',
+    names.words.join() === 'travel', JSON.stringify(names.words));
+
+  const report = {
+    activity: { diet: 'Your engagement focuses on a trusted circle (such as bryanfooooo x28, yuhanchong ×23, ' +
+      'and gweesx x22). Later gweesx again; Gweesx at a sentence start.' },
+    roast: { harsh: 'You love travel, and travel x5 likes you back. @carcollector lent you nothing. bob_99 liked it.' },
+    attachment: { why: 'A message to Bryan Foo, sent at 2am.' },
+    untouched: ['Email PsycheUser at me@gweesx.com', 'CNBC x653 and All-In x246 are channels', 7, null],
+  };
+  const { data: clean, removed } = privacy.scrub(report, leakDigest);
+  const all = JSON.stringify(clean);
+  check('the leaked list of friends\' handles comes out, counts kept',
+    clean.activity.diet.startsWith('Your engagement focuses on a trusted circle (such as an account x28, an account ×23, and an account x22).'),
+    clean.activity.diet);
+  check('once a handle is used as a name, its bare uses go too, whatever the case',
+    !/gweesx/i.test(clean.activity.diet), clean.activity.diet);
+  check('an @handle from their own writing, and a handle with a digit or underscore, come out bare',
+    !all.includes('carcollector') && !all.includes('bob_99'), clean.roast.harsh);
+  check('a friend\'s full name comes out of quoted evidence',
+    clean.attachment.why === 'A message to a friend, sent at 2am.', clean.attachment.why);
+  check('a handle that is also an ordinary word goes only where it is marked as a name',
+    clean.roast.harsh.startsWith('You love travel, and an account x5'), clean.roast.harsh);
+  check('the reader\'s own marker, an email address, public channels and non-strings are left alone',
+    JSON.stringify(clean.untouched) === JSON.stringify(report.untouched), JSON.stringify(clean.untouched));
+  check('and the count of removals is reported, never the names', removed === 9, String(removed));
+  check('the report passed in is not modified', report.activity.diet.includes('bryanfooooo'));
+
+  const result = { data: report, usage: { input: 1 }, model: 'm' };
+  const scrubbedResult = privacy.scrubResult(result, leakDigest);
+  check('scrubResult cleans an engine result and keeps its usage and model',
+    scrubbedResult !== result && !JSON.stringify(scrubbedResult.data).includes('yuhanchong') &&
+    scrubbedResult.usage === result.usage && scrubbedResult.model === 'm');
+  const nothing = { data: { a: 'Nothing private here.' } };
+  check('a clean report is returned as it came',
+    privacy.scrubResult(nothing, leakDigest) === nothing && privacy.scrubResult(nothing, null) === nothing);
+
+  const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+  check('both report routes scrub before the result is stored or served',
+    /return scrubbed\(result, sent, kind\)/.test(serverSource) &&
+    /return scrubbed\(result, body\.digest, 'premium'\)/.test(serverSource));
+}
+
+// ---------- the full report's rules on figures and on attachment ----------
+//
+// Three faults one real run showed: the same fact given two figures
+// (64,000 and 86,000 searches — a distinct count and a total), raw fields
+// written to the reader ("your regularity sits at 0", message length as
+// extraversion evidence), and an attachment style resting on the coaching
+// videos somebody watched rather than how they behave.
+{
+  const full = prompts.FULL_SYSTEM;
+  check('the full report gives one figure per fact, premium sections included',
+    /One fact, one figure, everywhere in the response/.test(full) && /the premium sections at the end included/.test(full));
+  check('and tells a total from a distinct count, naming both Google fields',
+    full.includes('`google.counts.googleSearches` is how many times they searched') &&
+    full.includes('`coverage.sampling.googleSearchTerms.available` is how many *different* things'));
+  check('and never writes a raw field, with regularity\'s scale spelled out',
+    /never write the field/.test(full) && /`rhythm\.regularity` runs from 0/.test(full) && /never "your regularity sits at 0"/.test(full));
+  check('and keeps message length and volume out of the extraversion evidence',
+    /`averageSentLength` says how they compose/.test(full) && /Neither is evidence for extraversion/.test(full));
+  check('attachment is read from conduct, and what they watch about it is interest, not style',
+    /never from what they read about it/.test(full) && /show an \*interest\*/.test(full) &&
+    /never the trace the style rests on/.test(full));
+  check('thin or mixed evidence takes the cautious read, and fearful-avoidant needs both halves in conduct',
+    /take the more cautious read/.test(full) && /needs both halves visible in what they do/.test(full) &&
+    /leans secure, with avoidant defences under stress/.test(full));
+  check('the attachment schema says the same',
+    /not from what they watch or read about relationships/.test(JSON.stringify(prompts.FULL_SCHEMA)));
+}
+
 // ---------- the spend ledger ----------
 //
 // Every engine has always returned `usage` — gemini.js reads promptTokenCount,

@@ -18,6 +18,7 @@ const paymentLedger = require('./lib/premiumLedger');
 const budget = require('./lib/budget');
 const results = require('./lib/results');
 const usage = require('./lib/usage');
+const privacy = require('./lib/privacy');
 const rateLimit = require('./lib/ratelimit');
 const nonces = require('./lib/nonce');
 const version = require('./lib/version');
@@ -404,6 +405,14 @@ function requirePremiumEngine(response) {
 // what the server enforces is narrower and honest: a payment presented here
 // must be real, must be for the right product, and must not already have been
 // spent — and the full report is never produced without one.
+// A report with the private names its digest supplied taken out. Logs how
+// often it happens, never what was removed.
+function scrubbed(result, digest, kind) {
+  const cleaned = privacy.scrubResult(result, digest);
+  if (cleaned !== result) console.log('privacy: removed private names from a ' + kind + ' report');
+  return cleaned;
+}
+
 async function handleAnalyse(request, response) {
   const body = await readJsonBody(request);
   if (!body || typeof body.digest !== 'object' || body.digest === null || Array.isArray(body.digest)) {
@@ -569,7 +578,10 @@ async function handleAnalyse(request, response) {
       } else {
         budget.record(kind);
       }
-      return result;
+      // Private names out before the report is stored or served — see
+      // lib/privacy.js. The prompts forbid them; this catches the run that
+      // writes one anyway.
+      return scrubbed(result, sent, kind);
     },
   });
 }
@@ -697,7 +709,7 @@ async function handlePremiumAnalysis(request, response) {
       const result = await engine.analysePremium(body.digest);
       usage.record('premium', result, true);
       paymentLedger.recordUse(paymentIntentId, 'premium');
-      return result;
+      return scrubbed(result, body.digest, 'premium');
     },
   });
 }
