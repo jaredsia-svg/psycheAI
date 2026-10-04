@@ -83,7 +83,7 @@ here is the *gate*, not the ability to ever ask again.
 
 ### The free run is the summary card; everything that explains it is the unlock
 
-**The free tier costs at most US$0.06 a run**, and it gets there by changing what the free run is
+**The free tier costs at most about US$0.05 a run**, and it gets there by changing what the free run is
 rather than how hard the model thinks about it. A free run returns the **summary card** — the
 character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
@@ -94,13 +94,17 @@ sections are the **S$1.99 unlock: the full premium report**, written by **one** 
 same file, byte for byte — so the only difference between them is what they are asked to write.
 
 - **The card call** (`analyseCard`, kind `card`) runs `FREE_SYSTEM` against `FREE_SCHEMA` in
-  `lib/prompts.js`. `FREE_SYSTEM` is `PROFILE_SYSTEM` with only the writing sections cut out —
-  "spell each piece of evidence out once", the activity, bonus and roast instructions — and a short
-  preamble saying this call writes conclusions only. The scoring rules are kept, so the card is
-  reached by the same reasoning the full report uses. Each cut is made on marker text and throws if a
-  marker goes missing, so an edit to the main prompt cannot quietly leave the card prompt half-cut.
-  Thinking stays at `HIGH`. The card is cheaper because it writes less, not because it reads less
-  or thinks less.
+  `lib/prompts.js`. `FREE_SYSTEM` is a prompt of its own, about 2,300 tokens against the full
+  report's 15,000-odd. It keeps the rules that decide a conclusion and drops the reasoning and worked
+  prose around them: the evidence order, who a sentence is about, the extraversion correction and
+  E/I following the score, the N/S and T/F confounds, how confidence is scored, how the character is
+  picked, and every hard limit. The price is two copies of those rules. A selftest check names each
+  one that has been the fix for a reported wrong answer, and fails if it is missing from either
+  prompt. The card schema asks the model only for what is new on the shareable card: headline,
+  summary, strengths and weaknesses, attachment, rhythm, energy and work style. The ten card fields
+  that repeat its own conclusions (type, enneagram, scores, lists, love languages, confidence) are
+  copied from its answer by `withCard`, so they cannot disagree with it and are not paid for twice
+  at the output rate. Thinking stays at `HIGH`.
 - **The full premium report** (`analyseFull`, kind `full`) runs `FULL_SYSTEM` against `FULL_SCHEMA`.
   That is `PROFILE_SYSTEM` and `PREMIUM_SYSTEM` joined, with their schemas merged, so the written
   report, the roast and the four premium sections come back in a single response. It used to be two
@@ -131,9 +135,16 @@ the account that is heavy everywhere at once. At $0.75 / $3.75 per million token
 | | free card | full premium report |
 |---|---|---|
 | output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 16,900 → $0.0127 | 34,500 → $0.0259 |
+| prompt plus schema | 5,600 → $0.0042 | 34,500 → $0.0259 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0598** (`FREE_COST_CAP` $0.06) | **$0.1480** (`COST_CAP` $0.15) |
+| **at most** | **$0.0513** (`FREE_COST_CAP` $0.052) | **$0.1480** (`COST_CAP` $0.15) |
+
+The digest row is an upper bound. The budget counts the digest as JSON characters, but neither call
+is sent JSON for it any more: `renderEvidence` keeps the small structured fields — profile, counts,
+rhythm, coverage, the message statistics — as JSON and writes every list after them under its own
+dotted path, one item per line, with ranked entries as "name ×count". By a rough token count that
+is 17–28% fewer tokens than the JSON on the fixtures, and both calls get the identical encoding of
+the identical digest.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.

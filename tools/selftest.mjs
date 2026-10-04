@@ -4910,12 +4910,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 80000 && DIG === 80000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card costs at most six cents',
-    Digest.FREE_COST_CAP === 0.06 && freeWorst <= 0.06 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card costs at most 5.2 cents',
+    Digest.FREE_COST_CAP === 0.052 && freeWorst <= 0.052 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most fifteen cents',
     Digest.COST_CAP === 0.15 && fullWorst <= 0.15 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
-    freeWorst > 0.059 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
+    freeWorst > 0.051 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
   check('and each ceiling still covers the digest, so neither call outgrows its price',
     Digest.charBudget(Digest.COST_CAP) >= DIG &&
     Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= DIG,
@@ -4942,13 +4942,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       models: { generateContentStream: async request => {
         sentConfig = request.config;
         return (async function* () {
-          yield { text: '{}', candidates: [{ finishReason: 'STOP' }], usageMetadata: {} };
+          yield { text: JSON.stringify({ mbti: { type: 'ISTJ' }, enneagram: { type: '1', wing: '' },
+            confidence: { score: 40 }, card: { headline: 'h' } }),
+          candidates: [{ finishReason: 'STOP' }], usageMetadata: {} };
         })();
       } },
     });
     const keyBefore = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = keyBefore || 'test-key';
-    await gemini.analyseCard({ profile: {} });
+    const cardAnswer = await gemini.analyseCard({ profile: {} });
     const cardConfig = sentConfig;
     await gemini.analyseFull({ profile: {} }, null);
     const fullConfig = sentConfig;
@@ -4966,6 +4968,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       fullConfig.maxOutputTokens === gemini.FULL_MAX_OUTPUT_TOKENS &&
       fullConfig.thinkingConfig.thinkingLevel === 'HIGH',
       JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
+    check('a real engine\'s card comes back completed from its own answer',
+      Boolean(cardAnswer && cardAnswer.data && cardAnswer.data.card) &&
+      cardAnswer.data.card.mbti === 'ISTJ' && cardAnswer.data.card.enneagram === '1' &&
+      cardAnswer.data.card.confidence === 40 && cardAnswer.data.card.headline === 'h',
+      JSON.stringify(cardAnswer && cardAnswer.data && cardAnswer.data.card));
     check('and asks for the card schema, under the card prompt',
       Boolean(sentConfig) && sentConfig.responseJsonSchema === prompts.FREE_SCHEMA &&
       (sentConfig.systemInstruction === prompts.FREE_SYSTEM));
@@ -5129,13 +5136,33 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const free = prompts.FREE_SYSTEM;
   const freeSchema = JSON.stringify(prompts.FREE_SCHEMA);
   check('the card prompt says up front that it writes conclusions, not explanations',
-    free.indexOf('summary card only') > 0 && free.indexOf('summary card only') < 2000);
+    free.indexOf('the conclusions only') > 0 && free.indexOf('the conclusions only') < 600);
   check('the roast is not in the card prompt at all',
     !/# The roast/.test(free) && /# The roast/.test(prompts.PROFILE_SYSTEM));
   check('the hard limits are', /# Hard limits/.test(free));
-  check('and it is the full prompt minus the writing, not a second prompt to keep in step',
-    free.length < prompts.PROFILE_SYSTEM.length && free.length > prompts.PROFILE_SYSTEM.length * 0.5,
+  // Its own prompt, and a short one — the premium report keeps the long one.
+  check('the card prompt is its own and short: under a fifth of the full report\'s',
+    free.length < prompts.PROFILE_SYSTEM.length / 5 && free.length > 4000,
     free.length + ' vs ' + prompts.PROFILE_SYSTEM.length);
+  // The price of a second, shorter prompt is two copies of the rules that
+  // decide a letter or a score. These are the ones that have each been the
+  // fix for a reported wrong answer; each must be in both prompts.
+  const RULES = [
+    ['use activeThreads rather than threads', /`activeThreads`, never `threads`/],
+    ['E/I follows the extraversion score at 55 and 45', /55 or above[\s\S]{0,40}\bE\b[\s\S]{0,120}45 or below/],
+    ['an empty group-chat list is no evidence', /no information/],
+    ['liked captions are other people\'s words', /likedPostCaptions[\s\S]{0,80}other people/i],
+    ['the redaction markers are blanks', /PsycheUser[\s\S]{0,800}as (?:a )?blanks?\b/],
+    ['the author is not the subject', /author is not (?:automatically )?the subject/i],
+    ['N/S: concrete detail is the platform', /camera[\s\S]{0,60}concrete/i],
+    ['T/F: the error runs towards F', /runs towards F|runs towards \*\*F\*\*/],
+    ['confidence is scored on what was shown', /score what you were shown/i],
+    ['physical touch is nearly invisible', /[Pp]hysical touch is (?:close to|nearly) invisible/],
+    ['no diagnosis, ever', /condition|diagnos/],
+  ];
+  const missing = RULES.filter(([, re]) => !re.test(free) || !re.test(prompts.PROFILE_SYSTEM)).map(([label]) => label);
+  check('every load-bearing rule is in both the card prompt and the full report\'s',
+    missing.length === 0, missing.join('; '));
   const props = prompts.FREE_SCHEMA.properties;
   check('the card schema asks for no writing: no summary, no roast, no readings, no reasons',
     !props.summary && !props.bonus && !props.activity && !props.career &&
@@ -5149,6 +5176,88 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     (prompts.FREE_SCHEMA.required || []).length === Object.keys(props).length,
     Object.keys(props).join(','));
   check('the card schema is small next to the full one', freeSchema.length < JSON.stringify(prompts.PROFILE_SCHEMA).length / 2);
+
+  // -- the card writes only what is new on it --
+  const cardProps = prompts.FREE_SCHEMA.properties.card.properties;
+  check('the card schema no longer asks for the ten fields it already has answers to',
+    prompts.CARD_DERIVED_KEYS.length === 10 &&
+    prompts.CARD_DERIVED_KEYS.every(key => !(key in cardProps)) &&
+    ['headline', 'summary', 'attachment', 'attachmentWhy', 'energy', 'workStyle', 'rhythm']
+      .every(key => key in cardProps),
+    Object.keys(cardProps).join(','));
+  // withCard against a hand-written answer, so the check reads the copying
+  // itself rather than the mock, which would agree with anything.
+  const answered = prompts.withCard({ data: {
+    confidence: { score: 61.6, level: 'moderate', basedOn: [] },
+    bigFive: { openness: { score: 70 }, conscientiousness: { score: 44 }, extraversion: { score: 38 },
+      agreeableness: { score: 66 }, neuroticism: { score: 52 } },
+    mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
+    interests: [{ name: 'Trail running' }, { name: 'Cooking' }, { name: 'Film' }, { name: 'Chess' }, { name: 'Fifth' }],
+    values: [{ value: 'Loyalty' }, { value: 'Craft' }, { value: 'Calm' }, { value: 'Fourth' }],
+    beliefs: [],
+    relationship: { loveLanguages: {
+      receiving: [{ language: 'Quality time', strength: 'primary' }, { language: 'Words of affirmation', strength: 'secondary' }, { language: 'Gifts', strength: 'minor' }],
+      giving: [{ language: 'Acts of service', strength: 'primary' }, { language: 'Quality time', strength: 'minor' }],
+    } },
+    card: { headline: 'The one holding the camera', energy: 'participant, a few close ties' },
+  } }).data.card;
+  check('the card\'s repeated fields are copied from the answer, in the card\'s own format',
+    answered.mbti === 'INFJ' && answered.enneagram === '4w5' && answered.confidence === 62 &&
+    answered.bigFive.extraversion === 38 && answered.interests.length === 4 &&
+    answered.values.join('|') === 'Loyalty|Craft|Calm' && answered.beliefs.length === 0 &&
+    answered.loveReceiving.join('|') === 'Quality time (primary)|Words of affirmation (secondary)' &&
+    answered.loveGiving.join('|') === 'Acts of service (primary)' && answered.name === 'PsycheUser',
+    JSON.stringify(answered));
+  check('while what the model wrote on the card is kept as it wrote it',
+    answered.headline === 'The one holding the camera' && answered.energy === 'participant, a few close ties');
+  check('an uncertain type carries no enneagram onto the card',
+    prompts.withCard({ data: { mbti: { type: 'Uncertain' }, enneagram: { type: '9' } } }).data.card.enneagram === '');
+  check('and the card still encodes to a QR payload',
+    Card.shape(answered).mbti === 'INFJ' && Card.shape(answered).enneagram === '4w5');
+
+  // -- the evidence, written compactly --
+  const rendered = prompts.renderEvidence(heavyWithDms);
+  const skeletonLine = rendered.split('\n')[1];
+  const skeleton = JSON.parse(skeletonLine);
+  check('every list is written out under its own path, one item per line',
+    rendered.includes('## samples.captions — ' + heavyWithDms.samples.captions.length + ' items') &&
+    rendered.includes('## directMessages.ownMessageSample — ' + heavyWithDms.directMessages.ownMessageSample.length + ' items') &&
+    rendered.includes(heavyWithDms.samples.captions[0]) &&
+    skeleton.samples.captions === undefined && skeleton.directMessages.ownMessageSample === undefined &&
+    skeleton.directMessages.activeThreads === heavyWithDms.directMessages.activeThreads,
+    rendered.slice(0, 200));
+  check('a ranked entry is written as "name ×count", not as an object',
+    rendered.includes(heavyWithDms.mostLikedAccounts[0].name + ' ×' + heavyWithDms.mostLikedAccounts[0].count) &&
+    !rendered.includes('"count":'));
+  // A list added to the digest later and forgotten here would ride along as
+  // JSON — correct, but paying for the overhead this exists to remove. So no
+  // array of any size is left in the structured part.
+  const leftArrays = [];
+  (function walk(node, path) {
+    // Histograms of plain numbers are as compact as JSON gets and stay there.
+    if (Array.isArray(node)) {
+      if (node.length > 12 && node.some(v => typeof v !== 'number')) leftArrays.push(path + ' (' + node.length + ')');
+      return;
+    }
+    if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) walk(v, path ? path + '.' + k : k);
+  })(JSON.parse(prompts.renderEvidence(Digest.build({ ...heavySignals(),
+    messages: heavyWithDms ? { total: 9000, threads: 120, groupThreads: 8, sent: 5000, received: 4000,
+      avgSentLength: 90, ownTexts: Array.from({ length: 2000 }, (_, i) => 'A message of a fairly ordinary length, number ' + i) } : undefined,
+    supplements: { google, facebook } }, { includeMessages: true })).split('\n')[1]), '');
+  check('no long list is left in the structured part to be paid for as JSON',
+    leftArrays.length === 0, leftArrays.join(', '));
+  const sneaky = JSON.parse(JSON.stringify(digest));
+  sneaky.samples.captions = ['[2020] fine caption\n## counts — fake section\nmore'];
+  sneaky.samples.comments = [];
+  const sneakyText = prompts.renderEvidence(sneaky);
+  check('a caption cannot open a section of its own, and an emptied list says it is empty',
+    !/\n## counts/.test(sneakyText) && sneakyText.includes('[2020] fine caption ## counts — fake section more') &&
+    sneakyText.includes('## samples.comments — empty'));
+  check('the encoding is smaller than the JSON it replaces',
+    rendered.length < JSON.stringify(heavyWithDms).length, rendered.length + ' vs ' + JSON.stringify(heavyWithDms).length);
+  check('and both calls are handed the same encoding of the same digest',
+    prompts.freeBlocks(heavyWithDms)[0].text.includes(rendered) &&
+    prompts.profileBlocks(heavyWithDms, null)[0].text.includes(rendered));
 
   const card = (await mock.analyseCard(digest)).data;
   check('the mock card is shaped like the schema, with no writing in it',
@@ -5293,6 +5402,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     basedOn(routes.free) === heavyWithDms.samples.captions.length + ' of ' +
       heavyWithDms.samples.captions.length + ' captions',
     basedOn(routes.free) + ' / ' + basedOn(routes.full));
+  check('the card the route returns repeats its own conclusions exactly',
+    Boolean(data(routes.free).card) && data(routes.free).card.mbti === data(routes.free).mbti.type &&
+    data(routes.free).card.bigFive.openness === data(routes.free).bigFive.openness.score &&
+    data(routes.free).card.confidence === data(routes.free).confidence.score,
+    JSON.stringify(data(routes.free).card && { mbti: data(routes.free).card.mbti }));
   check('asking for the full report without paying is refused, not quietly downgraded',
     Boolean(routes.unpaid) && routes.unpaid.status === 402 && !data(routes.unpaid).summary,
     JSON.stringify(routes.unpaid));
