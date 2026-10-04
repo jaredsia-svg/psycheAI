@@ -156,12 +156,18 @@ export function agreement(baseline, runs) {
  */
 export function summarise(results) {
   if (!results.length) return [];
+  // The baseline's first card that came back. If every baseline run failed
+  // there is nothing to compare against, which the table says rather than
+  // inventing a number.
   const baseline = results[0].cards[0];
   return results.map((r, index) => {
     const priced = r.costs.filter(c => c !== null && c !== undefined);
     return {
       label: r.config.model + ':' + r.config.thinkingLevel + (index === 0 ? ' (baseline, vs itself)' : ''),
-      against: index === 0 ? agreement(baseline, r.cards.slice(1)) : agreement(baseline, r.cards),
+      failed: r.failed || 0,
+      runs: (r.cards.length || 0) + (r.failed || 0),
+      against: !baseline ? null
+        : index === 0 ? agreement(baseline, r.cards.slice(1)) : agreement(baseline, r.cards),
       cost: priced.length ? priced.reduce((a, b) => a + b, 0) / priced.length : null,
       thinking: r.thinking.length ? r.thinking.reduce((a, b) => a + b, 0) / r.thinking.length : 0,
     };
@@ -211,27 +217,46 @@ async function main() {
     const cards = [];
     const costs = [];
     const thinking = [];
+    let failed = 0;
     for (let i = 0; i < runs; i++) {
       const started = Date.now();
-      const result = await engine.analyseCard(digest, mock ? undefined : config);
-      const u = result.usage || {};
-      const cost = usage.priceOf(result.model, Number(u.inputTokens) || 0, Number(u.outputTokens) || 0,
+      // A run that is cut off (MAX_TOKENS) or refused is counted, not fatal:
+      // how often a setting fails is one of the things being measured, and a
+      // cut-off call is billed like any other, so its cost still counts.
+      let result = null;
+      let failure = null;
+      try {
+        result = await engine.analyseCard(digest, mock ? undefined : config);
+      } catch (error) {
+        failure = error;
+      }
+      const u = (result ? result.usage : failure && failure.usage) || {};
+      const model = (result ? result.model : failure && failure.model) || config.model;
+      const cost = usage.priceOf(model, Number(u.inputTokens) || 0, Number(u.outputTokens) || 0,
         Number(u.cachedTokens) || 0);
       costs.push(cost);
       thinking.push(Number(u.thinkingTokens) || 0);
-      cards.push(conclusions(result.data));
+      let what;
+      if (result) {
+        const c = conclusions(result.data);
+        cards.push(c);
+        what = String(c.type).padEnd(5) + ' ' + String(c.enneagram).padEnd(4);
+      } else {
+        failed += 1;
+        what = ('FAILED ' + ((failure && failure.finishReason) || 'error')).padEnd(10);
+      }
       console.log('  ' + (config.model + ':' + config.thinkingLevel).padEnd(28) + ' run ' + (i + 1) + '  ' +
-        String(cards[i].type).padEnd(5) + ' ' + String(cards[i].enneagram).padEnd(4) + '  ' +
-        (u.inputTokens || 0) + ' in / ' + (u.outputTokens || 0) + ' out (' + (u.thinkingTokens || 0) +
-        ' thinking)  ' + (cost === null ? 'unpriced' : '$' + cost.toFixed(4)) + '  ' +
-        Math.round((Date.now() - started) / 1000) + 's');
+        what + '  ' + (u.inputTokens || 0) + ' in / ' + (u.outputTokens || 0) + ' out (' +
+        (u.thinkingTokens || 0) + ' thinking)  ' + (cost === null ? 'unpriced' : '$' + cost.toFixed(4)) + '  ' +
+        Math.round((Date.now() - started) / 1000) + 's' +
+        (failure && !failure.usage ? '  ' + String(failure.message || failure).slice(0, 80) : ''));
     }
-    results.push({ config, cards, costs, thinking });
+    results.push({ config, cards, costs, thinking, failed });
   }
 
   const pct = x => (x === null || x === undefined ? '—' : Math.round(x * 100) + '%');
   const rows = summarise(results);
-  console.log('\n  ' + 'config'.padEnd(46) + 'type  letters  +strength  ennea  bands  Δscore  char   $/card  thinking');
+  console.log('\n  ' + 'config'.padEnd(46) + 'type  letters  +strength  ennea  bands  Δscore  char   $/card  thinking  failed');
   for (const row of rows) {
     const a = row.against;
     console.log('  ' + row.label.padEnd(46) + (a ? [
@@ -239,9 +264,11 @@ async function main() {
       pct(a.enneagram).padEnd(7), pct(a.bigFiveBands).padEnd(7), a.bigFiveMeanScoreDiff.toFixed(1).padEnd(8),
       pct(a.character).padEnd(7),
     ].join('') : '(one run: nothing to compare)'.padEnd(63)) +
-      (row.cost === null ? 'unpriced' : '$' + row.cost.toFixed(4)).padEnd(9) + Math.round(row.thinking));
+      (row.cost === null ? 'unpriced' : '$' + row.cost.toFixed(4)).padEnd(9) +
+      String(Math.round(row.thinking)).padEnd(10) + row.failed + ' of ' + row.runs);
   }
-  console.log('\n  Read the baseline row first: it is how often the production card agrees with itself.');
+  console.log('\n  A setting that fails any of its runs is not usable as it stands, however well the rest agree.');
+  console.log('  Read the baseline row first: it is how often the production card agrees with itself.');
   console.log('  An alternative is as good as the baseline when its row is about as high as that one.\n');
 }
 

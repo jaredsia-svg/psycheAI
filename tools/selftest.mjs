@@ -5495,6 +5495,16 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     { config: { model: 'm', thinkingLevel: 'HIGH' }, cards: [base, other], costs: [0.05, 0.04], thinking: [6000, 5000] },
     { config: { model: 'm', thinkingLevel: 'LOW' }, cards: [base, base], costs: [null, 0.02], thinking: [1000, 1000] },
   ]);
+  // A cut-off run is counted, not fatal, and a baseline whose every run
+  // failed has nothing to be compared with — said, not invented.
+  const withFailures = compare.summarise([
+    { config: { model: 'm', thinkingLevel: 'HIGH' }, cards: [], costs: [0.06, 0.06], thinking: [7700, 7700], failed: 2 },
+    { config: { model: 'm', thinkingLevel: 'MEDIUM' }, cards: [base], costs: [0.03], thinking: [2500], failed: 0 },
+  ]);
+  check('failed runs are counted and priced, and an all-failed baseline compares nothing',
+    withFailures[0].failed === 2 && withFailures[0].runs === 2 && withFailures[0].against === null &&
+    Math.abs(withFailures[0].cost - 0.06) < 1e-9 && withFailures[1].against === null && withFailures[1].failed === 0,
+    JSON.stringify(withFailures.map(r => ({ failed: r.failed, runs: r.runs, against: r.against }))));
   check('the baseline is measured against its own first run, the alternatives against it',
     rows[0].against.runs === 1 && rows[0].against.type === 0 &&
     rows[1].against.runs === 2 && rows[1].against.type === 1 &&
@@ -5524,7 +5534,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     out = String((error.stdout || '') + (error.stderr || '') || error.message);
   }
   check('the tool runs end to end, and the mock agrees with itself completely',
-    /mock:HIGH \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%/.test(out),
+    /mock:HIGH \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%.*0 of 2/.test(out),
     out.split('\n').slice(-6).join(' | '));
   check('and it says what a real run would cost before sending anything',
     !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
