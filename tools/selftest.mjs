@@ -5530,6 +5530,62 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
 }
 
+// ---------- thinking that fills the cap, and the calls it cuts off ----------
+//
+// At HIGH, Gemini 3 thinks until its output cap is nearly gone, so an answer
+// bigger than what is left comes back as MAX_TOKENS: billed, and unusable. The
+// level is a server setting, and a cut-off call is recorded rather than lost.
+{
+  gemini.__testing.setClient({
+    caches: { create: async () => { throw new Error('no cache in this test'); } },
+    models: { generateContentStream: async () => (async function* () {
+      yield { text: '{"mbti":', candidates: [{ finishReason: 'MAX_TOKENS' }],
+        usageMetadata: { promptTokenCount: 30000, candidatesTokenCount: 300, thoughtsTokenCount: 7700 } };
+    })() },
+  });
+  const keyBefore = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = keyBefore || 'test-key';
+  let cutOff = null;
+  try { await gemini.analyseCard({ profile: {} }); } catch (error) { cutOff = error; }
+  process.env.GEMINI_API_KEY = keyBefore;
+  if (keyBefore === undefined) delete process.env.GEMINI_API_KEY;
+  gemini.__testing.reset();
+  check('a call cut off at its cap still says what it used, so the bill can be recorded',
+    Boolean(cutOff) && cutOff.finishReason === 'MAX_TOKENS' && cutOff.model === gemini.MODEL &&
+    cutOff.usage.outputTokens === 8000 && cutOff.usage.thinkingTokens === 7700 && cutOff.usage.inputTokens === 30000,
+    JSON.stringify(cutOff && { reason: cutOff.finishReason, usage: cutOff.usage }));
+  check('and tells the reader to try again, not to reconfigure a server they do not run',
+    Boolean(cutOff) && /try again/i.test(cutOff.message) && !/GEMINI_MODEL/.test(cutOff.message),
+    cutOff && cutOff.message);
+
+  // The setting is read once at load, so each value is checked in a process of its own.
+  const levelFor = value => JSON.parse(execFileSync(process.execPath, ['-e',
+    'process.stdout.write(JSON.stringify(require(' + JSON.stringify(join(root, 'lib', 'gemini.js')) + ').THINKING_LEVEL))'],
+    { encoding: 'utf8', env: Object.assign({ PATH: process.env.PATH }, value === undefined ? {} : { PSYCHEAI_GEMINI_THINKING: value }),
+      stdio: ['ignore', 'pipe', 'ignore'] }));
+  check('the thinking level is HIGH unless the server is told otherwise',
+    levelFor(undefined) === 'HIGH' && levelFor('') === 'HIGH');
+  check('and PSYCHEAI_GEMINI_THINKING sets it, in any case',
+    levelFor('medium') === 'MEDIUM' && levelFor('LOW') === 'LOW' && levelFor('Minimal') === 'MINIMAL');
+  check('a value that is not a level is ignored rather than taking the site down',
+    levelFor('maximum') === 'HIGH');
+
+  const store = join(tmpdir(), 'psycheai-selftest-failed-' + process.pid + '.jsonl');
+  try { rmSync(store); } catch (error) { /* not there */ }
+  const ledger = execFileSync(process.execPath, ['-e', [
+    'const u = require(' + JSON.stringify(join(root, 'lib', 'usage.js')) + ');',
+    'u.record("card", { model: "gemini-3.8-flash", usage: { inputTokens: 30000, outputTokens: 8000, thinkingTokens: 7700 } }, false, { failed: "MAX_TOKENS" });',
+    'u.record("card", { model: "gemini-3.8-flash", usage: { inputTokens: 30000, outputTokens: 4000, thinkingTokens: 3000 } }, false);',
+    'process.stdout.write(JSON.stringify(u.summary(30)));',
+  ].join('\n')], { encoding: 'utf8', env: { PATH: process.env.PATH, PSYCHEAI_USAGE_STORE: store } });
+  const totals = JSON.parse(ledger);
+  check('the spend ledger counts a cut-off call, what it cost, and why',
+    totals.calls === 2 && totals.failed === 1 && totals.failedBy.MAX_TOKENS === 1 &&
+    Math.abs(totals.failedCostUsd - (30000 * 0.75e-6 + 8000 * 3.75e-6)) < 1e-4,
+    JSON.stringify({ failed: totals.failed, by: totals.failedBy, cost: totals.failedCostUsd }));
+  try { rmSync(store); } catch (error) { /* gone */ }
+}
+
 // ---------- the build in the footer ----------
 //
 // Which commit a page is running, from Render's environment when deployed and

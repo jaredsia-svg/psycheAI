@@ -32,6 +32,8 @@ const rows = [
   ['  of which thinking', t.output
     ? t.thinking.toLocaleString() + '  (' + (t.thinkingShare * 100).toFixed(0) + '%)' : '—'],
   ['cache hits', t.input ? (t.cachedShare * 100).toFixed(1) + '% of input tokens' : '—'],
+  ['failed calls', t.failed ? t.failed + ' (' + Object.entries(t.failedBy).map(([k, n]) => k + ' ' + n).join(', ') +
+    '), ' + money(t.failedCostUsd) + ' billed for nothing' : '0'],
   ['total', money(t.costUsd) + ' (estimated)'],
   ['per call', money(t.costPerCallUsd)],
 ];
@@ -46,6 +48,11 @@ if (!t.calls) {
   console.log('  is not where this process is looking — on a host with an ephemeral');
   console.log('  filesystem it is wiped on every deploy. Set PSYCHEAI_USAGE_STORE to a');
   console.log('  path on a persistent disk.');
+} else if (t.failedBy.MAX_TOKENS) {
+  console.log('\n  Calls are being cut off at their output cap (MAX_TOKENS). At thinking level HIGH,');
+  console.log('  Gemini 3 thinks until the cap is nearly spent, so a bigger cap only buys more');
+  console.log('  thinking. Set PSYCHEAI_GEMINI_THINKING=MEDIUM (no deploy needed) and compare first:');
+  console.log('  npm run compare -- <digest> --configs gemini-3.8-flash:HIGH,gemini-3.8-flash:MEDIUM');
 } else if (t.thinkingShare > 0.5) {
   console.log('\n  Most of the output bill is thinking, and output bills at five times');
   console.log('  input. thinkingLevel is set in lib/gemini.js; lowering it is the only');

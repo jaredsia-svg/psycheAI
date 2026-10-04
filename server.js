@@ -541,7 +541,20 @@ async function handleAnalyse(request, response) {
     key,
     settle: release,
     produce: async () => {
-      const result = await call(engine);
+      let result;
+      try {
+        result = await call(engine);
+      } catch (error) {
+        // A call that comes back unusable — cut off at its length limit,
+        // stopped by a filter — is billed exactly like one that succeeded, and
+        // used to leave no trace in the ledger. Recorded with why it failed, so
+        // `npm run usage` shows what failures cost and how often they happen.
+        if (error && error.usage) {
+          usage.record(kind, { usage: error.usage, model: error.model }, paying,
+            { failed: error.finishReason || 'error' });
+        }
+        throw error;
+      }
 
       // What it cost, from what the provider reported. Recorded for every run
       // rather than only the free ones: the budget below meters free calls,

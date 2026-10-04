@@ -1217,6 +1217,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_DAILY_FREE_LIMIT` | Server-wide ceiling on free model calls per UTC day. Default `200`, about US$50/day at `COST_CAP`. This is the one that actually bounds the bill. A non-numeric value throws at boot rather than failing open. |
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
+| `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` or `HIGH` (default). Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which can cut the answer off (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
@@ -1243,6 +1244,17 @@ and stayed unavailable after retrying automatically"** — declining to serve un
 automatic retries deep, rather than anything wrong with the switch. It is the default again now that
 launch traffic has had time to settle. If the overload errors come back, `GEMINI_MODEL=gemini-3.7-flash`
 returns to 3.7 on the next request with no deploy.
+
+**At thinking level HIGH, Gemini 3 Flash thinks until its output cap is nearly gone.** On Google's
+own SDK tracker ([googleapis/python-genai#2062](https://github.com/googleapis/python-genai/issues/2062))
+thinking took about 96% of whatever `maxOutputTokens` allowed — 7,862 of 8,192, 31,455 of 32,768 —
+while the visible answer stayed the same size. So every HIGH call is billed for nearly its whole
+cap, and an answer bigger than the ~4% left over is cut off as `MAX_TOKENS`, which is billed and
+lost. The card (about 700 tokens against 8,000) and the full report (about 10,000 against 28,000)
+are both bigger than that. A larger cap does not help, because the thinking grows into it. A level
+that stops on its own does: on the same measurements `MEDIUM` thought about 2,500 tokens and `LOW`
+about 1,400. Set `PSYCHEAI_GEMINI_THINKING` to change it with no deploy, and measure the change with
+`npm run compare` first. A cut-off call is now recorded in `npm run usage`, with its cost.
 
 Two ways to move between them, and the first needs no deploy:
 
