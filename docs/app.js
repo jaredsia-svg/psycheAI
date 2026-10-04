@@ -6116,8 +6116,8 @@
   }
 
   /**
-   * The build this page is running, in the footer: package version, the short
-   * commit linked to it on GitHub, and when the server started serving it.
+   * The build this page is running, in the footer: package version and the
+   * short commit, linked to it on GitHub.
    * Hidden when the server did not say, rather than showing a blank version.
    * Built with textContent and a validated href, never innerHTML — the values
    * come from the server, which checks them, and are treated as text anyway.
@@ -6144,11 +6144,6 @@
       } else {
         slot.append(b.shortCommit);
       }
-    }
-    const started = b.startedAt ? new Date(b.startedAt) : null;
-    if (started && !Number.isNaN(started.getTime())) {
-      slot.append(' · running since ' + started.toLocaleString(undefined,
-        { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
     }
     slot.hidden = false;
   }

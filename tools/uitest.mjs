@@ -2436,7 +2436,7 @@ try {
   });
   check('the footer says which version and build the page is running',
     Boolean(footerBuild) && !footerBuild.hidden &&
-    /^v\d+\.\d+\.\d+ · build [0-9a-f]{7} · running since .+/.test(footerBuild.text),
+    /^v\d+\.\d+\.\d+ · build [0-9a-f]{7}$/.test(footerBuild.text.trim()),
     JSON.stringify(footerBuild));
   check('and the build links to that commit on GitHub, in a new tab, without an opener',
     Boolean(footerBuild && footerBuild.href) &&
