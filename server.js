@@ -502,7 +502,9 @@ async function handleAnalyse(request, response) {
     // four premium sections in a single response (FULL_SCHEMA).
     kind = 'full';
     key = anchor ? Object.assign({}, sent, { anchor }) : sent;
-    call = engine => engine.analyseFull(sent, anchor);
+    call = anchor || prompts.REPORT_LAYOUT === 'classic'
+      ? engine => engine.analyseFull(sent, anchor)
+      : engine => cardThenFull(engine, sent);
   } else {
     kind = 'card';
     key = sent;
@@ -589,6 +591,41 @@ async function handleAnalyse(request, response) {
       return scrubbed(result, sent, kind);
     },
   });
+}
+
+/**
+ * The structured full report with no card to anchor it — a reader who added
+ * a source on the way to paying, so the report is written from evidence the
+ * card was not. The unpinned structured schema is past what Gemini will serve
+ * (see pinnedFullSchema in lib/prompts.js), so the card is decided first and
+ * the report anchored to it, exactly as on the ordinary path. The new card
+ * rides back as `freeCard`, for the browser to pin and redraw the card from.
+ * Two calls, billed as one result: this path is rare, and the alternative
+ * is a report that cannot be written at all.
+ */
+async function cardThenFull(engine, sent) {
+  const card = await engine.analyseCard(sent);
+  const anchor = prompts.anchorFrom(card.data);
+  let full;
+  try {
+    full = await engine.analyseFull(sent, anchor);
+  } catch (error) {
+    // The card was paid for either way; the ledger should see it.
+    if (error && error.usage) error.usage = sumUsage(card.usage, error.usage);
+    throw error;
+  }
+  return Object.assign({}, full, {
+    data: Object.assign({}, full.data, { freeCard: card.data }),
+    usage: sumUsage(card.usage, full.usage),
+  });
+}
+
+function sumUsage(a, b) {
+  const out = Object.assign({}, a);
+  for (const [key, value] of Object.entries(b || {})) {
+    out[key] = typeof value === 'number' ? (Number(out[key]) || 0) + value : value;
+  }
+  return out;
 }
 
 // A single-use ticket for the routes below. Cheap to serve, rate-limited like

@@ -73,6 +73,7 @@ const S = prompts.STRUCTURED_FULL_SCHEMA;
 const variants = [
   ['control: classic full', prompts.CLASSIC_FULL_SCHEMA],
   ['control: structured free', prompts.STRUCTURED_FREE_SCHEMA],
+  ['FIX: structured pinned (what the unlock sends)', prompts.STRUCTURED_PINNED_FULL_SCHEMA],
   ['structured full', S],
   ['  without patterns', without(S, 'patterns')],
   ['  without motivators', without(S, 'motivators')],

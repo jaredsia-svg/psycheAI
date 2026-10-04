@@ -1060,6 +1060,9 @@
       icon: (card.essence || {}).icon || (out.essence || {}).icon,
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
+    // The structured paid call no longer writes the shareable card at all —
+    // it is the free one's, whole.
+    if (card.card && !out.card) out.card = card.card;
     if (card.confidence) {
       out.confidence = Object.assign({}, out.confidence,
         { score: card.confidence.score, level: card.confidence.level });
@@ -1145,11 +1148,19 @@
       state.profile.premiumModel = result.model || '';
       state.profile.premiumAt = new Date().toISOString();
     }
+    // A structured report written without a card to anchor it decides the
+    // card first and sends it back beside the report, which then leaves out
+    // everything the card pins — so the card is laid over it here, the same
+    // as on the ordinary path. See cardThenFull in server.js.
+    const freshCard = written.freeCard || null;
+    delete written.freeCard;
     result = Object.assign({}, result, { data: written });
     if (replaceCard) {
-      state.profile.report = result.data;
-      state.profile.card = Card.shape(result.data.card);
-      state.profile.payload = await Card.encodeCard(result.data.card);
+      const cardFields = (freshCard || result.data).card;
+      state.profile.report = freshCard ? overlayCard(result.data, freshCard) : result.data;
+      if (freshCard) state.profile.freeReport = freshCard;
+      state.profile.card = Card.shape(cardFields);
+      state.profile.payload = await Card.encodeCard(cardFields);
       state.profile.model = result.model;
       state.profile.createdAt = new Date().toISOString();
     } else {

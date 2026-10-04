@@ -5407,6 +5407,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       out.wrongCode = await post({ digest, product: 'unlock', promoCode: 'not-the-code' });
       out.full = await post({ digest, product: 'unlock', promoCode: '${promo}',
         anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
+      out.fullFresh = await post({ digest, product: 'unlock', promoCode: '${promo}' });
       out.padded = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000) }) });
       out.paddedCard = await post({ digest: Object.assign({}, digest, {
         samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
@@ -5466,10 +5467,23 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.full) && routes.full.status === 200 && typeof data(routes.full).summary === 'string' &&
     Boolean(data(routes.full).bonus) && prompts.PREMIUM_KEYS.every(key => Boolean(data(routes.full)[key])),
     JSON.stringify(routes.full && Object.keys(data(routes.full))));
+  // Classic writes the card's conclusions back out; structured is sent the
+  // pinned schema and leaves them to the card — which it only does when it
+  // was handed one.
   check('written to the card it was handed, not to a card of its own',
-    data(routes.full).mbti && data(routes.full).mbti.type === 'ISTP' &&
-    data(routes.full).bigFive.openness.score === 12,
+    prompts.REPORT_LAYOUT === 'classic'
+      ? data(routes.full).mbti && data(routes.full).mbti.type === 'ISTP' && data(routes.full).bigFive.openness.score === 12
+      : data(routes.full).mbti && !('type' in data(routes.full).mbti) && !('score' in data(routes.full).bigFive.openness) &&
+        !('card' in data(routes.full)) && !('freeCard' in data(routes.full)),
     JSON.stringify(data(routes.full).mbti && data(routes.full).mbti.type));
+  if (prompts.REPORT_LAYOUT === 'structured') {
+    // No card to anchor to: the card is decided first and comes back with it.
+    const fresh = data(routes.fullFresh) || {};
+    check('structured: an unlock with no card decides the card first and sends it back beside the report',
+      routes.fullFresh.status === 200 && Boolean(fresh.freeCard && fresh.freeCard.card && fresh.freeCard.mbti.type) &&
+      !('card' in fresh) && !('type' in fresh.mbti) && typeof fresh.summary === 'string',
+      JSON.stringify(routes.fullFresh && routes.fullFresh.status) + ' ' + Object.keys(fresh).join(','));
+  }
   check('a padded free request is answered as the same card, not billed for the padding',
     Boolean(routes.padded) && routes.padded.status === 200 &&
     JSON.stringify(data(routes.padded)) === JSON.stringify(data(routes.free)),
@@ -5859,6 +5873,43 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     };
     for (const name of Object.keys(prompts).filter(key => /SCHEMA$/.test(key))) walk(prompts[name], name);
     check('no schema sent to a model has an empty string among its enum values', !emptyEnums.length, emptyEnums.join(', '));
+  }
+  {
+    // Gemini refuses the unpinned structured schema as too complex (see
+    // pinnedFullSchema). tools/probe-schema.mjs found the classic full schema
+    // served, so the pinned one must stay under it on every count that grew.
+    const measure = schema => {
+      let props = 0, enums = 0, integers = 0;
+      const walk = node => {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        if (node.properties) props += Object.keys(node.properties).length;
+        if (Array.isArray(node.enum)) enums += node.enum.length;
+        if (node.type === 'integer') integers++;
+        Object.values(node).forEach(walk);
+      };
+      walk(schema);
+      const structure = JSON.stringify(schema, (key, value) => (key === 'description' ? undefined : value)).length;
+      return { props, enums, integers, structure };
+    };
+    const pinned = measure(prompts.STRUCTURED_PINNED_FULL_SCHEMA);
+    const classic = measure(prompts.CLASSIC_FULL_SCHEMA);
+    check('the pinned structured schema is smaller than the classic one Gemini serves, on every count',
+      pinned.props < classic.props && pinned.enums < classic.enums && pinned.integers <= classic.integers &&
+      pinned.structure < classic.structure, JSON.stringify({ pinned, classic }));
+    const P = prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties;
+    check('and it asks for none of what the card pins, while keeping every section the report writes',
+      !('card' in P) && !('character' in P.essence.properties) && !('score' in P.confidence.properties) &&
+      !('score' in P.bigFive.properties.openness.properties) && !('type' in P.mbti.properties) &&
+      !('choice' in P.mbti.properties.letters.items.properties) && !('intensity' in P.interests.items.properties) &&
+      'language' in P.relationship.properties.loveLanguages.properties.receiving.items.properties &&
+      Object.keys(prompts.STRUCTURED_FULL_SCHEMA.properties).filter(key => key !== 'card').every(key => key in P) &&
+      prompts.STRUCTURED_PINNED_FULL_SCHEMA.required.length === Object.keys(P).length);
+    check('the unlock\'s call sends the pinned schema whenever it has a card to anchor to',
+      prompts.fullSchemaFor({ character: 'Mulan' }) === prompts.FULL_PINNED_SCHEMA &&
+      prompts.fullSchemaFor(null) === prompts.FULL_SCHEMA &&
+      ['gemini', 'claude', 'grok'].every(name => /schema: prompts\.fullSchemaFor\(anchor\)/.test(
+        readFileSync(new URL('../lib/' + name + '.js', import.meta.url), 'utf8'))));
   }
   {
     const order = Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties);

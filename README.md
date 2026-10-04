@@ -3276,6 +3276,18 @@ prompt is about 2,800 input tokens, and the four fields are sized at roughly two
 output; `FIXED_INPUT_TOKENS` rose to 37,600 and `COST_CAP` to $0.151 to keep the 80,000-character
 digest inside the cap. **To revert**, set `PSYCHEAI_REPORT_LAYOUT=classic`.
 
+**The paid call sends a pinned schema.** Gemini refuses the whole structured schema with a bare
+400 "Request contains an invalid argument." — it is past a complexity limit Gemini does not name,
+and `npm run probe:schema` (tools/probe-schema.mjs) showed it is the total rather than any one part.
+So when the unlock has a free card to anchor to, it is sent `STRUCTURED_PINNED_FULL_SCHEMA`, which
+leaves out everything the card already fixed: the card itself, the character, the confidence score,
+every Big Five score and band, the MBTI type and letter choices, interest intensities and
+love-language strengths. The browser pins all of those over the paid report anyway (`overlayCard`),
+so the model was only re-deciding them to be overwritten. The pinned schema is smaller than the
+classic one on every count, and a self-test holds it there. An unlock with no card to anchor to (a
+reader who added a source while paying) runs the card first and the pinned report after it
+(`cardThenFull` in server.js), and the new card comes back beside the report as `freeCard`.
+
 ### The report opens as an index, not a scroll
 
 Every section arrives shut. What a reader meets on the psyche page is a list of headings — Who you

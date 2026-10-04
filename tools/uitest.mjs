@@ -10264,7 +10264,6 @@ try {
       });
       check('structured: the roast is an appendix after the method, not mid-report',
         order[0] >= 0 && order[0] < order[1] && order[1] < order[2], order.join());
-
       // The web report's visual layer.
       const visuals = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
@@ -10434,6 +10433,86 @@ try {
       check('structured: no console errors', spErrors.length === 0, spErrors.join(' | '));
     } finally {
       await sp.close();
+    }
+  }
+
+  // The structured unlock end to end, against a server in that layout. Its
+  // paid call is sent the pinned schema (lib/prompts.js, pinnedFullSchema)
+  // and writes none of what the card fixed — no character, no scores, no
+  // type, no card — so the report the reader is left holding is only whole
+  // if the browser lays the card back over it.
+  {
+    const structuredPort = PORT + 2;
+    const structuredServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(structuredPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-structured-budget.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-structured-usage.jsonl'),
+        PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+        PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_PREMIUM: '100000', PSYCHEAI_RATE_NONCE: '100000',
+        PSYCHEAI_RATE_PAYMENT_INTENT: '100000',
+        PSYCHEAI_PROMO_CODE: UITEST_PROMO,
+        PSYCHEAI_REPORT_LAYOUT: 'structured',
+      },
+      stdio: 'ignore',
+    });
+    const up = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const upErrors = [];
+    up.on('pageerror', error => upErrors.push('pageerror: ' + error.message));
+    try {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const digestText = JSON.stringify({
+        coverage: { sources: ['instagram'], sampling: { captions: { shown: 2, available: 2 } } },
+        counts: { posts: 2, commentsWritten: 1, postsLiked: 40, following: 120 },
+        rhythm: { spanDays: 900 },
+        samples: { captions: ['[2024] A long enough caption about a run with friends', '[2025] Another caption, also long enough'],
+          comments: ['A comment that is long enough to keep'], likedPostCaptions: [] },
+      });
+      await up.goto('http://localhost:' + structuredPort + '/', { waitUntil: 'load' });
+      await up.evaluate(async text => {
+        const digest = JSON.parse(text);
+        const free = await window.PsycheLLM.analyseProfile(digest, {});
+        localStorage.clear();
+        localStorage.setItem('psycheai_digest', text);
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report: free.data, card: free.data.card, payload: 'x', model: free.model, createdAt: new Date().toISOString(),
+        }));
+      }, digestText);
+      await up.reload({ waitUntil: 'load' });
+      await up.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      await openUnlockPayment(up);
+      await up.fill('#premium-promo-input', UITEST_PROMO);
+      await up.click('#premium-promo-apply');
+      await up.waitForFunction(() => {
+        const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+        return Boolean(p && p.explained && p.premiumAnalysis);
+      }, { timeout: 60000 });
+      const held = await up.evaluate(() => {
+        const p = JSON.parse(localStorage.getItem('psycheai_profile'));
+        const r = p.report;
+        return {
+          character: r.essence && r.essence.character, why: Boolean(r.essence && r.essence.why),
+          card: Boolean(r.card && r.card.headline), score: r.confidence && r.confidence.score,
+          openness: r.bigFive && r.bigFive.openness && r.bigFive.openness.score,
+          reading: Boolean(r.bigFive && r.bigFive.openness && r.bigFive.openness.reading),
+          type: r.mbti && r.mbti.type, letters: ((r.mbti && r.mbti.letters) || []).map(l => l.choice + ':' + Boolean(l.why)),
+          free: p.freeReport && { character: p.freeReport.essence.character, type: p.freeReport.mbti.type,
+            openness: p.freeReport.bigFive.openness.score },
+          patterns: (r.patterns || []).length, development: Boolean(r.development),
+        };
+      });
+      check('structured unlock: the pinned paid report is whole once the card is laid over it',
+        Boolean(held.free) && held.character === held.free.character && held.type === held.free.type &&
+        held.openness === held.free.openness && Number.isFinite(held.score) && held.card && held.why && held.reading &&
+        held.letters.length === 4 && held.letters.every(l => /^[A-Z]:true$/.test(l)) &&
+        held.patterns > 0 && held.development, JSON.stringify(held));
+      const drawn = await up.locator('#profile-body').textContent();
+      check('structured unlock: and it draws, with the card\'s character and type in it',
+        drawn.includes(held.character) && /How you work/.test(drawn) && upErrors.length === 0,
+        upErrors.join(' | ') || drawn.slice(0, 200));
+    } finally {
+      await up.close();
+      structuredServer.kill();
     }
   }
 
