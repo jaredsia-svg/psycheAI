@@ -1218,6 +1218,7 @@ catch its siblings across all 40 versions.
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
+| `PSYCHEAI_REPORT_LAYOUT` | `structured` (default) or `classic`. Which report the unlock writes and the page and PDF draw — see [The structured report](#the-structured-report-four-parts-one-thread). Set `classic` to go back to the previous format with no deploy: the prompt, the schema, the page and the PDF all switch together. An unrecognised value is logged and treated as `structured`. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
 | `PSYCHEAI_PREMIUM_MODEL` | Claude model ID for the paid call specifically when `PSYCHEAI_PREMIUM_PROVIDER=anthropic`, independent of `PSYCHEAI_MODEL`. Default `claude-sonnet-5`. |
@@ -3229,6 +3230,51 @@ the photographs carry the further limits described above. These guardrails are a
 suite so they survive edits to the prompt.
 
 ## What the report contains
+
+### The structured report: four parts, one thread
+
+The default layout since this change. The classic report was a run of sections that never referred
+to each other; the structured one is laid out the way professional assessments are, with one thread
+through it. The structure is borrowed and the wording is not: every definition, label and framework
+here is either this app's own or a published academic model.
+
+| | Sections |
+|---|---|
+| **Overview** | About this report (fixed copy: what it reads, how to read the scales, what it cannot see) · Executive summary · **Your signature patterns** |
+| **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs |
+| **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
+| **Part 3 – How you connect and work** | In relationships · Attachment style · Ideal partner · **How you work** (the description and the coach's read, one section instead of two) · Wellbeing |
+| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) · Your digital footprint · Evidence and method |
+| **Appendix** | The roast, after the method rather than mid-report |
+
+**No Enneagram, and the patterns are on the free card.** The structured layout drops the Enneagram
+from both calls, the card and the PDF; its column on the summary card now names the two or three
+signature patterns. They are decided by the free card call (`STRUCTURED_FREE_SCHEMA`), so they are
+the hook a reader sees before paying, and the paid report is anchored to them (`anchorFrom` carries
+their ids, names and lines) so it explains the same patterns under the same names. The QR card keeps
+its `enneagram` field, always empty in this layout, so codes already shared still decode.
+
+**Characters come from a catalogue, each with an original emblem.** In the structured layout the
+model chooses the character from `CHARACTER_CATALOGUE` (28 characters across temperaments, in
+`lib/prompts.js`) rather than naming anyone it likes, so every character has artwork. The artwork
+is an original line emblem drawn for this app (`CHARACTER_EMBLEMS` and `EMBLEM_PATHS` in
+`docs/copy.js`): a generic object the character is associated with, never the studio's character
+art or logo. A report from before the catalogue keeps its emoji. The summary card is one
+1080 × 1920 story, the same on screen and in the export; a report whose content runs long is scaled
+down just enough to fit, rather than clipped.
+
+Every section follows one template: a definition line saying what it measures, the read, the chart
+or detail, and a "Connects to" row of the signature patterns it shows. A pattern chip jumps to the
+pattern. The PDF follows the same order, with an about page after the cover, a divider per part, the
+date in the running head, and the build and sources on the method page.
+
+The model writes four more fields for it — `patterns`, `motivators`, `development` and
+`pressurePoints` (`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of every classic field, so the
+change is additive: a report written in this layout still renders classic, and `?layout=classic` or
+`?layout=structured` on any page draws the same stored report either way for comparison. The extra
+prompt is about 2,800 input tokens, and the four fields are sized at roughly two ordinary sections of
+output; `FIXED_INPUT_TOKENS` rose to 37,600 and `COST_CAP` to $0.151 to keep the 80,000-character
+digest inside the cap. **To revert**, set `PSYCHEAI_REPORT_LAYOUT=classic`.
 
 ### The report opens as an index, not a scroll
 

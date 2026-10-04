@@ -75,6 +75,7 @@
     loveIn: '💝',
     loveOut: '🎁',
     confidence: '🎯',
+    patterns: '🧵',
   };
 
   // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
@@ -221,6 +222,8 @@
 
     cardType: 'MBTI',
     cardEnneagram: 'Enneagram',
+    // The structured layout's middle column, where the Enneagram used to be.
+    cardPatterns: 'Your patterns',
     cardBigFive: 'Big Five',
     cardValues: 'Values',
     cardBeliefs: 'Beliefs',
@@ -744,8 +747,293 @@
     scanHistory: 'Your compatibility results',
   };
 
+  // ---------- the structured report layout ----------
+  //
+  // Everything the structured layout says that the classic one does not, kept
+  // in one object so the classic strings above are untouched and switching
+  // back (PSYCHEAI_REPORT_LAYOUT=classic) changes nothing a reader of the
+  // classic report sees. The page and the PDF both read from here.
+  //
+  // The section definitions are this app's own wording. Professional
+  // assessments open each section with a line saying what it measures; that
+  // structure is borrowed, the words are not.
+  const STRUCTURED = {
+    // The four parts, plus the overview before them and the appendix after.
+    parts: {
+      overview: { label: 'Overview', title: 'Your report at a glance',
+        intro: 'What this report is, the patterns that run through it, and the short version of everything below.' },
+      who: { label: 'Part 1', title: 'Who you are',
+        intro: 'Your temperament: your type, then the five broad traits underneath it.' },
+      drives: { label: 'Part 2', title: 'What drives you',
+        intro: 'What you are working towards, what you keep coming back to, and what you hold to.' },
+      connect: { label: 'Part 3', title: 'How you connect and work',
+        intro: 'How you are with the people close to you, how you work, and how you are doing.' },
+      together: { label: 'Part 4', title: 'Putting it together',
+        intro: 'What to build on, what to work on, how your strengths behave under pressure, and how this report was made.' },
+      appendix: { label: 'Appendix', title: 'The unvarnished read',
+        intro: 'Optional, and deliberately not fair. Read it only if you want to.' },
+    },
+
+    // One line per section: what it measures, before anything about you.
+    definitions: {
+      summary: 'The whole report in a few paragraphs, and the character you most resemble in temperament.',
+      patterns: 'The two or three behaviours that explain the most about you. Every section below shows where each one appears.',
+      bigFive: 'Five broad traits, each a spectrum with no good or bad end. Both ends are described; the shaded band is where most people land.',
+      mbti: 'A popular four-letter type system: a quick read of your temperament. The Big Five below measures the same traits in finer grain.',
+      motivators: 'Ten basic human values from Schwartz\'s research on motivation, ranked against each other. Higher means it shows up more in what you actually do.',
+      interests: 'What you keep coming back to, and whether each interest is current, growing or history.',
+      values: 'What you hold to, in your own terms – values and beliefs together, each with how firmly the data says so.',
+      relationships: 'How you attach, what you bring and where it gets hard, how you give and want care, and who suits you.',
+      attachment: 'How you tend to behave when you get close to someone. A guess from behaviour, and the most changeable thing in this report.',
+      idealPartner: 'What you actually need in a partner, argued from your attachment read.',
+      work: 'How you work, what sets you apart, what holds you back, and what you are not using. What to do about it is in your plan.',
+      wellness: 'Six behavioural dimensions read from how you use these accounts. Not a health assessment.',
+      development: 'Built from the findings above: what to lean into, what to work on, and where each one came from.',
+      pressurePoints: 'Strengths that turn costly when overused, under pressure or when tired. The level says how clearly your data already shows the cost, not how you compare with anyone.',
+      activity: 'The behaviour underneath every finding above: when you are active, what you post, and what you take in.',
+      method: 'What this report read, how much of it, and how far to trust it.',
+    },
+
+    // The structured layout's own section titles, where they differ.
+    titles: {
+      summary: 'Executive summary',
+      patterns: 'Your signature patterns',
+      motivators: 'What motivates you',
+      work: 'How you work',
+      wellness: 'Wellbeing',
+      development: 'Development plan',
+      buildOn: 'Build on',
+      develop: 'Develop',
+      pressurePoints: 'Under pressure',
+      method: 'Evidence and method',
+      plan: 'Your plan',
+      about: 'About this report',
+      footprint: 'Your digital footprint',
+    },
+
+    // Shown under each section in the structured layout: which patterns it
+    // shows, as chips that jump to the pattern.
+    connectsTo: 'Connects to',
+    raisedBy: 'Raised by',
+    showsUpIn: 'Shows up in',
+    fromPattern: 'From pattern',
+    earlySigns: 'Early signs',
+    counterMove: 'Counter-move',
+    reflect: 'Worth asking yourself',
+    whatItTurnsInto: 'turns into',
+    levelLabels: { mild: 'Mild', moderate: 'Moderate', marked: 'Marked' },
+    // Section keys as a reader would name them, for the "raised by" and
+    // "shows up in" chips. Keys match SECTION_KEYS in lib/prompts.js.
+    sectionNames: {
+      bigFive: 'Big Five', mbti: 'MBTI', motivators: 'Motivators',
+      interests: 'Interests', values: 'Values', beliefs: 'Beliefs', relationships: 'Relationships',
+      attachment: 'Attachment', idealPartner: 'Ideal partner', work: 'How you work',
+      wellness: 'Wellbeing', activity: 'Digital footprint',
+    },
+
+    // Both ends of each Big Five spectrum, so neither reads as the bad one.
+    poles: {
+      openness: ['Prefers the familiar and proven', 'Seeks out new ideas and experiences'],
+      conscientiousness: ['Flexible, keeps options open', 'Organised, plans and follows through'],
+      extraversion: ['Recharges alone, a few close ties', 'Energised by people, a wide circle'],
+      agreeableness: ['Direct, will challenge people', 'Accommodating, keeps the peace'],
+      neuroticism: ['Even-keeled under stress', 'Feels things strongly and quickly'],
+    },
+    // The shaded band on every bar. Labelled as an estimate: this app has no
+    // reference population, and the band is a reading aid, not a norm.
+    typicalBand: [35, 65],
+    typicalLabel: 'Typical range (estimated)',
+
+    // Schwartz's ten, in his circle's order, with the four higher-order groups
+    // he places them in. Labels and one-line meanings are this app's wording.
+    motivators: {
+      'self-direction': { label: 'Self-direction', group: 'openness', meaning: 'Thinking and choosing for yourself', short: 'Self-direction' },
+      stimulation: { label: 'Stimulation', group: 'openness', meaning: 'Novelty, challenge and excitement', short: 'Stimulation' },
+      hedonism: { label: 'Enjoyment', group: 'openness', meaning: 'Pleasure and enjoying life', short: 'Enjoyment' },
+      achievement: { label: 'Achievement', group: 'enhancement', meaning: 'Succeeding and being seen to', short: 'Achievement' },
+      power: { label: 'Influence', group: 'enhancement', meaning: 'Status, resources and control', short: 'Influence' },
+      security: { label: 'Security', group: 'conservation', meaning: 'Safety and stability', short: 'Security' },
+      conformity: { label: 'Conformity', group: 'conservation', meaning: 'Not upsetting people or norms', short: 'Conformity' },
+      tradition: { label: 'Tradition', group: 'conservation', meaning: 'Respect for custom and heritage', short: 'Tradition' },
+      benevolence: { label: 'Care for your people', group: 'transcendence', meaning: 'The welfare of those close to you', short: 'Your people' },
+      universalism: { label: 'Care for the wider world', group: 'transcendence', meaning: 'Fairness, tolerance and the planet', short: 'The world' },
+    },
+    motivatorGroups: {
+      openness: 'Openness to change',
+      enhancement: 'Self-enhancement',
+      conservation: 'Conservation',
+      transcendence: 'Self-transcendence',
+    },
+
+    // The "About this report" card that opens the overview, and the page that
+    // follows the PDF cover. Fixed copy: it describes the method, never the
+    // person, so it is the same for everyone and costs nothing to generate.
+    about: [
+      ['What this is',
+        'A behavioural portrait written from your own data exports. It reads what you posted, wrote, ' +
+        'searched and kept coming back to, rather than answers to a questionnaire, and every finding ' +
+        'cites the evidence behind it.'],
+      ['How it is organised',
+        'An overview with your signature patterns, then four parts: who you are, what drives you, how ' +
+        'you connect and work, and putting it together. Each section opens with what it measures. The ' +
+        'patterns run through all of them, and the development plan at the end resolves each one.'],
+      ['How to read the scales',
+        'Scores run from 0 to 100, where 50 is typical. Each trait is a spectrum with both ends ' +
+        'described and neither end better. The shaded band is where most people land, and it is an ' +
+        'estimate, not a comparison with a measured group. Confidence labels say how firmly the evidence supports each read.'],
+      ['What it cannot see',
+        'Anything that happens away from these platforms: your conversations in person, your work, ' +
+        'your history before the export begins. It is generated automatically, it is not a clinical or ' +
+        'diagnostic tool, and the person best placed to judge it is you. Treat each finding as a ' +
+        'hypothesis to test against your own experience.'],
+    ],
+
+    // The web page's furniture for the structured layout.
+    partNavLabel: 'Parts of this report',
+    partNavShort: { overview: 'Overview', who: '1 · You', drives: '2 · Drives', connect: '3 · Connect',
+      together: '4 · Next', appendix: 'Roast' },
+    aboutIcons: ['🔎', '🧭', '📏', '🚧'],
+    threadMapTitle: 'Where each pattern shows up',
+    more: 'More',
+    why: 'Why',
+    allTen: 'All ten values, with the evidence',
+    yourScore: 'Your score',
+    flags: { high: 'Highest', low: 'Lowest' },
+    // One marker per interest for where it is heading, keyed by trajectory.
+    trendIcons: { structural: '◆', stable: '●', rising: '↗', declining: '↘', dormant: '⏸', phasic: '◐' },
+    loveReceives: 'Receives',
+    loveGives: 'Gives',
+    attachMapLabel: 'Attachment leaning on the anxiety and avoidance dimensions',
+    attachQuadrants: { secure: 'Secure', anxious: 'Anxious', avoidant: 'Avoidant', fearful: 'Fearful-avoidant' },
+    attachAxes: { anxiety: 'Anxiety', avoidance: 'Avoidance' },
+    attachMapNote: 'Approximate. A leaning read from behaviour, shown as an area rather than a point, not a measurement.',
+    youNeed: 'You need',
+    touchNote: 'Physical touch cannot be verified from online data, so PsycheAI never ranks it unless your own words make it clear.',
+    notYetUsing: 'Not yet using: ',
+    colourKeyTitle: 'What the colours mean',
+    colourKey: [
+      ['accent', 'Purple – your results: scores, types, charts and your signature patterns.'],
+      ['good', 'Green – strengths, what you bring and what helps.'],
+      ['warn', 'Amber – what to watch: costs, blind spots and things to work on.'],
+      ['danger', 'Red – only where a wellbeing pattern looks under strain.'],
+    ],
+    beliefTag: 'Belief',
+    // The card's own labels in the structured layout.
+    cardStandFor: 'What you stand for',
+    cardInto: 'What you are into',
+    cardHeadlineFallback: '',
+    cardFooter: 'psycheai · your personality, read from your own data',
+    cardTraitShort: { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
+      agreeableness: 'Agreeable', neuroticism: 'Sensitivity' },
+    cardStrength: { slight: 'slight', moderate: 'moderate', clear: 'clear' },
+    nothingYet: 'Nothing here yet.',
+    howYouWorkDay: 'How you work day to day',
+    // The merged sections' own headings.
+    howYouAttach: 'How you attach',
+    whatYouBring: 'What you bring',
+    whereItGetsHard: 'Where it gets hard',
+    whoSuitsYou: 'Who suits you',
+    inPractice: 'What your attachment means in practice',
+    otherStrengths: 'Your other strengths',
+    whatHoldsYouBack: 'What holds you back',
+    whereItGoesWrong: 'Where it goes wrong',
+    // Where an action on the plan came from, when it is not a develop area.
+    fromWork: 'How you work',
+    fromWellbeing: 'Wellbeing',
+    atBest: 'At its best',
+    overusedPrefix: 'Overused: ',
+    watchMost: 'Watch most',
+    coverageTitle: 'What was read',
+    // Keys of coverage.sampling in docs/digest.js, in the order they are shown.
+    coverageLabels: {
+      captions: 'Captions', comments: 'Comments', ownMessages: 'Your messages', likedCaptions: 'Liked captions',
+      engagedWith: 'Accounts you engage with', youtubeTitles: 'YouTube titles', youtubeChannels: 'YouTube channels',
+      googleSearchTerms: 'Google searches', youtubeSearchTerms: 'YouTube searches', facebookPosts: 'Facebook posts',
+    },
+
+    // The method section that closes Part 4.
+    methodSources: 'Sources read',
+    methodCoverage: 'What the evidence covers',
+    methodModel: 'Written by',
+    methodBuild: 'Build',
+    methodFormat: 'Report format',
+    methodFormatValue: 'Structured report, v1',
+
+    // The extra lines in the unlock list under a free card, for what this
+    // layout adds. Same length and register as the explain* lines in TEXT.
+    // The types row of the unlock list, without the Enneagram this layout drops.
+    explainTypeTitle: 'MBTI',
+    explainType: 'Letter by letter – the behaviours that put each one there, the evidence that pulls the ' +
+      'other way, how firmly it holds, and what each letter looks like in your ordinary week.',
+    explainPatterns: 'The two or three patterns that explain the most about you, named, evidenced, and ' +
+      'traced through every section – so the report reads as one argument about you rather than a ' +
+      'stack of separate verdicts.',
+    explainMotivators: 'What you are actually working towards, on a published map of ten human values – ' +
+      'ranked against each other from what you do, not what you say, with the tension between your top two.',
+    explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
+      'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
+  };
+
+  // ---------- character emblems (the structured layout's catalogue) ----------
+  //
+  // One original line emblem per catalogue character (lib/prompts.js,
+  // CHARACTER_CATALOGUE): a generic object or symbol the character is known
+  // for, drawn for this app on a 48-unit grid. Never the studio's character
+  // art, costume or logo — those belong to their owners. A character outside
+  // the catalogue, from a report written before it existed, keeps its emoji.
+  const EMBLEM_PATHS = {
+    sword: '<path d="M37 6h5v5L24 29l-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M40 8L23 25"/><path d="M13 20c3 5 10 12 15 15"/><path d="M18 30l-7 7"/><path d="M15.5 30.5l2 2M13 33l2 2"/><circle cx="8.5" cy="39.5" r="3" fill="currentColor" fill-opacity=".18"/><path d="M36 18v5M33.5 20.5h5"/>',
+    snowflake: '<path d="M24 19L24 4 M24 13L20.5 9.5 M24 13L27.5 9.5 M24 8L21.2 5.2 M24 8L26.8 5.2 M28.3 21.5L41.3 14 M33.5 18.5L34.8 13.7 M33.5 18.5L38.4 19.8 M37.9 16L38.9 12.1 M37.9 16L41.7 17 M28.3 26.5L41.3 34 M33.5 29.5L38.4 28.2 M33.5 29.5L34.8 34.3 M37.9 32L41.7 31 M37.9 32L38.9 35.9 M24 29L24 44 M24 35L27.5 38.5 M24 35L20.5 38.5 M24 40L26.8 42.8 M24 40L21.2 42.8 M19.7 26.5L6.7 34 M14.5 29.5L13.2 34.3 M14.5 29.5L9.6 28.2 M10.1 32L9.1 35.9 M10.1 32L6.3 31 M19.7 21.5L6.7 14 M14.5 18.5L9.6 19.8 M14.5 18.5L13.2 13.7 M10.1 16L6.3 17 M10.1 16L9.1 12.1"/><path d="M24 19 L28.3 21.5 L28.3 26.5 L24 29 L19.7 26.5 L19.7 21.5Z" fill="currentColor" fill-opacity=".18"/>',
+    wave: '<path d="M4 34c4-14 14-24 26-24 6 0 10 4 10 9 0 4-3 7-7 7-3 0-5-2-5-5 0-2 2-4 4-4" fill="currentColor" fill-opacity=".18"/><path d="M4 34c4-14 14-24 26-24 6 0 10 4 10 9 0 4-3 7-7 7-3 0-5-2-5-5 0-2 2-4 4-4"/><path d="M4 40c4 0 6-3 10-3s6 3 10 3 6-3 10-3 6 3 10 3"/><path d="M4 45c4 0 6-2 10-2s6 2 10 2 6-2 10-2 6 2 10 2"/><circle cx="42" cy="28" r="1.5"/><circle cx="38" cy="32" r="1"/>',
+    crown: '<path d="M8 34L5 14l10 8 9-13 9 13 10-8-3 20z" fill="currentColor" fill-opacity=".18"/><path d="M8 34L5 14l10 8 9-13 9 13 10-8-3 20z"/><path d="M8 40h32"/><path d="M8 34h32"/><circle cx="5" cy="13" r="2" fill="currentColor" stroke="none"/><circle cx="24" cy="8" r="2.2" fill="currentColor" stroke="none"/><circle cx="43" cy="13" r="2" fill="currentColor" stroke="none"/><circle cx="16" cy="29" r="1.6"/><circle cx="24" cy="28" r="2"/><circle cx="32" cy="29" r="1.6"/>',
+    lantern: '<path d="M24 3v4M19 7h10"/><path d="M16 12h16M18 7l-2 5M30 7l2 5"/><path d="M15 12h18l2 18c0 4-5 6-11 6s-11-2-11-6z" fill="currentColor" fill-opacity=".18"/><path d="M15 12h18l2 18c0 4-5 6-11 6s-11-2-11-6z"/><path d="M24 19c3 3 3 7 0 9-3-2-3-6 0-9z" fill="currentColor" stroke="none"/><path d="M20 40h8M24 36v4"/><path d="M8 18l-3-1M8 26H4M40 18l3-1M40 26h4"/>',
+    badge: '<path d="M24 4l16 6v12c0 10-7 17-16 22-9-5-16-12-16-22V10z" fill="currentColor" fill-opacity=".18"/><path d="M24 4l16 6v12c0 10-7 17-16 22-9-5-16-12-16-22V10z"/><path d="M24 9l11 4v9c0 7-5 12-11 16-6-4-11-9-11-16v-9z"/><path d="M24 15l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z"/>',
+    fox: '<path d="M7 6l11 12h12L41 6c1 14-2 26-9 32l-8 6-8-6C9 32 6 20 7 6z" fill="currentColor" fill-opacity=".18"/><path d="M7 6l11 12h12L41 6c1 14-2 26-9 32l-8 6-8-6C9 32 6 20 7 6z"/><path d="M10 11l6 8M38 11l-6 8"/><path d="M14 28c3 0 5 2 6 4M34 28c-3 0-5 2-6 4"/><circle cx="18" cy="25" r="1.8" fill="currentColor" stroke="none"/><circle cx="30" cy="25" r="1.8" fill="currentColor" stroke="none"/><path d="M21 36l3 3 3-3z"/>',
+    heart: '<path d="M24 41S5 30 5 17a9.5 9.5 0 0 1 19-3 9.5 9.5 0 0 1 19 3c0 13-19 24-19 24z" fill="currentColor" fill-opacity=".18"/><path d="M24 41S5 30 5 17a9.5 9.5 0 0 1 19-3 9.5 9.5 0 0 1 19 3c0 13-19 24-19 24z"/><path d="M24 19v12M18 25h12"/><path d="M10 14c1-3 3-4 6-4"/>',
+    star: '<path d="M24 6 L28.8 16.8 L40.5 15.5 L33.5 25 L40.5 34.5 L28.8 33.2 L24 44 L19.2 33.2 L7.5 34.5 L14.5 25 L7.5 15.5 L19.2 16.8Z" fill="currentColor" fill-opacity=".18"/><path d="M24 6 L28.8 16.8 L40.5 15.5 L33.5 25 L40.5 34.5 L28.8 33.2 L24 44 L19.2 33.2 L7.5 34.5 L14.5 25 L7.5 15.5 L19.2 16.8Z"/><circle cx="24" cy="25" r="5"/><circle cx="24" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="40.5" cy="15.5" r="2" fill="currentColor" stroke="none"/><circle cx="40.5" cy="34.5" r="2" fill="currentColor" stroke="none"/><circle cx="24" cy="44" r="2" fill="currentColor" stroke="none"/><circle cx="7.5" cy="34.5" r="2" fill="currentColor" stroke="none"/><circle cx="7.5" cy="15.5" r="2" fill="currentColor" stroke="none"/>',
+    rocket: '<path d="M24 3c8 6 10 16 8 26H16c-2-10 0-20 8-26z" fill="currentColor" fill-opacity=".18"/><path d="M24 3c8 6 10 16 8 26H16c-2-10 0-20 8-26z"/><circle cx="24" cy="16" r="4"/><path d="M16 22l-7 7v6l7-4M32 22l7 7v6l-7-4"/><path d="M19 33c0 5 2 9 5 12 3-3 5-7 5-12z" fill="currentColor" stroke="none" fill-opacity=".35"/><path d="M19 33c0 5 2 9 5 12 3-3 5-7 5-12"/><path d="M6 10v4M4 12h4M41 6v3M39.5 7.5h3"/>',
+    seedling: '<path d="M24 38V20"/><path d="M24 26c0-8-6-12-15-12 0 8 6 12 15 12z" fill="currentColor" fill-opacity=".18"/><path d="M24 26c0-8-6-12-15-12 0 8 6 12 15 12z"/><path d="M24 21c0-8 6-12 15-12 0 8-6 12-15 12z" fill="currentColor" fill-opacity=".18"/><path d="M24 21c0-8 6-12 15-12 0 8-6 12-15 12z"/><path d="M15 20l4 3M33 15l-4 3"/><path d="M12 38h24l-3 7H15z" fill="currentColor" fill-opacity=".18"/><path d="M12 38h24l-3 7H15z"/><circle cx="40" cy="30" r="1.5"/>',
+    whisk: '<path d="M14 22a7 7 0 0 1 2-13 8 8 0 0 1 16 0 7 7 0 0 1 2 13v6H14z" fill="currentColor" fill-opacity=".18"/><path d="M14 22a7 7 0 0 1 2-13 8 8 0 0 1 16 0 7 7 0 0 1 2 13v6H14z"/><path d="M14 28h20v5H14z"/><path d="M20 22v6M28 22v6M24 21v7"/><path d="M24 33v12M20 45h8"/>',
+    sun: '<circle cx="24" cy="24" r="9" fill="currentColor" fill-opacity=".18"/><circle cx="24" cy="24" r="9"/><path d="M36 24L44 24 M34.4 30L38.7 32.5 M30 34.4L34 41.3 M24 36L24 41 M18 34.4L14 41.3 M13.6 30L9.3 32.5 M12 24L4 24 M13.6 18L9.3 15.5 M18 13.6L14 6.7 M24 12L24 7 M30 13.6L34 6.7 M34.4 18L38.7 15.5"/><circle cx="21" cy="22" r="1.2" fill="currentColor" stroke="none"/><circle cx="27" cy="22" r="1.2" fill="currentColor" stroke="none"/><path d="M20.5 26c2 2.5 5 2.5 7 0"/>',
+    wrench: '<path d="M31 5a10 10 0 0 0-9 13L6 34a4.2 4.2 0 0 0 6 6l16-16a10 10 0 0 0 13-9l-6 6-7-2-2-7z" fill="currentColor" fill-opacity=".18"/><path d="M31 5a10 10 0 0 0-9 13L6 34a4.2 4.2 0 0 0 6 6l16-16a10 10 0 0 0 13-9l-6 6-7-2-2-7z"/><circle cx="9" cy="37" r="1.4"/><path d="M38 34l4 2.3v4.6L38 43.2l-4-2.3v-4.6z"/>',
+    shield: '<path d="M8 8h32v14c0 11-8 18-16 22C16 40 8 33 8 22z" fill="currentColor" fill-opacity=".18"/><path d="M8 8h32v14c0 11-8 18-16 22C16 40 8 33 8 22z"/><path d="M24 8v36M8 22h32"/><circle cx="12" cy="12" r="1"/><circle cx="36" cy="12" r="1"/><path d="M24 14l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z" fill="currentColor" stroke="none"/>',
+    web: '<path d="M24 22L24 2 M24 22L38.1 7.9 M24 22L44 22 M24 22L38.1 36.1 M24 22L24 42 M24 22L9.9 36.1 M24 22L4 22 M24 22L9.9 7.9"/><path d="M24 16 Q25.9 17.5 28.2 17.8 Q28.5 20.1 30 22 Q28.5 23.9 28.2 26.2 Q25.9 26.5 24 28 Q22.1 26.5 19.8 26.2 Q19.5 23.9 18 22 Q19.5 20.1 19.8 17.8 Q22.1 17.5 24 16 M24 11 Q27.5 13.7 31.8 14.2 Q32.3 18.5 35 22 Q32.3 25.5 31.8 29.8 Q27.5 30.3 24 33 Q20.5 30.3 16.2 29.8 Q15.7 25.5 13 22 Q15.7 18.5 16.2 14.2 Q20.5 13.7 24 11 M24 6 Q29 9.9 35.3 10.7 Q36.1 17 40 22 Q36.1 27 35.3 33.3 Q29 34.1 24 38 Q19 34.1 12.7 33.3 Q11.9 27 8 22 Q11.9 17 12.7 10.7 Q19 9.9 24 6"/><path d="M38 30v8"/><circle cx="38" cy="40.5" r="2.5" fill="currentColor" stroke="none"/><path d="M35 39l-2-1M35 42l-2 1M41 39l2-1M41 42l2 1"/>',
+    mountain: '<path d="M3 42l14-26 7 11 6-9 15 24z" fill="currentColor" fill-opacity=".18"/><path d="M3 42l14-26 7 11 6-9 15 24z"/><path d="M12 25l5 3 4-3M27 24l3 2 3-2"/><path d="M17 42l4-8 4 4 3-6"/><path d="M36 6l-3 6h4l-3 6"/>',
+    claw: '<path d="M24 25c-7 0-13 6-13 12 0 4 3 6 6 6 3 0 4-2 7-2s4 2 7 2c3 0 6-2 6-6 0-6-6-12-13-12z" fill="currentColor" fill-opacity=".18"/><path d="M24 25c-7 0-13 6-13 12 0 4 3 6 6 6 3 0 4-2 7-2s4 2 7 2c3 0 6-2 6-6 0-6-6-12-13-12z"/><ellipse cx="9" cy="21" rx="3.6" ry="4.6" fill="currentColor" fill-opacity=".18"/><ellipse cx="9" cy="21" rx="3.6" ry="4.6"/><ellipse cx="18" cy="13" rx="3.8" ry="5" fill="currentColor" fill-opacity=".18"/><ellipse cx="18" cy="13" rx="3.8" ry="5"/><ellipse cx="30" cy="13" rx="3.8" ry="5" fill="currentColor" fill-opacity=".18"/><ellipse cx="30" cy="13" rx="3.8" ry="5"/><ellipse cx="39" cy="21" rx="3.6" ry="4.6" fill="currentColor" fill-opacity=".18"/><ellipse cx="39" cy="21" rx="3.6" ry="4.6"/><path d="M7 15l-1-4M17 7l-1-4M31 7l1-4M41 15l1-4"/>',
+    eye: '<circle cx="24" cy="24" r="17"/><path d="M43 24L46 24 M40.5 33.5L43.1 35 M33.5 40.5L35 43.1 M24 43L24 46 M14.5 40.5L13 43.1 M7.5 33.5L4.9 35 M5 24L2 24 M7.5 14.5L4.9 13 M14.5 7.5L13 4.9 M24 5L24 2 M33.5 7.5L35 4.9 M40.5 14.5L43.1 13"/><path d="M8 24c5-7 10-10 16-10s11 3 16 10c-5 7-10 10-16 10S13 31 8 24z" fill="currentColor" fill-opacity=".18"/><path d="M8 24c5-7 10-10 16-10s11 3 16 10c-5 7-10 10-16 10S13 31 8 24z"/><circle cx="24" cy="24" r="5"/><circle cx="24" cy="24" r="2" fill="currentColor" stroke="none"/>',
+    lasso: '<ellipse cx="24" cy="16" rx="17" ry="9" fill="currentColor" fill-opacity=".18"/><ellipse cx="24" cy="16" rx="17" ry="9"/><ellipse cx="24" cy="17" rx="12" ry="6"/><path d="M12 22c-3 6-1 12 5 16 4 3 9 3 12 0"/><path d="M29 38l3 3M27 40l3 3"/><path d="M40 30l2-2M43 33l2-1M38 34l1 3"/>',
+    moon: '<path d="M28 4a17 17 0 1 0 14 26A14 14 0 0 1 28 4z" fill="currentColor" fill-opacity=".18"/><path d="M28 4a17 17 0 1 0 14 26A14 14 0 0 1 28 4z"/><path d="M38 8v4M36 10h4M44 18v3M42.5 19.5h3"/><path d="M4 44h40M8 44v-6h4v-4h5v10M30 44v-8h5v4h4v4"/>',
+    bolt: '<path d="M28 3L9 28h12l-4 17 21-27H26z" fill="currentColor" fill-opacity=".18"/><path d="M28 3L9 28h12l-4 17 21-27H26z"/><path d="M6 14l4 2M38 34l4 2M40 8l3-2M6 38l3-2"/>',
+    mushroom: '<path d="M5 24C5 13 13 6 24 6s19 7 19 18z" fill="currentColor" fill-opacity=".18"/><path d="M5 24C5 13 13 6 24 6s19 7 19 18z"/><path d="M17 24v13c0 4 3 6 7 6s7-2 7-6V24"/><path d="M5 24h38"/><circle cx="15" cy="15" r="3.2" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="31" cy="13" r="3.6" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="24" cy="19" r="2" fill="currentColor" stroke="none" fill-opacity=".5"/><circle cx="21" cy="31" r="1.2" fill="currentColor" stroke="none"/><circle cx="27" cy="31" r="1.2" fill="currentColor" stroke="none"/><path d="M3 45h42"/>',
+    compass: '<circle cx="24" cy="24" r="20"/><path d="M39.5 24L42 24 M35 35L36.7 36.7 M24 39.5L24 42 M13 35L11.3 36.7 M8.5 24L6 24 M13 13L11.3 11.3 M24 8.5L24 6 M35 13L36.7 11.3"/><path d="M24 8l4 16-4 16-4-16z" fill="currentColor" fill-opacity=".18"/><path d="M24 8l4 16-4 16-4-16z"/><path d="M8 24l16-4 16 4-16 4z"/><path d="M24 8l4 16h-8z" fill="currentColor" stroke="none"/><circle cx="24" cy="24" r="2"/>',
+    leaf: '<path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z" fill="currentColor" fill-opacity=".18"/><path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z"/><path d="M6 42L32 16"/><path d="M14 34l-1-8M20 28l-1-9M26 22v-8M14 34l8 1M20 28l9 1M26 22l8 1"/>',
+    onion: '<path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z" fill="currentColor" fill-opacity=".18"/><path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z"/><path d="M24 14c-5 6-10 11-10 17a10 9 0 0 0 20 0c0-6-5-11-10-17z"/><path d="M24 20c-2 4-4 7-4 11a4 5 0 0 0 8 0c0-4-2-7-4-11z"/><path d="M24 8c0-3 1-5 3-6M24 8c-1-2-3-3-5-3"/><path d="M18 44l-1 2M24 44v2M30 44l1 2"/>',
+    bowl: '<path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z" fill="currentColor" fill-opacity=".18"/><path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z"/><path d="M17 42h14"/><path d="M12 24c3-4 6-4 9 0s6 4 9 0 6-4 9 0"/><path d="M30 4l-8 22M36 6l-10 20"/><path d="M12 18c0-3 3-3 3-6M18 18c0-3 3-3 3-6"/>',
+    flame: '<path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z" fill="currentColor" fill-opacity=".18"/><path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z"/><path d="M24 45c-5 0-7-3-7-7 0-5 4-7 5-12 3 3 6 6 6 10 1-1 2-2 2-4 2 2 3 4 3 6 0 4-3 7-9 7z" fill="currentColor" stroke="none" fill-opacity=".45"/>',
+  };
+  const CHARACTER_EMBLEMS = {
+    'Mulan': 'sword', 'Elsa': 'snowflake', 'Moana': 'wave', 'Simba': 'crown', 'Rapunzel': 'lantern',
+    'Judy Hopps': 'badge', 'Nick Wilde': 'fox', 'Baymax': 'heart',
+    'Woody': 'star', 'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'sun',
+    'Iron Man': 'wrench', 'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
+    'Black Panther': 'claw', 'Doctor Strange': 'eye',
+    'Wonder Woman': 'lasso', 'Batman': 'moon',
+    'Pikachu': 'bolt', 'Mario': 'mushroom', 'Link': 'compass', 'Totoro': 'leaf',
+    'Shrek': 'onion', 'Po': 'bowl', 'Hiccup': 'flame',
+  };
+
+  /** The emblem for a catalogue character, as SVG markup, or '' for any other name. */
+  function emblemSvg(character, className) {
+    const key = CHARACTER_EMBLEMS[String(character || '').trim()];
+    if (!key || !EMBLEM_PATHS[key]) return '';
+    return '<svg class="' + (className || 'emblem') + '" viewBox="0 0 48 48" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+      EMBLEM_PATHS[key] + '</svg>';
+  }
+
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, ENNEAGRAM_DESCRIPTIONS, LOVE_LANGUAGE_ICONS, CARD_ICONS,
-    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT,
+    ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
+    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

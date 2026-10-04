@@ -297,6 +297,10 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
     // wants to exercise the promo path has to declare one, which is exactly
     // the property that stops a test fixture doubling as a live backdoor.
     PSYCHEAI_PROMO_CODE: UITEST_PROMO,
+    // This suite checks the classic layout section by section, so it pins it.
+    // The structured layout is checked on its own further down, against a
+    // page told to draw that layout with ?layout=structured.
+    PSYCHEAI_REPORT_LAYOUT: 'classic',
   },
   stdio: 'ignore',
 });
@@ -10106,6 +10110,331 @@ try {
     check('and the paid kinds are named rather than lumped in with the free ones',
       new Set(rows.map(r => r.kind)).size > 1,
       JSON.stringify([...new Set(rows.map(r => r.kind))]));
+  }
+
+  // ---- the structured layout ----
+  //
+  // Everything above runs against a classic server. The structured layout is
+  // drawn by the same page when asked with ?layout=structured, from a fully
+  // unlocked profile: the hand-written sample plus its premium fixture, so
+  // every block has real content to lay out.
+  {
+    const sp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const spErrors = [];
+    sp.on('console', message => { if (message.type() === 'error') spErrors.push(message.text()); });
+    sp.on('pageerror', error => spErrors.push('pageerror: ' + error.message));
+    try {
+      const sampleReport = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
+      const samplePremium = JSON.parse(readFileSync(join(root, 'tools', 'fixtures', 'sample-premium.json'), 'utf8'));
+      delete samplePremium._comment;
+      await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      const seed = async (explained) => {
+        await sp.evaluate(([report, premium, explained]) => {
+          localStorage.clear();
+          localStorage.setItem('psycheai_profile', JSON.stringify(Object.assign({
+            report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString(),
+          }, explained ? { explained: true, premiumAnalysis: premium, premiumModel: 'mock', premiumAt: new Date().toISOString() }
+            : { report: Object.assign({}, report, { summary: '' }) })));
+        }, [sampleReport, samplePremium, explained]);
+        await sp.reload({ waitUntil: 'load' });
+        await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      };
+      await seed(true);
+
+      const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
+      check('structured: the report runs overview, four parts, then the appendix',
+        parts.join() === 'overview,who,drives,connect,together,appendix', parts.join());
+      check('structured: it opens on an about-this-report card that says it is not diagnostic',
+        /not a clinical or diagnostic tool/.test(await sp.locator('#profile-body .about-card').textContent()));
+      const subs = await sp.$$eval('#profile-body .section-card .card-sub', nodes => nodes.map(n => n.textContent));
+      check('structured: every section opens with what it measures',
+        subs.some(t => /Five broad traits, each a spectrum/.test(t)) &&
+        subs.some(t => /Schwartz/.test(t)) && subs.some(t => /not how you compare with anyone/.test(t)) &&
+        subs.some(t => /How you attach/.test(t)), subs.length + ' sub-lines');
+
+      const cardFace = await sp.evaluate(() => {
+        const card = document.querySelector('#psyche-card');
+        const fits = Array.from(card.querySelectorAll('.pc-straits .pc-sbar-fill')).map(r => r.getAttribute('width'));
+        const inner = card.querySelector('.pc-story-in');
+        return {
+          story: card.classList.contains('pc-story') && card.offsetWidth === 1080 && card.offsetHeight === 1920,
+          // Fits once any scale-down is applied: the scaled box is inside the card.
+          fitsInside: inner ? inner.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom + 1 &&
+            inner.scrollHeight <= inner.clientHeight + 1 : false,
+          patterns: Array.from(card.querySelectorAll('.pc-spatterns li')).map(li => li.textContent),
+          enneagram: /Enneagram/i.test(card.textContent),
+          type: Array.from(card.querySelectorAll('.pc-sletters b')).map(b => b.textContent).join(''),
+          bigType: card.querySelectorAll('.pc-stype').length,
+          emblem: card.querySelectorAll('.pc-smedal svg.pc-emblem path').length > 0,
+          patternLines: card.querySelectorAll('.pc-spatterns .pc-sline').length,
+          nickname: /Protagonist/.test(card.textContent),
+          bars: fits,
+          standFor: Array.from(card.querySelectorAll('.pc-schips')).map(row => row.children.length),
+        };
+      });
+      check('structured: the summary card is one 1080 x 1920 story, and everything on it fits',
+        cardFace.story && cardFace.fitsInside, JSON.stringify(cardFace));
+      check('structured: the summary card names the three signature patterns, numbered',
+        cardFace.patterns.length === 3 && /^1The quiet organiser/.test(cardFace.patterns[0]), JSON.stringify(cardFace));
+      check('structured: the type as four letters with their strengths, no large code, no nickname, four traits as bars (extraversion is the E)',
+        cardFace.type === 'ENFJ' && cardFace.bigType === 0 && !cardFace.nickname &&
+        cardFace.bars.join() === '61,84,79,44', JSON.stringify(cardFace));
+      check('structured: the catalogue character drawn as its own emblem, and each pattern with its line',
+        cardFace.emblem && cardFace.patternLines === 3 &&
+        (await sp.locator('#profile-body .essence-icon.has-emblem svg').count()) === 1, JSON.stringify(cardFace));
+      check('structured: values and beliefs together as what you stand for',
+        cardFace.standFor.join() === '4,3', cardFace.standFor.join());
+      check('structured: and carries no Enneagram, even from a report saved with one',
+        !cardFace.enneagram);
+      check('structured: the report has no Enneagram section',
+        !/Enneagram/.test(await sp.locator('#profile-body').textContent()));
+      const typeFirst = await sp.evaluate(() => {
+        const titles = Array.from(document.querySelectorAll('#profile-body .section-card h2')).map(h => h.textContent);
+        return [titles.findIndex(t => /^MBTI/.test(t)), titles.findIndex(t => /^Big Five/.test(t))];
+      });
+      check('structured: MBTI carries no type nickname, and values and beliefs have no subsections',
+        !/Protagonist/.test(await sp.locator('#profile-body .mbti-card').textContent()) &&
+        (await sp.evaluate(() => {
+          const card = Array.from(document.querySelectorAll('#profile-body .section-card'))
+            .find(c => /Values & Beliefs/.test(c.querySelector('h2').textContent));
+          return card && card.querySelectorAll('h3').length === 0 && card.querySelectorAll('.tile-belief').length === 1;
+        })));
+      check('structured: MBTI opens Part 1, above the Big Five',
+        typeFirst[0] >= 0 && typeFirst[0] < typeFirst[1], typeFirst.join());
+      const bars = await sp.$$eval('#profile-body .bipolar', nodes => nodes.map(n => ({
+        marker: n.querySelector('.bipolar-marker').style.left,
+        band: n.querySelector('.bipolar-band').style.left + '/' + n.querySelector('.bipolar-band').style.width,
+        poles: Array.from(n.querySelectorAll('.bipolar-poles span')).map(s => s.textContent),
+        num: n.querySelector('.trait-num').textContent,
+      })));
+      check('structured: the Big Five are five spectrums, each marker at its score',
+        bars.length === 5 && bars.every(b => b.marker === b.num + '%'), JSON.stringify(bars.map(b => b.marker)));
+      check('structured: each spectrum names both poles and shades the typical band',
+        bars.every(b => b.poles.length === 2 && b.poles.every(Boolean) && b.band === '35%/30%'),
+        JSON.stringify(bars[0]));
+
+      check('structured: three signature patterns, each with where it shows up',
+        (await sp.locator('#profile-body .pattern').count()) === 3 &&
+        (await sp.locator('#profile-body .pattern .pattern-where').count()) === 3);
+      const chipCount = await sp.locator('#profile-body .connects .pattern-chip').count();
+      check('structured: sections link back to the patterns they show', chipCount >= 8, chipCount + ' chips');
+      await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.add('is-collapsed')));
+      await sp.locator('#profile-body .connects .pattern-chip[data-pattern="p3"]').first().evaluate(b => b.click());
+      await sp.waitForTimeout(200);
+      check('structured: a pattern chip opens the patterns section on that pattern',
+        await sp.evaluate(() => {
+          const target = document.querySelector('#profile-body [data-pattern-card="p3"]');
+          return !target.closest('.section-card').classList.contains('is-collapsed') && target.classList.contains('is-highlighted');
+        }));
+      check('structured: chips are buttons, so the hash a shared card arrives on is never written',
+        (await sp.evaluate(() => location.hash)) === '' &&
+        (await sp.locator('#profile-body a.pattern-chip').count()) === 0);
+
+      await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
+      const motives = await sp.$$eval('#profile-body .motive-row', nodes => nodes.map(n => ({
+        width: n.querySelector('.bar-fill').style.width, num: n.querySelector('.trait-num').textContent,
+      })));
+      check('structured: the motivators chart draws all ten values at their scores',
+        motives.length === 10 && motives.every(m => m.width === m.num + '%'), JSON.stringify(motives));
+      check('structured: grouped under Schwartz\'s four higher-order values',
+        (await sp.locator('#profile-body .motive-group').count()) === 4);
+      check('structured: the development plan has strengths to build on and areas to develop',
+        (await sp.locator('#profile-body .dev-build').count()) === 2 &&
+        (await sp.locator('#profile-body .dev-develop').count()) === 2 &&
+        (await sp.locator('#profile-body .development-card .timeline-col').count()) === 3 &&
+        (await sp.locator('#profile-body .development-card .plan-step').count()) === 10);
+      check('structured: every development item says where it came from',
+        (await sp.locator('#profile-body .dev-item .origin').count()) === 4);
+      const levels = await sp.$$eval('#profile-body .pressure-level', nodes =>
+        nodes.map(n => n.querySelectorAll('.pressure-step.is-on').length));
+      check('structured: pressure points show their level as a three-step meter',
+        levels.join() === '3,2,1', levels.join());
+      const work = await sp.locator('#profile-body .work-card').innerText();
+      check('structured: How you work merges the description and the coach\'s read into one section',
+        /Finishes things/.test(work) && /You finish what other people announce/.test(work) &&
+        (await sp.locator('#profile-body .work-card[data-paid="careerAssessment"]').count()) === 1 &&
+        (await sp.locator('#profile-body .paid-card[data-paid="careerAssessment"]').count()) === 1);
+      const method = await sp.locator('#profile-body .method-card').innerText();
+      check('structured: the method section names the sources, the format and the writer',
+        /Sources read/.test(method) && /Structured report, v1/.test(method) && /Written by/.test(method));
+      const order = await sp.evaluate(() => {
+        const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
+        const at = sel => nodes.findIndex(n => n.matches(sel));
+        return [at('.method-card'), at('[data-part="appendix"]'), at('.bonus-card')];
+      });
+      check('structured: the roast is an appendix after the method, not mid-report',
+        order[0] >= 0 && order[0] < order[1] && order[1] < order[2], order.join());
+
+      // The web report's visual layer.
+      const visuals = await sp.evaluate(() => {
+        const body = document.querySelector('#profile-body');
+        const q = sel => body.querySelectorAll(sel);
+        return {
+          structuredClass: body.classList.contains('layout-structured'),
+          nav: Array.from(q('.part-nav .part-nav-item')).map(b => b.getAttribute('data-part-target')),
+          numerals: Array.from(q('.report-part .part-num')).map(n => n.textContent),
+          patternColours: Array.from(q('.pattern-chip')).map(c => getComputedStyle(c).borderColor)
+            .filter((c, i, all) => all.indexOf(c) === i).length,
+          threadMap: q('.thread-map').length,
+          colourKey: q('.about-card .colour-key li').length,
+          results: Array.from(q('.section-card .card-result')).map(n => n.textContent),
+          sliders: Array.from(q('.mbti-slider .slider-marker')).map(m => m.textContent + '@' + m.style.left),
+          whys: q('.mbti-slider details.more').length,
+          wedges: q('.motive-rose .rose-wedge').length,
+          mirror: q('.love-mirror .mirror-row').length,
+          attachMap: q('.attach-map .attach-blob').length,
+          partnerCols: q('.partner-need, .partner-careful').length,
+          wellnessTiles: q('.wellness-tile').length,
+          gauges: Array.from(q('.gauge-marker')).map(m => m.style.left),
+          workTimeline: q('.work-card .timeline .plan-step').length,
+          trends: q('.tile .trend').length,
+          flags: Array.from(q('.trait-flag')).map(n => n.textContent),
+        };
+      });
+      check('structured: a sticky nav across the parts, and numbered part headings',
+        visuals.structuredClass && visuals.nav.join() === 'overview,who,drives,connect,together,appendix' &&
+        visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
+      check('structured: the three patterns share one colour, and there is no thread map',
+        visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
+      check('structured: About this report says what each colour means',
+        visuals.colourKey === 4, String(visuals.colourKey));
+      check('structured: a shut section still says what it found',
+        visuals.results.length >= 12 && visuals.results.some(t => /^Highest: Conscientiousness 84/.test(t)) &&
+        visuals.results.some(t => /Care for your people/.test(t)) && visuals.results.some(t => /4 steady/.test(t)),
+        JSON.stringify(visuals.results));
+      check('structured: MBTI as four sliders, each marker pushed towards its letter by its strength',
+        visuals.sliders.join() === 'E@34%,N@20%,F@80%,J@6%' && visuals.whys === 4, visuals.sliders.join());
+      check('structured: the Big Five flags the highest and lowest trait',
+        visuals.flags.join() === 'Highest,Lowest', visuals.flags.join());
+      check('structured: Schwartz\'s circle draws all ten values',
+        visuals.wedges === 10);
+      check('structured: love languages mirrored, receiving against giving',
+        visuals.mirror === 3, String(visuals.mirror));
+      check('structured: attachment on the two-axis map, labelled approximate',
+        visuals.attachMap === 1 && /Approximate/.test(await sp.locator('#profile-body .attach-map figcaption').textContent()));
+      check('structured: ideal partner as need against careful-of, wellbeing as six tiles',
+        visuals.partnerCols === 2 && visuals.wellnessTiles === 6);
+      check('structured: pressure points on a gauge, further along the more marked they are',
+        visuals.gauges.join() === '86%,58%,30%', visuals.gauges.join());
+      check('structured: How you work carries no actions of its own — they are on the plan',
+        visuals.workTimeline === 0 && visuals.trends === 4, JSON.stringify([visuals.workTimeline, visuals.trends]));
+      const merged = await sp.evaluate(() => {
+        const body = document.querySelector('#profile-body');
+        const rel = body.querySelector('.relationships-card');
+        const work = body.querySelector('.work-card');
+        const plan = body.querySelector('.development-card .timeline');
+        return {
+          separateCards: body.querySelectorAll('.paid-card[data-paid="idealPartner"], .attachment-card:not(.relationships-card)').length,
+          rel: rel ? ['How you attach', 'What you bring', 'Where it gets hard', 'Who suits you']
+            .every(h => rel.textContent.includes(h)) && Boolean(rel.querySelector('.attach-map')) : false,
+          holding: work ? Array.from(work.querySelectorAll('.h-warn + dl dt')).map(dt => dt.textContent) : [],
+          workHeads: work ? Array.from(work.querySelectorAll('h3')).map(h => h.textContent) : [],
+          planFrom: plan ? Array.from(plan.querySelectorAll('.plan-from')).map(n => n.textContent) : [],
+          wellnessHelp: /What might actually help/.test(body.querySelector('.wellness-card').textContent),
+        };
+      });
+      check('structured: In relationships is one section — attachment, what you bring, love, who suits you',
+        merged.rel && merged.separateCards === 0, JSON.stringify(merged));
+      check('structured: love languages lead the section, with the note on physical touch',
+        await sp.evaluate(() => {
+          const rel = document.querySelector('#profile-body .relationships-card');
+          const love = rel.querySelector('.love-mirror');
+          const attach = rel.querySelector('.attach-map');
+          return Boolean(love && attach && (love.compareDocumentPosition(attach) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
+            /Physical touch cannot be verified from online data/.test(rel.textContent);
+        }));
+      check('structured: what they are not using sits with their strengths, not with the costs',
+        await sp.evaluate(() => {
+          const work = document.querySelector('#profile-body .work-card');
+          const good = Array.from(work.querySelectorAll('.h-good + dl dt')).map(dt => dt.textContent);
+          return good[good.length - 1] === 'Not yet using: Your organising, unseen' &&
+            !/What you are not using/.test(work.textContent);
+        }));
+      check('structured: How you work holds everything holding them back as one list',
+        merged.holding.join('|') === 'Invisible by default|Under-claims|Absorbs the overflow|Where it goes wrong' &&
+        !merged.workHeads.some(h => /day to day|What to do|What could hold you back|What is costing you/.test(h)),
+        JSON.stringify([merged.holding, merged.workHeads]));
+      check('structured: the plan carries every action — develop areas, work and wellbeing',
+        merged.planFrom.filter(f => f === 'How you work').length === 3 &&
+        merged.planFrom.filter(f => f === 'Wellbeing').length === 2, merged.planFrom.join(', '));
+      check('structured: wellbeing no longer has its own list of suggestions', !merged.wellnessHelp);
+      check('structured: no wellness title from the classic layout',
+        /Wellbeing/.test(await sp.locator('#profile-body .wellness-card .card-head').textContent()));
+
+      // Ticking an action keeps it ticked on this device.
+      await sp.locator('#profile-body .development-card .plan-check').first().check();
+      await sp.reload({ waitUntil: 'load' });
+      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      check('structured: a ticked action stays ticked after a reload',
+        await sp.locator('#profile-body .development-card .plan-check').first().isChecked() &&
+        (await sp.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('psycheai_plan') || '{}')).length)) === 1);
+      // Charts sit at zero while their section is shut, and grow when it opens.
+      const shutWidth = await sp.evaluate(() => {
+        const card = document.querySelector('#profile-body .motivators-card');
+        return card.classList.contains('is-collapsed') ? getComputedStyle(card.querySelector('.bar-fill')).width : 'open';
+      });
+      check('structured: a shut section\'s bars are held at zero until it opens', shutWidth === '0px', shutWidth);
+      await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
+
+      await sp.setViewportSize({ width: 360, height: 800 });
+      await sp.waitForTimeout(200);
+      const spill = await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      check('structured: no sideways scroll on a phone', spill <= 1, spill + 'px');
+      await sp.setViewportSize({ width: 1100, height: 900 });
+
+      const pdfOf = layout => sp.evaluate(async layout => {
+        const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
+        const blob = window.PsychePDF.build(saved.report, saved.card, {
+          date: 'October 4, 2026', model: 'mock', layout, unlocked: saved.premiumAnalysis,
+          sources: ['Instagram'], build: 'v3.0.0 · abc1234',
+        });
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let out = '';
+        for (let i = 0; i < bytes.length; i += 8192) out += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+        return out;
+      }, layout);
+      const prose = text => (text.match(/\((?:\\.|[^()\\])*\)\s*Tj/g) || [])
+        .map(token => token.replace(/\)\s*Tj$/, '').slice(1)).join(' ').replace(/\s+/g, ' ');
+      const structuredPdf = prose(await pdfOf('structured'));
+      const classicPdf = prose(await pdfOf('classic'));
+      check('structured PDF: about page, parts, patterns, motivators, plan, pressure, method, appendix',
+        ['About this report', 'PART 1', 'Who you are', 'Your signature patterns', 'What motivates you',
+          'Development plan', 'Under pressure', 'Evidence and method', 'APPENDIX', 'The unvarnished read']
+          .every(s => structuredPdf.includes(s)) &&
+          structuredPdf.indexOf('MBTI: ') < structuredPdf.indexOf('Five broad traits, each a spectrum'),
+        ['About this report', 'PART 1', 'Your signature patterns', 'What motivates you', 'Development plan',
+          'Under pressure', 'Evidence and method', 'APPENDIX'].filter(s => !structuredPdf.includes(s)).join(', '));
+      check('structured PDF: the running head carries the date and the method page the build',
+        /Sample · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
+        /v3\.0\.0 · abc1234|v3\.0\.0 \\267 abc1234/.test(structuredPdf));
+      check('structured PDF: the spectrums name both poles',
+        structuredPdf.includes('Prefers the familiar and proven') && structuredPdf.includes('Seeks out new ideas and experiences'));
+      check('structured PDF: no Enneagram anywhere, the cover card included',
+        !/Enneagram/i.test(structuredPdf) && structuredPdf.includes('YOUR PATTERNS'));
+      check('the classic PDF of the same report is unchanged by any of it',
+        !classicPdf.includes('Your signature patterns') && !classicPdf.includes('About this report') &&
+        classicPdf.includes('How much to trust this'));
+
+      // The same stored report, drawn classic: nothing structured on the page.
+      await sp.goto('http://localhost:' + PORT + '/?layout=classic', { waitUntil: 'load' });
+      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      check('?layout=classic draws the same report in the classic layout',
+        (await sp.locator('#profile-body .report-part').count()) === 0 &&
+        (await sp.locator('#profile-body .pattern-chip').count()) === 0 &&
+        (await sp.locator('#profile-body .confidence-card').count()) === 1);
+
+      // Unbought: the offer lists what the structured layout adds.
+      await sp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      await seed(false);
+      const offer = await sp.locator('#profile-body .full-report-locked').innerText();
+      check('structured: the unlock offer names the patterns, the motivators and the development plan',
+        /Your signature patterns/.test(offer) && /What motivates you/.test(offer) && /Development plan/.test(offer));
+      check('structured: and still draws nothing it has not been paid for',
+        (await sp.locator('#profile-body .pattern, #profile-body .motive-row, #profile-body .dev-item').count()) === 0);
+      check('structured: no console errors', spErrors.length === 0, spErrors.join(' | '));
+    } finally {
+      await sp.close();
+    }
   }
 
   check('no console errors anywhere in the flow', consoleErrors.length === 0, consoleErrors.join(' | '));

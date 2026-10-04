@@ -55,6 +55,10 @@
     // A key and a timestamp, and for a paid run the authorisation needed to
     // ask again if the server has forgotten. Never a report.
     job: 'psycheai_job',
+    // Which actions in the structured report's development plan the reader has
+    // ticked off, by a hash of the action's wording. Nothing but those hashes,
+    // and it goes with Delete everything like the rest.
+    plan: 'psycheai_plan',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -188,6 +192,11 @@
     const scope = root || document;
     scope.querySelectorAll('[data-fill]').forEach(node => {
       node.style.width = Number(node.getAttribute('data-fill') || 0) + '%';
+    });
+    // The structured layout's bipolar bars place a band and a marker along the
+    // track, which is a position rather than a width.
+    scope.querySelectorAll('[data-left]').forEach(node => {
+      node.style.left = Number(node.getAttribute('data-left') || 0) + '%';
     });
     scope.querySelectorAll('[data-pct]').forEach(node => {
       node.style.setProperty('--pct', String(Number(node.getAttribute('data-pct') || 0)));
@@ -401,6 +410,7 @@
    */
   function psycheCardHtml(report) {
     if (!report) return '';
+    if (reportLayout() === 'structured') return psycheStoryHtml(report);
     const card = report.card || {};
     const cardName = card.name || '';
     const essence = report.essence || {};
@@ -486,18 +496,158 @@
       '';
   }
 
+  // ---------- the structured layout's card: one portrait canvas ----------
+  //
+  // 1080 x 1920, the size of a phone story, on screen and in the export alike,
+  // so there is one card and one image rather than a layout that changes
+  // shape with the screen. Read top to bottom the way a phone is held: who
+  // you are most like, your three patterns, your type and your traits side by
+  // side, what you stand for and what you are into, then how you give and
+  // want care. Bars and rings are inline SVG with their sizes as attributes,
+  // so the exported image draws them without the page's script.
+  // The height, 1920, is fixed in the stylesheet (.psyche-card.pc-story).
+  const STORY_W = 1080;
+
+  function storyBar(value) {
+    const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    return '<svg class="pc-sbar" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">' +
+      '<rect class="pc-sbar-track" width="100" height="10" rx="5"/>' +
+      (v ? '<rect class="pc-sbar-fill" width="' + Math.max(6, v) + '" height="10" rx="5"/>' : '') + '</svg>';
+  }
+
+  function storyRing(value) {
+    const v = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    const c = 2 * Math.PI * 26;
+    return '<svg class="pc-ring" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<circle class="pc-ring-track" cx="32" cy="32" r="26"/>' +
+      '<circle class="pc-ring-fill" cx="32" cy="32" r="26" stroke-dasharray="' + (c * v / 100).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 32 32)"/>' +
+      '<text class="pc-ring-text" x="32" y="38" text-anchor="middle">' + v + '</text></svg>';
+  }
+
+  function psycheStoryHtml(report) {
+    const S = Copy.STRUCTURED;
+    const card = report.card || {};
+    const essence = report.essence || {};
+    const name = essenceName(essence);
+    const mbti = report.mbti || {};
+    const five = report.bigFive || {};
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const patterns = signaturePatterns(report);
+    const confidence = Number(card.confidence) || Number(report.confidence && report.confidence.score) || 0;
+    const headline = String(card.headline || '').trim();
+    // Two sentences on why they are like the character — what the structured
+    // card call writes. A report from before that, with the four-sentence
+    // portrait, shows its first two, which open on the same comparison.
+    const blurb = splitSentences(cardBlurb(report)).slice(0, 2).join(' ');
+    const emblem = Copy.emblemSvg(name, 'pc-emblem');
+    const dots = strength => {
+      const n = { slight: 1, moderate: 2, clear: 3 }[strength] || 0;
+      return '<span class="pc-dots" aria-label="' + esc(strength || '') + '">' +
+        [1, 2, 3].map(i => '<i class="' + (i <= n ? 'on' : '') + '"></i>').join('') + '</span>';
+    };
+    const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1));
+    const into = titlesOf(report.interests, 3);
+    const chips = list => '<div class="pc-schips">' + list.map(item => '<span>' + esc(item) + '</span>').join('') + '</div>';
+    const loveList = side => (side || []).slice(0, 2).filter(l => l && l.language).map(l =>
+      '<li><span aria-hidden="true">' + esc(LOVE_LANGUAGE_ICONS[l.language] || '💗') + '</span>' + esc(l.language) + '</li>').join('');
+    const label = (icon, text) => '<p class="pc-slab"><span aria-hidden="true">' + esc(icon) + '</span>' + esc(text) + '</p>';
+
+    return '<div class="pc-story-in">' +
+      '<div class="pc-stop">' +
+        '<span class="pc-brand">' + brandMarkSvg('pc-brand-mark') + '<span>PsycheAI</span></span>' +
+        (card.name ? '<span class="pc-sowner">' + esc(card.name) + '</span>' : '<span></span>') +
+        (confidence ? '<span class="pc-sconf" title="' + esc(TEXT.cardConfidence) + '">' + storyRing(confidence) + '</span>' : '<span></span>') +
+      '</div>' +
+      '<div class="pc-shero">' +
+        '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
+        '<div class="pc-sname"><span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>' +
+          '<div><h2>' + esc(name) + '</h2>' + (essence.franchise ? '<p class="pc-sfranchise">' + esc(essence.franchise) + '</p>' : '') +
+          '</div></div>' +
+        (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
+        (blurb ? '<p class="pc-sblurb">' + esc(blurb) + '</p>' : '') +
+      '</div>' +
+      (patterns.length ? '<div class="pc-spanel">' + label(CARD_ICONS.patterns, TEXT.cardPatterns) +
+        '<ol class="pc-spatterns">' + patterns.map(p =>
+          '<li class="pc-pat-' + esc(p.id) + '"><span class="pc-snum">' + esc(patternNumber(p.id)) + '</span>' +
+          '<div><b>' + esc(p.name) + '</b>' + (p.line ? '<span class="pc-sline">' + esc(p.line) + '</span>' : '') +
+          '</div></li>').join('') + '</ol></div>' : '') +
+      '<div class="pc-sgrid">' +
+        '<div class="pc-spanel">' + label(CARD_ICONS.type, TEXT.cardType) +
+          '<ul class="pc-sletters">' + (mbti.letters || []).map(l => {
+            const pole = axisLabel(l.choice, l.axis);
+            return '<li><b>' + esc(l.choice || '') + '</b><span>' + esc(pole.name) + '</span>' + dots(l.strength) + '</li>';
+          }).join('') + '</ul></div>' +
+        '<div class="pc-spanel">' + label(CARD_ICONS.bigFive, TEXT.cardBigFive) +
+          // Four traits: extraversion is the E/I letter beside it.
+          '<ul class="pc-straits">' + Object.keys(TRAIT_LABELS).filter(t => five[t] && t !== 'extraversion').map(t =>
+            '<li><span class="pc-strait">' + esc(S.cardTraitShort[t] || TRAIT_LABELS[t]) + '</span>' +
+            storyBar(five[t].score) + '<b>' + Math.round(Number(five[t].score) || 0) + '</b></li>').join('') + '</ul></div>' +
+      '</div>' +
+      '<div class="pc-sgrid">' +
+        (standFor.length ? '<div class="pc-spanel">' + label(CARD_ICONS.values, S.cardStandFor) + chips(standFor) + '</div>' : '') +
+        (into.length ? '<div class="pc-spanel">' + label(CARD_ICONS.interests, S.cardInto) + chips(into) + '</div>' : '') +
+      '</div>' +
+      // Receiving and giving in one panel, read across: the comparison is
+      // the point, and two boxes for four short lines looked empty.
+      '<div class="pc-spanel pc-slove-panel">' +
+        '<div>' + label(CARD_ICONS.loveIn, TEXT.cardLoveIn) + '<ul class="pc-slove">' + loveList(love.receiving) + '</ul></div>' +
+        '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(love.giving) + '</ul></div>' +
+      '</div>' +
+      '<p class="pc-sfoot">' + esc(S.cardFooter) + '</p>' +
+      '</div>';
+  }
+
   // Scale-to-fit, measured rather than assumed: the card is laid out at
   // CARD_W x CARD_H and shrunk by whichever axis runs out first, so it lands
   // whole on a phone and on a laptop without a scrollbar on either.
+  /**
+   * The story is a fixed 1080 x 1920, and a report with long pattern names or
+   * many chips can run past it. Rather than clip, the contents are scaled down
+   * just enough to fit — on screen and, since the clone carries the inline
+   * style, in the exported image too.
+   */
+  function fitStoryContent(el) {
+    const inner = el.querySelector('.pc-story-in');
+    if (!inner) return;
+    inner.style.transform = '';
+    inner.style.width = '';
+    inner.style.height = '';
+    if (!inner.clientHeight || inner.scrollHeight <= inner.clientHeight + 1) return;
+    // A search rather than one division: scaling widens the box the text
+    // wraps in, so the content gets shorter as it gets smaller, and a single
+    // ratio over-shrinks it and leaves the foot of the story empty. Eight
+    // halvings land within a fraction of a percent of the largest scale that
+    // still fits.
+    const apply = r => {
+      inner.style.transformOrigin = 'top left';
+      inner.style.transform = 'scale(' + r.toFixed(4) + ')';
+      inner.style.width = (100 / r).toFixed(3) + '%';
+      inner.style.height = (100 / r).toFixed(3) + '%';
+      return inner.scrollHeight <= inner.clientHeight + 1;
+    };
+    let lo = 0.5;
+    let hi = 1;
+    for (let i = 0; i < 8; i++) {
+      const mid = (lo + hi) / 2;
+      if (apply(mid)) lo = mid; else hi = mid;
+    }
+    apply(lo);
+  }
+
   function fitCard(el, availableWidth, availableHeight, options) {
     if (!el) return;
     // `narrow` is about the shape of the *screen*, not of the box the card is
     // being fitted into, so the height-capped inline preview must not trip it.
-    const narrow = options === 'screen' &&
+    // The structured layout's card is one fixed portrait canvas, the same on
+    // every screen and in the export, so it never switches to the narrow form.
+    const story = reportLayout() === 'structured';
+    el.classList.toggle('pc-story', story);
+    const narrow = !story && options === 'screen' &&
       availableWidth / availableHeight < NARROW_ASPECT;
     el.classList.toggle('pc-narrow', narrow);
-    const width = narrow ? CARD_W_NARROW : CARD_W;
+    const width = story ? STORY_W : narrow ? CARD_W_NARROW : CARD_W;
     el.style.width = width + 'px';
+    if (story) fitStoryContent(el);
     // offsetHeight is a layout value and ignores the transform already on the
     // element, so this is the card's natural height at CARD_W whatever scale it
     // is currently drawn at — no need to reset the transform to measure.
@@ -517,9 +667,12 @@
     if (!name) return '';
     // The emoji stands in for the character rather than depicting them: the
     // actual artwork is somebody else's, and not ours to ship.
+    // The structured layout draws the catalogue character's emblem; anything
+    // else keeps its emoji.
+    const emblem = reportLayout() === 'structured' ? Copy.emblemSvg(name, 'essence-emblem') : '';
     return '<div class="essence">' +
-      '<span class="essence-icon" role="img" aria-label="' + esc(name) + '">' +
-      esc(safeIcon(essence.icon)) + '</span>' +
+      '<span class="essence-icon' + (emblem ? ' has-emblem' : '') + '" role="img" aria-label="' + esc(name) + '">' +
+      (emblem || esc(safeIcon(essence.icon))) + '</span>' +
       '<div><p class="essence-label">' + esc(TEXT.essenceLabel) + '</p>' +
       // Siblings rather than one nested in the other: the gradient clip on the
       // name would swallow the franchise, and the print suite only measures
@@ -566,7 +719,10 @@
   // content). The whole row stays clickable anyway — the delegated handler
   // listens on `.card-head-toggle`, so a click on the button bubbles to the
   // same place a click on the title does, and toggles once either way.
-  function sectionHead(icon, title, sub, collapsible) {
+  // `result` is the structured layout's one-line takeaway, shown in the head
+  // so a shut section still says what it found. The classic layout never
+  // passes one, so its heads are unchanged.
+  function sectionHead(icon, title, sub, collapsible, result) {
     const chevron = '<span class="card-chevron" aria-hidden="true"></span>';
     return '<div class="card-head' + (collapsible ? ' card-head-toggle' : '') + '">' +
       '<span class="card-icon">' + icon + '</span>' +
@@ -576,7 +732,8 @@
           '<span class="card-toggle-text">' + title + '</span>' + chevron + '</button>'
         : title) +
       '</h2>' +
-      (sub ? '<p class="card-sub">' + sub + '</p>' : '') + '</div></div>';
+      (sub ? '<p class="card-sub">' + sub + '</p>' : '') +
+      (result ? '<p class="card-result">' + result + '</p>' : '') + '</div></div>';
   }
 
   /**
@@ -937,6 +1094,15 @@
       const extra = rows.filter(row => row && !(pinned || []).some(item => same(item[key], row[key])));
       return kept.concat(extra);
     };
+    // The structured layout's free card names the signature patterns; the
+    // full report explains them. Pinned by id, so a name the reader has seen
+    // on their card is the name the report uses.
+    if ((card.patterns || []).length) {
+      out.patterns = card.patterns.map(pinned => {
+        const written = (full.patterns || []).find(row => row && row.id === pinned.id) || {};
+        return Object.assign({ line: pinned.line }, written, { id: pinned.id, name: pinned.name });
+      });
+    }
     if (card.interests) out.interests = pinList(card.interests, full.interests, 'name');
     if (card.values) out.values = pinList(card.values, full.values, 'value');
     if (card.beliefs) out.beliefs = pinList(card.beliefs, full.beliefs, 'belief');
@@ -1190,14 +1356,16 @@
     const badge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
     return '<div class="card section-card paid-card ' + section.cardClass +
       '" data-paid="' + esc(section.key) + '">' +
-      sectionHead(section.icon, esc(section.title()) + badge, esc(section.sub()), true) +
+      sectionHead(section.icon, esc(options && options.title ? options.title : section.title()) + badge,
+        esc(options && options.sub ? options.sub : section.sub()), true,
+        data && options && options.result ? options.result(data) : '') +
       '<div class="premium-cover"' + (data ? ' hidden' : '') + '>' +
       '<h3>' + esc(section.coverTitle()) + '</h3>' +
       '<p>' + esc(section.coverBlurb()) + '</p>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="' + Boolean(data) + '"' +
       (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button></div>' +
       '<div class="premium-body"' + (data ? '' : ' hidden') + '>' +
-      (data ? section.body(data) : '') + '</div></div>';
+      (data ? ((options && options.body) || section.body)(data) + ((options && options.extra) || '') : '') + '</div></div>';
   }
 
   /**
@@ -1252,6 +1420,26 @@
     { icon: '🕳️', title: () => TEXT.bonus, blurb: () => TEXT.explainRoast },
   ];
 
+  /**
+   * EXPLAINED_SECTIONS, plus what the structured layout adds — the patterns
+   * after the portrait, the motivators beside the lists, and the development
+   * plan before the roast — when that is the layout this server writes.
+   */
+  function explainedSections() {
+    if (reportLayout() !== 'structured') return EXPLAINED_SECTIONS;
+    const S = Copy.STRUCTURED;
+    const rows = EXPLAINED_SECTIONS.map(row => row.title() === TEXT.explainTypesTitle
+      ? { icon: row.icon, title: () => S.explainTypeTitle, blurb: () => S.explainType } : row);
+    const at = title => rows.findIndex(row => row.title() === title);
+    rows.splice(at(TEXT.whoYouAre) + 1, 0,
+      { icon: '🧵', title: () => S.titles.patterns, blurb: () => S.explainPatterns });
+    rows.splice(at(TEXT.explainListsTitle), 0,
+      { icon: '🧲', title: () => S.titles.motivators, blurb: () => S.explainMotivators });
+    rows.splice(at(TEXT.bonus), 0,
+      { icon: '🌱', title: () => S.titles.development, blurb: () => S.explainDevelopment });
+    return rows;
+  }
+
   function tierItemsHtml(rows, blurbOf) {
     return rows.map(row =>
       '<li class="premium-tier-item">' +
@@ -1276,7 +1464,7 @@
       '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
       // One list: the explanations and the four premium sections are one
       // purchase, and splitting them made the four read as an afterthought.
-      '<ul class="premium-tier-list">' + tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) +
+      '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
       tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
       premiumUnlockLabel(false) + '</button>' +
@@ -1362,7 +1550,7 @@
   function premiumTierHtml() {
     // The same descriptions the locked block under a free card uses, so the
     // offer reads the same on the way in as at the moment of paying.
-    const items = tierItemsHtml(EXPLAINED_SECTIONS, row => row.blurb()) +
+    const items = tierItemsHtml(explainedSections(), row => row.blurb()) +
       tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb());
     return '<div class="premium-tier">' +
       '<div class="premium-tier-head">' +
@@ -1565,6 +1753,7 @@
       $('#sample-card-hint').textContent = TEXT.cardHint;
       setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));
       collapseSections($('#sample-body'));
+      watchPartNav($('#sample-sections'));
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
       // Both of these run after showModal, not before, and for the same
@@ -2076,6 +2265,44 @@
     }
     const hide = event.target.closest('.bonus-hide');
     if (hide) hideRoast(hide);
+  });
+
+  // A pattern chip in the structured layout: opens the signature-patterns
+  // section in the same report and brings that pattern into view. Buttons
+  // rather than #fragment links, because the hash is how a shared card
+  // arrives (consumeIncomingLink) and must not be written by anything else.
+  document.addEventListener('click', event => {
+    const chip = event.target.closest('.pattern-chip');
+    if (!chip) return;
+    const scope = chip.closest('#sample-body') || chip.closest('#profile-body') || document;
+    const target = scope.querySelector('[data-pattern-card="' + chip.getAttribute('data-pattern') + '"]');
+    if (!target) return;
+    const card = target.closest('.section-card');
+    if (card) setSectionOpen(card, true);
+    target.classList.add('is-highlighted');
+    setTimeout(() => target.classList.remove('is-highlighted'), 1600);
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // The structured layout's part nav: jump to a part, in whichever report
+  // (the reader's own or the sample) the nav belongs to.
+  document.addEventListener('click', event => {
+    const item = event.target.closest('.part-nav-item');
+    if (!item) return;
+    const scope = item.closest('.part-nav').parentElement;
+    const target = scope && scope.querySelector('.report-part[data-part="' + item.getAttribute('data-part-target') + '"]');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  // Ticking an action off the plan. Kept on this device only, by a hash of
+  // the action's wording, under KEYS.plan — so Delete everything clears it.
+  document.addEventListener('change', event => {
+    const box = event.target.closest && event.target.closest('.plan-check');
+    if (!box || box.disabled) return;
+    const done = store.read(KEYS.plan, {}) || {};
+    const key = box.getAttribute('data-plan-key');
+    if (box.checked) done[key] = true; else delete done[key];
+    store.write(KEYS.plan, done);
   });
 
   // Opening and shutting a section. Delegated for the same reason as the two
@@ -3831,6 +4058,894 @@
       (dated ? ' title="' + esc(TEXT.trajectoryNote) + '"' : '') + '>' + esc(text) + '</span>';
   }
 
+  // ---------- section bodies shared by both report layouts ----------
+  //
+  // Lifted out of reportSectionsHtml so the classic and the structured layout
+  // draw these blocks with the same markup. Output is unchanged from when
+  // they were inline.
+
+  function mbtiAxesHtml(mbti) {
+    return '<div class="axes">' + (mbti.letters || []).map(letter => {
+      const pole = axisLabel(letter.choice, letter.axis);
+      return '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
+        '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
+        (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
+        '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
+        // One passage carrying both the case for the letter and the behaviour
+        // that tempers it. This was briefly two blocks — an argument and a
+        // labelled "case against" beneath it — which made every axis read as a
+        // debate transcript rather than as an analysis, and gave the contrary
+        // evidence the same visual weight as the finding whatever its actual
+        // weight. The tempering is a clause in the same paragraph now, the way
+        // a Big Five trait's reading carries its own qualifications.
+        '<p>' + esc(letter.why) + '</p>' +
+        // A report written before that merge still has the separate field;
+        // append it rather than dropping a paragraph of real analysis on the
+        // floor. New reports never take this branch.
+        (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') +
+        (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
+        '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  /** `extra` is appended inside the card — the structured layout's pattern links. */
+  function enneagramCardHtml(enneagram, head, extra, sub) {
+    if (!enneagram) return '';
+    const badge = esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '');
+    return '<div class="card section-card">' +
+      head('🔢', esc(TEXT.enneagramPrefix) + badge +
+        (enneagram.nickname ? ' <span class="type-nickname">' + esc(enneagram.nickname) + '</span>' : ''),
+        sub || esc(TEXT.mbtiConfidence) + esc(enneagram.confidence)) +
+      '<p>' + esc(enneagram.why) + '</p>' +
+      '<p class="fineprint">' + esc(enneagram.caveat) + '</p>' + (extra || '') + '</div>';
+  }
+
+  function interestsHtml(interests) {
+    if (!(interests || []).length) return '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
+    return '<div class="tile-grid">' + interests.map(item =>
+      '<div class="tile tile-' + esc(item.intensity) + '">' +
+      '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span>' +
+      trajectoryPill(item) + '</h4>' +
+      '<p>' + esc(item.detail) + '</p>' +
+      '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
+  }
+
+  function valuesBeliefsHtml(report) {
+    let html = '<h3>' + esc(TEXT.values) + '</h3>';
+    html += (report.values || []).length
+      ? '<div class="tile-grid">' + report.values.map(item =>
+        '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
+        '<p>' + esc(item.detail) + '</p>' +
+        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
+      : '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
+    html += '<h3>' + esc(TEXT.beliefs) + '</h3>';
+    html += (report.beliefs || []).length
+      ? '<div class="tile-grid">' + report.beliefs.map(item =>
+        '<div class="tile"><h4>' + esc(item.belief) +
+        '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span></h4>' +
+        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
+      : '<p class="muted">' + esc(TEXT.beliefsEmpty) + '</p>';
+    return html;
+  }
+
+  function careerDescriptionHtml(career) {
+    return '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(career.strengths) + '</div>' +
+      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(career.weaknesses) + '</div></div>' +
+      '<h3>' + esc(TEXT.howYouWork) + '</h3><p>' + esc(career.workStyle) + '</p>' +
+      '<h3>' + esc(TEXT.holdBack) + '</h3><p>' + esc(career.watchOuts) + '</p>';
+  }
+
+  function activityFacetsHtml(activity) {
+    let html = '<div class="facet-grid">';
+    for (const [label, key] of Copy.ACTIVITY_FACETS) {
+      const facet = activity[key];
+      if (!facet) continue;
+      html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
+        '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
+    }
+    return html + '</div>';
+  }
+
+  // ---------- the structured layout ----------
+  //
+  // Four parts with one thread through them, set by the server's
+  // PSYCHEAI_REPORT_LAYOUT (see lib/prompts.js) and readable on any page with
+  // ?layout=classic or ?layout=structured, so the two can be compared side by
+  // side on the same report. The classic layout is reportSectionsHtml below,
+  // untouched; nothing here runs unless this layout is chosen.
+  //
+  // Every section here follows one template: what it measures (a fixed
+  // definition line, shown while the section is open), what it found (a
+  // one-line result, shown even when it is shut, so the closed report reads
+  // as a summary), the read, the chart, and the patterns it connects to. Each
+  // pattern has its own colour, carried by every chip, card and plan item
+  // that comes from it, so the thread is visible as well as written. Reports
+  // written before the structured fields existed still render: each block is
+  // drawn only when its field is there.
+
+  function reportLayout() {
+    let forced = '';
+    try { forced = new URLSearchParams(window.location.search).get('layout') || ''; } catch (error) { /* none */ }
+    if (forced === 'classic' || forced === 'structured') return forced;
+    return state.server && state.server.reportLayout === 'structured' ? 'structured' : 'classic';
+  }
+
+  /** The patterns worth drawing: known ids, named, one each, in id order. */
+  function signaturePatterns(report) {
+    const seen = new Set();
+    return (Array.isArray(report && report.patterns) ? report.patterns : [])
+      .filter(p => p && /^p[1-3]$/.test(p.id) && String(p.name || '').trim() && !seen.has(p.id) && seen.add(p.id))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  function patternNumber(id) {
+    return String(id || '').replace(/^p/, '');
+  }
+
+  /** The class that gives an element its pattern's colour, or none. */
+  function patternClass(id) {
+    return /^p[1-3]$/.test(String(id || '')) ? ' pat-' + id : '';
+  }
+
+  function patternChip(pattern) {
+    return '<button type="button" class="pattern-chip' + patternClass(pattern.id) + '" data-pattern="' + esc(pattern.id) + '">' +
+      '<span class="pattern-dot" aria-hidden="true">' + esc(patternNumber(pattern.id)) + '</span>' +
+      esc(pattern.name) + '</button>';
+  }
+
+  /** The "Connects to" row closing a section: the patterns that show up in it. */
+  function connectsHtml(patterns, sectionKey) {
+    const here = patterns.filter(p => (p.showsUpIn || []).includes(sectionKey));
+    if (!here.length) return '';
+    return '<div class="connects"><span class="connects-label">' + esc(Copy.STRUCTURED.connectsTo) + '</span>' +
+      here.map(patternChip).join('') + '</div>';
+  }
+
+  function sectionNameChips(keys) {
+    const names = Copy.STRUCTURED.sectionNames;
+    const list = (keys || []).filter(key => names[key]);
+    if (!list.length) return '';
+    return list.map(key => '<span class="section-chip">' + esc(names[key]) + '</span>').join('');
+  }
+
+  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
+
+  function partHeadHtml(key) {
+    const part = Copy.STRUCTURED.parts[key];
+    const at = PART_ORDER.indexOf(key);
+    // A large numeral for the four parts, the overview's 00 and none for the
+    // appendix, which sits outside the numbered report on purpose.
+    const numeral = key === 'appendix' ? '' : String(Math.max(0, at)).padStart(2, '0');
+    return '<div class="report-part" data-part="' + esc(key) + '">' +
+      (numeral ? '<span class="part-num" aria-hidden="true">' + numeral + '</span>' : '') +
+      '<div><span class="part-label">' + esc(part.label) + '</span>' +
+      '<h2 class="part-title">' + esc(part.title) + '</h2>' +
+      '<p class="part-intro">' + esc(part.intro) + '</p></div></div>';
+  }
+
+  /** The sticky row of parts at the top of the report; watchPartNav lights the current one. */
+  function partNavHtml(hasAppendix) {
+    const S = Copy.STRUCTURED;
+    const keys = PART_ORDER.concat(hasAppendix ? ['appendix'] : []);
+    return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' + keys.map(key =>
+      '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '">' +
+      esc(S.partNavShort[key]) + '</button>').join('') + '</nav>';
+  }
+
+  function aboutCardHtml() {
+    const S = Copy.STRUCTURED;
+    return '<div class="card section-card about-card">' +
+      sectionHead('📘', esc(S.titles.about), '', true) +
+      '<div class="about-grid">' + S.about.map(([title, body], i) =>
+        '<div class="about-tile"><span class="about-icon" aria-hidden="true">' + esc(S.aboutIcons[i] || '') + '</span>' +
+        '<h3>' + esc(title) + '</h3><p>' + esc(body) + '</p></div>').join('') + '</div>' +
+      // One meaning per colour, said once, and held to everywhere below.
+      '<div class="colour-key"><h3>' + esc(S.colourKeyTitle) + '</h3><ul>' + S.colourKey.map(([kind, text]) =>
+        '<li><span class="swatch swatch-' + esc(kind) + '" aria-hidden="true"></span>' + esc(text) + '</li>').join('') +
+      '</ul></div></div>';
+  }
+
+  function patternsCardHtml(patterns) {
+    const S = Copy.STRUCTURED;
+    return '<div class="card section-card patterns-card">' +
+      sectionHead('🧵', esc(S.titles.patterns), esc(S.definitions.patterns), true,
+        patterns.map(p => esc(p.name)).join(' · ')) +
+      '<div class="pattern-list">' + patterns.map(p =>
+        '<div class="pattern' + patternClass(p.id) + '" data-pattern-card="' + esc(p.id) + '">' +
+        '<span class="pattern-badge" aria-hidden="true">' + esc(patternNumber(p.id)) + '</span>' +
+        '<div><h3>' + esc(p.name) + '</h3><p>' + esc(p.line) + '</p>' + evidence(p.evidence) +
+        ((p.showsUpIn || []).length
+          ? '<p class="pattern-where"><span class="connects-label">' + esc(S.showsUpIn) + '</span>' +
+            sectionNameChips(p.showsUpIn) + '</p>' : '') +
+        '</div></div>').join('') + '</div></div>';
+  }
+
+  /** One sentence shown, the rest of a reading and its evidence behind "More". */
+  function readingWithMore(text, evidenceItems) {
+    const sentences = splitSentences(text);
+    const first = sentences.shift() || '';
+    const rest = sentences.join(' ');
+    const ev = evidence(evidenceItems);
+    return (first ? '<p class="trait-reading">' + esc(first) + '</p>' : '') +
+      (rest || ev ? '<details class="more"><summary>' + esc(Copy.STRUCTURED.more) + '</summary>' +
+        (rest ? '<p class="trait-reading">' + esc(rest) + '</p>' : '') + ev + '</details>' : '');
+  }
+
+  /** One Big Five trait on a spectrum: both poles named, the typical band shaded. */
+  function bipolarBarHtml(trait, item, mark) {
+    const S = Copy.STRUCTURED;
+    const score = Math.min(100, Math.max(0, Math.round(Number(item.score) || 0)));
+    const poles = S.poles[trait] || ['', ''];
+    const band = S.typicalBand;
+    return '<div class="trait-block bipolar' + (mark ? ' is-' + mark : '') + '">' +
+      '<div class="bipolar-head"><span class="trait-label">' + esc(TRAIT_LABELS[trait]) +
+      (item.band ? ' · ' + esc(item.band) : '') +
+      (mark ? ' <span class="trait-flag">' + esc(S.flags[mark]) + '</span>' : '') + '</span>' +
+      '<span class="trait-num">' + score + '</span></div>' +
+      '<div class="bipolar-track" role="img" aria-label="' + esc(TRAIT_LABELS[trait] + ': ' + score +
+        ' of 100, between ' + poles[0].toLowerCase() + ' and ' + poles[1].toLowerCase()) + '">' +
+      '<span class="bipolar-band" data-left="' + band[0] + '" data-fill="' + (band[1] - band[0]) + '"></span>' +
+      '<span class="bipolar-mid"></span>' +
+      '<span class="bipolar-marker" data-left="' + score + '"></span></div>' +
+      '<div class="bipolar-poles"><span>' + esc(poles[0]) + '</span><span>' + esc(poles[1]) + '</span></div>' +
+      readingWithMore(item.reading, item.evidence) + '</div>';
+  }
+
+  /** The highest and lowest of the five, by score. */
+  function bigFiveExtremes(bigFive) {
+    const rows = Object.keys(TRAIT_LABELS).filter(t => bigFive && bigFive[t])
+      .map(t => ({ trait: t, score: Math.round(Number(bigFive[t].score) || 0) }));
+    if (rows.length < 2) return {};
+    const sorted = rows.slice().sort((a, b) => b.score - a.score);
+    return { high: sorted[0], low: sorted[sorted.length - 1] };
+  }
+
+  function bigFiveStructuredHtml(bigFive) {
+    const S = Copy.STRUCTURED;
+    const ends = bigFiveExtremes(bigFive);
+    let html = '<p class="scale-legend"><span class="legend-band" aria-hidden="true"></span>' +
+      esc(S.typicalLabel) + '<span class="legend-marker" aria-hidden="true"></span>' + esc(S.yourScore) + '</p>';
+    for (const trait of Object.keys(TRAIT_LABELS)) {
+      if (!bigFive || !bigFive[trait]) continue;
+      const mark = ends.high && ends.high.trait === trait ? 'high' : ends.low && ends.low.trait === trait ? 'low' : '';
+      html += bipolarBarHtml(trait, bigFive[trait], mark);
+    }
+    return html;
+  }
+
+  /**
+   * MBTI as four sliders, one per axis: the two poles at the ends and a marker
+   * pushed towards the chosen one by how firmly it was chosen. The letter's
+   * whole case sits behind "Why"; what it means going forward stays in view.
+   */
+  const AXIS_POLES = { 'E/I': ['E', 'I'], 'N/S': ['N', 'S'], 'T/F': ['T', 'F'], 'J/P': ['J', 'P'] };
+  const STRENGTH_REACH = { slight: 16, moderate: 30, clear: 44 };
+
+  function mbtiSlidersHtml(mbti) {
+    const S = Copy.STRUCTURED;
+    return '<div class="mbti-sliders">' + (mbti.letters || []).map(letter => {
+      const axis = String(letter.axis || '').toUpperCase().replace(/\s/g, '');
+      const pair = AXIS_POLES[axis] || AXIS_POLES[Object.keys(AXIS_POLES).find(k => k.includes(letter.choice))] || ['', ''];
+      const toRight = letter.choice === pair[1];
+      const reach = STRENGTH_REACH[letter.strength] || STRENGTH_REACH.moderate;
+      const position = 50 + (toRight ? reach : -reach);
+      const left = Copy.MBTI_POLES[pair[0]] || { name: pair[0] };
+      const right = Copy.MBTI_POLES[pair[1]] || { name: pair[1] };
+      return '<div class="mbti-slider">' +
+        '<div class="slider-ends">' +
+          '<span class="' + (!toRight ? 'is-chosen' : '') + '"><b>' + esc(pair[0]) + '</b> ' + esc(left.name) + '</span>' +
+          '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
+          '<span class="' + (toRight ? 'is-chosen' : '') + '">' + esc(right.name) + ' <b>' + esc(pair[1]) + '</b></span>' +
+        '</div>' +
+        '<div class="slider-track" role="img" aria-label="' + esc((toRight ? right.name : left.name) + ', ' + (letter.strength || '')) + '">' +
+          '<span class="slider-mid"></span><span class="slider-marker" data-left="' + position + '">' + esc(letter.choice || '') + '</span>' +
+        '</div>' +
+        (letter.inPractice ? '<p class="slider-practice">' + esc(letter.inPractice) + '</p>' : '') +
+        ((letter.why || letter.counterEvidence)
+          ? '<details class="more"><summary>' + esc(S.why) + '</summary>' +
+            '<p>' + esc(letter.why) + '</p>' +
+            (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') + '</details>' : '') +
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Schwartz's circle: ten wedges in his order, each as long as its score and
+   * coloured by its higher-order group, so neighbours that rise together and
+   * opposites that trade off are visible at a glance. The bars below it carry
+   * the same numbers for anyone who cannot use the picture.
+   */
+  function motivatorCircleSvg(scores) {
+    const S = Copy.STRUCTURED;
+    const keys = Object.keys(S.motivators);
+    const cx = 170;
+    const cy = 150;
+    const inner = 16;
+    const outer = 108;
+    const pt = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    const f = n => Math.round(n * 10) / 10;
+    let rings = '';
+    for (const level of [25, 50, 75, 100]) {
+      rings += '<circle class="rose-ring" cx="' + cx + '" cy="' + cy + '" r="' + f(inner + (outer - inner) * level / 100) + '"/>';
+    }
+    let wedges = '';
+    let labels = '';
+    keys.forEach((key, i) => {
+      const a0 = -Math.PI / 2 + (i * 2 * Math.PI) / keys.length + 0.025;
+      const a1 = -Math.PI / 2 + ((i + 1) * 2 * Math.PI) / keys.length - 0.025;
+      const row = scores[key];
+      const value = row ? Math.min(100, Math.max(0, Number(row.score) || 0)) : 0;
+      const r = inner + (outer - inner) * value / 100;
+      const [x0, y0] = pt(r, a0);
+      const [x1, y1] = pt(r, a1);
+      const [i0x, i0y] = pt(inner, a0);
+      const [i1x, i1y] = pt(inner, a1);
+      wedges += '<path class="rose-wedge rose-' + esc(S.motivators[key].group) + '" d="M' + f(i0x) + ' ' + f(i0y) +
+        ' L' + f(x0) + ' ' + f(y0) + ' A' + f(r) + ' ' + f(r) + ' 0 0 1 ' + f(x1) + ' ' + f(y1) +
+        ' L' + f(i1x) + ' ' + f(i1y) + ' A' + inner + ' ' + inner + ' 0 0 0 ' + f(i0x) + ' ' + f(i0y) + ' Z">' +
+        '<title>' + esc(S.motivators[key].label + ': ' + Math.round(value)) + '</title></path>';
+      const mid = (a0 + a1) / 2;
+      const [lx, ly] = pt(outer + 12, mid);
+      const anchor = Math.abs(Math.cos(mid)) < 0.2 ? 'middle' : Math.cos(mid) > 0 ? 'start' : 'end';
+      labels += '<text class="rose-label" x="' + f(lx) + '" y="' + f(ly + 4) + '" text-anchor="' + anchor + '">' +
+        esc(S.motivators[key].short) + '</text>';
+    });
+    const top = keys.filter(k => scores[k]).sort((a, b) => scores[b].score - scores[a].score).slice(0, 3)
+      .map(k => S.motivators[k].label).join(', ');
+    return '<svg class="motive-rose" viewBox="-16 0 372 300" role="img" aria-label="' +
+      esc(S.titles.motivators + ': strongest ' + top) + '">' + rings + wedges + labels + '</svg>';
+  }
+
+  /** The circle, the three strongest, the reading, and all ten as bars behind "More". */
+  function motivatorsHtml(motivators) {
+    const S = Copy.STRUCTURED;
+    const scores = {};
+    for (const row of (motivators && motivators.scores) || []) {
+      if (row && S.motivators[row.value]) scores[row.value] = row;
+    }
+    if (!Object.keys(scores).length) return '';
+    let bars = '<div class="motive-chart">';
+    for (const group of Object.keys(S.motivatorGroups)) {
+      const rows = Object.keys(S.motivators).filter(key => S.motivators[key].group === group && scores[key]);
+      if (!rows.length) continue;
+      bars += '<div class="motive-group motive-' + esc(group) + '"><p class="motive-group-name">' +
+        esc(S.motivatorGroups[group]) + '</p>';
+      for (const key of rows) {
+        const row = scores[key];
+        const value = Math.min(100, Math.max(0, Math.round(Number(row.score) || 0)));
+        bars += '<div class="motive-row">' +
+          '<span class="motive-label">' + esc(S.motivators[key].label) +
+          '<small>' + esc(S.motivators[key].meaning) + '</small></span>' +
+          '<div class="bar motive-bar"><div class="bar-fill" data-fill="' + value + '"></div></div>' +
+          '<span class="trait-num">' + value + '</span>' +
+          (row.line ? '<p class="motive-line">' + esc(row.line) + '</p>' : '') + '</div>';
+      }
+      bars += '</div>';
+    }
+    bars += '</div>';
+    const legend = '<p class="rose-legend">' + Object.keys(S.motivatorGroups).map(group =>
+      '<span class="rose-key rose-key-' + esc(group) + '">' + esc(S.motivatorGroups[group]) + '</span>').join('') + '</p>';
+    return '<div class="motive-top-grid">' + motivatorCircleSvg(scores) +
+      '<div>' + legend + (motivators.reading ? '<div class="callout">' + paragraphs(motivators.reading) + '</div>' : '') +
+      '</div></div>' +
+      '<details class="more"><summary>' + esc(S.allTen) + '</summary>' + bars + '</details>';
+  }
+
+  function topMotivators(motivators, n) {
+    const S = Copy.STRUCTURED;
+    return ((motivators && motivators.scores) || []).filter(row => row && S.motivators[row.value])
+      .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, n)
+      .map(row => S.motivators[row.value].label);
+  }
+
+  /** Interests with one marker for where each is heading, instead of two pills. */
+  function interestsStructuredHtml(interests) {
+    const S = Copy.STRUCTURED;
+    if (!(interests || []).length) return '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
+    return '<div class="tile-grid">' + interests.map(item => {
+      const trajectory = String(item.trajectory || '').trim();
+      const label = TEXT.trajectoryLabels[trajectory] || '';
+      const year = String(item.lastSeen || '').trim();
+      const stale = /^(dormant|declining|phasic)$/.test(trajectory) && /^\d{4}$/.test(year);
+      return '<div class="tile tile-' + esc(item.intensity) + '">' +
+        '<h4>' + esc(item.name) + '</h4>' +
+        (label ? '<p class="trend trend-' + esc(trajectory) + '"><span aria-hidden="true">' +
+          esc(S.trendIcons[trajectory] || '') + '</span> ' + esc(label + (stale ? ' · ' + year : '')) +
+          (item.intensity ? ' · ' + esc(item.intensity) : '') + '</p>' : '') +
+        '<p>' + esc(item.detail) + '</p>' +
+        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * Values and beliefs as one list, no subsections: both answer "what do you
+   * hold to", and a belief carries a small tag and its confidence rather than
+   * a heading of its own.
+   */
+  function standForHtml(report) {
+    const values = (report.values || []).filter(item => item && item.value);
+    const beliefs = (report.beliefs || []).filter(item => item && item.belief);
+    if (!values.length && !beliefs.length) return '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
+    return '<div class="tile-grid">' +
+      values.map(item => '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
+        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') +
+      beliefs.map(item => '<div class="tile tile-belief"><h4>' + esc(item.belief) +
+        '<span class="pill pill-belief">' + esc(Copy.STRUCTURED.beliefTag) + '</span>' +
+        (item.confidence ? '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span>' : '') + '</h4>' +
+        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') +
+      '</div>';
+  }
+
+  /** Receiving on the left, giving on the right, so where the two differ shows. */
+  function loveMirrorHtml(languages) {
+    const S = Copy.STRUCTURED;
+    if (!languages) return '';
+    const weight = { primary: 3, secondary: 2, minor: 1 };
+    const level = (list, name) => {
+      const row = (list || []).find(item => item && item.language === name);
+      return row ? weight[row.strength] || 1 : 0;
+    };
+    const names = Object.keys(LOVE_LANGUAGE_ICONS);
+    const rows = names.filter(name => level(languages.receiving, name) || level(languages.giving, name));
+    if (!rows.length) return '';
+    const bar = (n, side) => '<span class="mirror-bar mirror-' + side + '"><span class="mirror-fill" data-fill="' +
+      Math.round(n / 3 * 100) + '"></span></span>';
+    return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3>' +
+      '<div class="love-mirror"><p class="mirror-heads"><span>' + esc(S.loveReceives) + '</span><span></span><span>' +
+      esc(S.loveGives) + '</span></p>' +
+      rows.map(name => '<div class="mirror-row">' + bar(level(languages.receiving, name), 'in') +
+        '<span class="mirror-name"><span aria-hidden="true">' + esc(LOVE_LANGUAGE_ICONS[name] || '') + '</span> ' +
+        esc(name) + '</span>' + bar(level(languages.giving, name), 'out') + '</div>').join('') + '</div>' +
+      '<details class="more"><summary>' + esc(S.more) + '</summary>' + loveLanguageBlock(languages)
+        .replace('<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3>', '') + '</details>';
+  }
+
+  /**
+   * Where an attachment leaning sits on the two dimensions the research uses —
+   * anxiety and avoidance — as a soft area rather than a point, because the
+   * read is a leaning from behaviour, not a measurement. Placed from the
+   * words of the style itself: the first style named is the base, any other
+   * named pulls it part of the way over.
+   */
+  function attachmentPlace(style) {
+    const text = String(style || '').toLowerCase().replace(/fearful[\s-]*avoidant/g, 'fearful');
+    const centres = { secure: [28, 28], anxious: [28, 72], avoidant: [72, 28], fearful: [72, 72] };
+    const found = Object.keys(centres).map(key => ({ key, at: text.indexOf(key) }))
+      .filter(row => row.at >= 0).sort((a, b) => a.at - b.at);
+    if (!found.length) return null;
+    const base = centres[found[0].key].slice();
+    for (const other of found.slice(1)) {
+      base[0] += (centres[other.key][0] - centres[found[0].key][0]) * 0.35;
+      base[1] += (centres[other.key][1] - centres[found[0].key][1]) * 0.35;
+    }
+    return { x: base[0], y: base[1], style: found[0].key };
+  }
+
+  function attachmentMapSvg(style) {
+    const S = Copy.STRUCTURED;
+    const place = attachmentPlace(style);
+    if (!place) return '';
+    const px = v => 30 + v * 1.8;
+    const py = v => 210 - v * 1.8;
+    return '<figure class="attach-map"><svg viewBox="0 0 220 240" role="img" aria-label="' +
+      esc(S.attachMapLabel + ': ' + style) + '">' +
+      '<rect class="attach-q" x="30" y="30" width="180" height="180"/>' +
+      '<line class="attach-axis" x1="120" y1="30" x2="120" y2="210"/><line class="attach-axis" x1="30" y1="120" x2="210" y2="120"/>' +
+      '<text class="attach-q-label" x="75" y="196" text-anchor="middle">' + esc(S.attachQuadrants.secure) + '</text>' +
+      '<text class="attach-q-label" x="75" y="48" text-anchor="middle">' + esc(S.attachQuadrants.anxious) + '</text>' +
+      '<text class="attach-q-label" x="165" y="196" text-anchor="middle">' + esc(S.attachQuadrants.avoidant) + '</text>' +
+      '<text class="attach-q-label" x="165" y="48" text-anchor="middle">' + esc(S.attachQuadrants.fearful) + '</text>' +
+      '<circle class="attach-blob" cx="' + px(place.x) + '" cy="' + py(place.y) + '" r="30"/>' +
+      '<circle class="attach-dot" cx="' + px(place.x) + '" cy="' + py(place.y) + '" r="5"/>' +
+      '<text class="attach-axis-label" x="120" y="228" text-anchor="middle">' + esc(S.attachAxes.avoidance) + ' →</text>' +
+      '<text class="attach-axis-label" x="12" y="120" text-anchor="middle" transform="rotate(-90 12 120)">' +
+      esc(S.attachAxes.anxiety) + ' →</text></svg>' +
+      '<figcaption>' + esc(S.attachMapNote) + '</figcaption></figure>';
+  }
+
+  function idealPartnerStructuredBody(idealPartner) {
+    const col = (items, kind, title) => '<div class="partner-col partner-' + kind + '"><h3>' +
+      '<span aria-hidden="true">' + (kind === 'need' ? '✓' : '⚠') + '</span> ' + esc(title) + '</h3>' + points(items) + '</div>';
+    return (idealPartner.summary ? '<p class="pull-quote">' + esc(idealPartner.summary) + '</p>' : '') +
+      '<div class="split">' + col(idealPartner.needs, 'need', TEXT.idealPartnerNeeds) +
+      col(idealPartner.carefulOf, 'careful', TEXT.idealPartnerCarefulOf) + '</div>';
+  }
+
+  /**
+   * Actions on a three-step timeline: this week, this quarter, this year. Used
+   * by the development plan and by How you work, so every action in the
+   * report reads the same way. Each can be ticked off on this device.
+   */
+  function planKey(text) {
+    let hash = 0;
+    for (const ch of String(text || '')) hash = (hash * 31 + ch.codePointAt(0)) | 0;
+    return 'a' + (hash >>> 0).toString(36);
+  }
+
+  function timelineHtml(actions, sample) {
+    const S = Copy.STRUCTURED;
+    const done = sample ? {} : store.read(KEYS.plan, {}) || {};
+    const horizons = Object.keys(TEXT.careerHorizons);
+    const items = (actions || []).filter(a => a && (a.step || a.title));
+    if (!items.length) return '';
+    return '<div class="timeline">' + horizons.map((horizon, i) => {
+      const here = items.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon)));
+      return '<div class="timeline-col"><p class="timeline-head"><span class="timeline-dot" aria-hidden="true"></span>' +
+        esc(TEXT.careerHorizons[horizon]) + '</p>' +
+        (here.length ? here.map(a => {
+          const text = a.step || a.title;
+          const key = planKey(text);
+          return '<label class="plan-step' + patternClass(a.pattern) + '">' +
+            '<input type="checkbox" class="plan-check" data-plan-key="' + key + '"' + (done[key] ? ' checked' : '') +
+            (sample ? ' disabled' : '') + '>' +
+            '<span><b>' + esc(text) + '</b>' + (a.detail ? '<small>' + esc(a.detail) + '</small>' : '') +
+            (a.from ? '<small class="plan-from">' + esc(a.from) + '</small>' : '') + '</span></label>';
+        }).join('') : '<p class="muted timeline-empty">' + esc(S.nothingYet) + '</p>') + '</div>';
+    }).join('') + '</div>';
+  }
+
+  /**
+   * How you work as one section: how they work, the edge and their other
+   * strengths, everything holding them back as one list, and what they are not
+   * using. The description and the coach's read used to sit side by side and
+   * say the same things twice; the actions are on the development plan.
+   */
+  function workStructuredBody(career, coaching) {
+    const S = Copy.STRUCTURED;
+    let html = '';
+    const lead = [career.workStyle, coaching && coaching.situation].filter(Boolean);
+    if (lead.length) html += '<div class="work-lead">' + lead.map(text => '<p>' + esc(text) + '</p>').join('') + '</div>';
+    if (coaching && coaching.edge) {
+      html += '<div class="callout career-edge edge-hero"><span class="career-label">' + esc(TEXT.careerEdge) + '</span>' +
+        '<h3>' + esc(coaching.edge.headline) + '</h3><p>' + esc(coaching.edge.detail) + '</p>' +
+        evidence(coaching.edge.evidence) + '</div>';
+    }
+    const holding = [].concat(
+      coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
+      career.weaknesses || [],
+      career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
+    // Two columns: what sets them apart, and what holds them back. What they
+    // are not using is an untapped strength, not a cost, so it closes the
+    // strengths side rather than joining the list of costs.
+    const strengths = (career.strengths || []).concat(coaching && coaching.underused
+      ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
+    html += '<div class="split"><div><h3 class="h-good">' + esc(coaching && coaching.edge ? S.otherStrengths : TEXT.strengths) +
+      '</h3>' + points(strengths) + '</div>' +
+      '<div><h3 class="h-warn">' + esc(S.whatHoldsYouBack) + '</h3>' + points(holding) + '</div></div>';
+    return html;
+  }
+
+  /**
+   * In relationships as one section: how they attach, what they bring and
+   * where it gets hard, how they give and want care, and who suits them —
+   * three sections, a page apart, that kept restating each other.
+   */
+  function relationshipsStructuredBody(relationship, attachment, idealPartner) {
+    const S = Copy.STRUCTURED;
+    // Love languages first: the most concrete thing here, and the one a reader
+    // is most likely to act on tomorrow.
+    let html = loveMirrorHtml(relationship.loveLanguages);
+    if (relationship.loveLanguages) html += '<p class="fineprint touch-note">' + esc(S.touchNote) + '</p>';
+    if (attachment) {
+      html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
+        '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
+        (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
+        readingWithMore(attachment.why, attachment.derivedFrom) + '</div></div>' +
+        ((attachment.implications || []).length
+          ? '<details class="more"><summary>' + esc(S.inPractice) + '</summary>' + points(attachment.implications) + '</details>' : '') +
+        '<p class="fineprint">' + esc(attachment.caveat) + '</p>';
+    }
+    html += '<div class="split"><div><h3 class="h-good">' + esc(S.whatYouBring) + '</h3>' + points(relationship.strengths) + '</div>' +
+      '<div><h3 class="h-warn">' + esc(S.whereItGetsHard) + '</h3>' + points(relationship.weaknesses) + '</div></div>';
+    if (idealPartner) html += '<h3>' + esc(S.whoSuitsYou) + '</h3>' + idealPartnerStructuredBody(idealPartner);
+    return html;
+  }
+
+  /** Six tiles, coloured by band: steady, mixed, under strain, not enough evidence. Still no scores. */
+  function wellnessStructuredBody(wellness) {
+    let html = '<div class="wellness-tiles">';
+    for (const [label, key] of Copy.WELLNESS_FACETS) {
+      const facet = wellness[key];
+      if (!facet) continue;
+      const band = String(facet.band || '').replace(/\s+/g, '-').toLowerCase();
+      html += '<div class="wellness-tile wellness-tile-' + esc(band) + '">' +
+        '<div class="wellness-head"><span class="wellness-label">' + label + '</span>' + wellnessBand(facet.band) + '</div>' +
+        readingWithMore(facet.reading, facet.evidence) +
+        '<p class="wellness-confidence">' + esc(TEXT.wellnessConfidence) + esc(facet.confidence) + '</p></div>';
+    }
+    html += '</div>';
+    if (wellness.overall) html += '<div class="callout"><h3>' + esc(TEXT.wellnessOverall) + '</h3>' + paragraphs(wellness.overall) + '</div>';
+    // The suggestions are on the development plan's timeline, with every
+    // other action in the report.
+    html += '<p class="fineprint wellness-caveat">' + esc(TEXT.wellnessCaveat) + '</p>';
+    return html;
+  }
+
+  function wellnessResult(wellness) {
+    const counts = {};
+    for (const [, key] of Copy.WELLNESS_FACETS) {
+      const band = wellness[key] && wellness[key].band;
+      if (band) counts[band] = (counts[band] || 0) + 1;
+    }
+    return ['steady', 'mixed', 'under strain', 'not enough evidence'].filter(b => counts[b])
+      .map(b => counts[b] + ' ' + b).join(' · ');
+  }
+
+  function horizonPill(horizon) {
+    const label = TEXT.careerHorizons[horizon];
+    if (!label) return '';
+    return '<span class="pill horizon-pill horizon-' + esc(String(horizon).replace(/\s+/g, '-')) + '">' + esc(label) + '</span>';
+  }
+
+  function itemOrigin(item, byId) {
+    const S = Copy.STRUCTURED;
+    const pattern = byId[item.pattern];
+    const raised = sectionNameChips(item.raisedBy);
+    if (!pattern && !raised) return '';
+    return '<p class="origin">' +
+      (pattern ? '<span class="connects-label">' + esc(S.fromPattern) + '</span>' + patternChip(pattern) : '') +
+      (raised ? '<span class="connects-label">' + esc(S.raisedBy) + '</span>' + raised : '') + '</p>';
+  }
+
+  /**
+   * Build on, then the areas to develop, then every action from those areas
+   * on one timeline. The actions used to sit inside each area; gathered, they
+   * read as a plan rather than as a list of lists.
+   */
+  function developmentHtml(development, patterns, sample, extraActions) {
+    const S = Copy.STRUCTURED;
+    const byId = Object.fromEntries(patterns.map(p => [p.id, p]));
+    const buildOn = ((development && development.buildOn) || []).filter(item => item && item.title);
+    const develop = ((development && development.develop) || []).filter(item => item && item.title);
+    let html = '';
+    if (buildOn.length) {
+      html += '<h3 class="h-good">' + esc(S.titles.buildOn) + '</h3><div class="dev-list dev-grid">' +
+        buildOn.map(item => '<div class="dev-item dev-build' + patternClass(item.pattern) + '"><h4>' + esc(item.title) + '</h4>' +
+          '<p>' + esc(item.detail) + '</p>' + itemOrigin(item, byId) + '</div>').join('') + '</div>';
+    }
+    if (develop.length) {
+      html += '<h3 class="h-warn">' + esc(S.titles.develop) + '</h3><div class="dev-list dev-grid">' +
+        develop.map(item => '<div class="dev-item dev-develop' + patternClass(item.pattern) + '"><h4>' + esc(item.title) + '</h4>' +
+          '<p>' + esc(item.detail) + '</p>' +
+          (item.reflect ? '<p class="reflect"><span class="connects-label">' + esc(S.reflect) + '</span>' +
+            esc(item.reflect) + '</p>' : '') +
+          itemOrigin(item, byId) + '</div>').join('') + '</div>';
+    }
+    // Every action in the report, on one timeline: the develop areas', the
+    // work coaching's and the wellbeing suggestions'.
+    const actions = develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
+      .map(a => ({ horizon: a.horizon, step: a.step, pattern: item.pattern, from: item.title })))
+      .concat(extraActions || []);
+    const timeline = timelineHtml(actions, sample);
+    if (timeline) html += '<h3>' + esc(S.titles.plan) + '</h3>' + timeline;
+    return html;
+  }
+
+  function pressureLevelHtml(level) {
+    const S = Copy.STRUCTURED;
+    const levels = ['mild', 'moderate', 'marked'];
+    const at = levels.indexOf(level);
+    if (at < 0) return '';
+    return '<span class="pressure-level pressure-' + esc(level) + '" role="img" aria-label="' +
+      esc('Level: ' + S.levelLabels[level]) + '">' +
+      levels.map((_, i) => '<span class="pressure-step' + (i <= at ? ' is-on' : '') + '"></span>').join('') +
+      '<span class="pressure-word">' + esc(S.levelLabels[level]) + '</span></span>';
+  }
+
+  const PRESSURE_REACH = { mild: 30, moderate: 58, marked: 86 };
+
+  function pressurePointsHtml(points, patterns) {
+    const S = Copy.STRUCTURED;
+    const byId = Object.fromEntries(patterns.map(p => [p.id, p]));
+    const rows = (points || []).filter(item => item && item.strength);
+    return '<div class="pressure-list">' + rows.map(item =>
+      '<div class="pressure-item' + patternClass(item.pattern) + '">' +
+      '<div class="pressure-head"><h4>' + esc(item.strength) + '</h4>' + pressureLevelHtml(item.level) + '</div>' +
+      // From the strength at its best to what it turns into, with the marker
+      // at how far their data shows it has already tipped.
+      '<div class="gauge"><div class="gauge-track"><span class="gauge-marker" data-left="' +
+        (PRESSURE_REACH[item.level] || 50) + '"></span></div>' +
+      '<div class="gauge-ends"><span>' + esc(S.atBest) + '</span><span>' + esc(S.overusedPrefix) + esc(item.overused) + '</span></div></div>' +
+      (item.detail ? '<p>' + esc(item.detail) + '</p>' : '') +
+      ((item.earlySigns || []).length
+        ? '<p class="connects-label">' + esc(S.earlySigns) + '</p>' + list(item.earlySigns, 'ticks') : '') +
+      (item.mitigation ? '<p><span class="connects-label">' + esc(S.counterMove) + '</span>' + esc(item.mitigation) + '</p>' : '') +
+      (item.question ? '<p class="reflect"><span class="connects-label">' + esc(S.reflect) + '</span>' + esc(item.question) + '</p>' : '') +
+      itemOrigin({ pattern: item.pattern }, byId) +
+      '</div>').join('') + '</div>';
+  }
+
+  /** How much of each source the report actually read, as bars. */
+  function coverageBarsHtml() {
+    const S = Copy.STRUCTURED;
+    const sampling = state.digest && state.digest.coverage && state.digest.coverage.sampling;
+    if (!sampling) return '';
+    const rows = Object.keys(S.coverageLabels).map(key => {
+      const entry = sampling[key];
+      const shown = Number(entry && entry.shown);
+      const available = Number(entry && entry.available);
+      if (!(available > 0) || !Number.isFinite(shown)) return '';
+      const pct = Math.max(1, Math.min(100, Math.round(shown / available * 100)));
+      return '<div class="coverage-row"><span class="coverage-label">' + esc(S.coverageLabels[key]) + '</span>' +
+        '<div class="bar"><div class="bar-fill" data-fill="' + pct + '"></div></div>' +
+        '<span class="coverage-num">' + esc(shown.toLocaleString() + ' of ' + available.toLocaleString()) + '</span></div>';
+    }).filter(Boolean);
+    if (!rows.length) return '';
+    return '<p class="essence-label">' + esc(S.coverageTitle) + '</p><div class="coverage">' + rows.join('') + '</div>';
+  }
+
+  /** What was read, by whom, from which build — the closing section of Part 4. */
+  function methodCardHtml(report, sample) {
+    const S = Copy.STRUCTURED;
+    const digest = state.digest;
+    const sources = [TEXT.sourceInstagram]
+      .concat(digest && digest.google ? [TEXT.sourceGoogle] : [])
+      .concat(digest && digest.facebook ? [TEXT.sourceFacebook] : []);
+    const profile = sample ? null : state.profile;
+    const writers = profile
+      ? [profile.model, profile.premiumModel].filter(Boolean).filter((m, i, all) => all.indexOf(m) === i).join(', ')
+      : '';
+    const build = state.server && state.server.build;
+    const rows = [
+      sample ? null : [S.methodSources, sources.join(', ')],
+      [S.methodFormat, S.methodFormatValue],
+      writers ? [S.methodModel, writers] : null,
+      build && build.shortCommit ? [S.methodBuild, (build.version ? 'v' + build.version + ' · ' : '') + build.shortCommit] : null,
+    ].filter(Boolean);
+    return '<div class="card section-card confidence-card method-card">' +
+      sectionHead('🎯', esc(S.titles.method), esc(S.definitions.method)) +
+      confidenceBodyHtml(report) +
+      (sample ? '' : coverageBarsHtml()) +
+      '<dl class="method-list">' + rows.map(([k, v]) => '<dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd>').join('') + '</dl>' +
+      (sample ? '' : sourcesUsedHtml()) + '</div>';
+  }
+
+  function structuredSectionsHtml(report, options) {
+    const S = Copy.STRUCTURED;
+    const sample = Boolean(options && options.sample);
+    const patterns = signaturePatterns(report);
+    const connects = key => connectsHtml(patterns, key);
+    const head = (icon, title, defKey, result) =>
+      sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', true, result || '');
+    const unlocked = sample ? {} : paidAnalysis();
+    const paid = key => PAID_SECTIONS.find(section => section.key === key);
+    let html = partNavHtml(Boolean(report.bonus));
+
+    // Overview.
+    html += partHeadHtml('overview');
+    html += aboutCardHtml();
+    const headline = String((report.card && report.card.headline) || '').trim();
+    html += '<div class="card section-card summary-card">' +
+      head('👤', esc(S.titles.summary), 'summary', headline ? esc(headline) : '') +
+      (headline ? '<p class="pull-quote">' + esc(headline) + '</p>' : '') +
+      essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
+    if (patterns.length) html += patternsCardHtml(patterns);
+
+    // Part 1: who you are. MBTI first: the type is what most readers know and
+    // look for. The model still writes the Big Five first (the E/I letter is
+    // checked against the extraversion score); only the page order changed.
+    html += partHeadHtml('who');
+    const mbti = report.mbti || {};
+    // No type nickname ("The Protagonist"): the reader already has one
+    // character to identify with, and a second label competes with it.
+    html += '<div class="card section-card mbti-card">' +
+      head('🧭', esc(TEXT.mbtiPrefix) + esc(mbti.type), 'mbti',
+        esc(TEXT.mbtiConfidence + (mbti.confidence || ''))) +
+      '<div class="type-hero"><span class="type-code">' + esc(mbti.type) + '</span></div>' +
+      mbtiSlidersHtml(mbti) + '<p class="fineprint">' + esc(mbti.caveat) + '</p>' + connects('mbti') + '</div>';
+    const ends = bigFiveExtremes(report.bigFive);
+    html += '<div class="card section-card">' + head('📊', esc(TEXT.bigFive), 'bigFive',
+      ends.high ? esc(S.flags.high + ': ' + TRAIT_LABELS[ends.high.trait] + ' ' + ends.high.score + ' · ' +
+        S.flags.low + ': ' + TRAIT_LABELS[ends.low.trait] + ' ' + ends.low.score) : '') +
+      bigFiveStructuredHtml(report.bigFive) + connects('bigFive') + '</div>';
+
+    // Part 2: what drives you.
+    html += partHeadHtml('drives');
+    const motivators = motivatorsHtml(report.motivators);
+    if (motivators) {
+      html += '<div class="card section-card motivators-card">' +
+        head('🧲', esc(S.titles.motivators), 'motivators', esc(topMotivators(report.motivators, 3).join(' · '))) +
+        motivators + connects('motivators') + '</div>';
+    }
+    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests), 'interests',
+      esc((report.interests || []).slice(0, 3).map(i => i && i.name).filter(Boolean).join(' · '))) +
+      interestsStructuredHtml(report.interests) + connects('interests') + '</div>';
+    html += '<div class="card section-card">' + head('🧿', esc(TEXT.valuesBeliefs), 'values',
+      esc((report.values || []).slice(0, 3).map(v => v && v.value).filter(Boolean).join(' · '))) +
+      standForHtml(report) + connectsHtml(patterns.map(p => Object.assign({}, p, {
+        showsUpIn: ['values', 'beliefs'].some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
+      })), 'merged') + '</div>';
+
+    // Part 3: how you connect and work.
+    html += partHeadHtml('connect');
+    const relationship = report.relationship || {};
+    const love = relationship.loveLanguages || {};
+    const firstLanguage = list => ((list || []).find(l => l && l.language) || {}).language || '';
+    const attachment = unlocked.attachment;
+    const idealPartner = unlocked.idealPartner;
+    const closeness = attachment || idealPartner;
+    const premiumBadge = ' <span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>';
+    const connectsAny = keys => connectsHtml(patterns.map(p => Object.assign({}, p, {
+      showsUpIn: keys.some(key => (p.showsUpIn || []).includes(key)) ? ['merged'] : [],
+    })), 'merged');
+    html += '<div class="card section-card relationships-card' +
+      (closeness ? ' paid-card attachment-card" data-paid="attachment' : '') + '">' +
+      head('💞', esc(TEXT.relationships) + (closeness ? premiumBadge : ''), 'relationships',
+        esc([attachment && attachment.style,
+          firstLanguage(love.receiving) ? S.loveReceives + ': ' + firstLanguage(love.receiving) : ''].filter(Boolean).join(' · '))) +
+      relationshipsStructuredBody(relationship, attachment, idealPartner) +
+      connectsAny(['relationships', 'attachment', 'idealPartner']) + '</div>';
+    // Locked (the sample), the two premium halves keep their own covers.
+    if (!attachment) html += paidCard(paid('attachment'), unlocked, { sample });
+    if (!idealPartner) html += paidCard(paid('idealPartner'), unlocked, { sample });
+    // How you work: the description and the coach's read as one section.
+    // Locked, the coach's read keeps its own cover below.
+    const career = report.career || {};
+    const coaching = unlocked.careerAssessment;
+    html += '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
+      head('💼', esc(S.titles.work) + (coaching ? premiumBadge : ''), 'work',
+        coaching && coaching.edge ? esc(TEXT.careerEdge + ': ' + coaching.edge.headline) : '') +
+      workStructuredBody(career, coaching) + connects('work') + '</div>';
+    if (!coaching) html += paidCard(paid('careerAssessment'), unlocked, { sample });
+    html += paidCard(paid('wellness'), unlocked, { sample, title: S.titles.wellness, sub: S.definitions.wellness,
+      extra: connects('wellness'), body: wellnessStructuredBody, result: wellnessResult });
+
+    // Part 4: putting it together.
+    html += partHeadHtml('together');
+    const workActions = ((coaching && coaching.actions) || []).filter(a => a && a.title)
+      .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork }));
+    const wellnessActions = ((unlocked.wellness && unlocked.wellness.suggestions) || []).filter(a => a && a.title)
+      .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing }));
+    const development = developmentHtml(report.development, patterns, sample, workActions.concat(wellnessActions));
+    if (development) {
+      const develop = ((report.development && report.development.develop) || []).filter(i => i && i.title);
+      html += '<div class="card section-card development-card">' + head('🌱', esc(S.titles.development), 'development',
+        develop.length ? esc(S.titles.develop + ': ' + develop.map(i => i.title).join(' · ')) : '') +
+        development + '</div>';
+    }
+    const pressure = (report.pressurePoints || []).filter(item => item && item.strength);
+    if (pressure.length) {
+      const order = ['marked', 'moderate', 'mild'];
+      const worst = pressure.slice().sort((a, b) => order.indexOf(a.level) - order.indexOf(b.level))[0];
+      html += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints',
+        esc(S.watchMost + ': ' + worst.strength + ' → ' + worst.overused)) +
+        pressurePointsHtml(report.pressurePoints, patterns) + '</div>';
+    }
+    if (report.activity) {
+      html += '<div class="card section-card">' + head('📱', esc(S.titles.footprint), 'activity',
+        esc((report.activity.rhythm && report.activity.rhythm.headline) || '')) +
+        activityFacetsHtml(report.activity) + connects('activity') + '</div>';
+    }
+    html += methodCardHtml(report, sample);
+
+    // Appendix: the roast, after the method rather than in the middle of the
+    // report, so the professional read is whole before the unkind one starts.
+    if (report.bonus) html += partHeadHtml('appendix') + roastBlock(report.bonus);
+    return html;
+  }
+
+  /**
+   * Lights the part the reader is in on the sticky part nav. Called after a
+   * structured report is written into `root`; a no-op for any other layout.
+   */
+  let partObserver = null;
+  function watchPartNav(root) {
+    if (!root) return;
+    root.classList.toggle('layout-structured', Boolean(root.querySelector('.part-nav')));
+    const nav = root.querySelector('.part-nav');
+    if (!nav || typeof IntersectionObserver !== 'function') return;
+    if (partObserver) partObserver.disconnect();
+    const light = key => nav.querySelectorAll('.part-nav-item').forEach(button =>
+      button.classList.toggle('is-current', button.getAttribute('data-part-target') === key));
+    partObserver = new IntersectionObserver(entries => {
+      const visible = entries.filter(e => e.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (visible) light(visible.target.getAttribute('data-part'));
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    root.querySelectorAll('.report-part').forEach(part => partObserver.observe(part));
+    light('overview');
+  }
+
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
     // The free report is the card above this and nothing else. What sits
@@ -3843,6 +4958,7 @@
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         confidenceCardHtml(report, false);
     }
+    if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
     // Every section of the report body is a disclosure; sectionHead's other
     // caller — the scan page's QR-contents block — is not, so the default
     // stays off there and this local alias turns it on for the report only.
@@ -3879,77 +4995,22 @@
         (mbti.nickname ? ' <span class="type-nickname">' + esc(mbti.nickname) + '</span>' : ''),
         esc(TEXT.mbtiConfidence) + esc(mbti.confidence));
 
-    html += '<div class="axes">' + (mbti.letters || []).map(letter => {
-      const pole = axisLabel(letter.choice, letter.axis);
-      return '<div class="axis"><span class="axis-letter">' + esc(letter.choice) + '</span>' +
-        '<div><span class="axis-name">' + esc(pole.name) + '</span>' +
-        (pole.against ? '<span class="axis-against">' + esc(TEXT.mbtiOver) + esc(pole.against) + '</span>' : '') +
-        '<span class="pill pill-' + esc(letter.strength || 'moderate') + '">' + esc(letter.strength || '') + '</span>' +
-        // One passage carrying both the case for the letter and the behaviour
-        // that tempers it. This was briefly two blocks — an argument and a
-        // labelled "case against" beneath it — which made every axis read as a
-        // debate transcript rather than as an analysis, and gave the contrary
-        // evidence the same visual weight as the finding whatever its actual
-        // weight. The tempering is a clause in the same paragraph now, the way
-        // a Big Five trait's reading carries its own qualifications.
-        '<p>' + esc(letter.why) + '</p>' +
-        // A report written before that merge still has the separate field;
-        // append it rather than dropping a paragraph of real analysis on the
-        // floor. New reports never take this branch.
-        (letter.counterEvidence ? '<p>' + esc(letter.counterEvidence) + '</p>' : '') +
-        (letter.inPractice ? '<p class="muted">' + esc(letter.inPractice) + '</p>' : '') +
-        '</div></div>';
-    }).join('') + '</div>';
-
+    html += mbtiAxesHtml(mbti);
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
 
     // Enneagram: a short second lens right beside MBTI, not a wall of its own
     // — one type, one wing, one paragraph, no per-facet breakdown.
-    const enneagram = report.enneagram;
-    if (enneagram) {
-      const badge = esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '');
-      html += '<div class="card section-card">' +
-        head('🔢', esc(TEXT.enneagramPrefix) + badge +
-          (enneagram.nickname ? ' <span class="type-nickname">' + esc(enneagram.nickname) + '</span>' : ''),
-          esc(TEXT.mbtiConfidence) + esc(enneagram.confidence)) +
-        '<p>' + esc(enneagram.why) + '</p>' +
-        '<p class="fineprint">' + esc(enneagram.caveat) + '</p></div>';
-    }
+    html += enneagramCardHtml(report.enneagram, head, '');
 
     // Interests.
-    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests));
-    if ((report.interests || []).length) {
-      html += '<div class="tile-grid">' + report.interests.map(item =>
-        '<div class="tile tile-' + esc(item.intensity) + '">' +
-        '<h4>' + esc(item.name) + '<span class="pill pill-' + esc(item.intensity) + '">' + esc(item.intensity) + '</span>' +
-        trajectoryPill(item) + '</h4>' +
-        '<p>' + esc(item.detail) + '</p>' +
-        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>';
-    } else {
-      html += '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
-    }
-    html += '</div>';
+    html += '<div class="card section-card">' + head('✨', esc(TEXT.interests)) +
+      interestsHtml(report.interests) + '</div>';
 
     // Values and beliefs, together — they answer the same question from two
     // directions, and splitting them left two thin cards.
     html += '<div class="card section-card">' +
       head('🧿', esc(TEXT.valuesBeliefs), esc(TEXT.valuesBeliefsSub)) +
-      '<h3>' + esc(TEXT.values) + '</h3>';
-    html += (report.values || []).length
-      ? '<div class="tile-grid">' + report.values.map(item =>
-        '<div class="tile"><h4>' + esc(item.value) + trajectoryPill(item) + '</h4>' +
-        '<p>' + esc(item.detail) + '</p>' +
-        '<p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
-
-    html += '<h3>' + esc(TEXT.beliefs) + '</h3>';
-    html += (report.beliefs || []).length
-      ? '<div class="tile-grid">' + report.beliefs.map(item =>
-        '<div class="tile"><h4>' + esc(item.belief) +
-        '<span class="pill">' + esc(item.confidence) + esc(TEXT.confidenceSuffix) + '</span></h4>' +
-        '<p>' + esc(item.detail) + '</p><p class="tile-ev">' + esc(item.evidence) + '</p></div>').join('') + '</div>'
-      : '<p class="muted">' + esc(TEXT.beliefsEmpty) + '</p>';
-    html += '</div>';
+      valuesBeliefsHtml(report) + '</div>';
 
     // Relationships. The attachment read used to sit here as a callout and is
     // its own section further down now, below the wellness read.
@@ -3965,10 +5026,7 @@
     // history, and it read as advice in a section that is meant to describe.
     const career = report.career;
     html += '<div class="card section-card">' + head('💼', esc(TEXT.work)) +
-      '<div class="split"><div><h3 class="h-good">' + esc(TEXT.strengths) + '</h3>' + points(career.strengths) + '</div>' +
-      '<div><h3 class="h-warn">' + esc(TEXT.weaknesses) + '</h3>' + points(career.weaknesses) + '</div></div>' +
-      '<h3>' + esc(TEXT.howYouWork) + '</h3><p>' + esc(career.workStyle) + '</p>' +
-      '<h3>' + esc(TEXT.holdBack) + '</h3><p>' + esc(career.watchOuts) + '</p></div>';
+      careerDescriptionHtml(career) + '</div>';
 
     // Instagram behaviour: the part of the export nobody reads themselves.
     // It sits after the personality sections because it is the evidence
@@ -3978,15 +5036,8 @@
       // No sub-line and no closing caveat: the summary said in prose what the
       // four facets say with evidence attached, and the blind-spots note
       // duplicated the confidence section that closes the whole report.
-      html += '<div class="card section-card">' + head('📱', esc(TEXT.activity));
-      html += '<div class="facet-grid">';
-      for (const [label, key] of Copy.ACTIVITY_FACETS) {
-        const facet = activity[key];
-        if (!facet) continue;
-        html += '<div class="facet"><span class="facet-label">' + label + '</span>' +
-          '<h4>' + esc(facet.headline) + '</h4><p>' + esc(facet.detail) + '</p></div>';
-      }
-      html += '</div></div>';
+      html += '<div class="card section-card">' + head('📱', esc(TEXT.activity)) +
+        activityFacetsHtml(activity) + '</div>';
     }
 
     // The roast. Free, behind a click-to-reveal cover rather than a payment,
@@ -4046,7 +5097,15 @@
   function confidenceCardHtml(report, sample) {
     return '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
-      '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
+      confidenceBodyHtml(report) +
+      (sample ? '' : sourcesUsedHtml()) +
+      '</div>';
+  }
+
+  // The score, its rationale and what it was read off. Shared by the classic
+  // confidence card and the structured layout's method section.
+  function confidenceBodyHtml(report) {
+    return '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + Math.round(report.confidence.score) + '"></div></div>' +
       '<p><strong>' + esc(TEXT.trustScore) + Math.round(report.confidence.score) + '/100 (' + esc(report.confidence.level) + ').</strong> ' +
       // The card carries no rationale — that is part of the written report.
       (report.confidence.rationale ? esc(report.confidence.rationale) : '') + '</p>' +
@@ -4060,9 +5119,7 @@
         ? '<p class="essence-label">' + esc(TEXT.confidenceBasedOn) + '</p>' +
           '<p class="trait-evidence">' + report.confidence.basedOn
             .map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>'
-        : '') +
-      (sample ? '' : sourcesUsedHtml()) +
-      '</div>';
+        : '');
   }
 
   /**
@@ -4133,6 +5190,7 @@
     // time the report renders.
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained: hasExplanations(profile) }));
     collapseSections($('#profile-body'));
+    watchPartNav($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a
     // record of the run, not a finding, and closing the page with it means
@@ -4341,6 +5399,16 @@
       unlocked: unlockedSections(profile),
       // A free profile prints its card and the offer, not empty sections.
       cardOnly: !hasExplanations(profile),
+      // The structured layout's PDF, its method page and its running head.
+      // Ignored by the classic build.
+      layout: reportLayout(),
+      build: (() => {
+        const b = state.server && state.server.build;
+        return b && b.shortCommit ? (b.version ? 'v' + b.version + ' · ' : '') + b.shortCommit : '';
+      })(),
+      sources: [TEXT.sourceInstagram]
+        .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
+        .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : []),
     });
   }
 
@@ -4499,6 +5567,9 @@
     const clone = source.cloneNode(true);
     clone.style.transform = 'none';
     clone.style.margin = '0';
+    // The story card exports at its own size and no larger: one standard
+    // 1080 x 1920 image, whatever screen it was made on.
+    const scale = source.classList.contains('pc-story') ? 1 : CARD_IMAGE_SCALE;
     clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
 
     const markup = new XMLSerializer().serializeToString(clone);
@@ -4519,15 +5590,15 @@
     });
 
     const canvas = document.createElement('canvas');
-    canvas.width = width * CARD_IMAGE_SCALE;
-    canvas.height = height * CARD_IMAGE_SCALE;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
     const context = canvas.getContext('2d');
     // The card's own background is painted by its stylesheet, but a PNG with an
     // alpha channel behind it would go transparent wherever the radius rounds
     // the corners, which reads as a hole in every viewer that shows a dark page.
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.scale(CARD_IMAGE_SCALE, CARD_IMAGE_SCALE);
+    context.scale(scale, scale);
     context.drawImage(image, 0, 0);
 
     return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -6157,6 +7228,9 @@
     if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
     renderServerStatus();
     renderBuild(state.server.build);
+    // The welcome page's offer was drawn before the server said which layout
+    // it writes; redrawn once it has, so the list matches what is sold.
+    if (reportLayout() === 'structured') mountPremiumTiers();
 
     if (await consumeIncomingLink()) return;
     // Before the report below, because a job still running is newer than

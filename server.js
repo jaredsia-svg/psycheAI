@@ -335,6 +335,11 @@ async function handleStatus(response) {
     // Which build this is — the commit, the branch and when it started — so
     // the footer can say what a reader is running. See lib/version.js.
     build: BUILD,
+    // Which report layout the unlock writes and the page draws — structured
+    // (four parts, one thread) or classic. PSYCHEAI_REPORT_LAYOUT; see
+    // lib/prompts.js. The page reads this rather than deciding for itself, so
+    // switching back is one environment variable for both halves.
+    reportLayout: prompts.REPORT_LAYOUT,
   });
 }
 

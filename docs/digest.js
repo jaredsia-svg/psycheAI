@@ -358,7 +358,12 @@
   // the premium prompt joined, the two schemas merged (FULL_SYSTEM and
   // FULL_SCHEMA in lib/prompts.js). Measured at 33,125. It is the only call
   // that reads this digest — the free card has its own reserve below.
-  const FIXED_INPUT_TOKENS = 34500;
+  // Raised to 37,600 for the structured report layout (STRUCTURED_FULL_SYSTEM
+  // and STRUCTURED_FULL_SCHEMA), which adds the patterns, motivators,
+  // development and pressure-point fields and the prompt that ties them in.
+  // Measured at 37,073. Sized for the larger of the two layouts, so switching
+  // back to classic (34,277) never needs this changed.
+  const FIXED_INPUT_TOKENS = 37600;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to
@@ -425,7 +430,12 @@
   // $0.15 since the free card and the full report read one shared 80,000-
   // character digest: the cap no longer sizes the digest, it states what the
   // full call can cost with it — see DIGEST_CHARS below.
-  const COST_CAP = 0.15;
+  //
+  // $0.151 for the structured report layout, whose prompt carries the thread
+  // through the report (patterns, motivators, development, pressure points)
+  // and needs a larger reserve below. The tenth of a cent keeps the full
+  // 80,000-character digest inside the cap at the worst-case output.
+  const COST_CAP = 0.151;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They

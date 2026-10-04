@@ -17,7 +17,57 @@
     "why": "You do the thing nobody assigned you and you do it quietly, which is the resemblance — not the sword. Forty-seven posts naming a deadline and forty-one closing it out, four years of it, and the wins written as ours rather than mine. The comparison earns itself on what is missing: no post in four years says the load was heavy, and Mulan is the same kind of competent that would rather absorb the cost than be seen carrying it."
   },
   "summary": "You come across as an organiser with a warm centre. High conscientiousness, high agreeableness, and moderate extraversion in a way that surprises people who assume you are an extrovert because you are always at the thing. You post in clusters around events you arranged, then go quiet for a fortnight. That is not inconsistency; it is recovery.\n\nWhat you value shows up in what you do rather than what you say. Four years of captions and barely a sentence about yourself that is not attached to somebody else's news. Generous with attention, sparing with disclosure — which reads as modesty and works as a wall.\n\nAt work the same shape holds. You notice what has not been assigned and do it, which makes you indispensable and, on this evidence, slightly under-credited.",
-  "cardHighlights": "You do what nobody assigned you and you do it quietly, and in four years you have never once written that it was heavy. You read as an organiser with a warm centre: conscientious and agreeable, with a moderate extraversion that surprises people who assume the opposite because you are always at the thing. You cluster around the events you arrange, then go quiet to recover rather than out of inconsistency. What you value shows in what you do rather than what you say — four years of captions barely mention you without attaching the news to somebody else.",
+  "patterns": [
+    {
+      "id": "p1",
+      "name": "The quiet organiser",
+      "line": "You do the unassigned work that keeps a group running – the plan, the chasing, the remembering – which makes you indispensable and, on this evidence, under-credited.",
+      "evidence": [
+        "47 posts naming a deadline and 41 closing one out, 2021–2025",
+        "Group plans in 38 of 60 sampled captions",
+        "No caption in four years says the load was heavy"
+      ],
+      "showsUpIn": [
+        "bigFive",
+        "values",
+        "relationships",
+        "work",
+        "wellness",
+        "activity"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Generous with attention, sparing with disclosure",
+      "line": "You show up warmly for other people and say almost nothing about yourself, so closeness runs one way: people feel looked after by you and rarely get to look after you.",
+      "evidence": [
+        "Comments on 64 different people's posts in a year",
+        "3 of 60 sampled captions about your own feelings"
+      ],
+      "showsUpIn": [
+        "mbti",
+        "relationships",
+        "attachment",
+        "idealPartner"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Bursts, then recovery",
+      "line": "Intense runs of hosting and posting around events you arranged, then a fortnight of quiet – the rhythm of someone who is social on purpose and recharges alone.",
+      "evidence": [
+        "Posting clusters around about nine events a year",
+        "Typical quiet stretch after an event: 13 days"
+      ],
+      "showsUpIn": [
+        "bigFive",
+        "interests",
+        "wellness",
+        "activity"
+      ]
+    }
+  ],
+  "cardHighlights": "Like her, you would rather absorb the cost than be seen carrying it: four years of posts, and not one says the load was heavy. When it goes well, the win is written as ours rather than mine, the same quiet competence that keeps the credit pointed away from you. Underneath, you read as an organiser with a warm centre, always at the thing and then gone quiet to recover rather than out of inconsistency. What you value shows in what you do rather than what you say, because your captions barely mention you without attaching the news to somebody else.",
   "bigFive": {
     "openness": {
       "score": 61,
@@ -192,6 +242,61 @@
       "evidence": "71% of posts contain more than one person"
     }
   ],
+  "motivators": {
+    "scores": [
+      {
+        "value": "self-direction",
+        "score": 55,
+        "line": "You plan your own way but rarely for yourself alone – most of your independent choices are about how to run something for others."
+      },
+      {
+        "value": "stimulation",
+        "score": 41,
+        "line": "New things appear, but as occasions to organise rather than thrills to chase."
+      },
+      {
+        "value": "hedonism",
+        "score": 34,
+        "line": "Pleasure shows up as shared meals and gigs, almost never as something you do just for you."
+      },
+      {
+        "value": "achievement",
+        "score": 66,
+        "line": "Finishing is visible everywhere – deadlines named and closed, races entered and run."
+      },
+      {
+        "value": "power",
+        "score": 18,
+        "line": "Nothing in four years reaches for status or control; you lead by doing the work, not by holding the title."
+      },
+      {
+        "value": "security",
+        "score": 61,
+        "line": "Routines, plans made weeks ahead, and the same close circle for years."
+      },
+      {
+        "value": "conformity",
+        "score": 52,
+        "line": "You keep the peace and rarely post anything that would upset anyone."
+      },
+      {
+        "value": "tradition",
+        "score": 38,
+        "line": "Birthdays and rituals matter to you as gatherings, less as heritage."
+      },
+      {
+        "value": "benevolence",
+        "score": 84,
+        "line": "Almost everything you publish is about looking after your own people – the clearest signal in the report."
+      },
+      {
+        "value": "universalism",
+        "score": 47,
+        "line": "Some causes and charity runs, but the care is mostly local rather than global."
+      }
+    ],
+    "reading": "Your strongest pull is care for the people close to you, backed by achievement: you want things done well, and done for them. The tension is between that care and your own needs – power and enjoyment sit at the bottom, which reads less like modesty than like a life arranged around other people's plans."
+  },
   "relationship": {
     "strengths": [
       {
@@ -210,7 +315,7 @@
       },
       {
         "title": "Score-keeping in silence",
-        "detail": "The Two-with-a-One-wing pattern: generous in the moment, quietly tallying, and inclined to feel unmet without ever having stated the need. Nothing here shows it blowing up, but the ingredients are visible."
+        "detail": "The same giving-first pattern: generous in the moment, quietly tallying, and inclined to feel unmet without ever having stated the need. Nothing here shows it blowing up, but the ingredients are visible."
       }
     ],
     "loveLanguages": {
@@ -319,5 +424,116 @@
     "energy": "Participant not broadcaster; wide circle, twelve people who matter",
     "workStyle": "Plans in blocks, high quiet standards, finishes what starts",
     "confidence": 86
-  }
+  },
+  "development": {
+    "buildOn": [
+      {
+        "title": "Your follow-through",
+        "detail": "You close what you open, which most people and most teams are short of. Use it deliberately: pick the commitments you take on rather than inheriting them.",
+        "pattern": "p1",
+        "raisedBy": [
+          "bigFive",
+          "work"
+        ]
+      },
+      {
+        "title": "The circle you keep",
+        "detail": "The same close group for years is rare and worth protecting. It is also where you could start being looked after as well as looking after.",
+        "pattern": "p2",
+        "raisedBy": [
+          "relationships",
+          "values"
+        ]
+      }
+    ],
+    "develop": [
+      {
+        "title": "Let the credit land",
+        "detail": "You narrate collective wins and almost never your own part in them, so the people who rely on you most may not know how much you carry.",
+        "pattern": "p1",
+        "raisedBy": [
+          "work",
+          "relationships"
+        ],
+        "actions": [
+          {
+            "horizon": "this week",
+            "step": "When the next thing you organised comes off, write one line that says you organised it."
+          },
+          {
+            "horizon": "this quarter",
+            "step": "Hand one recurring job – the booking, the reminders – to someone else and leave it with them."
+          },
+          {
+            "horizon": "this year",
+            "step": "Ask for the role or title that matches the work you already do."
+          }
+        ],
+        "reflect": "Whose job are you doing that nobody asked you to do – and what would happen if you stopped?"
+      },
+      {
+        "title": "Say the heavy part out loud",
+        "detail": "Nothing in your writing admits a hard week, which keeps people at a warm distance and leaves you carrying the cost alone.",
+        "pattern": "p2",
+        "raisedBy": [
+          "attachment",
+          "wellness",
+          "relationships"
+        ],
+        "actions": [
+          {
+            "horizon": "this week",
+            "step": "Tell one person in your inner circle one thing that has been hard this month, without fixing it for them."
+          },
+          {
+            "horizon": "this quarter",
+            "step": "When someone offers help, take it once before you decline it."
+          }
+        ],
+        "reflect": "Who knows how you are actually doing right now?"
+      }
+    ]
+  },
+  "pressurePoints": [
+    {
+      "strength": "Reliability",
+      "overused": "Absorbing everyone's overflow",
+      "level": "marked",
+      "pattern": "p1",
+      "detail": "Work with no owner becomes yours by default. It is why you are valuable, and probably why the quiet stretches after each event run longer than the events themselves.",
+      "earlySigns": [
+        "Saying yes before checking your calendar",
+        "Sending every reminder in the group chat",
+        "Weekends that disappear into other people's plans"
+      ],
+      "mitigation": "Before taking on the next unassigned job, name who else could do it and ask them first.",
+      "question": "What would you drop if nobody were watching?"
+    },
+    {
+      "strength": "Warmth",
+      "overused": "Keeping the peace at your own expense",
+      "level": "moderate",
+      "pattern": "p2",
+      "detail": "You avoid friction in public almost completely. Under strain that becomes saying nothing and keeping score in silence.",
+      "earlySigns": [
+        "Agreeing in the moment and resenting it later",
+        "Going quiet with one person while staying warm with everyone else"
+      ],
+      "mitigation": "Raise the small thing within a day, in one sentence, while it is still small.",
+      "question": "What are you not saying to someone close to you right now?"
+    },
+    {
+      "strength": "High standards",
+      "overused": "Quietly redoing other people's work",
+      "level": "mild",
+      "pattern": "",
+      "detail": "You care how a thing is done. Under time pressure that tips into fixing it yourself rather than saying what was wrong.",
+      "earlySigns": [
+        "Re-checking a task you already delegated",
+        "Doing it yourself because it is quicker"
+      ],
+      "mitigation": "Say what good looks like before you hand something over, not after.",
+      "question": "Where is 'quicker to do it myself' costing you most?"
+    }
+  ]
 }

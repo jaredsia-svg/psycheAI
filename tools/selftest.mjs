@@ -1409,7 +1409,16 @@ function schemaFaults(node, value, path) {
   return faults;
 }
 
-const sampleFaults = schemaFaults(prompts.PROFILE_SCHEMA, sample, '');
+// The sample shows the structured layout too, so it carries the four fields
+// that layout adds to the written report — checked against those as exactly
+// as against the rest.
+const sampleSchema = {
+  ...prompts.PROFILE_SCHEMA,
+  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS),
+  properties: Object.assign({}, prompts.PROFILE_SCHEMA.properties,
+    Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]]))),
+};
+const sampleFaults = schemaFaults(sampleSchema, sample, '');
 check('the sample report satisfies the profile schema exactly', sampleFaults.length === 0,
   sampleFaults.slice(0, 6).join(' | '));
 // It is the only report most visitors will ever read, and a sample that only
@@ -4884,8 +4893,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // $0.15 for the one call that writes the whole premium report, with the one
   // 80,000-character digest both calls read. The cap states what the call can
   // cost; it no longer sizes the digest, which DIGEST_CHARS does.
-  check('the unlock\'s one call is capped at $0.15 with the shared 80,000-character digest',
-    Digest.COST_CAP === 0.15 && Digest.LIMITS.totalChars === 80000,
+  // $0.151 for the structured layout's larger prompt: the tenth of a cent
+  // keeps the same digest inside the cap.
+  check('the unlock\'s one call is capped at $0.151 with the shared 80,000-character digest',
+    Digest.COST_CAP === 0.151 && Digest.LIMITS.totalChars === 80000,
     Digest.COST_CAP + ' -> ' + Digest.LIMITS.totalChars);
 }
 
@@ -4912,8 +4923,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     String(DIG));
   check('with it, the free card costs at most 5.2 cents',
     Digest.FREE_COST_CAP === 0.052 && freeWorst <= 0.052 + 1e-6, '$' + freeWorst.toFixed(4));
-  check('and the full premium report at most fifteen cents',
-    Digest.COST_CAP === 0.15 && fullWorst <= 0.15 + 1e-6, '$' + fullWorst.toFixed(4));
+  check('and the full premium report at most 15.1 cents',
+    Digest.COST_CAP === 0.151 && fullWorst <= 0.151 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
     freeWorst > 0.051 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
   check('and each ceiling still covers the digest, so neither call outgrows its price',
@@ -5176,7 +5187,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const missing = RULES.filter(([, re]) => !re.test(free) || !re.test(prompts.PROFILE_SYSTEM)).map(([label]) => label);
   check('every load-bearing rule is in both the card prompt and the full report\'s',
     missing.length === 0, missing.join('; '));
-  const props = prompts.FREE_SCHEMA.properties;
+  // The classic card, which the structured one is built from.
+  const props = prompts.CLASSIC_FREE_SCHEMA.properties;
   check('the card schema asks for no writing: no summary, no roast, no readings, no reasons',
     !props.summary && !props.bonus && !props.activity && !props.career &&
     !props.bigFive.properties.openness.properties.reading &&
@@ -5186,8 +5198,24 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and everything the card face shows',
     ['confidence', 'essence', 'cardHighlights', 'bigFive', 'mbti', 'enneagram', 'interests',
       'values', 'beliefs', 'relationship', 'card'].every(key => key in props) &&
-    (prompts.FREE_SCHEMA.required || []).length === Object.keys(props).length,
+    (prompts.CLASSIC_FREE_SCHEMA.required || []).length === Object.keys(props).length,
     Object.keys(props).join(','));
+  // The structured card: the Enneagram gone, the signature patterns named.
+  const sprops = prompts.STRUCTURED_FREE_SCHEMA.properties;
+  check('the structured card drops the Enneagram, names the patterns and picks a catalogue character, nothing else changed',
+    !('enneagram' in sprops) && 'patterns' in sprops && Array.isArray(sprops.essence.properties.character.enum) &&
+    Object.keys(props).filter(key => !['enneagram', 'essence', 'cardHighlights'].includes(key)).every(key => sprops[key] === props[key]) &&
+    prompts.STRUCTURED_FREE_SCHEMA.required.length === Object.keys(sprops).length,
+    Object.keys(sprops).join(','));
+  check('the card\'s patterns are names and a line — the evidence is the paid report\'s job',
+    Object.keys(sprops.patterns.items.properties).join() === 'id,name,line');
+  check('the structured card prompt drops the Enneagram and asks for the patterns',
+    !/Enneagram/.test(prompts.STRUCTURED_FREE_SYSTEM) && /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    /# Enneagram/.test(prompts.CLASSIC_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CLASSIC_FREE_SYSTEM));
+  check('and is otherwise the classic card prompt, so the rules that decide a letter or a score are the same',
+    prompts.STRUCTURED_FREE_SYSTEM.length > prompts.CLASSIC_FREE_SYSTEM.length - 400 &&
+    prompts.CLASSIC_FREE_SYSTEM.split('# ').filter(part => !/^Enneagram/.test(part))
+      .every(part => prompts.STRUCTURED_FREE_SYSTEM.includes(part.split('\n')[0])));
   check('the card schema is small next to the full one', freeSchema.length < JSON.stringify(prompts.PROFILE_SCHEMA).length / 2);
 
   // -- the card writes only what is new on it --
@@ -5274,7 +5302,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 
   const card = (await mock.analyseCard(digest)).data;
   check('the mock card is shaped like the schema, with no writing in it',
-    Object.keys(card).sort().join(',') === Object.keys(props).sort().join(',') &&
+    Object.keys(card).sort().join(',') === Object.keys(prompts.FREE_SCHEMA.properties).sort().join(',') &&
     !JSON.stringify(card).includes('"why"') && !JSON.stringify(card).includes('"reading"'),
     Object.keys(card).join(','));
 
@@ -5323,8 +5351,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and no longer tells either half that the other is a separate call it never sees',
     !/separate paid pass/.test(full) && !/free half is already written/.test(full) &&
     !/never sees this text/.test(full));
+  // Every field of both, except what the active layout deliberately drops
+  // (the structured layout has no Enneagram).
+  const dropped = prompts.REPORT_LAYOUT === 'structured' ? prompts.STRUCTURED_DROPS : [];
   check('the merged schema asks for every field of both, and all of them are required',
     Object.keys(prompts.PROFILE_SCHEMA.properties).concat(prompts.PREMIUM_KEYS)
+      .filter(key => !dropped.includes(key))
       .every(key => key in prompts.FULL_SCHEMA.properties && prompts.FULL_SCHEMA.required.includes(key)) &&
     Boolean(prompts.FULL_SCHEMA.$defs && prompts.FULL_SCHEMA.$defs.point),
     prompts.FULL_SCHEMA.required.join(','));
@@ -5689,6 +5721,149 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('both report routes scrub before the result is stored or served',
     /return scrubbed\(result, sent, kind\)/.test(serverSource) &&
     /return scrubbed\(result, body\.digest, 'premium'\)/.test(serverSource));
+}
+
+// ---------- the structured report layout ----------
+//
+// Four parts with one thread through them: signature patterns, motivators,
+// a development plan and pressure points, added to the classic report rather
+// than replacing any of it, and switched by one environment variable so the
+// classic layout is always one setting away.
+{
+  const layoutOf = env => JSON.parse(execFileSync(process.execPath, ['-e',
+    'const p = require("./lib/prompts");' +
+    'const m = require("./lib/mock");' +
+    'm.analyseFull({ samples: { captions: [] } }, null).then(r => console.log(JSON.stringify({' +
+    '  layout: p.REPORT_LAYOUT, structured: p.FULL_SCHEMA === p.STRUCTURED_FULL_SCHEMA,' +
+    '  classic: p.FULL_SCHEMA === p.CLASSIC_FULL_SCHEMA && p.FULL_SYSTEM === p.CLASSIC_FULL_SYSTEM,' +
+    '  keys: Object.keys(r.data) })));'],
+  { cwd: root, env: Object.assign({}, process.env, env), stdio: ['ignore', 'pipe', 'pipe'] }).toString());
+  const unset = layoutOf({ PSYCHEAI_REPORT_LAYOUT: '' });
+  const classic = layoutOf({ PSYCHEAI_REPORT_LAYOUT: 'classic' });
+  const typo = layoutOf({ PSYCHEAI_REPORT_LAYOUT: 'clasic' });
+  check('the structured layout is the default, and the unlock sends its prompt and schema',
+    unset.layout === 'structured' && unset.structured, JSON.stringify(unset));
+  check('PSYCHEAI_REPORT_LAYOUT=classic sends exactly the classic prompt and schema',
+    classic.layout === 'classic' && classic.classic, JSON.stringify(classic));
+  check('an unrecognised value falls back to structured rather than failing a paid call',
+    typo.layout === 'structured' && typo.structured, JSON.stringify(typo));
+  check('the mock writes the four structured fields only in the structured layout',
+    prompts.STRUCTURED_KEYS.every(key => unset.keys.includes(key)) &&
+    prompts.STRUCTURED_KEYS.every(key => !classic.keys.includes(key)), JSON.stringify(classic.keys));
+
+  const structured = prompts.STRUCTURED_FULL_SCHEMA;
+  const classicSchema = prompts.CLASSIC_FULL_SCHEMA;
+  check('the structured schema drops only the Enneagram; every other classic field is written unchanged',
+    prompts.STRUCTURED_DROPS.join() === 'enneagram' && !('enneagram' in structured.properties) &&
+    Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
+    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights'].includes(key)).every(key =>
+      structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)),
+    Object.keys(structured.properties).join(','));
+  check('its QR card keeps the same fields, with the Enneagram always empty',
+    Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
+    /Always an empty string/.test(structured.properties.card.properties.enneagram.description));
+  check('and adds exactly the four thread fields, all required',
+    prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development,pressurePoints' &&
+    prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in classicSchema.properties)));
+  const order = Object.keys(structured.properties);
+  check('patterns are written straight after the summary, before any section that points back at them',
+    order.indexOf('patterns') === order.indexOf('summary') + 1 &&
+    order.indexOf('development') > order.indexOf('careerAssessment') &&
+    order.indexOf('pressurePoints') === order.length - 1, order.join(','));
+  const enneagramBullet = prompts.CLASSIC_FULL_SYSTEM.slice(prompts.CLASSIC_FULL_SYSTEM.indexOf('- **Enneagram**: '),
+    prompts.CLASSIC_FULL_SYSTEM.indexOf('\n\n- **activity**: ') + 2);
+  check('the structured prompt is the classic one without its Enneagram section, plus the thread',
+    prompts.STRUCTURED_FULL_SYSTEM === prompts.CLASSIC_FULL_SYSTEM.replace(enneagramBullet, '') + '\n\n' + prompts.STRUCTURED_ADDON &&
+    !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
+  check('the prompt that ties them in is in the structured prompt and nowhere in the classic one',
+    prompts.STRUCTURED_FULL_SYSTEM.includes(prompts.STRUCTURED_ADDON) &&
+    !prompts.CLASSIC_FULL_SYSTEM.includes('# The thread that ties this report together'));
+  check('patterns are decided first and each must show up in at least three sections',
+    /Decide them before you write any section/.test(prompts.STRUCTURED_ADDON) &&
+    /fewer than three sections is a finding, not a pattern/.test(prompts.STRUCTURED_ADDON));
+  check('motivators are all ten of Schwartz\'s values, scored against each other',
+    prompts.MOTIVATORS.length === 10 && /relative to their other nine/.test(prompts.STRUCTURED_ADDON) &&
+    /each exactly once/.test(prompts.STRUCTURED_ADDON));
+  check('pressure levels describe their own data, never a comparison with other people',
+    /never a comparison with other people/.test(prompts.STRUCTURED_ADDON) &&
+    /hard limits on clinical language apply here/.test(prompts.STRUCTURED_ADDON));
+
+  // The page and the PDF read their labels from copy.js; the model writes
+  // keys from prompts.js. The two vocabularies have to be the same lists.
+  const S = globalThis.PsycheCopy.STRUCTURED;
+  check('every section key a pattern can point at has a name on the page',
+    prompts.SECTION_KEYS.join() === Object.keys(S.sectionNames).join() &&
+    prompts.SECTION_KEYS.every(key => key in S.definitions || key === 'beliefs'),
+    Object.keys(S.sectionNames).join());
+  check('every motivator has a label, a meaning and one of the four groups, in circle order',
+    prompts.MOTIVATORS.join() === Object.keys(S.motivators).join() &&
+    Object.values(S.motivators).every(m => m.label && m.meaning && m.group in S.motivatorGroups));
+  check('every pressure level has a label', prompts.PRESSURE_LEVELS.join() === Object.keys(S.levelLabels).join());
+  check('every Big Five trait has both poles described',
+    Object.keys(globalThis.PsycheCopy.TRAIT_LABELS).every(t => (S.poles[t] || []).length === 2 && S.poles[t].every(Boolean)));
+  check('the typical band is labelled an estimate, since there is no reference population',
+    /estimated/.test(S.typicalLabel) && /estimate, not a comparison/.test(S.about.map(r => r[1]).join(' ')));
+  check('the about page says it is not clinical and is a hypothesis to test',
+    /not a clinical or diagnostic tool/.test(S.about.map(r => r[1]).join(' ')) &&
+    /hypothesis/.test(S.about.map(r => r[1]).join(' ')));
+
+  // The free card names the patterns and the paid report keeps them: the
+  // anchor carries them across, cleaned like everything else in it.
+  const freeCard = { mbti: { type: 'INFJ', letters: [] }, bigFive: { openness: { score: 60, band: 'moderate' } },
+    patterns: [{ id: 'p1', name: 'The <quiet> organiser', line: 'Line one.' }, { id: 'p9', name: 'Bogus' },
+      { id: 'p2', name: 'Second', line: 'Line two.' }] };
+  const pinned = prompts.anchorFrom(freeCard);
+  check('the anchor carries the card\'s patterns, known ids only, cleaned',
+    JSON.stringify(pinned.patterns) === JSON.stringify([
+      { id: 'p1', name: 'The  quiet  organiser', line: 'Line one.' }, { id: 'p2', name: 'Second', line: 'Line two.' }]),
+    JSON.stringify(pinned.patterns));
+  const pinnedText = prompts.profileBlocks({}, pinned).map(b => b.text).join('\n');
+  check('and the paid call is told to keep their ids, names and order',
+    /keep their ids, names and order exactly/.test(pinnedText) && !/this enneagram/.test(pinnedText));
+  const classicAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
+    bigFive: { openness: { score: 60 } } });
+  const classicText = prompts.profileBlocks({}, classicAnchor).map(b => b.text).join('\n');
+  check('a classic card still anchors its Enneagram, and says nothing about patterns',
+    /this enneagram/.test(classicText) && !/signature patterns/.test(classicText) && !('patterns' in classicAnchor));
+
+  // The character catalogue: the model chooses from it, the page draws each
+  // one's emblem, and the two lists are the same list.
+  check('the structured card and report choose their character from the catalogue',
+    prompts.STRUCTURED_FREE_SCHEMA.properties.essence.properties.character.enum.join() === prompts.CHARACTER_NAMES.join() &&
+    prompts.STRUCTURED_FULL_SCHEMA.properties.essence.properties.character.enum.join() === prompts.CHARACTER_NAMES.join() &&
+    prompts.CHARACTER_NAMES.length >= 20 && prompts.CHARACTER_NAMES.length <= 30 &&
+    /closest honest fit/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/closest honest fit/.test(prompts.CLASSIC_FREE_SYSTEM),
+    String(prompts.CHARACTER_NAMES.length));
+  const emblems = globalThis.PsycheCopy.CHARACTER_EMBLEMS;
+  check('every catalogue character has an emblem, and no emblem is drawn for anyone else',
+    prompts.CHARACTER_NAMES.every(name => emblems[name] && globalThis.PsycheCopy.EMBLEM_PATHS[emblems[name]]) &&
+    Object.keys(emblems).length === prompts.CHARACTER_NAMES.length &&
+    globalThis.PsycheCopy.emblemSvg('Bruce Banner') === '' && /<svg[^>]*viewBox="0 0 48 48"/.test(globalThis.PsycheCopy.emblemSvg('Mulan')));
+  check('the emblems are distinct drawings, one per character',
+    new Set(Object.values(emblems)).size === prompts.CHARACTER_NAMES.length);
+  check('the sample\'s character is in the catalogue', prompts.CHARACTER_NAMES.includes(sample.essence.character));
+  check('the structured card\'s write-up is two sentences on why they are like the character',
+    /Exactly two sentences/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
+    prompts.STRUCTURED_FULL_SCHEMA.properties.cardHighlights === prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights &&
+    /Exactly four sentences/.test(prompts.CLASSIC_FREE_SCHEMA.properties.cardHighlights.description));
+  {
+    const order = Object.keys(prompts.STRUCTURED_FREE_SCHEMA.properties);
+    check('the structured write-up is written after the patterns it sits above, and told not to repeat them',
+      order.indexOf('cardHighlights') > order.indexOf('patterns') &&
+      /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
+    check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
+      /first three values and the first belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /under about 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
+  }
+
+  const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+  check('the status route tells the page which layout the unlock writes',
+    /reportLayout: prompts\.REPORT_LAYOUT/.test(serverSource));
+  check('the digest reserve covers the larger, structured prompt',
+    Digest.FIXED_INPUT_TOKENS >= Math.round((prompts.STRUCTURED_FULL_SYSTEM.length +
+      JSON.stringify(prompts.STRUCTURED_FULL_SCHEMA).length) / 3.5));
 }
 
 // ---------- the full report's rules on figures and on attachment ----------
