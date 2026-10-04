@@ -12,7 +12,8 @@
     "models": "node tools/models.mjs",
     "models:grok": "node tools/models-grok.mjs",
     "usage": "node tools/usage.mjs",
-    "compare": "node tools/compare.mjs"
+    "compare": "node tools/compare.mjs",
+    "probe:schema": "node tools/probe-schema.mjs"
   },
   "engines": {
     "node": ">=18"
