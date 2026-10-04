@@ -126,6 +126,26 @@ Every field is bounded, angle brackets and control characters are stripped, scor
 card was read from a digest without that source, so the report reaches its own conclusions and the
 card is redrawn from them.
 
+**Measuring the card before changing it: `npm run compare`.** Every cost lever left — a lower
+thinking level, a cheaper model — trades on whether the card's conclusions survive it, and that is
+a measurement, not an argument. `tools/compare.mjs` runs the free card call several times on a real
+digest and reports, per configuration, its cost and how often the type, each letter (with and
+without its strength), the enneagram, the Big Five bands and the character match the baseline, plus
+the mean Big Five score difference. The baseline row is the production setting compared with its
+own first run, which is the number to read first: a card that disagrees with itself a third of the
+time sets the ceiling on how well anything else can agree with it.
+
+```
+GEMINI_API_KEY=... npm run compare -- psycheai-digest-preview.html --runs 3 \
+  --configs gemini-3.7-flash:HIGH,gemini-3.7-flash:LOW
+```
+
+The digest can be the review screen's "Download what's being sent" file, a digest saved as JSON, or
+an Instagram export zip. Each real run costs about five cents and the total is printed first;
+`--mock` runs the whole tool against `lib/mock.js` for nothing. The model and thinking overrides it
+uses are options on `analyseCard` that production never passes, and a selftest check holds the
+default at HIGH on the configured model.
+
 **One digest of 80,000 characters.** `DIGEST_CHARS` in `docs/digest.js` is the decision; both cost
 ceilings follow from it. The per-list caps are sized so a heavy account lands near it through the
 caps themselves — 200 captions, 180 of their own messages from their ten main conversations, 60

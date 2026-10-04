@@ -5,7 +5,7 @@
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -4936,11 +4936,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // Thinking stays where the full report has it. The free call is cheaper
   // because it reads less and writes less, not because it thinks less.
   {
+    let lastModel = null;
     let sentConfig = null;
     gemini.__testing.setClient({
       caches: { create: async () => { throw new Error('no cache in this test'); } },
       models: { generateContentStream: async request => {
         sentConfig = request.config;
+        lastModel = request.model;
         return (async function* () {
           yield { text: JSON.stringify({ mbti: { type: 'ISTJ' }, enneagram: { type: '1', wing: '' },
             confidence: { score: 40 }, card: { headline: 'h' } }),
@@ -4951,6 +4953,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const keyBefore = process.env.GEMINI_API_KEY;
     process.env.GEMINI_API_KEY = keyBefore || 'test-key';
     const cardAnswer = await gemini.analyseCard({ profile: {} });
+    const defaultRequest = { config: sentConfig, model: lastModel };
+    await gemini.analyseCard({ profile: {} }, { model: 'gemini-test-lite', thinkingLevel: 'LOW' });
+    const overrideConfig = sentConfig;
+    const overrideModel = lastModel;
+    sentConfig = defaultRequest.config;
     const cardConfig = sentConfig;
     await gemini.analyseFull({ profile: {} }, null);
     const fullConfig = sentConfig;
@@ -4968,6 +4975,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       fullConfig.maxOutputTokens === gemini.FULL_MAX_OUTPUT_TOKENS &&
       fullConfig.thinkingConfig.thinkingLevel === 'HIGH',
       JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
+    // The overrides exist for tools/compare.mjs. Production passes nothing,
+    // and nothing must be what it gets: HIGH thinking on the default model.
+    check('compare\'s overrides reach the request, and production keeps HIGH without them',
+      overrideConfig.thinkingConfig.thinkingLevel === 'LOW' && overrideModel === 'gemini-test-lite' &&
+      defaultRequest.config.thinkingConfig.thinkingLevel === 'HIGH' && defaultRequest.model === gemini.MODEL,
+      JSON.stringify({ override: overrideConfig.thinkingConfig, plain: defaultRequest.config.thinkingConfig }));
     check('a real engine\'s card comes back completed from its own answer',
       Boolean(cardAnswer && cardAnswer.data && cardAnswer.data.card) &&
       cardAnswer.data.card.mbti === 'ISTJ' && cardAnswer.data.card.enneagram === '1' &&
@@ -5440,6 +5453,76 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.stuffed) && routes.stuffed.status === 413, JSON.stringify(routes.stuffed && routes.stuffed.status));
   check('a digest that is not an object is refused before anything is spent',
     Boolean(routes.notObject) && routes.notObject.status === 400, JSON.stringify(routes.notObject));
+}
+
+// ---------- tools/compare.mjs: the arithmetic it reports ----------
+//
+// The comparison tool's numbers are what a decision about thinking level or
+// model would rest on, so the agreement arithmetic and the file reading are
+// checked here rather than trusted, and the whole tool is run once against the
+// mock so the path a real run takes is known to work end to end.
+{
+  const compare = await import('./compare.mjs');
+  const base = compare.conclusions({
+    mbti: { type: 'INFJ', letters: [
+      { axis: 'E/I', choice: 'I', strength: 'moderate' }, { axis: 'N/S', choice: 'N', strength: 'slight' },
+      { axis: 'T/F', choice: 'F', strength: 'clear' }, { axis: 'J/P', choice: 'J', strength: 'moderate' }] },
+    enneagram: { type: '4', wing: '5' }, essence: { character: 'Hermione Granger' },
+    bigFive: { openness: { score: 70, band: 'high' }, extraversion: { score: 38, band: 'low' } },
+  });
+  const other = compare.conclusions({
+    mbti: { type: 'INTJ', letters: [
+      { axis: 'E/I', choice: 'I', strength: 'moderate' }, { axis: 'N/S', choice: 'N', strength: 'moderate' },
+      // Same strength, other letter: a strength only agrees when its letter does.
+      { axis: 'T/F', choice: 'T', strength: 'clear' }, { axis: 'J/P', choice: 'J', strength: 'moderate' }] },
+    enneagram: { type: '5', wing: '4' }, essence: { character: 'Hermione Granger' },
+    bigFive: { openness: { score: 64, band: 'high' }, extraversion: { score: 46, band: 'moderate' } },
+  });
+  const a = compare.agreement(base, [base, other]);
+  check('agreement counts what matches, letter by letter and trait by trait',
+    a.type === 0.5 && a.letters === 7 / 8 && a.lettersWithStrength === 6 / 8 && a.enneagram === 0.5 &&
+    a.bigFiveBands === 3 / 4 && a.bigFiveMeanScoreDiff === 3.5 && a.character === 1,
+    JSON.stringify(a));
+  check('and a single run has nothing to agree with', compare.agreement(base, []) === null);
+  // The baseline row compares its later runs with its first, never the first
+  // with itself; and an alternative is compared, every run, with that first.
+  const rows = compare.summarise([
+    { config: { model: 'm', thinkingLevel: 'HIGH' }, cards: [base, other], costs: [0.05, 0.04], thinking: [6000, 5000] },
+    { config: { model: 'm', thinkingLevel: 'LOW' }, cards: [base, base], costs: [null, 0.02], thinking: [1000, 1000] },
+  ]);
+  check('the baseline is measured against its own first run, the alternatives against it',
+    rows[0].against.runs === 1 && rows[0].against.type === 0 &&
+    rows[1].against.runs === 2 && rows[1].against.type === 1 &&
+    Math.abs(rows[0].cost - 0.045) < 1e-9 && rows[1].cost === 0.02 && rows[0].thinking === 5500,
+    JSON.stringify(rows.map(r => ({ runs: r.against.runs, type: r.against.type, cost: r.cost }))));
+  const configs = compare.parseConfigs('gemini-3.7-flash:HIGH, LOW, gemini-x-lite', 'gemini-3.7-flash');
+  check('configs read as model:thinking, with either half defaulting',
+    JSON.stringify(configs) === JSON.stringify([
+      { model: 'gemini-3.7-flash', thinkingLevel: 'HIGH' }, { model: 'gemini-3.7-flash', thinkingLevel: 'LOW' },
+      { model: 'gemini-x-lite', thinkingLevel: 'HIGH' }]) &&
+    JSON.stringify(compare.parseConfigs('', 'm')) === JSON.stringify([{ model: 'm', thinkingLevel: 'HIGH' }]),
+    JSON.stringify(configs));
+  // The review screen's download is the file a reader has to hand, and it
+  // escapes the digest into a <pre>; reading it back has to give the object.
+  const escaped = '<pre>' + JSON.stringify({ a: '<b> & "c" \'d\'' }, null, 2)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;') + '</pre>';
+  check('the review screen\'s download reads back into the digest it shows',
+    compare.digestFromHtml(escaped).a === '<b> & "c" \'d\'');
+  const preview = join(tmpdir(), 'psycheai-compare-' + process.pid + '.json');
+  writeFileSync(preview, JSON.stringify(heavyWithDms));
+  let out = '';
+  try {
+    out = execFileSync(process.execPath, [join(root, 'tools', 'compare.mjs'), preview, '--runs', '2', '--mock'],
+      { encoding: 'utf8', timeout: 30000 });
+  } catch (error) {
+    out = String((error.stdout || '') + (error.stderr || '') || error.message);
+  }
+  check('the tool runs end to end, and the mock agrees with itself completely',
+    /mock:HIGH \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%/.test(out),
+    out.split('\n').slice(-6).join(' | '));
+  check('and it says what a real run would cost before sending anything',
+    !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
 }
 
 // ---------- the spend ledger ----------
