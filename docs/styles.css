@@ -2606,9 +2606,19 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-sletters { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .pc-sletters li { display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 12px; font-size: 26px; }
 .pc-sletters b { font-size: 30px; font-weight: 800; color: var(--accent); }
-.pc-dots { display: inline-flex; gap: 6px; }
-.pc-dots i { width: 14px; height: 14px; border-radius: 999px; background: var(--accent-soft); display: block; }
-.pc-dots i.on { background: var(--accent); }
+/* How firmly each MBTI letter was picked, in words, firmer reading darker. */
+.pc-sstrength {
+  font-size: 19px; font-weight: 700; letter-spacing: .02em; padding: 3px 12px; border-radius: 999px;
+  color: var(--accent); background: var(--accent-soft); white-space: nowrap;
+}
+.pc-sstrength-clear { color: #fff; background: var(--accent); }
+.pc-sstrength-slight { color: var(--ink-soft); background: color-mix(in srgb, var(--accent-soft) 55%, var(--bg-alt)); }
+/* The card guide lights the part it is on, and steps the rest back. */
+.psyche-card .pc-spanel, .psyche-card .pc-shero, .psyche-card .pc-sconf { transition: opacity .3s ease, box-shadow .3s ease, transform .3s ease; }
+.psyche-card.pc-guiding .pc-spanel:not(.pc-glow), .psyche-card.pc-guiding .pc-shero:not(.pc-glow),
+.psyche-card.pc-guiding .pc-sconf:not(.pc-glow) { opacity: .32; }
+.psyche-card .pc-glow { box-shadow: 0 0 0 6px var(--accent), 0 16px 40px rgba(123, 63, 160, .35); transform: scale(1.02); position: relative; z-index: 1; }
+.psyche-card .pc-sconf.pc-glow { border-radius: 999px; }
 
 .pc-straits { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
 .pc-straits li { display: grid; grid-template-columns: 170px 1fr 48px; align-items: center; gap: 14px; font-size: 25px; }
@@ -2875,21 +2885,77 @@ details.more[open] > summary::after { content: ' ▴'; }
    top is the card's measured height (--side-card-h, set by layoutPsycheCard). */
 @media (min-width: 1340px) and (min-height: 760px) {
   #view-profile.profile-paid #psyche-card-section {
-    position: fixed; z-index: 10; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px));
-    width: 232px; margin: 0; padding: .7rem .7rem .55rem; border-radius: 16px;
+    position: fixed; z-index: 10; top: 4.6rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px));
+    width: 232px; margin: 0; padding: 0; border-radius: 16px; overflow: hidden;
   }
   #view-profile.profile-paid #psyche-card-section .psyche-card-slot { margin: 0; }
-  #view-profile.profile-paid #psyche-card-section .psyche-card-hint { font-size: .74rem; margin-top: .4rem; }
-  #view-profile.profile-paid #profile-body .part-nav { top: calc(6.5rem + var(--side-card-h, 380px) + .7rem); }
+  #view-profile.profile-paid #psyche-card-section .psyche-card-hint { font-size: .74rem; margin: 0; padding: .35rem 0 .45rem; }
+  /* Under the card the nav tightens up, and scrolls on its own if a short
+     screen still cannot hold all of it. */
+  #view-profile.profile-paid #profile-body .part-nav {
+    top: calc(4.6rem + var(--side-card-h, 440px) + .6rem);
+    max-height: calc(100vh - 4.6rem - var(--side-card-h, 440px) - 1.4rem); overflow-y: auto;
+  }
+  #view-profile.profile-paid #profile-body .part-nav-item { padding: .3rem .7rem; }
 }
 
 /* The free report: no nav, the Psyche Card on the left half of the column
    and what it was read from on the right. Stacked on a phone. */
 .profile-top { margin-bottom: 1rem; }
 #view-profile.profile-free .profile-top { display: grid; gap: 1rem; align-items: start; }
-@media (min-width: 720px) { #view-profile.profile-free .profile-top { grid-template-columns: 1fr 1fr; } }
-#view-profile.profile-free #psyche-card-section { width: auto; margin: 0; padding-bottom: .9rem; }
-#view-profile.profile-free .psyche-card-slot { margin-bottom: 0; }
+@media (min-width: 720px) {
+  #view-profile.profile-free .profile-top { grid-template-columns: 1fr 1fr; }
+  /* The card stays in view while the guide beside it scrolls past, so the
+     part a step lights is always on screen. */
+  #view-profile.profile-free #psyche-card-section { position: sticky; top: 4.6rem; }
+}
+#view-profile.profile-free #psyche-card-section { width: auto; margin: 0; }
+/* The card fills its box, edge to edge, on a free report and in the left
+   column of a full one: no padding round it, and no shadow of its own. */
+#view-profile.profile-free #psyche-card-section { padding: 0; overflow: hidden; }
+#view-profile.profile-free .psyche-card-slot { margin: 0; }
+#view-profile.profile-free #psyche-card, #view-profile.profile-paid #psyche-card { box-shadow: none; }
+#view-profile.profile-free .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
+.free-method-card { margin-top: 1rem; }
+/* How to read the card: a numbered list of the card's parts, each a button. */
+.card-guide .card-head { margin-bottom: .6rem; }
+.cg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.cg-item {
+  width: 100%; display: grid; grid-template-columns: 2.1rem 1fr auto; gap: .65rem; align-items: start; text-align: left;
+  padding: .6rem .7rem; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-alt);
+  font: inherit; color: inherit; cursor: pointer; transition: border-color .2s, background .2s, transform .2s, box-shadow .2s;
+}
+.cg-item:hover, .cg-item:focus-visible, .cg-item.is-active {
+  border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg-alt));
+  transform: translateX(3px); box-shadow: 0 6px 18px rgba(123, 63, 160, .12); outline: none;
+}
+.cg-icon {
+  display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px; font-size: 1.05rem;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 18%, var(--bg-alt)));
+}
+.cg-text strong { display: block; font-size: .92rem; }
+.cg-text span { display: block; font-size: .84rem; color: var(--ink-soft); line-height: 1.45; margin-top: .1rem; }
+.cg-step {
+  font-size: .72rem; font-weight: 800; color: var(--accent); background: var(--accent-soft);
+  border-radius: 999px; min-width: 1.4rem; height: 1.4rem; display: grid; place-items: center; margin-top: .1rem;
+}
+.cg-item.is-active .cg-step { color: #fff; background: var(--accent); }
+/* Part 05: a heading over two boxes of their own, not a disclosure. */
+.appendix-part { margin-top: 1.4rem; }
+.appendix-head { margin: 0 0 .9rem; padding: 0 .3rem; }
+.appendix-head .part-title { margin: 0; }
+.appendix-part > .section-card { margin-bottom: 1rem; }
+/* Who wrote the report and when: a quiet pill per line, closing the page. */
+.provenance { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin: 1.4rem 0 .4rem; }
+.provenance-item {
+  display: inline-flex; align-items: center; gap: .5rem; padding: .38rem .85rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-alt); font-size: .78rem; color: var(--ink-soft);
+}
+.provenance-item b { color: var(--ink); font-weight: 600; }
+.provenance-icon {
+  display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 999px; font-size: .7rem; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
 .profile-top > .section-card { margin-bottom: 0; }
 .free-method .confidence-meter { margin: .2rem 0 .7rem; }
 .free-method .free-score { margin: 0 0 .5rem; font-size: .95rem; }

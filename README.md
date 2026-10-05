@@ -3283,10 +3283,22 @@ use the same pair of lists (`pairedListsHtml()`).
 its name kept for screen readers only. On a full report at 1340px or wider (and 760px tall), it shrinks
 into the left column above the part nav and opens full screen when clicked; the nav's top is the card's
 measured height (`--side-card-h`, set by `layoutPsycheCard()`). **A free report has no nav**: the card
-takes the left half of the column and a short Evidence and method (`freeMethodHtml()`) the right — the
-score, one line of why and what was read — stacked on a phone. There is no "How much to trust this"
-card and no re-run on a free report; more data comes with the full report, whose unlock already offers
-it before payment (`collectExtraDataForPremium()`). **A jump from the nav** sets the part's
+fills the left half of the column, edge to edge and sticky while the page scrolls, and **"How to read
+your Psyche Card"** (`cardGuideHtml()`, words in `Copy.STRUCTURED.cardGuide`) fills the right — a step
+per part of the card, each line written from the reader's own card ("ENFJ, letter by letter… E slight,
+N moderate"). Pointing at or tapping a step lights that part of the card and steps the rest back
+(`lightCardPart()`, `GUIDE_TARGETS`); the guide walks through the parts once by itself when it first
+comes into view, unless the reader prefers reduced motion or touches it first. Evidence and method sits
+under the unlock offer (`freeMethodCardHtml()`): the score, why, and what was read, with no sources list,
+no re-run and no "How much to trust this" — more data comes with the full report, whose unlock already
+offers it before payment (`collectExtraDataForPremium()`). A free report has no "Download full report"
+either: there is nothing beyond the card, which has its own download. In the left column of a full
+report the card likewise fills its box. **Part 05** is a heading over two boxes of their own, Evidence
+and method and then the roast, and does not fold. On the card, each MBTI letter carries its strength in
+words — slight, moderate, clear — on the page and on the PDF's cover. The PDF downloads as **"Psyche
+Report - [name] - [ddmmyyyy].pdf"** (`reportFileName()`), the name's accents folded to plain letters,
+since a browser saves a file name it cannot encode as just "download". **"Analysed by"** closes the page
+as a quiet pill per line (`.provenance`), the model in ink and the date short. **A jump from the nav** sets the part's
 `scroll-margin-top` to whatever is pinned over the page at that width (`pinnedHeight()` — the site
 header, and the nav itself where it sticks), so the part's heading always lands in full view. **Read from** says what
 was read of each source and what was only counted — "180 of your 9,741 messages read", "623 stories

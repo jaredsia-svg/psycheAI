@@ -5343,11 +5343,13 @@ try {
       const p = JSON.parse(s); return JSON.stringify({ premiumModel: p.premiumModel, premiumAt: p.premiumAt });
     }));
   check('the footer grows a second line the moment the unlock succeeds, with no reload needed',
-    /^Analysed by mock on .+\nFull premium report written by mock on .+\.$/
-      .test((await page.locator('#analysed-by').innerText()).trim()),
+    await page.evaluate(() => {
+      const lines = [...document.querySelectorAll('#analysed-by .provenance-item > span:last-child')].map(n => n.textContent.trim());
+      return lines.length === 2 && /^Analysed by mock on .+\.$/.test(lines[0]) && /^Full premium report written by mock on .+\.$/.test(lines[1]);
+    }),
     await page.locator('#analysed-by').innerText());
-  check('the two lines are visually separate, not one run-on sentence',
-    (await page.locator('#analysed-by br').count()) === 1);
+  check('the two lines are visually separate, not one run-on sentence: a pill each',
+    (await page.locator('#analysed-by .provenance-item').count()) === 2);
 
   // ---- what the three considered sections actually render, now unlocked ----
   const wellnessCard = await page.evaluate(() => {
@@ -5463,8 +5465,10 @@ try {
         /honest verdict on what kind of partner/i.test(card.innerText);
     }));
   check('and the two-line footer survives the reload with it',
-    /^Analysed by mock on .+\nFull premium report written by mock on .+\.$/
-      .test((await page.locator('#analysed-by').innerText()).trim()),
+    await page.evaluate(() => {
+      const lines = [...document.querySelectorAll('#analysed-by .provenance-item > span:last-child')].map(n => n.textContent.trim());
+      return lines.length === 2 && /^Analysed by mock on .+\.$/.test(lines[0]) && /^Full premium report written by mock on .+\.$/.test(lines[1]);
+    }),
     await page.locator('#analysed-by').innerText());
 
   // ---- losing the tab mid-generation ----
@@ -6144,7 +6148,9 @@ try {
     recordingAttempts === 0 && (await page.locator('dialog[open]').count()) === 0,
     'record-email attempts: ' + recordingAttempts);
   check('the download is offered as a PDF named for the report',
-    reportDownload.suggestedFilename() === 'psycheai-report.pdf', reportDownload.suggestedFilename());
+    // The name in the file name has its accents folded: "Aleç" saves as "Alec".
+    /^Psyche Report - Alec - \d{8}\.pdf$/.test(reportDownload.suggestedFilename()),
+    reportDownload.suggestedFilename() + ' / ' + await page.evaluate(() => { const p = JSON.parse(localStorage.getItem('psycheai_profile')); return JSON.stringify([p.card && p.card.name, p.createdAt]); }));
   page.off('request', countRecording);
   const pdf = readFileSync(pdfPath);
   const pdfText = pdf.toString('latin1');
@@ -10125,9 +10131,10 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview, the four parts and the appendix are the only disclosures, and all six start open',
-        shape.toggles === 6 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open', JSON.stringify(shape));
+      check('structured: the overview and the four parts are the only disclosures, and all five start open — the appendix does not fold',
+        shape.toggles === 5 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open' &&
+        (await sp.locator('#profile-body .appendix-part .card-chevron').count()) === 0, JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: wellbeing closes Who you are',
@@ -10270,9 +10277,11 @@ try {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
         const together = document.querySelector('#profile-body .part-card[data-part-card="together"]');
-        const appendix = document.querySelector('#profile-body .part-card[data-part-card="appendix"]');
-        const inside = appendix ? Array.from(appendix.querySelectorAll('.method-card, .bonus-card')).map(n => n.classList.contains('method-card') ? 'method' : 'roast') : [];
-        return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
+        const appendix = document.querySelector('#profile-body .appendix-part');
+        // Two boxes of their own, directly under the appendix heading.
+        const inside = appendix ? Array.from(appendix.children).filter(n => n.matches('.method-card, .bonus-card'))
+          .map(n => n.classList.contains('method-card') ? 'method' : 'roast') : [];
+        return [at('.part-card[data-part-card="together"]'), at('.appendix-part'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
       check('structured: after Part 4 comes part 05, the appendix: the method, then the roast last',
@@ -10504,7 +10513,7 @@ try {
           const raw = getComputedStyle(card).backgroundColor;
           const scale = /^color\(/.test(raw) ? 255 : 1;
           const [r, g, b] = raw.replace(/^color\(srgb/, '').match(/\d*\.?\d+/g).map(n => Number(n) * scale);
-          const body = getComputedStyle(document.querySelector('#profile-body .work-card')).backgroundColor;
+          const body = getComputedStyle(document.querySelector('#profile-body .method-card')).backgroundColor;
           return { rgb: [r, g, b], grey: Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 150 && r < 240,
             same: getComputedStyle(card).backgroundColor === body };
         });
@@ -10671,16 +10680,39 @@ try {
         const side = document.querySelector('#profile-side');
         const s = side.getBoundingClientRect();
         const column = document.querySelector('#profile-top').getBoundingClientRect();
+        const offer = document.querySelector('#profile-body .full-report-locked');
+        const method = document.querySelector('#profile-body .free-method-card');
+        const frame = document.querySelector('#psyche-card').getBoundingClientRect();
         return { nav: document.querySelectorAll('.part-nav').length, sideShown: !side.hidden,
           cardLeft: Math.abs(card.left - column.left) < 2, sideRight: s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
           half: Math.abs(card.width - column.width / 2) < column.width * 0.06,
-          method: /Evidence and method/.test(side.textContent) && /Confidence/.test(side.textContent),
-          trust: document.querySelectorAll('#view-profile .confidence-card, #rerun-with-data').length };
+          fills: Math.abs(frame.width - card.width) <= 3,
+          guide: /How to read your Psyche Card/.test(side.textContent) && side.querySelectorAll('.cg-item').length >= 6,
+          method: Boolean(method && offer && (offer.compareDocumentPosition(method) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
+            /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
+          trust: document.querySelectorAll('#rerun-with-data, #view-profile .trust-sources').length +
+            (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
+          download: !document.querySelector('#export-pdf-bottom').hidden };
       });
-      check('structured: a free report has no nav, its card on the left half and a short Evidence and method beside it',
-        freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.half && freeShape.method,
-        JSON.stringify(freeShape));
-      check('structured: and no "How much to trust this" card or re-run button', freeShape.trust === 0, JSON.stringify(freeShape));
+      check('structured: a free report has no nav, its card filling the left half and how to read it on the right',
+        freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.half &&
+          freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
+      check('structured: Evidence and method sits under the unlock offer, with no trust card, sources or re-run, and no download',
+        freeShape.method && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
+      // Pointing at a step lights its part of the card and steps the rest back.
+      await sp.hover('#profile-side .cg-item[data-guide="type"]');
+      await sp.waitForTimeout(200);
+      check('structured: the guide lights the part of the card it is on',
+        await sp.evaluate(() => {
+          const glow = document.querySelectorAll('#psyche-card .pc-glow');
+          return document.querySelector('#psyche-card').classList.contains('pc-guiding') && glow.length === 1 &&
+            Boolean(glow[0].querySelector('.pc-sletters')) &&
+            document.querySelector('#profile-side .cg-item[data-guide="type"]').classList.contains('is-active');
+        }));
+      await sp.mouse.move(5, 5);
+      await sp.waitForTimeout(200);
+      check('structured: and lets go when the pointer leaves the guide',
+        await sp.evaluate(() => !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
       await sp.setViewportSize({ width: 390, height: 844 });
       await sp.waitForTimeout(300);
       check('structured: on a phone the free report stacks the card over its evidence, nothing off the side',

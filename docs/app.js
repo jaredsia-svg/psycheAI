@@ -553,11 +553,9 @@
     // portrait, shows its first two, which open on the same comparison.
     const blurb = splitSentences(cardBlurb(report)).slice(0, 2).join(' ');
     const emblem = Copy.emblemSvg(name, 'pc-emblem');
-    const dots = strength => {
-      const n = { slight: 1, moderate: 2, clear: 3 }[strength] || 0;
-      return '<span class="pc-dots" aria-label="' + esc(strength || '') + '">' +
-        [1, 2, 3].map(i => '<i class="' + (i <= n ? 'on' : '') + '"></i>').join('') + '</span>';
-    };
+    // How firmly each letter was picked, in words: slight, moderate, clear.
+    const strengthWord = strength => (strength
+      ? '<span class="pc-sstrength pc-sstrength-' + esc(strength) + '">' + esc(strength) + '</span>' : '');
     const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1)).slice(0, 4);
     const into = titlesOf(report.interests, 3);
     const motives = cardMotivators(report);
@@ -595,7 +593,7 @@
         '<div class="pc-spanel">' + label(CARD_ICONS.type, TEXT.cardType) +
           '<ul class="pc-sletters">' + (mbti.letters || []).map(l => {
             const pole = axisLabel(l.choice, l.axis);
-            return '<li><b>' + esc(l.choice || '') + '</b><span>' + esc(pole.name) + '</span>' + dots(l.strength) + '</li>';
+            return '<li><b>' + esc(l.choice || '') + '</b><span>' + esc(pole.name) + '</span>' + strengthWord(l.strength) + '</li>';
           }).join('') + '</ul></div>' +
         '<div class="pc-spanel">' + label(CARD_ICONS.bigFive, TEXT.cardBigFive) +
           // Four traits: extraversion is the E/I letter beside it.
@@ -5030,9 +5028,15 @@
     // Part 05, the appendix: how the report was made, then the roast — after
     // the method rather than in the middle of the report, so the professional
     // read is whole before the unkind one starts.
-    part = methodCardHtml(report, sample);
-    if (report.bonus) part += roastBlock(report.bonus, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"');
-    html += partCardHtml('appendix', part);
+    // Not a disclosure like the parts above it: a heading over two boxes of
+    // their own, Evidence and method and then the roast.
+    html += '<section class="appendix-part" data-part-card="appendix">' +
+      '<div class="report-part appendix-head" data-part="appendix">' +
+        '<span class="part-num" aria-hidden="true">' + String(PART_ORDER.indexOf('appendix')).padStart(2, '0') + '</span>' +
+        '<h2 class="part-title">' + esc(S.parts.appendix.title) + '</h2></div>' +
+      methodCardHtml(report, sample) +
+      (report.bonus ? roastBlock(report.bonus, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
+      '</section>';
     return html;
   }
 
@@ -5059,7 +5063,7 @@
       const current = [...inBand].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
       if (current) light(keyOf(current));
     }, { rootMargin: '-20% 0px -70% 0px' });
-    root.querySelectorAll('.part-card[data-part-card]').forEach(node => partObserver.observe(node));
+    root.querySelectorAll('.part-card[data-part-card], .appendix-part[data-part-card]').forEach(node => partObserver.observe(node));
     light('overview');
   }
 
@@ -5070,13 +5074,13 @@
     // confidence card, which holds the page's own controls.
     if (!sample && options && options.explained === false) {
       const unlocked = paidAnalysis();
-      // Structured: what the card was read from sits beside it (freeMethodHtml),
-      // and there is no re-run here — more data comes with the full report,
-      // whose unlock asks for it before the run.
+      // Structured: Evidence and method under the offer (freeMethodCardHtml),
+      // and no re-run here — more data comes with the full report, whose
+      // unlock asks for it before the run.
       return fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
-        (reportLayout() === 'structured' ? '' : confidenceCardHtml(report, false));
+        (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
     }
     if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
     // Every section of the report body is a disclosure; sectionHead's other
@@ -5212,25 +5216,147 @@
   }
 
   /**
-   * A free report's Evidence and method, beside its Psyche Card: the score,
-   * one line of why, and what was read. No sources list and no re-run.
+   * A free report's Evidence and method, under the unlock offer: the score,
+   * why, and what was read. No sources list and no re-run — more data comes
+   * with the full report, whose unlock asks for it before the run.
    */
-  function freeMethodHtml(report) {
-    const confidence = report.confidence || {};
-    const score = Math.round(Number(confidence.score) || 0);
-    const why = String(confidence.rationale || '').match(/^.*?[.!?](\s|$)/);
-    const counted = countedInFullHtml();
-    const based = (confidence.basedOn || []).filter(Boolean);
-    return sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') +
-      '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + score + '"></div></div>' +
-      '<p class="free-score"><strong>' + esc(TEXT.trustScore) + score + '/100' +
-        (confidence.level ? ' (' + esc(confidence.level) + ')' : '') + '.</strong></p>' +
-      (why ? '<p class="free-why">' + esc(why[0].trim()) + '</p>' : '') +
-      (counted || based.length
-        ? '<p class="essence-label evidence-head">' + esc(TEXT.confidenceBasedOn) + '</p>' +
-          (counted || '<p class="trait-evidence">' + based.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>')
-        : '');
+  function freeMethodCardHtml(report) {
+    return '<div class="card section-card confidence-card method-card free-method-card">' +
+      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) + '</div>';
   }
+
+  /**
+   * Beside a free report's card: how to read it, part by part, each line
+   * written from the reader's own card. Pointing at or tapping a part lights
+   * it up on the card; the guide walks through the parts once on its own when
+   * it first comes into view, until the reader takes over.
+   */
+  function cardGuideHtml(report) {
+    const G = Copy.STRUCTURED.cardGuide;
+    const facts = cardGuideFacts(report);
+    const items = G.items.filter(item => item.when(facts));
+    return '<div class="card-guide">' + sectionHead('🔎', esc(G.title), esc(G.sub)) +
+      '<ol class="cg-list">' + items.map((item, i) =>
+        '<li><button type="button" class="cg-item" data-guide="' + esc(item.key) + '" aria-pressed="false">' +
+          '<span class="cg-icon" aria-hidden="true">' + esc(item.icon) + '</span>' +
+          '<span class="cg-text"><strong>' + esc(item.title) + '</strong><span>' + esc(item.line(facts)) + '</span></span>' +
+          '<span class="cg-step" aria-hidden="true">' + (i + 1) + '</span>' +
+        '</button></li>').join('') + '</ol></div>';
+  }
+
+  /** The facts the guide's lines are written from, read off the card's report. */
+  function cardGuideFacts(report) {
+    const S = Copy.STRUCTURED;
+    const essence = report.essence || {};
+    const five = report.bigFive || {};
+    const traits = Object.keys(TRAIT_LABELS).filter(key => five[key]);
+    const standout = traits.slice().sort((a, b) =>
+      Math.abs((Number(five[b].score) || 50) - 50) - Math.abs((Number(five[a].score) || 50) - 50))[0];
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const first = list => ((list || []).find(entry => entry && entry.language) || {}).language || '';
+    const patterns = signaturePatterns(report);
+    const motives = cardMotivators(report);
+    return {
+      character: essenceName(essence), franchise: essence.franchise || '',
+      score: Math.round(Number((report.card || {}).confidence) || Number((report.confidence || {}).score) || 0),
+      level: (report.confidence || {}).level || '',
+      pattern: patterns[0] ? patterns[0].name : '',
+      motive: motives[0] ? S.motivators[motives[0]].label : '',
+      type: (report.mbti || {}).type || '',
+      letters: ((report.mbti || {}).letters || []).filter(l => l && l.choice && l.strength)
+        .map(l => l.choice + ' ' + l.strength),
+      trait: standout ? TRAIT_LABELS[standout] : '', traitScore: standout ? Math.round(Number(five[standout].score) || 0) : 0,
+      value: titlesOf(report.values, 1)[0] || titlesOf(report.beliefs, 1)[0] || '',
+      interest: titlesOf(report.interests, 1)[0] || '',
+      loveIn: first(love.receiving), loveOut: first(love.giving),
+    };
+  }
+
+  // The parts of the card each guide step points at.
+  const GUIDE_TARGETS = {
+    character: ['.pc-shero'],
+    confidence: ['.pc-sconf'],
+    patterns: ['.pc-spatterns'],
+    motives: ['.pc-smotives'],
+    type: ['.pc-sletters'],
+    bigFive: ['.pc-straits'],
+    standFor: ['.pc-schips'],
+    love: ['.pc-slove-panel'],
+  };
+
+  function lightCardPart(key) {
+    const card = $('#psyche-card');
+    if (!card) return;
+    card.querySelectorAll('.pc-glow').forEach(node => node.classList.remove('pc-glow'));
+    document.querySelectorAll('.cg-item').forEach(button => {
+      const on = button.getAttribute('data-guide') === key;
+      button.classList.toggle('is-active', on);
+      button.setAttribute('aria-pressed', String(on));
+    });
+    card.classList.toggle('pc-guiding', Boolean(key));
+    for (const selector of (key && GUIDE_TARGETS[key]) || []) {
+      card.querySelectorAll(selector).forEach(node => {
+        const target = node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node;
+        target.classList.add('pc-glow');
+      });
+    }
+  }
+
+  // The guide's own walk-through: once, when it first comes into view, and
+  // stopped for good by the reader's first touch. Not at all for a reader who
+  // has asked for less motion.
+  let guideTour = null;
+  function stopGuideTour() {
+    if (guideTour) { clearInterval(guideTour); guideTour = null; }
+  }
+  function startGuideTour() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const list = $('#profile-side .cg-list');
+    if (reduce || !list || typeof IntersectionObserver !== 'function') return;
+    const watch = new IntersectionObserver(entries => {
+      if (!entries.some(e => e.isIntersecting)) return;
+      watch.disconnect();
+      if (list.dataset.touched) return;
+      const keys = Array.from(list.querySelectorAll('.cg-item')).map(b => b.getAttribute('data-guide'));
+      let at = 0;
+      stopGuideTour();
+      lightCardPart(keys[0]);
+      guideTour = setInterval(() => {
+        at += 1;
+        if (at >= keys.length) { stopGuideTour(); lightCardPart(null); return; }
+        lightCardPart(keys[at]);
+      }, 2200);
+    }, { threshold: 0.6 });
+    watch.observe(list);
+  }
+
+  document.addEventListener('click', event => {
+    const item = event.target.closest('.cg-item');
+    if (!item) return;
+    const list = item.closest('.cg-list');
+    if (list) list.dataset.touched = '1';
+    stopGuideTour();
+    const key = item.getAttribute('data-guide');
+    lightCardPart(item.classList.contains('is-active') ? null : key);
+    // Stacked on a phone, the card is above the guide: bring it into view.
+    if (item.classList.contains('is-active') && window.matchMedia && window.matchMedia('(max-width: 719px)').matches) {
+      const glow = document.querySelector('#psyche-card .pc-glow');
+      if (glow) glow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+  document.addEventListener('mouseover', event => {
+    const item = event.target.closest && event.target.closest('.cg-item');
+    if (!item || !window.matchMedia || !window.matchMedia('(hover: hover)').matches) return;
+    const list = item.closest('.cg-list');
+    if (list) list.dataset.touched = '1';
+    stopGuideTour();
+    lightCardPart(item.getAttribute('data-guide'));
+  });
+  document.addEventListener('mouseout', event => {
+    const list = event.target.closest && event.target.closest('.cg-list');
+    if (!list || (event.relatedTarget && list.contains(event.relatedTarget))) return;
+    if (window.matchMedia && window.matchMedia('(hover: hover)').matches) lightCardPart(null);
+  });
 
   // Confidence closes the report rather than opening it: read after the
   // whole thing, it says how much of what you just read to believe. Shared by
@@ -5280,13 +5406,16 @@
    * the one-line form rather than printing "undefined".
    */
   function renderAnalysedBy(profile) {
-    const lines = ['Analysed by ' + esc(profile.model || 'the model') + ' on ' +
-      esc(new Date(profile.createdAt).toLocaleString()) + '.'];
+    // A quiet pill per line, the model in the ink colour and the date short.
+    const when = at => new Date(at).toLocaleString(undefined,
+      { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const pill = (icon, lead, model, at) => '<span class="provenance-item"><span class="provenance-icon" aria-hidden="true">' +
+      icon + '</span><span>' + esc(lead) + ' <b>' + esc(model) + '</b> on ' + esc(when(at)) + '.</span></span>';
+    const lines = [pill('✦', 'Analysed by', profile.model || 'the model', profile.createdAt)];
     if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
-      lines.push('Full premium report written by ' + esc(profile.premiumModel) + ' on ' +
-        esc(new Date(profile.premiumAt).toLocaleString()) + '.');
+      lines.push(pill('★', 'Full premium report written by', profile.premiumModel, profile.premiumAt));
     }
-    $('#analysed-by').innerHTML = lines.join('<br>');
+    $('#analysed-by').innerHTML = lines.join('');
   }
 
   function renderProfile() {
@@ -5338,7 +5467,11 @@
     view.classList.toggle('profile-paid', structured && explained);
     const side = $('#profile-side');
     side.hidden = !(structured && !explained);
-    setHtml(side, side.hidden ? '' : freeMethodHtml(report));
+    setHtml(side, side.hidden ? '' : cardGuideHtml(report));
+    stopGuideTour();
+    if (!side.hidden) startGuideTour();
+    // A free report has only the card, which has its own download.
+    $('#export-pdf-bottom').hidden = structured && !explained;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     collapseSections($('#profile-body'));
@@ -5577,12 +5710,25 @@
   // address, which bought the operator a mailing list at the cost of putting a
   // form in front of the one thing the reader had already paid for; the gate is
   // gone and the button now does what it says.
+  /** "Psyche Report - Jared Sia - 05102026.pdf": whose, and the day it was written. */
+  function reportFileName(profile) {
+    const when = new Date(profile.createdAt || Date.now());
+    const day = Number.isNaN(when.getTime()) ? new Date() : when;
+    const ddmmyyyy = String(day.getDate()).padStart(2, '0') + String(day.getMonth() + 1).padStart(2, '0') + day.getFullYear();
+    // Plain letters only: a browser can drop a name it cannot encode and save
+    // the file as "download", so accents fold (Aleç → Alec) and anything still
+    // outside ASCII, or unsafe in a file name, goes.
+    const who = String((profile.card && profile.card.name) || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7e]+/g, ' ').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim() || 'You';
+    return 'Psyche Report - ' + who + ' - ' + ddmmyyyy + '.pdf';
+  }
+
   function exportPdf() {
     const profile = state.profile;
     if (!profile) return;
     const href = URL.createObjectURL(buildReportPdf(profile));
     const link = document.createElement('a');
-    link.download = 'psycheai-report.pdf';
+    link.download = reportFileName(profile);
     link.href = href;
     document.body.appendChild(link);
     link.click();
@@ -5599,7 +5745,6 @@
   // neither is knowable from a stylesheet.
   // A full report on a wide, tall screen keeps its card in the left column
   // above the part nav (styles.css, .profile-paid), at thumbnail size.
-  const SIDE_CARD_MAX_H = 330;
   function sideCardMode() {
     const view = $('#view-profile');
     return Boolean(view && view.classList.contains('profile-paid') &&
@@ -5615,7 +5760,10 @@
       // to be tapped, so it is sized like one.
       const width = slot.clientWidth || CARD_W;
       const side = sideCardMode();
-      fitCard($('#psyche-card'), width, side ? SIDE_CARD_MAX_H : PREVIEW_MAX_H);
+      // In the left column and on a free report the card fills its box's
+      // width, however tall that makes it.
+      const fill = side || $('#view-profile').classList.contains('profile-free');
+      fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
       // The nav below a card in the left column starts where the card ends.
       if (side) $('#view-profile').style.setProperty('--side-card-h', $('#psyche-card-section').offsetHeight + 'px');
     }

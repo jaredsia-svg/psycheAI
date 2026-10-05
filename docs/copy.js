@@ -940,6 +940,37 @@
       confidence: 'Confidence',
     },
     pdfCardFoot: 'PsycheAI · your personality, read from your own data',
+    // Beside a free report's Psyche Card: how to read it, part by part, each
+    // line written from the reader's own card. `when` skips a part the card
+    // does not have.
+    cardGuide: {
+      title: 'How to read your Psyche Card',
+      sub: 'Point at or tap a part to find it on your card.',
+      items: [
+        { key: 'character', icon: '🦸', title: 'Who you are most like', when: f => f.character,
+          line: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') +
+            ' is the character whose behaviour matches yours most closely. The two lines under the name say why.' },
+        { key: 'confidence', icon: '🎯', title: 'The number in the ring', when: f => f.score,
+          line: f => f.score + '/100 is how much evidence stands behind this card' + (f.level ? ' — ' + f.level + '.' : '.') +
+            ' The more of your data it read, the higher it goes.' },
+        { key: 'patterns', icon: '🧵', title: 'Your patterns', when: f => f.pattern,
+          line: f => 'The habits that show up again and again. Number 1, "' + f.pattern + '", explains the most about you.' },
+        { key: 'motives', icon: '🧲', title: 'What motivates you', when: f => f.motive,
+          line: f => 'Your top three of the ten basic values everyone shares, strongest first. ' + f.motive + ' leads.' },
+        { key: 'type', icon: '🧭', title: 'MBTI', when: f => f.type,
+          line: f => f.type + ', letter by letter, with how firmly your data picked each one' +
+            (f.letters.length ? ': ' + f.letters.join(', ') + '.' : '.') },
+        { key: 'bigFive', icon: '📊', title: 'Big Five', when: f => f.trait,
+          line: f => 'Scored 0–100, where most people land between 35 and 65. Your ' + f.trait.toLowerCase() +
+            ' at ' + f.traitScore + ' is the one furthest from the middle.' },
+        { key: 'standFor', icon: '⚖️', title: 'Values, beliefs and interests', when: f => f.value || f.interest,
+          line: f => 'What you stand for, and what you keep coming back to' +
+            (f.value && f.interest ? ': ' + f.value + ' and ' + f.interest + ' come first.' : '.') },
+        { key: 'love', icon: '💝', title: 'Love languages', when: f => f.loveIn || f.loveOut,
+          line: f => 'How you like to be cared for' + (f.loveIn ? ' (' + f.loveIn.toLowerCase() + ')' : '') +
+            ', beside how you show it' + (f.loveOut ? ' (' + f.loveOut.toLowerCase() + ')' : '') + '. Where they differ is worth knowing.' },
+      ],
+    },
     cardStandFor: 'Values & Beliefs',
     cardInto: 'Interests',
     cardFooter: 'psycheai · your personality, read from your own data',

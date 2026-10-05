@@ -2147,7 +2147,6 @@
   // values, interests and love languages each in a small tinted panel, as the
   // card on the page sets them. The contents list goes under it.
 
-  const STRENGTH_DOTS = { slight: 1, moderate: 2, clear: 3 };
   const BAND_FROM = [0.204, 0.106, 0.302];
   const SHORT_TRAITS = { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
     agreeableness: 'Agreeable', neuroticism: 'Sensitivity' };
@@ -2302,8 +2301,14 @@
             const cy = top + i * 13.5;
             doc.draw(toWinAnsi(l.choice), x, cy + 9, { size: 9, bold: true, color: ACCENT });
             doc.draw(toWinAnsi((Copy.MBTI_POLES[l.choice] || {}).name || ''), x + 13, cy + 9, { size: 8.8, color: INK });
-            const dots = STRENGTH_DOTS[l.strength] || 0;
-            for (let d = 0; d < 3; d++) doc.circle(x + pInner - 16 + d * 7, cy + 6, 2.4, d < dots ? ACCENT : mix(LINE, WHITE, 0.2));
+            // How firmly the letter was picked, in words, as on the page's card.
+            if (l.strength) {
+              const word = toWinAnsi(String(l.strength));
+              const w = measure(word, 6.8, true) + 10;
+              const clear = l.strength === 'clear';
+              doc.roundRect(x + pInner - w, cy + 0.5, w, 11, 5.5, clear ? ACCENT : mix(ACCENT, WHITE, l.strength === 'slight' ? 0.9 : 0.82));
+              doc.draw(word, x + pInner - w + 5, cy + 8.6, { size: 6.8, bold: true, color: clear ? WHITE : (l.strength === 'slight' ? SOFT : ACCENT) });
+            }
           });
         },
       } },
