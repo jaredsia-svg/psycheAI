@@ -4368,9 +4368,12 @@
     const S = Copy.STRUCTURED;
     // Evidence and method and the roast sit inside part 05, the appendix.
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
-    return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' + items.map(([key, num, title]) =>
-      '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '">' +
-      (num ? '<span class="part-nav-num">' + num + '</span>' : '') + esc(title) + '</button>').join('') + '</nav>';
+    // On a phone it is one thin row of numerals under the site's header —
+    // "Part 00 … 05" — with the names kept for screen readers and wider screens.
+    return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' +
+      '<span class="part-nav-lead" aria-hidden="true">' + esc(S.partNavLead) + '</span>' + items.map(([key, num, title]) =>
+      '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
+      (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
   }
 
   function patternsCardHtml(patterns) {
@@ -4860,11 +4863,14 @@
   function countedInFull(digest) {
     const R = Copy.STRUCTURED.readFrom;
     if (!digest) return [];
-    const num = value => (Number(value) > 0 ? Number(value).toLocaleString() : '');
+    // Totals are rounded to read at a glance — 9,741 is "9.7k", 637 is "~600"
+    // — while what was actually read stays exact.
+    const num = value => roughCount(value);
+    const exact = value => (Number(value) > 0 ? Number(value).toLocaleString() : '');
     const sampling = (digest.coverage && digest.coverage.sampling) || {};
     const read = key => {
       const entry = sampling[key];
-      return entry && Number(entry.available) > 0 ? { shown: num(entry.shown) || '0', of: num(entry.available) } : null;
+      return entry && Number(entry.available) > 0 ? { shown: exact(entry.shown) || '0', of: num(entry.available) } : null;
     };
     const items = [];
     const dm = digest.directMessages;
@@ -4898,6 +4904,19 @@
     const fbPosts = read('facebookPosts');
     if (fbPosts) items.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
     return items;
+  }
+
+  /** A total to the nearest hundred: under 100 as it is, then "~600", then "9.7k". */
+  function roughCount(value) {
+    const n = Number(value);
+    if (!(n > 0)) return '';
+    if (n < 100) return String(Math.round(n));
+    if (n < 950) {
+      const hundred = Math.round(n / 100) * 100;
+      return (hundred === n ? '' : '~') + hundred;
+    }
+    if (n < 999500) return String(Math.round(n / 100) / 10).replace(/\.0$/, '') + 'k';
+    return String(Math.round(n / 100000) / 10).replace(/\.0$/, '') + 'M';
   }
 
   function countedInFullHtml() {
@@ -5226,31 +5245,31 @@
   }
 
   /**
-   * Beside a free report's card, a quarter of the width: what each part of
-   * the card means. Pointing at a part of the card (or tapping it, on a
-   * screen with no pointer) pops its explanation out on the right, level with
-   * the part, written from the reader's own card. Until then it says where to
-   * start, with every part listed as a chip that does the same thing.
+   * Beside a free report's card: empty until the reader points at a part of
+   * the card, when that part's meaning pops out level with it — what it is,
+   * the reader's own reading, and why it is worth knowing. Above it, the
+   * card's own three actions: enlarge, download, share.
    */
   function cardGuideHtml(report) {
     const G = Copy.STRUCTURED.cardGuide;
     const facts = cardGuideFacts(report);
     cardGuideState = { facts, items: G.items.filter(item => item.when(facts)) };
-    return '<div class="cx">' +
-      '<div class="cx-intro">' +
-        '<span class="cx-intro-icon" aria-hidden="true">🔎</span>' +
-        '<h2 class="cx-title">' + esc(G.title) + '</h2>' +
-        '<p class="cx-sub">' + esc(G.sub) + '</p>' +
-        '<ul class="cx-parts">' + cardGuideState.items.map(item =>
-          '<li><button type="button" class="cx-part" data-guide="' + esc(item.key) + '">' +
-          '<span aria-hidden="true">' + esc(item.icon) + '</span>' + esc(item.title) + '</button></li>').join('') + '</ul>' +
+    const tool = (act, svg) => '<button type="button" class="cx-tool" data-act="' + act + '" title="' + esc(G.toolTips[act]) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
+    return '<div class="cx" aria-label="' + esc(G.title) + '">' +
+      '<div class="cx-tools">' +
+        tool('enlarge', '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>') +
+        tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
+        tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
       '</div>' +
-      '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
-        '<span class="cx-arrow" aria-hidden="true"></span>' +
-        '<button type="button" class="cx-close" aria-label="Close">✕</button>' +
-        '<span class="cx-pop-icon" aria-hidden="true"></span>' +
-        '<strong class="cx-pop-title"></strong>' +
-        '<p class="cx-pop-line"></p>' +
+      '<div class="cx-stage">' +
+        '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
+          '<span class="cx-arrow" aria-hidden="true"></span>' +
+          '<button type="button" class="cx-close" aria-label="Close">✕</button>' +
+          '<div class="cx-pop-head"><span class="cx-pop-icon" aria-hidden="true"></span><strong class="cx-pop-title"></strong></div>' +
+          '<div class="cx-pop-body"></div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
@@ -5274,6 +5293,8 @@
       level: (report.confidence || {}).level || '',
       pattern: patterns[0] ? patterns[0].name : '',
       motive: motives[0] ? S.motivators[motives[0]].label : '',
+      motives: motives.map(key => S.motivators[key].label),
+      chosen: ((report.mbti || {}).letters || []).map(l => l && l.choice).filter(Boolean),
       type: (report.mbti || {}).type || '',
       letters: ((report.mbti || {}).letters || []).filter(l => l && l.choice && l.strength)
         .map(l => l.choice + ' ' + l.strength),
@@ -5313,8 +5334,6 @@
     const card = $('#psyche-card');
     if (!card) return;
     card.querySelectorAll('.pc-glow').forEach(node => node.classList.remove('pc-glow'));
-    document.querySelectorAll('.cx-part').forEach(button =>
-      button.classList.toggle('is-active', button.getAttribute('data-guide') === key));
     card.classList.toggle('pc-guiding', Boolean(key));
     if (key) card.querySelectorAll('[data-cx="' + key + '"]').forEach(node => node.classList.add('pc-glow'));
   }
@@ -5322,6 +5341,7 @@
   /** Pops the explanation of one part of the card out beside it, level with it. */
   function explainCardPart(key) {
     const panel = $('#profile-side .cx');
+    const stage = panel && panel.querySelector('.cx-stage');
     const pop = panel && panel.querySelector('.cx-pop');
     const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
     if (!pop) return;
@@ -5332,9 +5352,19 @@
       lightCardPart(null);
       return;
     }
+    const G = Copy.STRUCTURED.cardGuide;
+    const facts = cardGuideState.facts;
     pop.querySelector('.cx-pop-icon').textContent = item.icon;
     pop.querySelector('.cx-pop-title').textContent = item.title;
-    pop.querySelector('.cx-pop-line').textContent = item.line(cardGuideState.facts);
+    pop.querySelector('.cx-pop-body').innerHTML =
+      '<p class="cx-about">' + esc(item.about) + '</p>' +
+      // MBTI's four letters in plain words, the reader's own letter of each pair marked.
+      (item.letters ? '<ul class="cx-letters">' + item.letters.map(([a, b, what, line]) =>
+        '<li><span class="cx-pair"><b class="' + (facts.chosen.includes(a) ? 'is-yours' : '') + '">' + esc(a) + '</b>' +
+        '<b class="' + (facts.chosen.includes(b) ? 'is-yours' : '') + '">' + esc(b) + '</b></span>' +
+        '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
+      '<div class="cx-yours"><span class="cx-label">' + esc(G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>' +
+      '<div class="cx-why"><span class="cx-label">' + esc(G.labels.why) + '</span>' + esc(item.why) + '</div>';
     pop.hidden = false;
     panel.classList.add('is-explaining');
     lightCardPart(key);
@@ -5368,8 +5398,14 @@
   // card still opens it. Captured, so the card's own click never sees it.
   document.addEventListener('click', event => {
     if (!event.target.closest) return;
-    const chip = event.target.closest('.cx-part');
-    if (chip) { explainCardPart(chip.classList.contains('is-active') ? null : chip.getAttribute('data-guide')); return; }
+    const tool = event.target.closest('.cx-tool');
+    if (tool) {
+      const act = tool.getAttribute('data-act');
+      if (act === 'enlarge') openPsycheCard();
+      else if (act === 'download') downloadCardImage({ currentTarget: tool });
+      else if (act === 'share') shareCardImage({ currentTarget: tool });
+      return;
+    }
     if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
     const part = event.target.closest('#psyche-card [data-cx]');
     if (!part || canHover() || !$('#view-profile').classList.contains('profile-free')) return;
@@ -5429,13 +5465,14 @@
     // A quiet pill per line, the model in the ink colour and the date short.
     const when = at => new Date(at).toLocaleString(undefined,
       { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-    const pill = (icon, lead, model, at) => '<span class="provenance-item"><span class="provenance-icon" aria-hidden="true">' +
+    // One quiet box, a line per thing that was written.
+    const line = (icon, lead, model, at) => '<span class="provenance-item"><span class="provenance-icon" aria-hidden="true">' +
       icon + '</span><span>' + esc(lead) + ' <b>' + esc(model) + '</b> on ' + esc(when(at)) + '.</span></span>';
-    const lines = [pill('✦', 'Analysed by', profile.model || 'the model', profile.createdAt)];
+    const lines = [line('✦', 'Psyche Card generated by', profile.model || 'the model', profile.createdAt)];
     if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
-      lines.push(pill('★', 'Full premium report written by', profile.premiumModel, profile.premiumAt));
+      lines.push(line('★', 'Full premium report written by', profile.premiumModel, profile.premiumAt));
     }
-    $('#analysed-by').innerHTML = lines.join('');
+    $('#analysed-by').innerHTML = '<div class="provenance-box">' + lines.join('') + '</div>';
   }
 
   function renderProfile() {
@@ -5497,6 +5534,7 @@
     $('#export-pdf-bottom').hidden = structured && !explained;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
+    layoutSideActions();
     collapseSections($('#profile-body'));
     markStructured($('#profile-body'));
 
@@ -5774,6 +5812,13 @@
       window.matchMedia && window.matchMedia('(min-width: 1340px) and (min-height: 760px)').matches);
   }
 
+  function layoutSideActions() {
+    const nav = document.querySelector('#profile-body .part-nav');
+    if (!nav || !sideCardMode()) return;
+    requestAnimationFrame(() => $('#view-profile').style.setProperty('--side-nav-bottom',
+      Math.round(nav.getBoundingClientRect().bottom + 10) + 'px'));
+  }
+
   function layoutPsycheCard() {
     const slot = $('#psyche-card-open');
     if (slot && !$('#psyche-card-section').hidden) {
@@ -5787,8 +5832,10 @@
       // width, however tall that makes it.
       const fill = side || $('#view-profile').classList.contains('profile-free');
       fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
-      // The nav below a card in the left column starts where the card ends.
+      // The nav below a card in the left column starts where the card ends,
+      // and the page's actions where the nav ends.
       if (side) $('#view-profile').style.setProperty('--side-card-h', $('#psyche-card-section').offsetHeight + 'px');
+      layoutSideActions();
     }
     const dialog = $('#card-dialog');
     if (dialog && dialog.open) {
@@ -6057,6 +6104,13 @@
     if (event.target === $('#card-dialog')) $('#card-dialog').close();
   });
   window.addEventListener('resize', layoutPsycheCard);
+  // How tall the site's header is, for whatever sticks just under it.
+  const measureHeader = () => {
+    const bar = document.querySelector('.nav');
+    if (bar) document.documentElement.style.setProperty('--header-h', bar.offsetHeight + 'px');
+  };
+  measureHeader();
+  window.addEventListener('resize', measureHeader);
 
   // The QR code and its actions were an always-visible panel on the profile
   // page; they are a popout now, opened on demand from beside the download

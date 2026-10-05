@@ -629,6 +629,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 }
 .link-btn:hover { filter: brightness(1.06); }
 .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 1.4rem; }
+/* The icons only show where the row moves into the left column. */
+.cta-row .cta-icon { display: none; width: 18px; height: 18px; }
 
 /* ---------- upload ---------- */
 
@@ -2865,8 +2867,20 @@ details.more[open] > summary::after { content: ' ▴'; }
    On a phone it stays where it is rather than following the reader down, so
    two rows of it never sit over the report. Where the screen leaves room
    beside the 820px report, it stands down the left as a list instead. */
+.part-nav-lead { display: none; }
+/* On a phone: one thin row of numerals stuck under the site's header. */
 @media (max-width: 639px) {
-  .part-nav { position: static; }
+  #profile-body .part-nav {
+    top: var(--header-h, 3rem); z-index: 15; flex-wrap: nowrap; align-items: center; gap: .1rem;
+    margin: 0 0 .8rem; padding: .2rem .35rem; border-radius: 12px;
+  }
+  .part-nav .part-nav-label { display: none; }
+  .part-nav .part-nav-lead {
+    display: block; flex: none; padding: 0 .35rem 0 .3rem; font-size: .62rem; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
+  }
+  .part-nav .part-nav-item { flex: 1 1 0; padding: .22rem 0; font-size: .74rem; text-align: center; }
+  .part-nav .part-nav-num { margin: 0; opacity: 1; }
 }
 @media (min-width: 1340px) {
   #profile-body .part-nav {
@@ -2894,9 +2908,37 @@ details.more[open] > summary::after { content: ' ▴'; }
      screen still cannot hold all of it. */
   #view-profile.profile-paid #profile-body .part-nav {
     top: calc(4.6rem + var(--side-card-h, 440px) + .6rem);
-    max-height: calc(100vh - 4.6rem - var(--side-card-h, 440px) - 1.4rem); overflow-y: auto;
+    max-height: calc(100vh - 4.6rem - var(--side-card-h, 440px) - 5.2rem); overflow-y: auto;
   }
   #view-profile.profile-paid #profile-body .part-nav-item { padding: .3rem .7rem; }
+  /* The page's three actions, under the nav: quiet icons in the nav's own
+     box style, each named by a tooltip. Its top is the nav's measured foot
+     (--side-nav-bottom, set by layoutPsycheCard). */
+  #view-profile.profile-paid .cta-row {
+    position: fixed; z-index: 10; top: var(--side-nav-bottom, 760px); left: max(1rem, calc((100vw - 820px) / 2 - 248px));
+    width: 232px; margin: 0; padding: .35rem; gap: .25rem; justify-content: space-around; flex-wrap: nowrap;
+    border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow);
+    background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(8px);
+  }
+  #view-profile.profile-paid .cta-row .btn {
+    position: relative; display: grid; place-items: center; width: 44px; height: 38px; padding: 0; min-height: 0;
+    border: 0; border-radius: 10px; background: transparent; color: var(--ink-soft); box-shadow: none;
+  }
+  #view-profile.profile-paid .cta-row .btn:hover, #view-profile.profile-paid .cta-row .btn:focus-visible {
+    background: var(--accent-soft); color: var(--accent); outline: none;
+  }
+  #view-profile.profile-paid .cta-row .btn.danger:hover, #view-profile.profile-paid .cta-row .btn.danger:focus-visible {
+    background: color-mix(in srgb, #c0392b 12%, var(--bg-alt)); color: #b3261e;
+  }
+  #view-profile.profile-paid .cta-row .cta-icon { display: block; }
+  #view-profile.profile-paid .cta-row .cta-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  #view-profile.profile-paid .cta-row [data-tip]:hover::after, #view-profile.profile-paid .cta-row [data-tip]:focus-visible::after {
+    content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    padding: .3rem .6rem; border-radius: 8px; background: var(--ink); color: var(--bg-alt);
+    font-size: .74rem; font-weight: 600; white-space: nowrap; pointer-events: none; z-index: 2;
+  }
 }
 
 /* The free report: no nav, the Psyche Card on the left half of the column
@@ -2905,9 +2947,9 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-free .profile-top { display: grid; gap: 1rem; align-items: start; }
 #view-profile.profile-free #profile-side { padding: 1rem; overflow: visible; }
 @media (min-width: 720px) {
-  /* The card three quarters of the width, what it means the last quarter,
-     the two the same height. */
-  #view-profile.profile-free .profile-top { grid-template-columns: 3fr 1fr; align-items: stretch; }
+  /* The card three fifths of the width, what it means the rest, the two
+     the same height. */
+  #view-profile.profile-free .profile-top { grid-template-columns: 3fr 2fr; align-items: stretch; }
 }
 #view-profile.profile-free #psyche-card-section { width: auto; margin: 0; }
 /* The card fills its box, edge to edge, on a free report and in the left
@@ -2917,29 +2959,29 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-free #psyche-card, #view-profile.profile-paid #psyche-card { box-shadow: none; }
 #view-profile.profile-free .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
 .free-method-card { margin-top: 1rem; }
-/* What each part of the card means, beside it: where to start until the
-   reader points at the card, then that part's explanation popped out level
-   with it, an arrow pointing back at the part. */
-.cx { position: relative; height: 100%; min-height: 16rem; }
-.cx-intro { transition: opacity .25s ease; }
-.cx.is-explaining .cx-intro { opacity: .12; }
-.cx-intro-icon {
-  display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 12px; font-size: 1.2rem; margin-bottom: .6rem;
-  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 18%, var(--bg-alt)));
+/* Beside a free card: its three actions along the top, and below them a
+   stage that stays empty until the reader points at a part of the card —
+   then that part's meaning pops out level with it, an arrow pointing back. */
+.cx { position: relative; height: 100%; display: flex; flex-direction: column; gap: .8rem; }
+.cx-tools { display: flex; justify-content: flex-end; gap: .4rem; }
+.cx-tool {
+  display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 4.1rem;
+  padding: .5rem .55rem .4rem; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt);
+  font: inherit; font-size: .7rem; font-weight: 700; color: var(--ink-soft); cursor: pointer;
+  transition: border-color .2s, color .2s, transform .2s, box-shadow .2s;
 }
-.cx-title { margin: 0 0 .35rem; font-size: 1.05rem; line-height: 1.3; }
-.cx-sub { margin: 0 0 .9rem; font-size: .84rem; color: var(--ink-soft); line-height: 1.45; }
-.cx-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
-.cx-part {
-  display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .6rem; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--bg-alt); font: inherit; font-size: .76rem; font-weight: 600;
-  color: var(--ink); cursor: pointer;
+.cx-tool svg { width: 20px; height: 20px; color: var(--accent); }
+.cx-tool:hover, .cx-tool:focus-visible {
+  border-color: var(--accent); color: var(--accent); transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
 }
-.cx-part:hover, .cx-part:focus-visible, .cx-part.is-active { border-color: var(--accent); color: var(--accent); outline: none; }
+.cx-stage { flex: 1; min-height: 14rem; }
+/* The pop is placed against the whole panel, so it can come level with the
+   ring at the very top of the card, over the actions if need be. */
 .cx-pop {
-  position: absolute; left: 0; right: 0; top: 0; z-index: 2;
-  padding: .9rem .9rem 1rem; border-radius: 14px; border: 1px solid var(--accent);
-  background: var(--bg-alt); box-shadow: 0 14px 34px rgba(123, 63, 160, .18);
+  position: absolute; left: 0; right: 0; top: 0; z-index: 3;
+  padding: .95rem 1rem 1rem; border-radius: 16px; border: 1px solid var(--accent);
+  background: var(--bg-alt); box-shadow: 0 16px 38px rgba(123, 63, 160, .18);
   transition: transform .25s ease; animation: cx-in .2s ease both;
 }
 @keyframes cx-in { from { opacity: 0; } to { opacity: 1; } }
@@ -2951,12 +2993,30 @@ details.more[open] > summary::after { content: ' ▴'; }
   position: absolute; top: .45rem; right: .45rem; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 0;
   background: transparent; color: var(--ink-soft); cursor: pointer; font-size: .8rem; display: none;
 }
+.cx-pop-head { display: flex; align-items: center; gap: .55rem; margin-bottom: .55rem; }
 .cx-pop-icon {
-  display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 10px; font-size: 1.1rem; margin-bottom: .45rem;
+  flex: none; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px; font-size: 1.05rem;
   background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 18%, var(--bg-alt)));
 }
-.cx-pop-title { display: block; font-size: .95rem; margin-bottom: .25rem; }
-.cx-pop-line { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--ink-soft); }
+.cx-pop-title { font-size: 1rem; }
+.cx-about { margin: 0 0 .7rem; font-size: .84rem; line-height: 1.55; color: var(--ink-soft); }
+.cx-letters { list-style: none; margin: 0 0 .7rem; padding: 0; display: grid; gap: .4rem; }
+.cx-letters li { display: grid; grid-template-columns: auto 1fr; gap: .55rem; align-items: start; font-size: .8rem; line-height: 1.45; color: var(--ink-soft); }
+.cx-letters strong { color: var(--ink); }
+.cx-pair { display: inline-flex; gap: .15rem; }
+.cx-pair b {
+  display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 6px; font-size: .74rem;
+  color: var(--ink-soft); background: color-mix(in srgb, var(--line) 60%, var(--bg-alt));
+}
+.cx-pair b.is-yours { color: #fff; background: var(--accent); }
+.cx-yours, .cx-why { font-size: .84rem; line-height: 1.5; padding: .6rem .7rem; border-radius: 12px; }
+.cx-yours { margin-bottom: .5rem; color: var(--ink); font-weight: 600; background: var(--accent-soft); }
+.cx-why { color: var(--ink); background: color-mix(in srgb, var(--good-soft) 70%, var(--bg-alt)); }
+.cx-label {
+  display: block; margin-bottom: .2rem; font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent);
+}
+.cx-why .cx-label { color: var(--good); }
 #view-profile.profile-free #psyche-card [data-cx] { cursor: help; }
 /* Where to start: the ring pulses until the reader points at anything. */
 .psyche-card.pc-hint .pc-sconf { border-radius: 999px; animation: pc-pulse 1.8s ease-in-out infinite; }
@@ -2967,9 +3027,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (prefers-reduced-motion: reduce) { .psyche-card.pc-hint .pc-sconf { animation: none; } .cx-pop { transition: none; animation: none; } }
 /* On a phone the explanation rises from the foot of the screen instead. */
 @media (max-width: 719px) {
-  .cx { min-height: 0; }
-  .cx.is-explaining .cx-intro { opacity: 1; }
-  .cx-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; transform: none !important; z-index: 30; padding-right: 2.4rem; }
+  .cx-tools { justify-content: center; }
+  .cx-stage { min-height: 0; flex: none; }
+  .cx-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; transform: none !important; z-index: 30;
+    max-height: 72vh; overflow-y: auto; padding-right: 2.4rem; }
   .cx-arrow { display: none; }
   .cx-close { display: block; }
 }
@@ -2979,11 +3040,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .appendix-head .part-title { margin: 0; }
 .appendix-part > .section-card { margin-bottom: 1rem; }
 /* Who wrote the report and when: a quiet pill per line, closing the page. */
-.provenance { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin: 1.4rem 0 .4rem; }
-.provenance-item {
-  display: inline-flex; align-items: center; gap: .5rem; padding: .38rem .85rem; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--bg-alt); font-size: .78rem; color: var(--ink-soft);
+.provenance { display: flex; justify-content: center; margin: 1.4rem 0 .4rem; }
+.provenance-box {
+  display: grid; gap: .35rem; padding: .6rem 1rem; border-radius: 14px;
+  border: 1px solid var(--line); background: var(--bg-alt);
 }
+.provenance-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; color: var(--ink-soft); }
 .provenance-item b { color: var(--ink); font-weight: 600; }
 .provenance-icon {
   display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 999px; font-size: .7rem; color: #fff;
