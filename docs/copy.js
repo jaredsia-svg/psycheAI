@@ -485,7 +485,7 @@
     // fetches a real PaymentIntent and shows *that* amount once it has one,
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
-    premiumPriceLabel: 'US$8',
+    premiumPriceLabel: 'US$5',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
@@ -541,10 +541,10 @@
     // is spent, so the price is never a surprise sprung at the last moment.
     analysisPriceNote: 'Your next summary card costs US$2.',
     // Shown instead of the above once premium is unlocked — re-running then
-    // bundles the four paid sections back in, at the unlock's own US$8
+    // bundles the four paid sections back in, at the unlock's own US$5
     // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
-    analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$8 and ' +
+    analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$5 and ' +
       'refreshes everything — your card and the full premium report.',
     analysisFreeNote: 'Your first summary card is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
@@ -558,7 +558,7 @@
       'and the career assessment. Taken on this device — Apple Pay or Google Pay, whichever this ' +
       'browser offers.',
     // Shown instead of the above when the reader added a Google or Facebook
-    // export on the way here. The same US$8 now also rewrites the free
+    // export on the way here. The same US$5 now also rewrites the free
     // sections against that data, so the price is doing more and says so
     // before it is agreed to rather than after.
     premiumDialogBlurbWithData: 'One charge writes your full report and opens the roast, the mental ' +
@@ -567,7 +567,7 @@
       'device — Apple Pay or Google Pay, whichever this browser offers.',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
-    // be the wrong verb for sections they already have. Same US$8, same
+    // be the wrong verb for sections they already have. Same US$5, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
     premiumRerunDialogTitle: 'Re-run your full premium report',
@@ -751,7 +751,7 @@
   const STRUCTURED = {
     // The four parts, plus the overview before them and the appendix after.
     parts: {
-      overview: { label: 'Overview', title: 'Your report at a glance',
+      overview: { label: 'Overview', title: 'Overview',
         intro: 'The short version of everything below, and the patterns that run through it.' },
       who: { label: 'Part 1', title: 'Who you are',
         intro: 'Your temperament – your type and the five broad traits underneath it – and how you are doing.' },
@@ -913,7 +913,8 @@
         ['✨', 'Interests', 'what you keep coming back to'],
         ['💝', 'Love languages', 'how you give and receive care'],
       ],
-      previewCaption: 'A real card, from the sample report',
+      previewOpen: 'Open the sample summary card full screen',
+      sampleButton: 'See sample report',
       premiumTitle: 'The full premium report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
       partBlurbs: {
@@ -928,6 +929,16 @@
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
+    // The PDF's overview page: a line over the headline, and the four facts
+    // set as tiles under the character.
+    pdfGlance: {
+      headline: 'In one line',
+      type: 'Type',
+      drive: 'Strongest drive',
+      trait: 'Strongest trait',
+      confidence: 'Confidence',
+    },
+    pdfCardFoot: 'PsycheAI · your personality, read from your own data',
     cardStandFor: 'Values & Beliefs',
     cardInto: 'Interests',
     cardFooter: 'psycheai · your personality, read from your own data',

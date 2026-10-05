@@ -2381,6 +2381,27 @@ try {
     freeTier.badge === 'Free' && freeTier.items.length === 8 &&
     freeTier.want.every(label => freeTier.items.includes(label)), JSON.stringify(freeTier));
   check('and a real card from the sample is drawn beside the list', freeTier.preview);
+  check('with no caption under it',
+    await page.evaluate(() => !/A real card, from the sample report/i.test(document.querySelector('#view-welcome .insight-free').textContent)));
+  // The preview is a button: clicking it shows the full card full screen in
+  // the sample card dialog, and escape puts it away again.
+  {
+    await page.locator('#insight-card-open').scrollIntoViewIfNeeded();
+    await page.click('#insight-card-open');
+    await page.waitForSelector('#sample-card-dialog[open]', { timeout: 5000 }).catch(() => {});
+    const opened = await page.evaluate(() => {
+      const d = document.querySelector('#sample-card-dialog');
+      const card = document.querySelector('#sample-psyche-card-full');
+      return { open: Boolean(d && d.open), stats: card ? card.querySelectorAll('.pc-lab').length : 0,
+        label: document.querySelector('#insight-card-open').getAttribute('aria-label'),
+        want: window.PsycheCopy.STRUCTURED.insights.previewOpen };
+    });
+    check('clicking the summary card preview opens the full card', opened.open && opened.stats >= 6 &&
+      opened.label === opened.want, JSON.stringify(opened));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    check('and escape closes it', !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)));
+  }
   check('the welcome page no longer offers the Enneagram or the old IG behaviour branch',
     !/Enneagram|IG behaviour/.test(await page.evaluate(() =>
       [...document.querySelectorAll('#view-welcome .insight-free-copy, #view-welcome .insight-premium, #view-welcome .insight-compat')]
@@ -2441,27 +2462,33 @@ try {
     await page.evaluate(() => {
       const label = window.PsycheCopy.TEXT.premiumPriceLabel;
       return [...document.querySelectorAll('.premium-tier-price')]
-        .every(node => node.textContent.trim() === label) && /US\$8/.test(label);
+        .every(node => node.textContent.trim() === label) && /US\$5/.test(label);
     }),
     (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
   check('and it carries the same "Premium" badge the report sections do',
     await page.evaluate(() => [...document.querySelectorAll('.premium-tier-head .mode-badge')]
       .every(node => node.textContent.trim() === window.PsycheCopy.TEXT.premiumBadge)));
-  // ---- "See sample report" moved to the insight card's own head ----
+  // ---- "See sample report" closes the premium tier ----
   //
-  // It used to close the card, after the four free branches and the premium
-  // pitch. It now sits beside "What insights will I get?", the same shape
-  // "See illustration" uses beside the how-to card's heading — a reader asking
-  // what they get should find "can I see one" next to the question.
-  check('the insight card opens with its heading and the sample button together',
+  // It sat beside "What insights will I get?" for a while; it now closes the
+  // full premium report's own tier, at its bottom right, so "can I see one"
+  // comes straight after what the full report holds. The heading stands alone.
+  check('the insight card opens with its heading alone',
     await page.evaluate(() => {
       const head = document.querySelector('#view-welcome .insight-card-head');
       if (!head) return false;
       const h2 = head.querySelector('h2');
-      const btn = head.querySelector('#insight-sample');
-      return Boolean(h2) && Boolean(btn) &&
-        /What insights will I get/.test(h2.textContent) &&
+      return Boolean(h2) && /What insights will I get/.test(h2.textContent) &&
+        !head.querySelector('button') &&
         head === document.querySelector('.insight-card').firstElementChild;
+    }));
+  check('the sample button sits inside the premium tier, as its last thing',
+    await page.evaluate(() => {
+      const btn = document.querySelector('#insight-sample');
+      const tier = document.querySelector('#view-welcome .insight-premium');
+      return Boolean(btn && tier && tier.contains(btn)) &&
+        btn.textContent.trim() === window.PsycheCopy.STRUCTURED.insights.sampleButton &&
+        btn.closest('.insight-premium-foot') === tier.lastElementChild;
     }));
   // Filled purple would repeat the hero's own `#hero-sample`, which says the
   // same three words in the same place on the same page — two loud calls to
@@ -2473,18 +2500,22 @@ try {
       return /rgba?\(0, ?0, ?0, ?0\)|transparent/.test(s.backgroundColor) &&
         parseFloat(s.borderWidth) >= 2;
     }));
-  // The row itself has to actually reflow — a button that never moves off the
-  // heading's line on a phone would overlap the wrapped text below it.
-  for (const [label, width, wide] of [['a laptop', 1100, true], ['a phone', 390, false]]) {
+  // Bottom right on a laptop and a phone alike: its right edge meets the
+  // tier's content edge and nothing in the tier sits below it.
+  for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(200);
-    const onSameLine = await page.evaluate(() => {
-      const h2 = document.querySelector('.insight-card-head h2').getBoundingClientRect();
-      const btn = document.querySelector('#insight-sample').getBoundingClientRect();
-      return Math.abs(h2.top - btn.top) < 8;
+    const place = await page.evaluate(() => {
+      const tier = document.querySelector('.insight-premium');
+      const pad = parseFloat(getComputedStyle(tier).paddingRight);
+      const t = tier.getBoundingClientRect();
+      const b = document.querySelector('#insight-sample').getBoundingClientRect();
+      const lowest = Math.max(...[...tier.querySelectorAll('.insight-part, .insight-extras li')]
+        .map(n => n.getBoundingClientRect().bottom));
+      return { rightGap: Math.round(t.right - pad - b.right), below: b.top >= lowest - 1 };
     });
-    check('on ' + label + ' the heading and button ' + (wide ? 'share a row' : 'wrap onto their own'),
-      onSameLine === wide, onSameLine + ' vs expected ' + wide);
+    check('on ' + label + ' the sample button sits at the premium tier\'s bottom right',
+      Math.abs(place.rightGap) <= 2 && place.below, JSON.stringify(place));
   }
   await page.setViewportSize({ width: 1100, height: 900 });
   // The two tiers sit side by side with nothing squeezed: the free tier puts
@@ -2498,13 +2529,27 @@ try {
       const list = document.querySelector('.insight-free .card-features').getBoundingClientRect();
       const card = document.querySelector('.insight-preview').getBoundingClientRect();
       const parts = [...document.querySelectorAll('.insight-part')].map(p => Math.round(p.getBoundingClientRect().top));
+      // The eight things on the card are one white box, four rows of two.
+      const box = document.querySelector('.insight-free .card-features');
+      const items = [...box.children].map(li => li.getBoundingClientRect());
+      const bg = getComputedStyle(box).backgroundColor;
       return { cardBeside: card.left >= list.right - 1, partRows: new Set(parts).size,
+        boxes: document.querySelectorAll('.insight-free .card-features').length,
+        filled: !/rgba\(0, 0, 0, 0\)|transparent/.test(bg),
+        featureRows: new Set(items.map(r => Math.round(r.top))).size,
+        featureCols: new Set(items.map(r => Math.round(r.left))).size,
+        inBox: items.every(r => r.left >= list.left - 1 && r.right <= list.right + 1),
         spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
   check('on a laptop the card sits beside its list and the parts run two by two',
     tierLayout[1100].cardBeside && tierLayout[1100].partRows === 2, JSON.stringify(tierLayout[1100]));
+  for (const width of [1100, 390]) {
+    const t = tierLayout[width];
+    check('at ' + width + 'px the eight things on the card are one filled box, four rows of two',
+      t.boxes === 1 && t.filled && t.featureRows === 4 && t.featureCols === 2 && t.inBox, JSON.stringify(t));
+  }
   check('on a phone they stack, with nothing running off the side',
     !tierLayout[390].cardBeside && tierLayout[390].partRows === 4 && tierLayout[390].spill <= 1,
     JSON.stringify(tierLayout[390]));
@@ -3409,7 +3454,7 @@ try {
 
   // ---- the free report is the summary card, and only the card ----
   //
-  // Everything that explains the card is the US$8 unlock. The rule this
+  // Everything that explains the card is the US$5 unlock. The rule this
   // holds is the same one the four premium sections have always had: the
   // writing is not in the page because the server never wrote it, so the
   // check reads the stored report as well as the screen — a locked block over
@@ -4698,9 +4743,9 @@ try {
       return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
         .every(name => text.includes(name));
     }));
-  check('and there is exactly one button asking for the US$8 unlock, not one per section',
+  check('and there is exactly one button asking for the US$5 unlock, not one per section',
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$8'),
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$5'),
     await page.locator('#profile-body .premium-unlock').innerText());
   // The specific thing a paywall — or a consent gate — must not do: ship
   // the writing and hide it. Checked against the mock's own wording, so it
@@ -4747,7 +4792,7 @@ try {
         want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('#profile-body .paid-consolidated .premium-tier-item strong').allInnerTexts()).join(' | '));
-  // ---- wellness, attachment, ideal partner and career, behind one US$8 unlock ----
+  // ---- wellness, attachment, ideal partner and career, behind one US$5 unlock ----
   //
   // The roast used to be the fourth of these, generated by the same paid call
   // — it has moved back to the free report, right after the digital
@@ -4830,9 +4875,9 @@ try {
     JSON.stringify(phoneRowTops));
 
   check('the consolidated block names the price and offers a single unlock',
-    /US\$8/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
+    /US\$5/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$8'));
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$5'));
   const consolidatedBefore = await page.evaluate(() => {
     const el = document.querySelector('#profile-body .paid-consolidated');
     return { html: el.innerHTML, text: el.innerText };
@@ -5007,7 +5052,7 @@ try {
       await cardPage.locator('#premium-status').innerText());
     check('the card form mounts, with its button carrying the same price the wallet button would have',
       (await cardPage.locator('#premium-card-element').innerHTML()).length > 0 &&
-      (await cardPage.locator('#premium-card-pay').innerText()).includes('US$8'));
+      (await cardPage.locator('#premium-card-pay').innerText()).includes('US$5'));
 
     await cardPage.click('#premium-card-pay');
     await cardPage.waitForSelector('#premium-card-error:not([hidden])', { timeout: 10000 });
@@ -5394,7 +5439,7 @@ try {
   //
   // The paid call takes minutes, and everything about it used to live in one
   // page's memory: close the tab while it ran and the payment was real, the
-  // analysis was gone, and the cover went back to asking for US$8. The
+  // analysis was gone, and the cover went back to asking for US$5. The
   // server has always allowed a handful of generations per PaymentIntent
   // (lib/premiumLedger.js) for exactly this; the browser had no way to know it
   // was entitled to one.
@@ -5435,7 +5480,7 @@ try {
   check('a reader who paid but lost the analysis is not shown a price again',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
-      return buttons.length === 1 && !/US\$8/.test(buttons[0].textContent);
+      return buttons.length === 1 && !/US\$5/.test(buttons[0].textContent);
     }),
     (await page.locator('#profile-body .premium-unlock').innerText()));
   check('the button offers to fetch what was already bought',
@@ -5460,7 +5505,7 @@ try {
     /already paid/i.test(await page.locator('#premium-dialog-title').innerText()),
     await page.locator('#premium-dialog-title').innerText());
   check('no price and no wallet button are offered on the resume path',
-    !/US\$8/.test(await page.locator('#premium-dialog').innerText()) &&
+    !/US\$5/.test(await page.locator('#premium-dialog').innerText()) &&
     !(await page.locator('#premium-mock-pay').isVisible()),
     await page.locator('#premium-dialog').innerText());
 
@@ -8236,12 +8281,12 @@ try {
     return Boolean(p && p.premiumAnalysis);
   }, { timeout: 30000 });
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
-  // The confidence card's fineprint has to say US$8 now, unconditionally —
+  // The confidence card's fineprint has to say US$5 now, unconditionally —
   // this reader still has free runs available (clearRunCount was never
   // called against them in this test), so the plain US$2 note would be
   // shown if this only checked mustPayForAnalysis() as before.
-  check('the confidence card now names the US$8 price, not the plain re-run price',
-    /US\$8/.test(await page.locator('#rerun-price-note').innerText()) &&
+  check('the confidence card now names the US$5 price, not the plain re-run price',
+    /US\$5/.test(await page.locator('#rerun-price-note').innerText()) &&
     !/US\$2/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
@@ -8249,7 +8294,7 @@ try {
   // regeneration — a source this session had not touched yet, unlike the
   // Google carried over from above. Premium is already unlocked, so this
   // rerun is never free regardless of the run counter: it is priced and
-  // routed exactly like the US$8 unlock itself, and both the free report
+  // routed exactly like the US$5 unlock itself, and both the free report
   // and the four paid sections are rewritten on the same charge — see
   // rerunWithAdditionalData's alreadyUnlocked branch.
   await loadSource(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
@@ -8307,7 +8352,7 @@ try {
 
   // The paid sections that were unlocked before this rerun were read from the
   // smaller, Instagram-only digest. The old behaviour cleared them and made a
-  // reader fetch them again for free against the new digest; the new US$8
+  // reader fetch them again for free against the new digest; the new US$5
   // rerun regenerates them in the same charge instead, so nothing is lost and
   // nothing is left half up to date.
   const afterRerun = await page.evaluate(() => ({
@@ -9102,7 +9147,7 @@ try {
     /family\/friends/i.test(about) &&
     /not a link to a file on a server/i.test(about));
   check('the prices are named, once, with what each buys — and compatibility is free',
-    /US\$8/.test(about) && /US\$2/.test(about) && /every compatibility report/i.test(about));
+    /US\$5/.test(about) && /US\$2/.test(about) && /every compatibility report/i.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -10143,22 +10188,24 @@ try {
         !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
         (await sp.locator('#profile-body [data-part="appendix"]').count()) === 0 &&
         !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
-      await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.add('is-collapsed')));
-      await sp.locator('#profile-body .origin .pattern-chip[data-pattern="p1"]').first().evaluate(b => b.click());
-      await sp.waitForTimeout(200);
-      check('structured: a pattern chip opens the overview on that pattern',
+      check('structured: neither the plan nor the pressure points name a pattern under each item',
+        (await sp.locator('#profile-body .origin, #profile-body .pattern-chip').count()) === 0 &&
+        !/From pattern/i.test(await sp.locator('#profile-body .development-card').textContent()));
+      check('structured: where a plan action came from is a tag of its own, set apart from what it says',
+        (await sp.locator('#profile-body .development-card .plan-from').count()) > 0 &&
         await sp.evaluate(() => {
-          const target = document.querySelector('#profile-body [data-pattern-card="p1"]');
-          return !target.closest('.part-card').classList.contains('is-collapsed') && target.classList.contains('is-highlighted');
+          const tag = document.querySelector('#profile-body .development-card .plan-from');
+          const text = tag.closest('.plan-step').querySelector('b');
+          return getComputedStyle(tag).color !== getComputedStyle(text).color &&
+            getComputedStyle(tag).backgroundColor !== 'rgba(0, 0, 0, 0)';
         }));
       check('structured: pattern evidence sits in boxes that fit their text, not pills that clip it',
         await sp.evaluate(() => {
           const chips = Array.from(document.querySelectorAll('#profile-body .pattern .ev'));
           return chips.length > 0 && chips.every(c => getComputedStyle(c).borderRadius === '8px');
         }));
-      check('structured: chips are buttons, so the hash a shared card arrives on is never written',
-        (await sp.evaluate(() => location.hash)) === '' &&
-        (await sp.locator('#profile-body a.pattern-chip').count()) === 0);
+      check('structured: nothing in the report writes the hash a shared card arrives on',
+        (await sp.evaluate(() => location.hash)) === '');
 
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
       const motives = await sp.$$eval('#profile-body .motive-row', nodes => nodes.map(n => ({
@@ -10173,9 +10220,6 @@ try {
         (await sp.locator('#profile-body .dev-develop').count()) === 2 &&
         (await sp.locator('#profile-body .development-card .timeline-col').count()) === 3 &&
         (await sp.locator('#profile-body .development-card .plan-step').count()) === 10);
-      check('structured: every development item says where it came from',
-        (await sp.locator('#profile-body .dev-item .origin').count()) === 4 &&
-        !/Raised by/i.test(await sp.locator('#profile-body .development-card').textContent()));
       const levels = await sp.$$eval('#profile-body .pressure-level', nodes =>
         nodes.map(n => n.querySelectorAll('.pressure-step.is-on').length));
       check('structured: pressure points show their level as a three-step meter',
@@ -10264,7 +10308,7 @@ try {
           structuredClass: body.classList.contains('layout-structured'),
           nav: Array.from(q('.part-nav .part-nav-item')).map(b => b.textContent),
           numerals: Array.from(q('.report-part .part-num')).map(n => n.textContent),
-          patternColours: Array.from(q('.pattern-chip')).map(c => getComputedStyle(c).borderColor)
+          patternColours: Array.from(q('.pattern')).map(c => getComputedStyle(c).borderTopColor)
             .filter((c, i, all) => all.indexOf(c) === i).length,
           threadMap: q('.thread-map').length,
           results: q('.card-result').length,
@@ -10280,7 +10324,7 @@ try {
           mirror: q('.love-mirror').length,
           planRows: q('.development-card .timeline-col > .timeline-steps').length,
           attachMap: q('.attach-map .attach-blob').length,
-          partnerCols: q('.partner-need, .partner-careful').length,
+          partnerCols: q('.partner .partner-need, .partner .partner-careful').length,
           wellnessTiles: q('.wellness-tile').length,
           gauges: Array.from(q('.gauge-marker')).map(m => m.style.left),
           workTimeline: q('.work-card .timeline .plan-step').length,
@@ -10290,7 +10334,7 @@ try {
       });
       check('structured: numbered part headings, and a nav bar that names them as they are headed',
         visuals.structuredClass && visuals.nav.join('|') ===
-          '00Your report at a glance|01Who you are|02What drives you|03How you connect and work|04Putting it together|Evidence and method|Let us roast you' &&
+          '00Overview|01Who you are|02What drives you|03How you connect and work|04Putting it together|Evidence and method|Let us roast you' &&
         visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
@@ -10328,7 +10372,7 @@ try {
           separateCards: body.querySelectorAll('.paid-card[data-paid="idealPartner"], .attachment-card:not(.relationships-card)').length,
           rel: rel ? ['Attachment style', 'What you bring', 'Where it gets hard', 'Who suits you']
             .every(h => rel.textContent.includes(h)) && Boolean(rel.querySelector('.attach-map')) : false,
-          holding: work ? Array.from(work.querySelectorAll('.h-warn + dl dt')).map(dt => dt.textContent) : [],
+          holding: work ? Array.from(work.querySelectorAll('.work-pair .partner-careful .partner-items strong')).map(dt => dt.textContent) : [],
           workHeads: work ? Array.from(work.querySelectorAll('h3')).map(h => h.textContent) : [],
           planFrom: plan ? Array.from(plan.querySelectorAll('.plan-from')).map(n => n.textContent) : [],
           wellnessHelp: /What might actually help/.test(body.querySelector('.wellness-card').textContent),
@@ -10347,7 +10391,7 @@ try {
       check('structured: what they are not using sits with their strengths, not with the costs',
         await sp.evaluate(() => {
           const work = document.querySelector('#profile-body .work-card');
-          const good = Array.from(work.querySelectorAll('.h-good + dl dt')).map(dt => dt.textContent);
+          const good = Array.from(work.querySelectorAll('.work-pair .partner-need .partner-items strong')).map(dt => dt.textContent);
           return good[good.length - 1] === 'Not yet using: Your organising, unseen' &&
             !/What you are not using/.test(work.textContent);
         }));
@@ -10363,8 +10407,33 @@ try {
         !/From pattern/i.test(await sp.locator('#profile-body .pressure-card').textContent()));
       check('structured: Who suits you is a verdict banner over two numbered lists',
         (await sp.locator('#profile-body .partner-summary').count()) === 1 &&
-        (await sp.locator('#profile-body .partner-need .partner-items li').count()) === samplePremium.idealPartner.needs.length &&
-        (await sp.locator('#profile-body .partner-careful .partner-items li').count()) === samplePremium.idealPartner.carefulOf.length);
+        (await sp.locator('#profile-body .partner .partner-need .partner-items li').count()) === samplePremium.idealPartner.needs.length &&
+        (await sp.locator('#profile-body .partner .partner-careful .partner-items li').count()) === samplePremium.idealPartner.carefulOf.length);
+      // A jump straight into the middle of a long part — the plan, deep in
+      // part 04 — lights that part, not whichever heading last went past.
+      {
+        const lit = [];
+        for (const sel of ['.wellness-card', '.motivators-card, .part-card[data-part-card="drives"] .section-card', '.development-card .timeline']) {
+          await sp.evaluate(sel => { const n = document.querySelector('#profile-body ' + sel.split(', ').join(', #profile-body '));
+            window.scrollTo(0, n.getBoundingClientRect().top + scrollY - innerHeight * 0.22); }, sel);
+          await sp.waitForTimeout(300);
+          lit.push(await sp.evaluate(() => { const b = document.querySelector('#profile-body .part-nav-item.is-current'); return b && b.getAttribute('data-part-target'); }));
+        }
+        check('structured: the nav lights the part being read, even after a jump into its middle',
+          lit.join('|') === 'who|drives|together', lit.join('|'));
+      }
+      // What you bring and your strengths at work read like Who suits you:
+      // two numbered lists, good beside costly, with no rule between entries.
+      check('structured: what you bring and your strengths at work use the Who suits you lists, with no dividers',
+        await sp.evaluate(() => {
+          const pairs = ['.relationships-card .bring-pair', '.work-card .work-pair']
+            .map(sel => document.querySelector('#profile-body ' + sel));
+          const items = [...document.querySelectorAll('#profile-body .partner-items li')];
+          return pairs.every(pair => pair && pair.querySelector('.partner-need .partner-items li') &&
+              pair.querySelector('.partner-careful .partner-items li')) &&
+            !document.querySelector('#profile-body .relationships-card .split:not(.love-split), #profile-body .work-card .split') &&
+            items.length > 6 && items.every(li => getComputedStyle(li).borderTopStyle === 'none' || parseFloat(getComputedStyle(li).borderTopWidth) === 0);
+        }));
       await sp.evaluate(() => document.querySelector('#profile-body .part-card[data-part-card="connect"]').classList.add('is-collapsed'));
       await sp.click('#profile-body .part-nav-item[data-part-target="connect"]');
       check('structured: the nav opens a part the reader had shut, and leaves the others open',
@@ -10418,7 +10487,7 @@ try {
       // one, names the parts first. MBTI and wellbeing by their definitions,
       // since both words recur on the card and in the plan.
       const at = text => structuredPdf.lastIndexOf(text);
-      const pdfOrder = ['Your report at a glance', 'Your signature patterns', 'Who you are', 'not clinically validated',
+      const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
         'Values & Beliefs', 'How you connect and work', 'Attachment style', 'What you bring', 'Who suits you',
         'What holds you back', 'Putting it together', 'Development plan', 'Your plan', 'Under pressure',
@@ -10442,6 +10511,28 @@ try {
         structuredPdf.includes('Prefers the familiar and proven') && structuredPdf.includes('Seeks out new ideas and experiences'));
       check('structured PDF: no Enneagram anywhere, the cover card included',
         !/Enneagram/i.test(structuredPdf) && structuredPdf.includes('YOUR PATTERNS'));
+      // Page by page: every content stream is one page, in order.
+      const rawPdf = await pdfOf('structured');
+      const pages = rawPdf.split('endstream').slice(0, -1).map(prose).filter(text => text.trim());
+      const pageOf = text => pages.findIndex(page => page.includes(text));
+      check('structured PDF: the cover holds the card and the contents list',
+        ['YOU ARE MOST LIKE', 'YOUR PATTERNS', 'INSIDE THIS REPORT', 'Putting it together'].every(t => pages[0].includes(t)),
+        pages[0].slice(0, 400));
+      check('structured PDF: the overview opens on the headline, the character and four facts',
+        ['IN ONE LINE', 'STRONGEST DRIVE', 'STRONGEST TRAIT', 'CONFIDENCE'].every(t => pages[1].includes(t)), pages[1].slice(0, 400));
+      // A section's heading is never left at the foot of a page with its
+      // first block overleaf: the page that opens each section carries its heading.
+      const opens = [['Your signature patterns', 'SHOWS UP IN'], ['How you work', 'YOUR EDGE'],
+        ['Who suits you', 'What you actually need'], ['Under pressure', 'EARLY SIGNS'],
+        ['Five research-backed traits', 'Prefers the familiar and proven'], ['Development plan', 'Build on']];
+      check('structured PDF: every section heading shares its page with its first block',
+        opens.every(([title, first]) => pageOf(first) > 0 && pages[pageOf(first)].includes(title)),
+        opens.map(([title, first]) => first + '@' + pageOf(first) + ':' + (pageOf(first) > 0 && pages[pageOf(first)].includes(title))).join(', '));
+      check('structured PDF: every part opens a page of its own',
+        ['Who you are', 'What drives you', 'How you connect and work', 'Putting it together'].every(title => {
+          const page = pages.findIndex((pg, i) => i > 0 && pg.includes(title));
+          return page > 0 && pages[page].replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title);
+        }));
       check('the classic PDF of the same report is unchanged by any of it',
         !classicPdf.includes('Your signature patterns') && !classicPdf.includes('About this report') &&
         classicPdf.includes('How much to trust this'));

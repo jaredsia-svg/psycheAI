@@ -399,7 +399,7 @@ function requirePremiumEngine(response) {
 // With an 'unlock' payment or a promo code it is the full premium report, in
 // one call: every explanation behind the card, written to explain the card the
 // reader already has (`anchor`) rather than to reach its own conclusions
-// afresh, plus the roast and the four premium sections. That is the US$8
+// afresh, plus the roast and the four premium sections. That is the US$5
 // purchase. /api/premium-analysis still answers for a page loaded before this
 // deployed, and for nothing else.
 //
@@ -430,7 +430,7 @@ async function handleAnalyse(request, response) {
   const paying = Boolean(promoCode || paymentIntentId);
 
   // Which purchase is being spent here. 'analysis' is the ordinary US$2
-  // re-run of the free card. 'unlock' is the US$8 premium purchase, and it is
+  // re-run of the free card. 'unlock' is the US$5 premium purchase, and it is
   // the only thing that buys the full report.
   //
   // Naming the product cannot be used to pay less for more: verifyPaid checks

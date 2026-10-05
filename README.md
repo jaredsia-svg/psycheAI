@@ -88,7 +88,7 @@ rather than how hard the model thinks about it. A free run returns the **summary
 character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
 card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
-sections are the **US$8 unlock: the full premium report**, written by **one** model call.
+sections are the **US$5 unlock: the full premium report**, written by **one** model call.
 
 **Two calls in total, one digest, one set of conclusions.** Both calls read the same digest — the
 same file, byte for byte — so the only difference between them is what they are asked to write.
@@ -222,7 +222,7 @@ does not exist.
 **The per-device allowance is a fair-use nudge, not a wall.** One analysis is
 free per browser; each one after is US$2, whether it is a re-run with Google
 or Facebook data added or a fresh Instagram upload — unless premium is already
-unlocked, in which case a rerun is US$8 and rewrites the four paid sections
+unlocked, in which case a rerun is US$5 and rewrites the four paid sections
 along with the free report; see "Re-running with additional data, from the
 report page" below. The count lives in
 `psycheai_runs`, and the single most important thing about it is that it is
@@ -248,7 +248,7 @@ repeat use; the daily ceiling is what bounds the bill.
 rather than from the request, because an amount a client can influence is one it
 can set to zero. `verifyPaid(id, product)` checks the retrieved PaymentIntent
 against *that* product's price, so a US$2 re-run payment cannot be
-re-presented to unlock US$8 of report; both directions are checked. The
+re-presented to unlock US$5 of report; both directions are checked. The
 ledger gained a `kind` for the same reason, with its own allowance per kind (5
 for `premium`, 3 each for `analysis` and `bundled`), so spending a payment on
 one leaves the others untouched. Rows written before `kind` existed read as
@@ -258,7 +258,7 @@ one leaves the others untouched. Rows written before `kind` existed read as
 inside the unlock flow would otherwise end up with paid sections that had read
 that export and free sections above them that had not — a gap only a further
 US$2 could close, which is charging twice over for one decision to hand over
-more data. So the US$8 covers both: `/api/analyse` accepts `product:
+more data. So the US$5 covers both: `/api/analyse` accepts `product:
 'unlock'`, verifies the intent against the *unlock* price, and ledgers the use
 under `bundled` rather than `analysis`. Naming the product buys nothing on its
 own — `verifyPaid` still checks the real amount, so an `analysis` intent
@@ -273,16 +273,16 @@ charge, not after.
 deciding what happens once the money clears, rather than a second copy of the
 wallet button, card fallback, promo field and mock-pay path. It is restored on
 `close`, in the handler every exit passes through, because getting that restore
-wrong would send a reader's US$8 down the analysis path. Moving it also fixed
+wrong would send a reader's US$5 down the analysis path. Moving it also fixed
 a real bug: it used to live inside `#view-profile`, which carries `[hidden]`
 whenever another view is showing, so the upload page could not display it at all
 — a `<dialog>` inside a `display:none` ancestor has no box to paint however open
 it claims to be.
 
-### The US$8 unlock: four sections behind one paywall
+### The US$5 unlock: four sections behind one paywall
 
 **Mental wellness, Attachment style, Career assessment and Let us roast you** sit behind a single
-one-time **US$8** charge. One payment (or one promo code) opens all four; each renders as its own
+one-time **US$5** charge. One payment (or one promo code) opens all four; each renders as its own
 cover until then, saying specifically what is behind it rather than gesturing at "more analysis".
 Unlocking is taken on-site through Stripe's Payment Request Button so the browser offers Apple Pay or
 Google Pay directly. The "Download full report" button is not gated on this — it always goes straight
@@ -317,11 +317,11 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
-**The currency is USD: US$8 for the full premium report, US$2 for another summary card, and
-compatibility reports free.** `CURRENCY`, `UNLOCK_PRICE_CENTS` (800) and `ANALYSIS_PRICE_CENTS` (200)
+**The currency is USD: US$5 for the full premium report, US$2 for another summary card, and
+compatibility reports free.** `CURRENCY`, `UNLOCK_PRICE_CENTS` (500) and `ANALYSIS_PRICE_CENTS` (200)
 in `lib/stripe.js` are one decision: the cents are cents *of `CURRENCY`*, so changing one without the
 others silently reprices the unlock. `verifyPaid` checks both against the retrieved PaymentIntent, so
-800 cents of the wrong currency is refused rather than unlocking the report for whichever currency
+500 cents of the wrong currency is refused rather than unlocking the report for whichever currency
 happened to be cheapest that day. A selftest check pins each direction. A Stripe account outside the US
 (`STRIPE_ACCOUNT_COUNTRY`, default `SG`) can charge in USD and settles in its own currency; a
 country/currency mismatch surfaces as an error at PaymentIntent creation rather than silently at
@@ -473,7 +473,7 @@ its own verification, rather than something the client reveals:
   it is the browser's own `psycheai_digest` travelling again) and either a `paymentIntentId` or a
   `promoCode`. Given a `paymentIntentId`, it calls `payments.verifyPaid(paymentIntentId)` before it will
   spend a single token, which independently **re-retrieves that PaymentIntent from Stripe** and confirms
-  both that it actually succeeded and that it was for the real US$8 in SGD — status alone is not enough, or a
+  both that it actually succeeded and that it was for the real US$5 in SGD — status alone is not enough, or a
   client could present some other real PaymentIntent it holds, for any amount, and pass a check that
   only asked whether *something* had succeeded. Given a `promoCode` instead, it checks that against
   `isValidPromoCode()` and skips `verifyPaid` and the ledger below entirely — there is no payment behind
@@ -541,7 +541,7 @@ images at all.
 
 This subsection's tuning knobs (`PREMIUM_MODEL`, `PSYCHEAI_PREMIUM_MODEL`, `PSYCHEAI_PREMIUM_EFFORT`)
 are Claude-specific and only take effect when `PSYCHEAI_PREMIUM_PROVIDER=anthropic` — the current
-default is Gemini, described just above under "The US$8 unlock". The Opus→Sonnet history below
+default is Gemini, described just above under "The US$5 unlock". The Opus→Sonnet history below
 still explains why Claude runs the way it does on the path back to it.
 
 The paid call is slow by nature: four sections from a ~45,000-token digest with adaptive thinking on,
@@ -595,7 +595,7 @@ custom wording there since about 2016, so it only decides *whether* to ask.
 
 **And losing the tab no longer loses the purchase.** This is the part that was actually broken: every
 trace of a paid run lived in one page's memory, so closing the tab at minute four meant the payment
-was real, the analysis was gone, and the cover went back to asking for US$8. The server has always
+was real, the analysis was gone, and the cover went back to asking for US$5. The server has always
 allowed a handful of generations per PaymentIntent (`lib/premiumLedger.js`, `MAX_USES = 5`) for
 exactly this — the browser simply had no way to know it was entitled to one.
 
@@ -620,7 +620,7 @@ re-runs the model call. That cost falls on whoever runs the server, which is the
 it.
 
 Fault-injected both ways: writing the receipt *after* the call instead of before reproduces the
-original symptom exactly — a reader who paid, shown "Unlock — US$8" — and letting the resume path
+original symptom exactly — a reader who paid, shown "Unlock — US$5" — and letting the resume path
 fall through to `create-payment-intent` fails the double-charge check.
 
 #### The compiled grammar, and the 400 it returned
@@ -684,7 +684,7 @@ request against the *same* digest, so its input cost is not free just because th
 saw that data.
 
 **The pricing and comparison below is all Claude, because that is what it was measured against.**
-`PSYCHEAI_PREMIUM_PROVIDER` currently defaults to `gemini` (see "The US$8 unlock", above) — Gemini's
+`PSYCHEAI_PREMIUM_PROVIDER` currently defaults to `gemini` (see "The US$5 unlock", above) — Gemini's
 own per-token rate on the paid call has not been re-measured into a table here yet, so treat this
 section as what the numbers look like on the `anthropic` revert path, not the default one.
 
@@ -726,8 +726,8 @@ without a real measured run; what is certain is the direction — Sonnet at `hig
 less than Opus did at `high`, and is expected to cost no more than Opus did at `medium`, while restoring
 the effort the reduction had traded away.
 
-**What that leaves.** At the old S$1.99 price this was thin; at **US$8** it is not. Stripe takes about
-3.4% plus a fixed fee of roughly US$0.40, so net is about **US$7.3** per unlock — against a paid call
+**What that leaves.** At the old S$1.99 price this was thin; at **US$5** it is not. Stripe takes about
+3.4% plus a fixed fee of roughly US$0.40, so net is about **US$4.4** per unlock — against a paid call
 capped at US$0.151 (`COST_CAP`) and a free card capped at US$0.052. The figures below were worked at the
 old price, against a Sonnet 5 call, and are kept for the record:
 
@@ -821,10 +821,13 @@ them to match, so the next rename fails rather than half-lands.
 
 **The welcome page's "What insights will I get?"** is two tiers and a note, built by `insightsHtml()` in
 `docs/app.js` into the `[data-insights]` slot. The free tier is the summary card: the eight things on
-it, by the card's own labels, beside a real card drawn from `sample.json` (`drawInsightPreview`). The
+it, by the card's own labels, as one white box of two columns and four rows (`.card-features`, the
+same four by two on a phone), beside a real card drawn from `sample.json` (`drawInsightPreview`). The
+card is a button (`#insight-card-open`): clicking it shows the whole card full screen in the sample card
+dialog (`openInsightCard()`), with no caption under it. The
 premium tier is the full report by its four numbered parts — named from `Copy.STRUCTURED.parts`, with
 each part's sections as chips from the report's own titles — its price (`premiumPriceLabel`) and what
-comes with it. Under both, a line saying compatibility is free. The words around the names live in
+comes with it, closed by **See sample report** (`#insight-sample`) at its bottom right. Under both, a line saying compatibility is free. The words around the names live in
 `Copy.STRUCTURED.insights`.
 
 Under a free card, the unlock offer lists what the full report explains and adds. In the structured
@@ -929,19 +932,16 @@ reader has one. `mountFreeTierNotes()`, its `[data-free-tier-note]` mount point,
 /`insightFreeNote` in `docs/copy.js` all went with it rather than being left as dead code for a badge
 nothing renders any more.
 
-**"See sample report" moved from the foot of the insight card to its head**, sitting beside "What
-insights will I get?" the same way "See illustration" sits beside the how-to card's own heading —
-same `.insight-card-head`/`.help-head` flex shape, wrapping under the heading on a phone rather than
-forcing both onto one cramped line. It used to close the card, past the four free branches and the
-premium tier pitch; a reader asking what they get should find "can I see one" beside the question, not
-after the sales pitch for the paid half. It is also `.btn-outline` now instead of the filled purple
+**"See sample report" closes the premium tier**, at its bottom right (`.insight-premium-foot`), so
+"can I see one" comes straight after what the full report holds; the card's heading stands alone. It
+sat beside "What insights will I get?" for a while before that. It is also `.btn-outline` now instead of the filled purple
 `.btn` — a page with `#hero-sample` and this button both filled and both saying the same three words
 was two loud calls to the same next step; secondary styling here has one obviously primary "Analyse my
 data" in the hero and lets this be the quieter of the two ways to see the report.
 
 ### One consolidated block before unlock, four cards after
 
-The four paid sections used to each render their own card and their own `Unlock — US$8` button,
+The four paid sections used to each render their own card and their own `Unlock — US$5` button,
 even though one payment has always unlocked all four. That meant a reader met the same price four
 times, in four covers stacked one after another, before paying anything — and the `PAID_SECTIONS`
 loop that rendered them made it easy to forget this was ever one purchase rather than four.
@@ -949,7 +949,7 @@ loop that rendered them made it easy to forget this was ever one purchase rather
 Now `reportSectionsHtml()` checks `Object.keys(unlocked).length === 0` once: while nothing has been
 bought, `paidSectionsLockedHtml()` renders a single block — the same `.premium-tier` shell already
 built for the welcome page's marketing copy — listing all four sections by title and blurb under one
-"Unlock — US$8" button. The instant anything comes back unlocked (a full response, or a partial one
+"Unlock — US$5" button. The instant anything comes back unlocked (a full response, or a partial one
 from a call that only returned some fields), the branch flips to the original per-section loop and
 `paidCard()` renders each of the four as its own full card. A reader never sees the four-button
 version and never sees the consolidated pitch again once they have paid — the same `unlocked` check
@@ -1003,7 +1003,7 @@ the test now asserts explicitly rather than assuming the popout always appears.
 ### The roast moves back to the free report, and "Ideal partner traits" takes its old place
 
 The roast has moved between the free report and the paid one twice now. It started free, behind a
-click-to-reveal cover; moved behind the US$8 unlock so a reader would not have to hand over their
+click-to-reveal cover; moved behind the US$5 unlock so a reader would not have to hand over their
 evidence a second time or wait through a second call for something the app was charging for; and has
 now moved back to free, for good — a new user can read it without paying anything. The mechanism is
 old code brought back rather than reinvented: `roastBlock()`, `revealRoast()` and `hideRoast()` in
@@ -2103,7 +2103,7 @@ not discovered on the very next screen.
 Each of the three callers already knows whether a charge follows, before this dialog ever opens: a
 first upload and a report-page rerun both call the existing `mustPayForAnalysis()` — true once this
 browser's free allowance is spent — and the premium unlock's own data offer (`collectExtraDataForPremium`)
-is never reached except on the way into a US$8 charge, so payment is unconditionally due there. Each
+is never reached except on the way into a US$5 charge, so payment is unconditionally due there. Each
 now passes that single fact in as `options.paymentDue`, and `askReview()` sets the button's own text
 right before `showModal()`: `'Make payment'` when true, the unchanged `'Send this'` otherwise. Nothing
 about what the button *does* changes — it still only ever hands the reviewed decision back to
@@ -2259,7 +2259,7 @@ answer, but it charged nothing for a materially bigger request (regenerate the f
 re-fetch four paid sections from newer evidence) and left the reader an extra click before either half
 was actually current.
 
-**Once premium is unlocked, "Add / change data & re-run analysis" now costs US$8, not US$2, and
+**Once premium is unlocked, "Add / change data & re-run analysis" now costs US$5, not US$2, and
 rewrites everything in one request.** `rerunWithAdditionalData()` checks `Object.keys(paidAnalysis())`
 before it builds anything: empty, and the button behaves exactly as documented above — the ordinary
 US$2-or-free rerun, free report only. Non-empty, and the whole shape of the rerun changes:
@@ -2274,7 +2274,7 @@ US$2-or-free rerun, free report only. Non-empty, and the whole shape of the reru
 - Send does not lead to `authoriseAnalysis()`/`runAnalysis()` at all. It leads to `openPremiumDialog()`
   with a third product, `'rerunAll'`, and the digest just reviewed handed in as `pendingPremiumDigest`.
   That is the same variable `runPremiumAnalysis()`'s own bundled-refresh mechanism already watches —
-  built originally for adding data on the way to a *first* unlock — so paying the US$8 here reruns
+  built originally for adding data on the way to a *first* unlock — so paying the US$5 here reruns
   the free report and regenerates all four paid sections together, on one authorisation, with no second
   copy of that machinery written. `runAnalysis()` is never called on this branch, so there is nothing
   left to wipe `premiumAnalysis` in the first place.
@@ -2282,7 +2282,7 @@ US$2-or-free rerun, free report only. Non-empty, and the whole shape of the reru
   and a new blurb naming both halves, rather than reusing "Unlock premium sections" for a reader who
   already has them.
 - The confidence card's fineprint switches from "Your next analysis costs US$2" to a note naming
-  US$8 and both halves, and it has to be refreshed at the moment of unlock, not just at the next full
+  US$5 and both halves, and it has to be refreshed at the moment of unlock, not just at the next full
   render — an unlock with no added data never used to touch this note (`mustPayForAnalysis()`, what it
   read before, does not change when premium is bought), so the gap was invisible until the note started
   reading unlock status too.
@@ -2297,7 +2297,7 @@ they were; and, once premium is unlocked, adding a Facebook export and completin
 exactly one more free-report request and exactly one premium request — both against the enriched
 digest, both authorised by the same unlock-tier charge — landing the paid sections filled back in
 rather than cleared, a fresh receipt, no resume prompt left on screen, and the confidence card's price
-note reading US$8 before any of it is even sent.
+note reading US$5 before any of it is even sent.
 
 Each was fault-injected — dropping `requireAtLeastOne`, inverting the button's visibility condition,
 forcing `alreadyUnlocked` false so the rerun fell back to the old US$2 path, and disabling the price
@@ -2878,7 +2878,7 @@ always there to stand in for it.
 `startFromSources()` then does the popout → review → payment → analysis loop, with Back at the review
 stepping upstream to the popout rather than abandoning the run. It is deliberately not routed through
 `rerunWithAdditionalData()`, which does the same three steps on the report page: that one also has to
-decide whether a US$8 unlock is regenerating four paid sections alongside the free ones, and there
+decide whether a US$5 unlock is regenerating four paid sections alongside the free ones, and there
 is no report here for any of that to be true of. The shared thing is the popout and the review, not
 the pricing.
 
@@ -3264,30 +3264,55 @@ Each signature pattern lists the sections it shows up in; the sections themselve
 footprint section (it restated what the other sections already say). **The parts open and shut, and
 all start open** — the overview and the four parts are the report's five disclosures, a part shut by
 the reader stays shut while they open another, and every section inside a part is shown whole, with
-no "More" behind any of it. **A sticky part nav** under the summary card names each part as it is
-headed ("00 Your report at a glance" … "04 Putting it together", then "Evidence and method" and the
-roast), opens the part it jumps to, and lights the one the reader is in. MBTI and the Big Five are
+no "More" behind any of it. **A part nav** under the summary card names each part as it is headed
+("00 Overview" … "04 Putting it together", then "Evidence and method" and the roast), opens the part it
+jumps to, and lights the part the reader is in — the whole part is watched, not just its heading, so a
+jump into the middle of a long part still lights it. Every name shows in full: the nav wraps onto a
+second row rather than scrolling one off the end, sticks under the header on a tablet and laptop, stays
+put on a phone, and on a screen 1300px or wider becomes a fixed column to the left of the report. In
+Your plan, the section each action comes from ("How you work", "Wellbeing", or a development area) is a
+small accent tag under the action (`.plan-from`), set apart from the action's own explanation. MBTI and the Big Five are
 rows with the scale on the left and the reading beside it; the MBTI pole not chosen is faint. A section
 has a line under its title only where the title does not already say what it is. Values and beliefs
 are one list of distinct ideas with no tag saying which is which. Who suits you is the verdict as a
-banner over two numbered lists, what you need beside what to be careful of. **Read from** says what
+banner over two numbered lists, what you need beside what to be careful of, with no rule between
+entries; what you bring beside where it gets hard, and your other strengths beside what holds you back,
+use the same pair of lists (`pairedListsHtml()`). **Read from** says what
 was read of each source and what was only counted — "180 of your 9,741 messages read", "623 stories
 counted", "Top 50 of 21,400 distinct Google searches read" — from the digest's own `coverage.sampling`.
 No section carries a Premium badge.
 
 The PDF follows the page section for section: numbered part dividers with no labels or intros, no
-about page, no "Connects to" or "Raised by", no digital footprint, wellbeing at the end of Part 1 with
-each dimension's label and band on one line, every action on one plan by step, and an evidence page
-after Part 4 with the same Read from list (passed in as `meta.counted`) and no build or format rows.
-Part 3 is set in boxes (`subhead`, `panel`, `pairedPanels` in `docs/pdf.js`): the love languages as two
-side-by-side boxes, attachment style in a box of its own with what it means in practice, what you
-bring beside where it gets hard, who suits you as a verdict over needs beside cautions, and the work
-section's edge boxed above strengths beside what holds you back. Under pressure is one card per
-strength (`pressureCard`): the strength and what it turns into, the level meter, a bar from "at its
-best" to "overused" with a marker at the level, then the read, the early signs, the counter-move and
-the question. Its cover card is the story card's: the two-sentence write-up, the pattern names beside
-what motivates them, the type as letters beside the Big Five without extraversion, Values & Beliefs
-beside Interests, and the love languages — every panel in one text size.
+about page, no "Connects to" or "Raised by", no digital footprint, and an evidence page after Part 4 with
+the same Read from list (passed in as `meta.counted`) and no build or format rows.
+
+**Its cover is the story card** (`storyCover()` in `docs/pdf.js`): a purple-to-pink gradient band with
+the title and the provenance line, and the card lifted over its foot — the character in a gradient
+block of its own with its emblem (`Doc.emblem()` draws the same SVG the page uses; `tracePath()` gained
+S and Q curves for it), then the patterns, motivators, type with strength dots, Big Five with mini bars,
+values and interests as chips, and the love languages, each in a small tinted panel. Under it the
+contents list (`storyContents()`) puts each part's numeral in an accent tile. **The overview page**
+(`overviewOpening()`) opens on the headline in a gradient block, the character beside its emblem in a
+tinted card, and four tiles — type, strongest drive, strongest trait, confidence — before the summary,
+whose first paragraph leads a size up.
+
+**Cards and colour throughout.** `Report.boxed()` draws a block inside a card, narrowing the text
+column (`out.x`/`out.w`, which every text helper now reads) and slipping the card in underneath at the
+height the block came to: each signature pattern, MBTI letter and Big Five trait is a white card;
+each wellbeing dimension is a card tinted by its band (green steady, amber mixed, pink under strain);
+each motivator group a card topped in its group's colour; build-on and develop items green and amber
+cards; each horizon of the plan one card, with each step's source as a small bent arrow and an accent
+tag. Part 3 keeps its boxes (`subhead`, `panel`, `pairedPanels`) and Under pressure its gauge cards
+(`pressureCard`). **Supporting text is a size down**: evidence chips (`tags({ small: true })`) at 7.6pt,
+a letter's "in practice" line, a love language's why and the motivator lines, so the finding reads first.
+"Shows up in" is a row of accent pills (`pills()`), not a sentence of commas.
+
+**No heading is left at the foot of a page.** Every part opens a page of its own, and each section's
+title is drawn together with its first block inside `Report.keep()`: the block is drawn once, and if it
+ran over a page break, everything it drew is taken back and it is drawn again from the top of a fresh
+page. "How you work" with its edge, "Under pressure" with its first card, "Who suits you" with its lists
+move over together; a section whose first block fits — the Big Five under MBTI — stays where it is.
+`tools/uitest.mjs` reads the PDF page by page to hold both.
 
 **The card's three motivators come from the free call.** `topMotivators` in `STRUCTURED_FREE_SCHEMA`
 is the three of Schwartz's ten that show most, strongest first; `anchorFrom` carries them to the paid
@@ -3566,7 +3591,7 @@ processing**, **physical activity**, and **meaning**. Each gets a band, its own 
 of sentences and the evidence behind them; then a prose overall read and three to five concrete
 suggestions.
 
-**It is paid content now**, generated by the same call as the attachment read, the career coaching and the roast, and opened by the same single US$8 unlock. It was free while it was written by the free report's own call; moving it did not loosen a single one of the limits below — the hard-limits subsection moved with it into `PREMIUM_SYSTEM` intact, and the same ten checks pin it there. If anything the move raised the stakes: a section somebody paid for is a section they are more likely to keep, forward and believe.
+**It is paid content now**, generated by the same call as the attachment read, the career coaching and the roast, and opened by the same single US$5 unlock. It was free while it was written by the free report's own call; moving it did not loosen a single one of the limits below — the hard-limits subsection moved with it into `PREMIUM_SYSTEM` intact, and the same ten checks pin it there. If anything the move raised the stakes: a section somebody paid for is a section they are more likely to keep, forward and believe.
 
 **It has no score, and that is the design rather than an omission.** Every other scored thing in this
 report draws a 0–100 — the Big Five, the compatibility dimensions. This one bands instead, because
@@ -3855,14 +3880,14 @@ least charitable reading the evidence still supports, and the advice a friend gi
 stopped managing your feelings. It sits below the behaviour read and above confidence, so the reader
 meets every fair section first and the confidence caveat still gets the last word over all of it. A
 small "Premium" badge sits beside the title — the same badge every paid section carries (see
-["The US$8 unlock"](#the-us8-unlock-four-sections-behind-one-paywall)), spliced onto the
+["The US$5 unlock"](#the-us5-unlock-four-sections-behind-one-paywall)), spliced onto the
 already-escaped title text rather than a second heading competing with the one next to it.
 
 **It used to run free, in the same call as the rest of the report — it does not any more.** `harsh`
 and `advice` moved out of `PROFILE_SCHEMA`/`PROFILE_SYSTEM` entirely and into `PREMIUM_SCHEMA`/
-`PREMIUM_SYSTEM`, the paid, Claude-only call described in ["The US$8 unlock"](#the-us8-unlock-four-sections-behind-one-paywall)
+`PREMIUM_SYSTEM`, the paid, Claude-only call described in ["The US$5 unlock"](#the-us5-unlock-four-sections-behind-one-paywall)
 above. The prompt instructions below carried over essentially unchanged; only the reader's
-relationship to them changed — one US$8 unlock (or one promo code) now buys the roast, rather than it
+relationship to them changed — one US$5 unlock (or one promo code) now buys the roast, rather than it
 opening for free on a click. `PREMIUM_SCHEMA` briefly carried two more fields, `patternsWorthAttention`
 and `lifeAdvice`, behind this same unlock, for a second paid section ("Supplementary analysis") sold
 alongside the roast; that section was cut, so this call is the roast and nothing else again. One
@@ -3928,7 +3953,7 @@ A UI check asserts the mock's own wording is absent from the card's `innerHTML` 
 place the PDF was not a faithful rendering of the page: a PDF has no cover to open, so printing the
 section unconditionally would have put the harshest writing in the report into a file that gets
 reopened cold and forwarded, including by a reader who never pressed the button. Gating on the
-unlock answers that directly — the only way a paid section reaches the file is that somebody paid US$8
+unlock answers that directly — the only way a paid section reaches the file is that somebody paid US$5
 or entered a promo code to see this exact writing, and a paid section belongs to whoever paid for
 it. What the gate cannot govern is where the file goes next, which is why the caveat now prints
 *with* the section rather than being left on screen: the PDF is the copy that gets kept and

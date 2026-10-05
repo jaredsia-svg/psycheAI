@@ -764,7 +764,7 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
 }
 
 // The two products are separately priced, and a payment for one must not buy
-// the other — the check that stops a US$2 re-run unlocking US$8 of report.
+// the other — the check that stops a US$2 re-run unlocking US$5 of report.
 {
   const priced = execFileSync(process.execPath,
     ['-e', 'const s = require("' + join(root, 'lib', 'stripe.js') + '");' +
@@ -781,7 +781,7 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
     { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
   const money = JSON.parse(priced.toString());
   check('an extra analysis costs less than the premium unlock, and both are real prices',
-    money.analysis === 200 && money.unlock === 800, JSON.stringify(money));
+    money.analysis === 200 && money.unlock === 500, JSON.stringify(money));
   check('neither payment can be spent on the other product',
     JSON.stringify(money.cross) === JSON.stringify(['refused', 'refused']), JSON.stringify(money.cross));
 }
@@ -958,8 +958,8 @@ check('the default merchant country is SG, matching the currency',
   paymentSelections.mock.country === 'SG', paymentSelections.mock.country);
 check('STRIPE_ACCOUNT_COUNTRY overrides the default',
   paymentSelections.customCountry.country === 'GB', paymentSelections.customCountry.country);
-check('the unlock price is US$8, expressed as 800 cents of USD',
-  paymentSelections.mock.priceCents === 800 && paymentSelections.mock.currency === 'usd',
+check('the unlock price is US$5, expressed as 500 cents of USD',
+  paymentSelections.mock.priceCents === 500 && paymentSelections.mock.currency === 'usd',
   paymentSelections.mock.priceCents + ' ' + paymentSelections.mock.currency);
 
 const intents = {
@@ -968,7 +968,7 @@ const intents = {
 };
 check('mock mode creates a fake PaymentIntent without touching a real Stripe account',
   intents.mock.ok === true && intents.mock.mock === true && /^pi_mock_/.test(intents.mock.id) &&
-  intents.mock.amount === 800 && intents.mock.currency === 'usd',
+  intents.mock.amount === 500 && intents.mock.currency === 'usd',
   JSON.stringify(intents.mock));
 check('with no key and no mock mode, creating a PaymentIntent fails with a clear 503',
   intents.unconfigured.ok === false && intents.unconfigured.status === 503 &&
@@ -1041,7 +1041,7 @@ async function mockVerifyFlow() {
 const verifyFlow = await mockVerifyFlow();
 check('verifyPaid succeeds for a PaymentIntent this process actually created',
   verifyFlow.verified.ok === true && verifyFlow.verified.status === 'succeeded' &&
-  verifyFlow.verified.amount === 800 && verifyFlow.verified.currency === 'usd',
+  verifyFlow.verified.amount === 500 && verifyFlow.verified.currency === 'usd',
   JSON.stringify(verifyFlow.verified));
 check('verifyPaid rejects a fabricated id that was never created, even shaped like a real one',
   verifyFlow.fabricated.ok === false && verifyFlow.fabricated.status === 402,
@@ -1074,15 +1074,15 @@ check('verifyPaid rejects a succeeded PaymentIntent for the wrong amount',
   wrongAmount.ok === false && wrongAmount.status === 402 && /does not match/i.test(wrongAmount.message),
   JSON.stringify(wrongAmount));
 
-const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 800, currency: "usd" }');
+const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 500, currency: "usd" }');
 check('verifyPaid accepts a genuinely succeeded PaymentIntent for the right amount',
   genuine.ok === true && genuine.status === 'succeeded', JSON.stringify(genuine));
 
-// The currency half of the price check: 800 of another currency is a
+// The currency half of the price check: 500 of another currency is a
 // different price, so a check that only compared the number would unlock the
 // paid report for whichever currency was cheapest that day.
 const wrongCurrency = await verifyPaidWithStub(
-  '{ id: "pi_test_1", status: "succeeded", amount: 800, currency: "sgd" }');
+  '{ id: "pi_test_1", status: "succeeded", amount: 500, currency: "sgd" }');
 check('verifyPaid rejects the right number of cents in the wrong currency',
   wrongCurrency.ok === false && wrongCurrency.status === 402 &&
   /does not match/i.test(wrongCurrency.message), JSON.stringify(wrongCurrency));

@@ -114,6 +114,8 @@
   const WARN = [0.604, 0.357, 0.071];
 
   const num = n => (Math.round(n * 1000) / 1000).toString();
+  /** A colour `t` of the way from `a` to `b`. */
+  const mix = (a, b, t) => a.map((c, i) => c + (b[i] - c) * t);
 
   function Doc() {
     this.pages = [];
@@ -157,12 +159,18 @@
   };
 
   Doc.prototype.roundRect = function (x, top, width, height, radius, color) {
+    this.setFill(color);
+    this.roundRectPath(x, top, width, height, radius);
+    return this.op('f');
+  };
+
+  /** The path of a rounded rectangle, for a fill or a clip to finish. */
+  Doc.prototype.roundRectPath = function (x, top, width, height, radius) {
     const r = Math.min(radius, height / 2, width / 2);
     const bottom = PAGE.height - top - height;
     const right = x + width;
     const topY = PAGE.height - top;
     const k = r * 0.5523;
-    this.setFill(color);
     this.op(num(x + r) + ' ' + num(bottom) + ' m');
     this.op(num(right - r) + ' ' + num(bottom) + ' l');
     this.op(num(right - r + k) + ' ' + num(bottom) + ' ' + num(right) + ' ' + num(bottom + r - k) + ' ' + num(right) + ' ' + num(bottom + r) + ' c');
@@ -172,7 +180,30 @@
     this.op(num(x + r - k) + ' ' + num(topY) + ' ' + num(x) + ' ' + num(topY - r + k) + ' ' + num(x) + ' ' + num(topY - r) + ' c');
     this.op(num(x) + ' ' + num(bottom + r) + ' l');
     this.op(num(x) + ' ' + num(bottom + r - k) + ' ' + num(x + r - k) + ' ' + num(bottom) + ' ' + num(x + r) + ' ' + num(bottom) + ' c');
-    return this.op('f');
+    return this.op('h');
+  };
+
+  /** A circle, centred at (cx, cy) measured from the top of the page. */
+  Doc.prototype.circle = function (cx, cy, r, color) {
+    return this.roundRect(cx - r, cy - r, r * 2, r * 2, r, color);
+  };
+
+  /**
+   * A rounded box filled with a left-to-right blend of two colours. PDF
+   * shadings would need their own objects; thin slices under a rounded clip
+   * look the same in print. `decorate`, if given, draws inside the same clip —
+   * the soft circles the story card has over its top-right corner.
+   */
+  Doc.prototype.gradientBox = function (x, top, width, height, radius, from, to, decorate) {
+    this.op('q');
+    this.roundRectPath(x, top, width, height, radius);
+    this.op('W n');
+    const slices = Math.max(24, Math.ceil(width / 5));
+    for (let i = 0; i < slices; i++) {
+      this.rect(x + width * i / slices, top, width / slices + 0.6, height, mix(from, to, i / (slices - 1)));
+    }
+    if (decorate) decorate();
+    return this.op('Q');
   };
 
   /**
@@ -196,65 +227,7 @@
     // Round caps and joins, as the SVG asks for; without them the open strokes
     // end in blunt squares and the mark looks like a different drawing.
     this.op(num(mark.strokeWidth * scale) + ' w 1 J 1 j');
-
-    for (const data of mark.paths) {
-      let cursorX = 0;
-      let cursorY = 0;
-      let startX = 0;
-      let startY = 0;
-      const commands = data.match(/[MmLlHhVvCcAaZz][^MmLlHhVvCcAaZz]*/g) || [];
-      for (const chunk of commands) {
-        const code = chunk[0];
-        const relative = code === code.toLowerCase();
-        const numbers = (chunk.slice(1).match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || []).map(Number);
-        const letter = code.toUpperCase();
-
-        if (letter === 'Z') {
-          this.op('h');
-          cursorX = startX;
-          cursorY = startY;
-          continue;
-        }
-        // Each command takes a fixed number of arguments and may repeat them.
-        const arity = { M: 2, L: 2, H: 1, V: 1, C: 6, A: 7 }[letter];
-        for (let i = 0; i + arity <= numbers.length; i += arity) {
-          const args = numbers.slice(i, i + arity);
-          if (letter === 'M' || letter === 'L') {
-            const x = relative ? cursorX + args[0] : args[0];
-            const y = relative ? cursorY + args[1] : args[1];
-            // A repeated M means a line, per the SVG spec.
-            this.op(num(px(x)) + ' ' + num(py(y)) + (letter === 'M' && i === 0 ? ' m' : ' l'));
-            if (letter === 'M' && i === 0) { startX = x; startY = y; }
-            cursorX = x;
-            cursorY = y;
-          } else if (letter === 'H' || letter === 'V') {
-            const x = letter === 'H' ? (relative ? cursorX + args[0] : args[0]) : cursorX;
-            const y = letter === 'V' ? (relative ? cursorY + args[0] : args[0]) : cursorY;
-            this.op(num(px(x)) + ' ' + num(py(y)) + ' l');
-            cursorX = x;
-            cursorY = y;
-          } else if (letter === 'C') {
-            const base = relative ? [cursorX, cursorY] : [0, 0];
-            const points = [];
-            for (let k = 0; k < 6; k += 2) {
-              points.push([base[0] + args[k], base[1] + args[k + 1]]);
-            }
-            this.op(points.map(p => num(px(p[0])) + ' ' + num(py(p[1]))).join(' ') + ' c');
-            cursorX = points[2][0];
-            cursorY = points[2][1];
-          } else if (letter === 'A') {
-            const endX = relative ? cursorX + args[5] : args[5];
-            const endY = relative ? cursorY + args[6] : args[6];
-            for (const curve of arcToBeziers(cursorX, cursorY, args[0], args[1],
-              args[2] * Math.PI / 180, args[3], args[4], endX, endY)) {
-              this.op(curve.map(p => num(px(p[0])) + ' ' + num(py(p[1]))).join(' ') + ' c');
-            }
-            cursorX = endX;
-            cursorY = endY;
-          }
-        }
-      }
-    }
+    for (const data of mark.paths) this.tracePath(data, px, py);
     this.op('S');
 
     // The centre dot is filled rather than stroked, so it cannot ride along in
@@ -272,6 +245,127 @@
       this.op(num(cx + r) + ' ' + num(cy - r * k) + ' ' + num(cx + r * k) + ' ' + num(cy - r) + ' ' + num(cx) + ' ' + num(cy - r) + ' c');
       this.op(num(cx - r * k) + ' ' + num(cy - r) + ' ' + num(cx - r) + ' ' + num(cy - r * k) + ' ' + num(cx - r) + ' ' + num(cy) + ' c');
       this.op('f');
+    }
+    return this;
+  };
+
+  /**
+   * Path data → PDF path operators, through `px`/`py` to page coordinates.
+   * The subset the brand mark and the character emblems use: M, L, H, V, C,
+   * S, Q, A and Z, each absolute or relative. Q becomes the cubic it is
+   * equal to; S reflects the previous curve's second handle.
+   */
+  Doc.prototype.tracePath = function (data, px, py) {
+    let cursorX = 0;
+    let cursorY = 0;
+    let startX = 0;
+    let startY = 0;
+    let handle = null;
+    const curve = points => {
+      this.op(points.map(p => num(px(p[0])) + ' ' + num(py(p[1]))).join(' ') + ' c');
+    };
+    const commands = data.match(/[MmLlHhVvCcSsQqAaZz][^MmLlHhVvCcSsQqAaZz]*/g) || [];
+    for (const chunk of commands) {
+      const code = chunk[0];
+      const relative = code === code.toLowerCase();
+      const numbers = (chunk.slice(1).match(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi) || []).map(Number);
+      const letter = code.toUpperCase();
+
+      if (letter === 'Z') {
+        this.op('h');
+        cursorX = startX;
+        cursorY = startY;
+        handle = null;
+        continue;
+      }
+      // Each command takes a fixed number of arguments and may repeat them.
+      const arity = { M: 2, L: 2, H: 1, V: 1, C: 6, S: 4, Q: 4, A: 7 }[letter];
+      for (let i = 0; i + arity <= numbers.length; i += arity) {
+        const args = numbers.slice(i, i + arity);
+        const base = relative ? [cursorX, cursorY] : [0, 0];
+        let nextHandle = null;
+        if (letter === 'M' || letter === 'L') {
+          const x = base[0] + args[0];
+          const y = base[1] + args[1];
+          // A repeated M means a line, per the SVG spec.
+          this.op(num(px(x)) + ' ' + num(py(y)) + (letter === 'M' && i === 0 ? ' m' : ' l'));
+          if (letter === 'M' && i === 0) { startX = x; startY = y; }
+          cursorX = x;
+          cursorY = y;
+        } else if (letter === 'H' || letter === 'V') {
+          const x = letter === 'H' ? (relative ? cursorX + args[0] : args[0]) : cursorX;
+          const y = letter === 'V' ? (relative ? cursorY + args[0] : args[0]) : cursorY;
+          this.op(num(px(x)) + ' ' + num(py(y)) + ' l');
+          cursorX = x;
+          cursorY = y;
+        } else if (letter === 'C' || letter === 'S') {
+          const given = [];
+          for (let k = 0; k < args.length; k += 2) given.push([base[0] + args[k], base[1] + args[k + 1]]);
+          const first = letter === 'C' ? given.shift()
+            : (handle ? [2 * cursorX - handle[0], 2 * cursorY - handle[1]] : [cursorX, cursorY]);
+          const points = [first, given[0], given[1]];
+          curve(points);
+          nextHandle = points[1];
+          cursorX = points[2][0];
+          cursorY = points[2][1];
+        } else if (letter === 'Q') {
+          const q = [base[0] + args[0], base[1] + args[1]];
+          const end = [base[0] + args[2], base[1] + args[3]];
+          curve([[cursorX + (q[0] - cursorX) * 2 / 3, cursorY + (q[1] - cursorY) * 2 / 3],
+            [end[0] + (q[0] - end[0]) * 2 / 3, end[1] + (q[1] - end[1]) * 2 / 3], end]);
+          cursorX = end[0];
+          cursorY = end[1];
+        } else if (letter === 'A') {
+          const endX = relative ? cursorX + args[5] : args[5];
+          const endY = relative ? cursorY + args[6] : args[6];
+          for (const piece of arcToBeziers(cursorX, cursorY, args[0], args[1],
+            args[2] * Math.PI / 180, args[3], args[4], endX, endY)) curve(piece);
+          cursorX = endX;
+          cursorY = endY;
+        }
+        handle = nextHandle;
+      }
+    }
+    return this;
+  };
+
+  /**
+   * A character's emblem, from the same SVG markup the page draws: each
+   * path, circle and ellipse in order, stroked unless it says not to and
+   * filled where it asks to be, a translucent fill mixed against `paper`.
+   */
+  Doc.prototype.emblem = function (markup, options) {
+    const o = options || {};
+    const scale = o.size / 48;
+    const px = x => o.x + x * scale;
+    const py = y => PAGE.height - (o.top + y * scale);
+    const color = o.color || ACCENT;
+    const attr = (tag, name) => { const m = tag.match(new RegExp('\\b' + name + '="([^"]*)"')); return m ? m[1] : null; };
+    for (const tag of String(markup || '').match(/<(path|circle|ellipse)\b[^>]*>/g) || []) {
+      let data = attr(tag, 'd');
+      if (!data) {
+        const cx = Number(attr(tag, 'cx'));
+        const cy = Number(attr(tag, 'cy'));
+        const rx = Number(attr(tag, 'r') || attr(tag, 'rx'));
+        const ry = Number(attr(tag, 'r') || attr(tag, 'ry'));
+        if (!rx || !ry) continue;
+        data = 'M' + (cx - rx) + ' ' + cy + 'A' + rx + ' ' + ry + ' 0 1 0 ' + (cx + rx) + ' ' + cy +
+          'A' + rx + ' ' + ry + ' 0 1 0 ' + (cx - rx) + ' ' + cy + 'Z';
+      }
+      const fills = attr(tag, 'fill') === 'currentColor';
+      const strokes = attr(tag, 'stroke') !== 'none';
+      if (fills) {
+        const opacity = attr(tag, 'fill-opacity');
+        this.setFill(opacity === null ? color : mix(o.paper || WHITE, color, Number(opacity)));
+        this.tracePath(data, px, py);
+        this.op('f');
+      }
+      if (strokes) {
+        this.setStroke(color);
+        this.op(num(2.4 * scale) + ' w 1 J 1 j');
+        this.tracePath(data, px, py);
+        this.op('S');
+      }
     }
     return this;
   };
@@ -412,6 +506,10 @@
     // declared up front so the list cannot claim a section the reader did not
     // pay for, or miss one added later — it is a record of what printed.
     this.contents = [];
+    // The column text is set in. A box narrows it for whatever it holds, so
+    // the same helpers lay out full width and inside a card alike.
+    this.x = MARGIN;
+    this.w = COLUMN;
   }
 
   Report.prototype.space = function (amount) {
@@ -422,6 +520,67 @@
   /** Start a new page when the next block will not fit. */
   Report.prototype.need = function (height) {
     if (this.doc.y + height > PAGE.height - MARGIN - 26) this.page();
+    return this;
+  };
+
+  /**
+   * Draws a block so that it starts on the page it ends on. It is drawn once;
+   * if that spilled over a page break, everything it drew is taken back and it
+   * is drawn again from the top of a fresh page. A heading drawn inside the
+   * same block goes with it, so no heading is left at the foot of a page with
+   * its first content overleaf. A block that started at the top of a page
+   * stays where it is — a fresh page would not hold it either.
+   */
+  Report.prototype.keep = function (draw) {
+    const doc = this.doc;
+    const before = { pages: doc.pages.length, length: doc.buffer.length, y: doc.y, contents: this.contents.length };
+    draw();
+    if (doc.pages.length === before.pages || before.y <= MARGIN + 40) return this;
+    doc.pages.length = before.pages;
+    doc.buffer = doc.pages[before.pages - 1].content;
+    doc.buffer.length = before.length;
+    doc.pageNumber = before.pages;
+    doc.y = before.y;
+    this.contents.length = before.contents;
+    this.page();
+    draw();
+    return this;
+  };
+
+  /**
+   * Draws a block inside a card: the column narrows by the padding, the block
+   * is drawn, and the card is slipped in underneath it at the height it came
+   * to. `bar` colours the card's left edge, `top` its top edge. A block that
+   * ran onto another page is left without its card rather than given half of
+   * one — `keep` around it stops that happening at all.
+   */
+  Report.prototype.boxed = function (draw, options) {
+    const o = options || {};
+    const doc = this.doc;
+    const pad = o.pad === undefined ? 12 : o.pad;
+    const edge = o.bar ? 3.5 : 0;
+    const radius = o.radius || 10;
+    const box = { x: this.x, w: this.w, top: doc.y, page: doc.pageNumber, at: doc.buffer.length };
+    this.x += pad + edge;
+    this.w -= pad * 2 + edge;
+    doc.y += o.padTop === undefined ? pad : o.padTop;
+    draw();
+    this.x = box.x;
+    this.w = box.w;
+    doc.y += pad;
+    if (doc.pageNumber === box.page) {
+      const content = doc.buffer;
+      doc.buffer = [];
+      const height = doc.y - box.top;
+      if (o.shadow) doc.roundRect(box.x + 1, box.top + 2.5, box.w, height, radius, LINE);
+      if (o.bar) doc.roundRect(box.x, box.top, box.w, height, radius, o.bar);
+      if (o.top) doc.roundRect(box.x, box.top, box.w, height, radius, o.top);
+      doc.roundRect(box.x + edge, box.top + (o.top ? 3.5 : 0), box.w - edge, height - (o.top ? 3.5 : 0), radius, o.fill || WHITE);
+      const card = doc.buffer;
+      doc.buffer = content;
+      content.splice(box.at, 0, ...card);
+    }
+    doc.y += o.gap === undefined ? 8 : o.gap;
     return this;
   };
 
@@ -457,8 +616,8 @@
       color: settings.color || INK,
     };
     const leading = settings.leading || style.size * 1.5;
-    const x = settings.x === undefined ? MARGIN : settings.x;
-    const width = settings.width === undefined ? COLUMN : settings.width;
+    const x = settings.x === undefined ? this.x : settings.x;
+    const width = settings.width === undefined ? this.w : settings.width;
     const paragraphs = String(text || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
     paragraphs.forEach((paragraph, index) => {
       if (index) this.space(leading * 0.45);
@@ -484,7 +643,7 @@
   /** A small tracked-out label, the typographic workhorse of the whole thing. */
   Report.prototype.eyebrow = function (text, color) {
     this.need(16);
-    this.doc.draw(toWinAnsi(String(text).toUpperCase()), MARGIN, this.doc.y + 8,
+    this.doc.draw(toWinAnsi(String(text).toUpperCase()), this.x, this.doc.y + 8,
       { size: 7.5, bold: true, color: color || ACCENT_2, tracking: 1.2 });
     this.doc.y += 15;
     return this;
@@ -498,7 +657,7 @@
     // line sat alone at the foot of a page with the first trait overleaf —
     // technically satisfied and visibly a widow. The tallest opening block in
     // the report is a Big Five trait at 84, hence the reserve here.
-    this.need(sub ? 214 : 184);
+    this.need(this.titleReserve || (sub ? 214 : 184));
     // Recorded after `need`, never before: the reserve above is what decides
     // which page this title lands on, so asking earlier would file half the
     // sections under the page they were nearly on.
@@ -525,11 +684,11 @@
     const style = { size: 11.5, bold: true, color: color || INK };
     // Wrapped, because "Attachment: " carries the model's phrase for the style
     // and that is not always short.
-    const lines = wrap(toWinAnsi(text), COLUMN, style);
+    const lines = wrap(toWinAnsi(text), this.w, style);
     this.need(26 + lines.length * 17);
     this.space(9);
     for (const line of lines) {
-      this.doc.draw(line, MARGIN, this.doc.y + 9, style);
+      this.doc.draw(line, this.x, this.doc.y + 9, style);
       this.doc.y += 17;
     }
     return this;
@@ -549,19 +708,21 @@
   };
 
   /** Title-and-detail pair: the page's definition lists. */
-  Report.prototype.point = function (title, detail) {
-    const style = { size: 10.5, bold: true, color: INK };
+  Report.prototype.point = function (title, detail, options) {
+    const o = options || {};
+    const style = { size: o.size || 10.5, bold: true, color: INK };
     // These titles are not always a few words: an activity observation is a
     // full sentence, and an unwrapped one ran off the side of the page.
-    const lines = wrap(toWinAnsi(title), COLUMN - 20, style);
+    const lines = wrap(toWinAnsi(title), this.w - 20, style);
     this.need(26 + lines.length * 15);
     this.space(3);
-    this.doc.rect(MARGIN, this.doc.y, 2.5, lines.length * 15 - 3, ACCENT);
+    if (o.bar !== false) this.doc.rect(this.x, this.doc.y, 2.5, lines.length * 15 - 3, o.bar || ACCENT);
+    const indent = o.bar === false ? 0 : 10;
     for (const line of lines) {
-      this.doc.draw(line, MARGIN + 10, this.doc.y + 8.5, style);
+      this.doc.draw(line, this.x + indent, this.doc.y + 8.5, style);
       this.doc.y += 15;
     }
-    if (detail) this.body(detail, { x: MARGIN + 10, width: COLUMN - 10, size: 9.8, color: SOFT, leading: 14 });
+    if (detail) this.body(detail, { x: this.x + indent, width: this.w - indent, size: o.detailSize || 9.8, color: o.detailColor || SOFT, leading: o.detailLeading || 14 });
     this.space(4);
     return this;
   };
@@ -597,42 +758,49 @@
    */
   Report.prototype.tags = function (items, options) {
     const settings = options || {};
-    const size = settings.size || 9;
-    const left = settings.x === undefined ? MARGIN : settings.x;
-    const width = settings.width === undefined ? COLUMN : settings.width;
+    // `small` is supporting evidence: a size down from the text it supports,
+    // so the finding reads first and the proof under it reads as proof.
+    const size = settings.small ? 7.6 : (settings.size || 9);
+    const chipH = settings.small ? 13.5 : 16;
+    const step = chipH + (settings.small ? 3.5 : 4);
+    const fill = settings.fill || WASH;
+    const ink = settings.color || SOFT;
+    const left = settings.x === undefined ? this.x : settings.x;
+    const width = settings.width === undefined ? this.w : settings.width;
     const list = (items || []).map(item => toWinAnsi(item)).filter(Boolean);
     if (!list.length) return this;
     let x = left;
     let rowOpen = false;
     for (const item of list) {
-      const chipWidth = measure(item, size, false) + 16;
+      const chipWidth = measure(item, size, false) + (settings.small ? 13 : 16);
       if (chipWidth > width) {
         // Too wide to be a chip: close the row and give it a wrapped box.
-        if (rowOpen) { this.doc.y += 20; rowOpen = false; x = left; }
-        const style = { size, color: SOFT };
+        if (rowOpen) { this.doc.y += step; rowOpen = false; x = left; }
+        const style = { size, color: ink };
+        const leading = settings.small ? 10.6 : 12.6;
         const lines = wrap(item, width - 20, style);
-        const height = lines.length * 12.6 + 10;
+        const height = lines.length * leading + (settings.small ? 7 : 10);
         this.need(height + 4);
-        this.doc.roundRect(left, this.doc.y, width, height, 6, WASH);
-        let inner = this.doc.y + 5;
+        this.doc.roundRect(left, this.doc.y, width, height, 6, fill);
+        let inner = this.doc.y + (settings.small ? 3.5 : 5);
         for (const line of lines) {
-          this.doc.draw(line, left + 10, inner + 9, style);
-          inner += 12.6;
+          this.doc.draw(line, left + (settings.small ? 7 : 10), inner + size, style);
+          inner += leading;
         }
         this.doc.y += height + 4;
         continue;
       }
-      if (!rowOpen) { this.need(24); rowOpen = true; }
+      if (!rowOpen) { this.need(step + 4); rowOpen = true; }
       if (x > left && x + chipWidth > left + width) {
-        this.doc.y += 20;
-        this.need(24);
+        this.doc.y += step;
+        this.need(step + 4);
         x = left;
       }
-      this.doc.roundRect(x, this.doc.y, chipWidth, 16, 8, WASH);
-      this.doc.draw(item, x + 8, this.doc.y + 11.4, { size, color: SOFT });
-      x += chipWidth + 5;
+      this.doc.roundRect(x, this.doc.y, chipWidth, chipH, chipH / 2, fill);
+      this.doc.draw(item, x + (settings.small ? 6.5 : 8), this.doc.y + (settings.small ? 9.4 : 11.4), { size, color: ink });
+      x += chipWidth + (settings.small ? 4 : 5);
     }
-    if (rowOpen) this.doc.y += 20;
+    if (rowOpen) this.doc.y += step;
     this.space(4);
     return this;
   };
@@ -641,14 +809,15 @@
   Report.prototype.tile = function (title, pill, detail, evidence) {
     const titleStyle = { size: 10.8, bold: true, color: INK };
     const detailStyle = { size: 9.8, color: INK };
-    const evidenceStyle = { size: 8.8, color: SOFT };
+    const evidenceStyle = { size: this.small ? 8 : 8.8, color: SOFT };
     const label = pill ? toWinAnsi(pill) : '';
     const labelWidth = label ? measure(label, 8, true, 0.6) + 12 : 0;
     const titleLines = wrap(toWinAnsi(title), COLUMN - 28 - labelWidth, titleStyle);
     const detailLines = detail ? wrap(toWinAnsi(detail), COLUMN - 28, detailStyle) : [];
     const evidenceLines = evidence ? wrap(toWinAnsi(evidence), COLUMN - 28, evidenceStyle) : [];
+    const evidenceLeading = this.small ? 11.4 : 12.4;
     const height = 12 + titleLines.length * 15 + detailLines.length * 14 +
-      (evidenceLines.length ? 4 + evidenceLines.length * 12.4 : 0) + 12;
+      (evidenceLines.length ? 4 + evidenceLines.length * evidenceLeading : 0) + 12;
 
     this.need(height + 8);
     this.doc.roundRect(MARGIN, this.doc.y, COLUMN, height, 10, WHITE);
@@ -670,7 +839,7 @@
       inner += 4;
       for (const line of evidenceLines) {
         this.doc.draw(line, MARGIN + 14, inner + 8, evidenceStyle);
-        inner += 12.4;
+        inner += evidenceLeading;
       }
     }
     this.doc.y += height + 8;
@@ -690,16 +859,16 @@
     this.space(6);
     const top = this.doc.y;
     const glyph = toWinAnsi(String(letter || '?'));
-    this.doc.roundRect(MARGIN, top, 28, 28, 7, ACCENT);
+    this.doc.roundRect(this.x, top, 28, 28, 7, ACCENT);
     const glyphWidth = measure(glyph, 14, true);
-    this.doc.draw(glyph, MARGIN + (28 - glyphWidth) / 2, top + 19, { size: 14, bold: true, color: WHITE });
+    this.doc.draw(glyph, this.x + (28 - glyphWidth) / 2, top + 19, { size: 14, bold: true, color: WHITE });
 
-    const textLeft = MARGIN + 40;
-    const textWidth = COLUMN - 40;
+    const textLeft = this.x + 40;
+    const textWidth = this.w - 40;
     if (strength) {
       const label = toWinAnsi(strength);
       const width = measure(label, 8, true, 0.8);
-      this.doc.draw(label, PAGE.width - MARGIN - width, top + 9,
+      this.doc.draw(label, this.x + this.w - width, top + 9,
         { size: 8, bold: true, color: ACCENT, tracking: 0.8 });
     }
     this.doc.draw(toWinAnsi(pole.name), textLeft, top + 10, nameStyle);
@@ -718,7 +887,10 @@
       this.body(counterEvidence,
         { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
     }
-    if (inPractice) this.body(inPractice, { x: textLeft, width: textWidth, size: 9.4, color: SOFT, leading: 13.4 });
+    if (inPractice) {
+      this.space(3);
+      this.body(inPractice, { x: textLeft, width: textWidth, size: this.small ? 8.5 : 9.4, color: SOFT, leading: this.small ? 12.2 : 13.4 });
+    }
     this.space(3);
     return this;
   };
@@ -1169,7 +1341,7 @@
    * paywall exists.
    *
    * Four sections live here — the wellness read, the attachment read, the
-   * ideal-partner read and the career coaching — and one US$8 unlock fills
+   * ideal-partner read and the career coaching — and one US$5 unlock fills
    * all four. The roast used to be one of them; it is free now, printed
    * unconditionally from `source.bonus` alongside the other free sections
    * below rather than gated through this table — see "9a. The roast" further
@@ -1588,22 +1760,27 @@
     this.need(52);
     const value = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
     const readout = toWinAnsi(String(value));
-    this.doc.draw(toWinAnsi(label), MARGIN, this.doc.y + 8, { size: 10.5, bold: true, color: INK });
-    this.doc.draw(readout, PAGE.width - MARGIN - measure(readout, 9.5, true), this.doc.y + 8,
-      { size: 9.5, bold: true, color: ACCENT });
-    const track = this.doc.y + 15;
-    const x = v => MARGIN + COLUMN * v / 100;
-    this.doc.roundRect(MARGIN, track, COLUMN, 8, 4, WHITE);
-    this.doc.rect(x(band[0]), track, COLUMN * (band[1] - band[0]) / 100, 8, WASH);
+    const L = this.x;
+    const W = this.w;
+    this.doc.draw(toWinAnsi(label), L, this.doc.y + 9, { size: 11, bold: true, color: INK });
+    // The score in a pill, so the number is the first thing the eye lands on.
+    const pillW = measure(readout, 10, true) + 16;
+    this.doc.roundRect(L + W - pillW, this.doc.y - 1, pillW, 16, 8, ACCENT);
+    this.doc.draw(readout, L + W - pillW + 8, this.doc.y + 10.5, { size: 10, bold: true, color: WHITE });
+    const track = this.doc.y + 22;
+    const x = v => L + W * v / 100;
+    this.doc.roundRect(L, track, W, 8, 4, mix(LINE, WHITE, 0.45));
+    this.doc.rect(x(band[0]), track, W * (band[1] - band[0]) / 100, 8, mix(ACCENT, WHITE, 0.8));
     this.doc.setStroke(SOFT);
     this.doc.op('0.7 w ' + num(x(50)) + ' ' + num(PAGE.height - track + 2) + ' m ' +
       num(x(50)) + ' ' + num(PAGE.height - track - 10) + ' l S');
-    this.doc.roundRect(x(value) - 5.5, track - 1.5, 11, 11, 5.5, ACCENT);
+    this.doc.circle(x(value), track + 4, 6.5, WHITE);
+    this.doc.circle(x(value), track + 4, 5, ACCENT);
     const left = toWinAnsi(poles[0] || '');
     const right = toWinAnsi(poles[1] || '');
-    this.doc.draw(left, MARGIN, track + 20, { size: 7.8, color: SOFT });
-    this.doc.draw(right, PAGE.width - MARGIN - measure(right, 7.8, false), track + 20, { size: 7.8, color: SOFT });
-    this.doc.y = track + 28;
+    this.doc.draw(left, L, track + 19, { size: 7.4, color: SOFT });
+    this.doc.draw(right, L + W - measure(right, 7.4, false), track + 19, { size: 7.4, color: SOFT });
+    this.doc.y = track + 27;
     return this;
   };
 
@@ -1611,18 +1788,18 @@
   Report.prototype.motiveRow = function (label, meaning, score, color, line) {
     this.need(40);
     const value = Math.max(0, Math.min(100, Math.round(Number(score) || 0)));
-    const labelWidth = 150;
-    const barLeft = MARGIN + labelWidth;
-    const barWidth = COLUMN - labelWidth - 30;
-    this.doc.draw(toWinAnsi(label), MARGIN + 10, this.doc.y + 9, { size: 10, bold: true, color: INK });
-    this.doc.draw(toWinAnsi(meaning), MARGIN + 10, this.doc.y + 20, { size: 7.6, color: SOFT });
-    this.doc.roundRect(barLeft, this.doc.y + 5, barWidth, 6, 3, LINE);
-    if (value > 0) this.doc.roundRect(barLeft, this.doc.y + 5, Math.max(6, barWidth * value / 100), 6, 3, color);
+    const labelWidth = 140;
+    const barLeft = this.x + labelWidth;
+    const barWidth = this.w - labelWidth - 30;
+    this.doc.draw(toWinAnsi(label), this.x, this.doc.y + 9, { size: 10, bold: true, color: INK });
+    this.doc.draw(toWinAnsi(meaning), this.x, this.doc.y + 20, { size: 7.4, color: SOFT });
+    this.doc.roundRect(barLeft, this.doc.y + 5, barWidth, 7, 3.5, mix(color, WHITE, 0.85));
+    if (value > 0) this.doc.roundRect(barLeft, this.doc.y + 5, Math.max(7, barWidth * value / 100), 7, 3.5, color);
     const readout = toWinAnsi(String(value));
-    this.doc.draw(readout, PAGE.width - MARGIN - measure(readout, 9.5, true), this.doc.y + 11,
-      { size: 9.5, bold: true, color: INK });
+    this.doc.draw(readout, this.x + this.w - measure(readout, 9.5, true), this.doc.y + 11.5,
+      { size: 9.5, bold: true, color });
     this.doc.y += 25;
-    if (line) this.body(line, { x: MARGIN + 10, width: COLUMN - 10, size: 8.8, color: SOFT, leading: 12.4 });
+    if (line) this.body(line, { size: 8.4, color: SOFT, leading: 11.8 });
     this.space(5);
     return this;
   };
@@ -1634,9 +1811,9 @@
     const labelText = toWinAnsi(String(label).toUpperCase());
     const labelWidth = measure(labelText, 7, true, 1) + 8;
     const style = { size: settings.size || 9, color: settings.color || SOFT, italic: Boolean(settings.italic) };
-    const lines = wrap(toWinAnsi(text), COLUMN - labelWidth - (settings.indent || 0), style);
+    const lines = wrap(toWinAnsi(text), this.w - labelWidth - (settings.indent || 0), style);
     this.need(14 * lines.length + 4);
-    const x = MARGIN + (settings.indent || 0);
+    const x = this.x + (settings.indent || 0);
     this.doc.draw(labelText, x, this.doc.y + 8, { size: 7, bold: true, color: settings.labelColor || SOFT, tracking: 1 });
     lines.forEach((line, index) => {
       if (index) this.need(13);
@@ -1652,9 +1829,8 @@
    * recorded in the cover's contents in place of sections.
    */
   Report.prototype.part = function (part, numeral) {
-    // Enough for the divider and the first section's own keep-together
-    // reserve, so a part never ends a page with its first section overleaf.
-    this.need(330);
+    // Every part opens a page of its own.
+    if (this.doc.y > MARGIN + 40) this.page();
     this.contents.push({ title: (numeral ? numeral + '  ' : '') + part.title, page: this.doc.pageNumber });
     this.space(22);
     this.doc.rect(MARGIN, this.doc.y, COLUMN, 2, ACCENT);
@@ -1682,8 +1858,48 @@
   const WARN_WASH = [0.992, 0.949, 0.902];
   const T_TITLE = { size: 10.6, bold: true, color: INK };
   const T_BODY = { size: 9.6, color: INK };
-  const T_SOFT = { size: 8.9, color: SOFT };
+  const T_SOFT = { size: 8.3, color: SOFT };
   const T_LABEL = { size: 7, bold: true, color: SOFT, tracking: 1 };
+  const PINK_WASH = mix(ACCENT_2, WHITE, 0.9);
+
+  /** A wellbeing band's colours: its ink, and the wash its card is filled with. */
+  function bandTone(band) {
+    return {
+      steady: { ink: GOOD, wash: GOOD_WASH },
+      mixed: { ink: WARN, wash: WARN_WASH },
+      'under strain': { ink: ACCENT_2, wash: PINK_WASH },
+    }[band] || { ink: SOFT, wash: WHITE };
+  }
+
+  /**
+   * A small label and a row of pills — "Shows up in" and the sections it
+   * names, set as tags in the accent rather than as a sentence of commas.
+   */
+  Report.prototype.pills = function (label, items, options) {
+    const o = options || {};
+    const list = (items || []).filter(Boolean).map(item => toWinAnsi(item));
+    if (!list.length) return this;
+    const labelText = toWinAnsi(String(label).toUpperCase());
+    const labelW = measure(labelText, 6.6, true, 1) + 8;
+    const size = 7.4;
+    const h = 13;
+    this.need(h + 6);
+    this.doc.draw(labelText, this.x, this.doc.y + 9, { size: 6.6, bold: true, color: o.labelColor || SOFT, tracking: 1 });
+    let x = this.x + labelW;
+    for (const item of list) {
+      const w = measure(item, size, true) + 12;
+      if (x > this.x + labelW && x + w > this.x + this.w) {
+        this.doc.y += h + 3;
+        this.need(h + 3);
+        x = this.x + labelW;
+      }
+      this.doc.roundRect(x, this.doc.y, w, h, h / 2, o.fill || ACCENT);
+      this.doc.draw(item, x + 6, this.doc.y + 9.1, { size, bold: true, color: o.color || WHITE });
+      x += w + 4;
+    }
+    this.doc.y += h + 4;
+    return this;
+  };
 
   // (blockWidth, below, is read when a block is drawn, not when it is laid out.)
   function layoutRows(rows, width) {
@@ -1806,18 +2022,17 @@
     this.space(8);
     const text = toWinAnsi(String(label).toUpperCase());
     const labelStyle = { size: 7.6, bold: true, color: ACCENT_2, tracking: 1.1 };
-    this.doc.draw(text, MARGIN, this.doc.y + 9, labelStyle);
+    const tone = bandTone(band);
+    this.doc.draw(text, this.x, this.doc.y + 9, Object.assign({}, labelStyle, { color: tone.ink === SOFT ? ACCENT_2 : tone.ink }));
     if (band) {
       const word = toWinAnsi(band);
-      const colors = { steady: GOOD, mixed: WARN, 'under strain': ACCENT_2, 'not enough evidence': SOFT };
-      const color = colors[band] || ACCENT;
-      const x = MARGIN + measure(text, 7.6, true, 1.1) + 10;
+      const x = this.x + measure(text, 7.6, true, 1.1) + 10;
       const w = measure(word, 8, true) + 14;
-      this.doc.roundRect(x, this.doc.y, w, 13, 6.5, band === 'steady' ? GOOD_WASH : band === 'mixed' ? WARN_WASH : WASH);
-      this.doc.draw(word, x + 7, this.doc.y + 9.4, { size: 8, bold: true, color });
+      this.doc.roundRect(x, this.doc.y, w, 13, 6.5, tone.ink);
+      this.doc.draw(word, x + 7, this.doc.y + 9.4, { size: 8, bold: true, color: WHITE });
     }
     this.doc.y += 18;
-    if (reading) this.body(reading, { size: 9.8, leading: 14 });
+    if (reading) this.body(reading, { size: 9.6, leading: 13.8 });
     return this;
   };
 
@@ -1890,6 +2105,406 @@
     doc.draw(word, right - wordWidth, top + 8, { size: 8, bold: true, color: WARN });
   }
 
+  // ---------- the structured cover ----------
+  //
+  // The on-screen story card, on paper: a gradient band with the title, and
+  // the card lifted over its foot — the character in a gradient block of its
+  // own with its emblem, then the patterns, motivators, type, Big Five,
+  // values, interests and love languages each in a small tinted panel, as the
+  // card on the page sets them. The contents list goes under it.
+
+  const STRENGTH_DOTS = { slight: 1, moderate: 2, clear: 3 };
+  const SHORT_TRAITS = { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
+    agreeableness: 'Agreeable', neuroticism: 'Sensitivity' };
+
+  /** The three motivators the card names: the model's own pick, else the top scores. */
+  function topMotivatorKeys(report) {
+    const known = Copy.STRUCTURED.motivators;
+    const named = (report.topMotivators || []).filter(key => known[key]);
+    if (named.length) return named.slice(0, 3);
+    return ((report.motivators && report.motivators.scores) || []).filter(row => row && known[row.value])
+      .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
+  }
+
+  /** The emblem in a white disc, or the character's initial where there is none. */
+  function emblemDisc(doc, cx, cy, r, character, color) {
+    doc.circle(cx, cy, r, WHITE);
+    const key = Copy.CHARACTER_EMBLEMS && Copy.CHARACTER_EMBLEMS[String(character || '').trim()];
+    const markup = key && Copy.EMBLEM_PATHS[key];
+    if (markup) {
+      const size = r * 1.25;
+      doc.emblem(markup, { x: cx - size / 2, top: cy - size / 2, size, color: color || ACCENT });
+    } else if (character) {
+      const letter = toWinAnsi(String(character).trim().charAt(0).toUpperCase());
+      const size = r * 1.05;
+      doc.draw(letter, cx - measure(letter, size, true) / 2, cy + size * 0.36, { size, bold: true, color: color || ACCENT });
+    }
+  }
+
+  /** Pills that wrap inside a panel; returns the height they take, drawing only when given a doc. */
+  function chipRun(doc, items, x, top, width, style) {
+    const h = 13.5;
+    let cx = x;
+    let y = top;
+    let any = false;
+    for (const raw of items) {
+      const text = toWinAnsi(raw);
+      if (!text) continue;
+      const lines = wrap(text, width - 12, style);
+      if (lines.length > 1) {
+        if (any && cx > x) { y += h + 3.5; cx = x; }
+        const boxH = lines.length * 10.4 + 5;
+        if (doc) {
+          doc.roundRect(x, y, width, boxH, 6, style.fill);
+          lines.forEach((line, i) => doc.draw(line, x + 6, y + 10 + i * 10.4, style));
+        }
+        y += boxH + 3.5;
+        cx = x;
+        any = false;
+        continue;
+      }
+      const w = measure(text, style.size, style.bold) + 12;
+      if (cx > x && cx + w > x + width) { y += h + 3.5; cx = x; }
+      if (doc) {
+        doc.roundRect(cx, y, w, h, h / 2, style.fill);
+        doc.draw(text, cx + 6, y + 9.4, style);
+      }
+      cx += w + 4;
+      any = true;
+    }
+    return (any ? y + h : y) - top;
+  }
+
+  function storyCover(doc, report, card, meta) {
+    const S = Copy.STRUCTURED;
+    const essence = report.essence || {};
+    const name = essence.character || essence.noun || '';
+    const franchise = essence.franchise || '';
+    const fullBlurb = String(report.cardHighlights || card.summary || '').trim();
+    const blurb = (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim();
+    const headline = String((card && card.headline) || (report.card && report.card.headline) || '').trim();
+    const mbti = report.mbti || {};
+    const five = report.bigFive || {};
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    const confidence = Math.round(Number((report.confidence || {}).score || (card || {}).confidence) || 0);
+
+    doc.newPage({ bare: true, top: 0 });
+    doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
+
+    // ---- the band ----
+    const bandH = 178;
+    doc.gradientBox(0, 0, PAGE.width, bandH, 0, ACCENT, ACCENT_2, () => {
+      doc.circle(PAGE.width - 30, 18, 112, mix(mix(ACCENT, ACCENT_2, 0.85), WHITE, 0.12));
+      doc.circle(PAGE.width - 168, bandH - 12, 46, mix(mix(ACCENT, ACCENT_2, 0.6), WHITE, 0.1));
+      doc.circle(36, bandH + 30, 70, mix(ACCENT, WHITE, 0.08));
+    });
+    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 38, size: 19, color: WHITE });
+    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 53, { size: 13, bold: true, color: WHITE });
+    const titleStyle = { size: 28, bold: true, color: WHITE };
+    let y = 94;
+    for (const line of wrap(toWinAnsi((card.name || 'Your') + '’s psyche'), COLUMN - 20, titleStyle).slice(0, 2)) {
+      doc.draw(line, MARGIN, y, titleStyle);
+      y += 31;
+    }
+    // Provenance under the title, where a reader looks for when and from what.
+    const stamp = ['Generated ' + (meta.date || ''), 'from an Instagram data export', confidence + '/100 confidence']
+      .join('  ·  ');
+    doc.draw(toWinAnsi(stamp), MARGIN, y - 8, { size: 8.8, color: mix(WHITE, ACCENT, 0.18) });
+
+    // ---- measure the card ----
+    const pad = 16;
+    const innerW = COLUMN - pad * 2;
+    const heroPad = 14;
+    const heroW = innerW - heroPad * 2;
+    const nameStyle = { size: 25, bold: true, color: WHITE };
+    const textX = 66;
+    const nameLines = wrap(toWinAnsi(name), heroW - textX - 70, nameStyle).slice(0, 2);
+    const headStyle = { size: 11.4, bold: true, italic: true, color: WHITE };
+    const headLines = headline ? wrap(toWinAnsi(headline), heroW, headStyle).slice(0, 2) : [];
+    const blurbStyle = { size: 8.9, color: mix(WHITE, ACCENT, 0.06) };
+    const blurbLines = blurb ? wrap(toWinAnsi(blurb), heroW, blurbStyle).slice(0, 5) : [];
+    const nameBlockH = Math.max(50, 20 + nameLines.length * 27 + (franchise ? 12 : 0));
+    const heroH = heroPad + 12 + nameBlockH + (headLines.length ? 8 + headLines.length * 15 : 0) +
+      (blurbLines.length ? 5 + blurbLines.length * 12.2 : 0) + heroPad;
+
+    const gap = 8;
+    const colW = (innerW - gap) / 2;
+    const pPad = 9;
+    const pInner = colW - pPad * 2;
+    const rowStyle = { size: 8.8, bold: true, color: INK };
+    const chipStyle = { size: 7.6, bold: true, color: ACCENT, fill: mix(ACCENT, WHITE, 0.86) };
+    const titles = (rows, limit) => (rows || []).slice(0, limit)
+      .map(r => (r && (r.title || r.name || r.value || r.belief)) || '').filter(Boolean);
+
+    const patterns = (Array.isArray(report.patterns) ? report.patterns : [])
+      .filter(p => p && /^p[1-3]$/.test(p.id) && p.name).sort((a, b) => a.id.localeCompare(b.id));
+    const numbered = (list, filled) => ({
+      height: list.reduce((h, text) => h + Math.max(1, wrap(toWinAnsi(text), pInner - 20, rowStyle).length) * 11 + 5, 0) - 5,
+      draw(x, top) {
+        let cy = top;
+        list.forEach((text, i) => {
+          const lines = wrap(toWinAnsi(text), pInner - 20, rowStyle);
+          doc.circle(x + 6.5, cy + 6, 6.5, filled ? ACCENT : mix(ACCENT, WHITE, 0.85));
+          const n = toWinAnsi(String(i + 1));
+          doc.draw(n, x + 6.5 - measure(n, 7.6, true) / 2, cy + 8.8, { size: 7.6, bold: true, color: filled ? WHITE : ACCENT });
+          lines.forEach((line, k) => doc.draw(line, x + 20, cy + 9 + k * 11, rowStyle));
+          cy += Math.max(1, lines.length) * 11 + 5;
+        });
+      },
+    });
+    const motives = topMotivatorKeys(report).map(key => S.motivators[key].label);
+    const letters = (mbti.letters || []).filter(l => l && l.choice);
+    const traitKeys = Object.keys(TRAIT_LABELS).filter(key => five[key] && key !== 'extraversion');
+    const panels = [
+      { label: TEXT.cardPatterns, color: ACCENT, block: numbered(patterns.map(p => p.name), true) },
+      { label: S.titles.motivators, color: ACCENT_2, block: numbered(motives, false) },
+      { label: TEXT.cardType, color: WARN, block: {
+        height: letters.length * 13.5 - 2,
+        draw(x, top) {
+          letters.forEach((l, i) => {
+            const cy = top + i * 13.5;
+            doc.draw(toWinAnsi(l.choice), x, cy + 9, { size: 9, bold: true, color: ACCENT });
+            doc.draw(toWinAnsi((Copy.MBTI_POLES[l.choice] || {}).name || ''), x + 13, cy + 9, { size: 8.8, color: INK });
+            const dots = STRENGTH_DOTS[l.strength] || 0;
+            for (let d = 0; d < 3; d++) doc.circle(x + pInner - 16 + d * 7, cy + 6, 2.4, d < dots ? ACCENT : mix(LINE, WHITE, 0.2));
+          });
+        },
+      } },
+      { label: TEXT.cardBigFive, color: GOOD, block: {
+        height: traitKeys.length * 13.5 - 2,
+        draw(x, top) {
+          traitKeys.forEach((key, i) => {
+            const cy = top + i * 13.5;
+            const value = Math.max(0, Math.min(100, Math.round(Number(five[key].score) || 0)));
+            doc.draw(toWinAnsi(SHORT_TRAITS[key]), x, cy + 9, { size: 8.6, color: INK });
+            const barX = x + 74;
+            const barW = pInner - 74 - 22;
+            doc.roundRect(barX, cy + 4, barW, 4.5, 2.25, mix(LINE, WHITE, 0.2));
+            if (value) doc.roundRect(barX, cy + 4, Math.max(4.5, barW * value / 100), 4.5, 2.25, ACCENT);
+            const v = toWinAnsi(String(value));
+            doc.draw(v, x + pInner - measure(v, 8.6, true), cy + 9, { size: 8.6, bold: true, color: INK });
+          });
+        },
+      } },
+    ];
+    const valueItems = titles(report.values, 3).concat(titles(report.beliefs, 1)).slice(0, 4);
+    const interestItems = titles(report.interests, 3);
+    if (valueItems.length || interestItems.length) {
+      panels.push({ label: S.cardStandFor, color: ACCENT, block: {
+        height: chipRun(null, valueItems, 0, 0, pInner, chipStyle),
+        draw: (x, top) => chipRun(doc, valueItems, x, top, pInner, chipStyle) } });
+      panels.push({ label: S.cardInto, color: ACCENT_2, block: {
+        height: chipRun(null, interestItems, 0, 0, pInner, chipStyle),
+        draw: (x, top) => chipRun(doc, interestItems, x, top, pInner, chipStyle) } });
+    }
+    const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean);
+    const loveIn = loveNames(love.receiving);
+    const loveOut = loveNames(love.giving);
+    if (loveIn.length || loveOut.length) {
+      const list = items => ({
+        height: Math.max(1, items.length) * 12.5 - 2,
+        draw(x, top) {
+          items.forEach((text, i) => {
+            doc.circle(x + 2.5, top + i * 12.5 + 5.6, 2.2, ACCENT_2);
+            doc.draw(toWinAnsi(text), x + 10, top + i * 12.5 + 8.6, { size: 8.8, color: INK });
+          });
+        },
+      });
+      panels.push({ label: TEXT.cardLoveIn, color: ACCENT_2, block: list(loveIn) });
+      panels.push({ label: TEXT.cardLoveOut, color: ACCENT, block: list(loveOut) });
+    }
+    const labelH = 16;
+    const rows = [];
+    for (let i = 0; i < panels.length; i += 2) rows.push(panels.slice(i, i + 2));
+    const rowHeights = rows.map(row => Math.max(...row.map(p => p.block.height)) + labelH + pPad * 2);
+    const gridH = rowHeights.reduce((a, b) => a + b, 0) + gap * (rows.length - 1);
+    const footH = 24;
+    const cardTop = 136;
+    const cardH = pad + heroH + 12 + gridH + footH;
+
+    // ---- draw the card ----
+    doc.roundRect(MARGIN + 1, cardTop + 4, COLUMN, cardH, 18, mix(LINE, ACCENT, 0.12));
+    doc.roundRect(MARGIN, cardTop, COLUMN, cardH, 18, WHITE);
+    const x0 = MARGIN + pad;
+    const heroTop = cardTop + pad;
+    doc.gradientBox(x0, heroTop, innerW, heroH, 13, ACCENT, ACCENT_2, () => {
+      doc.circle(x0 + innerW - 24, heroTop + 6, 50, mix(ACCENT_2, WHITE, 0.16));
+      doc.circle(x0 + innerW + 6, heroTop + 78, 34, mix(ACCENT_2, WHITE, 0.1));
+    });
+    const hx = x0 + heroPad;
+    let hy = heroTop + heroPad;
+    doc.draw(toWinAnsi(String(TEXT.essenceLabel).toUpperCase()), hx, hy + 6, { size: 7, bold: true, color: WHITE, tracking: 1.6 });
+    if (confidence > 0) {
+      const score = toWinAnsi(confidence + '/100');
+      const w = measure(score, 9, true) + 18;
+      doc.roundRect(x0 + innerW - heroPad - w, hy - 3, w, 18, 9, WHITE);
+      doc.draw(score, x0 + innerW - heroPad - w + 9, hy + 9.3, { size: 9, bold: true, color: ACCENT });
+    }
+    hy += 12;
+    emblemDisc(doc, hx + 24, hy + 25, 24, name);
+    nameLines.forEach((line, i) => doc.draw(line, hx + textX, hy + 26 + i * 27, nameStyle));
+    if (franchise) {
+      doc.draw(toWinAnsi(franchise.toUpperCase()), hx + textX, hy + 26 + (nameLines.length - 1) * 27 + 15,
+        { size: 7.4, bold: true, color: mix(WHITE, ACCENT, 0.2), tracking: 1.4 });
+    }
+    hy += nameBlockH;
+    if (headLines.length) {
+      hy += 8;
+      headLines.forEach(line => { doc.draw(line, hx, hy + 10, headStyle); hy += 15; });
+    }
+    if (blurbLines.length) {
+      hy += 5;
+      blurbLines.forEach(line => { doc.draw(line, hx, hy + 8.5, blurbStyle); hy += 12.2; });
+    }
+
+    let rowTop = heroTop + heroH + 12;
+    rows.forEach((row, r) => {
+      row.forEach((panel, c) => {
+        const px = x0 + c * (colW + gap);
+        doc.roundRect(px, rowTop, colW, rowHeights[r], 11, mix(WASH, WHITE, 0.4));
+        doc.roundRect(px + pPad, rowTop + pPad, 11, 11, 3.5, mix(panel.color, WHITE, 0.82));
+        doc.circle(px + pPad + 5.5, rowTop + pPad + 5.5, 2.3, panel.color);
+        doc.draw(toWinAnsi(String(panel.label).toUpperCase()), px + pPad + 17, rowTop + pPad + 8.3,
+          { size: 6.6, bold: true, color: SOFT, tracking: 1.1 });
+        panel.block.draw(px + pPad, rowTop + pPad + labelH);
+      });
+      rowTop += rowHeights[r] + gap;
+    });
+    const foot = toWinAnsi(String(S.pdfCardFoot).toUpperCase());
+    doc.draw(foot, MARGIN + (COLUMN - measure(foot, 6.2, false, 1)) / 2, cardTop + cardH - 9,
+      { size: 6.2, color: SOFT, tracking: 1 });
+    return cardTop + cardH;
+  }
+
+  /**
+   * The cover's contents, drawn last (page numbers only exist once the pages
+   * do) into page one's own op buffer: the parts with their numerals in
+   * accent tiles, then the evidence page and the roast. Skipped rather than
+   * squeezed when the card leaves no room.
+   */
+  function storyContents(doc, out, cardBottom) {
+    const rows = out.contents;
+    if (!rows.length) return;
+    const rowH = 17.5;
+    const columns = 2;
+    const perColumn = Math.ceil(rows.length / columns);
+    const top = cardBottom + 20;
+    if (top + 16 + perColumn * rowH > PAGE.height - 30) return;
+    const colW = (COLUMN - 20) / columns;
+    const saved = doc.buffer;
+    doc.buffer = doc.pages[0].content;
+    doc.draw(toWinAnsi(String(TEXT.pdfContents).toUpperCase()), MARGIN, top + 6,
+      { size: 6.8, bold: true, color: ACCENT_2, tracking: 1.4 });
+    rows.forEach((row, index) => {
+      const column = Math.floor(index / perColumn);
+      const x = MARGIN + column * (colW + 20);
+      const y = top + 14 + (index % perColumn) * rowH;
+      const match = String(row.title).match(/^(\d\d)\s+(.*)$/);
+      if (match) {
+        doc.roundRect(x, y, 19, 14, 4, ACCENT);
+        const n = toWinAnsi(match[1]);
+        doc.draw(n, x + 9.5 - measure(n, 7.4, true) / 2, y + 9.8, { size: 7.4, bold: true, color: WHITE });
+      } else {
+        doc.roundRect(x, y, 19, 14, 4, mix(ACCENT_2, WHITE, 0.82));
+        doc.circle(x + 9.5, y + 7, 2.2, ACCENT_2);
+      }
+      const page = toWinAnsi(String(row.page));
+      const pageW = measure(page, 8.6, true);
+      const titleStyle = { size: 9.4, color: INK };
+      const title = wrap(toWinAnsi(match ? match[2] : row.title), colW - 28 - pageW - 10, titleStyle)[0];
+      doc.draw(title, x + 27, y + 10, titleStyle);
+      doc.hairline(y + 17, x + 27, x + colW, mix(LINE, WHITE, 0.3));
+      doc.draw(page, x + colW - pageW, y + 10, { size: 8.6, bold: true, color: ACCENT });
+    });
+    doc.buffer = saved;
+  }
+
+  /**
+   * The overview's opening: the headline in a gradient block, the character
+   * beside its emblem in a tinted card, and the four facts as tiles — a page
+   * with some shape to it rather than a run of grey under a run of black.
+   */
+  function overviewOpening(out, source, who) {
+    const S = Copy.STRUCTURED;
+    const G = S.pdfGlance;
+    const doc = out.doc;
+    const headline = String((source.card && source.card.headline) || who.headline || '').trim();
+    if (headline) {
+      const style = { size: 15, bold: true, color: WHITE };
+      const lines = wrap(toWinAnsi(headline), COLUMN - 44, style);
+      const h = 22 + 14 + lines.length * 19 + 14;
+      out.need(h + 10);
+      const top = doc.y;
+      doc.gradientBox(MARGIN, top, COLUMN, h, 13, ACCENT, ACCENT_2, () => {
+        doc.circle(MARGIN + COLUMN - 20, top + 4, 44, mix(ACCENT_2, WHITE, 0.15));
+        doc.circle(MARGIN + COLUMN - 86, top + h + 6, 22, mix(ACCENT_2, WHITE, 0.1));
+      });
+      doc.draw(toWinAnsi(String(G.headline).toUpperCase()), MARGIN + 22, top + 24,
+        { size: 7, bold: true, color: mix(WHITE, ACCENT, 0.15), tracking: 1.6 });
+      lines.forEach((line, i) => doc.draw(line, MARGIN + 22, top + 46 + i * 19, style));
+      doc.y = top + h + 10;
+    }
+    const essence = source.essence || {};
+    const name = essence.character || essence.noun;
+    if (name) {
+      out.keep(() => out.boxed(() => {
+        const top = doc.y;
+        doc.circle(out.x + 27, top + 27, 27, mix(ACCENT, WHITE, 0.82));
+        emblemDisc(doc, out.x + 27, top + 27, 22, name);
+        const saved = { x: out.x, w: out.w };
+        out.x += 68;
+        out.w -= 68;
+        out.eyebrow(TEXT.essenceLabel);
+        const nameStyle = { size: 20, bold: true, color: ACCENT };
+        for (const line of wrap(toWinAnsi(name), out.w, nameStyle)) {
+          doc.draw(line, out.x, doc.y + 15, nameStyle);
+          doc.y += 23;
+        }
+        if (essence.franchise) {
+          doc.draw(toWinAnsi(String(essence.franchise).toUpperCase()), out.x, doc.y + 6,
+            { size: 7.4, bold: true, color: SOFT, tracking: 1.3 });
+          doc.y += 12;
+        }
+        doc.y = Math.max(doc.y + 4, top + 60);
+        if (essence.why) out.body(essence.why, { size: 9.8, leading: 14.4 });
+        out.x = saved.x;
+        out.w = saved.w;
+      }, { fill: WASH, bar: ACCENT, pad: 14 }));
+    }
+    // Four facts as tiles.
+    const five = source.bigFive || {};
+    const topTrait = Object.keys(TRAIT_LABELS).filter(key => five[key])
+      .sort((a, b) => (Number(five[b].score) || 0) - (Number(five[a].score) || 0))[0];
+    const drive = topMotivatorKeys(source)[0];
+    const confidence = Math.round(Number((source.confidence || {}).score) || 0);
+    const tiles = [
+      source.mbti && source.mbti.type && { label: G.type, value: source.mbti.type, color: ACCENT },
+      drive && { label: G.drive, value: S.motivators[drive].label, color: ACCENT_2 },
+      topTrait && { label: G.trait, value: String(Math.round(Number(five[topTrait].score) || 0)), note: TRAIT_LABELS[topTrait], color: GOOD },
+      confidence > 0 && { label: G.confidence, value: confidence + '/100', note: (source.confidence || {}).level || '', color: WARN },
+    ].filter(Boolean);
+    if (tiles.length) {
+      const gap = 8;
+      const w = (COLUMN - gap * (tiles.length - 1)) / tiles.length;
+      const valueStyle = { size: 12.5, bold: true };
+      const laid = tiles.map(t => wrap(toWinAnsi(t.value), w - 20, valueStyle).slice(0, 2));
+      const noteStyle = { size: 8.2, color: INK };
+      const notes = tiles.map(t => (t.note ? wrap(toWinAnsi(t.note), w - 20, noteStyle)[0] : ''));
+      const h = 32 + Math.max(...laid.map((l, i) => l.length * 15 + (notes[i] ? 11 : 0)));
+      out.need(h + 12);
+      const top = doc.y + 2;
+      tiles.forEach((t, i) => {
+        const x = MARGIN + i * (w + gap);
+        doc.roundRect(x, top, w, h, 10, t.color);
+        doc.roundRect(x, top + 3.5, w, h - 3.5, 10, WHITE);
+        doc.draw(toWinAnsi(String(t.label).toUpperCase()), x + 10, top + 18, { size: 6.4, bold: true, color: SOFT, tracking: 1 });
+        laid[i].forEach((line, k) => doc.draw(line, x + 10, top + 36 + k * 15, Object.assign({ color: t.color }, valueStyle)));
+        if (notes[i]) doc.draw(notes[i], x + 10, top + 36 + laid[i].length * 15 - 2, noteStyle);
+      });
+      doc.y = top + h + 14;
+    }
+  }
+
   function buildStructured(report, card, meta) {
     const S = Copy.STRUCTURED;
     const source = report || {};
@@ -1911,98 +2526,101 @@
       .sort((a, b) => a.id.localeCompare(b.id));
     const byId = Object.fromEntries(patterns.map(p => [p.id, p]));
     const chip = p => p.id.replace('p', '') + '  ' + p.name;
-    // Where a plan item or pressure point came from: its pattern, and nothing
-    // more — the page dropped the "raised by" sections and the "connects to"
-    // rows, and so does this.
-    const origin = item => {
-      const pattern = byId[item.pattern];
-      if (pattern) out.labelled(S.fromPattern, chip(pattern), { indent: 10, color: ACCENT });
-    };
     const sectionNames = keys => (keys || []).map(key => S.sectionNames[key]).filter(Boolean)
       .filter((name, i, all) => all.indexOf(name) === i);
     const unlocked = stamp.unlocked || {};
     const numeral = key => String(['overview', 'who', 'drives', 'connect', 'together'].indexOf(key)).padStart(2, '0');
 
-    const cardBottom = cover(doc, source, who, stamp);
+    const cardBottom = storyCover(doc, source, who, stamp);
+    // Supporting text a size down; section titles kept with their first block
+    // by `keep` rather than by a fixed reserve.
+    out.small = true;
+    out.titleReserve = 90;
+    const inset = (by, draw) => {
+      out.x += by;
+      out.w -= by;
+      draw();
+      out.x -= by;
+      out.w += by;
+    };
+    const evidence = (items, fill) => out.tags(items, { small: true, fill: fill || mix(WASH, WHITE, 0.35) });
 
     // 00: the summary and the signature patterns.
     out.page();
     out.part(S.parts.overview, numeral('overview'));
     out.sectionTitle(S.titles.summary, def('summary'));
-    const headline = String((source.card && source.card.headline) || '').trim();
-    if (headline) out.body(headline, { size: 13, bold: true, italic: true, leading: 18 });
-    const essence = source.essence || {};
-    const essenceName = essence.character || essence.noun;
-    if (essenceName) {
-      out.space(4);
-      out.eyebrow(TEXT.essenceLabel);
-      const nameStyle = { size: 20, bold: true, color: ACCENT };
-      for (const line of wrap(toWinAnsi(essenceName + (essence.franchise ? '  (' + essence.franchise + ')' : '')), COLUMN, nameStyle)) {
-        out.need(26);
-        doc.draw(line, MARGIN, doc.y + 16, nameStyle);
-        doc.y += 25;
-      }
-      if (essence.why) out.body(essence.why, { size: 10, leading: 15, color: SOFT });
-      out.space(8);
-    }
-    if (source.summary) out.body(source.summary, { size: 10.6, leading: 16 });
-    if (patterns.length) {
-      out.sectionTitle(S.titles.patterns, def('patterns'));
-      for (const p of patterns) {
-        out.need(70);
+    overviewOpening(out, source, who);
+    const paragraphs = String(source.summary || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean);
+    paragraphs.forEach((text, i) => {
+      if (i) out.space(5);
+      // The first paragraph leads, a size up; the rest read as its detail.
+      out.body(text, i ? { size: 10.2, leading: 15.4 } : { size: 11.4, leading: 17 });
+    });
+    patterns.forEach((p, i) => out.keep(() => {
+      if (!i) out.sectionTitle(S.titles.patterns, def('patterns'));
+      out.boxed(() => {
         const top = doc.y;
-        doc.roundRect(MARGIN, top, 20, 20, 10, ACCENT);
+        doc.circle(out.x + 11, top + 11, 11, ACCENT);
         const n = toWinAnsi(p.id.replace('p', ''));
-        doc.draw(n, MARGIN + 10 - measure(n, 10, true) / 2, top + 13.5, { size: 10, bold: true, color: WHITE });
-        const nameStyle = { size: 12, bold: true, color: INK };
-        doc.y = top + 2;
-        for (const line of wrap(toWinAnsi(p.name), COLUMN - 30, nameStyle)) {
-          doc.draw(line, MARGIN + 30, doc.y + 11, nameStyle);
-          doc.y += 16;
-        }
-        out.body(p.line, { x: MARGIN + 30, width: COLUMN - 30, size: 10, leading: 14.4 });
-        out.tags(p.evidence, { x: MARGIN + 30, width: COLUMN - 30, size: 8.5 });
-        const where = sectionNames(p.showsUpIn);
-        if (where.length) out.labelled(S.showsUpIn, where.join(', '), { indent: 30 });
-        out.space(8);
-      }
-    }
+        doc.draw(n, out.x + 11 - measure(n, 10.5, true) / 2, top + 14.8, { size: 10.5, bold: true, color: WHITE });
+        inset(32, () => {
+          const nameStyle = { size: 12.6, bold: true, color: INK };
+          doc.y = top + 1;
+          for (const line of wrap(toWinAnsi(p.name), out.w, nameStyle)) {
+            doc.draw(line, out.x, doc.y + 12, nameStyle);
+            doc.y += 17;
+          }
+          out.body(p.line, { size: 10, leading: 14.4 });
+          out.space(5);
+          evidence(p.evidence);
+          const where = sectionNames(p.showsUpIn);
+          if (where.length) { out.space(1); out.pills(S.showsUpIn, where); }
+        });
+      }, { bar: ACCENT, pad: 13 });
+    }));
 
     // 01: who you are. MBTI first, then the Big Five, then wellbeing.
     out.part(S.parts.who, numeral('who'));
     const mbti = source.mbti;
     if (mbti) {
-      out.sectionTitle('MBTI', def('mbti'));
-      if (mbti.type) {
-        out.need(40);
-        doc.draw(toWinAnsi(mbti.type), MARGIN, doc.y + 26, { size: 30, bold: true, color: ACCENT, tracking: 2 });
-        doc.y += 38;
-      }
-      for (const letter of mbti.letters || []) {
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice);
-      }
+      const axes = (mbti.letters || []).filter(Boolean);
+      const axisCard = letter => out.boxed(() =>
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice),
+      { padTop: 6 });
+      out.keep(() => {
+        out.sectionTitle('MBTI', def('mbti'));
+        if (mbti.type) {
+          doc.draw(toWinAnsi(mbti.type), MARGIN, doc.y + 28, { size: 32, bold: true, color: ACCENT, tracking: 3 });
+          doc.y += 42;
+        }
+        if (axes[0]) axisCard(axes[0]);
+      });
+      axes.slice(1).forEach(letter => out.keep(() => axisCard(letter)));
     }
-    out.sectionTitle(TEXT.bigFive, def('bigFive'));
     const five = source.bigFive || {};
-    for (const key of Object.keys(TRAIT_LABELS)) {
+    Object.keys(TRAIT_LABELS).filter(key => five[key]).forEach((key, i) => out.keep(() => {
+      if (!i) out.sectionTitle(TEXT.bigFive, def('bigFive'));
       const trait = five[key];
-      if (!trait) continue;
-      out.need(96);
-      out.bipolar(TRAIT_LABELS[key] + (trait.band ? ' · ' + trait.band : ''), trait.score, S.poles[key] || [], S.typicalBand);
-      if (trait.reading) out.body(trait.reading, { size: 9.9, leading: 14.4 });
-      out.tags(trait.evidence);
-      out.space(6);
-    }
+      out.boxed(() => {
+        out.bipolar(TRAIT_LABELS[key] + (trait.band ? ' · ' + trait.band : ''), trait.score, S.poles[key] || [], S.typicalBand);
+        if (trait.reading) out.body(trait.reading, { size: 9.6, leading: 14 });
+        out.space(5);
+        evidence(trait.evidence);
+      });
+    }));
     const wellness = unlocked.wellness;
     if (wellness) {
-      out.sectionTitle(S.titles.wellness, def('wellness'));
-      for (const [label, key] of Copy.WELLNESS_FACETS) {
+      Copy.WELLNESS_FACETS.filter(([, key]) => wellness[key]).forEach(([label, key], i) => out.keep(() => {
+        if (!i) out.sectionTitle(S.titles.wellness, def('wellness'));
         const facet = wellness[key];
-        if (!facet) continue;
-        out.facetBand(label, facet.band, facet.reading);
-        out.tags(facet.evidence);
-        if (facet.confidence) out.fineprint(TEXT.wellnessConfidence + facet.confidence);
-      }
+        const tone = bandTone(facet.band);
+        out.boxed(() => {
+          out.facetBand(label, facet.band, facet.reading);
+          out.space(5);
+          evidence(facet.evidence, WHITE);
+          if (facet.confidence) out.body(TEXT.wellnessConfidence + facet.confidence, { size: 7.8, color: SOFT, leading: 11 });
+        }, { fill: tone.wash, bar: tone.ink, padTop: 4 });
+      }));
       if (wellness.overall) out.note(wellness.overall, TEXT.wellnessOverall);
       out.fineprint(S.wellnessNote);
     }
@@ -2014,21 +2632,25 @@
       if (row && S.motivators[row.value]) motives[row.value] = row;
     }
     if (Object.keys(motives).length) {
-      out.sectionTitle(S.titles.motivators, def('motivators'));
-      if (source.motivators.reading) out.note(source.motivators.reading);
       const colours = { openness: ACCENT_2, enhancement: WARN, conservation: GOOD, transcendence: ACCENT };
-      for (const group of Object.keys(S.motivatorGroups)) {
-        const rows = Object.keys(S.motivators).filter(key => S.motivators[key].group === group && motives[key]);
-        if (!rows.length) continue;
-        out.need(60);
-        out.space(4);
-        doc.draw(toWinAnsi(S.motivatorGroups[group].toUpperCase()), MARGIN, doc.y + 8,
-          { size: 7.4, bold: true, color: colours[group], tracking: 1.1 });
-        doc.y += 14;
-        for (const key of rows) {
-          out.motiveRow(S.motivators[key].label, S.motivators[key].meaning, motives[key].score, colours[group], motives[key].line);
+      const groups = Object.keys(S.motivatorGroups)
+        .map(group => ({ group, rows: Object.keys(S.motivators).filter(key => S.motivators[key].group === group && motives[key]) }))
+        .filter(g => g.rows.length);
+      groups.forEach(({ group, rows }, i) => out.keep(() => {
+        if (!i) {
+          out.sectionTitle(S.titles.motivators, def('motivators'));
+          if (source.motivators.reading) out.note(source.motivators.reading);
         }
-      }
+        out.boxed(() => {
+          doc.draw(toWinAnsi(S.motivatorGroups[group].toUpperCase()), out.x, doc.y + 8,
+            { size: 7.4, bold: true, color: colours[group], tracking: 1.2 });
+          doc.y += 16;
+          for (const key of rows) {
+            out.motiveRow(S.motivators[key].label, S.motivators[key].meaning, motives[key].score, colours[group], motives[key].line);
+          }
+          doc.y -= 5;
+        }, { top: colours[group], padTop: 13 });
+      }));
     }
     const trend = item => {
       const trajectory = String((item && item.trajectory) || '').trim();
@@ -2037,28 +2659,33 @@
       const stale = trajectory === 'dormant' || trajectory === 'declining' || trajectory === 'phasic';
       return label && stale && /^\d{4}$/.test(year) ? label + ' ' + year : label;
     };
-    out.sectionTitle(TEXT.interests, def('interests'));
     const interests = source.interests || [];
     if (interests.length) {
-      for (const item of interests) {
+      interests.forEach((item, i) => out.keep(() => {
+        if (!i) out.sectionTitle(TEXT.interests, def('interests'));
         out.tile(item.name, [item.intensity, trend(item)].filter(Boolean).join(' · '), item.detail, item.evidence);
-      }
+      }));
     } else {
+      out.sectionTitle(TEXT.interests, def('interests'));
       out.muted(TEXT.interestsEmpty);
     }
     // Values and beliefs as one list, drawn alike, as on the page: no
     // subsections and no tag saying which list the model filed each under.
-    out.sectionTitle(TEXT.valuesBeliefs, def('values'));
     const values = (source.values || []).filter(item => item && item.value);
     const words = text => String(text || '').toLowerCase().split(/[^a-z]+/).filter(w => w.length > 3);
     const valueWords = new Set(values.flatMap(item => words(item.value)));
     const beliefs = (source.beliefs || []).filter(item => item && item.belief &&
       !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
-    if (values.length || beliefs.length) {
-      // Four at most — three values and one belief — as on the page.
-      for (const item of values.slice(0, 3)) out.tile(item.value, trend(item), item.detail, item.evidence);
-      for (const item of beliefs.slice(0, 1)) out.tile(item.belief, '', item.detail, item.evidence);
+    // Four at most — three values and one belief — as on the page.
+    const standFor = values.slice(0, 3).map(item => [item.value, trend(item), item.detail, item.evidence])
+      .concat(beliefs.slice(0, 1).map(item => [item.belief, '', item.detail, item.evidence]));
+    if (standFor.length) {
+      standFor.forEach((args, i) => out.keep(() => {
+        if (!i) out.sectionTitle(TEXT.valuesBeliefs, def('values'));
+        out.tile(...args);
+      }));
     } else {
+      out.sectionTitle(TEXT.valuesBeliefs, def('values'));
       out.muted(TEXT.valuesEmpty);
     }
 
@@ -2067,38 +2694,44 @@
     const relationship = source.relationship || {};
     const attachment = unlocked.attachment;
     const idealPartner = unlocked.idealPartner;
-    out.sectionTitle(TEXT.relationships, def('relationships'));
     // Love languages first, then attachment, what they bring and where it
     // gets hard, and who suits them — one section, as on the page, each part
     // under its own subheading and set in boxes rather than as a run of text.
     const loveRows = list => (list || []).filter(entry => entry && entry.language).flatMap((item, i) => [
       { text: item.language, style: T_TITLE, leading: 14, before: i ? 9 : 0, right: item.strength || '' },
       item.inPractice && { text: item.inPractice, style: T_BODY, leading: 13.2, before: 2 },
-      item.why && { text: item.why, style: T_SOFT, leading: 12.4, before: 2 },
+      item.why && { text: item.why, style: T_SOFT, leading: 11.6, before: 3 },
     ]).filter(Boolean);
     const love = relationship.loveLanguages;
-    if (love && ((love.receiving || []).length || (love.giving || []).length)) {
-      out.subhead(TEXT.loveHead);
-      out.pairedPanels(
-        { title: TEXT.loveReceiving, color: ACCENT, fill: WASH, rows: loveRows(love.receiving) },
-        { title: TEXT.loveGiving, color: ACCENT_2, fill: WASH, rows: loveRows(love.giving) });
-      out.fineprint(S.touchNote);
-    }
+    out.keep(() => {
+      out.sectionTitle(TEXT.relationships, def('relationships'));
+      if (love && ((love.receiving || []).length || (love.giving || []).length)) {
+        out.subhead(TEXT.loveHead);
+        out.pairedPanels(
+          { title: TEXT.loveReceiving, color: ACCENT, fill: WASH, rows: loveRows(love.receiving) },
+          { title: TEXT.loveGiving, color: ACCENT_2, fill: WASH, rows: loveRows(love.giving) });
+        out.fineprint(S.touchNote);
+      }
+    });
     if (attachment) {
-      out.subhead(S.howYouAttach);
-      out.panel([
-        attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
-        attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
-        attachment.why && { text: attachment.why, style: T_BODY, leading: 13.8, before: 6 },
-      ], { fill: WASH, bar: ACCENT });
-      out.tags(attachment.derivedFrom);
+      out.keep(() => {
+        out.subhead(S.howYouAttach);
+        out.panel([
+          attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
+          attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
+          attachment.why && { text: attachment.why, style: T_BODY, leading: 13.8, before: 6 },
+        ], { fill: WASH, bar: ACCENT });
+        evidence(attachment.derivedFrom);
+      });
       const practice = (attachment.implications || []).filter(item => item && item.title);
       if (practice.length) {
-        out.eyebrow(S.inPractice, SOFT);
-        out.panel(practice.flatMap((item, i) => [
-          { text: item.title, style: T_TITLE, leading: 14, before: i ? 8 : 0 },
-          item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
-        ]).filter(Boolean), { fill: WHITE, bar: ACCENT_2 });
+        out.keep(() => {
+          out.eyebrow(S.inPractice, SOFT);
+          out.panel(practice.flatMap((item, i) => [
+            { text: item.title, style: T_TITLE, leading: 14, before: i ? 8 : 0 },
+            item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
+          ]).filter(Boolean), { fill: WHITE, bar: ACCENT_2 });
+        });
       }
     }
     const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
@@ -2110,38 +2743,43 @@
       { title: S.whatYouBring, color: GOOD, fill: GOOD_WASH, rows: pointRows(relationship.strengths) },
       { title: S.whereItGetsHard, color: WARN, fill: WARN_WASH, rows: pointRows(relationship.weaknesses) });
     if (idealPartner) {
-      out.subhead(S.whoSuitsYou);
-      if (idealPartner.summary) {
-        out.panel([{ text: idealPartner.summary, style: { size: 11, bold: true, italic: true, color: INK }, leading: 15.5 }],
-          { fill: WASH, bar: ACCENT });
-      }
-      out.pairedPanels(
-        { title: TEXT.idealPartnerNeeds, color: GOOD, fill: GOOD_WASH, rows: pointRows(idealPartner.needs) },
-        { title: TEXT.idealPartnerCarefulOf, color: WARN, fill: WARN_WASH, rows: pointRows(idealPartner.carefulOf) });
+      out.keep(() => {
+        out.subhead(S.whoSuitsYou);
+        if (idealPartner.summary) {
+          out.panel([{ text: idealPartner.summary, style: { size: 11, bold: true, italic: true, color: INK }, leading: 15.5 }],
+            { fill: WASH, bar: ACCENT });
+        }
+        out.pairedPanels(
+          { title: TEXT.idealPartnerNeeds, color: GOOD, fill: GOOD_WASH, rows: pointRows(idealPartner.needs) },
+          { title: TEXT.idealPartnerCarefulOf, color: WARN, fill: WARN_WASH, rows: pointRows(idealPartner.carefulOf) });
+      });
     }
     // How you work: the description and the coach's read as one section —
     // the edge in a box of its own, then what sets them apart beside what
     // holds them back. The actions are on the plan.
     const career = source.career || {};
     const coaching = unlocked.careerAssessment;
-    out.sectionTitle(S.titles.work, def('work'));
-    for (const text of [career.workStyle, coaching && coaching.situation].filter(Boolean)) {
-      out.body(text, { size: 10, leading: 15 });
-      out.space(4);
-    }
-    if (coaching && coaching.edge) {
-      out.panel([
-        { text: coaching.edge.headline, style: { size: 12, bold: true, color: INK }, leading: 16 },
-        coaching.edge.detail && { text: coaching.edge.detail, style: T_BODY, leading: 13.8, before: 4 },
-      ], { fill: WASH, bar: ACCENT, label: TEXT.careerEdge });
-      out.tags(coaching.edge.evidence);
-    }
+    out.keep(() => {
+      out.sectionTitle(S.titles.work, def('work'));
+      for (const text of [career.workStyle, coaching && coaching.situation].filter(Boolean)) {
+        out.body(text, { size: 10, leading: 15 });
+        out.space(4);
+      }
+      if (coaching && coaching.edge) {
+        out.panel([
+          { text: coaching.edge.headline, style: { size: 12, bold: true, color: INK }, leading: 16 },
+          coaching.edge.detail && { text: coaching.edge.detail, style: T_BODY, leading: 13.8, before: 4 },
+        ], { fill: WASH, bar: ACCENT, label: TEXT.careerEdge });
+        evidence(coaching.edge.evidence);
+      }
+    });
     const strengths = (career.strengths || []).concat(coaching && coaching.underused
       ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
     const holding = [].concat(
       coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
       career.weaknesses || [],
       career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
+    out.space(4);
     out.pairedPanels(
       { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, color: GOOD, fill: GOOD_WASH, rows: pointRows(strengths) },
       { title: S.whatHoldsYouBack, color: WARN, fill: WARN_WASH, rows: pointRows(holding) });
@@ -2152,20 +2790,22 @@
     const buildOn = (development.buildOn || []).filter(item => item && item.title);
     const develop = (development.develop || []).filter(item => item && item.title);
     if (buildOn.length || develop.length) {
-      out.sectionTitle(S.titles.development, def('development'));
-      if (buildOn.length) {
-        out.h3(S.titles.buildOn, GOOD);
-        for (const item of buildOn) { out.point(item.title, item.detail); origin(item); out.space(4); }
-      }
-      if (develop.length) {
-        out.h3(S.titles.develop, WARN);
-        for (const item of develop) {
-          out.point(item.title, item.detail);
-          if (item.reflect) out.labelled(S.reflect, item.reflect, { indent: 10, italic: true, color: INK, size: 9.6 });
-          origin(item);
-          out.space(6);
-        }
-      }
+      const devCard = (item, i, list, head, color, wash) => out.keep(() => {
+        if (!i && head === S.titles.buildOn) out.sectionTitle(S.titles.development, def('development'));
+        if (!i) out.h3(head, color);
+        if (!i) out.space(4);
+        out.boxed(() => {
+          out.point(item.title, item.detail, { bar: false, size: 11, detailColor: INK, detailSize: 9.6, detailLeading: 13.8 });
+          if (item.reflect) {
+            out.space(2);
+            out.labelled(S.reflect, item.reflect, { italic: true, color: INK, size: 9.4, labelColor: color });
+          }
+          doc.y -= 4;
+        }, { fill: wash, bar: color });
+      });
+      buildOn.forEach((item, i) => devCard(item, i, buildOn, S.titles.buildOn, GOOD, GOOD_WASH));
+      if (!buildOn.length) out.sectionTitle(S.titles.development, def('development'));
+      develop.forEach((item, i) => devCard(item, i, develop, S.titles.develop, WARN, WARN_WASH));
       // Every action in the report on one plan, a row per step: the develop
       // areas', the work coaching's and the wellbeing suggestions'.
       const actions = develop.flatMap(item => (item.actions || []).filter(a => a && a.step)
@@ -2174,46 +2814,66 @@
           .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork })))
         .concat(((wellness && wellness.suggestions) || []).filter(a => a && a.title)
           .map(a => ({ horizon: 'this week', step: a.title, detail: a.detail, from: S.fromWellbeing })));
-      if (actions.length) {
-        out.h3(S.titles.plan);
-        const horizons = Object.keys(TEXT.careerHorizons);
-        horizons.forEach((horizon, i) => {
-          const here = actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon)));
-          if (!here.length) return;
-          out.eyebrow(TEXT.careerHorizons[horizon], ACCENT);
-          for (const action of here) {
-            out.point(action.step, [action.detail, action.from].filter(Boolean).join(' — '));
+      const horizons = Object.keys(TEXT.careerHorizons);
+      const groups = horizons.map((horizon, i) => ({ horizon,
+        here: actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) }))
+        .filter(g => g.here.length);
+      // One card per horizon; one too long to fit a page is split in two.
+      const cards = groups.flatMap(g => {
+        if (g.here.length <= 7) return [{ horizon: g.horizon, first: true, here: g.here }];
+        const half = Math.ceil(g.here.length / 2);
+        return [{ horizon: g.horizon, first: true, here: g.here.slice(0, half) },
+          { horizon: g.horizon, first: false, here: g.here.slice(half) }];
+      });
+      cards.forEach((c, i) => out.keep(() => {
+        if (!i) out.h3(S.titles.plan);
+        out.boxed(() => {
+          if (c.first) {
+            doc.circle(out.x + 4, doc.y + 5, 4, ACCENT);
+            doc.draw(toWinAnsi(TEXT.careerHorizons[c.horizon].toUpperCase()), out.x + 14, doc.y + 8,
+              { size: 7.6, bold: true, color: ACCENT, tracking: 1.2 });
+            doc.y += 14;
           }
-        });
-      }
+          c.here.forEach((action, k) => {
+            if (k) out.space(4);
+            out.point(action.step, action.detail, { size: 10.2, detailSize: 9.2, detailLeading: 13 });
+            // Where it came from, as a tag rather than more of the explanation.
+            if (action.from) planSource(out, action.from);
+          });
+          doc.y -= 2;
+        }, { padTop: 11 });
+      }));
     }
     const pressure = (source.pressurePoints || []).filter(item => item && item.strength);
-    if (pressure.length) {
-      out.sectionTitle(S.titles.pressurePoints, def('pressurePoints'));
-      for (const item of pressure) {
-        out.pressureCard(item, {
-          earlySigns: S.earlySigns, counterMove: S.counterMove, reflect: S.reflect,
-          level: S.levelLabels[item.level] || '', atBest: S.atBest,
-          overused: S.overusedPrefix + (item.overused || ''),
-        });
-      }
-    }
+    pressure.forEach((item, i) => out.keep(() => {
+      if (!i) out.sectionTitle(S.titles.pressurePoints, def('pressurePoints'));
+      out.pressureCard(item, {
+        earlySigns: S.earlySigns, counterMove: S.counterMove, reflect: S.reflect,
+        level: S.levelLabels[item.level] || '', atBest: S.atBest,
+        overused: S.overusedPrefix + (item.overused || ''),
+      });
+    }));
 
     // Evidence and method, after the parts and apart from them: the score,
     // why, and what was counted in full. No build, format or writer rows.
     const confidence = source.confidence || {};
-    standalone(S.titles.method, def('method'));
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
-    out.need(40);
-    doc.roundRect(MARGIN, doc.y, COLUMN, 7, 3.5, LINE);
-    if (score > 0) doc.roundRect(MARGIN, doc.y, Math.max(7, COLUMN * score / 100), 7, 3.5, ACCENT);
-    doc.y += 18;
-    out.body(TEXT.trustScore + score + '/100 (' + (confidence.level || '') + ').', { size: 10.4, bold: true, leading: 15 });
-    if (confidence.rationale) out.body(confidence.rationale, { size: 10, leading: 15 });
+    out.keep(() => {
+      standalone(S.titles.method, def('method'));
+      out.boxed(() => {
+        doc.roundRect(out.x, doc.y, out.w, 7, 3.5, mix(LINE, WHITE, 0.3));
+        if (score > 0) doc.roundRect(out.x, doc.y, Math.max(7, out.w * score / 100), 7, 3.5, ACCENT);
+        doc.y += 18;
+        out.body(TEXT.trustScore + score + '/100 (' + (confidence.level || '') + ').', { size: 10.4, bold: true, leading: 15 });
+        if (confidence.rationale) out.body(confidence.rationale, { size: 9.8, leading: 14.4 });
+      }, { bar: ACCENT });
+    });
     const readFrom = (stamp.counted || []).length ? stamp.counted : (confidence.basedOn || []);
     if (readFrom.length) {
-      out.eyebrow(TEXT.confidenceBasedOn, SOFT);
-      out.tags(readFrom);
+      out.keep(() => {
+        out.eyebrow(TEXT.confidenceBasedOn, SOFT);
+        out.tags(readFrom, { small: true });
+      });
     }
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
     if (stamp.premiumModel && stamp.premiumDate) {
@@ -2227,9 +2887,26 @@
       out.partsOnly = true;
     }
 
-    coverContents(doc, out, cardBottom);
+    storyContents(doc, out, cardBottom);
     return serialise(doc, (who.name || 'Your') + '’s psyche',
       'Personality analysis from an Instagram data export');
+  }
+
+  /** A plan step's source, as a small bent arrow and a tag in the accent. */
+  function planSource(out, from) {
+    const doc = out.doc;
+    out.need(18);
+    const text = toWinAnsi(from);
+    const x = out.x + 10;
+    const top = doc.y + 2;
+    doc.setStroke(ACCENT);
+    doc.op('0.9 w 1 J 1 j');
+    doc.tracePath('M0 0V5H6M4 3L6 5L4 7', v => x + v, v => PAGE.height - (top + 1 + v));
+    doc.op('S');
+    const w = measure(text, 7.4, true) + 12;
+    doc.roundRect(x + 10, top, w, 13, 6.5, mix(ACCENT, WHITE, 0.86));
+    doc.draw(text, x + 16, top + 9.1, { size: 7.4, bold: true, color: ACCENT });
+    doc.y += 18;
   }
 
   // ---------- serialisation ----------

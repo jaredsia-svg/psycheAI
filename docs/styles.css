@@ -2168,13 +2168,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   color: var(--ink-soft); margin-right: .25rem;
 }
 p.connects-label { margin: .8rem 0 .2rem; }
-.pattern-chip {
-  display: inline-flex; align-items: center;
-  border: 1px solid var(--accent); border-radius: 999px; background: var(--accent-soft);
-  color: var(--ink); font: inherit; font-size: .8rem; font-weight: 600;
-  padding: .15rem .65rem .15rem .25rem; cursor: pointer;
-}
-.pattern-chip:hover, .pattern-chip:focus-visible { background: var(--bg-alt); }
 .section-chip {
   font-size: .78rem; padding: .1rem .55rem; border-radius: 999px;
   border: 1px solid var(--line); color: var(--ink-soft);
@@ -2300,9 +2293,6 @@ p.connects-label { margin: .8rem 0 .2rem; }
 .pat-p1 { --pat: var(--pat-p1); }
 .pat-p2 { --pat: var(--pat-p2); }
 .pat-p3 { --pat: var(--pat-p3); }
-.pattern-chip.pat-p1, .pattern-chip.pat-p2, .pattern-chip.pat-p3 {
-  border-color: var(--pat); background: color-mix(in srgb, var(--pat) 12%, var(--bg-alt));
-}
 .pattern-dot.pat-p1, .pattern-dot.pat-p2, .pattern-dot.pat-p3,
 .pat-p1 .pattern-dot, .pat-p2 .pattern-dot, .pat-p3 .pattern-dot,
 .pattern.pat-p1 .pattern-badge, .pattern.pat-p2 .pattern-badge, .pattern.pat-p3 .pattern-badge { background: var(--pat); }
@@ -2436,18 +2426,18 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: var(--good-soft); color: var(--good); font-weight: 800; font-size: .9rem;
 }
 .partner-careful .partner-badge { background: var(--warn-soft); color: var(--warn); }
-.partner-items { list-style: none; margin: 0; padding: 0; counter-reset: partner; display: grid; gap: .1rem; }
-.partner-items li {
-  counter-increment: partner; position: relative; padding: .6rem 0 .6rem 2rem; border-top: 1px solid var(--line); margin: 0;
-}
-.partner-items li:first-child { border-top: 0; }
+/* No rule between entries: the numbers and the spacing already separate them. */
+.partner-items { list-style: none; margin: 0; padding: 0; counter-reset: partner; display: grid; gap: .85rem; }
+.partner-items li { counter-increment: partner; position: relative; padding: 0 0 0 2rem; margin: 0; }
 .partner-items li::before {
-  content: counter(partner); position: absolute; left: 0; top: .6rem; width: 1.35rem; height: 1.35rem; border-radius: 999px;
+  content: counter(partner); position: absolute; left: 0; top: .05rem; width: 1.35rem; height: 1.35rem; border-radius: 999px;
   display: grid; place-items: center; font-size: .75rem; font-weight: 800; color: var(--good); background: var(--good-soft);
 }
 .partner-careful .partner-items li::before { color: var(--warn); background: var(--warn-soft); }
 .partner-items strong { display: block; font-size: .95rem; }
 .partner-items span { display: block; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; margin-top: .15rem; }
+/* The same pair, used for what you bring and for your strengths at work. */
+.paired-lists { margin: 1.1rem 0 .4rem; }
 
 /* The plan: one row per step, this week to this year, each action tickable.
    The step's name on the left and its actions beside it, stacked on a phone. */
@@ -2469,6 +2459,14 @@ details.more[open] > summary::after { content: ' ▴'; }
 .plan-step input { margin-top: .25rem; accent-color: var(--accent); width: 1rem; height: 1rem; flex: none; }
 .plan-step b { display: block; font-weight: 600; font-size: .9rem; }
 .plan-step small { display: block; color: var(--ink-soft); font-size: .8rem; }
+/* Where an action came from — "How you work", "Wellbeing", a develop area —
+   as a tag, so it reads as a source and not as more of the explanation. */
+.plan-from {
+  display: inline-flex; align-items: center; gap: .3rem; margin-top: .35rem;
+  font-size: .72rem; font-weight: 700; letter-spacing: .02em; color: var(--accent);
+  background: var(--accent-soft); border-radius: 999px; padding: .08rem .55rem;
+}
+.plan-from::before { content: '↳'; font-weight: 800; }
 .plan-step:has(input:checked) b { text-decoration: line-through; color: var(--ink-soft); }
 .timeline-empty { font-size: .85rem; margin: 0; }
 .dev-grid { display: grid; gap: .8rem; }
@@ -2720,30 +2718,52 @@ details.more[open] > summary::after { content: ' ▴'; }
   border: 1px solid var(--line);
 }
 @media (min-width: 760px) { .insight-free { grid-template-columns: 1fr 250px; } }
+/* What is on the card: one white box, two columns by four rows at every
+   width, each entry an icon and two lines, ruled apart rather than boxed. */
 .insight-card .card-features, .insight-card .insight-parts, .insight-card .insight-extras { padding-left: 0; }
 .card-features {
-  list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: 1fr; gap: .5rem;
+  list-style: none; margin: 0; padding: .35rem;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 10px 28px -20px rgba(60, 20, 90, .45);
 }
-@media (min-width: 480px) { .card-features { grid-template-columns: 1fr 1fr; } }
 .card-features li {
-  display: flex; gap: .6rem; align-items: center; padding: .55rem .7rem;
-  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 12px;
+  display: flex; gap: .65rem; align-items: center; margin: 0;
+  padding: .75rem .7rem; border-bottom: 1px solid var(--line);
 }
+.card-features li:nth-child(odd) { border-right: 1px solid var(--line); }
+.card-features li:nth-last-child(-n + 2) { border-bottom: 0; }
 .card-feature-icon {
-  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem;
-  border-radius: 999px; background: var(--accent-soft); font-size: 1rem;
+  flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem;
+  border-radius: 12px; font-size: 1.1rem;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 40%, var(--bg-alt)));
 }
 .card-features strong { display: block; font-size: .9rem; line-height: 1.3; }
-.card-features small { display: block; font-size: .78rem; color: var(--ink-soft); line-height: 1.35; }
-.insight-preview { margin: 0; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.card-features small { display: block; font-size: .78rem; color: var(--ink-soft); line-height: 1.35; margin-top: .1rem; }
+@media (max-width: 479px) {
+  .card-features li { flex-direction: column; align-items: flex-start; gap: .4rem; padding: .7rem .6rem; }
+  .card-feature-icon { width: 2rem; height: 2rem; font-size: .95rem; border-radius: 10px; }
+  .card-features strong { font-size: .84rem; }
+  .card-features small { font-size: .74rem; }
+}
+
+/* The card itself: tilted, lifted, and a tap away from full screen. */
+.insight-preview {
+  position: relative; margin: 0 auto; padding: 0; border: 0; background: none; cursor: zoom-in;
+  display: block; width: fit-content; font: inherit; color: inherit; border-radius: 18px;
+}
 .insight-preview-frame {
-  border-radius: 18px; overflow: hidden; box-shadow: 0 18px 40px -18px rgba(60, 20, 90, .45);
+  display: block; border-radius: 18px; overflow: hidden; box-shadow: 0 18px 40px -18px rgba(60, 20, 90, .45);
   transform: rotate(-2deg); transition: transform .3s ease;
 }
-.insight-preview:hover .insight-preview-frame { transform: rotate(0deg) translateY(-3px); }
-.insight-preview-frame .psyche-card { transform-origin: top left; }
-.insight-preview figcaption { font-size: .78rem; color: var(--ink-soft); }
+.insight-preview:hover .insight-preview-frame, .insight-preview:focus-visible .insight-preview-frame { transform: rotate(0deg) translateY(-3px); }
+.insight-preview-frame .psyche-card { display: block; transform-origin: top left; }
+.insight-preview-expand {
+  position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center;
+  width: 2.2rem; height: 2.2rem; border-radius: 999px; background: var(--accent); color: var(--bg);
+  box-shadow: 0 6px 16px -6px rgba(60, 20, 90, .6);
+}
+.insight-preview-expand svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 @media (prefers-reduced-motion: reduce) { .insight-preview-frame { transition: none; } }
 
 /* The premium tier: four numbered parts, like the report itself. */
@@ -2771,10 +2791,14 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: .74rem; font-weight: 600; color: var(--accent); background: var(--accent-soft);
   border-radius: 999px; padding: .15rem .55rem;
 }
+.insight-premium-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 1rem; margin-top: 1rem;
+}
 .insight-extras {
-  list-style: none; margin: .9rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
+  list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
   font-size: .86rem; font-weight: 600; color: var(--ink);
 }
+.insight-premium-foot .btn { margin-left: auto; padding: .5rem 1rem; font-size: .9rem; }
 .insight-extras li { display: flex; align-items: center; gap: .4rem; }
 
 /* Compatibility, free: one line under the two tiers. */
@@ -2789,8 +2813,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The part nav, back under the summary card: each part by its heading. */
 .part-nav {
   position: sticky; top: 3.4rem; z-index: 10;
-  display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none;
-  margin: 0 0 .8rem; padding: .4rem; border-radius: 999px;
+  display: flex; flex-wrap: wrap; gap: .3rem;
+  margin: 0 0 .8rem; padding: .4rem; border-radius: 18px;
   background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(8px);
   border: 1px solid var(--line); box-shadow: var(--shadow);
 }
@@ -2805,3 +2829,22 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav-item.is-current { background: var(--accent); color: var(--bg-alt); }
 .part-nav-item.is-current .part-nav-num { opacity: .85; }
 [data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }
+
+/* Every name in full: the nav wraps rather than scrolling one off the end.
+   On a phone it stays where it is rather than following the reader down, so
+   two rows of it never sit over the report. Where the screen leaves room
+   beside the 820px report, it stands down the left as a list instead. */
+@media (max-width: 639px) {
+  .part-nav { position: static; }
+}
+@media (min-width: 1300px) {
+  #profile-body .part-nav {
+    position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 236px)); width: 220px;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
+  }
+  /* Number and name side by side, so a long name wraps under itself rather
+     than under its number; the unnumbered entries line up with the names. */
+  #profile-body .part-nav-item { display: flex; align-items: baseline; text-align: left; white-space: normal; border-radius: 10px; padding: .45rem .7rem; }
+  #profile-body .part-nav-num { flex: none; width: 1.75rem; margin-right: 0; }
+  #profile-body .part-nav-item:not(:has(.part-nav-num)) { padding-left: 2.45rem; }
+}
