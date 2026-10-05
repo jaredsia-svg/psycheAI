@@ -2903,11 +2903,11 @@ details.more[open] > summary::after { content: ' ▴'; }
    and what it was read from on the right. Stacked on a phone. */
 .profile-top { margin-bottom: 1rem; }
 #view-profile.profile-free .profile-top { display: grid; gap: 1rem; align-items: start; }
+#view-profile.profile-free #profile-side { padding: 1rem; overflow: visible; }
 @media (min-width: 720px) {
-  #view-profile.profile-free .profile-top { grid-template-columns: 1fr 1fr; }
-  /* The card stays in view while the guide beside it scrolls past, so the
-     part a step lights is always on screen. */
-  #view-profile.profile-free #psyche-card-section { position: sticky; top: 4.6rem; }
+  /* The card three quarters of the width, what it means the last quarter,
+     the two the same height. */
+  #view-profile.profile-free .profile-top { grid-template-columns: 3fr 1fr; align-items: stretch; }
 }
 #view-profile.profile-free #psyche-card-section { width: auto; margin: 0; }
 /* The card fills its box, edge to edge, on a free report and in the left
@@ -2917,29 +2917,62 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-free #psyche-card, #view-profile.profile-paid #psyche-card { box-shadow: none; }
 #view-profile.profile-free .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
 .free-method-card { margin-top: 1rem; }
-/* How to read the card: a numbered list of the card's parts, each a button. */
-.card-guide .card-head { margin-bottom: .6rem; }
-.cg-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
-.cg-item {
-  width: 100%; display: grid; grid-template-columns: 2.1rem 1fr auto; gap: .65rem; align-items: start; text-align: left;
-  padding: .6rem .7rem; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-alt);
-  font: inherit; color: inherit; cursor: pointer; transition: border-color .2s, background .2s, transform .2s, box-shadow .2s;
-}
-.cg-item:hover, .cg-item:focus-visible, .cg-item.is-active {
-  border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg-alt));
-  transform: translateX(3px); box-shadow: 0 6px 18px rgba(123, 63, 160, .12); outline: none;
-}
-.cg-icon {
-  display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px; font-size: 1.05rem;
+/* What each part of the card means, beside it: where to start until the
+   reader points at the card, then that part's explanation popped out level
+   with it, an arrow pointing back at the part. */
+.cx { position: relative; height: 100%; min-height: 16rem; }
+.cx-intro { transition: opacity .25s ease; }
+.cx.is-explaining .cx-intro { opacity: .12; }
+.cx-intro-icon {
+  display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 12px; font-size: 1.2rem; margin-bottom: .6rem;
   background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 18%, var(--bg-alt)));
 }
-.cg-text strong { display: block; font-size: .92rem; }
-.cg-text span { display: block; font-size: .84rem; color: var(--ink-soft); line-height: 1.45; margin-top: .1rem; }
-.cg-step {
-  font-size: .72rem; font-weight: 800; color: var(--accent); background: var(--accent-soft);
-  border-radius: 999px; min-width: 1.4rem; height: 1.4rem; display: grid; place-items: center; margin-top: .1rem;
+.cx-title { margin: 0 0 .35rem; font-size: 1.05rem; line-height: 1.3; }
+.cx-sub { margin: 0 0 .9rem; font-size: .84rem; color: var(--ink-soft); line-height: 1.45; }
+.cx-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.cx-part {
+  display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .6rem; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-alt); font: inherit; font-size: .76rem; font-weight: 600;
+  color: var(--ink); cursor: pointer;
 }
-.cg-item.is-active .cg-step { color: #fff; background: var(--accent); }
+.cx-part:hover, .cx-part:focus-visible, .cx-part.is-active { border-color: var(--accent); color: var(--accent); outline: none; }
+.cx-pop {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 2;
+  padding: .9rem .9rem 1rem; border-radius: 14px; border: 1px solid var(--accent);
+  background: var(--bg-alt); box-shadow: 0 14px 34px rgba(123, 63, 160, .18);
+  transition: transform .25s ease; animation: cx-in .2s ease both;
+}
+@keyframes cx-in { from { opacity: 0; } to { opacity: 1; } }
+.cx-arrow {
+  position: absolute; left: -7px; top: 50%; width: 12px; height: 12px; margin-top: -6px; transform: rotate(45deg);
+  background: var(--bg-alt); border-left: 1px solid var(--accent); border-bottom: 1px solid var(--accent);
+}
+.cx-close {
+  position: absolute; top: .45rem; right: .45rem; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 0;
+  background: transparent; color: var(--ink-soft); cursor: pointer; font-size: .8rem; display: none;
+}
+.cx-pop-icon {
+  display: grid; place-items: center; width: 2.2rem; height: 2.2rem; border-radius: 10px; font-size: 1.1rem; margin-bottom: .45rem;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 18%, var(--bg-alt)));
+}
+.cx-pop-title { display: block; font-size: .95rem; margin-bottom: .25rem; }
+.cx-pop-line { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--ink-soft); }
+#view-profile.profile-free #psyche-card [data-cx] { cursor: help; }
+/* Where to start: the ring pulses until the reader points at anything. */
+.psyche-card.pc-hint .pc-sconf { border-radius: 999px; animation: pc-pulse 1.8s ease-in-out infinite; }
+@keyframes pc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 63, 160, .45); }
+  50% { box-shadow: 0 0 0 22px rgba(123, 63, 160, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .psyche-card.pc-hint .pc-sconf { animation: none; } .cx-pop { transition: none; animation: none; } }
+/* On a phone the explanation rises from the foot of the screen instead. */
+@media (max-width: 719px) {
+  .cx { min-height: 0; }
+  .cx.is-explaining .cx-intro { opacity: 1; }
+  .cx-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; transform: none !important; z-index: 30; padding-right: 2.4rem; }
+  .cx-arrow { display: none; }
+  .cx-close { display: block; }
+}
 /* Part 05: a heading over two boxes of their own, not a disclosure. */
 .appendix-part { margin-top: 1.4rem; }
 .appendix-head { margin: 0 0 .9rem; padding: 0 .3rem; }

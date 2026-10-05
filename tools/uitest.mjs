@@ -10685,34 +10685,45 @@ try {
         const frame = document.querySelector('#psyche-card').getBoundingClientRect();
         return { nav: document.querySelectorAll('.part-nav').length, sideShown: !side.hidden,
           cardLeft: Math.abs(card.left - column.left) < 2, sideRight: s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
-          half: Math.abs(card.width - column.width / 2) < column.width * 0.06,
+          threeQuarters: Math.abs(card.width / column.width - 0.75) < 0.04,
+          sameHeight: Math.abs(card.height - s.height) <= 2,
           fills: Math.abs(frame.width - card.width) <= 3,
-          guide: /How to read your Psyche Card/.test(side.textContent) && side.querySelectorAll('.cg-item').length >= 6,
+          guide: /How to read your Psyche Card/.test(side.textContent) && side.querySelectorAll('.cx-part').length >= 6,
           method: Boolean(method && offer && (offer.compareDocumentPosition(method) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
             /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
           trust: document.querySelectorAll('#rerun-with-data, #view-profile .trust-sources').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
           download: !document.querySelector('#export-pdf-bottom').hidden };
       });
-      check('structured: a free report has no nav, its card filling the left half and how to read it on the right',
-        freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.half &&
-          freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
+      check('structured: a free report has no nav, its card filling three quarters and what it means the last quarter, the same height',
+        freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.threeQuarters &&
+          freeShape.sameHeight && freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
       check('structured: Evidence and method sits under the unlock offer, with no trust card, sources or re-run, and no download',
         freeShape.method && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
-      // Pointing at a step lights its part of the card and steps the rest back.
-      await sp.hover('#profile-side .cg-item[data-guide="type"]');
-      await sp.waitForTimeout(200);
-      check('structured: the guide lights the part of the card it is on',
-        await sp.evaluate(() => {
-          const glow = document.querySelectorAll('#psyche-card .pc-glow');
-          return document.querySelector('#psyche-card').classList.contains('pc-guiding') && glow.length === 1 &&
-            Boolean(glow[0].querySelector('.pc-sletters')) &&
-            document.querySelector('#profile-side .cg-item[data-guide="type"]').classList.contains('is-active');
-        }));
+      // Pointing at a part of the card pops its explanation out on the right,
+      // level with it — the ring first, as the panel suggests.
+      const explained = [];
+      for (const key of ['confidence', 'type', 'love']) {
+        await sp.hover('#psyche-card [data-cx="' + key + '"]');
+        await sp.waitForTimeout(350);
+        explained.push(await sp.evaluate(key => {
+          const pop = document.querySelector('#profile-side .cx-pop');
+          const part = document.querySelector('#psyche-card [data-cx="' + key + '"]').getBoundingClientRect();
+          const box = pop.getBoundingClientRect();
+          const middle = part.top + part.height / 2;
+          return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
+            level: middle >= box.top - 2 && middle <= box.bottom + 2,
+            lit: document.querySelector('#psyche-card [data-cx="' + key + '"]').classList.contains('pc-glow') };
+        }, key));
+      }
+      check('structured: pointing at a part of the card explains it on the right, level with the part',
+        explained.every(e => e.shown && e.title && e.level && e.lit) &&
+          explained[0].title === 'The number in the ring' && explained[1].title === 'MBTI', JSON.stringify(explained));
       await sp.mouse.move(5, 5);
       await sp.waitForTimeout(200);
-      check('structured: and lets go when the pointer leaves the guide',
-        await sp.evaluate(() => !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
+      check('structured: and the panel goes back to where to start when the pointer leaves the card',
+        await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden &&
+          !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
       await sp.setViewportSize({ width: 390, height: 844 });
       await sp.waitForTimeout(300);
       check('structured: on a phone the free report stacks the card over its evidence, nothing off the side',

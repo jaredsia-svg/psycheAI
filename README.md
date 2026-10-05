@@ -3283,12 +3283,15 @@ use the same pair of lists (`pairedListsHtml()`).
 its name kept for screen readers only. On a full report at 1340px or wider (and 760px tall), it shrinks
 into the left column above the part nav and opens full screen when clicked; the nav's top is the card's
 measured height (`--side-card-h`, set by `layoutPsycheCard()`). **A free report has no nav**: the card
-fills the left half of the column, edge to edge and sticky while the page scrolls, and **"How to read
-your Psyche Card"** (`cardGuideHtml()`, words in `Copy.STRUCTURED.cardGuide`) fills the right — a step
-per part of the card, each line written from the reader's own card ("ENFJ, letter by letter… E slight,
-N moderate"). Pointing at or tapping a step lights that part of the card and steps the rest back
-(`lightCardPart()`, `GUIDE_TARGETS`); the guide walks through the parts once by itself when it first
-comes into view, unless the reader prefers reduced motion or touches it first. Evidence and method sits
+fills three quarters of the column, edge to edge, and **"How to read your Psyche Card"**
+(`cardGuideHtml()`, words in `Copy.STRUCTURED.cardGuide`) the last quarter, the two the same height.
+The card is the control: pointing at any part of it (`[data-cx]`, marked by `markCardParts()`) pops
+that part's explanation out on the right, level with it and pointing back at it (`explainCardPart()`),
+each line written from the reader's own card ("ENFJ, letter by letter… E slight, N moderate"); the part
+lights up and the rest of the card steps back. Until then the panel says where to start — the ring,
+which pulses gently until the reader points at anything — and lists every part as a chip that does the
+same. On a phone, with nothing to hover, tapping a part explains it in a sheet that rises from the foot of
+the screen; the line under the card still opens it full screen. Evidence and method sits
 under the unlock offer (`freeMethodCardHtml()`): the score, why, and what was read, with no sources list,
 no re-run and no "How much to trust this" — more data comes with the full report, whose unlock already
 offers it before payment (`collectExtraDataForPremium()`). A free report has no "Download full report"

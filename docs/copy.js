@@ -945,7 +945,7 @@
     // does not have.
     cardGuide: {
       title: 'How to read your Psyche Card',
-      sub: 'Point at or tap a part to find it on your card.',
+      sub: 'Point at or tap any part of your card to see what it means. Start with the number in the ring.',
       items: [
         { key: 'character', icon: '🦸', title: 'Who you are most like', when: f => f.character,
           line: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') +

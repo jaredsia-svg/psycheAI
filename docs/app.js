@@ -5226,23 +5226,35 @@
   }
 
   /**
-   * Beside a free report's card: how to read it, part by part, each line
-   * written from the reader's own card. Pointing at or tapping a part lights
-   * it up on the card; the guide walks through the parts once on its own when
-   * it first comes into view, until the reader takes over.
+   * Beside a free report's card, a quarter of the width: what each part of
+   * the card means. Pointing at a part of the card (or tapping it, on a
+   * screen with no pointer) pops its explanation out on the right, level with
+   * the part, written from the reader's own card. Until then it says where to
+   * start, with every part listed as a chip that does the same thing.
    */
   function cardGuideHtml(report) {
     const G = Copy.STRUCTURED.cardGuide;
     const facts = cardGuideFacts(report);
-    const items = G.items.filter(item => item.when(facts));
-    return '<div class="card-guide">' + sectionHead('🔎', esc(G.title), esc(G.sub)) +
-      '<ol class="cg-list">' + items.map((item, i) =>
-        '<li><button type="button" class="cg-item" data-guide="' + esc(item.key) + '" aria-pressed="false">' +
-          '<span class="cg-icon" aria-hidden="true">' + esc(item.icon) + '</span>' +
-          '<span class="cg-text"><strong>' + esc(item.title) + '</strong><span>' + esc(item.line(facts)) + '</span></span>' +
-          '<span class="cg-step" aria-hidden="true">' + (i + 1) + '</span>' +
-        '</button></li>').join('') + '</ol></div>';
+    cardGuideState = { facts, items: G.items.filter(item => item.when(facts)) };
+    return '<div class="cx">' +
+      '<div class="cx-intro">' +
+        '<span class="cx-intro-icon" aria-hidden="true">🔎</span>' +
+        '<h2 class="cx-title">' + esc(G.title) + '</h2>' +
+        '<p class="cx-sub">' + esc(G.sub) + '</p>' +
+        '<ul class="cx-parts">' + cardGuideState.items.map(item =>
+          '<li><button type="button" class="cx-part" data-guide="' + esc(item.key) + '">' +
+          '<span aria-hidden="true">' + esc(item.icon) + '</span>' + esc(item.title) + '</button></li>').join('') + '</ul>' +
+      '</div>' +
+      '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
+        '<span class="cx-arrow" aria-hidden="true"></span>' +
+        '<button type="button" class="cx-close" aria-label="Close">✕</button>' +
+        '<span class="cx-pop-icon" aria-hidden="true"></span>' +
+        '<strong class="cx-pop-title"></strong>' +
+        '<p class="cx-pop-line"></p>' +
+      '</div>' +
+    '</div>';
   }
+  let cardGuideState = null;
 
   /** The facts the guide's lines are written from, read off the card's report. */
   function cardGuideFacts(report) {
@@ -5272,7 +5284,7 @@
     };
   }
 
-  // The parts of the card each guide step points at.
+  // The parts of the card each explanation belongs to.
   const GUIDE_TARGETS = {
     character: ['.pc-shero'],
     confidence: ['.pc-sconf'],
@@ -5284,79 +5296,87 @@
     love: ['.pc-slove-panel'],
   };
 
+  /** Marks each explained part of the reader's card with the key of its explanation. */
+  function markCardParts() {
+    const card = $('#psyche-card');
+    if (!card) return;
+    for (const [key, selectors] of Object.entries(GUIDE_TARGETS)) {
+      for (const selector of selectors) {
+        card.querySelectorAll(selector).forEach(node => {
+          (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).setAttribute('data-cx', key);
+        });
+      }
+    }
+  }
+
   function lightCardPart(key) {
     const card = $('#psyche-card');
     if (!card) return;
     card.querySelectorAll('.pc-glow').forEach(node => node.classList.remove('pc-glow'));
-    document.querySelectorAll('.cg-item').forEach(button => {
-      const on = button.getAttribute('data-guide') === key;
-      button.classList.toggle('is-active', on);
-      button.setAttribute('aria-pressed', String(on));
-    });
+    document.querySelectorAll('.cx-part').forEach(button =>
+      button.classList.toggle('is-active', button.getAttribute('data-guide') === key));
     card.classList.toggle('pc-guiding', Boolean(key));
-    for (const selector of (key && GUIDE_TARGETS[key]) || []) {
-      card.querySelectorAll(selector).forEach(node => {
-        const target = node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node;
-        target.classList.add('pc-glow');
-      });
-    }
+    if (key) card.querySelectorAll('[data-cx="' + key + '"]').forEach(node => node.classList.add('pc-glow'));
   }
 
-  // The guide's own walk-through: once, when it first comes into view, and
-  // stopped for good by the reader's first touch. Not at all for a reader who
-  // has asked for less motion.
-  let guideTour = null;
-  function stopGuideTour() {
-    if (guideTour) { clearInterval(guideTour); guideTour = null; }
-  }
-  function startGuideTour() {
-    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const list = $('#profile-side .cg-list');
-    if (reduce || !list || typeof IntersectionObserver !== 'function') return;
-    const watch = new IntersectionObserver(entries => {
-      if (!entries.some(e => e.isIntersecting)) return;
-      watch.disconnect();
-      if (list.dataset.touched) return;
-      const keys = Array.from(list.querySelectorAll('.cg-item')).map(b => b.getAttribute('data-guide'));
-      let at = 0;
-      stopGuideTour();
-      lightCardPart(keys[0]);
-      guideTour = setInterval(() => {
-        at += 1;
-        if (at >= keys.length) { stopGuideTour(); lightCardPart(null); return; }
-        lightCardPart(keys[at]);
-      }, 2200);
-    }, { threshold: 0.6 });
-    watch.observe(list);
+  /** Pops the explanation of one part of the card out beside it, level with it. */
+  function explainCardPart(key) {
+    const panel = $('#profile-side .cx');
+    const pop = panel && panel.querySelector('.cx-pop');
+    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
+    if (!pop) return;
+    $('#psyche-card') && $('#psyche-card').classList.remove('pc-hint');
+    if (!item) {
+      pop.hidden = true;
+      panel.classList.remove('is-explaining');
+      lightCardPart(null);
+      return;
+    }
+    pop.querySelector('.cx-pop-icon').textContent = item.icon;
+    pop.querySelector('.cx-pop-title').textContent = item.title;
+    pop.querySelector('.cx-pop-line').textContent = item.line(cardGuideState.facts);
+    pop.hidden = false;
+    panel.classList.add('is-explaining');
+    lightCardPart(key);
+    // Level with the part it explains, kept inside the panel; the arrow
+    // still points at the part's middle when the box has to stop short.
+    const part = document.querySelector('#psyche-card [data-cx="' + key + '"]');
+    if (!part || !window.matchMedia('(min-width: 720px)').matches) { pop.style.transform = ''; return; }
+    const area = panel.getBoundingClientRect();
+    const r = part.getBoundingClientRect();
+    const middle = r.top + r.height / 2 - area.top;
+    const top = Math.max(0, Math.min(area.height - pop.offsetHeight, middle - pop.offsetHeight / 2));
+    pop.style.transform = 'translateY(' + Math.round(top) + 'px)';
+    pop.querySelector('.cx-arrow').style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
   }
 
-  document.addEventListener('click', event => {
-    const item = event.target.closest('.cg-item');
-    if (!item) return;
-    const list = item.closest('.cg-list');
-    if (list) list.dataset.touched = '1';
-    stopGuideTour();
-    const key = item.getAttribute('data-guide');
-    lightCardPart(item.classList.contains('is-active') ? null : key);
-    // Stacked on a phone, the card is above the guide: bring it into view.
-    if (item.classList.contains('is-active') && window.matchMedia && window.matchMedia('(max-width: 719px)').matches) {
-      const glow = document.querySelector('#psyche-card .pc-glow');
-      if (glow) glow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  });
+  const canHover = () => Boolean(window.matchMedia && window.matchMedia('(hover: hover)').matches);
+  // Pointing at a part of the card explains it; leaving the card puts the
+  // panel back to where to start.
   document.addEventListener('mouseover', event => {
-    const item = event.target.closest && event.target.closest('.cg-item');
-    if (!item || !window.matchMedia || !window.matchMedia('(hover: hover)').matches) return;
-    const list = item.closest('.cg-list');
-    if (list) list.dataset.touched = '1';
-    stopGuideTour();
-    lightCardPart(item.getAttribute('data-guide'));
+    if (!canHover() || !event.target.closest) return;
+    const part = event.target.closest('#psyche-card [data-cx]');
+    if (part && $('#view-profile').classList.contains('profile-free')) explainCardPart(part.getAttribute('data-cx'));
   });
   document.addEventListener('mouseout', event => {
-    const list = event.target.closest && event.target.closest('.cg-list');
-    if (!list || (event.relatedTarget && list.contains(event.relatedTarget))) return;
-    if (window.matchMedia && window.matchMedia('(hover: hover)').matches) lightCardPart(null);
+    const slot = event.target.closest && event.target.closest('#psyche-card-open');
+    if (!slot || !canHover() || (event.relatedTarget && slot.contains(event.relatedTarget))) return;
+    if ($('#view-profile').classList.contains('profile-free')) explainCardPart(null);
   });
+  // A tap on a part of the card, where there is no pointer to hover with,
+  // explains it instead of opening the card full screen; the line under the
+  // card still opens it. Captured, so the card's own click never sees it.
+  document.addEventListener('click', event => {
+    if (!event.target.closest) return;
+    const chip = event.target.closest('.cx-part');
+    if (chip) { explainCardPart(chip.classList.contains('is-active') ? null : chip.getAttribute('data-guide')); return; }
+    if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
+    const part = event.target.closest('#psyche-card [data-cx]');
+    if (!part || canHover() || !$('#view-profile').classList.contains('profile-free')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    explainCardPart(part.getAttribute('data-cx'));
+  }, true);
 
   // Confidence closes the report rather than opening it: read after the
   // whole thing, it says how much of what you just read to believe. Shared by
@@ -5468,8 +5488,11 @@
     const side = $('#profile-side');
     side.hidden = !(structured && !explained);
     setHtml(side, side.hidden ? '' : cardGuideHtml(report));
-    stopGuideTour();
-    if (!side.hidden) startGuideTour();
+    if (!side.hidden) {
+      markCardParts();
+      // Where to start: the ring pulses gently until the reader points at anything.
+      $('#psyche-card').classList.add('pc-hint');
+    }
     // A free report has only the card, which has its own download.
     $('#export-pdf-bottom').hidden = structured && !explained;
     layoutPsycheCard();
