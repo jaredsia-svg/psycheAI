@@ -524,6 +524,19 @@
       '<text class="pc-ring-text" x="32" y="38" text-anchor="middle">' + v + '</text></svg>';
   }
 
+  /**
+   * The three motivators the summary card shows: the ones the free call
+   * named, or for a report written before it named any, the three highest
+   * of the paid report's ten.
+   */
+  function cardMotivators(report) {
+    const known = Copy.STRUCTURED.motivators;
+    const named = (report.topMotivators || []).filter(key => known[key]);
+    if (named.length) return named.slice(0, 3);
+    return ((report.motivators && report.motivators.scores) || []).filter(row => row && known[row.value])
+      .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
+  }
+
   function psycheStoryHtml(report) {
     const S = Copy.STRUCTURED;
     const card = report.card || {};
@@ -545,8 +558,9 @@
       return '<span class="pc-dots" aria-label="' + esc(strength || '') + '">' +
         [1, 2, 3].map(i => '<i class="' + (i <= n ? 'on' : '') + '"></i>').join('') + '</span>';
     };
-    const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1));
+    const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1)).slice(0, 4);
     const into = titlesOf(report.interests, 3);
+    const motives = cardMotivators(report);
     const chips = list => '<div class="pc-schips">' + list.map(item => '<span>' + esc(item) + '</span>').join('') + '</div>';
     const loveList = side => (side || []).slice(0, 2).filter(l => l && l.language).map(l =>
       '<li><span aria-hidden="true">' + esc(LOVE_LANGUAGE_ICONS[l.language] || '💗') + '</span>' + esc(l.language) + '</li>').join('');
@@ -566,11 +580,17 @@
         (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
         (blurb ? '<p class="pc-sblurb">' + esc(blurb) + '</p>' : '') +
       '</div>' +
-      (patterns.length ? '<div class="pc-spanel">' + label(CARD_ICONS.patterns, TEXT.cardPatterns) +
-        '<ol class="pc-spatterns">' + patterns.map(p =>
-          '<li class="pc-pat-' + esc(p.id) + '"><span class="pc-snum">' + esc(patternNumber(p.id)) + '</span>' +
-          '<div><b>' + esc(p.name) + '</b>' + (p.line ? '<span class="pc-sline">' + esc(p.line) + '</span>' : '') +
-          '</div></li>').join('') + '</ol></div>' : '') +
+      // The patterns by name on the left, what motivates them on the right.
+      ((patterns.length || motives.length) ? '<div class="pc-sgrid">' +
+        (patterns.length ? '<div class="pc-spanel">' + label(CARD_ICONS.patterns, TEXT.cardPatterns) +
+          '<ol class="pc-spatterns">' + patterns.map(p =>
+            '<li class="pc-pat-' + esc(p.id) + '"><span class="pc-snum">' + esc(patternNumber(p.id)) + '</span>' +
+            '<b>' + esc(p.name) + '</b></li>').join('') + '</ol></div>' : '') +
+        (motives.length ? '<div class="pc-spanel">' + label(CARD_ICONS.motivators, S.titles.motivators) +
+          '<ol class="pc-smotives">' + motives.map(key =>
+            '<li><span class="pc-snum">' + (motives.indexOf(key) + 1) + '</span><b>' + esc(S.motivators[key].label) + '</b></li>').join('') +
+          '</ol></div>' : '') +
+      '</div>' : '') +
       '<div class="pc-sgrid">' +
         '<div class="pc-spanel">' + label(CARD_ICONS.type, TEXT.cardType) +
           '<ul class="pc-sletters">' + (mbti.letters || []).map(l => {
@@ -1063,6 +1083,7 @@
       icon: (card.essence || {}).icon || (out.essence || {}).icon,
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
+    if ((card.topMotivators || []).length) out.topMotivators = card.topMotivators;
     // The structured paid call no longer writes the shareable card at all —
     // it is the free one's, whole.
     if (card.card && !out.card) out.card = card.card;
@@ -4444,8 +4465,10 @@
     const valueWords = new Set(values.flatMap(item => words(item.value)));
     const beliefs = (report.beliefs || []).filter(item => item && item.belief &&
       !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
-    const items = values.map(item => ({ title: item.value, pill: trajectoryPill(item), detail: item.detail, evidence: item.evidence }))
-      .concat(beliefs.map(item => ({ title: item.belief, pill: '', detail: item.detail, evidence: item.evidence })));
+    // Four at most — three values and one belief — whatever an older report holds.
+    const items = values.slice(0, 3).map(item => ({ title: item.value, pill: trajectoryPill(item), detail: item.detail, evidence: item.evidence }))
+      .concat(beliefs.slice(0, 1).map(item => ({ title: item.belief, pill: '', detail: item.detail, evidence: item.evidence })))
+      .slice(0, 4);
     if (!items.length) return '<p class="muted">' + esc(TEXT.valuesEmpty) + '</p>';
     return '<div class="tile-grid">' + items.map(item =>
       '<div class="tile"><h4>' + esc(item.title) + item.pill + '</h4>' +

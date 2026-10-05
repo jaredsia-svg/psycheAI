@@ -483,8 +483,8 @@
   // the model thinks for all of it, against a digest at its full 80,000.
   //
   //   free card     8,000 out  × $3.75/M = $0.0300
-  //                  5,600 prompt + 22,857 digest × $0.75/M = $0.0213
-  //                 at most $0.0513                    → FREE_COST_CAP $0.052
+  //                  5,900 prompt + 22,857 digest × $0.75/M = $0.0216
+  //                 at most $0.0516                    → FREE_COST_CAP $0.052
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
@@ -505,9 +505,10 @@
   const FREE_COST_CAP = 0.052;
   const FREE_MAX_OUTPUT_TOKENS = 8000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
-  // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 5,253
-  // (it was 16,655 while the card's prompt was the full report's, cut down).
-  const FREE_FIXED_INPUT_TOKENS = 5600;
+  // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 5,678
+  // once the structured card named its top three motivators (it was 16,655
+  // while the card's prompt was the full report's, cut down).
+  const FREE_FIXED_INPUT_TOKENS = 5900;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 

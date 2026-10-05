@@ -911,7 +911,7 @@
       ? (Array.isArray(report.patterns) ? report.patterns : [])
         .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
         .sort((a, b) => a.id.localeCompare(b.id))
-        .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 3 - 12, { size: 9, bold: true }))
+        .flatMap(p => wrap(toWinAnsi(p.id.replace('p', '') + '  ' + p.name), innerW / 2 - 12, { size: 9, bold: true }))
       : [];
     // Extraversion is the E of the type beside it, so the structured card
     // leaves it out of the Big Five, as the story card does.
@@ -932,19 +932,32 @@
     // letter was picked. Drawn as a `lead` rather than as another line, so the
     // two weights cannot be confused for one list.
     const typeCell = { label: TEXT.cardType, lead: mbti.type && !structured ? toWinAnsi(mbti.type) : '',
-      lines: letters, style: { size: 9.2, color: INK }, leading: 12 };
-    const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: 11.6 };
-    // Structured: the patterns lead, the type in the middle, as on screen.
-    const statCells = structured
+      lines: letters, style: { size: structured ? 9 : 9.2, color: INK }, leading: 12 };
+    const fiveCell = { label: TEXT.cardBigFive, lines: fiveRows, style: { size: 9, color: INK }, leading: structured ? 12 : 11.6 };
+    // Structured: the story card's rows — the patterns beside what motivates
+    // them, then the type beside the Big Five.
+    const motiveKeys = (() => {
+      const known = Copy.STRUCTURED.motivators;
+      const named = (report.topMotivators || []).filter(key => known[key]);
+      if (named.length) return named.slice(0, 3);
+      return ((report.motivators && report.motivators.scores) || []).filter(row => row && known[row.value])
+        .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
+    })();
+    const motiveLines = motiveKeys.flatMap((key, i) =>
+      wrap(toWinAnsi((i + 1) + '  ' + Copy.STRUCTURED.motivators[key].label), innerW / 2 - 12, { size: 9, bold: true }));
+    const leadCells = structured
       ? [{ label: TEXT.cardPatterns, lines: patternLines, style: { size: 9, bold: true, color: INK }, leading: 12 },
-        typeCell, fiveCell]
+        { label: Copy.STRUCTURED.titles.motivators, lines: motiveLines, style: { size: 9, bold: true, color: INK }, leading: 12 }]
+      : [];
+    const statCells = structured
+      ? [typeCell, fiveCell]
       : [typeCell, { label: TEXT.cardEnneagram, lead: enneagramBadge ? toWinAnsi(enneagramBadge) : '',
         lines: [enneagram.nickname && toWinAnsi(enneagram.nickname)].filter(Boolean) }, fiveCell];
     // Structured: values and beliefs as one "what you stand for", beside what
     // they are into — the story card's two panels.
     const chipCells = structured
       ? [{ label: Copy.STRUCTURED.cardStandFor, style: smallStyle,
-        lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).join(' · '), innerW / 2, smallStyle) },
+        lines: wrapCell(titles(report.values, 3).concat(titles(report.beliefs, 1)).slice(0, 4).join(' · '), innerW / 2, smallStyle) },
       { label: Copy.STRUCTURED.cardInto, style: smallStyle,
         lines: wrapCell(titles(report.interests, 3).join(' · '), innerW / 2, smallStyle) }]
       : [
@@ -962,10 +975,11 @@
 
     const rowHeight = cells => Math.max(...cells.map(c =>
       cardColumn(null, 0, 0, 0, c.label, c.lines, c)));
+    const leadH = leadCells.some(c => c.lines.length) ? rowHeight(leadCells) + 14 : 0;
     const statH = rowHeight(statCells) + 14;
     const chipH = chipCells.some(c => c.lines.length) ? rowHeight(chipCells) + 14 : 0;
     const loveH = loveCells.some(c => c.lines.length) ? rowHeight(loveCells) + 14 : 0;
-    const bodyH = 8 + statH + (chipH ? chipH + 1 : 0) + (loveH ? loveH + 1 : 0) + 8;
+    const bodyH = 8 + (leadH ? leadH + 1 : 0) + statH + (chipH ? chipH + 1 : 0) + (loveH ? loveH + 1 : 0) + 8;
     const totalH = heroH + bodyH;
 
     // ---- draw: shadow, card, accent rule, then all the text ----
@@ -1020,7 +1034,13 @@
     doc.hairline(top + heroH - 1, x, MARGIN + COLUMN - padX);
 
     let rowTop = top + heroH + 8;
-    statCells.forEach((cell, i) => cardColumn(doc, x + i * third, rowTop, third, cell.label, cell.lines, cell));
+    if (leadH) {
+      leadCells.forEach((cell, i) => cardColumn(doc, x + i * innerW / 2, rowTop, innerW / 2, cell.label, cell.lines, cell));
+      rowTop += leadH;
+      doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
+    }
+    const statWidth = innerW / statCells.length;
+    statCells.forEach((cell, i) => cardColumn(doc, x + i * statWidth, rowTop, statWidth, cell.label, cell.lines, cell));
     rowTop += statH;
     if (chipH) {
       doc.hairline(rowTop - 7, x, MARGIN + COLUMN - padX);
@@ -1832,8 +1852,9 @@
     const beliefs = (source.beliefs || []).filter(item => item && item.belief &&
       !(words(item.belief).length && words(item.belief).every(w => valueWords.has(w))));
     if (values.length || beliefs.length) {
-      for (const item of values) out.tile(item.value, trend(item), item.detail, item.evidence);
-      for (const item of beliefs) out.tile(item.belief, '', item.detail, item.evidence);
+      // Four at most — three values and one belief — as on the page.
+      for (const item of values.slice(0, 3)) out.tile(item.value, trend(item), item.detail, item.evidence);
+      for (const item of beliefs.slice(0, 1)) out.tile(item.belief, '', item.detail, item.evidence);
     } else {
       out.muted(TEXT.valuesEmpty);
     }

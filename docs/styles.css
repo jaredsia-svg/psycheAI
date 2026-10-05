@@ -2747,3 +2747,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 
 /* Evidence runs to a sentence or more here, so a pill would clip it. */
 .layout-structured .ev { border-radius: 8px; line-height: 1.4; padding: .3rem .6rem; }
+
+/* The story card, round three: pattern names beside what motivates them,
+   and one text size in every panel, so no box shouts over another. */
+.psyche-card.pc-story { --pc-text: 27px; }
+.pc-spatterns li, .pc-smotives li { display: flex; align-items: center; gap: 16px; font-size: var(--pc-text); line-height: 1.25; }
+.pc-spatterns b, .pc-smotives b { font-size: var(--pc-text); font-weight: 700; line-height: 1.25; }
+.pc-smotives { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pc-smotives .pc-snum { background: var(--accent-soft); color: var(--accent); }
+.pc-spatterns .pc-snum, .pc-smotives .pc-snum { width: 42px; height: 42px; font-size: 22px; margin-top: 0; }
+.pc-sletters li { font-size: var(--pc-text); }
+.pc-sletters b { font-size: var(--pc-text); line-height: 1.25; }
+.pc-straits li, .pc-straits b { font-size: var(--pc-text); }
+.pc-schips span { font-size: var(--pc-text); }
+.pc-slove { font-size: var(--pc-text); }

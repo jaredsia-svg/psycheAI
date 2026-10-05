@@ -10187,6 +10187,10 @@ try {
           bigType: card.querySelectorAll('.pc-stype').length,
           emblem: card.querySelectorAll('.pc-smedal svg.pc-emblem path').length > 0,
           patternLines: card.querySelectorAll('.pc-spatterns .pc-sline').length,
+          motives: Array.from(card.querySelectorAll('.pc-smotives b')).map(b => b.textContent),
+          labels: Array.from(card.querySelectorAll('.pc-slab')).map(l => l.textContent),
+          sizes: Array.from(card.querySelectorAll('.pc-sletters li, .pc-straits li, .pc-schips span, .pc-slove li, .pc-spatterns b, .pc-smotives b'))
+            .map(n => getComputedStyle(n).fontSize).filter((v, i, all) => all.indexOf(v) === i),
           nickname: /Protagonist/.test(card.textContent),
           bars: fits,
           standFor: Array.from(card.querySelectorAll('.pc-schips')).map(row => row.children.length),
@@ -10199,9 +10203,14 @@ try {
       check('structured: the type as four letters with their strengths, no large code, no nickname, four traits as bars (extraversion is the E)',
         cardFace.type === 'ENFJ' && cardFace.bigType === 0 && !cardFace.nickname &&
         cardFace.bars.join() === '61,84,79,44', JSON.stringify(cardFace));
-      check('structured: the catalogue character drawn as its own emblem, and each pattern with its line',
-        cardFace.emblem && cardFace.patternLines === 3 &&
+      check('structured: the catalogue character drawn as its own emblem, and the patterns by name only',
+        cardFace.emblem && cardFace.patternLines === 0 &&
         (await sp.locator('#profile-body .essence-icon.has-emblem svg').count()) === 1, JSON.stringify(cardFace));
+      check('structured: what motivates them beside the patterns — the free card\'s three, in its order',
+        cardFace.motives.join() === 'Care for your people,Achievement,Security', JSON.stringify(cardFace.motives));
+      check('structured: one text size across the card\'s panels, under the renamed labels',
+        cardFace.sizes.length === 1 && cardFace.labels.some(l => /Values & Beliefs/.test(l)) &&
+        cardFace.labels.some(l => /^.?Interests$/.test(l.trim())), JSON.stringify([cardFace.sizes, cardFace.labels]));
       check('structured: values and beliefs together as what you stand for',
         cardFace.standFor.join() === '4,3', cardFace.standFor.join());
       check('structured: and carries no Enneagram, even from a report saved with one',
@@ -10525,8 +10534,9 @@ try {
           .filter(t => structuredPdf.includes(t)).join(', '));
       check('structured PDF: the running head carries the date, and the cover card is the story card\'s',
         /Sample · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
-        structuredPdf.includes('WHAT YOU STAND FOR') && structuredPdf.includes('WHAT YOU ARE INTO') &&
-        !structuredPdf.includes('Extraversion  52'));
+        structuredPdf.includes('VALUES & BELIEFS') && structuredPdf.includes('WHAT MOTIVATES YOU') &&
+        structuredPdf.includes('1 Care for your people') && !structuredPdf.includes('Extraversion 52'),
+        structuredPdf.slice(0, 600));
       check('structured PDF: the spectrums name both poles',
         structuredPdf.includes('Prefers the familiar and proven') && structuredPdf.includes('Seeks out new ideas and experiences'));
       check('structured PDF: no Enneagram anywhere, the cover card included',

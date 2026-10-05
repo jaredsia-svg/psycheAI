@@ -76,6 +76,7 @@
     loveOut: '🎁',
     confidence: '🎯',
     patterns: '🧵',
+    motivators: '🧲',
   };
 
   // Fixed vocabulary, so the glyphs are mapped here rather than asked of the
@@ -906,8 +907,8 @@
     // classic report's paragraph. Still says what this is not, and who to ask.
     wellnessNote: 'If anything here weighs on you, a GP or qualified professional can help.',
     // The card's own labels in the structured layout.
-    cardStandFor: 'What you stand for',
-    cardInto: 'What you are into',
+    cardStandFor: 'Values & Beliefs',
+    cardInto: 'Interests',
     cardFooter: 'psycheai · your personality, read from your own data',
     cardTraitShort: { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
       agreeableness: 'Agreeable', neuroticism: 'Sensitivity' },

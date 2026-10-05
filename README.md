@@ -155,9 +155,9 @@ the account that is heavy everywhere at once. At $0.75 / $3.75 per million token
 | | free card | full premium report |
 |---|---|---|
 | output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 5,600 → $0.0042 | 34,500 → $0.0259 |
+| prompt plus schema | 5,900 → $0.0044 | 37,600 → $0.0282 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0513** (`FREE_COST_CAP` $0.052) | **$0.1480** (`COST_CAP` $0.15) |
+| **at most** | **$0.0515** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
 
 The digest row is an upper bound. The budget counts the digest as JSON characters, but neither call
 is sent JSON for it any more: `renderEvidence` keeps the small structured fields — profile, counts,
@@ -3276,8 +3276,16 @@ dividers with no labels or intros, no about page, no "Connects to" or "Raised by
 footprint, wellbeing at the end of Part 1, relationships and work each as one section, every action
 on one plan by step, and an evidence page after Part 4 that lists what was counted in full (passed in
 as `meta.counted`) with no build or format rows. Its cover card is the story card's: the two-sentence
-write-up, the type as letters, the Big Five without extraversion, and what they stand for beside what
-they are into.
+write-up, the pattern names beside what motivates them, the type as letters beside the Big Five
+without extraversion, Values & Beliefs beside Interests, and the love languages — every panel in one
+text size.
+
+**The card's three motivators come from the free call.** `topMotivators` in `STRUCTURED_FREE_SCHEMA`
+is the three of Schwartz's ten that show most, strongest first; `anchorFrom` carries them to the paid
+call, which is told to score them highest, and `overlayCard` keeps them on the report. A report from
+before the field falls back to the three highest of the paid report's ten. **Values and beliefs are
+four at most** — three values and one belief, in both prompts and both schemas — and the page and the
+PDF draw no more than that from an older report.
 
 The model writes four more fields for it — `patterns`, `motivators`, `development` and
 `pressurePoints` (`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of every classic field, so the

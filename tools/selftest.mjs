@@ -1410,13 +1410,14 @@ function schemaFaults(node, value, path) {
 }
 
 // The sample shows the structured layout too, so it carries the four fields
-// that layout adds to the written report — checked against those as exactly
-// as against the rest.
+// that layout adds to the written report, and the three motivators its free
+// card names — checked against those as exactly as against the rest.
 const sampleSchema = {
   ...prompts.PROFILE_SCHEMA,
-  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS),
+  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS, ['topMotivators']),
   properties: Object.assign({}, prompts.PROFILE_SCHEMA.properties,
-    Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]]))),
+    Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]])),
+    { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators }),
 };
 const sampleFaults = schemaFaults(sampleSchema, sample, '');
 check('the sample report satisfies the profile schema exactly', sampleFaults.length === 0,
@@ -5202,9 +5203,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Object.keys(props).join(','));
   // The structured card: the Enneagram gone, the signature patterns named.
   const sprops = prompts.STRUCTURED_FREE_SCHEMA.properties;
-  check('the structured card drops the Enneagram, names the patterns and picks a catalogue character, nothing else changed',
-    !('enneagram' in sprops) && 'patterns' in sprops && Array.isArray(sprops.essence.properties.character.enum) &&
-    Object.keys(props).filter(key => !['enneagram', 'essence', 'cardHighlights'].includes(key)).every(key => sprops[key] === props[key]) &&
+  check('the structured card drops the Enneagram, names the patterns and its motivators, picks a catalogue character, and caps values and beliefs; nothing else changed',
+    !('enneagram' in sprops) && 'patterns' in sprops && 'topMotivators' in sprops && Array.isArray(sprops.essence.properties.character.enum) &&
+    Object.keys(props).filter(key => !['enneagram', 'essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key => sprops[key] === props[key]) &&
     prompts.STRUCTURED_FREE_SCHEMA.required.length === Object.keys(sprops).length,
     Object.keys(sprops).join(','));
   check('the card\'s patterns are names and a line — the evidence is the paid report\'s job',
@@ -5770,8 +5771,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the structured schema drops only the Enneagram; every other classic field is written unchanged',
     prompts.STRUCTURED_DROPS.join() === 'enneagram' && !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
-    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights'].includes(key)).every(key =>
-      structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)),
+    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key =>
+      structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
+    // Values and beliefs keep their fields, capped at four between them.
+    structured.properties.values.items === classicSchema.properties.values.items &&
+    structured.properties.beliefs.items === classicSchema.properties.beliefs.items,
     Object.keys(structured.properties).join(','));
   check('its QR card keeps the same fields, with the Enneagram always empty',
     Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
@@ -5917,13 +5921,25 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       order.indexOf('cardHighlights') > order.indexOf('patterns') &&
       /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
-      /first three values and the first belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /one list of at most four — at most three values and one belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under about 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
     check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
-      /a belief never restates a value/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-      /a belief is a commitment no value already names/.test(prompts.STRUCTURED_FULL_SYSTEM));
+      /A belief never restates a value/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /a belief is a commitment no value already names/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /one list of at most four/.test(prompts.STRUCTURED_FULL_SYSTEM));
+    check('values and beliefs are capped at four between them in both structured schemas',
+      /never more than three/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+      /At most one/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
+      /never more than three/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.values.description) &&
+      /At most one/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.beliefs.description) &&
+      prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties.values.description === prompts.STRUCTURED_FULL_SCHEMA.properties.values.description);
+    check('the free card names its three motivators, and the paid report is held to them',
+      JSON.stringify(prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators.items.enum) === JSON.stringify(prompts.MOTIVATORS) &&
+      prompts.anchorFrom({ mbti: { type: 'ENFJ', letters: [] }, bigFive: { openness: { score: 50, band: 'moderate' } },
+        topMotivators: ['benevolence', 'nonsense', 'achievement'] }).topMotivators.join() === 'benevolence,achievement' &&
+      /score those as your highest/.test(prompts.profileBlocks({}, { mbtiType: 'ENFJ', topMotivators: ['benevolence'] }).slice(-1)[0].text));
   }
 
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
