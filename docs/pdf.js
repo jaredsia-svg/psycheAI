@@ -533,9 +533,26 @@
    */
   Report.prototype.keep = function (draw) {
     const doc = this.doc;
+    const top = MARGIN + 34;
+    const bottom = PAGE.height - MARGIN - 26;
     const before = { pages: doc.pages.length, length: doc.buffer.length, y: doc.y, contents: this.contents.length };
+    const outerTitled = this.titled;
+    this.titled = false;
     draw();
-    if (doc.pages.length === before.pages || before.y <= MARGIN + 40) return this;
+    const titled = this.titled;
+    this.titled = outerTitled || titled;
+    if (doc.pages.length === before.pages || before.y <= top + 6) return this;
+    // How it broke: the room it had on its first page, and what ran over.
+    const room = bottom - before.y;
+    const spilled = doc.pages.length - before.pages;
+    const tail = doc.y - top;
+    const height = room + (spilled - 1) * (bottom - top) + tail;
+    // Taller than a page, it has to break somewhere: leave it.
+    if (height > bottom - top) return this;
+    // A card that breaks with a fair share on each side stays as it fell —
+    // its card continues overleaf (see `boxed`). A heading must keep a third
+    // of a page of its own content under it, and no scrap is left on either side.
+    if (room >= (titled ? 200 : 120) && tail >= 90) return this;
     doc.pages.length = before.pages;
     doc.buffer = doc.pages[before.pages - 1].content;
     doc.buffer.length = before.length;
@@ -543,7 +560,9 @@
     doc.y = before.y;
     this.contents.length = before.contents;
     this.page();
+    this.titled = false;
     draw();
+    this.titled = outerTitled || this.titled;
     return this;
   };
 
@@ -568,17 +587,24 @@
     this.x = box.x;
     this.w = box.w;
     doc.y += pad;
-    if (doc.pageNumber === box.page) {
+    // The card, slipped in under what it holds — one piece per page the
+    // block touched, so a card that ran over a break continues overleaf.
+    for (let n = box.page; n <= doc.pageNumber; n++) {
+      const first = n === box.page;
+      const last = n === doc.pageNumber;
+      const top = first ? box.top : MARGIN + 34 - pad;
+      const height = (last ? doc.y : PAGE.height - MARGIN - 20) - top;
       const content = doc.buffer;
       doc.buffer = [];
-      const height = doc.y - box.top;
-      if (o.shadow) doc.roundRect(box.x + 1, box.top + 2.5, box.w, height, radius, LINE);
-      if (o.bar) doc.roundRect(box.x, box.top, box.w, height, radius, o.bar);
-      if (o.top) doc.roundRect(box.x, box.top, box.w, height, radius, o.top);
-      doc.roundRect(box.x + edge, box.top + (o.top ? 3.5 : 0), box.w - edge, height - (o.top ? 3.5 : 0), radius, o.fill || WHITE);
+      if (o.shadow) doc.roundRect(box.x + 1, top + 2.5, box.w, height, radius, LINE);
+      if (o.bar) doc.roundRect(box.x, top, box.w, height, radius, o.bar);
+      const strip = first && o.top ? 3.5 : 0;
+      if (strip) doc.roundRect(box.x, top, box.w, height, radius, o.top);
+      doc.roundRect(box.x + edge, top + strip, box.w - edge, height - strip, radius, o.fill || WHITE);
       const card = doc.buffer;
       doc.buffer = content;
-      content.splice(box.at, 0, ...card);
+      const page = doc.pages[n - 1];
+      page.content.splice(first ? box.at : (page.bodyAt || 0), 0, ...card);
     }
     doc.y += o.gap === undefined ? 8 : o.gap;
     return this;
@@ -600,6 +626,8 @@
     this.doc.draw(who, PAGE.width - MARGIN - width, MARGIN, { size: 8, color: SOFT });
     this.doc.hairline(MARGIN + 6, MARGIN, PAGE.width - MARGIN);
     this.doc.y = MARGIN + 34;
+    // Where a card continued from the page before slips in, under the text.
+    this.doc.pages[this.doc.pages.length - 1].bodyAt = this.doc.buffer.length;
     return this;
   };
 
@@ -658,6 +686,7 @@
     // technically satisfied and visibly a widow. The tallest opening block in
     // the report is a Big Five trait at 84, hence the reserve here.
     this.need(this.titleReserve || (sub ? 214 : 184));
+    this.titled = true;
     // Recorded after `need`, never before: the reserve above is what decides
     // which page this title lands on, so asking earlier would file half the
     // sections under the page they were nearly on.
@@ -685,6 +714,7 @@
     // Wrapped, because "Attachment: " carries the model's phrase for the style
     // and that is not always short.
     const lines = wrap(toWinAnsi(text), this.w, style);
+    this.titled = true;
     this.need(26 + lines.length * 17);
     this.space(9);
     for (const line of lines) {
@@ -1828,9 +1858,10 @@
    * A part divider — its numeral and title, as the page's part heading has —
    * recorded in the cover's contents in place of sections.
    */
-  Report.prototype.part = function (part, numeral) {
-    // Every part opens a page of its own.
-    if (this.doc.y > MARGIN + 40) this.page();
+  Report.prototype.part = function (part, numeral, options) {
+    // Every part opens a page of its own; the appendix follows on where there is room.
+    if (options && options.flow) this.titled = true;
+    else if (this.doc.y > MARGIN + 40) this.page();
     this.contents.push({ title: (numeral ? numeral + '  ' : '') + part.title, page: this.doc.pageNumber });
     this.space(22);
     this.doc.rect(MARGIN, this.doc.y, COLUMN, 2, ACCENT);
@@ -1937,6 +1968,7 @@
 
   /** A subsection heading inside a section: a short bar of colour and the title. */
   Report.prototype.subhead = function (text, color) {
+    this.titled = true;
     const style = { size: 12.4, bold: true, color: INK };
     const lines = wrap(toWinAnsi(text), COLUMN - 14, style);
     this.need(48 + lines.length * 16);
@@ -2043,50 +2075,52 @@
    * counter-move and the question — the page's gauge card, on paper.
    */
   Report.prototype.pressureCard = function (item, labels) {
-    const pad = 13;
-    const inner = COLUMN - pad * 2 - 4;
-    const rows = [
-      item.detail && { text: item.detail, style: T_BODY, leading: 13.8 },
-      (item.earlySigns || []).length && { text: labels.earlySigns.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
-    ].concat((item.earlySigns || []).map(sign => ({ text: sign, style: T_BODY, leading: 13.4, bullet: WARN })))
-      .concat([
-        item.mitigation && { text: labels.counterMove.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
-        item.mitigation && { text: item.mitigation, style: T_BODY, leading: 13.6 },
-        item.question && { text: labels.reflect.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
-        item.question && { text: item.question, style: { size: 9.6, italic: true, color: INK }, leading: 13.6 },
-      ]);
-    const body = layoutRows(rows.filter(Boolean), inner);
-    const headStyle = { size: 11.2, bold: true, color: INK };
-    const head = wrap(toWinAnsi(item.strength + '  ->  ' + (item.overused || '')), inner - 120, headStyle);
-    const headH = head.length * 15 + 26;
-    const height = headH + body.height + pad * 2;
-    this.need(height + 10);
-    const top = this.doc.y;
-    const x = MARGIN + pad + 4;
-    this.doc.roundRect(MARGIN, top, COLUMN, height, 10, WHITE);
-    this.doc.rect(MARGIN, top + 5, 3, height - 10, WARN);
-    head.forEach((line, i) => this.doc.draw(line, x, top + pad + 10 + i * 15, headStyle));
-    levelMeter(this.doc, MARGIN + COLUMN - pad, top + pad, item.level, labels.level);
-    // The bar: green at its best, warm where it costs, and a marker at the level.
-    const barTop = top + pad + head.length * 15 + 6;
-    const segments = 24;
-    for (let i = 0; i < segments; i++) {
-      const t = i / (segments - 1);
-      const color = GOOD.map((c, k) => c + (WARN[k] - c) * t);
-      this.doc.rect(x + inner * i / segments, barTop, inner / segments + 0.4, 4, color);
-    }
-    const reach = { mild: 0.3, moderate: 0.58, marked: 0.86 }[item.level];
-    if (reach) {
-      this.doc.roundRect(x + inner * reach - 5, barTop - 3, 10, 10, 5, WHITE);
-      this.doc.roundRect(x + inner * reach - 3.5, barTop - 1.5, 7, 7, 3.5, INK);
-    }
-    this.doc.draw(toWinAnsi(labels.atBest), x, barTop + 14, { size: 7, color: SOFT });
-    const over = toWinAnsi(labels.overused);
-    this.doc.draw(over, x + inner - measure(over, 7, false), barTop + 14, { size: 7, color: SOFT });
-    blockWidth = inner;
-    body.draw(this.doc, x, top + pad + headH);
-    blockWidth = COLUMN;
-    this.doc.y = top + height + 10;
+    const doc = this.doc;
+    const label = text => {
+      this.need(30);
+      this.space(7);
+      doc.draw(toWinAnsi(String(text).toUpperCase()), this.x, doc.y + 7, T_LABEL);
+      doc.y += 12;
+    };
+    this.boxed(() => {
+      const headStyle = { size: 11.2, bold: true, color: INK };
+      const head = wrap(toWinAnsi(item.strength + '  ->  ' + (item.overused || '')), this.w - 120, headStyle);
+      this.need(head.length * 15 + 60);
+      const top = doc.y;
+      head.forEach((line, i) => doc.draw(line, this.x, top + 10 + i * 15, headStyle));
+      levelMeter(doc, this.x + this.w, top, item.level, labels.level);
+      // The bar: green at its best, warm where it costs, and a marker at the level.
+      const barTop = top + head.length * 15 + 6;
+      const segments = 24;
+      for (let i = 0; i < segments; i++) {
+        doc.rect(this.x + this.w * i / segments, barTop, this.w / segments + 0.4, 4, mix(GOOD, WARN, i / (segments - 1)));
+      }
+      const reach = { mild: 0.3, moderate: 0.58, marked: 0.86 }[item.level];
+      if (reach) {
+        doc.circle(this.x + this.w * reach, barTop + 2, 5, WHITE);
+        doc.circle(this.x + this.w * reach, barTop + 2, 3.5, INK);
+      }
+      doc.draw(toWinAnsi(labels.atBest), this.x, barTop + 14, { size: 7, color: SOFT });
+      const over = toWinAnsi(labels.overused);
+      doc.draw(over, this.x + this.w - measure(over, 7, false), barTop + 14, { size: 7, color: SOFT });
+      doc.y = barTop + 22;
+      if (item.detail) this.body(item.detail, { size: 9.6, leading: 13.8 });
+      const signs = (item.earlySigns || []).filter(Boolean);
+      if (signs.length) {
+        label(labels.earlySigns);
+        for (const sign of signs) {
+          wrap(toWinAnsi(sign), this.w - 11, T_BODY).forEach((line, i) => {
+            this.need(14);
+            if (!i) doc.circle(this.x + 2.5, doc.y + 6.2, 2, WARN);
+            doc.draw(line, this.x + 11, doc.y + 9.4, T_BODY);
+            doc.y += 13.4;
+          });
+        }
+      }
+      if (item.mitigation) { label(labels.counterMove); this.body(item.mitigation, { size: 9.6, leading: 13.6 }); }
+      if (item.question) { label(labels.reflect); this.body(item.question, { size: 9.6, italic: true, leading: 13.6 }); }
+      doc.y -= 2;
+    }, { bar: WARN, pad: 13, gap: 10 });
     return this;
   };
 
@@ -2114,6 +2148,7 @@
   // card on the page sets them. The contents list goes under it.
 
   const STRENGTH_DOTS = { slight: 1, moderate: 2, clear: 3 };
+  const BAND_FROM = [0.204, 0.106, 0.302];
   const SHORT_TRAITS = { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
     agreeableness: 'Agreeable', neuroticism: 'Sensitivity' };
 
@@ -2193,10 +2228,12 @@
 
     // ---- the band ----
     const bandH = 178;
-    doc.gradientBox(0, 0, PAGE.width, bandH, 0, ACCENT, ACCENT_2, () => {
-      doc.circle(PAGE.width - 30, 18, 112, mix(mix(ACCENT, ACCENT_2, 0.85), WHITE, 0.12));
-      doc.circle(PAGE.width - 168, bandH - 12, 46, mix(mix(ACCENT, ACCENT_2, 0.6), WHITE, 0.1));
-      doc.circle(36, bandH + 30, 70, mix(ACCENT, WHITE, 0.08));
+    // Deep plum into the accent: darker than the character block on the card,
+    // so the card's own gradient is the brightest thing on the page.
+    doc.gradientBox(0, 0, PAGE.width, bandH, 0, BAND_FROM, ACCENT, () => {
+      doc.circle(PAGE.width - 30, 18, 112, mix(ACCENT, WHITE, 0.1));
+      doc.circle(PAGE.width - 168, bandH - 12, 46, mix(mix(BAND_FROM, ACCENT, 0.6), WHITE, 0.08));
+      doc.circle(36, bandH + 30, 70, mix(BAND_FROM, WHITE, 0.07));
     });
     doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 38, size: 19, color: WHITE });
     doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 53, { size: 13, bold: true, color: WHITE });
@@ -2362,9 +2399,7 @@
       row.forEach((panel, c) => {
         const px = x0 + c * (colW + gap);
         doc.roundRect(px, rowTop, colW, rowHeights[r], 11, mix(WASH, WHITE, 0.4));
-        doc.roundRect(px + pPad, rowTop + pPad, 11, 11, 3.5, mix(panel.color, WHITE, 0.82));
-        doc.circle(px + pPad + 5.5, rowTop + pPad + 5.5, 2.3, panel.color);
-        doc.draw(toWinAnsi(String(panel.label).toUpperCase()), px + pPad + 17, rowTop + pPad + 8.3,
+        doc.draw(toWinAnsi(String(panel.label).toUpperCase()), px + pPad, rowTop + pPad + 8.3,
           { size: 6.6, bold: true, color: SOFT, tracking: 1.1 });
         panel.block.draw(px + pPad, rowTop + pPad + labelH);
       });
@@ -2400,14 +2435,10 @@
       const x = MARGIN + column * (colW + 20);
       const y = top + 14 + (index % perColumn) * rowH;
       const match = String(row.title).match(/^(\d\d)\s+(.*)$/);
-      if (match) {
-        doc.roundRect(x, y, 19, 14, 4, ACCENT);
-        const n = toWinAnsi(match[1]);
-        doc.draw(n, x + 9.5 - measure(n, 7.4, true) / 2, y + 9.8, { size: 7.4, bold: true, color: WHITE });
-      } else {
-        doc.roundRect(x, y, 19, 14, 4, mix(ACCENT_2, WHITE, 0.82));
-        doc.circle(x + 9.5, y + 7, 2.2, ACCENT_2);
-      }
+      // Parts by numeral in the accent; the appendix by an A in the second colour.
+      const mark = toWinAnsi(match ? match[1] : row.mark || '');
+      doc.roundRect(x, y, 19, 14, 4, match ? ACCENT : mix(ACCENT_2, WHITE, 0.8));
+      if (mark) doc.draw(mark, x + 9.5 - measure(mark, 7.4, true) / 2, y + 9.8, { size: 7.4, bold: true, color: match ? WHITE : ACCENT_2 });
       const page = toWinAnsi(String(row.page));
       const pageW = measure(page, 8.6, true);
       const titleStyle = { size: 9.4, color: INK };
@@ -2529,7 +2560,7 @@
     const sectionNames = keys => (keys || []).map(key => S.sectionNames[key]).filter(Boolean)
       .filter((name, i, all) => all.indexOf(name) === i);
     const unlocked = stamp.unlocked || {};
-    const numeral = key => String(['overview', 'who', 'drives', 'connect', 'together'].indexOf(key)).padStart(2, '0');
+    const numeral = key => String(['overview', 'who', 'drives', 'connect', 'together', 'appendix'].indexOf(key)).padStart(2, '0');
 
     const cardBottom = storyCover(doc, source, who, stamp);
     // Supporting text a size down; section titles kept with their first block
@@ -2818,31 +2849,19 @@
       const groups = horizons.map((horizon, i) => ({ horizon,
         here: actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) }))
         .filter(g => g.here.length);
-      // One card per horizon; one too long to fit a page is split in two.
-      const cards = groups.flatMap(g => {
-        if (g.here.length <= 7) return [{ horizon: g.horizon, first: true, here: g.here }];
-        const half = Math.ceil(g.here.length / 2);
-        return [{ horizon: g.horizon, first: true, here: g.here.slice(0, half) },
-          { horizon: g.horizon, first: false, here: g.here.slice(half) }];
-      });
-      cards.forEach((c, i) => out.keep(() => {
-        if (!i) out.h3(S.titles.plan);
-        out.boxed(() => {
-          if (c.first) {
-            doc.circle(out.x + 4, doc.y + 5, 4, ACCENT);
-            doc.draw(toWinAnsi(TEXT.careerHorizons[c.horizon].toUpperCase()), out.x + 14, doc.y + 8,
-              { size: 7.6, bold: true, color: ACCENT, tracking: 1.2 });
-            doc.y += 14;
-          }
-          c.here.forEach((action, k) => {
-            if (k) out.space(4);
-            out.point(action.step, action.detail, { size: 10.2, detailSize: 9.2, detailLeading: 13 });
-            // Where it came from, as a tag rather than more of the explanation.
-            if (action.from) planSource(out, action.from);
-          });
-          doc.y -= 2;
-        }, { padTop: 11 });
-      }));
+      // As on the page: each horizon named in a column on the left, and its
+      // steps beside it as cards with a box to tick.
+      const labelW = 96;
+      groups.forEach((g, gi) => g.here.forEach((action, i) => out.keep(() => {
+        if (!gi && !i) out.h3(S.titles.plan);
+        if (!i) {
+          out.space(gi ? 10 : 4);
+          if (gi) doc.hairline(doc.y - 6, MARGIN, MARGIN + COLUMN, mix(LINE, WHITE, 0.2));
+          doc.circle(MARGIN + 4, doc.y + 9, 4, ACCENT);
+          doc.draw(toWinAnsi(TEXT.careerHorizons[g.horizon]), MARGIN + 14, doc.y + 12.5, { size: 10, bold: true, color: INK });
+        }
+        inset(labelW, () => out.boxed(() => planStep(out, action), { pad: 10, gap: 6, radius: 9 }));
+      })));
     }
     const pressure = (source.pressurePoints || []).filter(item => item && item.strength);
     pressure.forEach((item, i) => out.keep(() => {
@@ -2854,12 +2873,13 @@
       });
     }));
 
-    // Evidence and method, after the parts and apart from them: the score,
-    // why, and what was counted in full. No build, format or writer rows.
+    // The appendix: Evidence and method on a page of its own after the
+    // parts, then the roast alone on the last page.
     const confidence = source.confidence || {};
     const score = Math.max(0, Math.min(100, Math.round(Number(confidence.score) || 0)));
     out.keep(() => {
-      standalone(S.titles.method, def('method'));
+      out.part(S.parts.appendix, numeral('appendix'), { flow: true });
+      out.sectionTitle(S.titles.method, def('method'));
       out.boxed(() => {
         doc.roundRect(out.x, doc.y, out.w, 7, 3.5, mix(LINE, WHITE, 0.3));
         if (score > 0) doc.roundRect(out.x, doc.y, Math.max(7, out.w * score / 100), 7, 3.5, ACCENT);
@@ -2879,12 +2899,10 @@
     if (stamp.premiumModel && stamp.premiumDate) {
       out.fineprint('Full premium report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
-
-    // The roast last, with no heading of its own beyond its section title.
     if (source.bonus) {
-      out.partsOnly = false;
+      out.page();
+      out.eyebrow(numeral('appendix') + '  ' + S.parts.appendix.title, ACCENT_2);
       renderRoast(out, source.bonus);
-      out.partsOnly = true;
     }
 
     storyContents(doc, out, cardBottom);
@@ -2892,12 +2910,36 @@
       'Personality analysis from an Instagram data export');
   }
 
+  /**
+   * One step of the plan: a box to tick, the step, its detail a size down,
+   * and where it came from as a tag.
+   */
+  function planStep(out, action) {
+    const doc = out.doc;
+    const top = doc.y;
+    doc.roundRect(out.x, top + 1, 12, 12, 3, mix(ACCENT, WHITE, 0.45));
+    doc.roundRect(out.x + 1.3, top + 2.3, 9.4, 9.4, 2.2, WHITE);
+    const saved = { x: out.x, w: out.w };
+    out.x += 22;
+    out.w -= 22;
+    const style = { size: 10.2, bold: true, color: INK };
+    for (const line of wrap(toWinAnsi(action.step), out.w, style)) {
+      out.need(15);
+      doc.draw(line, out.x, doc.y + 10, style);
+      doc.y += 14.5;
+    }
+    if (action.detail) out.body(action.detail, { size: 9, color: SOFT, leading: 12.8 });
+    if (action.from) { out.space(2); planSource(out, action.from); doc.y -= 4; }
+    out.x = saved.x;
+    out.w = saved.w;
+  }
+
   /** A plan step's source, as a small bent arrow and a tag in the accent. */
   function planSource(out, from) {
     const doc = out.doc;
     out.need(18);
     const text = toWinAnsi(from);
-    const x = out.x + 10;
+    const x = out.x;
     const top = doc.y + 2;
     doc.setStroke(ACCENT);
     doc.op('0.9 w 1 J 1 j');

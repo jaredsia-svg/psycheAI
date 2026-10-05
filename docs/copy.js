@@ -204,7 +204,7 @@
     // The at-a-glance card above the report. Its labels live here for the same
     // reason the section titles do — they are the same words in a second place,
     // and a check in the UI suite fails if app.js types any of them itself.
-    cardSection: 'Summary card',
+    cardSection: 'Psyche Card',
     cardHint: 'Tap to open full screen',
     // Download sits on the left, share on the right — the order a reader
     // meets them reading left to right. Each carries a small visible label
@@ -414,7 +414,7 @@
     // the writing behind the card plus the four sections — and says that, in
     // that order, rather than pretending the card is a whole report.
     premiumTierTitle: 'The full premium report',
-    premiumTierBlurb: 'Your summary card is free. The full premium report explains every part of it, and adds four more sections:',
+    premiumTierBlurb: 'Your Psyche Card is free. The full premium report explains every part of it, and adds four more sections:',
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
     fullReportTitle: 'Unlock the full premium report',
@@ -533,20 +533,20 @@
     // from the unlock's: they buy different things, and a dialog that says
     // "unlock premium sections" while charging US$2 for a re-run would be
     // describing the wrong purchase.
-    analysisDialogTitle: 'Run your summary card again',
-    analysisDialogBlurb: 'Your first summary card is free. Each one after that — including re-running ' +
+    analysisDialogTitle: 'Run your Psyche Card again',
+    analysisDialogBlurb: 'Your first Psyche Card is free. Each one after that — including re-running ' +
       'with Google or Facebook data added — is US$2, because every run is a fresh call to the AI ' +
       'model and costs real money to produce.',
     // Shown on the upload page and beside the re-run button once the free run
     // is spent, so the price is never a surprise sprung at the last moment.
-    analysisPriceNote: 'Your next summary card costs US$2.',
+    analysisPriceNote: 'Your next Psyche Card costs US$2.',
     // Shown instead of the above once premium is unlocked — re-running then
     // bundles the four paid sections back in, at the unlock's own US$5
     // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
     analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$5 and ' +
       'refreshes everything — your card and the full premium report.',
-    analysisFreeNote: 'Your first summary card is free.',
+    analysisFreeNote: 'Your first Psyche Card is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
     // paying can always fix — so it says what it is rather than blaming them.
@@ -757,12 +757,13 @@
         intro: 'Your temperament – your type and the five broad traits underneath it – and how you are doing.' },
       drives: { label: 'Part 2', title: 'What drives you',
         intro: 'What you are working towards, what you keep coming back to, and what you hold to.' },
-      connect: { label: 'Part 3', title: 'How you connect and work',
+      connect: { label: 'Part 3', title: 'How you connect & work',
         intro: 'How you are with the people close to you, and how you work.' },
       together: { label: 'Part 4', title: 'Putting it together',
         intro: 'What to build on, what to work on, how your strengths behave under pressure, and how this report was made.' },
-      appendix: { label: 'Appendix', title: 'The unvarnished read',
-        intro: 'Optional, and deliberately not fair. Read it only if you want to.' },
+      // Part 05: how the report was made, and the roast.
+      appendix: { label: 'Part 5', title: 'Appendix',
+        intro: 'How this report was made, and the roast.' },
     },
 
     // One line per section: what it measures, before anything about you.
@@ -901,7 +902,7 @@
     // own labels in app.js, so these hold only what the page says around them.
     insights: {
       freeBadge: 'Free',
-      freeTitle: 'Your summary card',
+      freeTitle: 'Your Psyche Card',
       freeBlurb: 'One card that sums you up, ready to share — read from your own data in a few minutes.',
       cardItems: [
         ['🦸', 'The character you are most like', 'and why, in two sentences'],
@@ -913,8 +914,8 @@
         ['✨', 'Interests', 'what you keep coming back to'],
         ['💝', 'Love languages', 'how you give and receive care'],
       ],
-      previewOpen: 'Open the sample summary card full screen',
-      sampleButton: 'See sample report',
+      previewOpen: 'Open the sample Psyche Card full screen',
+      sampleButton: 'See sample',
       premiumTitle: 'The full premium report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
       partBlurbs: {
@@ -923,7 +924,7 @@
         connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
         together: 'A development plan built from everything above, a step-by-step plan you can tick off, and how your strengths behave under pressure.',
       },
-      extras: [['📄', 'A PDF to keep'], ['🔍', 'The evidence behind every finding'], ['🔥', 'An optional roast']],
+      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🔥', 'A bonus roast']],
       compatTitle: 'Compatibility, free',
       compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
     },

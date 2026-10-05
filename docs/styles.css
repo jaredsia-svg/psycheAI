@@ -2033,6 +2033,14 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .card-dialog-close:hover, .card-dialog-close:focus-visible {
   background: rgba(255, 255, 255, .24); outline: none;
 }
+/* The sample card's full screen view has no bar, so its cross sits in the
+   screen's own top right corner, faint until it is pointed at. */
+.sample-card-close {
+  position: fixed; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); z-index: 3;
+  width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .28);
+  background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .78); font-size: 1rem; line-height: 1; cursor: pointer;
+}
+.sample-card-close:hover, .sample-card-close:focus-visible { background: rgba(255, 255, 255, .24); color: #fff; outline: none; }
 
 .pc-lab-icon { font-size: 24px; line-height: 1; flex: none; }
 .pc-love { list-style: none; padding-left: 0; }
@@ -2504,15 +2512,23 @@ details.more[open] > summary::after { content: ' ▴'; }
 .evidence-read .essence-label { font-size: .72rem; margin-top: .2rem; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
 .evidence-read .counted-full { margin-bottom: .2rem; }
 
-/* The roast as its own room: dark, and it fades in when revealed. */
-.layout-structured .bonus-card { background: #1d1624; color: #f1ebf5; border-color: #322a3c; }
-.layout-structured .bonus-card .card-sub, .layout-structured .bonus-card .muted { color: #a99fb4; }
-.layout-structured .bonus-card .bonus-cover { background: #261d2f; border-color: #3a3046; color: #f1ebf5; }
-.layout-structured .bonus-card .bonus-cover h3 { color: #f1ebf5; }
-.layout-structured .bonus-card .bonus-reveal, .layout-structured .bonus-card .bonus-hide {
-  color: #f1ebf5; border-color: #8a6aa8; background: transparent;
+/* The roast as its own room: grey while it is covered, then the page's own
+   colours once "Read it anyway" opens it, so it reads as easily as the rest.
+   It fades in when revealed. */
+.layout-structured .bonus-card:not(.is-revealed) {
+  background: color-mix(in srgb, var(--ink-soft) 13%, var(--bg-alt));
+  border-color: color-mix(in srgb, var(--ink-soft) 22%, var(--bg-alt));
 }
-.layout-structured .bonus-card h3, .layout-structured .bonus-card .card-head h2 { color: #f1ebf5; }
+.layout-structured .bonus-card:not(.is-revealed) .bonus-cover {
+  background: repeating-linear-gradient(135deg,
+    color-mix(in srgb, var(--ink-soft) 8%, var(--bg-alt)) 0 10px,
+    color-mix(in srgb, var(--ink-soft) 15%, var(--bg-alt)) 10px 20px);
+  border-color: color-mix(in srgb, var(--ink-soft) 30%, var(--bg-alt));
+}
+.layout-structured .bonus-card:not(.is-revealed) .bonus-cover h3 { color: var(--ink); }
+.layout-structured .bonus-card:not(.is-revealed) .bonus-reveal {
+  color: var(--ink); border-color: color-mix(in srgb, var(--ink-soft) 55%, var(--bg-alt)); background: var(--bg-alt);
+}
 .layout-structured .bonus-body:not([hidden]) { animation: roast-in .5s ease both; }
 @keyframes roast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
@@ -2798,7 +2814,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
   font-size: .86rem; font-weight: 600; color: var(--ink);
 }
-.insight-premium-foot .btn { margin-left: auto; padding: .5rem 1rem; font-size: .9rem; }
+.insight-premium-foot .btn { margin-left: auto; padding: .5rem 1rem; font-size: .9rem; flex: none; }
+/* On a laptop the button shares the line with what comes with the report. */
+@media (min-width: 760px) {
+  .insight-premium-foot { flex-wrap: nowrap; }
+  .insight-extras { flex: 1 1 auto; min-width: 0; }
+}
 .insight-extras li { display: flex; align-items: center; gap: .4rem; }
 
 /* Compatibility, free: one line under the two tiers. */
@@ -2837,9 +2858,9 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (max-width: 639px) {
   .part-nav { position: static; }
 }
-@media (min-width: 1300px) {
+@media (min-width: 1340px) {
   #profile-body .part-nav {
-    position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 236px)); width: 220px;
+    position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px)); width: 232px;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
   }
   /* Number and name side by side, so a long name wraps under itself rather
@@ -2848,3 +2869,30 @@ details.more[open] > summary::after { content: ' ▴'; }
   #profile-body .part-nav-num { flex: none; width: 1.75rem; margin-right: 0; }
   #profile-body .part-nav-item:not(:has(.part-nav-num)) { padding-left: 2.45rem; }
 }
+
+/* The full report on a wide, tall screen: the Psyche Card shrinks into the
+   left column above the nav, and opens full screen when clicked. The nav's
+   top is the card's measured height (--side-card-h, set by layoutPsycheCard). */
+@media (min-width: 1340px) and (min-height: 760px) {
+  #view-profile.profile-paid #psyche-card-section {
+    position: fixed; z-index: 10; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px));
+    width: 232px; margin: 0; padding: .7rem .7rem .55rem; border-radius: 16px;
+  }
+  #view-profile.profile-paid #psyche-card-section .psyche-card-slot { margin: 0; }
+  #view-profile.profile-paid #psyche-card-section .psyche-card-hint { font-size: .74rem; margin-top: .4rem; }
+  #view-profile.profile-paid #profile-body .part-nav { top: calc(6.5rem + var(--side-card-h, 380px) + .7rem); }
+}
+
+/* The free report: no nav, the Psyche Card on the left half of the column
+   and what it was read from on the right. Stacked on a phone. */
+.profile-top { margin-bottom: 1rem; }
+#view-profile.profile-free .profile-top { display: grid; gap: 1rem; align-items: start; }
+@media (min-width: 720px) { #view-profile.profile-free .profile-top { grid-template-columns: 1fr 1fr; } }
+#view-profile.profile-free #psyche-card-section { width: auto; margin: 0; padding-bottom: .9rem; }
+#view-profile.profile-free .psyche-card-slot { margin-bottom: 0; }
+.profile-top > .section-card { margin-bottom: 0; }
+.free-method .confidence-meter { margin: .2rem 0 .7rem; }
+.free-method .free-score { margin: 0 0 .5rem; font-size: .95rem; }
+.free-method .free-why { margin: 0 0 .8rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.5; }
+.free-method .trait-evidence { margin: .3rem 0 0; }
+.free-method .evidence-head { margin-top: .4rem; }

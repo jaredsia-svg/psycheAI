@@ -317,7 +317,7 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
-**The currency is USD: US$5 for the full premium report, US$2 for another summary card, and
+**The currency is USD: US$5 for the full premium report, US$2 for another Psyche Card, and
 compatibility reports free.** `CURRENCY`, `UNLOCK_PRICE_CENTS` (500) and `ANALYSIS_PRICE_CENTS` (200)
 in `lib/stripe.js` are one decision: the cents are cents *of `CURRENCY`*, so changing one without the
 others silently reprices the unlock. `verifyPaid` checks both against the retrieved PaymentIntent, so
@@ -3238,7 +3238,7 @@ here is either this app's own or a published academic model.
 | **Overview** | Executive summary · **Your signature patterns** |
 | **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
-| **Part 3 – How you connect and work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
+| **Part 3 – How you connect & work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
 | **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) |
 | **After Part 4** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
 | **Last** | The roast, after the method rather than mid-report, with no heading of its own |
@@ -3265,7 +3265,7 @@ footprint section (it restated what the other sections already say). **The parts
 all start open** — the overview and the four parts are the report's five disclosures, a part shut by
 the reader stays shut while they open another, and every section inside a part is shown whole, with
 no "More" behind any of it. **A part nav** under the summary card names each part as it is headed
-("00 Overview" … "04 Putting it together", then "Evidence and method" and the roast), opens the part it
+("00 Overview" … "05 Appendix"), opens the part it
 jumps to, and lights the part the reader is in — the whole part is watched, not just its heading, so a
 jump into the middle of a long part still lights it. Every name shows in full: the nav wraps onto a
 second row rather than scrolling one off the end, sticks under the header on a tablet and laptop, stays
@@ -3277,7 +3277,18 @@ has a line under its title only where the title does not already say what it is.
 are one list of distinct ideas with no tag saying which is which. Who suits you is the verdict as a
 banner over two numbered lists, what you need beside what to be careful of, with no rule between
 entries; what you bring beside where it gets hard, and your other strengths beside what holds you back,
-use the same pair of lists (`pairedListsHtml()`). **Read from** says what
+use the same pair of lists (`pairedListsHtml()`).
+
+**The Psyche Card** (what was "the summary card") is shown by itself at the top of the report, with
+its name kept for screen readers only. On a full report at 1340px or wider (and 760px tall), it shrinks
+into the left column above the part nav and opens full screen when clicked; the nav's top is the card's
+measured height (`--side-card-h`, set by `layoutPsycheCard()`). **A free report has no nav**: the card
+takes the left half of the column and a short Evidence and method (`freeMethodHtml()`) the right — the
+score, one line of why and what was read — stacked on a phone. There is no "How much to trust this"
+card and no re-run on a free report; more data comes with the full report, whose unlock already offers
+it before payment (`collectExtraDataForPremium()`). **A jump from the nav** sets the part's
+`scroll-margin-top` to whatever is pinned over the page at that width (`pinnedHeight()` — the site
+header, and the nav itself where it sticks), so the part's heading always lands in full view. **Read from** says what
 was read of each source and what was only counted — "180 of your 9,741 messages read", "623 stories
 counted", "Top 50 of 21,400 distinct Google searches read" — from the digest's own `coverage.sampling`.
 No section carries a Premium badge.
@@ -3307,12 +3318,33 @@ tag. Part 3 keeps its boxes (`subhead`, `panel`, `pairedPanels`) and Under press
 a letter's "in practice" line, a love language's why and the motivator lines, so the finding reads first.
 "Shows up in" is a row of accent pills (`pills()`), not a sentence of commas.
 
+**The PDF's cover** draws its band in deep plum into the accent, so the character block on the card
+— accent into pink — stays the brightest thing on the page, and the card's panels carry their labels
+with no dot beside them. **Your plan** is set as the page sets it: each horizon named on the left and
+its steps beside it as white cards with a box to tick (`planStep()`), each with its source as a tag.
+**The roast is grey while it is covered** (`.bonus-card:not(.is-revealed)`), and turns to the page's
+own colours once "Read it anyway" opens it — `revealRoast()` adds `is-revealed`, `hideRoast()` takes it
+away — so the unkind part is set apart without being hard to read. **The sample card's full screen
+view** has a faint cross fixed in the screen's top right (`#sample-card-dialog-close`), since a phone
+has no Escape key. On the front page's premium tier, **See sample** shares the line with "A PDF to
+keep", "Evidence behind every finding" and "A bonus roast" on a laptop, and drops under them on a phone.
+
+**Part 05, the Appendix**, holds Evidence and method and the roast, on the page and in the PDF: on the
+page it is a sixth part card (`PART_ORDER` ends in `appendix`) and one "05 Appendix" entry in the nav in
+place of the two it replaced; in the PDF it follows on after Part 4 where there is room, with the roast
+alone on the last page under a "05 Appendix" label, and the contents list names it like any other part.
+
 **No heading is left at the foot of a page.** Every part opens a page of its own, and each section's
 title is drawn together with its first block inside `Report.keep()`: the block is drawn once, and if it
 ran over a page break, everything it drew is taken back and it is drawn again from the top of a fresh
 page. "How you work" with its edge, "Under pressure" with its first card, "Who suits you" with its lists
 move over together; a section whose first block fits — the Big Five under MBTI — stays where it is.
-`tools/uitest.mjs` reads the PDF page by page to hold both.
+A card that would break with a fair share on each side — 120pt or more before the break, 90pt or more
+after it — is allowed to break instead, so a long card no longer leaves most of a page empty: `boxed()`
+draws one piece of the card on each page it touches (`bodyAt`, recorded by `Report.page()`, is where a
+continued card slips in under the text), and Under pressure's cards are drawn as flowing text inside
+one, rather than measured whole. A heading still needs 200pt of its own content under it.
+`tools/uitest.mjs` reads the PDF page by page to hold all of this.
 
 **The card's three motivators come from the free call.** `topMotivators` in `STRUCTURED_FREE_SCHEMA`
 is the three of Schwartz's ten that show most, strongest first; `anchorFrom` carries them to the paid

@@ -1569,6 +1569,8 @@
       '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>');
     body.hidden = false;
     cover.hidden = true;
+    // Read in the page's own colours once opened; grey only while covered.
+    card.classList.add('is-revealed');
   }
 
   /** Puts the cover back, and takes the writing out of the page with it. */
@@ -1579,6 +1581,7 @@
     body.innerHTML = '';
     body.hidden = true;
     cover.hidden = false;
+    card.classList.remove('is-revealed');
     const reveal = cover.querySelector('.bonus-reveal');
     reveal.setAttribute('aria-expanded', 'false');
     reveal.focus();
@@ -2414,8 +2417,25 @@
     if (!target) return;
     const card = target.closest('.part-card');
     if (card) setSectionOpen(card, true);
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Lands with the part's whole heading clear of whatever is pinned over
+    // the top of the page: the site's header and, where it sticks rather than
+    // sitting in the left column, this nav itself.
+    const landing = card || target;
+    landing.style.scrollMarginTop = pinnedHeight(item.closest('.part-nav')) + 'px';
+    landing.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+
+  /** How much of the top of the scroller is covered by pinned bars, plus a little air. */
+  function pinnedHeight(nav) {
+    let height = 14;
+    if (!nav.closest('dialog')) {
+      const bar = document.querySelector('.nav');
+      const position = bar && getComputedStyle(bar).position;
+      if (position === 'sticky' || position === 'fixed') height += bar.getBoundingClientRect().bottom;
+    }
+    if (getComputedStyle(nav).position === 'sticky') height += nav.getBoundingClientRect().height + 8;
+    return Math.round(height);
+  }
 
   // Ticking an action off the plan. Kept on this device only, by a hash of
   // the action's wording, under KEYS.plan — so Delete everything clears it.
@@ -4322,7 +4342,7 @@
     return list.map(name => '<span class="section-chip">' + esc(name) + '</span>').join('');
   }
 
-  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
+  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together', 'appendix'];
 
   /**
    * One part of the structured report as a single box that opens and shuts:
@@ -4348,9 +4368,8 @@
    */
   function partNavHtml(hasRoast) {
     const S = Copy.STRUCTURED;
-    const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title])
-      .concat([['method', '', S.titles.method]])
-      .concat(hasRoast ? [['roast', '', TEXT.bonus]] : []);
+    // Evidence and method and the roast sit inside part 05, the appendix.
+    const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
     return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '">' +
       (num ? '<span class="part-nav-num">' + num + '</span>' : '') + esc(title) + '</button>').join('') + '</nav>';
@@ -5007,11 +5026,13 @@
         pressurePointsHtml(report.pressurePoints) + '</div>';
     }
     html += partCardHtml('together', part);
-    html += methodCardHtml(report, sample);
 
-    // The roast last, after the method rather than in the middle of the
-    // report, so the professional read is whole before the unkind one starts.
-    if (report.bonus) html += roastBlock(report.bonus, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"');
+    // Part 05, the appendix: how the report was made, then the roast — after
+    // the method rather than in the middle of the report, so the professional
+    // read is whole before the unkind one starts.
+    part = methodCardHtml(report, sample);
+    if (report.bonus) part += roastBlock(report.bonus, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"');
+    html += partCardHtml('appendix', part);
     return html;
   }
 
@@ -5038,7 +5059,7 @@
       const current = [...inBand].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
       if (current) light(keyOf(current));
     }, { rootMargin: '-20% 0px -70% 0px' });
-    root.querySelectorAll('.part-card[data-part-card], [data-part="method"], [data-part="roast"]').forEach(node => partObserver.observe(node));
+    root.querySelectorAll('.part-card[data-part-card]').forEach(node => partObserver.observe(node));
     light('overview');
   }
 
@@ -5049,10 +5070,13 @@
     // confidence card, which holds the page's own controls.
     if (!sample && options && options.explained === false) {
       const unlocked = paidAnalysis();
+      // Structured: what the card was read from sits beside it (freeMethodHtml),
+      // and there is no re-run here — more data comes with the full report,
+      // whose unlock asks for it before the run.
       return fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
-        confidenceCardHtml(report, false);
+        (reportLayout() === 'structured' ? '' : confidenceCardHtml(report, false));
     }
     if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
     // Every section of the report body is a disclosure; sectionHead's other
@@ -5187,6 +5211,27 @@
     return html;
   }
 
+  /**
+   * A free report's Evidence and method, beside its Psyche Card: the score,
+   * one line of why, and what was read. No sources list and no re-run.
+   */
+  function freeMethodHtml(report) {
+    const confidence = report.confidence || {};
+    const score = Math.round(Number(confidence.score) || 0);
+    const why = String(confidence.rationale || '').match(/^.*?[.!?](\s|$)/);
+    const counted = countedInFullHtml();
+    const based = (confidence.basedOn || []).filter(Boolean);
+    return sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') +
+      '<div class="confidence-meter"><div class="confidence-fill" data-fill="' + score + '"></div></div>' +
+      '<p class="free-score"><strong>' + esc(TEXT.trustScore) + score + '/100' +
+        (confidence.level ? ' (' + esc(confidence.level) + ')' : '') + '.</strong></p>' +
+      (why ? '<p class="free-why">' + esc(why[0].trim()) + '</p>' : '') +
+      (counted || based.length
+        ? '<p class="essence-label evidence-head">' + esc(TEXT.confidenceBasedOn) + '</p>' +
+          (counted || '<p class="trait-evidence">' + based.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>')
+        : '');
+  }
+
   // Confidence closes the report rather than opening it: read after the
   // whole thing, it says how much of what you just read to believe. Shared by
   // the full report and the card-only one, which both end on it.
@@ -5284,7 +5329,18 @@
     // handled by a delegated listener (see the document click handler
     // below) rather than bound here, because this element is replaced every
     // time the report renders.
-    setHtml($('#profile-body'), reportSectionsHtml(report, { explained: hasExplanations(profile) }));
+    // Structured, a free report sets its card beside what it was read from
+    // and has no nav; a full one moves the card above the nav on a wide screen.
+    const structured = reportLayout() === 'structured';
+    const explained = hasExplanations(profile);
+    const view = $('#view-profile');
+    view.classList.toggle('profile-free', structured && !explained);
+    view.classList.toggle('profile-paid', structured && explained);
+    const side = $('#profile-side');
+    side.hidden = !(structured && !explained);
+    setHtml(side, side.hidden ? '' : freeMethodHtml(report));
+    layoutPsycheCard();
+    setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     collapseSections($('#profile-body'));
     markStructured($('#profile-body'));
 
@@ -5541,6 +5597,15 @@
   // Both copies are scaled here rather than in CSS, because the fit depends on
   // the viewport and on the column the preview happens to be sitting in, and
   // neither is knowable from a stylesheet.
+  // A full report on a wide, tall screen keeps its card in the left column
+  // above the part nav (styles.css, .profile-paid), at thumbnail size.
+  const SIDE_CARD_MAX_H = 330;
+  function sideCardMode() {
+    const view = $('#view-profile');
+    return Boolean(view && view.classList.contains('profile-paid') &&
+      window.matchMedia && window.matchMedia('(min-width: 1340px) and (min-height: 760px)').matches);
+  }
+
   function layoutPsycheCard() {
     const slot = $('#psyche-card-open');
     if (slot && !$('#psyche-card-section').hidden) {
@@ -5549,7 +5614,10 @@
       // opposite of what a summary above the report is for. It is a thumbnail
       // to be tapped, so it is sized like one.
       const width = slot.clientWidth || CARD_W;
-      fitCard($('#psyche-card'), width, PREVIEW_MAX_H);
+      const side = sideCardMode();
+      fitCard($('#psyche-card'), width, side ? SIDE_CARD_MAX_H : PREVIEW_MAX_H);
+      // The nav below a card in the left column starts where the card ends.
+      if (side) $('#view-profile').style.setProperty('--side-card-h', $('#psyche-card-section').offsetHeight + 'px');
     }
     const dialog = $('#card-dialog');
     if (dialog && dialog.open) {
@@ -5803,7 +5871,9 @@
   // click outside the image — the dialog fills the screen. Escape closes it
   // natively, and either way the sample dialog is still open underneath.
   $('#sample-card-dialog').addEventListener('click', event => {
-    if (event.target === $('#sample-card-dialog')) $('#sample-card-dialog').close();
+    if (event.target === $('#sample-card-dialog') || event.target.closest('#sample-card-dialog-close')) {
+      $('#sample-card-dialog').close();
+    }
   });
 
   $('#psyche-card-open').addEventListener('click', openPsycheCard);

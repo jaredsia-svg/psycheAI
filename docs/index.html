@@ -289,15 +289,21 @@
        report object the sections below render, rendered as real elements rather
        than a raster so it stays crisp at any scale and readable to a screen
        reader. `screen-only`: the PDF already opens with the same material. -->
+  <!-- The Psyche Card, and beside it on a free report what it was read from.
+       On a full report at a wide screen the card moves into the left column
+       above the part nav instead (styles.css, .profile-paid). -->
+  <div class="profile-top" id="profile-top">
   <section class="card section-card screen-only" id="psyche-card-section" hidden>
-    <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
-      <div><h2 id="psyche-card-title"></h2></div></div>
+    <!-- Named for screen readers only: the card is shown by itself, no label. -->
+    <h2 class="visually-hidden" id="psyche-card-title"></h2>
     <button class="psyche-card-slot" id="psyche-card-open" type="button"
             aria-label="Open your psyche card full screen">
       <div class="psyche-card-frame"><div class="psyche-card" id="psyche-card"></div></div>
       <span class="psyche-card-hint" id="psyche-card-hint"></span>
     </button>
   </section>
+  <aside class="card section-card free-method screen-only" id="profile-side" hidden></aside>
+  </div>
 
 
 <!-- The unlock flow for the four paid sections. Stripe.js
@@ -541,8 +547,8 @@
       reads your inward self, what you search and watch when no one is looking.</p>
 
     <h3>What does it cost?</h3>
-    <p>Your first summary card is free, and so is every compatibility report. Running your summary
-      card again is US$2. The full premium report — every section explained, plus your wellbeing,
+    <p>Your first Psyche Card is free, and so is every compatibility report. Running your Psyche
+      Card again is US$2. The full premium report — every section explained, plus your wellbeing,
       attachment style, ideal partner, career coaching, development plan and the roast — is a single
       US$5. You see the price before you pay.</p>
 
@@ -765,6 +771,9 @@
      no bar at all, so the card gets the whole screen. -->
 <dialog id="sample-card-dialog" class="card-dialog" aria-label="The sample psyche card">
   <div class="card-dialog-frame"><div class="psyche-card" id="sample-psyche-card-full"></div></div>
+  <!-- A faint cross in the screen's top right corner: on a phone there is no
+       Escape key and little outside the card to tap. -->
+  <button class="sample-card-close" id="sample-card-dialog-close" type="button" aria-label="Close">✕</button>
 </dialog>
 
 <dialog id="sample-dialog" class="sample-dialog" aria-labelledby="sample-dialog-title">
@@ -790,8 +799,8 @@
            collapsible and that was wrong: it is the thing the sample opens on
            and the thing a reader came to look at, and the accordion in the
            toggle handler meant opening any section below it shut the card. -->
-      <div class="card-head"><span class="card-icon" aria-hidden="true">🪪</span>
-        <div><h2 id="sample-card-title"></h2></div></div>
+      <!-- Named for screen readers only: the card is shown by itself, no label. -->
+      <h2 class="visually-hidden" id="sample-card-title"></h2>
       <!-- The same tap target the reader's own card gets on My Psyche, for the
            same reason: at preview size the card is a thumbnail, and the detail
            on it only becomes readable full screen. -->

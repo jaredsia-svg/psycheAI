@@ -474,7 +474,7 @@ try {
   // the thing that belongs at the top is still first.
   for (const [opener, dialogId, bodySel, firstSel, wanted] of [
     ['#guide-open', '#guide-dialog', '.guide-body', '.guide-step h3', /Open\s*Download your information/i],
-    ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-card-section', /Summary card/i],
+    ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-card-section', /Psyche Card/i],
   ]) {
     const reopen = async () => {
       await page.locator(opener).scrollIntoViewIfNeeded();
@@ -2401,6 +2401,28 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
     check('and escape closes it', !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)));
+    // A faint cross in the top right of the screen closes it too — on a
+    // phone there is no Escape key — at a phone's width and a laptop's.
+    for (const [label, width, height] of [['phone', 390, 844], ['laptop', 1100, 900]]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(150);
+      await page.locator('#insight-card-open').scrollIntoViewIfNeeded();
+      await page.click('#insight-card-open');
+      await page.waitForSelector('#sample-card-dialog[open]', { timeout: 5000 });
+      const cross = await page.evaluate(() => {
+        const r = document.querySelector('#sample-card-dialog-close').getBoundingClientRect();
+        // Within 40px of the right edge: on a laptop the page scrollbar (15px) sits beside it.
+        const seen = window.visualViewport ? visualViewport.width : document.documentElement.clientWidth;
+        return { visible: r.width >= 32 && r.height >= 32, corner: r.right >= seen - 40 && r.right <= seen && r.top <= 24,
+          right: Math.round(r.right), top: Math.round(r.top), seen: Math.round(seen) };
+      });
+      await page.click('#sample-card-dialog-close');
+      await page.waitForTimeout(200);
+      check('on a ' + label + ' the full screen sample card has a cross in its top right that closes it',
+        cross.visible && cross.corner && !(await page.evaluate(() => document.querySelector('#sample-card-dialog').open)),
+        JSON.stringify(cross));
+    }
+    await page.setViewportSize({ width: 1100, height: 900 });
   }
   check('the welcome page no longer offers the Enneagram or the old IG behaviour branch',
     !/Enneagram|IG behaviour/.test(await page.evaluate(() =>
@@ -2502,6 +2524,20 @@ try {
     }));
   // Bottom right on a laptop and a phone alike: its right edge meets the
   // tier's content edge and nothing in the tier sits below it.
+  {
+    await page.setViewportSize({ width: 1100, height: 900 });
+    await page.waitForTimeout(200);
+    const row = await page.evaluate(() => {
+      const button = document.querySelector('#insight-sample').getBoundingClientRect();
+      const first = document.querySelector('.insight-premium .insight-extras li').getBoundingClientRect();
+      return { sameLine: Math.abs((button.top + button.bottom) / 2 - (first.top + first.bottom) / 2) < 12,
+        text: document.querySelector('#insight-sample').textContent.trim(),
+        extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()) };
+    });
+    check('on a laptop "See sample" shares the line with "A PDF to keep"',
+      row.sameLine && row.text === 'See sample' &&
+        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding|🔥A bonus roast', JSON.stringify(row));
+  }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(200);
@@ -2510,7 +2546,8 @@ try {
       const pad = parseFloat(getComputedStyle(tier).paddingRight);
       const t = tier.getBoundingClientRect();
       const b = document.querySelector('#insight-sample').getBoundingClientRect();
-      const lowest = Math.max(...[...tier.querySelectorAll('.insight-part, .insight-extras li')]
+      // Below the four parts; on a laptop it shares the last line with the extras.
+      const lowest = Math.max(...[...tier.querySelectorAll('.insight-part')]
         .map(n => n.getBoundingClientRect().bottom));
       return { rightGap: Math.round(t.right - pad - b.right), below: b.top >= lowest - 1 };
     });
@@ -3817,22 +3854,17 @@ try {
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
       const title = document.querySelector('#psyche-card-title');
-      return Boolean(section) && !section.hidden && title.textContent === 'Summary card' &&
+      return Boolean(section) && !section.hidden && title.textContent === 'Psyche Card' &&
         section.contains(document.querySelector('#psyche-card-open'));
     }), await page.locator('#psyche-card-title').innerText());
-  // Every other section on the page opens with an icon beside its title —
-  // .card-head + .card-icon, built by the same sectionHead() the rest of the
-  // report uses. This section used to carry a bespoke <h2> with no icon at
-  // all, which broke that rhythm on the one card above the writing.
-  check('the section title carries an icon, in line with every other section',
+  // The card is shown by itself: no visible heading over it, and its name,
+  // Psyche Card, kept for screen readers only.
+  check('the card is shown by itself, named for screen readers only',
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
-      const head = section.querySelector('.card-head');
-      const icon = head && head.querySelector('.card-icon');
-      const title = head && head.querySelector('h2');
-      return Boolean(head) && Boolean(icon) && icon.textContent.trim().length > 0 &&
-        title === document.querySelector('#psyche-card-title') &&
-        icon.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING;
+      const title = document.querySelector('#psyche-card-title');
+      return !section.querySelector('.card-head') && title.classList.contains('visually-hidden') &&
+        title.getBoundingClientRect().width <= 1;
     }));
   // Unlike every other section on this page, the box around the card hugs its
   // content instead of spanning the full container — the preview stops
@@ -8084,7 +8116,7 @@ try {
   // payment sheet is the next stop, not the model.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('re-running with the loaded data still asks to pay before analysing',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
@@ -8664,7 +8696,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
   check('re-running with more data is charged, at the end rather than the start',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again',
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
   await page.click('#premium-cancel');
@@ -8722,7 +8754,7 @@ try {
 
   await page.waitForSelector('#premium-dialog[open]', { timeout: 25000 });
   check('so deleting and re-uploading is charged too, rather than being a free reset',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
   check('and nothing was sent to the model while that sheet was up',
     analyseBodies.length === beforeReupload);
 
@@ -10077,7 +10109,7 @@ try {
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
       check('structured: the report runs the overview, then four parts',
-        parts.join() === 'overview,who,drives,connect,together', parts.join());
+        parts.join() === 'overview,who,drives,connect,together,appendix', parts.join());
       const shape = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
         const parts = Array.from(body.querySelectorAll('.part-card'));
@@ -10087,14 +10119,15 @@ try {
           parts: parts.map(p => p.getAttribute('data-part-card') + ':' + (p.classList.contains('is-collapsed') ? 'shut' : 'open')),
           inner: body.querySelectorAll('.part-body .card-head-toggle').length,
           about: body.querySelectorAll('.about-card').length,
-          badges: body.querySelectorAll('.part-card .mode-badge').length,
+          // The roast's own badge says what it is, not that it was paid for.
+          badges: body.querySelectorAll('.part-card .mode-badge:not(.bonus-badge)').length,
           whoLast: who ? who.lastElementChild.className : '',
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the four parts are the only disclosures, and all five start open',
-        shape.toggles === 5 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open', JSON.stringify(shape));
+      check('structured: the overview, the four parts and the appendix are the only disclosures, and all six start open',
+        shape.toggles === 6 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open', JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: wellbeing closes Who you are',
@@ -10184,9 +10217,9 @@ try {
       check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
         (await sp.locator('#profile-body .connects').count()) === 0 &&
         !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
-      check('structured: no digital footprint section, no appendix heading, no MBTI caveat line',
+      check('structured: no digital footprint section, the appendix is part 05, no MBTI caveat line',
         !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
-        (await sp.locator('#profile-body [data-part="appendix"]').count()) === 0 &&
+        (await sp.locator('#profile-body .report-part[data-part="appendix"]').count()) === 1 &&
         !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
       check('structured: neither the plan nor the pressure points name a pattern under each item',
         (await sp.locator('#profile-body .origin, #profile-body .pattern-chip').count()) === 0 &&
@@ -10237,11 +10270,13 @@ try {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
         const together = document.querySelector('#profile-body .part-card[data-part-card="together"]');
-        return [at('.part-card[data-part-card="together"]'), at('.method-card'), at('.bonus-card'),
+        const appendix = document.querySelector('#profile-body .part-card[data-part-card="appendix"]');
+        const inside = appendix ? Array.from(appendix.querySelectorAll('.method-card, .bonus-card')).map(n => n.classList.contains('method-card') ? 'method' : 'roast') : [];
+        return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: the method stands apart after Part 4, and the roast comes last',
-        order[0] >= 0 && order[0] < order[1] && order[1] < order[2] && order[3] === 0, order.join());
+      check('structured: after Part 4 comes part 05, the appendix: the method, then the roast last',
+        order[0] >= 0 && order[0] < order[1] && order[2] === 'method+roast' && order[3] === 0, order.join());
       // Without a digest on the device, "Read from" is the model's own summary.
       const basedOnChips = await sp.$$eval('#profile-body .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
       check('structured: with no digest on the device, Read from falls back to the model\'s own summary',
@@ -10334,8 +10369,8 @@ try {
       });
       check('structured: numbered part headings, and a nav bar that names them as they are headed',
         visuals.structuredClass && visuals.nav.join('|') ===
-          '00Overview|01Who you are|02What drives you|03How you connect and work|04Putting it together|Evidence and method|Let us roast you' &&
-        visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
+          '00Overview|01Who you are|02What drives you|03How you connect & work|04Putting it together|05Appendix' &&
+        visuals.numerals.join() === '00,01,02,03,04,05', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
       check('structured: sections inside a part carry no one-line result of their own — they are open',
@@ -10441,6 +10476,74 @@ try {
       check('structured: no wellness title from the classic layout',
         /Wellbeing/.test(await sp.locator('#profile-body .wellness-card .card-head').textContent()));
 
+      // A jump from the nav lands with the part's heading in full view, clear
+      // of the site's header and of the nav where it sticks over the page.
+      for (const [label, width] of [['wide', 1440], ['laptop', 1100], ['phone', 390]]) {
+        await sp.setViewportSize({ width, height: 900 });
+        await sp.evaluate(() => window.scrollTo(0, 0));
+        await sp.waitForTimeout(250);
+        const landed = [];
+        for (const key of ['drives', 'connect', 'together']) {
+          await sp.click('#profile-body .part-nav-item[data-part-target="' + key + '"]');
+          await sp.waitForTimeout(900);
+          landed.push(await sp.evaluate(key => {
+            const heading = document.querySelector('#profile-body .report-part[data-part="' + key + '"]');
+            const r = heading.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + 12, r.top + r.height / 2);
+            return key + ':' + Math.round(r.top) + ':' + Boolean(hit && heading.contains(hit));
+          }, key));
+        }
+        check('structured: on a ' + label + ' screen a nav jump shows the part\'s whole heading',
+          landed.every(entry => entry.endsWith(':true')), landed.join(' '));
+      }
+      // The roast is grey while covered, and in the page's own colours once read.
+      {
+        const shade = () => sp.evaluate(() => {
+          const card = document.querySelector('#profile-body .bonus-card');
+          // color-mix() comes back as color(srgb 0-1 …), a plain colour as rgb(0-255 …).
+          const raw = getComputedStyle(card).backgroundColor;
+          const scale = /^color\(/.test(raw) ? 255 : 1;
+          const [r, g, b] = raw.replace(/^color\(srgb/, '').match(/\d*\.?\d+/g).map(n => Number(n) * scale);
+          const body = getComputedStyle(document.querySelector('#profile-body .work-card')).backgroundColor;
+          return { rgb: [r, g, b], grey: Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 150 && r < 240,
+            same: getComputedStyle(card).backgroundColor === body };
+        });
+        const covered = await shade();
+        await sp.locator('#profile-body .bonus-reveal').scrollIntoViewIfNeeded();
+        await sp.click('#profile-body .bonus-reveal');
+        await sp.waitForTimeout(300);
+        const read = await shade();
+        check('structured: the roast is grey while covered, not black, and turns the page\'s own colour once read',
+          covered.grey && !covered.same && read.same, JSON.stringify([covered, read]));
+        await sp.click('#profile-body .bonus-hide');
+      }
+      // A full report on a wide, tall screen: the Psyche Card sits small in the
+      // left column above the nav, and opens full screen when clicked.
+      await sp.setViewportSize({ width: 1440, height: 900 });
+      await sp.evaluate(() => window.scrollTo(0, 0));
+      await sp.waitForTimeout(300);
+      const sideCard = await sp.evaluate(() => {
+        const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
+        const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+        const body = document.querySelector('#profile-body').getBoundingClientRect();
+        return { fixed: getComputedStyle(document.querySelector('#psyche-card-section')).position === 'fixed',
+          beside: card.right <= body.left, above: card.bottom <= nav.top, sameColumn: Math.abs(card.left - nav.left) < 2,
+          small: card.width <= 240, navFits: nav.bottom <= innerHeight };
+      });
+      check('structured: a full report on a wide screen keeps its Psyche Card above the nav in the left column',
+        Object.values(sideCard).every(Boolean), JSON.stringify(sideCard));
+      await sp.click('#psyche-card-open');
+      await sp.waitForTimeout(400);
+      check('structured: and clicking it opens the card full screen',
+        await sp.evaluate(() => document.querySelector('#card-dialog').open));
+      await sp.keyboard.press('Escape');
+      await sp.setViewportSize({ width: 1100, height: 900 });
+      await sp.waitForTimeout(300);
+      check('structured: below that width the card is back at the top of the column',
+        await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card-section')).position !== 'fixed' &&
+          document.querySelector('#psyche-card-section').getBoundingClientRect().bottom <=
+            document.querySelector('#profile-body').getBoundingClientRect().top + 1));
+
       // Ticking an action keeps it ticked on this device.
       await sp.locator('#profile-body .development-card .plan-check').first().check();
       await sp.reload({ waitUntil: 'load' });
@@ -10489,18 +10592,18 @@ try {
       const at = text => structuredPdf.lastIndexOf(text);
       const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
-        'Values & Beliefs', 'How you connect and work', 'Attachment style', 'What you bring', 'Who suits you',
+        'Values & Beliefs', 'How you connect & work', 'Attachment style', 'What you bring', 'Who suits you',
         'What holds you back', 'Putting it together', 'Development plan', 'Your plan', 'Under pressure',
         'Evidence and method', 'Let us roast you'];
       check('structured PDF: the page\'s sections in the page\'s order',
         pdfOrder.every((text, i, all) => at(text) >= 0 && (i === 0 || at(text) > at(all[i - 1]))),
         pdfOrder.map(text => text + '@' + at(text)).join(', '));
       check('structured PDF: none of what the page dropped',
-        !['About this report', 'PART 1', 'APPENDIX', 'The unvarnished read', 'CONNECTS TO', 'RAISED BY', 'Digital footprint',
+        !['About this report', 'PART 1', 'The unvarnished read', 'CONNECTS TO', 'RAISED BY', 'Digital footprint',
           'Your digital footprint', 'Sources read', 'REPORT FORMAT', 'Structured report, v1', 'BUILD'].some(t => structuredPdf.includes(t)) &&
           !/\bBelief\b/.test(structuredPdf) &&
           !structuredPdf.includes(sampleReport.mbti.caveat.slice(0, 40)),
-        ['About this report', 'PART 1', 'APPENDIX', 'CONNECTS TO', 'RAISED BY', 'Digital footprint', 'Sources read', 'BUILD', 'Belief']
+        ['About this report', 'PART 1', 'CONNECTS TO', 'RAISED BY', 'Digital footprint', 'Sources read', 'BUILD', 'Belief']
           .filter(t => structuredPdf.includes(t)).join(', '));
       check('structured PDF: the running head carries the date, and the cover card is the story card\'s',
         /Sample · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
@@ -10528,8 +10631,15 @@ try {
       check('structured PDF: every section heading shares its page with its first block',
         opens.every(([title, first]) => pageOf(first) > 0 && pages[pageOf(first)].includes(title)),
         opens.map(([title, first]) => first + '@' + pageOf(first) + ':' + (pageOf(first) > 0 && pages[pageOf(first)].includes(title))).join(', '));
+      check('structured PDF: Evidence and method sits under an Appendix heading, and the roast is alone on the last page',
+        pages[pages.findIndex((pg, i) => i > 0 && pg.includes('Evidence and method'))].includes('Appendix') &&
+          pages[pages.length - 1].includes('APPENDIX') && pages[pages.length - 1].includes('Let us roast you') &&
+          !pages[pages.length - 1].includes('Evidence and method'),
+        pages.length + ' pages');
+      check('structured PDF: the contents list names part 05, the appendix',
+        pages[0].includes('05') && pages[0].includes('Appendix') && !pages[0].includes('Let us roast you'), pages[0].slice(-300));
       check('structured PDF: every part opens a page of its own',
-        ['Who you are', 'What drives you', 'How you connect and work', 'Putting it together'].every(title => {
+        ['Who you are', 'What drives you', 'How you connect & work', 'Putting it together'].every(title => {
           const page = pages.findIndex((pg, i) => i > 0 && pg.includes(title));
           return page > 0 && pages[page].replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title);
         }));
@@ -10553,6 +10663,31 @@ try {
         /Your signature patterns/.test(offer) && /What motivates you/.test(offer) && /Development plan/.test(offer));
       check('structured: and still draws nothing it has not been paid for',
         (await sp.locator('#profile-body .pattern, #profile-body .motive-row, #profile-body .dev-item').count()) === 0);
+      // A free report: no nav, the card on the left half of the column and a
+      // short Evidence and method on the right, and no trust card or re-run —
+      // more data comes with the full report, whose unlock asks for it first.
+      const freeShape = await sp.evaluate(() => {
+        const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
+        const side = document.querySelector('#profile-side');
+        const s = side.getBoundingClientRect();
+        const column = document.querySelector('#profile-top').getBoundingClientRect();
+        return { nav: document.querySelectorAll('.part-nav').length, sideShown: !side.hidden,
+          cardLeft: Math.abs(card.left - column.left) < 2, sideRight: s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
+          half: Math.abs(card.width - column.width / 2) < column.width * 0.06,
+          method: /Evidence and method/.test(side.textContent) && /Confidence/.test(side.textContent),
+          trust: document.querySelectorAll('#view-profile .confidence-card, #rerun-with-data').length };
+      });
+      check('structured: a free report has no nav, its card on the left half and a short Evidence and method beside it',
+        freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.half && freeShape.method,
+        JSON.stringify(freeShape));
+      check('structured: and no "How much to trust this" card or re-run button', freeShape.trust === 0, JSON.stringify(freeShape));
+      await sp.setViewportSize({ width: 390, height: 844 });
+      await sp.waitForTimeout(300);
+      check('structured: on a phone the free report stacks the card over its evidence, nothing off the side',
+        await sp.evaluate(() => document.querySelector('#profile-side').getBoundingClientRect().top >=
+          document.querySelector('#psyche-card-section').getBoundingClientRect().bottom - 1 &&
+          document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
+      await sp.setViewportSize({ width: 1100, height: 900 });
       check('structured: no console errors', spErrors.length === 0, spErrors.join(' | '));
     } finally {
       await sp.close();
