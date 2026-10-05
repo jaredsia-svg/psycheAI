@@ -1169,7 +1169,7 @@
    * paywall exists.
    *
    * Four sections live here — the wellness read, the attachment read, the
-   * ideal-partner read and the career coaching — and one S$1.99 unlock fills
+   * ideal-partner read and the career coaching — and one US$8 unlock fills
    * all four. The roast used to be one of them; it is free now, printed
    * unconditionally from `source.bonus` alongside the other free sections
    * below rather than gated through this table — see "9a. The roast" further
@@ -1672,6 +1672,209 @@
     return this;
   };
 
+  // ---------- structured layout: boxed blocks ----------
+  //
+  // Rows of text laid out once at a width, so a box can be measured before it
+  // is drawn and kept whole on one page. A row is { text, style, leading,
+  // before, indent, bullet, right }: `right` is a small label drawn at the
+  // right edge of the row's first line, `bullet` a dot before it.
+  const GOOD_WASH = [0.910, 0.965, 0.937];
+  const WARN_WASH = [0.992, 0.949, 0.902];
+  const T_TITLE = { size: 10.6, bold: true, color: INK };
+  const T_BODY = { size: 9.6, color: INK };
+  const T_SOFT = { size: 8.9, color: SOFT };
+  const T_LABEL = { size: 7, bold: true, color: SOFT, tracking: 1 };
+
+  // (blockWidth, below, is read when a block is drawn, not when it is laid out.)
+  function layoutRows(rows, width) {
+    const laid = [];
+    let height = 0;
+    for (const row of rows) {
+      if (!row || !row.text) continue;
+      height += row.before || 0;
+      const indent = (row.indent || 0) + (row.bullet ? 11 : 0);
+      const rightWidth = row.right ? measure(toWinAnsi(row.right), 7, true, 0.8) + 10 : 0;
+      const lines = wrap(toWinAnsi(row.text), width - indent - rightWidth, row.style);
+      const leading = row.leading || row.style.size * 1.42;
+      laid.push({ row, lines, top: height, indent, leading });
+      height += lines.length * leading;
+    }
+    return {
+      height,
+      draw(doc, x, top) {
+        for (const item of laid) {
+          const { row, lines, indent, leading } = item;
+          if (row.bullet) doc.roundRect(x + (row.indent || 0) + 1, top + item.top + leading * 0.5 - 2, 4, 4, 2, row.bullet);
+          lines.forEach((line, i) => doc.draw(line, x + indent, top + item.top + i * leading + row.style.size * 0.9, row.style));
+          if (row.right) {
+            const label = toWinAnsi(row.right.toUpperCase());
+            doc.draw(label, x + blockWidth - measure(label, 7, true, 0.8), top + item.top + row.style.size * 0.9,
+              { size: 7, bold: true, color: row.rightColor || ACCENT, tracking: 0.8 });
+          }
+        }
+      },
+    };
+  }
+  // The width a row's right-hand label is aligned against; set by whoever
+  // draws the block, since one layout can be drawn in a column of any width.
+  let blockWidth = COLUMN;
+
+  /** A subsection heading inside a section: a short bar of colour and the title. */
+  Report.prototype.subhead = function (text, color) {
+    const style = { size: 12.4, bold: true, color: INK };
+    const lines = wrap(toWinAnsi(text), COLUMN - 14, style);
+    this.need(48 + lines.length * 16);
+    this.space(14);
+    this.doc.roundRect(MARGIN, this.doc.y + 1, 4, 13, 2, color || ACCENT);
+    for (const line of lines) {
+      this.doc.draw(line, MARGIN + 12, this.doc.y + 11.5, style);
+      this.doc.y += 16;
+    }
+    this.space(6);
+    return this;
+  };
+
+  /**
+   * A box of rows, kept whole on one page: a tinted fill, a coloured bar down
+   * its left edge, an optional small label over its rows. Taller than a page
+   * and it is set as plain rows instead, rather than clipped.
+   */
+  Report.prototype.panel = function (rows, options) {
+    const o = options || {};
+    const pad = 12;
+    const inner = COLUMN - pad * 2 - 4;
+    const body = layoutRows(rows, inner);
+    const labelH = o.label ? 15 : 0;
+    const height = body.height + labelH + pad * 2;
+    if (height > PAGE.height - MARGIN * 2 - 80) {
+      for (const row of rows) if (row && row.text) this.body(row.text, { size: row.style.size, bold: row.style.bold, italic: row.style.italic, color: row.style.color });
+      return this;
+    }
+    this.need(height + 8);
+    const top = this.doc.y;
+    this.doc.roundRect(MARGIN, top, COLUMN, height, 9, o.fill || WASH);
+    this.doc.rect(MARGIN, top + 4, 3, height - 8, o.bar || ACCENT);
+    if (o.label) {
+      this.doc.draw(toWinAnsi(String(o.label).toUpperCase()), MARGIN + pad + 4, top + pad + 7,
+        { size: 7, bold: true, color: o.bar || ACCENT, tracking: 1.1 });
+    }
+    blockWidth = inner;
+    body.draw(this.doc, MARGIN + pad + 4, top + pad + labelH);
+    blockWidth = COLUMN;
+    this.doc.y = top + height + 8;
+    return this;
+  };
+
+  /**
+   * Two boxes side by side, each with a title in its own colour over a rule
+   * of that colour — the page's two-column splits, on paper. Each side is
+   * { title, color, fill, rows }. Too tall for a page together, and they are
+   * set one above the other instead.
+   */
+  Report.prototype.pairedPanels = function (left, right) {
+    const gap = 12;
+    const pad = 11;
+    const width = (COLUMN - gap) / 2;
+    const inner = width - pad * 2;
+    const sides = [left, right].filter(side => side && (side.rows || []).some(row => row && row.text));
+    if (!sides.length) return this;
+    const laid = sides.map(side => ({ side, body: layoutRows(side.rows, inner) }));
+    const titleH = 24;
+    const height = Math.max(...laid.map(l => l.body.height)) + titleH + pad * 2;
+    if (sides.length === 1 || height > PAGE.height - MARGIN * 2 - 80) {
+      for (const side of sides) this.panel(side.rows, { label: side.title, bar: side.color, fill: side.fill });
+      return this;
+    }
+    this.need(height + 8);
+    const top = this.doc.y;
+    laid.forEach(({ side, body }, i) => {
+      const x = MARGIN + i * (width + gap);
+      this.doc.roundRect(x, top, width, height, 9, side.fill || WHITE);
+      this.doc.roundRect(x, top, width, 4, 2, side.color || ACCENT);
+      this.doc.draw(toWinAnsi(side.title), x + pad, top + pad + 10, { size: 10.4, bold: true, color: side.color || ACCENT });
+      blockWidth = inner;
+      body.draw(this.doc, x + pad, top + pad + titleH);
+      blockWidth = COLUMN;
+    });
+    this.doc.y = top + height + 8;
+    return this;
+  };
+
+  /** A wellbeing dimension: its label and its band on one line, then the read. */
+  Report.prototype.facetBand = function (label, band, reading) {
+    this.need(58);
+    this.space(8);
+    const text = toWinAnsi(String(label).toUpperCase());
+    const labelStyle = { size: 7.6, bold: true, color: ACCENT_2, tracking: 1.1 };
+    this.doc.draw(text, MARGIN, this.doc.y + 9, labelStyle);
+    if (band) {
+      const word = toWinAnsi(band);
+      const colors = { steady: GOOD, mixed: WARN, 'under strain': ACCENT_2, 'not enough evidence': SOFT };
+      const color = colors[band] || ACCENT;
+      const x = MARGIN + measure(text, 7.6, true, 1.1) + 10;
+      const w = measure(word, 8, true) + 14;
+      this.doc.roundRect(x, this.doc.y, w, 13, 6.5, band === 'steady' ? GOOD_WASH : band === 'mixed' ? WARN_WASH : WASH);
+      this.doc.draw(word, x + 7, this.doc.y + 9.4, { size: 8, bold: true, color });
+    }
+    this.doc.y += 18;
+    if (reading) this.body(reading, { size: 9.8, leading: 14 });
+    return this;
+  };
+
+  /**
+   * One pressure point as a card: the strength and what it turns into, the
+   * level meter, a bar from "at its best" to "overused" with a marker at how
+   * far their data already shows it, then the read, the early signs, the
+   * counter-move and the question — the page's gauge card, on paper.
+   */
+  Report.prototype.pressureCard = function (item, labels) {
+    const pad = 13;
+    const inner = COLUMN - pad * 2 - 4;
+    const rows = [
+      item.detail && { text: item.detail, style: T_BODY, leading: 13.8 },
+      (item.earlySigns || []).length && { text: labels.earlySigns.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
+    ].concat((item.earlySigns || []).map(sign => ({ text: sign, style: T_BODY, leading: 13.4, bullet: WARN })))
+      .concat([
+        item.mitigation && { text: labels.counterMove.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
+        item.mitigation && { text: item.mitigation, style: T_BODY, leading: 13.6 },
+        item.question && { text: labels.reflect.toUpperCase(), style: T_LABEL, leading: 12, before: 8 },
+        item.question && { text: item.question, style: { size: 9.6, italic: true, color: INK }, leading: 13.6 },
+      ]);
+    const body = layoutRows(rows.filter(Boolean), inner);
+    const headStyle = { size: 11.2, bold: true, color: INK };
+    const head = wrap(toWinAnsi(item.strength + '  ->  ' + (item.overused || '')), inner - 120, headStyle);
+    const headH = head.length * 15 + 26;
+    const height = headH + body.height + pad * 2;
+    this.need(height + 10);
+    const top = this.doc.y;
+    const x = MARGIN + pad + 4;
+    this.doc.roundRect(MARGIN, top, COLUMN, height, 10, WHITE);
+    this.doc.rect(MARGIN, top + 5, 3, height - 10, WARN);
+    head.forEach((line, i) => this.doc.draw(line, x, top + pad + 10 + i * 15, headStyle));
+    levelMeter(this.doc, MARGIN + COLUMN - pad, top + pad, item.level, labels.level);
+    // The bar: green at its best, warm where it costs, and a marker at the level.
+    const barTop = top + pad + head.length * 15 + 6;
+    const segments = 24;
+    for (let i = 0; i < segments; i++) {
+      const t = i / (segments - 1);
+      const color = GOOD.map((c, k) => c + (WARN[k] - c) * t);
+      this.doc.rect(x + inner * i / segments, barTop, inner / segments + 0.4, 4, color);
+    }
+    const reach = { mild: 0.3, moderate: 0.58, marked: 0.86 }[item.level];
+    if (reach) {
+      this.doc.roundRect(x + inner * reach - 5, barTop - 3, 10, 10, 5, WHITE);
+      this.doc.roundRect(x + inner * reach - 3.5, barTop - 1.5, 7, 7, 3.5, INK);
+    }
+    this.doc.draw(toWinAnsi(labels.atBest), x, barTop + 14, { size: 7, color: SOFT });
+    const over = toWinAnsi(labels.overused);
+    this.doc.draw(over, x + inner - measure(over, 7, false), barTop + 14, { size: 7, color: SOFT });
+    blockWidth = inner;
+    body.draw(this.doc, x, top + pad + headH);
+    blockWidth = COLUMN;
+    this.doc.y = top + height + 10;
+    return this;
+  };
+
   /** The three-step level meter beside a pressure point. */
   function levelMeter(doc, right, top, level, label) {
     const levels = ['mild', 'moderate', 'marked'];
@@ -1796,7 +1999,7 @@
       for (const [label, key] of Copy.WELLNESS_FACETS) {
         const facet = wellness[key];
         if (!facet) continue;
-        out.facet(label, facet.band, facet.reading);
+        out.facetBand(label, facet.band, facet.reading);
         out.tags(facet.evidence);
         if (facet.confidence) out.fineprint(TEXT.wellnessConfidence + facet.confidence);
       }
@@ -1866,49 +2069,59 @@
     const idealPartner = unlocked.idealPartner;
     out.sectionTitle(TEXT.relationships, def('relationships'));
     // Love languages first, then attachment, what they bring and where it
-    // gets hard, and who suits them — one section, as on the page.
+    // gets hard, and who suits them — one section, as on the page, each part
+    // under its own subheading and set in boxes rather than as a run of text.
+    const loveRows = list => (list || []).filter(entry => entry && entry.language).flatMap((item, i) => [
+      { text: item.language, style: T_TITLE, leading: 14, before: i ? 9 : 0, right: item.strength || '' },
+      item.inPractice && { text: item.inPractice, style: T_BODY, leading: 13.2, before: 2 },
+      item.why && { text: item.why, style: T_SOFT, leading: 12.4, before: 2 },
+    ]).filter(Boolean);
     const love = relationship.loveLanguages;
-    if (love) {
-      const columns = [[TEXT.loveReceiving, love.receiving], [TEXT.loveGiving, love.giving]]
-        .filter(entry => (entry[1] || []).some(item => item && item.language));
-      if (columns.length) {
-        out.h3(TEXT.loveHead);
-        for (const [title, list] of columns) {
-          out.eyebrow(title, SOFT);
-          for (const item of list.filter(entry => entry && entry.language)) {
-            out.point(item.language + (item.strength ? '  ·  ' + item.strength : ''),
-              [item.inPractice, item.why].filter(Boolean).join(' '));
-          }
-        }
-        out.fineprint(S.touchNote);
-      }
+    if (love && ((love.receiving || []).length || (love.giving || []).length)) {
+      out.subhead(TEXT.loveHead);
+      out.pairedPanels(
+        { title: TEXT.loveReceiving, color: ACCENT, fill: WASH, rows: loveRows(love.receiving) },
+        { title: TEXT.loveGiving, color: ACCENT_2, fill: WASH, rows: loveRows(love.giving) });
+      out.fineprint(S.touchNote);
     }
     if (attachment) {
-      out.h3(S.howYouAttach);
-      if (attachment.style) out.body(attachment.style, { size: 10.6, bold: true, leading: 15 });
-      if (attachment.styleTone) out.body(attachment.styleTone, { size: 10, bold: true, leading: 15 });
-      if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
+      out.subhead(S.howYouAttach);
+      out.panel([
+        attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
+        attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
+        attachment.why && { text: attachment.why, style: T_BODY, leading: 13.8, before: 6 },
+      ], { fill: WASH, bar: ACCENT });
       out.tags(attachment.derivedFrom);
-      if ((attachment.implications || []).length) {
+      const practice = (attachment.implications || []).filter(item => item && item.title);
+      if (practice.length) {
         out.eyebrow(S.inPractice, SOFT);
-        out.points(attachment.implications);
+        out.panel(practice.flatMap((item, i) => [
+          { text: item.title, style: T_TITLE, leading: 14, before: i ? 8 : 0 },
+          item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
+        ]).filter(Boolean), { fill: WHITE, bar: ACCENT_2 });
       }
     }
-    out.h3(S.whatYouBring, GOOD);
-    out.points(relationship.strengths);
-    out.h3(S.whereItGetsHard, WARN);
-    out.points(relationship.weaknesses);
+    const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
+      { text: item.title, style: T_TITLE, leading: 14, before: i ? 9 : 0 },
+      item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
+    ]).filter(Boolean);
+    out.space(10);
+    out.pairedPanels(
+      { title: S.whatYouBring, color: GOOD, fill: GOOD_WASH, rows: pointRows(relationship.strengths) },
+      { title: S.whereItGetsHard, color: WARN, fill: WARN_WASH, rows: pointRows(relationship.weaknesses) });
     if (idealPartner) {
-      out.h3(S.whoSuitsYou);
-      if (idealPartner.summary) out.body(idealPartner.summary, { size: 10.4, italic: true, leading: 15 });
-      out.eyebrow(TEXT.idealPartnerNeeds, GOOD);
-      out.points(idealPartner.needs);
-      out.eyebrow(TEXT.idealPartnerCarefulOf, WARN);
-      out.points(idealPartner.carefulOf);
+      out.subhead(S.whoSuitsYou);
+      if (idealPartner.summary) {
+        out.panel([{ text: idealPartner.summary, style: { size: 11, bold: true, italic: true, color: INK }, leading: 15.5 }],
+          { fill: WASH, bar: ACCENT });
+      }
+      out.pairedPanels(
+        { title: TEXT.idealPartnerNeeds, color: GOOD, fill: GOOD_WASH, rows: pointRows(idealPartner.needs) },
+        { title: TEXT.idealPartnerCarefulOf, color: WARN, fill: WARN_WASH, rows: pointRows(idealPartner.carefulOf) });
     }
     // How you work: the description and the coach's read as one section —
-    // the edge, the other strengths with what is not yet used, and one list
-    // of what holds them back. The actions are on the plan.
+    // the edge in a box of its own, then what sets them apart beside what
+    // holds them back. The actions are on the plan.
     const career = source.career || {};
     const coaching = unlocked.careerAssessment;
     out.sectionTitle(S.titles.work, def('work'));
@@ -1917,9 +2130,10 @@
       out.space(4);
     }
     if (coaching && coaching.edge) {
-      out.eyebrow(TEXT.careerEdge, ACCENT);
-      out.h3(coaching.edge.headline);
-      if (coaching.edge.detail) out.body(coaching.edge.detail, { size: 10, leading: 15 });
+      out.panel([
+        { text: coaching.edge.headline, style: { size: 12, bold: true, color: INK }, leading: 16 },
+        coaching.edge.detail && { text: coaching.edge.detail, style: T_BODY, leading: 13.8, before: 4 },
+      ], { fill: WASH, bar: ACCENT, label: TEXT.careerEdge });
       out.tags(coaching.edge.evidence);
     }
     const strengths = (career.strengths || []).concat(coaching && coaching.underused
@@ -1928,10 +2142,9 @@
       coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
       career.weaknesses || [],
       career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
-    out.h3(coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, GOOD);
-    out.points(strengths);
-    out.h3(S.whatHoldsYouBack, WARN);
-    out.points(holding);
+    out.pairedPanels(
+      { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, color: GOOD, fill: GOOD_WASH, rows: pointRows(strengths) },
+      { title: S.whatHoldsYouBack, color: WARN, fill: WARN_WASH, rows: pointRows(holding) });
 
     // 04: putting it together.
     out.part(S.parts.together, numeral('together'));
@@ -1978,25 +2191,11 @@
     if (pressure.length) {
       out.sectionTitle(S.titles.pressurePoints, def('pressurePoints'));
       for (const item of pressure) {
-        out.need(90);
-        out.space(6);
-        const top = doc.y;
-        const head = item.strength + '  ->  ' + (item.overused || '');
-        const headStyle = { size: 11, bold: true, color: INK };
-        const lines = wrap(toWinAnsi(head), COLUMN - 130, headStyle);
-        lines.forEach((line, i) => doc.draw(line, MARGIN, top + 10 + i * 15, headStyle));
-        levelMeter(doc, PAGE.width - MARGIN, top + 2, item.level, (S.levelLabels[item.level] || ''));
-        doc.y = top + lines.length * 15 + 4;
-        if (item.detail) out.body(item.detail, { size: 9.8, leading: 14 });
-        if ((item.earlySigns || []).length) {
-          out.eyebrow(S.earlySigns, SOFT);
-          for (const sign of item.earlySigns) out.bullet(sign);
-        }
-        if (item.mitigation) out.labelled(S.counterMove, item.mitigation, { color: INK, size: 9.6 });
-        if (item.question) out.labelled(S.reflect, item.question, { italic: true, color: INK, size: 9.6 });
-        origin({ pattern: item.pattern });
-        out.space(6);
-        doc.hairline(doc.y, MARGIN, PAGE.width - MARGIN);
+        out.pressureCard(item, {
+          earlySigns: S.earlySigns, counterMove: S.counterMove, reflect: S.reflect,
+          level: S.levelLabels[item.level] || '', atBest: S.atBest,
+          overused: S.overusedPrefix + (item.overused || ''),
+        });
       }
     }
 

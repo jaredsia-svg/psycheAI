@@ -306,70 +306,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .step-card p { margin: 0; font-size: .88rem; color: var(--ink-soft); }
 .step-num {
   display: grid; place-items: center; width: 26px; height: 26px;
-  /* --bg, not #fff, for the reason spelled out on .insight-hub below: white on
-     the dark theme's pale accent measures 2.25:1, which is not readable. */
+  /* --bg, not #fff: white on the dark theme's pale accent measures 2.25:1,
+     which is not readable; --bg flips with the accent. */
   border-radius: 50%; background: var(--accent); color: var(--bg); font-size: .8rem; font-weight: 700;
 }
 
-/* ---------- what the report contains ---------- */
-/*
-   A hub, four branches and a base. The connectors are drawn only at the width
-   where the four branches genuinely sit in one row: below that the grid wraps
-   and a rail would be a line pointing at nothing. Everything load-bearing is
-   text in document order, so the diagram losing its lines costs the reader
-   nothing but the picture.
-*/
-/* The button sits on the same row as the heading on a wide screen, at the
-   card's top right, and drops under it on a phone — the same shape
-   .help-head uses for "See illustration" beside its own heading. */
-.insight-card-head {
-  display: flex; flex-wrap: wrap; align-items: baseline;
-  gap: .6rem 1rem;
-}
-.insight-card-head h2 { margin: 0; flex: 1 1 auto; }
-.insight-card-head .btn { flex: none; padding: .45rem .9rem; font-size: .9rem; }
-
-.insight-map { margin-top: 1.1rem; }
-
-/* Text is --bg rather than white: --accent is a deep purple in the light theme
-   and a pale one in the dark, so white holds on one and washes out on the
-   other. --bg flips with it, staying the far end of the contrast either way. */
-.insight-hub {
-  display: block; width: fit-content; margin: 0 auto;
-  padding: .4rem 1.1rem; border-radius: 999px;
-  background: var(--accent); color: var(--bg);
-  font-size: .92rem; font-weight: 700; letter-spacing: .01em;
-}
-.insight-rail { display: none; }
-
-.insight-branches {
-  display: grid; grid-template-columns: 1fr; gap: .8rem; margin-top: 1rem;
-}
-.insight-branch {
-  position: relative;
-  background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: .9rem 1rem;
-}
-/* Icon beside the title while the branches are stacked, above it once they are
-   side by side. Narrow means tall: a phone reading four branches down the page
-   gets four fewer lines this way, and the icon has the width to spare there
-   that it does not have in a quarter-width column. */
-.insight-head { display: flex; align-items: center; gap: .55rem; }
-.insight-icon { font-size: 1.3rem; line-height: 1; }
-/* The head owns no bottom spacing and the list owns its top, so the gap under
-   the title is one number at every width rather than two that have to agree. */
-.insight-branch h3 { margin: 0; font-size: .95rem; line-height: 1.35; }
-.insight-branch ul { margin: .6rem 0 0; padding-left: 1.05rem; }
-.insight-branch li {
-  font-size: .86rem; color: var(--ink-soft); line-height: 1.5; margin-bottom: .15rem;
-}
-.insight-branch li::marker { color: var(--accent); }
-
 /* ---------- the premium tier block ---------- */
 
-/* Shown on the welcome page under the insight diagram, in "What you can
-   expect?" under the free tiles, and as the sample dialog's footer. Built by
-   app.js's premiumTierHtml from PAID_SECTIONS.
+/* The offer of the full report: on the welcome page (insightsHtml) and
+   under a free card (fullReportLockedHtml).
 
    Solid accent border and a tinted fill, against the plain --line borders of
    everything around it: this is the one block on the page asking for money,
@@ -399,7 +344,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    point of the page — but four across a wide laptop screen is the opposite
    problem, a single thin row that is harder to scan than two rows of two.
    Fixed at exactly two columns above the breakpoint, the same one
-   .insight-branches switches at, rather than `auto-fit`, which would keep
+   the welcome page's tiers switch at, rather than `auto-fit`, which would keep
    adding a third and fourth column as the container gets wider. */
 .premium-tier-list {
   list-style: none; margin: .8rem 0 0; padding: 0;
@@ -606,48 +551,6 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    card treatment would be a box in a box. */
 .sample-dialog-body .section-card {
   box-shadow: none; border-radius: 12px; padding: 1rem clamp(.9rem, 2vw, 1.2rem);
-}
-
-@media (min-width: 560px) {
-  .insight-branches { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* Four across, and only here do the connectors mean anything: a stem down from
-   the hub, a rail spanning the branches, and a stub rising from each one. */
-@media (min-width: 900px) {
-  .insight-branches { grid-template-columns: repeat(4, 1fr); margin-top: 0; }
-  /* The inset is derived, not nudged. With four equal columns and three gaps
-     of g, the first column's centre sits at 12.5% of the track minus 3g/8 —
-     and 3 × .8rem / 8 is exactly .3rem. So the rail lands dead on the centre
-     of the outermost branch at any viewport width, and stays there as long as
-     the gap and the column count agree with this line. */
-  .insight-rail {
-    display: block; position: relative; height: 34px;
-    margin: 0 calc(12.5% - .3rem);
-  }
-  /* The stem, centred under the hub. */
-  .insight-rail::before {
-    content: ''; position: absolute; top: 0; left: 50%;
-    width: 1px; height: 17px; background: var(--line);
-  }
-  /* The rail, reaching the centre of the outermost branch on each side. */
-  .insight-rail::after {
-    content: ''; position: absolute; top: 17px; left: 0; right: 0;
-    height: 1px; background: var(--line);
-  }
-  .insight-branch::before {
-    content: ''; position: absolute; top: -17px; left: 50%;
-    width: 1px; height: 17px; background: var(--line);
-  }
-  /* Icon back above the title: a quarter-width column has no room to spend on
-     an icon beside two lines of heading. */
-  .insight-head { display: block; }
-  .insight-head h3 { margin-top: .4rem; }
-  /* None of the four titles currently wraps at this width, but if a future
-     edit lengthens one, one branch stepping its list down while three start
-     level would read as a mistake. Two lines at the stated line-height is
-     2.7em, so all four reserve it whether they need it or not. */
-  .insight-branch h3 { min-height: 2.7em; }
 }
 
 /* ---------- buttons ---------- */
@@ -2513,11 +2416,38 @@ details.more[open] > summary::after { content: ' ▴'; }
 .attach-dot { fill: var(--accent); }
 .attach-style { margin-top: 0; }
 
-/* Ideal partner: what you need and what to be careful of, side by side. */
-.partner-col { padding: .8rem 1rem; border-radius: 12px; border: 1px solid var(--line); }
-.partner-need { background: var(--good-soft); }
-.partner-careful { background: var(--warn-soft); }
-.partner-col h3 { margin-top: 0; }
+/* Who suits you: the verdict as a banner, then two matched lists. */
+.partner-summary {
+  display: flex; gap: .9rem; align-items: center; margin: .2rem 0 1rem; padding: 1rem 1.2rem;
+  border-radius: 16px; background: linear-gradient(120deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 30%, var(--bg)));
+}
+.partner-summary-icon {
+  flex: none; display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border-radius: 999px;
+  background: var(--bg-alt); font-size: 1.3rem; box-shadow: 0 2px 8px rgba(60, 20, 90, .12);
+}
+.partner-summary p { margin: 0; font-size: 1.02rem; font-weight: 600; font-style: italic; line-height: 1.45; color: var(--ink); }
+.partner-grid { display: grid; gap: .9rem; }
+@media (min-width: 680px) { .partner-grid { grid-template-columns: 1fr 1fr; } }
+.partner-col { padding: .9rem 1rem; border-radius: 14px; border: 1px solid var(--line); background: var(--bg-alt); border-top: 4px solid var(--good); }
+.partner-careful { border-top-color: var(--warn); }
+.partner-col-head { display: flex; align-items: center; gap: .55rem; margin: 0 0 .6rem; font-size: 1rem; }
+.partner-badge {
+  display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 999px;
+  background: var(--good-soft); color: var(--good); font-weight: 800; font-size: .9rem;
+}
+.partner-careful .partner-badge { background: var(--warn-soft); color: var(--warn); }
+.partner-items { list-style: none; margin: 0; padding: 0; counter-reset: partner; display: grid; gap: .1rem; }
+.partner-items li {
+  counter-increment: partner; position: relative; padding: .6rem 0 .6rem 2rem; border-top: 1px solid var(--line); margin: 0;
+}
+.partner-items li:first-child { border-top: 0; }
+.partner-items li::before {
+  content: counter(partner); position: absolute; left: 0; top: .6rem; width: 1.35rem; height: 1.35rem; border-radius: 999px;
+  display: grid; place-items: center; font-size: .75rem; font-weight: 800; color: var(--good); background: var(--good-soft);
+}
+.partner-careful .partner-items li::before { color: var(--warn); background: var(--warn-soft); }
+.partner-items strong { display: block; font-size: .95rem; }
+.partner-items span { display: block; font-size: .9rem; color: var(--ink-soft); line-height: 1.45; margin-top: .15rem; }
 
 /* The plan: one row per step, this week to this year, each action tickable.
    The step's name on the left and its actions beside it, stacked on a phone. */
@@ -2761,3 +2691,117 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-straits li, .pc-straits b { font-size: var(--pc-text); }
 .pc-schips span { font-size: var(--pc-text); }
 .pc-slove { font-size: var(--pc-text); }
+
+/* ---------- what insights will I get? ----------
+   Two tiers, and a note: the free summary card — what is on it, beside a
+   real card drawn from the sample — then the full premium report by its four
+   numbered parts, then compatibility, free. */
+.insight-card-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .6rem 1rem;
+}
+.insight-card-head h2 { margin: 0; flex: 1 1 auto; }
+.insight-card-head .btn { flex: none; padding: .45rem .9rem; font-size: .9rem; }
+
+.insight-tier { margin-top: 1.2rem; border-radius: var(--radius); }
+.tier-badges { margin: 0; }
+.tier-badge {
+  display: inline-block; padding: .18rem .65rem; border-radius: 999px;
+  font-size: .72rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+}
+.tier-badge-free { background: var(--good-soft); color: var(--good); }
+.tier-title { margin: .45rem 0 .25rem; font-size: 1.3rem; line-height: 1.25; }
+.tier-blurb { margin: 0 0 .9rem; color: var(--ink-soft); font-size: .95rem; }
+
+/* The free tier: what is on the card, and the card. */
+.insight-free {
+  display: grid; gap: 1.2rem; align-items: center;
+  padding: 1.2rem clamp(1rem, 3vw, 1.4rem);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg)), var(--bg));
+  border: 1px solid var(--line);
+}
+@media (min-width: 760px) { .insight-free { grid-template-columns: 1fr 250px; } }
+.insight-card .card-features, .insight-card .insight-parts, .insight-card .insight-extras { padding-left: 0; }
+.card-features {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr; gap: .5rem;
+}
+@media (min-width: 480px) { .card-features { grid-template-columns: 1fr 1fr; } }
+.card-features li {
+  display: flex; gap: .6rem; align-items: center; padding: .55rem .7rem;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 12px;
+}
+.card-feature-icon {
+  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem;
+  border-radius: 999px; background: var(--accent-soft); font-size: 1rem;
+}
+.card-features strong { display: block; font-size: .9rem; line-height: 1.3; }
+.card-features small { display: block; font-size: .78rem; color: var(--ink-soft); line-height: 1.35; }
+.insight-preview { margin: 0; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.insight-preview-frame {
+  border-radius: 18px; overflow: hidden; box-shadow: 0 18px 40px -18px rgba(60, 20, 90, .45);
+  transform: rotate(-2deg); transition: transform .3s ease;
+}
+.insight-preview:hover .insight-preview-frame { transform: rotate(0deg) translateY(-3px); }
+.insight-preview-frame .psyche-card { transform-origin: top left; }
+.insight-preview figcaption { font-size: .78rem; color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) { .insight-preview-frame { transition: none; } }
+
+/* The premium tier: four numbered parts, like the report itself. */
+.insight-premium.premium-tier { padding: 1.2rem clamp(1rem, 3vw, 1.4rem); }
+.insight-premium .premium-tier-head h3 { font-size: 1.3rem; margin: 0; }
+.insight-premium .tier-blurb { margin-top: .4rem; }
+.insight-parts {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr; gap: .7rem;
+}
+@media (min-width: 640px) { .insight-parts { grid-template-columns: 1fr 1fr; } }
+.insight-part {
+  display: flex; gap: .8rem; align-items: flex-start; padding: .9rem 1rem;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px;
+}
+.insight-part-num {
+  flex: none; font-size: 1.9rem; font-weight: 800; line-height: 1; letter-spacing: -.03em;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.insight-part h4 { margin: 0 0 .25rem; font-size: 1rem; }
+.insight-part p { margin: 0; font-size: .86rem; color: var(--ink-soft); line-height: 1.45; }
+.insight-part-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .55rem !important; }
+.insight-part-chips span {
+  font-size: .74rem; font-weight: 600; color: var(--accent); background: var(--accent-soft);
+  border-radius: 999px; padding: .15rem .55rem;
+}
+.insight-extras {
+  list-style: none; margin: .9rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .5rem 1.2rem;
+  font-size: .86rem; font-weight: 600; color: var(--ink);
+}
+.insight-extras li { display: flex; align-items: center; gap: .4rem; }
+
+/* Compatibility, free: one line under the two tiers. */
+.insight-compat {
+  margin-top: 1rem; display: flex; gap: .8rem; align-items: center;
+  padding: .85rem 1rem; border-radius: 14px; border: 1px dashed var(--line);
+}
+.insight-compat-icon { font-size: 1.5rem; }
+.insight-compat h3 { margin: 0; font-size: .98rem; }
+.insight-compat p { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
+
+/* The part nav, back under the summary card: each part by its heading. */
+.part-nav {
+  position: sticky; top: 3.4rem; z-index: 10;
+  display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none;
+  margin: 0 0 .8rem; padding: .4rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(8px);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.part-nav::-webkit-scrollbar { display: none; }
+#sample-sections .part-nav { top: 0; }
+.part-nav-item {
+  flex: none; border: 0; border-radius: 999px; padding: .32rem .8rem; cursor: pointer; white-space: nowrap;
+  background: transparent; color: var(--ink-soft); font: inherit; font-size: .82rem; font-weight: 600;
+}
+.part-nav-num { margin-right: .35rem; font-variant-numeric: tabular-nums; opacity: .65; }
+.part-nav-item:hover { color: var(--accent); }
+.part-nav-item.is-current { background: var(--accent); color: var(--bg-alt); }
+.part-nav-item.is-current .part-nav-num { opacity: .85; }
+[data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }

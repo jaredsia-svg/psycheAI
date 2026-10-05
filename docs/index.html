@@ -79,7 +79,7 @@
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Test compatibility</h3>
-      <p>Build better relationships with your partner, family, friends or colleagues by scanning their QR code.</p></div>
+      <p>Build better relationships with your partner, family, friends or colleagues by scanning their QR code. Free.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -97,65 +97,11 @@
       <button class="btn btn-outline" id="insight-sample" type="button">See sample report</button>
     </div>
 
-    <div class="insight-map">
-      <p class="insight-hub">Your report</p>
-      <div class="insight-rail" aria-hidden="true"></div>
-
-      <div class="insight-branches">
-        <div class="insight-branch">
-          <div class="insight-head">
-            <span class="insight-icon" aria-hidden="true">🧩</span>
-            <h3>Who you are</h3>
-          </div>
-          <ul>
-            <li>The superhero / character you are most like</li>
-            <li>Big Five, MBTI and Enneagram</li>
-            <li>Values and beliefs</li>
-          </ul>
-        </div>
-        <div class="insight-branch">
-          <div class="insight-head">
-            <span class="insight-icon" aria-hidden="true">💞</span>
-            <h3>In relationships</h3>
-          </div>
-          <ul>
-            <li>Your love languages</li>
-            <li>Strengths and weaknesses</li>
-            <li>How you'd be to date</li>
-          </ul>
-        </div>
-        <div class="insight-branch">
-          <div class="insight-head">
-            <span class="insight-icon" aria-hidden="true">💼</span>
-            <h3>At work</h3>
-          </div>
-          <ul>
-            <li>How you work</li>
-            <li>Your strengths at work</li>
-            <li>What could hold you back</li>
-          </ul>
-        </div>
-        <div class="insight-branch">
-          <div class="insight-head">
-            <span class="insight-icon" aria-hidden="true">📊</span>
-            <h3>IG behaviour</h3>
-          </div>
-          <ul>
-            <li>Posting activity</li>
-            <li>App usage</li>
-            <li>How it changed over time</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- Below the diagram rather than a fifth branch in it: the four above are
-         what everyone gets, these four are what a payment adds, and folding
-         them into the same rail would say they were the same thing. Filled by
-         app.js's mountPremiumTiers from PAID_SECTIONS, so the section names
-         and the price here are the ones the report and the unlock button
-         actually use. -->
-    <div data-premium-tier></div>
+    <!-- Filled by app.js's mountInsights from the report's own section names:
+         the free summary card and what is on it, with a real card drawn from
+         the sample beside it, then the full premium report by its four parts
+         and its price. -->
+    <div data-insights></div>
   </div>
 
   <div class="card help help-card">
@@ -464,7 +410,7 @@
     <p class="muted">Scan someone's PsycheAI code to see how you fit — as a <strong>couple</strong>,
       as <strong>family or friends</strong>, or as <strong>colleagues</strong>. You get a score, the
       five things behind it, what works, what will grate, and what each of you could do
-      differently.</p>
+      differently. Free, every time.</p>
   </header>
   <div id="scan-alert" class="alert" hidden></div>
 
@@ -537,8 +483,10 @@
     </div></div>
 
     <h3>What is PsycheAI?</h3>
-    <p>A reading of yourself already sitting in your Instagram (and Google) data. It writes your
-      interests, patterns, MBTI and Big Five, each tied to evidence from your data. It is not a test
+    <p>A reading of yourself already sitting in your Instagram (and Google) data. Your free summary
+      card names the character you are most like, your signature patterns, what motivates you, your
+      MBTI, Big Five, values, interests and love languages. The full premium report explains every part
+      of it with evidence from your data. It is not a test
       and not a diagnosis.</p>
 
     <h3>How long does it take?</h3>
@@ -594,13 +542,14 @@
       reads your inward self, what you search and watch when no one is looking.</p>
 
     <h3>What does it cost?</h3>
-    <p>The first profile is written on the free path. Deeper sections and each compatibility run are
-      S$1.99 each. You see the price after you choose what you are asking, before
-      you pay.</p>
+    <p>Your first summary card is free, and so is every compatibility report. Running your summary
+      card again is US$2. The full premium report — every section explained, plus your wellbeing,
+      attachment style, ideal partner, career coaching, development plan and the roast — is a single
+      US$8. You see the price before you pay.</p>
 
     <h3>How does the compatibility feature work?</h3>
     <p>Each reader has a QR code summarising their PsycheAI results. The other person scans it,
-      chooses a romantic, family/friends or work basis, and gets a report. The QR code carries the
+      chooses a romantic, family/friends or work basis, and gets a report, free. The QR code carries the
       data itself — it is not a link to a file on a server.</p>
 
 

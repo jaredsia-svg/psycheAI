@@ -764,7 +764,7 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
 }
 
 // The two products are separately priced, and a payment for one must not buy
-// the other — the check that stops a S$0.99 re-run unlocking S$1.99 of report.
+// the other — the check that stops a US$2 re-run unlocking US$8 of report.
 {
   const priced = execFileSync(process.execPath,
     ['-e', 'const s = require("' + join(root, 'lib', 'stripe.js') + '");' +
@@ -772,16 +772,16 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
       '  const a = await s.createPaymentIntent(null, "analysis");' +
       '  const u = await s.createPaymentIntent(null, "unlock");' +
       '  const out = { analysis: a.amount, unlock: u.amount, cross: [] };' +
-      '  try { await s.verifyPaid(a.id, "unlock"); out.cross.push("0.99 bought the unlock"); }' +
+      '  try { await s.verifyPaid(a.id, "unlock"); out.cross.push("2 bought the unlock"); }' +
       '  catch (e) { out.cross.push("refused"); }' +
-      '  try { await s.verifyPaid(u.id, "analysis"); out.cross.push("1.99 bought an analysis"); }' +
+      '  try { await s.verifyPaid(u.id, "analysis"); out.cross.push("8 bought an analysis"); }' +
       '  catch (e) { out.cross.push("refused"); }' +
       '  process.stdout.write(JSON.stringify(out));' +
       '})();'],
     { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
   const money = JSON.parse(priced.toString());
   check('an extra analysis costs less than the premium unlock, and both are real prices',
-    money.analysis === 99 && money.unlock === 199, JSON.stringify(money));
+    money.analysis === 200 && money.unlock === 800, JSON.stringify(money));
   check('neither payment can be spent on the other product',
     JSON.stringify(money.cross) === JSON.stringify(['refused', 'refused']), JSON.stringify(money.cross));
 }
@@ -958,8 +958,8 @@ check('the default merchant country is SG, matching the currency',
   paymentSelections.mock.country === 'SG', paymentSelections.mock.country);
 check('STRIPE_ACCOUNT_COUNTRY overrides the default',
   paymentSelections.customCountry.country === 'GB', paymentSelections.customCountry.country);
-check('the unlock price is S$1.99, expressed as 199 cents of SGD',
-  paymentSelections.mock.priceCents === 199 && paymentSelections.mock.currency === 'sgd',
+check('the unlock price is US$8, expressed as 800 cents of USD',
+  paymentSelections.mock.priceCents === 800 && paymentSelections.mock.currency === 'usd',
   paymentSelections.mock.priceCents + ' ' + paymentSelections.mock.currency);
 
 const intents = {
@@ -968,7 +968,7 @@ const intents = {
 };
 check('mock mode creates a fake PaymentIntent without touching a real Stripe account',
   intents.mock.ok === true && intents.mock.mock === true && /^pi_mock_/.test(intents.mock.id) &&
-  intents.mock.amount === 199 && intents.mock.currency === 'sgd',
+  intents.mock.amount === 800 && intents.mock.currency === 'usd',
   JSON.stringify(intents.mock));
 check('with no key and no mock mode, creating a PaymentIntent fails with a clear 503',
   intents.unconfigured.ok === false && intents.unconfigured.status === 503 &&
@@ -1041,7 +1041,7 @@ async function mockVerifyFlow() {
 const verifyFlow = await mockVerifyFlow();
 check('verifyPaid succeeds for a PaymentIntent this process actually created',
   verifyFlow.verified.ok === true && verifyFlow.verified.status === 'succeeded' &&
-  verifyFlow.verified.amount === 199 && verifyFlow.verified.currency === 'sgd',
+  verifyFlow.verified.amount === 800 && verifyFlow.verified.currency === 'usd',
   JSON.stringify(verifyFlow.verified));
 check('verifyPaid rejects a fabricated id that was never created, even shaped like a real one',
   verifyFlow.fabricated.ok === false && verifyFlow.fabricated.status === 402,
@@ -1074,17 +1074,15 @@ check('verifyPaid rejects a succeeded PaymentIntent for the wrong amount',
   wrongAmount.ok === false && wrongAmount.status === 402 && /does not match/i.test(wrongAmount.message),
   JSON.stringify(wrongAmount));
 
-const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "sgd" }');
+const genuine = await verifyPaidWithStub('{ id: "pi_test_1", status: "succeeded", amount: 800, currency: "usd" }');
 check('verifyPaid accepts a genuinely succeeded PaymentIntent for the right amount',
   genuine.ok === true && genuine.status === 'succeeded', JSON.stringify(genuine));
 
-// The currency half of the price check, which the move to SGD turned from a
-// formality into a real gate: 199 of the wrong currency is a different price.
-// At the old USD/SGD rate 199 SGD cents is worth appreciably less than 199 USD
-// cents, so a check that only compared the number would unlock the paid
-// sections for whichever currency was cheapest that day.
+// The currency half of the price check: 800 of another currency is a
+// different price, so a check that only compared the number would unlock the
+// paid report for whichever currency was cheapest that day.
 const wrongCurrency = await verifyPaidWithStub(
-  '{ id: "pi_test_1", status: "succeeded", amount: 199, currency: "usd" }');
+  '{ id: "pi_test_1", status: "succeeded", amount: 800, currency: "sgd" }');
 check('verifyPaid rejects the right number of cents in the wrong currency',
   wrongCurrency.ok === false && wrongCurrency.status === 402 &&
   /does not match/i.test(wrongCurrency.message), JSON.stringify(wrongCurrency));
@@ -5921,17 +5919,18 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       order.indexOf('cardHighlights') > order.indexOf('patterns') &&
       /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
-      /one list of at most four — at most three values and one belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-      /under about 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /one list of at most four — up to three values\s+and one belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
     check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
-      /A belief never restates a value/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-      /a belief is a commitment no value already names/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
       /one list of at most four/.test(prompts.STRUCTURED_FULL_SYSTEM));
     check('values and beliefs are capped at four between them in both structured schemas',
       /never more than three/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
       /At most one/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
+      /no two overlapping/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
       /never more than three/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.values.description) &&
       /At most one/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.beliefs.description) &&
       prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties.values.description === prompts.STRUCTURED_FULL_SCHEMA.properties.values.description);

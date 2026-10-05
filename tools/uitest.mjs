@@ -56,7 +56,7 @@ async function waitForLength(array, target, timeout) {
 }
 
 // Most of this suite is about what the app *does*, not what it charges for,
-// and every analysis after the first now costs S$0.99 — so a flow that runs
+// and every analysis after the first now costs US$2 — so a flow that runs
 // two would stop at a payment sheet it was never written to expect. Clearing
 // the browser's own run count models a reader who has not used their free
 // analysis yet, which is the state nearly every check here means to be in.
@@ -2361,60 +2361,46 @@ try {
         .filter(l => !l.closest('.step-fallback') && !l.closest('#view-about'));
       return labels.length > 0 && labels.every(l => getComputedStyle(l).fontWeight === '600');
     }));
-  // The first three titles are the report's own section names, read from
-  // copy.js, so a rename there fails this rather than leaving the landing
-  // page advertising a section the report no longer calls that. The fourth
-  // is a deliberate exception: the report's own heading is "Your Instagram
-  // behaviour", four words wide in a quarter-width column, and "IG behaviour"
-  // is a page-only abbreviation of it rather than that string itself — so it
-  // is pinned literally, the same way the bullets below are.
-  check('the first three branches are named for a section the report actually has',
-    await page.evaluate(() => {
-      const T = window.PsycheCopy.TEXT;
-      const want = [T.whoYouAre, T.relationships, T.work];
-      const got = [...document.querySelectorAll('.insight-branch h3')].slice(0, 3)
-        .map(h => h.textContent.trim());
-      return want.length === got.length && want.every((title, i) => title === got[i]);
-    }),
-    (await page.locator('.insight-branch h3').allInnerTexts()).join(' | '));
-  check('the fourth branch uses the shortened "IG behaviour"',
-    (await page.locator('.insight-branch h3').nth(3).innerText()).trim() === 'IG behaviour',
-    (await page.locator('.insight-branch h3').nth(3).innerText()).trim());
-  // The bullets under each branch are not read from copy.js the way the
-  // titles are — they are a shorter, page-only restatement — so they need
-  // their own pin or a rewording here would drift silently forever. One trait
-  // score used to get its own line each for Big Five, MBTI and Enneagram;
-  // they are one line now, so this also stands as the record of that being
-  // deliberate rather than a bullet quietly lost in an edit.
-  //
-  // The character match leads the list rather than closing it — it is the
-  // most immediately graspable of the three, the one a reader can picture
-  // before the frameworks underneath it — and names a superhero alongside a
-  // character generally, since "character" alone reads as fictional-book-or-
-  // film by default and this widens what a reader should expect to be told.
-  check('the trait bullet covers all three frameworks in one line',
-    (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts())
-      .join(' | ') === 'The superhero / character you are most like | Big Five, MBTI and Enneagram | Values and beliefs',
-    (await page.locator('.insight-branch').nth(0).locator('li').allInnerTexts()).join(' | '));
-  check('the behaviour branch uses the shorter bullet wording',
-    (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | ') ===
-      'Posting activity | App usage | How it changed over time',
-    (await page.locator('.insight-branch').nth(3).locator('li').allInnerTexts()).join(' | '));
-  // The four branches describe the FREE report, so nothing behind the paywall
-  // may be listed in them. Both of these were: "Your attachment style" sat
-  // under relationships and "Where you would thrive" under work, the first
-  // because attachment used to be part of that section and the second because
-  // the subsection existed at all. A landing page promising a section the
-  // free report does not produce is the exact failure this pins.
-  check('no branch advertises a section that is actually behind the paywall',
-    await page.evaluate(() => {
-      const T = window.PsycheCopy.TEXT;
-      const text = document.querySelector('.insight-branches').textContent;
-      return ![T.wellness, T.attachment, T.careerAssessment, T.idealPartner]
-        .some(title => text.includes(title)) &&
-        !/attachment style/i.test(text) && !/where you would thrive/i.test(text);
-    }),
-    await page.evaluate(() => document.querySelector('.insight-branches').textContent.replace(/\s+/g, ' ')));
+  // The free tier: what is on the summary card, by the card's own labels,
+  // and a real card drawn beside it.
+  await page.waitForFunction(() => {
+    const el = document.querySelector('#insight-card-preview');
+    return el && el.children.length > 0;
+  }, null, { timeout: 15000 }).catch(() => null);
+  const freeTier = await page.evaluate(() => {
+    const C = window.PsycheCopy;
+    const tier = document.querySelector('#view-welcome .insight-free');
+    return {
+      badge: tier && tier.querySelector('.tier-badge') && tier.querySelector('.tier-badge').textContent.trim(),
+      items: tier ? [...tier.querySelectorAll('.card-features strong')].map(n => n.textContent.trim()) : [],
+      want: [C.STRUCTURED.titles.motivators, C.TEXT.cardType, C.TEXT.cardBigFive, C.STRUCTURED.cardStandFor, C.STRUCTURED.cardInto],
+      preview: Boolean(document.querySelector('#insight-card-preview .psyche-card, #insight-card-preview > *')),
+    };
+  });
+  check('the free tier is the summary card: everything on it, by the card\'s own labels',
+    freeTier.badge === 'Free' && freeTier.items.length === 8 &&
+    freeTier.want.every(label => freeTier.items.includes(label)), JSON.stringify(freeTier));
+  check('and a real card from the sample is drawn beside the list', freeTier.preview);
+  check('the welcome page no longer offers the Enneagram or the old IG behaviour branch',
+    !/Enneagram|IG behaviour/.test(await page.evaluate(() =>
+      [...document.querySelectorAll('#view-welcome .insight-free-copy, #view-welcome .insight-premium, #view-welcome .insight-compat')]
+        .map(n => n.textContent).join(' '))));
+  // The premium tier: the full report by its four parts, by the report's own
+  // part names, and the price the unlock charges.
+  const premiumTier = await page.evaluate(() => {
+    const S = window.PsycheCopy.STRUCTURED;
+    const tier = document.querySelector('#view-welcome .insight-premium');
+    return {
+      parts: tier ? [...tier.querySelectorAll('.insight-part h4')].map(n => n.textContent.trim()) : [],
+      want: ['who', 'drives', 'connect', 'together'].map(key => S.parts[key].title),
+      nums: tier ? [...tier.querySelectorAll('.insight-part-num')].map(n => n.textContent) : [],
+    };
+  });
+  check('the premium tier is the full report, by its four numbered parts',
+    premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04',
+    JSON.stringify(premiumTier));
+  check('and compatibility is offered as free',
+    /Compatibility, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
 
   // ---- the premium tier block ----
   //
@@ -2447,25 +2433,6 @@ try {
     /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{40}$/.test(footerBuild.href) &&
     /noopener/.test(footerBuild.rel),
     footerBuild && footerBuild.href);
-  check('the premium tier is mounted in every slot that asks for one',
-    (await page.locator('[data-premium-tier] .premium-tier').count()) ===
-    (await page.locator('[data-premium-tier]').count()) &&
-    (await page.locator('[data-premium-tier]').count()) === 1,
-    (await page.locator('[data-premium-tier] .premium-tier').count()) + ' of ' +
-    (await page.locator('[data-premium-tier]').count()) + ' slots filled');
-  // Every explanation the unlock writes, then the four sections it adds — the
-  // free run is the card alone, so the offer is the whole written report.
-  check('it names every explanation and the four paid sections, by the titles the report uses',
-    await page.evaluate(() => {
-      const T = window.PsycheCopy.TEXT;
-      const want = [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
-        T.explainPeopleTitle, T.activity, T.bonus,
-        T.wellness, T.attachment, T.idealPartner, T.careerAssessment];
-      const got = [...document.querySelectorAll('#view-welcome .premium-tier-item strong')]
-        .map(node => node.textContent.trim());
-      return want.length === got.length && want.every((title, i) => title === got[i]);
-    }),
-    (await page.locator('#view-welcome .premium-tier-item strong').allInnerTexts()).join(' | '));
   // The price is the one number on this page a reader makes a decision on, so
   // it is pinned against the same string the unlock button renders rather than
   // against a literal — two places showing different prices is worse than
@@ -2474,38 +2441,12 @@ try {
     await page.evaluate(() => {
       const label = window.PsycheCopy.TEXT.premiumPriceLabel;
       return [...document.querySelectorAll('.premium-tier-price')]
-        .every(node => node.textContent.trim() === label) && /S\$1\.99/.test(label);
+        .every(node => node.textContent.trim() === label) && /US\$8/.test(label);
     }),
     (await page.locator('.premium-tier-price').allInnerTexts()).join(' | '));
   check('and it carries the same "Premium" badge the report sections do',
     await page.evaluate(() => [...document.querySelectorAll('.premium-tier-head .mode-badge')]
       .every(node => node.textContent.trim() === window.PsycheCopy.TEXT.premiumBadge)));
-  // The blurb is what tells a reader *why* to pay rather than just *what* —
-  // it names the model doing the deeper read, so the badge and the price are
-  // not the only things distinguishing this from the free half.
-  check('the premium blurb says which model writes the deeper read',
-    await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent.trim() ===
-      window.PsycheCopy.TEXT.premiumTierBlurb),
-    await page.evaluate(() => document.querySelector('#view-welcome .premium-tier-blurb').textContent));
-  // The "one payment, nothing recurring" line used to close this block; it
-  // was removed as redundant with the price already shown above it, in both
-  // slots the block is mounted in, since they share the same markup.
-  check('the block no longer closes with the removed "nothing recurring" note',
-    await page.evaluate(() => document.querySelectorAll('.premium-tier-note').length === 0));
-
-  // ---- the free half's own label is gone ----
-  //
-  // A "Free" badge and a line naming Gemini used to sit above the insight
-  // diagram. It came out — the heading already answers "what do I get" without
-  // a second sentence confirming that answer is free, and naming the model
-  // duplicated the "analysed by" line the real report carries. Checked as an
-  // absence rather than just leaving the old checks deleted, so a copy-paste
-  // of the old markup back into index.html fails loudly.
-  check('the free-tier badge and note are gone, not just unmounted',
-    await page.evaluate(() =>
-      document.querySelectorAll('#view-welcome .insight-free-note, #view-welcome .mode-badge.is-free')
-        .length === 0));
-
   // ---- "See sample report" moved to the insight card's own head ----
   //
   // It used to close the card, after the four free branches and the premium
@@ -2546,67 +2487,27 @@ try {
       onSameLine === wide, onSameLine + ' vs expected ' + wide);
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  // The diagram is the hub and its branches, nothing else. It used to carry a
-  // confidence footnote across the bottom; that came out, and the check that
-  // held it in place came out with it rather than being loosened into one that
-  // would pass on anything.
-  check('the diagram is the branches and nothing after them',
-    (await page.locator('.insight-map > *').count()) === 3 &&
-    (await page.locator('.insight-map .insight-branches').count()) === 1,
-    (await page.locator('.insight-map > *').evaluateAll(
-      nodes => nodes.map(n => n.className || n.tagName))).join(' | '));
-  // Connectors are decoration and must not carry meaning on their own, but a
-  // rail drawn while the branches have wrapped points at nothing. Measured at
-  // several widths rather than at the suite's own: checking only the default
-  // 1100px passes a rail that is switched on unconditionally, since at that
-  // width it is legitimately correct — which is exactly the bug that would
-  // ship. At every width it must either be hidden with the branches wrapped,
-  // or shown reaching the centre of the outermost branch on each side.
-  const railAtWidths = {};
-  const iconsAtWidths = {};
-  for (const width of [1100, 900, 700, 375]) {
+  // The two tiers sit side by side with nothing squeezed: the free tier puts
+  // the card beside its list on a laptop and under it on a phone, and the
+  // four parts go two by two, then one by one.
+  const tierLayout = {};
+  for (const width of [1100, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    // Stacked branches put the icon on the title's line — four branches down a
-    // phone is four lines saved, and the width is there to spend. Side by side
-    // it goes back above, where a quarter-width column has none to spare.
-    // Measured off the rendered boxes, since "same line" is a fact about
-    // layout that a display rule alone does not establish.
-    iconsAtWidths[width] = await page.evaluate(() => {
-      const heads = [...document.querySelectorAll('.insight-head')];
-      const inline = heads.map(head => {
-        const icon = head.querySelector('.insight-icon').getBoundingClientRect();
-        const title = head.querySelector('h3').getBoundingClientRect();
-        const centred = Math.abs((icon.top + icon.height / 2) - (title.top + title.height / 2)) < 4;
-        return centred && icon.right <= title.left + 1;
-      });
-      const stacked = new Set(
-        [...document.querySelectorAll('.insight-branch')].map(b => Math.round(b.getBoundingClientRect().top)),
-      ).size > 1;
-      if (inline.every(Boolean)) return stacked ? 'beside the title' : 'beside, but branches are in a row';
-      if (inline.every(v => !v)) return stacked ? 'above, but branches are stacked' : 'above the title';
-      return 'inconsistent across branches';
-    });
-    railAtWidths[width] = await page.evaluate(() => {
-      const rail = document.querySelector('.insight-rail');
-      const boxes = [...document.querySelectorAll('.insight-branch')].map(b => b.getBoundingClientRect());
-      const rows = new Set(boxes.map(b => Math.round(b.top))).size;
-      const shown = getComputedStyle(rail).display !== 'none';
-      if (!shown) return rows > 1 ? 'hidden while wrapped' : 'hidden in one row';
-      const r = rail.getBoundingClientRect();
-      const first = boxes[0].left + boxes[0].width / 2;
-      const last = boxes[boxes.length - 1].left + boxes[boxes.length - 1].width / 2;
-      if (rows > 1) return 'DRAWN WHILE WRAPPED';
-      return Math.abs(r.left - first) < 1.5 && Math.abs(r.right - last) < 1.5
-        ? 'aligned' : 'shown but off by ' + Math.round(r.left - first) + '/' + Math.round(r.right - last);
+    await page.waitForTimeout(150);
+    tierLayout[width] = await page.evaluate(() => {
+      const list = document.querySelector('.insight-free .card-features').getBoundingClientRect();
+      const card = document.querySelector('.insight-preview').getBoundingClientRect();
+      const parts = [...document.querySelectorAll('.insight-part')].map(p => Math.round(p.getBoundingClientRect().top));
+      return { cardBeside: card.left >= list.right - 1, partRows: new Set(parts).size,
+        spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('the connector rail is drawn only where it points at something',
-    Object.values(railAtWidths).every(v => v === 'aligned' || v === 'hidden while wrapped'),
-    JSON.stringify(railAtWidths));
-  check('the branch icon sits beside the title exactly while the branches stack',
-    Object.values(iconsAtWidths).every(v => v === 'beside the title' || v === 'above the title'),
-    JSON.stringify(iconsAtWidths));
+  check('on a laptop the card sits beside its list and the parts run two by two',
+    tierLayout[1100].cardBeside && tierLayout[1100].partRows === 2, JSON.stringify(tierLayout[1100]));
+  check('on a phone they stack, with nothing running off the side',
+    !tierLayout[390].cardBeside && tierLayout[390].partRows === 4 && tierLayout[390].spill <= 1,
+    JSON.stringify(tierLayout[390]));
   // ---- the dark theme is a theme, not a hope ----
   //
   // Nothing here ever rendered in dark mode before, which is how a filled
@@ -2632,7 +2533,7 @@ try {
       return out;
     }, selectors);
   };
-  const accentFilled = ['.insight-hub', '.step-num'];
+  const accentFilled = ['.step-num'];
   const selectors = accentFilled;
   const darkContrast = await contrastOn('dark');
   const lightContrast = await contrastOn('light');
@@ -3508,7 +3409,7 @@ try {
 
   // ---- the free report is the summary card, and only the card ----
   //
-  // Everything that explains the card is the S$1.99 unlock. The rule this
+  // Everything that explains the card is the US$8 unlock. The rule this
   // holds is the same one the four premium sections have always had: the
   // writing is not in the page because the server never wrote it, so the
   // check reads the stored report as well as the screen — a locked block over
@@ -4797,9 +4698,9 @@ try {
       return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
         .every(name => text.includes(name));
     }));
-  check('and there is exactly one button asking for the S$1.99 unlock, not one per section',
+  check('and there is exactly one button asking for the US$8 unlock, not one per section',
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('S$1.99'),
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$8'),
     await page.locator('#profile-body .premium-unlock').innerText());
   // The specific thing a paywall — or a consent gate — must not do: ship
   // the writing and hide it. Checked against the mock's own wording, so it
@@ -4846,7 +4747,7 @@ try {
         want.length === got.length && want.every((title, i) => title === got[i]);
     }),
     (await page.locator('#profile-body .paid-consolidated .premium-tier-item strong').allInnerTexts()).join(' | '));
-  // ---- wellness, attachment, ideal partner and career, behind one $1.99 unlock ----
+  // ---- wellness, attachment, ideal partner and career, behind one US$8 unlock ----
   //
   // The roast used to be the fourth of these, generated by the same paid call
   // — it has moved back to the free report, right after the digital
@@ -4929,9 +4830,9 @@ try {
     JSON.stringify(phoneRowTops));
 
   check('the consolidated block names the price and offers a single unlock',
-    /\$1\.99/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
+    /US\$8/.test(await page.locator('#profile-body .paid-consolidated').innerText()) &&
     (await page.locator('#profile-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#profile-body .premium-unlock').innerText()).includes('$1.99'));
+    (await page.locator('#profile-body .premium-unlock').innerText()).includes('US$8'));
   const consolidatedBefore = await page.evaluate(() => {
     const el = document.querySelector('#profile-body .paid-consolidated');
     return { html: el.innerHTML, text: el.innerText };
@@ -5106,7 +5007,7 @@ try {
       await cardPage.locator('#premium-status').innerText());
     check('the card form mounts, with its button carrying the same price the wallet button would have',
       (await cardPage.locator('#premium-card-element').innerHTML()).length > 0 &&
-      (await cardPage.locator('#premium-card-pay').innerText()).includes('$1.99'));
+      (await cardPage.locator('#premium-card-pay').innerText()).includes('US$8'));
 
     await cardPage.click('#premium-card-pay');
     await cardPage.waitForSelector('#premium-card-error:not([hidden])', { timeout: 10000 });
@@ -5493,7 +5394,7 @@ try {
   //
   // The paid call takes minutes, and everything about it used to live in one
   // page's memory: close the tab while it ran and the payment was real, the
-  // analysis was gone, and the cover went back to asking for S$1.99. The
+  // analysis was gone, and the cover went back to asking for US$8. The
   // server has always allowed a handful of generations per PaymentIntent
   // (lib/premiumLedger.js) for exactly this; the browser had no way to know it
   // was entitled to one.
@@ -5534,7 +5435,7 @@ try {
   check('a reader who paid but lost the analysis is not shown a price again',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('#profile-body .premium-unlock')];
-      return buttons.length === 1 && !/1\.99/.test(buttons[0].textContent);
+      return buttons.length === 1 && !/US\$8/.test(buttons[0].textContent);
     }),
     (await page.locator('#profile-body .premium-unlock').innerText()));
   check('the button offers to fetch what was already bought',
@@ -5559,7 +5460,7 @@ try {
     /already paid/i.test(await page.locator('#premium-dialog-title').innerText()),
     await page.locator('#premium-dialog-title').innerText());
   check('no price and no wallet button are offered on the resume path',
-    !/1\.99/.test(await page.locator('#premium-dialog').innerText()) &&
+    !/US\$8/.test(await page.locator('#premium-dialog').innerText()) &&
     !(await page.locator('#premium-mock-pay').isVisible()),
     await page.locator('#premium-dialog').innerText());
 
@@ -8138,7 +8039,7 @@ try {
   // payment sheet is the next stop, not the model.
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('re-running with the loaded data still asks to pay before analysing',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
@@ -8335,20 +8236,20 @@ try {
     return Boolean(p && p.premiumAnalysis);
   }, { timeout: 30000 });
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
-  // The confidence card's fineprint has to say S$1.99 now, unconditionally —
+  // The confidence card's fineprint has to say US$8 now, unconditionally —
   // this reader still has free runs available (clearRunCount was never
-  // called against them in this test), so the plain S$0.99 note would be
+  // called against them in this test), so the plain US$2 note would be
   // shown if this only checked mustPayForAnalysis() as before.
-  check('the confidence card now names the S$1.99 price, not the plain re-run price',
-    /1\.99/.test(await page.locator('#rerun-price-note').innerText()) &&
-    !/0\.99/.test(await page.locator('#rerun-price-note').innerText()),
+  check('the confidence card now names the US$8 price, not the plain re-run price',
+    /US\$8/.test(await page.locator('#rerun-price-note').innerText()) &&
+    !/US\$2/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
   // Load Facebook, then actually follow the rerun through to a real
   // regeneration — a source this session had not touched yet, unlike the
   // Google carried over from above. Premium is already unlocked, so this
   // rerun is never free regardless of the run counter: it is priced and
-  // routed exactly like the S$1.99 unlock itself, and both the free report
+  // routed exactly like the US$8 unlock itself, and both the free report
   // and the four paid sections are rewritten on the same charge — see
   // rerunWithAdditionalData's alreadyUnlocked branch.
   await loadSource(page, 'facebook', buildForeignExportZip(), 'facebook.zip');
@@ -8397,7 +8298,7 @@ try {
     (analyseBodies.length - analysesBeforeSend) + ' new requests');
   check('and no separate premium request at all',
     rerunPremiumBodies.length === 0, String(rerunPremiumBodies.length));
-  check('it was authorised by the unlock-tier charge, not a second S$0.99',
+  check('it was authorised by the unlock-tier charge, not a second US$2',
     JSON.parse(analyseBodies[analyseBodies.length - 1]).product === 'unlock' &&
     !JSON.parse(analyseBodies[analyseBodies.length - 1]).promoCode,
     analyseBodies[analyseBodies.length - 1]);
@@ -8406,7 +8307,7 @@ try {
 
   // The paid sections that were unlocked before this rerun were read from the
   // smaller, Instagram-only digest. The old behaviour cleared them and made a
-  // reader fetch them again for free against the new digest; the new S$1.99
+  // reader fetch them again for free against the new digest; the new US$8
   // rerun regenerates them in the same charge instead, so nothing is lost and
   // nothing is left half up to date.
   const afterRerun = await page.evaluate(() => ({
@@ -8520,7 +8421,7 @@ try {
   //
   // Otherwise the paid sections below would be describing a Google export the
   // free ones above them had never seen, and closing that gap would cost a
-  // further S$0.99 — charging twice over for one decision to hand over more
+  // further US$2 — charging twice over for one decision to hand over more
   // data. So the same authorisation runs both calls.
   await waitForLength(analyseBodies, analysesBeforeUnlock + 1, 40000);
   check('adding data at the unlock writes the full report and redraws the card, on the same authorisation',
@@ -8678,7 +8579,7 @@ try {
 
   // ---- the free allowance, and paying past it ----
   //
-  // One analysis is free per browser; every one after it costs S$0.99. The
+  // One analysis is free per browser; every one after it costs US$2. The
   // counter behind that lives outside store.clearAll() on purpose, because
   // "Delete everything, then upload again" was the free way round it — so
   // both halves are checked here: that the first run is free, and that the
@@ -8702,7 +8603,7 @@ try {
     (await page.evaluate(() => localStorage.getItem('psycheai_runs'))) === '1');
   check('the price of the next one is shown before anything is pressed',
     (await page.locator('#rerun-price-note').isVisible()) &&
-    /0\.99/.test(await page.locator('#rerun-price-note').innerText()),
+    /US\$2/.test(await page.locator('#rerun-price-note').innerText()),
     await page.locator('#rerun-price-note').innerText());
 
   // Route one to a second analysis: re-running with additional data. The
@@ -8718,7 +8619,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
   check('re-running with more data is charged, at the end rather than the start',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis',
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again',
     await page.locator('#premium-dialog-title').innerText());
   const beforeDecline = analyseBodies.length;
   await page.click('#premium-cancel');
@@ -8776,7 +8677,7 @@ try {
 
   await page.waitForSelector('#premium-dialog[open]', { timeout: 25000 });
   check('so deleting and re-uploading is charged too, rather than being a free reset',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run another analysis');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your summary card again');
   check('and nothing was sent to the model while that sheet was up',
     analyseBodies.length === beforeReupload);
 
@@ -8875,22 +8776,10 @@ try {
   await shot('3b-stance-picker');
   await page.click('#stance-dialog .mode-option[data-stance="superior"]');
 
-  // ---- and then the money, last ----
+  // ---- and then straight to the comparison ----
   //
-  // A compatibility read is a S$1.99 purchase now. The sheet opens only after
-  // both questions have been answered, so a reader knows what they are buying
-  // before they are asked to pay — and, more importantly for this suite,
-  // nothing has been sent to the model yet. #premium-mock-pay stands in for
-  // the whole wallet round trip exactly as it does for the premium unlock.
-  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 30000 });
-  check('a comparison asks to be paid for once the questions are answered',
-    await page.locator('#premium-dialog').isVisible());
-  check('and the price it names is the compatibility one',
-    /S\$1\.99/.test(await page.locator('#premium-dialog-blurb').innerText()),
-    await page.locator('#premium-dialog-blurb').innerText());
-  check('nothing is sent to the model before the payment clears',
-    compatBodies.length === beforeModes, String(compatBodies.length));
-  await page.click('#premium-mock-pay');
+  // A compatibility read is free: once both questions are answered it is
+  // sent, with no payment sheet in between.
 
   // A comparison is as long a call as an analysis and just as easy to close an
   // app during, so it records a job of its own. Its record has to carry more
@@ -8913,8 +8802,10 @@ try {
   await page.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
   check('the job record is cleared once the comparison is on screen',
     (await page.evaluate(() => localStorage.getItem('psycheai_job'))) === null);
-  check('the paid comparison carries the payment that bought it',
-    Boolean(JSON.parse(compatBodies[compatBodies.length - 1]).paymentIntentId),
+  check('a comparison is free: no payment sheet, and no payment sent with it',
+    !(await page.locator('#premium-dialog').isVisible()) &&
+    !JSON.parse(compatBodies[compatBodies.length - 1]).paymentIntentId &&
+    !JSON.parse(compatBodies[compatBodies.length - 1]).promoCode,
     compatBodies[compatBodies.length - 1]);
   const reportText = await page.locator('#report-body').innerText();
   check('the chosen basis was sent to the server',
@@ -9210,8 +9101,8 @@ try {
     /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
     /family\/friends/i.test(about) &&
     /not a link to a file on a server/i.test(about));
-  check('the price is named, once, with what it buys',
-    /S\$1\.99/.test(about) && /first profile is written on the free path/i.test(about));
+  check('the prices are named, once, with what each buys — and compatibility is free',
+    /US\$8/.test(about) && /US\$2/.test(about) && /every compatibility report/i.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -10028,10 +9919,8 @@ try {
     await route.continue();
   });
   await page.click('#mode-dialog .mode-option[data-mode="platonic"]');
-  // Paid the same way as any other comparison — the unload guard being tested
-  // below goes up when the model call starts, which is now after the money.
-  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 30000 });
-  await page.click('#premium-mock-pay');
+  // Free, so the model call — and the unload guard with it — starts as soon
+  // as the basis is chosen.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
     await beforeunloadPrevented());
@@ -10158,9 +10047,9 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the four parts are the only disclosures, and only the overview starts open',
+      check('structured: the overview and the four parts are the only disclosures, and all five start open',
         shape.toggles === 5 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:shut,drives:shut,connect:shut,together:shut', JSON.stringify(shape));
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open', JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: wellbeing closes Who you are',
@@ -10250,9 +10139,9 @@ try {
       check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
         (await sp.locator('#profile-body .connects').count()) === 0 &&
         !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
-      check('structured: no digital footprint section, no part nav, no appendix heading, no MBTI caveat line',
+      check('structured: no digital footprint section, no appendix heading, no MBTI caveat line',
         !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
-        (await sp.locator('#profile-body .part-nav, #profile-body [data-part="appendix"]').count()) === 0 &&
+        (await sp.locator('#profile-body [data-part="appendix"]').count()) === 0 &&
         !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
       await sp.evaluate(() => document.querySelectorAll('#profile-body .part-card').forEach(c => c.classList.add('is-collapsed')));
       await sp.locator('#profile-body .origin .pattern-chip[data-pattern="p1"]').first().evaluate(b => b.click());
@@ -10335,9 +10224,9 @@ try {
         };
       });
       check('structured: with the digest, Read from lists what was counted in full',
-        evidence.full.includes('9,741 messages across 38 conversations') &&
-        evidence.full.includes('12,340 posts liked') && evidence.full.includes('Activity timing across 7 years') &&
-        evidence.full.includes('18,200 YouTube videos watched'), evidence.full.join(' | '));
+        evidence.full.includes('180 of your 9,741 messages read, from 38 conversations') &&
+        evidence.full.includes('200 of 441 captions read') && evidence.full.includes('12,340 liked posts counted') &&
+        evidence.full.includes('Activity timing across 7 years, in full'), evidence.full.join(' | '));
       check('structured: under one label, with no word-for-word chart, in place of the model\'s shorter summary',
         !/Read word for word|Counted in full/.test(evidence.text) && evidence.bars === 0 && evidence.summaryChips === 0,
         JSON.stringify({ bars: evidence.bars, chips: evidence.summaryChips }));
@@ -10359,7 +10248,7 @@ try {
         return card ? { text: card.textContent, bars: card.querySelectorAll('.coverage-row').length } : null;
       });
       check('structured: the free view\'s trust card shows the same counted-in-full evidence',
-        Boolean(freeTrust) && /9,741 messages across 38 conversations/.test(freeTrust.text) &&
+        Boolean(freeTrust) && /180 of your 9,741 messages read/.test(freeTrust.text) &&
         freeTrust.bars === 0, freeTrust && freeTrust.text.slice(0, 200));
       await seed(true);
       await sp.evaluate(() => document.querySelectorAll('#profile-body .section-card').forEach(c => c.classList.remove('is-collapsed')));
@@ -10373,7 +10262,7 @@ try {
         const q = sel => body.querySelectorAll(sel);
         return {
           structuredClass: body.classList.contains('layout-structured'),
-          nav: q('.part-nav').length,
+          nav: Array.from(q('.part-nav .part-nav-item')).map(b => b.textContent),
           numerals: Array.from(q('.report-part .part-num')).map(n => n.textContent),
           patternColours: Array.from(q('.pattern-chip')).map(c => getComputedStyle(c).borderColor)
             .filter((c, i, all) => all.indexOf(c) === i).length,
@@ -10399,8 +10288,9 @@ try {
           flags: Array.from(q('.trait-flag')).map(n => n.textContent),
         };
       });
-      check('structured: numbered part headings and no nav bar above them',
-        visuals.structuredClass && visuals.nav === 0 &&
+      check('structured: numbered part headings, and a nav bar that names them as they are headed',
+        visuals.structuredClass && visuals.nav.join('|') ===
+          '00Your report at a glance|01Who you are|02What drives you|03How you connect and work|04Putting it together|Evidence and method|Let us roast you' &&
         visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
@@ -10469,6 +10359,16 @@ try {
         merged.planFrom.filter(f => f === 'How you work').length === 3 &&
         merged.planFrom.filter(f => f === 'Wellbeing').length === 2, merged.planFrom.join(', '));
       check('structured: wellbeing no longer has its own list of suggestions', !merged.wellnessHelp);
+      check('structured: Under pressure names no pattern under each item',
+        !/From pattern/i.test(await sp.locator('#profile-body .pressure-card').textContent()));
+      check('structured: Who suits you is a verdict banner over two numbered lists',
+        (await sp.locator('#profile-body .partner-summary').count()) === 1 &&
+        (await sp.locator('#profile-body .partner-need .partner-items li').count()) === samplePremium.idealPartner.needs.length &&
+        (await sp.locator('#profile-body .partner-careful .partner-items li').count()) === samplePremium.idealPartner.carefulOf.length);
+      await sp.evaluate(() => document.querySelector('#profile-body .part-card[data-part-card="connect"]').classList.add('is-collapsed'));
+      await sp.click('#profile-body .part-nav-item[data-part-target="connect"]');
+      check('structured: the nav opens a part the reader had shut, and leaves the others open',
+        await sp.evaluate(() => [...document.querySelectorAll('#profile-body .part-card')].every(c => !c.classList.contains('is-collapsed'))));
       check('structured: no wellness title from the classic layout',
         /Wellbeing/.test(await sp.locator('#profile-body .wellness-card .card-head').textContent()));
 
@@ -10482,6 +10382,7 @@ try {
       // Charts sit at zero while their section is shut, and grow when it opens.
       const shutWidth = await sp.evaluate(() => {
         const card = document.querySelector('#profile-body .part-card[data-part-card="drives"]');
+        card.classList.add('is-collapsed');
         return card.classList.contains('is-collapsed') ? getComputedStyle(card.querySelector('.motivators-card .bar-fill')).width : 'open';
       });
       check('structured: a shut section\'s bars are held at zero until it opens', shutWidth === '0px', shutWidth);

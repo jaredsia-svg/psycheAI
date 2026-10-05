@@ -485,7 +485,7 @@
     // fetches a real PaymentIntent and shows *that* amount once it has one,
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
-    premiumPriceLabel: 'S$1.99',
+    premiumPriceLabel: 'US$8',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
@@ -531,44 +531,34 @@
     premiumResumeAction: 'Fetch my premium report',
     // The second thing this app sells, and the reason its copy is separate
     // from the unlock's: they buy different things, and a dialog that says
-    // "unlock premium sections" while charging S$0.99 for a re-run would be
+    // "unlock premium sections" while charging US$2 for a re-run would be
     // describing the wrong purchase.
-    analysisDialogTitle: 'Run another analysis',
-    analysisDialogBlurb: 'Your first analysis is free. Each one after that — including re-running ' +
-      'with Google or Facebook data added — is S$0.99, because every run is a fresh call to the AI ' +
+    analysisDialogTitle: 'Run your summary card again',
+    analysisDialogBlurb: 'Your first summary card is free. Each one after that — including re-running ' +
+      'with Google or Facebook data added — is US$2, because every run is a fresh call to the AI ' +
       'model and costs real money to produce.',
     // Shown on the upload page and beside the re-run button once the free run
     // is spent, so the price is never a surprise sprung at the last moment.
-    analysisPriceNote: 'Your next analysis costs S$0.99.',
+    analysisPriceNote: 'Your next summary card costs US$2.',
     // Shown instead of the above once premium is unlocked — re-running then
-    // bundles the four paid sections back in, at the unlock's own S$1.99
-    // rather than the plain re-run's S$0.99, whether or not a free run is
+    // bundles the four paid sections back in, at the unlock's own US$8
+    // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
-    analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs S$1.99 and ' +
+    analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$8 and ' +
       'refreshes everything — your card and the full premium report.',
-    analysisFreeNote: 'Your first analysis is free.',
+    analysisFreeNote: 'Your first summary card is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
     // paying can always fix — so it says what it is rather than blaming them.
     analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
       'again tomorrow.',
-    // The compatibility read, priced level with the premium unlock because it
-    // is the same size of job: a full model call weighing two whole profiles
-    // against each other. The blurb says what the charge covers and, more
-    // usefully, what it does not — a reader who has just answered two
-    // questions about who this person is to them should not be wondering
-    // whether they are about to be billed again for changing their mind.
-    compatibilityDialogTitle: 'See how you two compare',
-    compatibilityDialogBlurb: 'A compatibility report is S$1.99. It reads both profiles against ' +
-      'each other on the basis you just chose and writes the result — a fresh call to the AI ' +
-      'model, the same size of job as the premium sections. Taken on this device.',
     premiumDialogTitle: 'Unlock the full premium report',
     premiumDialogBlurb: 'One charge explains your whole card — every score, letter and type — and ' +
       'opens the roast, the mental wellness read, your attachment style, what partner truly suits you ' +
       'and the career assessment. Taken on this device — Apple Pay or Google Pay, whichever this ' +
       'browser offers.',
     // Shown instead of the above when the reader added a Google or Facebook
-    // export on the way here. The same S$1.99 now also rewrites the free
+    // export on the way here. The same US$8 now also rewrites the free
     // sections against that data, so the price is doing more and says so
     // before it is agreed to rather than after.
     premiumDialogBlurbWithData: 'One charge writes your full report and opens the roast, the mental ' +
@@ -577,7 +567,7 @@
       'device — Apple Pay or Google Pay, whichever this browser offers.',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
-    // be the wrong verb for sections they already have. Same S$1.99, same
+    // be the wrong verb for sections they already have. Same US$8, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
     premiumRerunDialogTitle: 'Re-run your full premium report',
@@ -906,6 +896,37 @@
     // The structured wellbeing section's one line of context, in place of the
     // classic report's paragraph. Still says what this is not, and who to ask.
     wellnessNote: 'If anything here weighs on you, a GP or qualified professional can help.',
+    // The welcome page's "What insights will I get?": the free card, then the
+    // full report by its four parts. Section names are taken from the report's
+    // own labels in app.js, so these hold only what the page says around them.
+    insights: {
+      freeBadge: 'Free',
+      freeTitle: 'Your summary card',
+      freeBlurb: 'One card that sums you up, ready to share — read from your own data in a few minutes.',
+      cardItems: [
+        ['🦸', 'The character you are most like', 'and why, in two sentences'],
+        ['🧵', 'Your signature patterns', 'the behaviours that explain you'],
+        ['🧲', 'What motivates you', 'your three strongest drives'],
+        ['🧭', 'MBTI', 'four letters, and how clear each is'],
+        ['📊', 'Big Five', 'the research-backed traits'],
+        ['⚖️', 'Values & Beliefs', 'what you hold to'],
+        ['✨', 'Interests', 'what you keep coming back to'],
+        ['💝', 'Love languages', 'how you give and receive care'],
+      ],
+      previewCaption: 'A real card, from the sample report',
+      premiumTitle: 'The full premium report',
+      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
+      partBlurbs: {
+        who: 'Your MBTI letter by letter and your Big Five trait by trait, and a wellbeing read across six dimensions.',
+        drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
+        connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
+        together: 'A development plan built from everything above, a step-by-step plan you can tick off, and how your strengths behave under pressure.',
+      },
+      extras: [['📄', 'A PDF to keep'], ['🔍', 'The evidence behind every finding'], ['🔥', 'An optional roast']],
+      compatTitle: 'Compatibility, free',
+      compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
+    },
+    partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
     cardStandFor: 'Values & Beliefs',
     cardInto: 'Interests',
@@ -931,15 +952,25 @@
     // Everything the digest carries complete, beside the text it samples —
     // so "180 of 9,741 messages" is not read as all the analysis saw.
     sourcesHint: 'Adding Google or Facebook raises confidence.',
-    fullCounts: {
-      messages: 'messages', conversations: 'conversations', posts: 'posts', stories: 'stories',
-      commentsWritten: 'comments written', postsLiked: 'posts liked', postsSaved: 'posts saved',
-      following: 'accounts followed', watched: 'YouTube videos watched', googleSearches: 'Google searches',
-      youtubeSearches: 'YouTube searches', facebookPosts: 'Facebook posts', facebookComments: 'Facebook comments',
+    // "Read from": what the model actually read of each source, beside what
+    // it only counted — "180 of 9,741 of your messages read", "623 stories
+    // counted" — so the sample is never mistaken for the whole archive.
+    readFrom: {
+      messages: (shown, of, threads) => shown + ' of your ' + of + ' messages read' + (threads ? ', from ' + threads + ' conversations' : ''),
+      messagesCounted: (n, threads) => n + ' messages counted' + (threads ? ', across ' + threads + ' conversations' : ''),
+      captions: (shown, of) => shown + ' of ' + of + ' captions read',
+      comments: (shown, of) => shown + ' of ' + of + ' comments read',
+      liked: (n, shown) => n + ' liked posts counted' + (shown ? ', ' + shown + ' of their captions read' : ''),
+      stories: n => n + ' stories counted',
+      saved: n => n + ' saved posts counted',
+      following: n => n + ' accounts followed counted',
+      timing: span => 'Activity timing across ' + span + ', in full',
+      videos: (shown, of) => shown + ' of ' + of + ' YouTube video titles read',
+      googleSearches: (shown, of, total) => 'Top ' + shown + ' of ' + of + ' distinct Google searches read' + (total ? ' (' + total + ' in all)' : ''),
+      youtubeSearches: (shown, of) => 'Top ' + shown + ' of ' + of + ' distinct YouTube searches read',
+      facebookPosts: (shown, of) => shown + ' of ' + of + ' Facebook posts read',
+      years: n => n + ' years', months: n => n + ' months',
     },
-    fullAcross: ' across ',
-    fullTiming: 'Activity timing across ',
-    spanYears: ' years', spanMonths: ' months',
 
     // The method section after Part 4 (the PDF's method page still uses these rows).
     methodSources: 'Sources read',
@@ -953,6 +984,7 @@
     // layout adds. Same length and register as the explain* lines in TEXT.
     // The types row of the unlock list, without the Enneagram this layout drops.
     explainTypeTitle: 'MBTI',
+    explainListsTitle: 'Interests, Values & Beliefs',
     explainType: 'Letter by letter – the behaviours that put each one there, the evidence that pulls the ' +
       'other way, how firmly it holds, and what each letter looks like in your ordinary week.',
     explainPatterns: 'The two or three patterns that explain the most about you, named, evidenced, and ' +

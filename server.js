@@ -399,7 +399,7 @@ function requirePremiumEngine(response) {
 // With an 'unlock' payment or a promo code it is the full premium report, in
 // one call: every explanation behind the card, written to explain the card the
 // reader already has (`anchor`) rather than to reach its own conclusions
-// afresh, plus the roast and the four premium sections. That is the S$1.99
+// afresh, plus the roast and the four premium sections. That is the US$8
 // purchase. /api/premium-analysis still answers for a page loaded before this
 // deployed, and for nothing else.
 //
@@ -429,8 +429,8 @@ async function handleAnalyse(request, response) {
   const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
   const paying = Boolean(promoCode || paymentIntentId);
 
-  // Which purchase is being spent here. 'analysis' is the ordinary S$0.99
-  // re-run of the free card. 'unlock' is the S$1.99 premium purchase, and it is
+  // Which purchase is being spent here. 'analysis' is the ordinary US$2
+  // re-run of the free card. 'unlock' is the US$8 premium purchase, and it is
   // the only thing that buys the full report.
   //
   // Naming the product cannot be used to pay less for more: verifyPaid checks
@@ -782,80 +782,32 @@ async function handleCompatibility(request, response) {
     sendJson(response, 400, { error: 'Expected two profile cards, "a" and "b".' });
     return;
   }
-  // A compatibility read is now bought, not given.
-  //
-  // It used to draw on the same daily free ceiling as everything else, which
-  // made the most expensive call in the app — a full model run over two
-  // profile cards — the one thing anyone could have unlimited goes at for
-  // nothing. It is priced level with the premium unlock because it costs the
-  // same to produce.
-  //
-  // The shape below is deliberately the same as handlePremiumAnalysis's: a
-  // promo code short-circuits everything, a real payment is re-verified with
-  // Stripe rather than trusted from the client, the ledger caps how many
-  // times one payment can be spent, and the result cache is consulted before
-  // the ledger so that a reader whose connection died gets their report back
-  // without paying for it twice. Two paid routes that authorise differently
-  // is how one of them ends up wrong.
+  // A compatibility read is free. It draws on the same daily free ceiling as
+  // the free card, so the most expensive free call in the app is still
+  // bounded across all readers per day, and it is answered from the result
+  // cache when this exact question was asked minutes ago. A payment or a
+  // promo code sent by an older page is ignored: nothing here is sold.
   const engine = requireEngine(response);
   if (!engine) return;
   // Resolved once, up here, because they are part of the cache key: the same
   // two cards read as colleagues and read as partners are different reports,
   // and keying on the pair alone would serve one where the other was asked
   // for. An unknown mode or stance falls back rather than 400ing — the basis
-  // is a presentation choice, not something worth failing a paid call over.
+  // is a presentation choice, not something worth failing a call over.
   const mode = prompts.resolveMode(body.mode);
   const stance = prompts.resolveStance(body.stance);
   const cacheKey = { a, b, mode, stance };
 
   const background = wantsBackground(body);
-  const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
-  if (promoCode) {
-    if (!isValidPromoCode(promoCode)) {
-      sendJson(response, 402, { error: 'That code is not valid.' });
-      return;
-    }
-    const answeredPromo = servedFromMemory(response, 'compatibility', cacheKey, background);
-    if (answeredPromo) {
-      await answeredPromo;
-      return;
-    }
-    await generate(response, {
-      background,
-      kind: 'compatibility',
-      key: cacheKey,
-      produce: () => engine.analyseCompatibility(a, b, mode, stance),
-    });
+  const answered = servedFromMemory(response, 'compatibility', cacheKey, background);
+  if (answered) {
+    await answered;
     return;
   }
-
-  const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
-  if (!paymentIntentId) {
-    sendJson(response, 402, { error: 'A compatibility report needs to be paid for.' });
-    return;
-  }
-  if (!payments.hasKey()) {
-    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
-    return;
-  }
-  await payments.verifyPaid(paymentIntentId, 'compatibility');
-  if (!paymentLedger.canUse(paymentIntentId, 'compatibility')) {
-    sendJson(response, 429, {
-      error: 'This payment has already generated the maximum number of compatibility reports. ' +
-        'Contact support if yours failed to come through.',
-    });
-    return;
-  }
-  const answeredPaid = servedFromMemory(response, 'compatibility', cacheKey, background);
-  if (answeredPaid) {
-    await answeredPaid;
-    return;
-  }
-  // Same hold as the premium route, for the same reason.
-  const release = paymentLedger.hold(paymentIntentId, 'compatibility');
-  if (!release) {
-    sendJson(response, 429, {
-      error: 'This payment is already generating a report. Wait for it to finish before trying again.',
+  if (!budget.canSpend()) {
+    sendJson(response, 503, {
+      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC.',
+      budgetExhausted: true,
     });
     return;
   }
@@ -863,11 +815,11 @@ async function handleCompatibility(request, response) {
     background,
     kind: 'compatibility',
     key: cacheKey,
-    settle: release,
     produce: async () => {
       const result = await engine.analyseCompatibility(a, b, mode, stance);
-      usage.record('compatibility', result, true);
-      paymentLedger.recordUse(paymentIntentId, 'compatibility');
+      usage.record('compatibility', result, false);
+      // Recorded only once the model came back, as the free card's is.
+      budget.record('compatibility');
       return result;
     },
   });
