@@ -1683,8 +1683,9 @@
   function openInsightCard() {
     const dialog = $('#sample-card-dialog');
     if (!dialog || dialog.open || !insightSample) return;
-    $('#sample-psyche-card-full').innerHTML = psycheCardHtml(Object.assign({}, insightSample,
-      { card: Object.assign({}, insightSample.card, { name: 'Sample' }) }));
+    const sample = Object.assign({}, insightSample, { card: Object.assign({}, insightSample.card, { name: 'Sample' }) });
+    $('#sample-psyche-card-full').innerHTML = psycheCardHtml(sample);
+    guideSampleCard(sample);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     layoutPsycheCard();
@@ -5286,8 +5287,7 @@
    */
   function cardGuideHtml(report) {
     const G = Copy.STRUCTURED.cardGuide;
-    const facts = cardGuideFacts(report);
-    cardGuideState = { facts, items: G.items.filter(item => item.when(facts)) };
+    cardGuideState = cardGuideFor(report);
     const tool = (act, svg) => '<button type="button" class="cx-tool" data-act="' + act + '" title="' + esc(G.toolTips[act]) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
@@ -5316,6 +5316,14 @@
     '</div>';
   }
   let cardGuideState = null;
+  // The same explanations for the sample's card, full screen.
+  let sampleGuideState = null;
+
+  /** What each part of a card means, and what it says on this one. */
+  function cardGuideFor(report, yoursLabel) {
+    const facts = cardGuideFacts(report);
+    return { facts, yoursLabel, items: Copy.STRUCTURED.cardGuide.items.filter(item => item.when(facts)) };
+  }
 
   /** The facts the guide's lines are written from, read off the card's report. */
   function cardGuideFacts(report) {
@@ -5360,9 +5368,9 @@
   };
 
   /** Marks each explained part of the reader's card with the key of its explanation. */
-  function markCardParts() {
+  function markCardParts(cards = [$('#psyche-card'), $('#psyche-card-full')]) {
     // The page's card and its full-screen copy, which is where a phone explains it.
-    for (const card of [$('#psyche-card'), $('#psyche-card-full')]) {
+    for (const card of cards) {
       if (!card) continue;
       for (const [key, selectors] of Object.entries(GUIDE_TARGETS)) {
         for (const selector of selectors) {
@@ -5387,9 +5395,9 @@
     $('#view-profile').classList.contains('profile-structured') && Boolean(cardGuideState);
 
   /** Fills an explanation box with what one part of the card means. */
-  function fillCardPop(pop, item) {
+  function fillCardPop(pop, item, state = cardGuideState) {
     const G = Copy.STRUCTURED.cardGuide;
-    const facts = cardGuideState.facts;
+    const facts = state.facts;
     pop.querySelector('.cx-pop-icon').textContent = item.icon;
     pop.querySelector('.cx-pop-title').textContent = item.title;
     pop.querySelector('.cx-pop-body').innerHTML =
@@ -5399,7 +5407,7 @@
         '<li><span class="cx-pair"><b class="' + (facts.chosen.includes(a) ? 'is-yours' : '') + '">' + esc(a) + '</b>' +
         '<b class="' + (facts.chosen.includes(b) ? 'is-yours' : '') + '">' + esc(b) + '</b></span>' +
         '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
-      '<div class="cx-yours"><span class="cx-label">' + esc(G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>' +
+      '<div class="cx-yours"><span class="cx-label">' + esc(state.yoursLabel || G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>' +
       '<div class="cx-why"><span class="cx-label">' + esc(G.labels.why) + '</span>' + esc(item.why) + '</div>';
     pop.scrollTop = 0;
     pop.hidden = false;
@@ -5448,13 +5456,44 @@
     if (!item) { pop.hidden = true; lightCardPart(null, card); return; }
     fillCardPop(pop, item);
     lightCardPart(key, card);
-    const part = card.querySelector('[data-cx="' + key + '"]');
+    placeCardPop(pop, card.querySelector('[data-cx="' + key + '"]'), card);
+  }
+
+  /**
+   * Puts a full-screen explanation right against the part it explains.
+   *
+   * Beside the card, level with the part and pointing at it, where the screen
+   * leaves room for that — a laptop. Otherwise just under the part, or just
+   * over it when there is more room above, and kept on screen; never shorter
+   * than a third of the screen, scrolling past that and overlapping the part
+   * only if it must.
+   */
+  function placeCardPop(pop, part, card) {
     const r = part && part.getBoundingClientRect();
     if (!r) return;
-    // Right against the part — just under it, or just over it when there is
-    // more room above — and kept on screen. Never shorter than a third of the
-    // screen: the sheet scrolls past that, overlapping the part only if it must.
-    const H = window.innerHeight, gap = 8, edge = 12;
+    const W = window.innerWidth, H = window.innerHeight, gap = 8, edge = 12;
+    const frame = card.getBoundingClientRect();
+    const room = W - frame.right - 2 * edge;
+    const side = room >= 300;
+    pop.classList.toggle('at-side', side);
+    pop.style.maxHeight = pop.style.top = pop.style.bottom = pop.style.left = pop.style.right = pop.style.width = pop.style.overflowY = '';
+    if (side) {
+      pop.classList.remove('at-top');
+      pop.style.left = Math.round(frame.right + 2 * edge) + 'px';
+      pop.style.right = 'auto';
+      pop.style.width = Math.round(Math.min(380, room - 2 * edge)) + 'px';
+      pop.style.bottom = 'auto';
+      pop.style.maxHeight = (H - 2 * edge) + 'px';
+      // Scrolling only when it must: a scrolling box clips the arrow.
+      pop.style.overflowY = 'visible';
+      if (pop.scrollHeight > pop.clientHeight + 1) pop.style.overflowY = 'auto';
+      const middle = r.top + r.height / 2;
+      const top = Math.max(edge, Math.min(H - edge - pop.offsetHeight, middle - pop.offsetHeight / 2));
+      pop.style.top = Math.round(top) + 'px';
+      const arrow = pop.querySelector('.cx-arrow');
+      if (arrow) arrow.style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
+      return;
+    }
     const least = Math.round(H * 0.34);
     const under = r.bottom < H - r.top;
     pop.classList.toggle('at-top', !under);
@@ -5471,9 +5510,49 @@
     }
   }
 
+  /** The sample's card, full screen: the same explanations, for its parts. */
+  function explainSampleCardPart(key) {
+    const card = $('#sample-psyche-card-full');
+    const pop = $('#sample-card-dialog .cx-pop');
+    const item = sampleGuideState && sampleGuideState.items.find(entry => entry.key === key);
+    if (!pop || !card) return;
+    card.classList.remove('pc-hint');
+    if (!item) { pop.hidden = true; lightCardPart(null, card); return; }
+    fillCardPop(pop, item, sampleGuideState);
+    lightCardPart(key, card);
+    placeCardPop(pop, card.querySelector('[data-cx="' + key + '"]'), card);
+  }
+
+  /** Readies the sample's full-screen card to be explained, from the report it was drawn from. */
+  function guideSampleCard(report) {
+    const card = $('#sample-psyche-card-full');
+    const dialog = $('#sample-card-dialog');
+    sampleGuideState = report && reportLayout() === 'structured'
+      ? cardGuideFor(report, Copy.STRUCTURED.cardGuide.labels.sample) : null;
+    dialog.classList.toggle('is-explained', Boolean(sampleGuideState));
+    const G = Copy.STRUCTURED.cardGuide;
+    $('#sample-card-tip').textContent = sampleGuideState ? (canHover() ? G.sampleTip.hover : G.sampleTip.tap) : '';
+    explainSampleCardPart(null);
+    if (!sampleGuideState) return;
+    markCardParts([card]);
+    card.classList.add('pc-hint');
+  }
+
   const canHover = () => Boolean(window.matchMedia && window.matchMedia('(hover: hover)').matches);
   // Pointing at a part of the card explains it; leaving the card puts the
   // panel back to where to start.
+  // The sample's card full screen: pointing at a part explains it, beside the
+  // card; leaving the card for anywhere but the explanation puts it away.
+  document.addEventListener('mouseover', event => {
+    if (!canHover() || !event.target.closest || !sampleGuideState) return;
+    const part = event.target.closest('#sample-psyche-card-full [data-cx]');
+    if (part) explainSampleCardPart(part.getAttribute('data-cx'));
+  });
+  document.addEventListener('mouseout', event => {
+    if (!canHover() || !event.target.closest || !sampleGuideState) return;
+    const inside = node => node && node.closest && node.closest('#sample-card-dialog .card-dialog-frame, #sample-card-dialog .cx-pop');
+    if (inside(event.target) && !inside(event.relatedTarget)) explainSampleCardPart(null);
+  });
   document.addEventListener('mouseover', event => {
     if (!canHover() || !event.target.closest || explainsFullScreen()) return;
     const part = event.target.closest('#psyche-card [data-cx]');
@@ -5499,6 +5578,18 @@
       // A tap anywhere else first puts the explanation away; only with none
       // showing does it close the card.
       else if (!full.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#card-dialog-close')) explainFullCardPart(null);
+      else return;
+      event.stopPropagation();
+      return;
+    }
+    // The same for the sample's card, full screen.
+    const sample = $('#sample-card-dialog');
+    if (sample && sample.open && sampleGuideState && event.target.closest('#sample-card-dialog')) {
+      const pop = sample.querySelector('.cx-pop');
+      const part = event.target.closest('#sample-psyche-card-full [data-cx]');
+      if (part) explainSampleCardPart(part.getAttribute('data-cx'));
+      else if (event.target.closest('.cx-close')) explainSampleCardPart(null);
+      else if (!pop.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#sample-card-dialog-close')) explainSampleCardPart(null);
       else return;
       event.stopPropagation();
       return;
@@ -5994,8 +6085,12 @@
     // so it gets the height the download row would otherwise take.
     const sampleFull = $('#sample-card-dialog');
     if (sampleFull && sampleFull.open) {
+      // Above the line saying how to learn more, when it shows.
+      const tip = $('#sample-card-tip');
+      const tipSpace = tip && tip.offsetHeight ? tip.offsetHeight + 16 : 0;
       fitCard($('#sample-psyche-card-full'),
-        window.innerWidth * 0.94, window.innerHeight * 0.96, 'screen');
+        window.innerWidth * 0.94, window.innerHeight * 0.96 - tipSpace, 'screen');
+      if (sampleGuideState) explainSampleCardPart(null);
     }
   }
 
@@ -6233,6 +6328,7 @@
   $('#sample-card-open').addEventListener('click', () => {
     const dialog = $('#sample-card-dialog');
     if (!dialog || dialog.open) return;
+    guideSampleCard(sampleReport);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     // After it is shown, never before: fitCard measures the element, and a
@@ -6253,6 +6349,7 @@
   $('#card-share').addEventListener('click', shareCardImage);
   $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
   $('#card-dialog').addEventListener('close', () => explainFullCardPart(null));
+  $('#sample-card-dialog').addEventListener('close', () => explainSampleCardPart(null));
   // Clicking the backdrop closes it: the dialog element itself fills the screen,
   // so a click that lands on it rather than on the card is a click outside.
   $('#card-dialog').addEventListener('click', event => {

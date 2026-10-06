@@ -3150,6 +3150,29 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .card-dialog-pop.at-top { top: max(12px, env(safe-area-inset-top)); bottom: auto; }
 .card-dialog-pop .cx-close { display: block; }
+.card-dialog-pop .cx-arrow { display: none; }
+/* Beside the card on a laptop, level with the part and pointing at it. */
+.card-dialog-pop.at-side { transition: top .2s ease; }
+.card-dialog-pop.at-side .cx-arrow { display: block; }
+.card-dialog-pop.at-side .cx-close { display: none; }
+@media (hover: none) { .card-dialog-pop.at-side .cx-close { display: block; } }
+/* The sample's card full screen: how to learn more, under the card. */
+.sample-card-tip { display: none; }
+.card-dialog.is-explained .sample-card-tip {
+  display: flex; align-items: center; justify-content: center; margin: 0; padding: 4px 16px max(14px, env(safe-area-inset-bottom));
+  color: #fff; font-size: clamp(.8rem, 3.8vw, .95rem); font-weight: 600; letter-spacing: .01em; text-align: center;
+}
+.card-dialog.is-explained .sample-card-tip::before { content: "✨"; margin-right: .45rem; }
+.card-dialog.is-explained #sample-psyche-card-full [data-cx] { cursor: pointer; }
+/* On a phone the card reaches the top corner, where the cross would vanish
+   over its white: the cross moves down beside the line, as on the reader's own. */
+@media (max-width: 719px) {
+  .card-dialog.is-explained .sample-card-tip { min-height: 44px; padding: 4px 56px max(10px, env(safe-area-inset-bottom)); }
+  .card-dialog.is-explained .sample-card-close {
+    top: auto; bottom: max(10px, env(safe-area-inset-bottom)); width: 44px; height: 44px;
+    border-color: rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .12); color: #fff;
+  }
+}
 /* Part 05: a heading over two boxes of their own, not a disclosure. */
 .appendix-part { margin-top: 1.4rem; }
 .appendix-head { margin: 0 0 .9rem; padding: 0 .3rem; }

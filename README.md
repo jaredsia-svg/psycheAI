@@ -3397,7 +3397,15 @@ its steps beside it as white cards with a box to tick (`planStep()`), each with 
 own colours once "Read it anyway" opens it — `revealRoast()` adds `is-revealed`, `hideRoast()` takes it
 away — so the unkind part is set apart without being hard to read. **The sample card's full screen
 view** has a faint cross fixed in the screen's top right (`#sample-card-dialog-close`), since a phone
-has no Escape key. On the front page's premium tier, **See sample** shares the line with "A PDF to
+has no Escape key. **In the structured layout its parts are explained as the reader's own are**
+(`guideSampleCard()`, `explainSampleCardPart()`, `sampleGuideState` from `cardGuideFor()`), whether it was
+opened from the front page or from the sample report: on a laptop, pointing at a part lights it and its
+note opens beside the card, level with the part and pointing at it, until the pointer leaves the card;
+on a phone, tapping a part opens its note right against it, as in the reader's own full screen
+(`placeCardPop()`, shared by both). The note's own reading is headed "On this card" rather than "Yours".
+Under the card a line says how — "Hover over any part of the card to learn more", or "Tap any part to
+learn more" on a touch screen (`#sample-card-tip`) — and on a phone the cross moves down beside it,
+since there the card reaches the top corner and a faint cross over its white would vanish. On the front page's premium tier, **See sample** shares the line with "A PDF to
 keep", "Evidence behind every finding" and "A bonus roast" on a laptop, and drops under them on a phone.
 
 **Part 05, the Appendix**, holds Evidence and method and the roast, on the page and in the PDF: on the

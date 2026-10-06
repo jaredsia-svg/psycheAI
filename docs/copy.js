@@ -970,7 +970,9 @@
       fullTip: 'Tap any part to learn more',
       tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
       toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
-      labels: { yours: 'Yours', why: 'Why it matters' },
+      labels: { yours: 'Yours', why: 'Why it matters', sample: 'On this card' },
+      // Under the sample's card, full screen.
+      sampleTip: { hover: 'Hover over any part of the card to learn more', tap: 'Tap any part to learn more' },
       items: [
         { key: 'character', icon: '🦸', title: 'Who you are most like', when: f => f.character,
           about: 'Your behaviour — what you post, how you talk to people, what you keep coming back to — is compared with a ' +

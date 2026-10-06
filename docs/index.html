@@ -806,9 +806,18 @@
      no bar at all, so the card gets the whole screen. -->
 <dialog id="sample-card-dialog" class="card-dialog" aria-label="The sample psyche card">
   <div class="card-dialog-frame"><div class="psyche-card" id="sample-psyche-card-full"></div></div>
+  <!-- How to learn more, under the card; each part's explanation opens beside
+       it (docs/app.js, explainSampleCardPart). -->
+  <p class="sample-card-tip" id="sample-card-tip"></p>
   <!-- A faint cross in the screen's top right corner: on a phone there is no
        Escape key and little outside the card to tap. -->
   <button class="sample-card-close" id="sample-card-dialog-close" type="button" aria-label="Close">✕</button>
+  <div class="cx-pop card-dialog-pop" role="status" aria-live="polite" hidden>
+    <span class="cx-arrow" aria-hidden="true"></span>
+    <button type="button" class="cx-close" aria-label="Close">✕</button>
+    <div class="cx-pop-head"><span class="cx-pop-icon" aria-hidden="true"></span><strong class="cx-pop-title"></strong></div>
+    <div class="cx-pop-body"></div>
+  </div>
 </dialog>
 
 <dialog id="sample-dialog" class="sample-dialog" aria-labelledby="sample-dialog-title">

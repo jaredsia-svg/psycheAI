@@ -10140,6 +10140,82 @@ try {
   // drawn by the same page when asked with ?layout=structured, from a fully
   // unlocked profile: the hand-written sample plus its premium fixture, so
   // every block has real content to lay out.
+  // The welcome page's sample card, full screen, in the structured layout: its
+  // parts explained as the reader's own are — beside the card on a laptop as
+  // the pointer moves over it, against the tapped part on a phone — with a
+  // line under the card saying how.
+  for (const [label, options] of [
+    ['laptop', { viewport: { width: 1366, height: 760 } }],
+    ['phone', { viewport: { width: 390, height: 664 }, isMobile: true, hasTouch: true }],
+  ]) {
+    const context = await browser.newContext(options);
+    const wp = await context.newPage();
+    const wpErrors = [];
+    wp.on('pageerror', error => wpErrors.push(error.message));
+    try {
+      await wp.goto('http://localhost:' + PORT + '/?layout=structured', { waitUntil: 'load' });
+      await wp.evaluate(() => localStorage.clear());
+      await wp.reload({ waitUntil: 'load' });
+      await wp.waitForSelector('#insight-card-open .psyche-card, #insight-card-preview > *', { timeout: 15000 });
+      await wp.locator('#insight-card-open').scrollIntoViewIfNeeded();
+      if (label === 'phone') await wp.tap('#insight-card-open'); else await wp.click('#insight-card-open');
+      await wp.waitForSelector('#sample-card-dialog[open]', { timeout: 5000 });
+      await wp.waitForTimeout(300);
+      const tip = await wp.evaluate(() => {
+        const t = document.querySelector('#sample-card-tip');
+        const r = t.getBoundingClientRect();
+        return { text: t.innerText.trim(), below: r.top >= document.querySelector('#sample-psyche-card-full').getBoundingClientRect().bottom - 1,
+          onScreen: r.bottom <= innerHeight };
+      });
+      check('structured: on a ' + label + ' the full-screen sample card says how to learn more, under the card',
+        tip.text === (label === 'phone' ? 'Tap any part to learn more' : 'Hover over any part of the card to learn more') &&
+          tip.below && tip.onScreen, JSON.stringify(tip));
+      const notes = [];
+      for (const key of ['character', 'type', 'love']) {
+        const part = '#sample-psyche-card-full [data-cx="' + key + '"]';
+        if (label === 'phone') await wp.tap(part); else await wp.hover(part);
+        await wp.waitForTimeout(350);
+        notes.push(await wp.evaluate(key => {
+          const pop = document.querySelector('#sample-card-dialog .cx-pop');
+          const p = pop.getBoundingClientRect();
+          const r = document.querySelector('#sample-psyche-card-full [data-cx="' + key + '"]').getBoundingClientRect();
+          const middle = r.top + r.height / 2;
+          return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
+            label: pop.querySelector('.cx-yours .cx-label').textContent,
+            side: pop.classList.contains('at-side') && p.left >= r.right && middle >= p.top && middle <= p.bottom,
+            against: (p.top >= r.bottom - 1 && p.top - r.bottom <= 14) || (p.bottom <= r.top + 1 && r.top - p.bottom <= 14),
+            onScreen: p.top >= 0 && p.bottom <= innerHeight + 1 && p.right <= innerWidth + 1 };
+        }, key));
+        if (label === 'phone') { await wp.tap('#sample-card-dialog .cx-close'); await wp.waitForTimeout(200); }
+      }
+      check('structured: on a ' + label + ' each part of the sample card is explained ' +
+        (label === 'phone' ? 'right against the part tapped' : 'beside the card, level with the part'),
+        notes.every(n => n.shown && n.title && n.label === 'On this card' && n.onScreen && (label === 'phone' ? n.against : n.side)) &&
+          notes[1].title === 'MBTI', JSON.stringify(notes));
+      if (label === 'laptop') {
+        await wp.mouse.move(4, 400);
+        await wp.waitForTimeout(250);
+        check('structured: and leaving the sample card puts the explanation away',
+          await wp.evaluate(() => document.querySelector('#sample-card-dialog .cx-pop').hidden &&
+            document.querySelector('#sample-card-dialog').open));
+      } else {
+        const cross = await wp.evaluate(() => {
+          const r = document.querySelector('#sample-card-dialog-close').getBoundingClientRect();
+          const card = document.querySelector('#sample-psyche-card-full').getBoundingClientRect();
+          return { clear: r.top >= card.bottom - 1, onScreen: r.bottom <= innerHeight };
+        });
+        check('structured: on a phone the sample card\'s cross sits beside the line under it, clear of the card',
+          cross.clear && cross.onScreen, JSON.stringify(cross));
+        await wp.tap('#sample-card-dialog-close');
+        await wp.waitForTimeout(200);
+        check('structured: and closes it', !(await wp.evaluate(() => document.querySelector('#sample-card-dialog').open)));
+      }
+      check('structured: the sample card full screen on a ' + label + ' with no page errors', wpErrors.length === 0, wpErrors.join(' | '));
+    } finally {
+      await context.close();
+    }
+  }
+
   {
     const sp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     const spErrors = [];
