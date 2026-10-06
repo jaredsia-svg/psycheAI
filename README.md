@@ -3403,6 +3403,9 @@ opened from the front page or from the sample report: on a laptop, pointing at a
 note opens beside the card, level with the part and pointing at it, until the pointer leaves the card;
 on a phone, tapping a part opens its note right against it, as in the reader's own full screen
 (`placeCardPop()`, shared by both). The note's own reading is headed "On this card" rather than "Yours".
+**Every full-screen note is drawn apart from the card it sits over** (`.card-dialog-pop`): a purple-to-pink
+band carrying its icon, title and a white cross, a lavender-tinted body, and "Yours" and "Why it matters"
+as white slips edged in purple and green — so over a white card it never reads as one more panel of it.
 Under the card a line says how — "Hover over any part of the card to learn more", or "Tap any part to
 learn more" on a touch screen (`#sample-card-tip`) — and on a phone the cross moves down beside it,
 since there the card reaches the top corner and a faint cross over its white would vanish. On the front page's premium tier, **See sample** shares the line with "A PDF to
