@@ -4987,13 +4987,9 @@ try {
       document.querySelector('#premium-promo-input').focus();
       return document.activeElement === document.querySelector('#premium-promo-input');
     }));
-  check('the unlock dialog opens with a title and a blurb naming all four sections',
+  check('the unlock dialog opens with its title and no blurb — the offer already said what it opens',
     /Unlock the full premium report/.test(await page.locator('#premium-dialog-title').innerText()) &&
-    /explains your whole card/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
-    /Apple Pay or Google Pay/.test(await page.locator('#premium-dialog-blurb').innerText()) &&
-    /mental wellness read, your attachment style, what partner truly suits you/i
-      .test(await page.locator('#premium-dialog-blurb').innerText()),
-    await page.locator('#premium-dialog-blurb').innerText());
+    !(await page.locator('#premium-dialog-blurb').isVisible()));
   // A second, independent way to authorise the same call. Only its presence
   // is checked in the browser here — actually submitting a code, right or
   // wrong, goes through a real fetch to /api/premium-analysis, and a wrong
@@ -8487,13 +8483,9 @@ try {
   await page.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
   check('the payment sheet is the last step, after the data and the review',
     await page.locator('#premium-dialog').isVisible());
-  // The price is buying more than usual here, and the sheet has to say so
-  // before it is agreed to — finding out afterwards that a charge covered
-  // extra is fine; finding out afterwards that it was needed is not.
-  check('the sheet says this charge also redraws the card with the new data',
-    /redraws your card/i.test(await page.locator('#premium-dialog-blurb').innerText()) &&
-    /no extra cost/i.test(await page.locator('#premium-dialog-blurb').innerText()),
-    await page.locator('#premium-dialog-blurb').innerText());
+  // The data popout said the card may change; the sheet does not repeat it.
+  check('the sheet carries no blurb, even with new data',
+    !(await page.locator('#premium-dialog-blurb').isVisible()));
   const digestBeforePaying = await page.evaluate(() => localStorage.getItem('psycheai_digest'));
   check('and the added data is not kept until it has actually bought something',
     !JSON.parse(digestBeforePaying).google);
@@ -8631,13 +8623,8 @@ try {
   await page.route('**/api/result*', rewriteFull);
   await page.route('**/api/analyse', rewriteFull);
   await openUnlockPayment(page);
-  // The inverse of the promise above: with nothing added there is nothing to
-  // rewrite, so the sheet must not claim otherwise. A blurb that advertised
-  // a rewrite on every unlock would be the easy way to make the check above
-  // pass while telling most readers something untrue.
   check('with no data added the sheet makes no claim about redrawing anything',
-    !/redraws your card/i.test(await page.locator('#premium-dialog-blurb').innerText()),
-    await page.locator('#premium-dialog-blurb').innerText());
+    !/redraws your card/i.test(await page.locator('#premium-dialog').innerText()));
   await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
@@ -10527,16 +10514,17 @@ try {
         const card = document.querySelector('#profile-body .method-card');
         return {
           text: card.textContent,
-          full: Array.from(card.querySelectorAll('.counted-full .ev')).map(n => n.textContent),
+          full: Array.from(card.querySelectorAll('.source-read-what')).flatMap(n => n.textContent.split(' · ')),
+          google: (card.querySelector('.source-read[data-source="google"] .source-read-what') || {}).textContent || '',
           bars: card.querySelectorAll('.coverage-row, .bar').length,
-          summaryChips: card.querySelectorAll('.trait-evidence:not(.counted-full) .ev').length,
+          summaryChips: card.querySelectorAll('.trait-evidence .ev').length,
         };
       });
-      check('structured: with the digest, Read from lists what was counted in full',
+      check('structured: with the digest, each source row lists what was read and counted from it',
         // Totals rounded to read at a glance; what was read stays exact.
         evidence.full.includes('180 of your 9.7k messages read, from 38 conversations') &&
         evidence.full.includes('200 of ~400 captions read') && evidence.full.includes('12.3k liked posts counted') &&
-        evidence.full.includes('Activity timing across 7 years, in full'), evidence.full.join(' | '));
+        evidence.full.includes('Activity timing across 7 years, in full') && !/messages/.test(evidence.google), evidence.full.join(' | '));
       check('structured: under one label, with no word-for-word chart, in place of the model\'s shorter summary',
         !/Read word for word|Counted in full/.test(evidence.text) && evidence.bars === 0 && evidence.summaryChips === 0,
         JSON.stringify({ bars: evidence.bars, chips: evidence.summaryChips }));
@@ -11017,7 +11005,8 @@ try {
             /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
           trust: document.querySelectorAll('#rerun-with-data').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
-          sources: Boolean(method && method.querySelector('.trust-sources .source-list') && method.querySelector('#free-add-data')),
+          sources: Boolean(method && method.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 3 &&
+            !method.querySelector('.trust-sources, #free-add-data')),
           // What is on screen, not the attribute: the row's own display once overrode it.
           download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display !== 'none',
           sideText: side.innerText.replace(/\s+/g, ' ').trim() };
@@ -11025,7 +11014,7 @@ try {
       check('structured: a free report has no nav, its card filling three fifths and an empty panel for what it means, the same height',
         freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.threeFifths &&
           freeShape.sameHeight && freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
-      check('structured: Evidence and method sits under the unlock offer with the data sources table, no US$2 re-run and no download',
+      check('structured: Evidence and method sits under the unlock offer with a row per source, no button, no US$2 re-run and no download',
         freeShape.method && freeShape.sources && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
       // The unlock offer, by the report's five parts, and the panel saying
       // where the reasoning behind the card is.
@@ -11055,6 +11044,18 @@ try {
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
+      check('structured: a free report\'s Test compatibility sits under the card\'s three tools, Delete stays in the action row',
+        await sp.evaluate(() => {
+          const button = document.querySelector('#profile-side .cx-compat');
+          const tools = document.querySelector('#profile-side .cx-tools');
+          return Boolean(button && tools && (tools.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
+            getComputedStyle(document.querySelector('#test-compat-open')).display === 'none' &&
+            getComputedStyle(document.querySelector('#delete-profile')).display !== 'none';
+        }));
+      await sp.click('#profile-side .cx-compat');
+      await sp.waitForSelector('#compat-dialog[open]', { timeout: 10000 });
+      check('structured: and it opens the compatibility popout', await sp.locator('#compat-dialog').isVisible());
+      await sp.click('#compat-dialog-close');
       // Its "Add / change data" is the US$5 unlock — data first, then payment —
       // never the US$2 re-run of the card.
       // A real report has its evidence summary on the device.
@@ -11062,10 +11063,10 @@ try {
         coverage: { sampling: {} }, counts: {}, rhythm: { spanDays: 400 } })));
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
-      await sp.locator('#free-add-data').scrollIntoViewIfNeeded();
-      await sp.click('#free-add-data');
+      await sp.locator('.source-read[data-source="facebook"]').scrollIntoViewIfNeeded();
+      await sp.click('.source-read[data-source="facebook"]');
       await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-      check('structured: a free report\'s "Add / change data" opens the same data sources popout the unlock does',
+      check('structured: a free report\'s source row opens the same data sources popout the unlock does',
         (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
       // With no deeper digest on the device and no export in memory, a Deeper
       // read asks for the Instagram export again rather than going ahead.

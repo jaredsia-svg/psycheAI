@@ -1382,6 +1382,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    reuses the mock button's spacing rather than needing its own rule — the
    two are never shown at once. */
 #premium-payment-request-button { margin: 1rem 0; min-height: 40px; }
+/* Nothing mounted (no wallet on this browser, or mock mode): no empty band under the title. */
+#premium-payment-request-button:empty { min-height: 0; margin: .6rem 0 0; }
 #premium-mock-pay, #premium-retry { margin: 0 0 1rem; }
 
 /* The card fallback, mounted only when this browser cannot use a wallet (see
@@ -2544,9 +2546,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .gauge-ends span:last-child { text-align: right; font-weight: 600; color: var(--ink); }
 
 /* "Read from": what was counted in full. */
-.evidence-read { border-left: 3px solid var(--accent-soft); padding-left: .9rem; margin-bottom: 1rem; }
-.evidence-read .essence-label { font-size: .72rem; margin-top: .2rem; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
-.evidence-read .counted-full { margin-bottom: .2rem; }
 
 /* The roast as its own room: grey while it is covered, then the page's own
    colours once "Read it anyway" opens it, so it reads as easily as the rest.
@@ -3030,6 +3029,40 @@ details.more[open] > summary::after { content: ' ▴'; }
 .delete-confirm { background: #b3261e; border-color: #b3261e; color: #fff; }
 .delete-confirm:hover, .delete-confirm:focus-visible { background: #8f1d17; border-color: #8f1d17; }
 .free-method-card { margin-top: 1rem; }
+/* Evidence and method's data: one quiet row per source, what was read from
+   it beneath, the row itself the way to change or add it. */
+.sources-read { margin-top: 1.2rem; }
+.sources-read-title {
+  margin: 0 0 .5rem; font-size: .74rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft);
+}
+.sources-read-lost { margin: 0 0 .6rem; font-size: .86rem; color: var(--ink-soft); }
+.card .sources-read-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.card .sources-read-list li { margin: 0; padding: 0; }
+.sources-read-list li + li { border-top: 1px solid var(--line); }
+/* Icon on the left; name and Change/Add on one line; what was read beneath,
+   across the full width, so a phone does not squeeze it into a column. */
+.source-read {
+  display: grid; grid-template-columns: 2.1rem 1fr auto; grid-template-areas: "icon name action" "icon what what";
+  column-gap: .8rem; row-gap: .1rem; align-items: center; width: 100%; margin: 0;
+  padding: .75rem .9rem; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  transition: background .15s ease;
+}
+.source-read-body { display: contents; }
+.source-read:hover { background: color-mix(in srgb, var(--accent-soft) 55%, transparent); }
+.source-read:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.source-read-icon {
+  grid-area: icon; align-self: start; display: grid; place-items: center; width: 2.1rem; height: 2.1rem; border-radius: 10px;
+  background: var(--accent-soft); font-size: 1rem; line-height: 1;
+}
+.source-read.is-missing .source-read-icon { filter: grayscale(1); opacity: .6; }
+.source-read-name { grid-area: name; min-width: 0; font-weight: 650; font-size: .95rem; }
+.source-read-what { grid-area: what; min-width: 0; font-size: .8rem; line-height: 1.45; color: var(--ink-soft); }
+.source-read-action { grid-area: action; justify-self: end; font-size: .8rem; font-weight: 650; color: var(--accent); white-space: nowrap; }
+.source-read.is-loaded .source-read-action::after { content: ' ›'; }
+.source-read.is-missing .source-read-action {
+  padding: .25rem .65rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.sources-read-note { margin: .6rem 0 0; font-size: .78rem; line-height: 1.45; color: var(--ink-soft); }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —
    then that part's meaning pops out level with it, an arrow pointing back. */
@@ -3060,6 +3093,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-tool:hover, .cx-tool:focus-visible {
   border-color: var(--accent); color: var(--accent); transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
+}
+/* A free report's compatibility test, under the card's three tools. */
+.cx-compat {
+  display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; margin-top: .45rem;
+  padding: .6rem .8rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--accent-soft); font: inherit; font-size: .86rem; font-weight: 700; color: var(--accent); cursor: pointer;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+.cx-compat svg { width: 18px; height: 18px; }
+.cx-compat:hover, .cx-compat:focus-visible {
+  border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
 }
 .cx-stage { flex: 1; min-height: 14rem; }
 /* The pop is placed against the whole panel, so it can come level with the
@@ -3139,6 +3183,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .cx-home-intro { display: none; }
   .cx-home-hint { order: 3; justify-content: center; text-align: left; }
   .cx-tools { order: 4; }
+  .cx-compat { order: 4; }
   .cx-stage { order: 5; }
 }
 /* On a phone the explanation rises from the foot of the screen instead. */
@@ -3248,7 +3293,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .free-method .free-score { margin: 0 0 .5rem; font-size: .95rem; }
 .free-method .free-why { margin: 0 0 .8rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.5; }
 .free-method .trait-evidence { margin: .3rem 0 0; }
-.free-method .evidence-head { margin-top: .4rem; }
 /* The review's de-identification note: what is taken out before anything is sent. */
 .deid-note {
   display: flex; gap: .5rem; align-items: flex-start; margin: 0 0 .6rem; padding: .45rem .65rem;

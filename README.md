@@ -3391,9 +3391,14 @@ The part lights up and the rest of the card steps back; the ring pulses until th
 anything. On a tablet, with nothing to hover, tapping a part explains it the same way; a phone explains
 it full screen instead (below). **Read from rounds its totals**
 (`roughCount()`): 9,741 messages reads "9.7k", 637 accounts "~600"; what was actually read stays exact. Evidence and method sits
-under the unlock offer (`freeMethodCardHtml()`): the score, why, what was read, and the data sources
-table (`freeSourcesHtml()`). Its **"Add / change data & re-run analysis" is the US$5 unlock**, never the
-US$2 re-run of the card. **It and "Unlock the full premium report" open the same popout**: the data
+under the unlock offer (`freeMethodCardHtml()`): the score and why, then **Your data** — one row per
+source (`sourcesReadHtml()`): icon, name, and beneath it what was read or counted from that source
+(`countedBySource()`; `countedInFull()` flattens it for the PDF), with "Change ›" on the right, or a
+"+ Add" pill and "Not added – adding it raises confidence" for a source not loaded. There is no button:
+**the whole row opens the data popout** — on a free report the US$5 unlock (`data-flow="unlock"`), never
+the US$2 re-run of the card; on a paid one the re-run (`startRerun()`), its US$5 price in the note under
+the rows. The classic layout keeps its own sources table (`sourcesUsedHtml()`). **The rows and "Unlock
+the full premium report" open the same popout**: the data
 sources popout, titled "Your data for the full report" (`collectDataForPremium()`, which replaced
 `collectExtraDataForPremium`), where any source — Instagram, Google, Facebook, and whatever comes later —
 can be added or replaced by a fresh export, or the reader carries on with what is loaded. New data goes
@@ -4466,7 +4471,12 @@ worse failure than a slightly thinner comparison.
 The profile page ends in three parts, in this order: the report, then the action row, then a line of
 fineprint naming the model and the time it ran. The action row holds three buttons — **Download full
 report**, **Test compatibility** and **Delete everything** — all housekeeping rather than part of the
-document, so they close the page rather than sitting inside it.
+document, so they close the page rather than sitting inside it. On a **free** structured report only
+Delete everything stays there: Test compatibility moves under "Your Psyche Card", a full-width button
+below Enlarge, Download and Share (`.cx-compat`, which clicks `#test-compat-open`). The **payment sheet**
+for the unlock has no blurb — its title, then the ways to pay — since the offer has already said what it
+opens; the re-run and US$2 sheets keep theirs. An empty wallet slot (no Apple Pay or Google Pay, or mock
+mode) collapses rather than leaving a band under the title.
 
 **Test compatibility** opens a popout carrying the QR code, the copy-link and download-QR buttons, and
 the link to the scan page — the same content a whole panel used to hold in the page flow itself,

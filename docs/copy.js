@@ -488,7 +488,6 @@
     premiumPriceLabel: 'US$5',
     // In the data popout, once a fresh export is loaded over an existing card.
     cardChangeNote: 'Updating your data sources may result in changes to your Psyche Card.',
-    freeAddData: 'Add / change data & re-run analysis',
     premiumSourcesTitle: 'Your data for the full report',
     // The premium unlock's Deeper read: on by default, and the reader told in
     // the popout, at the review and before paying that the card may change.
@@ -501,8 +500,6 @@
     premiumDeepReading: 'Reading your data in depth and writing your full report – this can take a few minutes.',
     premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
       'data makes a fuller report. Or carry on with what is already loaded.',
-    freeAddDataNote: 'Adding data comes with the full premium report (US$5): add your sources first, then ' +
-      'everything — your Psyche Card and the full report — is written from all of it.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
@@ -570,18 +567,6 @@
     analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
       'again tomorrow.',
     premiumDialogTitle: 'Unlock the full premium report',
-    premiumDialogBlurb: 'One charge explains your whole card — every score, letter and type — and ' +
-      'opens the roast, the mental wellness read, your attachment style, what partner truly suits you ' +
-      'and the career assessment. Taken on this device — Apple Pay or Google Pay, whichever this ' +
-      'browser offers.',
-    // Shown instead of the above when the reader added a Google or Facebook
-    // export on the way here. The same US$5 now also rewrites the free
-    // sections against that data, so the price is doing more and says so
-    // before it is agreed to rather than after.
-    premiumDialogBlurbWithData: 'One charge writes your full report and opens the roast, the mental ' +
-      'wellness read, your attachment style, what partner truly suits you and the career assessment — ' +
-      'and, because you added more data, redraws your card from it at no extra cost. Taken on this ' +
-      'device — Apple Pay or Google Pay, whichever this browser offers.',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
     // be the wrong verb for sections they already have. Same US$5, same
@@ -981,6 +966,7 @@
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',
       tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
+      compat: 'Test compatibility',
       toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
       labels: { yours: 'Yours', why: 'Why it matters', sample: 'On this card' },
       // Under the sample's card, full screen.
@@ -1073,6 +1059,14 @@
     // Everything the digest carries complete, beside the text it samples —
     // so "180 of 9,741 messages" is not read as all the analysis saw.
     sourcesHint: 'Adding Google or Facebook raises confidence.',
+    // Evidence and method's sources: one row per source, what was read from
+    // it beneath, and the row itself opens the data popout.
+    sourcesReadTitle: 'Your data',
+    sourceChange: 'Change',
+    sourceAdd: 'Add',
+    sourceNotAdded: 'Not added – adding it raises confidence',
+    sourceLoaded: 'Loaded',
+    sourcesFreeNote: 'Adding or changing data comes with the full premium report (US$5).',
     // "Read from": what the model actually read of each source, beside what
     // it only counted — "180 of 9,741 of your messages read", "623 stories
     // counted" — so the sample is never mistaken for the whole archive.

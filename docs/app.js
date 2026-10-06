@@ -2452,11 +2452,11 @@
   document.addEventListener('click', event => {
     const unlock = event.target.closest('.premium-unlock');
     if (unlock) openPremiumDialog(unlock, 'unlock');
-    // A free report's "Add / change data": the same unlock, offering every
-    // source not yet loaded before the payment.
-    // A free report's "Add / change data" is the same unlock, data first.
-    const add = event.target.closest('#free-add-data');
-    if (add) openPremiumDialog(add, 'unlock');
+    // A source row under Evidence and method: the same popout, by the flow
+    // this report is on — the unlock on a free one, the re-run on a paid one.
+    const source = event.target.closest('.source-read');
+    if (source && source.dataset.flow === 'unlock') openPremiumDialog(source, 'unlock');
+    else if (source) startRerun();
   });
 
   // Delegated for the same reason — the covers are written by innerHTML in
@@ -4242,19 +4242,6 @@
       '</li>').join('');
   }
 
-  /**
-   * A free report's sources, under its Evidence and method. Adding data comes
-   * with the full premium report, so the button here opens the US$5 unlock —
-   * the data offer first, then payment — never the US$2 re-run of the card.
-   */
-  function freeSourcesHtml() {
-    return '<div class="trust-sources">' +
-      '<h3>' + esc(TEXT.sourcesUsed) + '</h3>' +
-      '<ul class="source-list">' + sourceRowsHtml() + '</ul>' +
-      '<div class="btn-row"><button class="btn" id="free-add-data" type="button">' + esc(TEXT.freeAddData) + '</button></div>' +
-      '<p class="fineprint">' + esc(TEXT.freeAddDataNote) + '</p></div>';
-  }
-
   function sourcesUsedHtml(brief) {
     const digest = state.digest;
     const rows = [
@@ -4977,8 +4964,17 @@
    * analysis saw when every message was counted.
    */
   function countedInFull(digest) {
+    const by = countedBySource(digest);
+    return by.instagram.concat(by.google, by.facebook);
+  }
+
+  /** The same lines, kept apart by the source they were read from. */
+  function countedBySource(digest) {
     const R = Copy.STRUCTURED.readFrom;
-    if (!digest) return [];
+    const items = [];
+    const google = [];
+    const facebook = [];
+    if (!digest) return { instagram: items, google, facebook };
     // Totals are rounded to read at a glance — 9,741 is "9.7k", 637 is "~600"
     // — while what was actually read stays exact.
     const num = value => roughCount(value);
@@ -4988,7 +4984,6 @@
       const entry = sampling[key];
       return entry && Number(entry.available) > 0 ? { shown: exact(entry.shown) || '0', of: num(entry.available) } : null;
     };
-    const items = [];
     const dm = digest.directMessages;
     const own = read('ownMessages');
     if (own) items.push(R.messages(own.shown, own.of, num(dm && dm.activeThreads)));
@@ -5011,15 +5006,15 @@
     const g = digest.google && digest.google.counts;
     if (g) {
       const videos = read('youtubeTitles');
-      if (videos) items.push(R.videos(videos.shown, videos.of));
+      if (videos) google.push(R.videos(videos.shown, videos.of));
       const searches = read('googleSearchTerms');
-      if (searches) items.push(R.googleSearches(searches.shown, searches.of, num(g.googleSearches)));
+      if (searches) google.push(R.googleSearches(searches.shown, searches.of, num(g.googleSearches)));
       const ytSearches = read('youtubeSearchTerms');
-      if (ytSearches) items.push(R.youtubeSearches(ytSearches.shown, ytSearches.of));
+      if (ytSearches) google.push(R.youtubeSearches(ytSearches.shown, ytSearches.of));
     }
     const fbPosts = read('facebookPosts');
-    if (fbPosts) items.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
-    return items;
+    if (fbPosts) facebook.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
+    return { instagram: items, google, facebook };
   }
 
   /** A total to the nearest hundred: under 100 as it is, then "~600", then "9.7k". */
@@ -5035,25 +5030,53 @@
     return String(Math.round(n / 100000) / 10).replace(/\.0$/, '') + 'M';
   }
 
-  function countedInFullHtml() {
-    const items = countedInFull(state.digest);
-    if (!items.length) return '';
-    return '<p class="trait-evidence counted-full">' + items.map(item => '<span class="ev">' + esc(item) + '</span>').join('') + '</p>';
+  /**
+   * The confidence score and what it rests on. On the reader's own report,
+   * one row per source with what was read from it beneath (sourcesReadHtml);
+   * the model's own two-to-four line summary only where there is no digest to
+   * count from — the sample, or a report whose digest is gone.
+   */
+  function methodEvidenceHtml(report, sample) {
+    if (sample) return confidenceBodyHtml(report);
+    const withoutSummary = Object.assign({}, report,
+      { confidence: Object.assign({}, report.confidence, { basedOn: [] }) });
+    return confidenceBodyHtml(state.digest ? withoutSummary : report) + sourcesReadHtml();
   }
 
   /**
-   * The confidence score and what it rests on: with the digest on this
-   * device, everything it counted in full; without one (the sample, or a
-   * report whose digest is gone), the model's own two-to-four line summary.
+   * The reader's data under Evidence and method: one quiet row per source —
+   * its name, what was read or counted from it, and on the right "Change" or
+   * "Add". The whole row opens the data popout: on a free report the US$5
+   * unlock, data first (openPremiumDialog); on a paid one the re-run
+   * (startRerun). See the delegated `.source-read` listener.
    */
-  function methodEvidenceHtml(report, sample) {
-    const full = sample ? '' : countedInFullHtml();
-    if (!full) return confidenceBodyHtml(report);
-    const withoutSummary = Object.assign({}, report,
-      { confidence: Object.assign({}, report.confidence, { basedOn: [] }) });
-    return confidenceBodyHtml(withoutSummary) +
-      '<p class="essence-label evidence-head">' + esc(TEXT.confidenceBasedOn) + '</p>' +
-      '<div class="evidence-read">' + full + '</div>';
+  function sourcesReadHtml() {
+    const S = Copy.STRUCTURED;
+    const digest = state.digest;
+    const paid = Object.keys(paidAnalysis()).length > 0;
+    const by = countedBySource(digest);
+    const rows = [
+      { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
+      { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
+      { key: 'facebook', icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
+    ];
+    const note = !paid ? S.sourcesFreeNote
+      : TEXT.analysisPriceNoteUnlocked;
+    return '<div class="sources-read">' +
+      '<p class="sources-read-title">' + esc(S.sourcesReadTitle) + '</p>' +
+      (!digest ? '<p class="sources-read-lost">' + esc(TEXT.sourcesInstagramLost) + '</p>' : '') +
+      '<ul class="sources-read-list">' + rows.map(row => {
+        const lines = by[row.key];
+        const what = !row.loaded ? S.sourceNotAdded : lines.length ? lines.join(' · ') : S.sourceLoaded;
+        return '<li><button type="button" class="source-read' + (row.loaded ? ' is-loaded' : ' is-missing') + '"' +
+            ' data-source="' + row.key + '" data-flow="' + (paid ? 'rerun' : 'unlock') + '">' +
+          '<span class="source-read-icon" aria-hidden="true">' + row.icon + '</span>' +
+          '<span class="source-read-body"><span class="source-read-name">' + esc(row.label) + '</span>' +
+            '<span class="source-read-what">' + esc(what) + '</span></span>' +
+          '<span class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</span>' +
+        '</button></li>';
+      }).join('') + '</ul>' +
+      '<p class="sources-read-note">' + esc(note) + '</p></div>';
   }
 
   /** What was read, by whom, from which build — the closing section of Part 4. */
@@ -5066,8 +5089,7 @@
     const S = Copy.STRUCTURED;
     return '<div class="card section-card confidence-card method-card" data-part="method">' +
       sectionHead('🎯', esc(S.titles.method), '') +
-      methodEvidenceHtml(report, sample) +
-      (sample ? '' : sourcesUsedHtml(true)) + '</div>';
+      methodEvidenceHtml(report, sample) + '</div>';
   }
 
   function structuredSectionsHtml(report, options) {
@@ -5362,8 +5384,7 @@
    */
   function freeMethodCardHtml(report) {
     return '<div class="card section-card confidence-card method-card free-method-card">' +
-      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) +
-      freeSourcesHtml() + '</div>';
+      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) + '</div>';
   }
 
   /**
@@ -5386,6 +5407,11 @@
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
         '</div>' +
+        // A free report's compatibility test sits with the card, under its
+        // three tools; a paid one keeps it in the action row.
+        (paid ? '' : '<button type="button" class="cx-compat">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>' + esc(G.compat) + '</span></button>') +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
         '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree) + '</p>' +
@@ -5691,6 +5717,7 @@
     // puts the explanation away.
     const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
     if (openPop && !event.target.closest('.cx-pop') && !event.target.closest('#psyche-card [data-cx]')) explainCardPart(null);
+    if (event.target.closest('.cx-compat')) { $('#test-compat-open').click(); return; }
     const tool = event.target.closest('.cx-tool');
     if (tool) {
       const act = tool.getAttribute('data-act');
@@ -5716,8 +5743,8 @@
   function confidenceCardHtml(report, sample) {
     return '<div class="card section-card confidence-card">' +
       sectionHead('🎯', esc(TEXT.trust), esc(TEXT.trustSub)) +
-      (reportLayout() === 'structured' ? methodEvidenceHtml(report, sample) : confidenceBodyHtml(report)) +
-      (sample ? '' : sourcesUsedHtml(reportLayout() === 'structured')) +
+      (reportLayout() === 'structured' ? methodEvidenceHtml(report, sample)
+        : confidenceBodyHtml(report) + (sample ? '' : sourcesUsedHtml(false))) +
       '</div>';
   }
 
@@ -5830,6 +5857,8 @@
     }
     // A free report has only the card, which has its own download.
     $('#export-pdf-bottom').hidden = structured && !explained;
+    // …and its compatibility test sits under the card's tools (.cx-compat).
+    $('#test-compat-open').hidden = structured && !explained;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     layoutSideActions();
@@ -7059,27 +7088,13 @@
       kind === 'analysis' ? TEXT.analysisDialogTitle
         : rerunAll ? TEXT.premiumRerunDialogTitle
         : TEXT.premiumDialogTitle;
-    // By the time this sheet opens, the data offer has already been through,
-    // so the dialog knows whether this US$5 is about to buy a rewrite of
-    // the free sections as well — and says so. A reader agreeing to a price
-    // should be told everything it covers at the moment they agree to it,
-    // not discover the extra afterwards.
-    // Only when the data actually changed — something added, replaced, or left
-    // out at the review — does the run rewrite the card, and only then does
-    // the blurb say so. A Deeper read is judged on the standard digest it
-    // carries: the deeper sample on its own is no new data.
-    const deepRead = kind === 'unlock' && Boolean(pendingPremiumDigest && pendingPremiumDigest.__deep);
-    const compared = deepRead ? pendingPremiumDigest.__standard : pendingPremiumDigest;
-    const buysFreeRefresh = kind === 'unlock' && Boolean(compared) &&
-      compared !== state.digest && digestFingerprint(compared) !== digestFingerprint(state.digest);
-    $('#premium-dialog-blurb').textContent =
-      kind === 'analysis' ? TEXT.analysisDialogBlurb
-        : rerunAll ? TEXT.premiumRerunDialogBlurb
-        : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
-        : TEXT.premiumDialogBlurb;
-    // New data rewrites the free card as well. The reader was told so in the
-    // data popout the moment they loaded it (#datasources-card-note), so
-    // nothing here stands between them and paying.
+    // The unlock's sheet is its title and the ways to pay: what it opens was
+    // set out in the offer, and that new data redraws the card was said in
+    // the data popout the moment it was loaded (#datasources-card-note).
+    const blurb = kind === 'analysis' ? TEXT.analysisDialogBlurb
+      : rerunAll ? TEXT.premiumRerunDialogBlurb : '';
+    $('#premium-dialog-blurb').textContent = blurb;
+    $('#premium-dialog-blurb').hidden = !blurb;
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     // Reset with the rest of the dialog's state: runPremiumAnalysis greys it
     // out once a charge or code is accepted, and this markup is reused across
@@ -7121,6 +7136,7 @@
     if (receipt && hasUnfetchedUnlock()) {
       $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
       $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
+      $('#premium-dialog-blurb').hidden = false;
       const resume = $('#premium-retry');
       resume.textContent = TEXT.premiumResumeAction;
       resume.hidden = false;
