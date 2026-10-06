@@ -3319,7 +3319,13 @@ fits whole on a 390px screen. **On a phone the Psyche Card sits in one white box
 "Your Psyche Card", the card, "Tap any part of your card…", then Enlarge, Download and Share across the
 box — the panel's own boxes dissolve (`display: contents`) so their pieces can be ordered around the
 card, and the one-line introduction and "Tap to open full screen" go. Tapping the card explains the part
-tapped and never opens it full screen; only Enlarge does. **A jump from the nav** sets the part's
+tapped and never opens it full screen; only Enlarge does — on a laptop too, where "Tap to open full screen"
+is gone. **Download and Share beside the card** draw the image from the card on the page when the full
+screen view is closed (`cardImageBlob()`); they used to read the closed dialog's copy, which has no size,
+and failed without a word. **00 in the nav goes to the top of the page**: part 00 begins with the Psyche
+Card. **"Delete everything" asks first** in a warning sheet of its own (`#delete-dialog`) rather than the
+browser's `confirm()`, which some in-app browsers never show; Cancel keeps everything, and Delete
+everything clears this browser's copy and lands on the new reader's page, at its top. **A jump from the nav** sets the part's
 `scroll-margin-top` to whatever is pinned over the page at that width (`pinnedHeight()` — the site
 header, and the nav itself where it sticks), so the part's heading always lands in full view. **Read from** says what
 was read of each source and what was only counted — "180 of your 9,741 messages read", "623 stories

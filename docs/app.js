@@ -2415,6 +2415,11 @@
     if (!target) return;
     const card = target.closest('.part-card');
     if (card) setSectionOpen(card, true);
+    // Part 00 starts with the Psyche Card at the top of the page.
+    if (item.getAttribute('data-part-target') === 'overview' && item.closest('#profile-body')) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     // Lands with the part's whole heading clear of whatever is pinned over
     // the top of the page: the site's header and, where it sticks rather than
     // sitting in the left column, this nav itself.
@@ -5270,6 +5275,7 @@
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
         '</div>' +
+        '<p class="cx-status" role="status" hidden></p>' +
         '<p class="cx-home-intro">' + esc(G.home.intro) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
@@ -5418,12 +5424,10 @@
       return;
     }
     if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
-    // On a phone the card itself never opens full screen — Enlarge does —
-    // and a tap on one of its parts explains that part.
+    // The card itself never opens full screen — Enlarge does — and a click
+    // or tap on one of its parts explains that part.
     if (!event.target.closest('#psyche-card-open') || !$('#view-profile').classList.contains('profile-structured')) return;
-    const narrow = window.matchMedia && window.matchMedia('(max-width: 719px)').matches;
     const part = event.target.closest('#psyche-card [data-cx]');
-    if (!narrow && (canHover() || !part)) return;
     event.preventDefault();
     event.stopPropagation();
     if (part) explainCardPart(part.getAttribute('data-cx'));
@@ -5952,7 +5956,11 @@
   const CARD_IMAGE_SCALE = 2;
 
   async function cardImageBlob() {
-    const source = $('#psyche-card-full');
+    // The full screen copy when it is open; otherwise the card on the page —
+    // the copy in a closed dialog has no size to draw from, which is how
+    // Download and Share beside the card used to fail without a word.
+    const full = $('#psyche-card-full');
+    const source = full && full.offsetWidth ? full : $('#psyche-card');
     if (!source) return null;
     const width = source.offsetWidth;
     const height = source.offsetHeight;
@@ -6022,7 +6030,8 @@
   // more for a failure to borrow, so an error from either one shows up here
   // instead of inside the button.
   function flashCardStatus(message) {
-    const status = $('#card-dialog-status');
+    const dialog = $('#card-dialog');
+    const status = dialog && dialog.open ? $('#card-dialog-status') : ($('#profile-side .cx-status') || $('#card-dialog-status'));
     if (!status) return;
     status.textContent = message || '';
     status.hidden = !message;
@@ -6874,19 +6883,29 @@
   $('#export-compat-top').addEventListener('click', exportCompatPdf);
   $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
 
+  // "Delete everything" asks first, in its own sheet. The note names the one
+  // thing this deliberately does not delete — the count of runs already had
+  // (see RUNS_KEY) — which is both honest and the better deterrent.
   $('#delete-profile').addEventListener('click', () => {
-    // Names the one thing this deliberately does not delete. Saying so is
-    // both honest — the button says "everything" — and the better deterrent:
-    // it tells a reader the trick does not work rather than letting them
-    // discover it by trying. See RUNS_KEY for why the count is kept apart.
-    if (!window.confirm('Delete your profile, your evidence summary and all saved match reports from ' +
-      'this browser?\n\nYour count of analyses already run is kept, so this does not restore a ' +
-      'free analysis.')) return;
+    const dialog = $('#delete-dialog');
+    $('#delete-dialog-text').textContent = Copy.STRUCTURED.deleteText;
+    $('#delete-dialog-note').textContent = Copy.STRUCTURED.deleteNote;
+    if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
+    $('#delete-cancel').focus();
+  });
+  $('#delete-cancel').addEventListener('click', () => $('#delete-dialog').close());
+  $('#delete-dialog').addEventListener('click', event => {
+    if (event.target === $('#delete-dialog')) $('#delete-dialog').close();
+  });
+  $('#delete-confirm').addEventListener('click', () => {
+    $('#delete-dialog').close();
     store.clearAll();
     state.profile = null;
     state.digest = null;
     state.signals = null;
+    // Back to the page a new reader starts on, from its top.
     show('welcome');
+    window.scrollTo(0, 0);
   });
 
   // ══════════════ 3. scanning ══════════════

@@ -940,6 +940,9 @@
       confidence: 'Confidence',
     },
     pdfCardFoot: 'PsycheAI · your personality, read from your own data',
+    deleteText: 'This removes your Psyche Card, your full report, your evidence summary and every saved ' +
+      'compatibility report from this browser. It cannot be undone.',
+    deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
     // Beside a free report's Psyche Card: what each part means, popped out
     // when the reader points at it. Each has the background (`about`), the
     // reader's own reading (`yours`) and why it is worth knowing (`why`);

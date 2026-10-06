@@ -411,6 +411,22 @@
 
 </section>
 
+  <!-- "Delete everything" asks first, in a sheet of its own rather than the
+     browser's confirm(), which some in-app browsers never show. -->
+<dialog id="delete-dialog" class="mode-dialog delete-dialog" aria-labelledby="delete-dialog-title">
+  <div class="delete-dialog-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
+  </div>
+  <h2 id="delete-dialog-title">Delete everything?</h2>
+  <p id="delete-dialog-text"></p>
+  <p class="fineprint" id="delete-dialog-note"></p>
+  <div class="delete-dialog-actions">
+    <button class="btn btn-ghost" id="delete-cancel" type="button">Cancel</button>
+    <button class="btn delete-confirm" id="delete-confirm" type="button">Delete everything</button>
+  </div>
+</dialog>
+
+
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
   <header class="page-head">

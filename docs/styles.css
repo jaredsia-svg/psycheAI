@@ -2946,7 +2946,22 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-structured #psyche-card-section { padding: 0; overflow: hidden; }
 #view-profile.profile-structured .psyche-card-slot { margin: 0; }
 #view-profile.profile-structured #psyche-card { box-shadow: none; }
-#view-profile.profile-structured .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
+/* Enlarge is the way to full screen, so the card says nothing about tapping it. */
+#view-profile.profile-structured .psyche-card-hint { display: none; }
+#view-profile.profile-structured .psyche-card-slot { cursor: default; }
+.cx-status { margin: .5rem 0 0; font-size: .8rem; color: #b3261e; }
+/* Delete everything: a warning sheet, the red action on the right. */
+.delete-dialog { max-width: 26rem; text-align: center; }
+.delete-dialog-icon {
+  display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto .7rem; border-radius: 999px;
+  color: #b3261e; background: color-mix(in srgb, #c0392b 12%, var(--bg-alt));
+}
+.delete-dialog-icon svg { width: 1.6rem; height: 1.6rem; }
+.delete-dialog h2 { margin: 0 0 .5rem; font-size: 1.3rem; }
+.delete-dialog p { margin: 0 0 .7rem; color: var(--ink-soft); line-height: 1.5; }
+.delete-dialog-actions { display: flex; gap: .6rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+.delete-confirm { background: #b3261e; border-color: #b3261e; color: #fff; }
+.delete-confirm:hover, .delete-confirm:focus-visible { background: #8f1d17; border-color: #8f1d17; }
 .free-method-card { margin-top: 1rem; }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —

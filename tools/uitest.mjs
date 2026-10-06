@@ -8735,10 +8735,9 @@ try {
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
 
   // Route two, and the one actually asked about: wipe everything, upload again.
-  await page.evaluate(() => {
-    window.confirm = () => true;
-    document.querySelector('#delete-profile').click();
-  });
+  await page.evaluate(() => document.querySelector('#delete-profile').click());
+  await page.waitForSelector('#delete-dialog[open]', { timeout: 5000 });
+  await page.click('#delete-confirm');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
   check('"Delete everything" clears the report but not the count of runs already had',
     (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === null &&
@@ -10043,9 +10042,24 @@ try {
     localStorage.setItem('psycheai_unlock', JSON.stringify({ paymentIntentId: 'pi_mock_probe' })));
   check('there is a receipt to delete before Delete everything runs',
     (await page.evaluate(() => localStorage.getItem('psycheai_unlock'))) !== null);
-  page.once('dialog', dialog => dialog.accept());
+  // It asks first, in a sheet of its own: Cancel keeps everything.
   await page.click('#delete-profile');
+  await page.waitForSelector('#delete-dialog[open]', { timeout: 5000 });
+  check('Delete everything asks first, in a warning sheet of its own',
+    /Delete everything\?/.test(await page.locator('#delete-dialog').innerText()) &&
+    /cannot be undone/i.test(await page.locator('#delete-dialog').innerText()));
+  await page.click('#delete-cancel');
+  await page.waitForTimeout(200);
+  check('and Cancel keeps everything where it was',
+    !(await page.evaluate(() => document.querySelector('#delete-dialog').open)) &&
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) !== null &&
+    (await page.locator('#view-profile').isVisible()));
+  await page.click('#delete-profile');
+  await page.waitForSelector('#delete-dialog[open]', { timeout: 5000 });
+  await page.click('#delete-confirm');
   await page.waitForSelector('#view-welcome:not([hidden])');
+  check('Proceed lands on the new reader\'s page, at its top',
+    await page.evaluate(() => window.scrollY) < 5);
   check('deleting everything takes the unlock receipt with it',
     (await page.evaluate(() => localStorage.getItem('psycheai_unlock'))) === null,
     await page.evaluate(() => localStorage.getItem('psycheai_unlock')));
@@ -10555,6 +10569,16 @@ try {
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
+      // Part 00 begins with the Psyche Card: its nav entry goes to the top of the page.
+      for (const [label, width] of [['wide', 1440], ['phone', 390]]) {
+        await sp.setViewportSize({ width, height: 900 });
+        await sp.evaluate(() => window.scrollTo(0, 3000));
+        await sp.waitForTimeout(250);
+        await sp.click('#profile-body .part-nav-item[data-part-target="overview"]');
+        await sp.waitForTimeout(900);
+        check('structured: on a ' + label + ' screen 00 goes to the top, where the Psyche Card is',
+          await sp.evaluate(() => window.scrollY < 5 && document.querySelector('#psyche-card-section').getBoundingClientRect().top > 0));
+      }
       // A full report opens on the Psyche Card and what it means, as a free
       // one does — no thumbnail in the left column above the nav.
       await sp.setViewportSize({ width: 1440, height: 900 });
@@ -10588,11 +10612,6 @@ try {
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
           actions.tips === 'Download full report|Test compatibility|Delete everything', JSON.stringify(actions));
-      await sp.click('#psyche-card-open');
-      await sp.waitForTimeout(400);
-      check('structured: and clicking it opens the card full screen',
-        await sp.evaluate(() => document.querySelector('#card-dialog').open));
-      await sp.keyboard.press('Escape');
       await sp.setViewportSize({ width: 1100, height: 900 });
       await sp.waitForTimeout(300);
       check('structured: at a laptop width the card and its panel still sit above the report',
@@ -10787,6 +10806,28 @@ try {
       check('structured: and the panel empties again when the pointer leaves the card',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden &&
           !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
+      // The card itself never opens full screen on a laptop either: only Enlarge.
+      await sp.click('#psyche-card-open', { position: { x: 20, y: 20 } });
+      await sp.click('#psyche-card [data-cx="motives"]');
+      await sp.waitForTimeout(250);
+      check('structured: clicking the card, anywhere on it, does not open it full screen; no "Tap to open full screen"',
+        !(await sp.evaluate(() => document.querySelector('#card-dialog').open)) &&
+        !(await sp.locator('#psyche-card-hint').isVisible()));
+      await sp.mouse.move(2, 2);
+      // Download beside the card saves the card as an image.
+      const [cardImage] = await Promise.all([
+        sp.waitForEvent('download', { timeout: 15000 }),
+        sp.click('#profile-side .cx-tool[data-act="download"]'),
+      ]);
+      check('structured: Download beside the card saves the card as a PNG',
+        /\.png$/.test(cardImage.suggestedFilename()), cardImage.suggestedFilename());
+      // Share falls back to the same download where a browser cannot share files.
+      const [shared] = await Promise.all([
+        sp.waitForEvent('download', { timeout: 15000 }),
+        sp.click('#profile-side .cx-tool[data-act="share"]'),
+      ]);
+      check('structured: Share hands the card over too — as a download where sharing files is not supported',
+        /\.png$/.test(shared.suggestedFilename()), shared.suggestedFilename());
       await sp.click('#profile-side .cx-tool[data-act="enlarge"]');
       await sp.waitForTimeout(300);
       check('structured: the panel\'s Enlarge opens the card full screen',
