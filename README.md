@@ -213,21 +213,24 @@ reviews, and cancels at the payment sheet finds them still loaded when they open
 change data, again.
 
 **The Deeper read** (`DEEP_LIMITS`, `withDepth`). At upload the browser builds a second digest from the
-same archive with every list wider — 700 captions, 1,000 messages from twenty conversations (none over
-15%), 200 comments, 20 liked captions and 40 hashtags, 30 liked and saved accounts, 40 topics, 100
-channels, 40 titles, 100 YouTube and 150 Google searches, more Facebook — held to 300,000 characters,
+same archive with every list wider — 450 captions, 650 messages from fifteen conversations (none over
+15%), 150 comments, 12 liked captions and 30 hashtags, 25 liked and saved accounts, 30 topics, 80
+channels, 25 titles, 80 YouTube and 100 Google searches, more Facebook — held to 190,000 characters,
 with the reader's review choices applied, and keeps it on the device as `psycheai_digest_deep`
 (`saveDeepDigest`; a device without room for it simply goes without). The free card never reads it.
-At the unlock the data popout offers **Deeper read, off until the reader ticks it**, saying only that
-more of their data is sampled; a source added there is merged into both digests. It is reviewed as
+At the unlock the data popout offers **Deeper read, off until the reader ticks it**, as one small plain
+line above its buttons — "Deeper read – samples more of your data for a more detailed report" — with
+no box or colour of its own; a source added there is merged into both digests. It is reviewed as
 itself (the review's download shows the deep digest) with no notice of its own, and the payment sheet
 says nothing about it — it asks for agreement only when a source was added on the way, judged on the
 standard digest the deep one carries. The paid call sends `deep: true`; the server allows
 the larger digest only on a paid unlock that asks for it, and with no anchor card the card is redrawn
 from it before the full report. Afterwards the deep digest is kept beside the standard one, never in
 its place, so later free runs read the standard one. A reader who uploaded before this, or whose
-device had no room, is asked for the Instagram export once more or to switch it off. Worst case the two
-calls cost $0.099 and $0.198 (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`), about $0.30 against US$5.
+device had no room, is asked for the Instagram export once more or to switch it off. Ticked, both the
+card and the full report are regenerated from it, and the two calls are held to **$0.25 together** at
+their worst: $0.076 and $0.174 (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`). The output allowances are $0.135
+of that before any of the digest is read, which is why $0.25 buys 190,000 characters and not more.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.

@@ -10213,7 +10213,7 @@ try {
       await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('the unlock offers the Deeper read, off until the reader ticks it, saying only that more is sampled',
         !(await dp.locator('#datasources-deeper-input').isChecked()) &&
-          /Samples more of your data/.test(await dp.locator('#datasources-deeper').innerText()) &&
+          /samples more of your data/i.test(await dp.locator('#datasources-deeper').innerText()) &&
           !/Psyche Card/.test(await dp.locator('#datasources-deeper').innerText()));
       await dp.locator('#datasources-deeper-input').check();
       await dp.click('#datasources-continue');

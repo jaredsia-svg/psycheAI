@@ -513,26 +513,29 @@
   // ---------- the deeper read ----------
   //
   // A second digest, built from the same archive at the same moment as the
-  // standard one, for a premium unlock that asks for it. Up to 300,000
+  // standard one, for a premium unlock that asks for it. Up to 190,000
   // characters — more of everything rather than more messages alone: about
-  // four times the captions and messages, from twice as many conversations,
-  // and wider lists of accounts, hashtags, channels and searches. Built in the
-  // browser at upload, kept on the device beside the standard digest, and sent
-  // only on a paid unlock with Deeper read switched on. The free card never
-  // reads it; a Deeper read redraws the card from it, which is why the reader
-  // is told the card's results may change.
+  // two and a half times the captions and messages, from half as many
+  // conversations again, and wider lists of accounts, hashtags, channels and
+  // searches. Built in the browser at upload, kept on the device beside the
+  // standard digest, and sent only on a paid unlock with Deeper read ticked.
+  // The free card never reads it; a Deeper read redraws the card from it and
+  // then writes the full report from it.
+  //
+  // 190,000 is what $0.25 buys for both of those calls at their worst — see
+  // DEEP_COST_CAP below.
   //
   // Overrides rather than a second table, applied for the length of one build
   // (withDepth below), so every sampler that reads LIMITS reads these without
   // being taught a second set of names.
-  const DEEP_DIGEST_CHARS = 300000;
+  const DEEP_DIGEST_CHARS = 190000;
   const DEEP_LIMITS = {
-    captions: 700, comments: 200, likedCaptions: 20, likedHashtags: 40,
-    messages: 1000, messageTopThreads: 20, messageThreadCap: 0.15,
-    likedAuthors: 30, savedAuthors: 30, topics: 40,
-    youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 150,
-    fbPosts: 400, fbComments: 300, fbMessages: 400, fbSearches: 150,
-    totalChars: DEEP_DIGEST_CHARS, maxListItems: 1200,
+    captions: 450, comments: 150, likedCaptions: 12, likedHashtags: 30,
+    messages: 650, messageTopThreads: 15, messageThreadCap: 0.15,
+    likedAuthors: 25, savedAuthors: 25, topics: 30,
+    youtubeChannels: 80, youtubeTitles: 25, youtubeSearches: 80, googleSearchTerms: 100,
+    fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100,
+    totalChars: DEEP_DIGEST_CHARS, maxListItems: 800,
   };
   /** Runs `fn` with the deeper read's limits in place when `deep`, and puts them back. */
   function withDepth(deep, fn) {
@@ -578,22 +581,24 @@
 
   // ---------- what a deeper read can cost, at most ----------
   //
-  // The same worst case, against the 300,000-character deep digest. A Deeper
+  // The same worst case, against the 190,000-character deep digest. A Deeper
   // read redraws the card from it before the full report, so both calls read
-  // it:
+  // it, and the two together are held to $0.25:
   //
   //   card          8,000 out  × $3.75/M = $0.0300
-  //                  5,900 prompt + 85,714 digest × $0.75/M = $0.0687
-  //                 at most $0.0987                    → DEEP_FREE_COST_CAP $0.099
+  //                  5,900 prompt + 54,286 digest × $0.75/M = $0.0451
+  //                 at most $0.0751                    → DEEP_FREE_COST_CAP $0.076
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 37,600 prompt + 85,714 digest × $0.75/M = $0.0925
-  //                 at most $0.1975                    → DEEP_COST_CAP $0.198
+  //                 37,600 prompt + 54,286 digest × $0.75/M = $0.0689
+  //                 at most $0.1739                    → DEEP_COST_CAP $0.174
   //
-  // About $0.30 for the whole unlock, against a US$5 payment. Held by the same
-  // selftest check as the standard caps.
-  const DEEP_FREE_COST_CAP = 0.099;
-  const DEEP_COST_CAP = 0.198;
+  // $0.249 for the whole unlock at most, against a US$5 payment. The output
+  // allowances are most of it — $0.135 of the two calls before a word of the
+  // digest is read — which is why $0.25 buys 190,000 characters and not more.
+  // Held by the same selftest check as the standard caps.
+  const DEEP_FREE_COST_CAP = 0.076;
+  const DEEP_COST_CAP = 0.174;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 

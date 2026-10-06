@@ -493,7 +493,7 @@
     // The premium unlock's Deeper read: on by default, and the reader told in
     // the popout, at the review and before paying that the card may change.
     deeperReadTitle: 'Deeper read',
-    deeperReadText: 'Samples more of your data – more messages, captions and searches – for a more detailed report.',
+    deeperReadText: 'samples more of your data for a more detailed report',
     deepNeedsInstagram: 'Deeper read needs your Instagram export once more – load it above, or switch ' +
       'Deeper read off to carry on with the data already loaded.',
     // The review's downloadable copy only: what this file is.

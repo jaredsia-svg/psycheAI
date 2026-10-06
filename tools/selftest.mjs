@@ -5154,13 +5154,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const plainDeep = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false, deep: true });
     const plainStandard = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false });
     check('and more of the other lists too, not only messages and captions',
-      plainDeep.google.topChannels.length === 100 && plainStandard.google.topChannels.length === 50 &&
-        plainDeep.google.topGoogleSearches.length === 150 && plainStandard.google.topGoogleSearches.length === 50 &&
-        plainDeep.google.videoTitleSample.length === 40 && plainStandard.google.videoTitleSample.length === 10,
+      plainDeep.google.topChannels.length === 80 && plainStandard.google.topChannels.length === 50 &&
+        plainDeep.google.topGoogleSearches.length === 100 && plainStandard.google.topGoogleSearches.length === 50 &&
+        plainDeep.google.videoTitleSample.length === 25 && plainStandard.google.videoTitleSample.length === 10,
       JSON.stringify([plainStandard.google.topChannels.length, plainDeep.google.topChannels.length,
         plainStandard.google.topGoogleSearches.length, plainDeep.google.topGoogleSearches.length]));
-    check('the heaviest export\'s deeper read lands under its 300,000-character line, and well past 80,000',
-      Digest.evidenceChars(deep) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(deep) > DIG * 2,
+    check('the heaviest export\'s deeper read lands under its 190,000-character line, and well past 80,000',
+      Digest.DEEP_DIGEST_CHARS === 190000 && Digest.evidenceChars(deep) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(deep) > DIG * 2,
       String(Digest.evidenceChars(deep)));
     const sentDeep = Digest.forModel(deep, { deep: true });
     check('a deeper read is sent whole when it is asked for as one',
@@ -5173,8 +5173,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
-    check('and together cost about thirty cents at most',
-      Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP < 0.30);
+    check('and together cost no more than twenty-five cents',
+      Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP <= 0.25, String(Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP));
   }
   check('ad interests are no longer part of a digest', !('instagramAdInterests' in heavy) &&
     !('instagramAdInterests' in Digest.forModel(Object.assign({}, heavy, { instagramAdInterests: ['Ad interest 1'] }))));
