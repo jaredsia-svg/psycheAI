@@ -913,9 +913,10 @@ layout it runs as **four of the report's parts** (`explainedParts()`, `unlockPar
 panel led by its numeral (01–04), the part's title from `Copy.STRUCTURED.parts`, a line on what it holds
 (`Copy.STRUCTURED.unlockParts`), then its sections with their blurbs (`explainedSections()`), the paid
 ones where they sit in the report. Part 1 has four rows — the portrait, the signature patterns, **MBTI &
-Big Five as one row** (`explainTypeTraits`) and wellbeing. There is no appendix in the offer: Part 4 has
-the development plan on its left and, on its right, **a secret bonus** (`.unlock-secret`, a dashed gift
-panel) that names nothing — the roast, kept a surprise until it is unlocked. In the classic layout it is the explanations followed by
+Big Five as one row** (`explainTypeTraits`) and wellbeing. There is no appendix in the offer: Part 4's panel
+takes the left half of its row (`.unlock-part-half`), and **a secret bonus** is a panel of its own on the
+right half (`.unlock-secret`, dashed, a gift over its title), naming nothing — the roast, kept a surprise
+until it is unlocked. On a phone the two stack. In the classic layout it is the explanations followed by
 **`PAID_SECTIONS`** — the same table the report renders those sections from and the PDF gates them on.
 The panel beside the card ends its one-line introduction (an en dash, not an em dash) on where the
 reasoning behind the card is: "Unlock the premium report to read the full analysis…" on a free report,

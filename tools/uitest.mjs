@@ -11048,21 +11048,22 @@ try {
         return { parts: parts.map(p => p.querySelector('.unlock-part-num').textContent + ' ' + p.querySelector('h4').textContent),
           counts: parts.map(p => p.querySelectorAll('.premium-tier-item').length),
           typeTraits: [...parts[0].querySelectorAll('.premium-tier-item strong')].some(n => n.textContent === 'MBTI & Big Five'),
-          // In the plan's part, on the right of it: the same row as the plan, after it.
+          // A panel of its own, beside the plan's part rather than inside it,
+          // the two sharing a row.
           secret: (() => {
-            const plan = parts[3] && parts[3].querySelector('.premium-tier-item');
-            const box = parts[3] && parts[3].querySelector('.unlock-secret');
-            if (!plan || !box) return false;
-            const a = plan.getBoundingClientRect(), b = box.getBoundingClientRect();
-            return b.left > a.right - 1 && Math.abs(b.top - a.top) < 4;
+            const part = parts[3];
+            const box = document.querySelector('#profile-body .full-report-locked .unlock-secret');
+            if (!part || !box || part.contains(box)) return false;
+            const a = part.getBoundingClientRect(), b = box.getBoundingClientRect();
+            return b.left > a.right - 1 && Math.abs(b.top - a.top) < 2 && Math.abs(b.height - a.height) < 2;
           })(),
-          secretText: (parts[3] && parts[3].querySelector('.unlock-secret') || {}).textContent || '',
+          secretText: (document.querySelector('#profile-body .full-report-locked .unlock-secret') || {}).textContent || '',
           intro: document.querySelector('#profile-side .cx-home-intro').textContent };
       });
       check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
         offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together' &&
           offerParts.counts.join() === '4,2,4,1' && offerParts.typeTraits, JSON.stringify(offerParts));
-      check('structured: beside the plan, the offer keeps a secret bonus, naming nothing',
+      check('structured: beside the plan\'s part, a secret bonus in a box of its own, naming nothing',
         offerParts.secret && !/roast/i.test(offerParts.secretText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&

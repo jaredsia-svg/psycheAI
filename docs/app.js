@@ -1547,15 +1547,16 @@
 
   function unlockPartsHtml() {
     const S = Copy.STRUCTURED;
+    // The part with a secret beside it takes half the width, and the secret
+    // the other half as a panel of its own.
     return '<ol class="unlock-parts">' + explainedParts().map(part =>
-      '<li class="unlock-part">' +
+      '<li class="unlock-part' + (part.secret ? ' unlock-part-half' : '') + '">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
         '<div><h4>' + esc(S.parts[part.key].title) + '</h4><p>' + esc(S.unlockParts[part.key]) + '</p></div></div>' +
-        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) +
-          (part.secret ? '<li class="unlock-secret"><span class="unlock-secret-icon" aria-hidden="true">🎁</span>' +
-            '<span class="premium-tier-text"><strong>' + esc(S.unlockSecretTitle) + '</strong>' +
-            '<span>' + esc(S.unlockSecretText) + '</span></span></li>' : '') + '</ul>' +
-      '</li>').join('') + '</ol>';
+        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
+      '</li>' +
+      (part.secret ? '<li class="unlock-secret"><span class="unlock-secret-icon" aria-hidden="true">🎁</span>' +
+        '<strong>' + esc(S.unlockSecretTitle) + '</strong><span>' + esc(S.unlockSecretText) + '</span></li>' : '')).join('') + '</ol>';
   }
 
   function tierItemsHtml(rows, blurbOf) {
