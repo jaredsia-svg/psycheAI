@@ -978,9 +978,18 @@ so wiping the container would take it away for good and every later open would f
 the fault-injection confirmed, no `#sample-sections` either, which throws before the dialog even opens.
 It empties the two slots instead.
 
-**The four paid sections used to be summarised in a footer pinned under the sample; now they render
+**The sample is now the full premium report.** `sample.json` carries its own `premiumAnalysis` —
+wellbeing, attachment style, ideal partner and career assessment, hand-written for the same fictional
+account and held to `PREMIUM_SCHEMA` by the selftest (its `$ref`s written out in full) — and
+`sampleUnlocked()` hands those sections to the renderer, so attachment and career read exactly as on a
+paid report, never with a lock. It is the sample's own data, never the reader's `paidAnalysis()`. **The
+roast is left out of the sample** (both layouts, and the part nav's Roast entry with it): it is the full
+report's secret bonus. *The history below describes how the sample used to show the paid sections
+locked.*
+
+**The four paid sections used to be summarised in a footer pinned under the sample; then they rendered
 inline, in the sample body itself, the same way an un-unlocked real report does** — see "One
-consolidated block before unlock, four cards after" below for what that looks like today.
+consolidated block before unlock, four cards after" below.
 `showSample()` calls the same `reportSectionsHtml()` the real profile page uses, passing
 `{ sample: true }` instead of excluding paid sections outright. That option does two things inside
 `reportSectionsHtml()` and `paidSectionsLockedHtml()`/`paidCard()`: it forces `unlocked = {}`
@@ -1042,8 +1051,7 @@ built for the welcome page's marketing copy — listing all four sections by tit
 from a call that only returned some fields), the branch flips to the original per-section loop and
 `paidCard()` renders each of the four as its own full card. A reader never sees the four-button
 version and never sees the consolidated pitch again once they have paid — the same `unlocked` check
-governs both the sample dialog (which forces it to stay in the locked, consolidated state; see above)
-and the real report.
+governs the real report; the sample shows its own four sections in full (see above).
 
 `revealPaid()`, which runs when a payment succeeds, has to handle both starting shapes: the normal
 case swaps the single `.paid-consolidated` element outright for the four real `paidCard()`s via one
@@ -3386,7 +3394,9 @@ the nav is gone. All of this holds (`[data-cx]`, marked by
 `markCardParts()`). Then that part's meaning pops out level with it, pointing back at it
 (`explainCardPart()`, words in `Copy.STRUCTURED.cardGuide`): what the part is and where it comes from (the
 MBTI's background and each letter pair in plain words, the reader's own letters marked; Schwartz's ten
-values; why patterns are worth naming), the reader's own reading under **Yours**, and **Why it matters**.
+values; why patterns are worth naming) and why it is worth knowing, in **one short paragraph** of two
+sentences or so, then the reader's own reading under **Yours** ("On this card" in the sample). There is
+no separate "Why it matters" box any more: it was folded into the paragraph.
 The part lights up and the rest of the card steps back; the ring pulses until the reader points at
 anything. On a tablet, with nothing to hover, tapping a part explains it the same way; a phone explains
 it full screen instead (below). **Read from rounds its totals**
@@ -3503,13 +3513,13 @@ on a phone, tapping a part opens its note right against it, as in the reader's o
 the card's white, outlined in purple and inset from both of the card's edges (`placeCardPop()`, 5% of
 the card's width, at least 14px) so it reads as laid over the card: no heading band, no boxes, no rules
 inside it. Its icon, title, what the part is, the MBTI letter pairs (the reader's letter in purple, the
-other faint), "Yours" and "Why it matters" are told apart only by space and a small purple heading
-each. **Beside the card on a laptop** (`.at-side`) the note keeps the report panel's own white note
+other faint) and "Yours" are told apart only by space and a small purple heading. **Beside the card on a laptop** (`.at-side`) the note keeps the report panel's own white note
 with its arrow, untouched.
 Under the card a line says how — "Hover over any part of the card to learn more", or "Tap any part to
 learn more" on a touch screen (`#sample-card-tip`) — and on a phone the cross moves down beside it,
-since there the card reaches the top corner and a faint cross over its white would vanish. On the front page's premium tier, **See sample** shares the line with "A PDF to
-keep", "Evidence behind every finding" and "A bonus roast" on a laptop, and drops under them on a phone.
+since there the card reaches the top corner and a faint cross over its white would vanish. On the front page's premium tier, **See sample** shares the last line of "A PDF to
+keep", "Evidence behind every finding" and "A secret bonus section" (🎁 — the roast is not named) on a
+laptop, and drops under them on a phone.
 
 **Part 05, the Appendix**, holds Evidence and method and the roast, on the page and in the PDF: on the
 page it is a sixth part card (`PART_ORDER` ends in `appendix`) and one "05 Appendix" entry in the nav in

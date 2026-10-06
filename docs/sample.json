@@ -538,5 +538,152 @@
       "mitigation": "Say what good looks like before you hand something over, not after.",
       "question": "Where is 'quicker to do it myself' costing you most?"
     }
-  ]
+  ],
+  "premiumAnalysis": {
+    "wellness": {
+      "lifeTrajectory": {
+        "band": "steady",
+        "confidence": "moderate",
+        "reading": "Four years of the same few commitments, kept: the same running routes, the same friends, the same hosting rhythm. Nothing here shows drift or a stretch where things came loose.",
+        "evidence": [
+          "Same three trailheads every spring, 2021–2025",
+          "About nine hosted events a year, every year"
+        ]
+      },
+      "outlook": {
+        "band": "mixed",
+        "confidence": "low",
+        "reading": "Your captions are warm about other people and almost silent about yourself, so there is little direct evidence of how you feel about where you are. What there is reads as content rather than restless.",
+        "evidence": [
+          "3 of 60 sampled captions about your own feelings"
+        ]
+      },
+      "socialConnection": {
+        "band": "steady",
+        "confidence": "high",
+        "reading": "Wide and active: comments on 64 different people's posts in a year, and messages spread across many threads rather than one or two. The connection runs mostly outward, from you to them.",
+        "evidence": [
+          "Comments on 64 different people's posts in a year",
+          "Messages across 38 active conversations"
+        ]
+      },
+      "cognitiveLoad": {
+        "band": "under strain",
+        "confidence": "moderate",
+        "reading": "Plans, reminders and follow-ups for other people make up a large share of what you write, often late in the evening. It reads as a lot being carried, by you, with no post saying so.",
+        "evidence": [
+          "Group plans in 38 of 60 sampled captions",
+          "A third of messages sent after 10pm in event weeks"
+        ]
+      },
+      "meaning": {
+        "band": "steady",
+        "confidence": "moderate",
+        "reading": "What you do lines up with what you value: care for your people and getting things done show up in the same posts. The meaning is real; it is just rarely about you.",
+        "evidence": [
+          "47 posts naming a deadline, 41 closing one out"
+        ]
+      },
+      "rhythmAndActivity": {
+        "band": "mixed",
+        "confidence": "moderate",
+        "reading": "Regular runs most weeks, then a fortnight of near-silence after each busy stretch. The rhythm is healthy on average and uneven up close.",
+        "evidence": [
+          "Typical quiet stretch after an event: 13 days",
+          "Running posts in 40 of 52 weeks"
+        ]
+      },
+      "overall": "A steady, well-connected life with one clear pressure point: the load you carry for other people, carried quietly and late. Social connection is your strongest dimension; cognitive load is the one worth watching first.",
+      "suggestions": [
+        {
+          "title": "Hand one standing job to someone else",
+          "detail": "Pick one thing you always organise – the group booking, the reminder – and give it away for a month."
+        },
+        {
+          "title": "Protect the recovery fortnight",
+          "detail": "After a big event, keep the quiet stretch on purpose rather than filling it with the next plan."
+        },
+        {
+          "title": "Say one need out loud this week",
+          "detail": "Something small, to one person. The aim is practice, not a confession."
+        }
+      ]
+    },
+    "attachment": {
+      "style": "Leans secure, with a self-reliant streak",
+      "styleTone": "Steady, warm and dependable – people can count on you, and you rarely make closeness feel like hard work.",
+      "why": "Steady reply times, no bursts of messages after a silence, and warmth spread across many people point to secure. Avoidant was considered and set aside: you seek people out constantly. What keeps it from plain secure is how rarely you lean on anyone yourself.",
+      "derivedFrom": [
+        "Replies within the hour in 70% of threads",
+        "No message bursts after a gap in four years",
+        "3 of 60 captions about your own feelings"
+      ],
+      "implications": [
+        {
+          "title": "Easy to be close to",
+          "detail": "You make plans, show up and follow through, so the people around you feel safe with you."
+        },
+        {
+          "title": "Hard to look after",
+          "detail": "You give first and ask rarely, so partners can feel they never get the chance to care for you back."
+        }
+      ],
+      "caveat": "Attachment style cannot be read reliably from social-media data. Treat this as an informed guess."
+    },
+    "idealPartner": {
+      "needs": [
+        {
+          "title": "Someone who notices without being told",
+          "detail": "You will not ask, so you do best with a partner who picks up on a quiet week and acts on it."
+        },
+        {
+          "title": "Unhurried time together",
+          "detail": "Your warmest posts are about long walks and slow dinners – a partner who values the same rhythm will feel like home."
+        }
+      ],
+      "carefulOf": [
+        {
+          "title": "A partner who lets you carry everything",
+          "detail": "You will take on the planning by default; someone happy to let you will leave you quietly tired."
+        }
+      ],
+      "summary": "You suit someone steady and attentive who shares the load without being asked and is comfortable with your quiet stretches. The risk is not conflict but imbalance – choose someone who gives back as readily as you give."
+    },
+    "careerAssessment": {
+      "situation": "You appear to be in a role where you coordinate people and deadlines, formally or not, and are relied on more than you are recognised.",
+      "edge": {
+        "headline": "You finish what you start",
+        "detail": "Forty-one of forty-seven deadlines you posted about were closed out. Reliable follow-through is the trait most teams are shortest of, and you have it in quantity.",
+        "evidence": [
+          "47 posts naming a deadline, 41 closing one out",
+          "Same plans announced and delivered across four years"
+        ]
+      },
+      "underused": {
+        "headline": "Your own name on the work",
+        "detail": "You write every win as \"we\". The record of what you personally delivered is there – you just never show it."
+      },
+      "holdingBack": {
+        "headline": "Absorbing the unowned work",
+        "detail": "Work without an owner becomes yours by default. It makes you indispensable and leaves less room for the work that would move you forward."
+      },
+      "actions": [
+        {
+          "horizon": "this week",
+          "title": "Write down three things you delivered",
+          "detail": "Your own contribution, in \"I\" not \"we\". Keep the list going."
+        },
+        {
+          "horizon": "this quarter",
+          "title": "Turn one unofficial job into an official one",
+          "detail": "Ask for the coordinating you already do to be part of your role – and credited."
+        },
+        {
+          "horizon": "this year",
+          "title": "Aim for a role that rewards follow-through",
+          "detail": "Operations, programme or project leadership – where finishing things is the job, not the extra."
+        }
+      ]
+    }
+  }
 }

@@ -2871,9 +2871,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: .86rem; font-weight: 600; color: var(--ink);
 }
 .insight-premium-foot .btn { margin-left: auto; padding: .5rem 1rem; font-size: .9rem; flex: none; }
-/* On a laptop the button shares the line with what comes with the report. */
+/* On a laptop the button shares the last line with what comes with the report. */
 @media (min-width: 760px) {
-  .insight-premium-foot { flex-wrap: nowrap; }
+  .insight-premium-foot { flex-wrap: nowrap; align-items: flex-end; }
   .insight-extras { flex: 1 1 auto; min-width: 0; }
 }
 .insight-extras li { display: flex; align-items: center; gap: .4rem; }
@@ -3139,14 +3139,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: var(--ink-soft); background: color-mix(in srgb, var(--line) 60%, var(--bg-alt));
 }
 .cx-pair b.is-yours { color: #fff; background: var(--accent); }
-.cx-yours, .cx-why { font-size: .84rem; line-height: 1.5; padding: .6rem .7rem; border-radius: 12px; }
-.cx-yours { margin-bottom: .5rem; color: var(--ink); font-weight: 600; background: var(--accent-soft); }
-.cx-why { color: var(--ink); background: color-mix(in srgb, var(--good-soft) 70%, var(--bg-alt)); }
+.cx-yours { font-size: .84rem; line-height: 1.5; padding: .6rem .7rem; border-radius: 12px; }
+.cx-yours { margin-bottom: 0; color: var(--ink); font-weight: 600; background: var(--accent-soft); }
 .cx-label {
   display: block; margin-bottom: .2rem; font-size: .66rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
   color: var(--accent);
 }
-.cx-why .cx-label { color: var(--good); }
 #view-profile.profile-structured #psyche-card [data-cx] { cursor: help; }
 /* Where to start: the ring pulses until the reader points at anything. */
 .psyche-card.pc-hint .pc-sconf { border-radius: 999px; animation: pc-pulse 1.8s ease-in-out infinite; }
@@ -3243,11 +3241,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The reader's letter of each pair in colour, the other faint — no chips. */
 .card-dialog-pop:not(.at-side) .cx-pair b { width: auto; height: auto; min-width: .9rem; background: none; color: var(--ink-soft); opacity: .55; font-size: .85rem; }
 .card-dialog-pop:not(.at-side) .cx-pair b.is-yours { background: none; color: var(--accent); opacity: 1; }
-.card-dialog-pop:not(.at-side) .cx-yours, .card-dialog-pop:not(.at-side) .cx-why {
-  margin: 0 0 1rem; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink);
+.card-dialog-pop:not(.at-side) .cx-yours {
+  margin: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink);
 }
-.card-dialog-pop:not(.at-side) .cx-why { margin-bottom: 0; }
-.card-dialog-pop:not(.at-side) .cx-label, .card-dialog-pop:not(.at-side) .cx-why .cx-label { color: var(--accent); margin-bottom: .25rem; }
+.card-dialog-pop:not(.at-side) .cx-label { color: var(--accent); margin-bottom: .25rem; }
 .card-dialog-pop:not(.at-side) .cx-arrow { background: var(--pop-tint); border: 0; }
 /* Beside the card on a laptop, level with the part and pointing at it. */
 .card-dialog-pop.at-side { transition: top .2s ease; }

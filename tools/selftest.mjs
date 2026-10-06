@@ -1415,12 +1415,22 @@ function schemaFaults(node, value, path) {
 // The sample shows the structured layout too, so it carries the four fields
 // that layout adds to the written report, and the three motivators its free
 // card names — checked against those as exactly as against the rest.
+// Its premium sections (shown in the sample as a paid report shows them) are
+// held to the paid call's own schema, its $refs written out in full.
+function inlineRefs(node, defs) {
+  if (Array.isArray(node)) return node.map(item => inlineRefs(item, defs));
+  if (!node || typeof node !== 'object') return node;
+  if (node.$ref) return inlineRefs(defs[node.$ref.split('/').pop()], defs);
+  return Object.fromEntries(Object.entries(node).filter(([key]) => key !== '$defs')
+    .map(([key, value]) => [key, inlineRefs(value, defs)]));
+}
 const sampleSchema = {
   ...prompts.PROFILE_SCHEMA,
-  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS, ['topMotivators']),
+  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS, ['topMotivators', 'premiumAnalysis']),
   properties: Object.assign({}, prompts.PROFILE_SCHEMA.properties,
     Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]])),
-    { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators }),
+    { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators,
+      premiumAnalysis: inlineRefs(prompts.PREMIUM_SCHEMA, prompts.PREMIUM_SCHEMA.$defs || {}) }),
 };
 const sampleFaults = schemaFaults(sampleSchema, sample, '');
 check('the sample report satisfies the profile schema exactly', sampleFaults.length === 0,

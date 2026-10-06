@@ -2535,14 +2535,14 @@ try {
     await page.waitForTimeout(200);
     const row = await page.evaluate(() => {
       const button = document.querySelector('#insight-sample').getBoundingClientRect();
-      const first = document.querySelector('.insight-premium .insight-extras li').getBoundingClientRect();
-      return { sameLine: Math.abs((button.top + button.bottom) / 2 - (first.top + first.bottom) / 2) < 12,
+      const last = [...document.querySelectorAll('.insight-premium .insight-extras li')].pop().getBoundingClientRect();
+      return { sameLine: Math.abs((button.top + button.bottom) / 2 - (last.top + last.bottom) / 2) < 12,
         text: document.querySelector('#insight-sample').textContent.trim(),
         extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()) };
     });
-    check('on a laptop "See sample" shares the line with "A PDF to keep"',
+    check('on a laptop "See sample" shares the last line of what comes with the report',
       row.sameLine && row.text === 'See sample' &&
-        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding|🔥A bonus roast', JSON.stringify(row));
+        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding|🎁A secret bonus section', JSON.stringify(row));
   }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
@@ -3056,54 +3056,19 @@ try {
     (await page.locator('#sample-dialog button:not(#sample-body button)').count()) === 1 &&
     (await page.locator('#sample-close').isVisible()),
     (await page.locator('#sample-dialog button:not(#sample-body button)').allInnerTexts()).join('|'));
-  // The four paid sections render inline in the sample now, inside the same
-  // single consolidated block a real un-unlocked report shows — see
-  // paidSectionsLockedHtml — rather than four separate covers or a footer of
-  // their own. A reader sees exactly what they would meet on their own
-  // report before ever uploading anything.
-  check('the sample shows the same consolidated premium block a real report does, not four covers',
-    (await page.locator('#sample-body .paid-consolidated').count()) === 1 &&
-    (await page.locator('#sample-body .paid-card').count()) === 0);
-  check('all four paid sections are named and explained inside it',
+  // The sample is the full premium report: its four paid sections written
+  // out, from sample.json's own premiumAnalysis, never the reader's — and no
+  // roast, which stays the full report's secret bonus.
+  check('the sample shows the four premium sections in full, with no unlock block',
+    (await page.locator('#sample-body .paid-consolidated').count()) === 0 &&
+    (await page.locator('#sample-body .premium-unlock:visible').count()) === 0 &&
     await page.evaluate(() => {
-      const text = document.querySelector('#sample-body .paid-consolidated').textContent;
-      return ['Mental wellness', 'Attachment style', 'Ideal partner traits', 'Career assessment']
-        .every(name => text.includes(name));
+      const text = document.querySelector('#sample-body').innerText;
+      return ['Leans secure, with a self-reliant streak', 'You finish what you start',
+        'Someone who notices without being told'].every(line => text.includes(line));
     }));
-  // What must not happen: the sample is a made-up account nobody paid to
-  // analyse, so none of the four paid sections' actual writing may be in the
-  // document, in any form — the consolidated block has no body content at
-  // all to leak, which this confirms rather than assumes.
-  check('none of the four paid sections\' actual writing is in the sample',
-    !(await page.locator('#sample-body .premium-body').count()));
-  // The roast is free, so the sample carries it in full — same cover, same
-  // reveal mechanic — outside the paid consolidated block entirely.
-  check('the sample also carries the free roast, with its own cover',
-    (await page.locator('#sample-body .bonus-cover').count()) === 1 &&
-    /deliberately unkind/i.test(await page.locator('#sample-body .bonus-cover').innerText()));
-  check('and its writing is not in the sample until the cover is opened',
-    !(await page.locator('#sample-body .bonus-body').innerText()).trim());
-  // The one thing that would turn "here is what this looks like" into "click
-  // here to pay": the button has to be genuinely inert, not just plain-looking.
-  // A native `disabled` attribute is what stops it dispatching a click event
-  // at all — checked directly, since a visual-only "looks disabled" style
-  // would still let a click through to the real payment dialog. Exactly one
-  // button now, not four.
-  check('the sample has exactly one unlock button, disabled rather than just relabelled',
-    (await page.locator('#sample-body .premium-unlock').count()) === 1 &&
-    (await page.locator('#sample-body .premium-unlock:disabled').count()) === 1);
-  check('and it reads as a plain "Unlock" rather than a price or a resume label',
-    (await page.locator('#sample-body .premium-unlock').innerText()).trim() === 'Unlock');
-  // Clicking it anyway must genuinely do nothing — a disabled button should
-  // make this impossible, but the delegated listener that opens the payment
-  // dialog has no scope of its own, so this is the check that would actually
-  // catch a regression if `disabled` were ever dropped from the markup.
-  check('clicking the sample unlock button does not open the payment dialog',
-    await page.evaluate(async () => {
-      document.querySelector('#sample-body .premium-unlock').click();
-      await new Promise(resolve => setTimeout(resolve, 150));
-      return !document.querySelector('#premium-dialog').open;
-    }));
+  check('the sample carries no roast — the secret bonus stays secret',
+    (await page.locator('#sample-body .bonus-card, #sample-body .bonus-cover').count()) === 0);
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
   // so waitForSelector's default visible state can never be satisfied by it.
@@ -11102,7 +11067,7 @@ try {
           const box = pop.getBoundingClientRect();
           const middle = part.top + part.height / 2;
           return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
-            parts: ['.cx-about', '.cx-yours', '.cx-why'].every(sel => pop.querySelector(sel) && pop.querySelector(sel).textContent.length > 20),
+            parts: ['.cx-about', '.cx-yours'].every(sel => pop.querySelector(sel) && pop.querySelector(sel).textContent.length > 20) && !pop.querySelector('.cx-why'),
             letters: [...pop.querySelectorAll('.cx-pair b.is-yours')].map(b => b.textContent).join(''),
             level: middle >= box.top - 2 && middle <= box.bottom + 2,
             lit: document.querySelector('#psyche-card [data-cx="' + key + '"]').classList.contains('pc-glow') };
@@ -11216,7 +11181,7 @@ try {
           const part = document.querySelector('#psyche-card-full [data-cx="' + key + '"]');
           const r = part.getBoundingClientRect();
           return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
-            body: ['.cx-about', '.cx-yours', '.cx-why'].every(sel => pop.querySelector(sel)),
+            body: ['.cx-about', '.cx-yours'].every(sel => pop.querySelector(sel)) && !pop.querySelector('.cx-why'),
             lit: part.classList.contains('pc-glow'), inView: p.top >= 0 && p.bottom <= innerHeight + 1,
             // Right against the part: just under it, or just over it.
             beside: (p.top >= r.bottom - 1 && p.top - r.bottom <= 14) || (p.bottom <= r.top + 1 && r.top - p.bottom <= 14),

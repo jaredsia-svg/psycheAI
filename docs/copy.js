@@ -926,7 +926,7 @@
         connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
         together: 'A development plan built from everything above, a step-by-step plan you can tick off, and how your strengths behave under pressure.',
       },
-      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🔥', 'A bonus roast']],
+      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
       compatTitle: 'Compatibility, free',
       compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
     },
@@ -946,8 +946,8 @@
       'compatibility report from this browser. It cannot be undone.',
     deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
     // Beside a free report's Psyche Card: what each part means, popped out
-    // when the reader points at it. Each has the background (`about`), the
-    // reader's own reading (`yours`) and why it is worth knowing (`why`);
+    // when the reader points at it. Each has one short paragraph on what it is and why
+    // it is worth knowing (`about`), then the reader's own reading (`yours`);
     // `when` skips a part the card does not have.
     cardGuide: {
       title: 'How to read your Psyche Card',
@@ -968,41 +968,24 @@
       tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
       compat: 'Test compatibility',
       toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
-      labels: { yours: 'Yours', why: 'Why it matters', sample: 'On this card' },
+      labels: { yours: 'Yours', sample: 'On this card' },
       // Under the sample's card, full screen.
       sampleTip: { hover: 'Hover over any part of the card to learn more', tap: 'Tap any part to learn more' },
       items: [
         { key: 'character', icon: '🦸', title: 'Who you are most like', when: f => f.character,
-          about: 'Your behaviour — what you post, how you talk to people, what you keep coming back to — is compared with a ' +
-            'catalogue of well-known characters, and the one whose way of moving through the world is closest to yours is ' +
-            'picked. It is a likeness of how you act, not of looks or story.',
-          yours: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') + '. The two lines under the name say why.',
-          why: 'A character is the quickest way to hold your whole profile in your head at once, and an easy way to explain ' +
-            'yourself to someone else.' },
+          about: 'Your behaviour – what you post, how you talk, what you return to – is matched to the well-known character who moves through the world most like you. A quick way to hold your whole profile in mind, and to explain yourself to others.',
+          yours: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') + '. The two lines under the name say why.' },
         { key: 'confidence', icon: '🎯', title: 'The number in the ring', when: f => f.score,
-          about: 'Everything on the card is an inference from your data, and some data says more than others. This number is ' +
-            'how much evidence stands behind the card: how much of your export there was, how much of it was read, and how ' +
-            'consistently it all pointed the same way.',
-          yours: f => f.score + ' out of 100' + (f.level ? ' — ' + f.level + '.' : '.'),
-          why: 'Read a high number as a confident reading and a low one as a first draft. Adding Google or Facebook data with ' +
-            'the full report usually raises it.' },
+          about: 'How much evidence stands behind the card: how much data there was, how much was read, and how consistently it agreed. High is a confident reading, low a first draft – adding Google or Facebook usually raises it.',
+          yours: f => f.score + ' out of 100' + (f.level ? ' — ' + f.level + '.' : '.') },
         { key: 'patterns', icon: '🧵', title: 'Your patterns', when: f => f.pattern,
-          about: 'Your signature patterns are the two or three behaviours that show up again and again in everything you post ' +
-            'and say — not one-off moments, but habits that repeat over years.',
-          yours: f => 'Number 1, "' + f.pattern + '", explains the most about you.',
-          why: 'Patterns are where both your strengths and your blind spots come from: the habit that makes you reliable can ' +
-            'also wear you down. Knowing them by name lets you catch them in the moment, and choose.' },
+          about: 'The two or three behaviours that repeat across years of what you post and say. Your strengths and blind spots both come from them – naming them helps you catch them in the moment.',
+          yours: f => 'Number 1, "' + f.pattern + '", explains the most about you.' },
         { key: 'motives', icon: '🧲', title: 'What motivates you', when: f => f.motive,
-          about: 'Based on Shalom Schwartz\'s theory of basic human values, studied in more than 80 countries. It finds ten ' +
-            'values everyone holds — such as self-direction, achievement, security and care for others — in a different ' +
-            'order for each person. Values next to each other on his circle go together; values opposite each other pull apart.',
-          yours: f => 'Your top three, strongest first: ' + f.motives.join(', ') + '.',
-          why: 'Your top values explain what feels worth your effort and why some choices drain you. Choices that serve them ' +
-            'feel right; choices that cut against them feel wrong, even when they look good on paper.' },
+          about: 'Based on Shalom Schwartz\'s ten basic human values, studied in more than 80 countries – everyone holds all ten, in a different order. Your top values explain what feels worth your effort, and why some choices drain you.',
+          yours: f => 'Your top three, strongest first: ' + f.motives.join(', ') + '.' },
         { key: 'type', icon: '🧭', title: 'MBTI', when: f => f.type,
-          about: 'The Myers–Briggs Type Indicator grew out of Carl Jung\'s ideas about personality types. It sorts four ' +
-            'everyday preferences into a four-letter type. It is popular rather than clinically validated — read it as a ' +
-            'description of your tendencies, not a box.',
+          about: 'The Myers–Briggs type sorts four everyday preferences into four letters. Popular rather than clinically validated, it helps explain what energises you, what tires you, and why others see things differently.',
           letters: [
             ['E', 'I', 'Energy', 'from people and activity (E), or from time alone (I).'],
             ['N', 'S', 'Attention', 'to patterns and possibilities (N), or to facts and detail (S).'],
@@ -1010,29 +993,17 @@
             ['J', 'P', 'Lifestyle', 'planned and settled (J), or flexible and open (P).'],
           ],
           yours: f => f.type + (f.letters.length ? ': ' + f.letters.join(', ') + '.' : '.') +
-            ' A slight letter sits near the middle — you can go either way.',
-          why: 'Your type helps explain why some situations energise you and others tire you, and why people with a different ' +
-            'type can see the same thing quite differently.' },
+            ' A slight letter sits near the middle — you can go either way.' },
         { key: 'bigFive', icon: '📊', title: 'Big Five', when: f => f.trait,
-          about: 'The Big Five is the most researched model of personality in psychology: openness, conscientiousness, ' +
-            'extraversion, agreeableness and emotional sensitivity. Each is a scale from 0 to 100 rather than a type, and ' +
-            'most people land between 35 and 65.',
-          yours: f => 'Your ' + f.trait.toLowerCase() + ' at ' + f.traitScore + ' is the one furthest from the middle.',
-          why: 'The Big Five predicts real-life outcomes better than most personality measures — how you work, how you handle ' +
-            'stress, and how you get on with people.' },
+          about: 'The most researched model of personality: five traits, each scored 0–100, most people landing between 35 and 65. It predicts how you work, handle stress and get on with people better than most measures.',
+          yours: f => 'Your ' + f.trait.toLowerCase() + ' at ' + f.traitScore + ' is the one furthest from the middle.' },
         { key: 'standFor', icon: '⚖️', title: 'Values, beliefs and interests', when: f => f.value || f.interest,
-          about: 'Values and beliefs are what you stand for: the principles your posts and messages keep coming back to. ' +
-            'Interests are what you return to over months and years, not a passing phase.',
-          yours: f => (f.value && f.interest ? f.value + ' and ' + f.interest + ' come first.' : (f.value || f.interest) + ' comes first.'),
-          why: 'When what you do lines up with what you value, life feels meaningful; when it does not, you feel it before you ' +
-            'can name it. In close relationships, shared values matter more than shared interests.' },
+          about: 'Values and beliefs are the principles your posts and messages keep returning to; interests are what lasts beyond a passing phase. When what you do matches what you value, life feels meaningful.',
+          yours: f => (f.value && f.interest ? f.value + ' and ' + f.interest + ' come first.' : (f.value || f.interest) + ' comes first.') },
         { key: 'love', icon: '💝', title: 'Love languages', when: f => f.loveIn || f.loveOut,
-          about: 'Based on Gary Chapman\'s five love languages: words of affirmation, quality time, gifts, acts of service and ' +
-            'physical touch. Many people show care in one language and most want to receive it in another.',
+          about: 'Gary Chapman\'s five ways people give and receive care. Many show care one way and want it another – knowing yours, and theirs, keeps it from going unnoticed.',
           yours: f => (f.loveIn ? 'You feel cared for through ' + f.loveIn.toLowerCase() : '') +
-            (f.loveIn && f.loveOut ? ', and ' : '') + (f.loveOut ? 'you show it through ' + f.loveOut.toLowerCase() : '') + '.',
-          why: 'If the people close to you speak a different language, care can go unnoticed on both sides. Knowing yours — ' +
-            'and theirs — is one of the simplest ways to feel understood.' },
+            (f.loveIn && f.loveOut ? ', and ' : '') + (f.loveOut ? 'you show it through ' + f.loveOut.toLowerCase() : '') + '.' },
       ],
     },
     cardStandFor: 'Values & Beliefs',

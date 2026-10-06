@@ -1056,6 +1056,11 @@
    * whose cover is gone and whose body is blank.
    *
    */
+  /** The sample's own premium sections (sample.json), shown as a paid report shows them. */
+  function sampleUnlocked(report) {
+    return unlockedSections({ premiumAnalysis: report && report.premiumAnalysis });
+  }
+
   function unlockedSections(profile) {
     const paid = profile && profile.premiumAnalysis;
     if (!paid) return {};
@@ -5099,9 +5104,12 @@
     // Sections inside a part do not open and shut on their own: the part does.
     const head = (icon, title, defKey) =>
       sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', false, '');
-    const unlocked = sample ? {} : paidAnalysis();
+    // The sample shows the full premium report — its own premium sections,
+    // never the reader's — and no roast: that stays the secret bonus.
+    const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
-    let html = partNavHtml(Boolean(report.bonus));
+    const roast = sample ? null : report.bonus;
+    let html = partNavHtml(Boolean(roast));
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -5192,7 +5200,7 @@
         '<span class="part-num" aria-hidden="true">' + String(PART_ORDER.indexOf('appendix')).padStart(2, '0') + '</span>' +
         '<h2 class="part-title">' + esc(S.parts.appendix.title) + '</h2></div>' +
       methodCardHtml(report, sample) +
-      (report.bonus ? roastBlock(report.bonus, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
+      (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
       '</section>';
     return html;
   }
@@ -5331,7 +5339,8 @@
     // from — this used to sit after all four paid sections, back when it
     // was one of them; now that it is not, it belongs with the free report
     // it is actually part of, not stranded after the paywall.
-    html += roastBlock(report.bonus);
+    // The sample keeps it back: the roast is the full report's secret bonus.
+    if (!sample) html += roastBlock(report.bonus);
 
     // Everything from here to the confidence close is paid for. The four
     // sections are rendered from `PAID_SECTIONS` rather than one `if` each,
@@ -5349,7 +5358,7 @@
     // fields), each section gets its own full card instead, so a reader who
     // already paid is never shown the consolidated pitch again for the
     // section still filling in behind it.
-    const unlocked = sample ? {} : paidAnalysis();
+    const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     if (Object.keys(unlocked).length === 0) {
       html += paidSectionsLockedHtml({ sample });
     } else {
@@ -5521,8 +5530,7 @@
         '<li><span class="cx-pair"><b class="' + (facts.chosen.includes(a) ? 'is-yours' : '') + '">' + esc(a) + '</b>' +
         '<b class="' + (facts.chosen.includes(b) ? 'is-yours' : '') + '">' + esc(b) + '</b></span>' +
         '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
-      '<div class="cx-yours"><span class="cx-label">' + esc(state.yoursLabel || G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>' +
-      '<div class="cx-why"><span class="cx-label">' + esc(G.labels.why) + '</span>' + esc(item.why) + '</div>';
+      '<div class="cx-yours"><span class="cx-label">' + esc(state.yoursLabel || G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>';
     pop.scrollTop = 0;
     pop.hidden = false;
   }
