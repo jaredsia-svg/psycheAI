@@ -486,6 +486,13 @@
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: 'US$5',
+    premiumRefreshConsent: 'I am happy for my full analysis to be re-run with the new data, and understand ' +
+      'the results on my Psyche Card may change.',
+    freeAddData: 'Add / change data & re-run analysis',
+    freeAddDataNeedsInstagram: 'Your Instagram export is no longer on this device. Start again from the home page ' +
+      'with your export, and you can add Google or Facebook and unlock the full report from there.',
+    freeAddDataNote: 'Adding data comes with the full premium report (US$5): add your sources first, then ' +
+      'everything — your Psyche Card and the full report — is written from all of it.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same

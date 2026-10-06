@@ -596,6 +596,13 @@
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
+  <!-- Shown only when new data was added on the way here: the run it pays for
+       rewrites the free card as well, and the reader agrees to that before
+       any way to pay comes alive (.awaits-consent). -->
+  <label class="premium-consent" id="premium-consent" hidden>
+    <input type="checkbox" id="premium-consent-box">
+    <span id="premium-consent-text"></span>
+  </label>
   <div id="premium-payment-request-button"></div>
   <!-- Sits here, above the card fallback, rather than in its long-standing
        spot after #premium-progress: the "no wallet" message is what the card

@@ -196,6 +196,13 @@ async function passSupplement(page) {
 // opened synchronously from a user gesture. Driving the chooser exercises that
 // path; poking the input behind it would pass even if the button were wired to
 // nothing at all.
+// Where new data was added on the way to a payment, the sheet asks the reader
+// to agree the card may change before any way to pay comes alive; a flow that
+// is not testing that agreement gives it, the way a reader going ahead would.
+async function agreeToRerun(page) {
+  if (await page.locator('#premium-consent').isVisible()) await page.check('#premium-consent-box');
+}
+
 async function addSupplement(page, source, buffer, name) {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
   const [chooser] = await Promise.all([
@@ -5141,6 +5148,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 700));
     await route.continue();
   });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   // ---- (the data offer is checked before payment now — see above) ----
   //
@@ -8125,6 +8133,7 @@ try {
   check('re-running with the loaded data still asks to pay before analysing',
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeMergedSend + 1, 60000);
@@ -8232,6 +8241,7 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
@@ -8282,6 +8292,7 @@ try {
   const beforeReplaceSend = analyseBodies.length;
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeReplaceSend + 1, 60000);
@@ -8360,6 +8371,7 @@ try {
     /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   // The view never actually leaves #view-profile for this path — unlike a
@@ -8474,7 +8486,19 @@ try {
   const reportBeforeUnlock = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
   const analysesBeforeUnlock = analyseBodies.length;
+  // New data re-runs the whole analysis, card included: the reader ticks that
+  // they are happy with that before any way to pay comes alive.
+  check('with new data, the payment sheet asks the reader to agree the card may change',
+    (await page.locator('#premium-consent').isVisible()) &&
+    /results on my Psyche Card may change/.test(await page.locator('#premium-consent').innerText()) &&
+    !(await page.locator('#premium-consent-box').isChecked()));
   await page.fill('#premium-promo-input', UITEST_PROMO);
+  await page.evaluate(() => document.querySelector('#premium-promo-apply').click());
+  await page.waitForTimeout(400);
+  check('and until it is ticked, no way to pay does anything',
+    analyseBodies.length === analysesBeforeUnlock &&
+    (await page.evaluate(() => getComputedStyle(document.querySelector('.premium-promo')).pointerEvents)) === 'none');
+  await page.check('#premium-consent-box');
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
@@ -8766,6 +8790,7 @@ try {
 
   // Paying goes through, and the payment reaches the server with the request.
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   await openAllSections(page);
@@ -10772,16 +10797,40 @@ try {
           })(),
           method: Boolean(method && offer && (offer.compareDocumentPosition(method) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
             /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
-          trust: document.querySelectorAll('#rerun-with-data, #view-profile .trust-sources').length +
+          trust: document.querySelectorAll('#rerun-with-data').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
+          sources: Boolean(method && method.querySelector('.trust-sources .source-list') && method.querySelector('#free-add-data')),
           download: !document.querySelector('#export-pdf-bottom').hidden,
           sideText: side.innerText.replace(/\s+/g, ' ').trim() };
       });
       check('structured: a free report has no nav, its card filling three fifths and an empty panel for what it means, the same height',
         freeShape.nav === 0 && freeShape.sideShown && freeShape.cardLeft && freeShape.sideRight && freeShape.threeFifths &&
           freeShape.sameHeight && freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
-      check('structured: Evidence and method sits under the unlock offer, with no trust card, sources or re-run, and no download',
-        freeShape.method && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
+      check('structured: Evidence and method sits under the unlock offer with the data sources table, no US$2 re-run and no download',
+        freeShape.method && freeShape.sources && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
+      // Its "Add / change data" is the US$5 unlock — data first, then payment —
+      // never the US$2 re-run of the card.
+      // A real report has its evidence summary on the device.
+      await sp.evaluate(() => localStorage.setItem('psycheai_digest', JSON.stringify({
+        coverage: { sampling: {} }, counts: {}, rhythm: { spanDays: 400 } })));
+      await sp.reload({ waitUntil: 'load' });
+      await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      await sp.locator('#free-add-data').scrollIntoViewIfNeeded();
+      await sp.click('#free-add-data');
+      await sp.waitForFunction(() => document.querySelector('#supplement-dialog').open || document.querySelector('#premium-dialog').open,
+        null, { timeout: 15000 });
+      const addFlow = await sp.evaluate(() => ({
+        offer: document.querySelector('#supplement-dialog').open,
+        title: document.querySelector('#premium-dialog').open ? document.querySelector('#premium-dialog-title').textContent : '',
+      }));
+      check('structured: a free report\'s "Add / change data" opens the full report\'s unlock, not a US$2 re-run',
+        (addFlow.offer || /premium/i.test(addFlow.title)) && !/Psyche Card again/i.test(addFlow.title), JSON.stringify(addFlow));
+      // Back at the offer abandons the unlock: nothing charged, nothing open.
+      if (addFlow.offer) await sp.click('#supplement-back');
+      else await sp.click('#premium-cancel');
+      await sp.waitForTimeout(400);
+      check('structured: and Back leaves the report as it was, with no payment sheet',
+        await sp.evaluate(() => !document.querySelector('#supplement-dialog').open && !document.querySelector('#premium-dialog').open));
       // Pointing at a part of the card pops its explanation out on the right,
       // level with it — the ring first, as the panel suggests.
       const explained = [];
@@ -10851,6 +10900,11 @@ try {
           const r = pop.getBoundingClientRect();
           return !pop.hidden && r.height > 80 && r.bottom <= innerHeight && r.bottom >= innerHeight - 20 && getComputedStyle(pop).position === 'fixed';
         }));
+      // A tap anywhere but the sheet or another part of the card puts it away.
+      await sp.evaluate(() => document.querySelector('#view-profile .profile-hero, #profile-title').click());
+      await sp.waitForTimeout(200);
+      check('structured: and a tap anywhere else puts it away',
+        await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden));
       await sp.mouse.move(2, 2);
       // On a phone: one white box — the title, the card, how to learn more,
       // then the three actions — with no intro line and no "Tap to open".

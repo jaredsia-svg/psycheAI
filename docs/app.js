@@ -2380,6 +2380,15 @@
   document.addEventListener('click', event => {
     const unlock = event.target.closest('.premium-unlock');
     if (unlock) openPremiumDialog(unlock, 'unlock');
+    // A free report's "Add / change data": the same unlock, offering every
+    // source not yet loaded before the payment.
+    const add = event.target.closest('#free-add-data');
+    if (add) {
+      // The full report is written from the evidence summary on this device;
+      // with it gone, say what is needed rather than doing nothing.
+      if (!state.digest) { flash('#profile-alert', TEXT.freeAddDataNeedsInstagram); return; }
+      openPremiumDialog(add, 'unlock', null, { offerAll: true });
+    }
   });
 
   // Delegated for the same reason — the covers are written by innerHTML in
@@ -4129,31 +4138,44 @@
   // on a reload as much as in the session that uploaded it. Adding or
   // replacing a source is not done from here any more — see
   // askDataSources() — so a row is purely a status line, no button.
-  function sourcesUsedHtml(brief) {
+  /** The sources rows on their own: a tick for each one this report's digest carries. */
+  function sourceRowsHtml() {
     const digest = state.digest;
-    const rows = [
-      // Not hardcoded true, which it was. Instagram is required to produce a
-      // report at all, so a report on screen used to be taken as proof its
-      // export was still loaded — but the digest is a separate localStorage
-      // entry from the profile and can go missing on its own (a browser too
-      // full to take it, eviction, a hand-edited store). The row then said
-      // "loaded" about evidence this device no longer holds, and the re-run
-      // behind it had nothing to rebuild from. It reads the digest like the
-      // other two now, so missing means missing whichever source it is.
+    return [
       { icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
       { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
-    ];
-    // A status line each, not an action: adding or replacing a source now
-    // happens entirely behind the button below, in askDataSources(), so a
-    // row here only ever says what is true of the report, never invites a
-    // click of its own.
-    const rowsHtml = rows.map(row =>
+    ].map(row =>
       '<li class="source-row"><span class="source-name">' + esc(row.icon) + ' ' + esc(row.label) + '</span>' +
       (row.loaded
         ? '<span class="source-tick" role="img" aria-label="' + esc(TEXT.sourceLoaded) + '">✓</span>'
         : '<span class="source-cross" role="img" aria-label="' + esc(TEXT.sourceMissing) + '">✕</span>') +
       '</li>').join('');
+  }
+
+  /**
+   * A free report's sources, under its Evidence and method. Adding data comes
+   * with the full premium report, so the button here opens the US$5 unlock —
+   * the data offer first, then payment — never the US$2 re-run of the card.
+   */
+  function freeSourcesHtml() {
+    return '<div class="trust-sources">' +
+      '<h3>' + esc(TEXT.sourcesUsed) + '</h3>' +
+      '<ul class="source-list">' + sourceRowsHtml() + '</ul>' +
+      '<div class="btn-row"><button class="btn" id="free-add-data" type="button">' + esc(TEXT.freeAddData) + '</button></div>' +
+      '<p class="fineprint">' + esc(TEXT.freeAddDataNote) + '</p></div>';
+  }
+
+  function sourcesUsedHtml(brief) {
+    const digest = state.digest;
+    const rows = [
+      // Not hardcoded true, which it was: the digest is a separate store from
+      // the profile and can go missing on its own, so missing means missing.
+      { loaded: Boolean(digest) },
+      { loaded: Boolean(digest && digest.google) },
+      { loaded: Boolean(digest && digest.facebook) },
+    ];
+    const rowsHtml = sourceRowsHtml();
     const anyMissing = rows.some(row => !row.loaded);
 
     return '<div class="trust-sources">' +
@@ -5251,7 +5273,8 @@
    */
   function freeMethodCardHtml(report) {
     return '<div class="card section-card confidence-card method-card free-method-card">' +
-      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) + '</div>';
+      sectionHead('🎯', esc(Copy.STRUCTURED.titles.method), '') + methodEvidenceHtml(report, false) +
+      freeSourcesHtml() + '</div>';
   }
 
   /**
@@ -5415,6 +5438,10 @@
   // card still opens it. Captured, so the card's own click never sees it.
   document.addEventListener('click', event => {
     if (!event.target.closest) return;
+    // A tap anywhere but the explanation itself or another part of the card
+    // puts the explanation away.
+    const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
+    if (openPop && !event.target.closest('.cx-pop') && !event.target.closest('#psyche-card [data-cx]')) explainCardPart(null);
     const tool = event.target.closest('.cx-tool');
     if (tool) {
       const act = tool.getAttribute('data-act');
@@ -6292,9 +6319,12 @@
    * Returns the digest the paid call should use, or null to abandon the
    * unlock entirely (Back at the supplement offer).
    */
-  async function collectExtraDataForPremium() {
+  async function collectExtraDataForPremium(options) {
     const current = state.digest;
-    if (!current || current.google || current.facebook) return current;
+    // The unlock offers data only to a report with none beyond Instagram; the
+    // free report's own "Add / change data" offers whatever is still missing.
+    const offerAll = Boolean(options && options.offerAll);
+    if (!current || (offerAll ? current.google && current.facebook : current.google || current.facebook)) return current;
 
     let supplements = null;
     try {
@@ -6589,6 +6619,7 @@
     });
 
     payButton.onclick = async () => {
+      if (consentMissing()) return;
       payButton.disabled = true;
       errorEl.hidden = true;
       try {
@@ -6612,7 +6643,7 @@
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
    */
-  async function openPremiumDialog(button, product, preparedDigest) {
+  async function openPremiumDialog(button, product, preparedDigest, options) {
     // Three products share this dialog now. `kind` is what the server is told
     // and what verifyPaid checks the payment against, so a wrong value here
     // sends a reader's US$5 to the wrong ledger — hence a lookup with an
@@ -6641,7 +6672,7 @@
     if (preparedDigest) {
       pendingPremiumDigest = preparedDigest;
     } else if (kind === 'unlock' && !unlockReceipt()) {
-      const collected = await collectExtraDataForPremium();
+      const collected = await collectExtraDataForPremium(options);
       // Back at the supplement offer abandons the unlock. Nothing has been
       // charged and no dialog has been opened, so this simply returns.
       if (!collected) return;
@@ -6663,6 +6694,12 @@
         : rerunAll ? TEXT.premiumRerunDialogBlurb
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
+    // New data rewrites the free card as well: the reader agrees to that
+    // before any way to pay comes alive.
+    $('#premium-consent').hidden = !buysFreeRefresh;
+    $('#premium-consent-text').textContent = TEXT.premiumRefreshConsent;
+    $('#premium-consent-box').checked = false;
+    dialog.classList.toggle('awaits-consent', buysFreeRefresh);
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     // Reset with the rest of the dialog's state: runPremiumAnalysis greys it
     // out once a charge or code is accepted, and this markup is reused across
@@ -6735,7 +6772,7 @@
         const mockButton = $('#premium-mock-pay');
         mockButton.textContent = TEXT.premiumMockPay;
         mockButton.hidden = false;
-        mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
+        mockButton.onclick = () => { if (!consentMissing()) onPaymentAuthorised({ paymentIntentId: intent.id }, dialog); };
         return;
       }
 
@@ -6809,7 +6846,16 @@
   // goes straight to the same paid route a real payment reaches, with a code
   // instead of a paymentIntentId, so it works even mid-dialog while a wallet
   // button is already mounted, and even on a server with no Stripe key set.
+  /** True while the payment sheet is waiting for the re-run consent to be ticked. */
+  function consentMissing() {
+    return $('#premium-dialog').classList.contains('awaits-consent');
+  }
+  $('#premium-consent-box').addEventListener('change', event => {
+    $('#premium-dialog').classList.toggle('awaits-consent', !event.target.checked);
+  });
+
   function applyPromoCode() {
+    if (consentMissing()) return;
     const input = $('#premium-promo-input');
     const code = input.value.trim();
     if (!code) return;

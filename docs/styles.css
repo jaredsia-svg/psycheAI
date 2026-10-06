@@ -630,7 +630,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .link-btn:hover { filter: brightness(1.06); }
 .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 1.4rem; }
 /* The icons only show where the row moves into the left column. */
-.cta-row .cta-icon { display: none; width: 18px; height: 18px; }
+.cta-row .btn { display: inline-flex; align-items: center; gap: .45rem; }
+.cta-row .cta-icon { display: block; flex: none; width: 18px; height: 18px; }
 
 /* ---------- upload ---------- */
 
@@ -2952,6 +2953,16 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-status { margin: .5rem 0 0; font-size: .8rem; color: #b3261e; }
 /* Delete everything: a warning sheet, the red action on the right. */
 .delete-dialog { max-width: 26rem; text-align: center; }
+/* The re-run consent in the payment sheet: until it is ticked, no way to pay is live. */
+.premium-consent {
+  display: flex; gap: .6rem; align-items: flex-start; margin: .2rem 0 1rem; padding: .7rem .8rem; border-radius: 12px;
+  background: var(--accent-soft); font-size: .88rem; line-height: 1.45; color: var(--ink); cursor: pointer; text-align: left;
+}
+.premium-consent input { flex: none; width: 1.1rem; height: 1.1rem; margin-top: .1rem; accent-color: var(--accent); }
+.premium-dialog.awaits-consent #premium-payment-request-button, .premium-dialog.awaits-consent #premium-card-fallback,
+.premium-dialog.awaits-consent #premium-mock-pay, .premium-dialog.awaits-consent .premium-promo {
+  opacity: .35; pointer-events: none;
+}
 .delete-dialog-icon {
   display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto .7rem; border-radius: 999px;
   color: #b3261e; background: color-mix(in srgb, #c0392b 12%, var(--bg-alt));
