@@ -634,6 +634,24 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 /* A free report has no full report to download: hidden must win over the row's display. */
 .cta-row .btn[hidden] { display: none !important; }
 .cta-row .cta-icon { display: block; flex: none; width: 18px; height: 18px; }
+/* A full report on a phone: the three actions side by side across the
+   screen, each an icon over a small label, in the card tools' own style. */
+@media (max-width: 719px) {
+  #view-profile.profile-paid .cta-row {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-items: stretch;
+  }
+  /* The same height whichever label wraps, icons on one line along the top. */
+  #view-profile.profile-paid .cta-row .btn {
+    flex-direction: column; justify-content: flex-start; gap: .35rem; min-width: 0; margin: 0;
+    padding: .7rem .35rem .6rem; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--bg-alt); color: var(--ink-soft); box-shadow: var(--shadow);
+    font-size: .72rem; font-weight: 700; line-height: 1.2; text-align: center; white-space: normal;
+  }
+  #view-profile.profile-paid .cta-row .cta-icon { width: 22px; height: 22px; color: var(--accent); }
+  #view-profile.profile-paid .cta-row .btn.danger { color: #b3261e; }
+  #view-profile.profile-paid .cta-row .btn.danger .cta-icon { color: #b3261e; }
+  #view-profile.profile-paid .cta-row .btn:active { transform: translateY(1px); }
+}
 
 /* ---------- upload ---------- */
 

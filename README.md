@@ -3326,7 +3326,9 @@ premium report written by …", the model in ink and the date short. **The page'
 download, test compatibility, delete — each carry an icon to the left of their label; beside a full report on a wide
 screen they move under the part nav in the left column as quiet icon buttons in the nav's own box style,
 each named by a tooltip (`data-tip`), placed at the nav's measured foot (`--side-nav-bottom`,
-`layoutSideActions()`). **On a phone the part nav is one thin bar** stuck under the site's header
+`layoutSideActions()`). On a phone, beside a full report, they are one row of three equal tiles across
+the screen, an icon over a small label each, in the card tools' own style, Delete in red; whichever
+label wraps, the three stay the same height. **On a phone the part nav is one thin bar** stuck under the site's header
 (`--header-h`, measured on load and resize): the name of the part being read — "Overview", "What drives
 you", set by `markStructured()` as the reader scrolls — then the six numerals, sized so the longest name
 fits whole on a 390px screen. **On a phone the Psyche Card sits in one white box**, read top to bottom:
