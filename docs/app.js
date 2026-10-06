@@ -5494,6 +5494,11 @@
       if (arrow) arrow.style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
       return;
     }
+    // Narrower than the card, inset from both its edges, so the note reads as
+    // laid over the card rather than as one more of its rows.
+    const inset = Math.max(14, Math.round(frame.width * 0.05));
+    pop.style.left = Math.round(Math.max(edge, frame.left + inset)) + 'px';
+    pop.style.right = Math.round(Math.max(edge, W - frame.right + inset)) + 'px';
     const least = Math.round(H * 0.34);
     const under = r.bottom < H - r.top;
     pop.classList.toggle('at-top', !under);

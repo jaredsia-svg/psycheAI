@@ -3403,10 +3403,13 @@ opened from the front page or from the sample report: on a laptop, pointing at a
 note opens beside the card, level with the part and pointing at it, until the pointer leaves the card;
 on a phone, tapping a part opens its note right against it, as in the reader's own full screen
 (`placeCardPop()`, shared by both). The note's own reading is headed "On this card" rather than "Yours".
-**Every full-screen note is one lavender surface** (`.card-dialog-pop`), unlike the card's white: no
-heading band, no boxes, no borders or rules inside it. Its icon, title, what the part is, the MBTI
-letter pairs (the reader's letter in purple, the other faint), "Yours" and "Why it matters" are told
-apart only by space and a small purple heading each.
+**On a phone every full-screen note is one lavender surface** (`.card-dialog-pop:not(.at-side)`), unlike
+the card's white, outlined in purple and inset from both of the card's edges (`placeCardPop()`, 5% of
+the card's width, at least 14px) so it reads as laid over the card: no heading band, no boxes, no rules
+inside it. Its icon, title, what the part is, the MBTI letter pairs (the reader's letter in purple, the
+other faint), "Yours" and "Why it matters" are told apart only by space and a small purple heading
+each. **Beside the card on a laptop** (`.at-side`) the note keeps the report panel's own white note
+with its arrow, untouched.
 Under the card a line says how — "Hover over any part of the card to learn more", or "Tap any part to
 learn more" on a touch screen (`#sample-card-tip`) — and on a phone the cross moves down beside it,
 since there the card reaches the top corner and a faint cross over its white would vanish. On the front page's premium tier, **See sample** shares the line with "A PDF to

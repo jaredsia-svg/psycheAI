@@ -3151,29 +3151,31 @@ details.more[open] > summary::after { content: ' ▴'; }
 .card-dialog-pop.at-top { top: max(12px, env(safe-area-inset-top)); bottom: auto; }
 .card-dialog-pop .cx-close { display: block; }
 .card-dialog-pop .cx-arrow { display: none; }
-/* Over the card, a note is one lavender surface, unlike the card's white:
-   no band, no boxes, no borders or rules inside it. Its parts are told apart
-   by space and a small heading each, nothing else. */
-.card-dialog-pop {
+/* On a phone, over the card, a note is one lavender surface, unlike the
+   card's white, inset from the card's edges and outlined in purple: no band,
+   no boxes, no rules inside it. Its parts are told apart by space and a small
+   heading each, nothing else. Beside the card on a laptop (.at-side) it keeps
+   the report panel's own white note. */
+.card-dialog-pop:not(.at-side) {
   --pop-tint: color-mix(in srgb, var(--accent-soft) 85%, var(--bg-alt));
-  padding: 1.1rem 1.15rem 1.15rem; border: 0; border-radius: 18px; background: var(--pop-tint);
+  padding: 1.1rem 1.15rem 1.15rem; border: 2px solid var(--accent); border-radius: 18px; background: var(--pop-tint);
   box-shadow: 0 22px 60px rgba(0, 0, 0, .45);
 }
-.card-dialog-pop .cx-pop-head { margin: 0 0 .7rem; padding-right: 2rem; }
-.card-dialog-pop .cx-pop-icon { width: auto; height: auto; background: none; font-size: 1.35rem; }
-.card-dialog-pop .cx-pop-title { font-size: 1.1rem; color: var(--ink); }
-.card-dialog-pop .cx-close { top: .75rem; right: .7rem; background: none; color: var(--ink-soft); }
-.card-dialog-pop .cx-about { margin: 0 0 1rem; color: var(--ink); }
-.card-dialog-pop .cx-letters { margin-bottom: 1rem; }
+.card-dialog-pop:not(.at-side) .cx-pop-head { margin: 0 0 .7rem; padding-right: 2rem; }
+.card-dialog-pop:not(.at-side) .cx-pop-icon { width: auto; height: auto; background: none; font-size: 1.35rem; }
+.card-dialog-pop:not(.at-side) .cx-pop-title { font-size: 1.1rem; color: var(--ink); }
+.card-dialog-pop:not(.at-side) .cx-close { top: .75rem; right: .7rem; background: none; color: var(--ink-soft); }
+.card-dialog-pop:not(.at-side) .cx-about { margin: 0 0 1rem; color: var(--ink); }
+.card-dialog-pop:not(.at-side) .cx-letters { margin-bottom: 1rem; }
 /* The reader's letter of each pair in colour, the other faint — no chips. */
-.card-dialog-pop .cx-pair b { width: auto; height: auto; min-width: .9rem; background: none; color: var(--ink-soft); opacity: .55; font-size: .85rem; }
-.card-dialog-pop .cx-pair b.is-yours { background: none; color: var(--accent); opacity: 1; }
-.card-dialog-pop .cx-yours, .card-dialog-pop .cx-why {
+.card-dialog-pop:not(.at-side) .cx-pair b { width: auto; height: auto; min-width: .9rem; background: none; color: var(--ink-soft); opacity: .55; font-size: .85rem; }
+.card-dialog-pop:not(.at-side) .cx-pair b.is-yours { background: none; color: var(--accent); opacity: 1; }
+.card-dialog-pop:not(.at-side) .cx-yours, .card-dialog-pop:not(.at-side) .cx-why {
   margin: 0 0 1rem; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: var(--ink);
 }
-.card-dialog-pop .cx-why { margin-bottom: 0; }
-.card-dialog-pop .cx-label, .card-dialog-pop .cx-why .cx-label { color: var(--accent); margin-bottom: .25rem; }
-.card-dialog-pop .cx-arrow { background: var(--pop-tint); border: 0; }
+.card-dialog-pop:not(.at-side) .cx-why { margin-bottom: 0; }
+.card-dialog-pop:not(.at-side) .cx-label, .card-dialog-pop:not(.at-side) .cx-why .cx-label { color: var(--accent); margin-bottom: .25rem; }
+.card-dialog-pop:not(.at-side) .cx-arrow { background: var(--pop-tint); border: 0; }
 /* Beside the card on a laptop, level with the part and pointing at it. */
 .card-dialog-pop.at-side { transition: top .2s ease; }
 .card-dialog-pop.at-side .cx-arrow { display: block; }
