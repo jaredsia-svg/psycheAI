@@ -3200,8 +3200,8 @@ check('the sample arrives in chronological order',
   // here reads the constant to build its expectation and so passes at any
   // value — which is exactly how a limit moved from 100 to 250 once went
   // unnoticed in this block.
-  check('twenty-five liked captions, clipped at four hundred characters',
-    Digest.LIMITS.likedCaptions === 25 && Digest.LIMITS.likedCaptionChars === 400,
+  check('six liked captions, clipped at two hundred characters, and twenty ranked hashtags',
+    Digest.LIMITS.likedCaptions === 6 && Digest.LIMITS.likedCaptionChars === 200 && Digest.LIMITS.likedHashtags === 20,
     JSON.stringify([Digest.LIMITS.likedCaptions, Digest.LIMITS.likedCaptionChars]));
   check('the liked captions are sampled to their own limit',
     got.length === Digest.LIMITS.likedCaptions, String(got.length));
@@ -3786,13 +3786,15 @@ check('the sample arrives in chronological order',
       thread: 0,
     });
   }
+  // An unlimited budget: this is the sampler's rule under test, not the trim
+  // loop, which would otherwise shorten a thousand long messages to fit.
   const built = Digest.build({
     ...signals,
     messages: {
       total: 2000, threads: 1, groupThreads: 0, sent: 1000, received: 1000,
       avgSentLength: 300, ownTexts,
     },
-  }, { includeMessages: true });
+  }, { includeMessages: true, maxChars: 1e7 });
   const sample = built.directMessages.ownMessageSample;
   const idx = sample.map(line => Number(/M(\d+) /.exec(line)[1]));
   const half = Math.round(Digest.LIMITS.messages * Digest.LIMITS.messageRecentShare);
@@ -3958,7 +3960,7 @@ check('the sample arrives in chronological order',
       total: 1280, threads: 1, groupThreads: 0, sent: 640, received: 640,
       avgSentLength: 180, ownTexts,
     },
-  }, { includeMessages: true });
+  }, { includeMessages: true, maxChars: 1e7 });
   const bodies = capped.directMessages.ownMessageSample
     .map(line => line.replace(/^\[\d{4}\] /, ''));
   const longs = bodies.filter(b => /^L\d+ /.test(b));
@@ -3977,8 +3979,10 @@ check('the sample arrives in chronological order',
   // stable against — and the genuinely long messages lose their places to
   // messages a third their size. Measured whole, L wins on its merits, which
   // is what "longest" has to mean for the half to be worth having.
+  // The longest half has 125 places and L has 120 messages: measured whole,
+  // every L takes one; measured clipped, S would take them first.
   check('the longest half ranks on the real length, not the clipped one',
-    longs.length === 90, longs.length + ' of 90');
+    longs.length === 120, longs.length + ' of 120');
 }
 
 // Links in the reader's own messages. A shared ride-tracking link is not
@@ -4174,8 +4178,8 @@ check('omitAccounts leaves the rest of the digest untouched',
   accountsRedacted.instagramTopics.length === digest.instagramTopics.length);
 
 const topicsRedacted = Digest.omitTopics(Digest.build(signals, { includeMessages: false }));
-check('omitTopics empties both Instagram-inferred lists',
-  topicsRedacted.instagramTopics.length === 0 && topicsRedacted.instagramAdInterests.length === 0);
+check('omitTopics empties Instagram\'s inferred topics',
+  topicsRedacted.instagramTopics.length === 0 && !('instagramAdInterests' in topicsRedacted));
 check('omitTopics leaves the rest of the digest untouched',
   topicsRedacted.mostLikedAccounts.length === digest.mostLikedAccounts.length &&
   topicsRedacted.samples.captions.length === digest.samples.captions.length);
@@ -4261,7 +4265,7 @@ check('searches report their coverage, counted in distinct terms not raw searche
 // searches were the last of the four still at their original size — a
 // leftover rather than a decision, and 4,294 characters of one.
 check('the Takeout lists are sized by what they cost, not uniformly',
-  Digest.LIMITS.youtubeChannels === 50 && Digest.LIMITS.youtubeTitles === 25 &&
+  Digest.LIMITS.youtubeChannels === 50 && Digest.LIMITS.youtubeTitles === 10 &&
   Digest.LIMITS.googleSearchTerms === 50 && Digest.LIMITS.youtubeSearches === 40,
   JSON.stringify([Digest.LIMITS.youtubeChannels, Digest.LIMITS.youtubeTitles,
     Digest.LIMITS.googleSearchTerms, Digest.LIMITS.youtubeSearches]));
@@ -4278,7 +4282,7 @@ check('the Takeout lists are sized by what they cost, not uniformly',
     domains: new Map(), geminiPrompts: [],
   } } }, { includeMessages: false });
   check('and both YouTube lists are held there on an export with more to give',
-    wide.google.topChannels.length === 50 && wide.google.videoTitleSample.length === 25,
+    wide.google.topChannels.length === 50 && wide.google.videoTitleSample.length === 10,
     wide.google.topChannels.length + ' channels, ' + wide.google.videoTitleSample.length + ' titles');
 }
 
@@ -4470,14 +4474,14 @@ const heavyMessages = Digest.build(heavyMessagesSignals, { includeMessages: true
   check('but how many were asked still is',
     withGoogle.google.counts.prompts > 0, String(withGoogle.google.counts.prompts));
 }
-check('the DM cap is 180, drawn from the ten conversations they write in most',
-  Digest.LIMITS.messages === 180 && Digest.LIMITS.messageTopThreads === 10,
+check('the DM cap is 250, drawn from the ten conversations they write in most',
+  Digest.LIMITS.messages === 250 && Digest.LIMITS.messageTopThreads === 10,
   JSON.stringify([Digest.LIMITS.messages, Digest.LIMITS.messageTopThreads]));
 check('no conversation takes more than a fifth, and each is split down the middle',
   Digest.LIMITS.messageThreadCap === 0.20 && Digest.LIMITS.messageRecentShare === 0.5,
   JSON.stringify([Digest.LIMITS.messageThreadCap, Digest.LIMITS.messageRecentShare]));
 check('a heavy account caps DMs at that limit',
-  heavyMessages.directMessages.ownMessageSample.length === 180,
+  heavyMessages.directMessages.ownMessageSample.length === 250,
   heavyMessages.directMessages.ownMessageSample.length + ' messages');
 
 // ---------- the 4-character floor ----------
@@ -5074,21 +5078,29 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // caps that size the one digest at 80,000 characters; changing one is a
   // decision, and should fail here.
   check('the caps are the ones chosen to land a heavy account near 80,000 characters',
-    Digest.LIMITS.captions === 200 && Digest.LIMITS.messages === 180 &&
-    Digest.LIMITS.likedCaptions === 25 && Digest.LIMITS.comments === 60 &&
-    Digest.LIMITS.topics === 100 && Digest.LIMITS.adInterests === 50,
+    Digest.LIMITS.captions === 200 && Digest.LIMITS.messages === 250 &&
+    Digest.LIMITS.likedCaptions === 6 && Digest.LIMITS.comments === 60 &&
+    Digest.LIMITS.topics === 20 && !('adInterests' in Digest.LIMITS),
     JSON.stringify({ captions: Digest.LIMITS.captions, messages: Digest.LIMITS.messages,
       liked: Digest.LIMITS.likedCaptions, comments: Digest.LIMITS.comments,
       topics: Digest.LIMITS.topics, ads: Digest.LIMITS.adInterests }));
+  // Ad interests are not sent at all now, and the budget counts the text the
+  // model is sent rather than the JSON it is written from.
+  check('ad interests are no longer part of a digest', !('instagramAdInterests' in heavy) &&
+    !('instagramAdInterests' in Digest.forModel(Object.assign({}, heavy, { instagramAdInterests: ['Ad interest 1'] }))));
+  check('the recorded digest size is the evidence text the model reads, not the JSON',
+    heavy.coverage.digestChars === Digest.evidenceChars(heavy) &&
+      Digest.evidenceChars(heavy) === prompts.renderEvidence(heavy).length,
+    heavy.coverage.digestChars + ' vs ' + Digest.evidenceChars(heavy));
   // On an ordinary heavy account the trim loop should have nothing to do: the
   // per-list caps are what size it, and the loop is the backstop.
   check('on an ordinary heavy account the caps bind, not the trim loop',
     heavyWithDms.samples.captions.length === 200 &&
-    heavyWithDms.directMessages.ownMessageSample.length === Math.min(180, heavyWithDms.coverage.sampling.ownMessages.available) &&
+    heavyWithDms.directMessages.ownMessageSample.length === Math.min(250, heavyWithDms.coverage.sampling.ownMessages.available) &&
     heavyWithDms.samples.comments.length === 60 &&
-    JSON.stringify(heavyWithDms).length <= DIG,
+    Digest.evidenceChars(heavyWithDms) <= DIG,
     JSON.stringify({ captions: heavyWithDms.samples.captions.length,
-      dms: heavyWithDms.directMessages.ownMessageSample.length, chars: JSON.stringify(heavyWithDms).length }));
+      dms: heavyWithDms.directMessages.ownMessageSample.length, chars: Digest.evidenceChars(heavyWithDms) }));
   // The denominator stays the archive's, so confidence is read against it.
   const sampling = Digest.forModel(heavyWithDms).coverage.sampling;
   check('coverage says how much is shown, against the whole archive',
@@ -5126,7 +5138,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and a padded string is clamped rather than sent',
     paddedFree.profile.bio.length <= 700 && paddedFree.samples.captions.every(c => c.length <= 700));
   check('so a padded request costs no more than an honest one',
-    paddedText.length <= DIG, String(paddedText.length));
+    Digest.evidenceChars(paddedFree) <= DIG, String(Digest.evidenceChars(paddedFree)));
   // The one thing construction cannot bound: how many keys sit inside the few
   // objects copied whole. Each is clamped, but two hundred clamped strings is
   // still a lot of text — which is what the server's size check is for.

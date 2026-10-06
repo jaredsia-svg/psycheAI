@@ -489,7 +489,8 @@ async function handleAnalyse(request, response) {
   // The backstop for the one thing forModel cannot bound by construction —
   // the number of keys in the few objects it copies whole. An honest digest
   // never gets here; Digest.build lands every real export under the line.
-  if (JSON.stringify(sent).length > Digest.LIMITS.totalChars) {
+  // Counted as the model reads it, the same measure the trim loop uses.
+  if (Digest.evidenceChars(sent) > Digest.LIMITS.totalChars) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
   }

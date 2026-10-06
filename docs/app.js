@@ -2976,7 +2976,8 @@
   function buildDigestPreviewHtml(rows, decision, preview) {
     // One digest serves both calls, and the file says so: a reader comparing
     // the free card with the premium report should know both read this.
-    const sentKb = Math.max(1, Math.round(JSON.stringify(preview).length / 1000));
+    // The text the model is actually sent, the same measure the budget counts.
+    const sentKb = Math.max(1, Math.round(Digest.evidenceChars(preview) / 1000));
     const sizeNote = 'About ' + sentKb + ' KB. This same digest is what both your free summary card ' +
       'and the full premium report are read from.';
     const rowsHtml = rows.map(r => {
@@ -3047,8 +3048,9 @@
     const commentsCount = digest.samples.comments.length;
     const engagedCount = digest.mostLikedAccounts.length + digest.mostSavedAccounts.length +
       digest.mostEngagedWith.length;
-    const topicsCount = digest.instagramTopics.length + digest.instagramAdInterests.length;
+    const topicsCount = (digest.instagramTopics || []).length;
     const likedCaptionsCount = (digest.samples.likedPostCaptions || []).length;
+    const likedTagsCount = (digest.samples.likedPostHashtags || []).length;
 
     // One row per checkbox — id, how many there are to send, the on/off
     // label, and the detail line. The single source both the checklist below
@@ -3075,19 +3077,18 @@
       // with" would send text under a heading that promises names — the
       // mirror image of the mistake the note below warns about, and the worse
       // direction to make it in.
-      ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount,
-        'Captions on posts you liked', 'Captions on posts you liked — none found',
-        likedCaptionsCount ? likedCaptionsCount + ' captions from the posts you liked most ' +
-          'recently — written by other people, kept because what you reach for says ' +
-          'something about you.' :
+      ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount + likedTagsCount,
+        'Posts you liked', 'Posts you liked — none found',
+        likedCaptionsCount + likedTagsCount ? likedCaptionsCount + ' captions from posts you liked in ' +
+          'the last year, and the ' + likedTagsCount + ' hashtags that came up most across all of them — ' +
+          'written by other people, kept because what you reach for says something about you.' :
           'This export did not include captions on the posts you liked.'],
       ['review-accounts', 'includeAccounts', engagedCount,
         'Accounts you engage with', 'Accounts you engage with — none found',
         engagedCount + ' names among who you like, save and comment on most.'],
       ['review-topics', 'includeTopics', topicsCount,
         'Instagram’s own inferred topics', 'Instagram’s own inferred topics — none found',
-        digest.instagramTopics.length + ' topics and ' + digest.instagramAdInterests.length +
-        ' ad interests Instagram has already guessed about you.'],
+        topicsCount + ' topics Instagram has already guessed you are interested in.'],
       ['review-dms', 'includeMessages', dmCount,
         'Direct messages', 'Direct messages — none found',
         dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +

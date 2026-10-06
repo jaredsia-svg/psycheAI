@@ -7750,8 +7750,8 @@ try {
   check('unticking accounts empties following and every engagement list',
     optedOut.mostLikedAccounts.length === 0 &&
     optedOut.mostSavedAccounts.length === 0 && optedOut.mostEngagedWith.length === 0);
-  check('unticking topics empties both Instagram-inferred lists',
-    optedOut.instagramTopics.length === 0 && optedOut.instagramAdInterests.length === 0);
+  check('unticking topics empties Instagram\'s inferred topics, and no ad interests are kept',
+    optedOut.instagramTopics.length === 0 && optedOut.instagramAdInterests === undefined);
   check('and Instagram\'s own search list is not there to untick',
     optedOut.samples.searches === undefined &&
     (await page.locator('#review-searches').count()) === 0);
@@ -7767,7 +7767,7 @@ try {
     optedOutSent.counts === undefined && optedOutSent.rhythm === undefined &&
     optedOutSent.mostLikedAccounts.length === 0 &&
     optedOutSent.mostSavedAccounts.length === 0 && optedOutSent.mostEngagedWith.length === 0 &&
-    optedOutSent.instagramTopics.length === 0 && optedOutSent.instagramAdInterests.length === 0 &&
+    optedOutSent.instagramTopics.length === 0 && optedOutSent.instagramAdInterests === undefined &&
     optedOutSent.samples.searches === undefined,
     JSON.stringify({
       captions: optedOutSent.samples.captions.length, counts: optedOutSent.counts,

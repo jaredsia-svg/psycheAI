@@ -53,7 +53,14 @@
     commentChars: 30,
     // Messages, drawn per conversation rather than from one pile — see
     // sampleMessages for how the places are shared out and why.
-    messages: 180,
+    // 250, raised from 180 when the weaker lists below were cut — topics to
+    // twenty, ad interests out, liked captions to six with their hashtags
+    // counted instead, video titles to ten — and the budget began measuring
+    // the text the model is actually sent rather than the JSON. On a real
+    // heavy archive messages were 180 of 9,741 (1.8%) against 45% of captions:
+    // the most under-sampled of the reader's own words, so the freed room goes
+    // here.
+    messages: 250,
     // Only the ten conversations they use most. Everything below that is the
     // one-off end of an inbox: a reply to a stranger, a delivery courier, a
     // group somebody was added to once. Those messages are real but they are
@@ -117,7 +124,18 @@
     // 25 since the shared 80,000-character digest: at about 260 characters
     // each these are the most expensive items in it, and they are not the
     // reader's own words.
-    likedCaptions: 25,
+    //
+    // Six since the cut that freed room for messages. On a real archive the 25
+    // were mostly memes, dog videos and news headlines — other people's words,
+    // the longest items in the digest at about 220 characters, an eighth of it
+    // hashtags — and what they said about taste the accounts, channels and
+    // searches already said more cheaply. Six keep a glimpse of the actual
+    // reach; `likedHashtags` below carries the breadth, counted over all of it.
+    likedCaptions: 6,
+    // The hashtags on every liked post in the same window, counted once per
+    // post and ranked: the whole twelve months in a few hundred characters,
+    // where the caption sample is six posts of it.
+    likedHashtags: 20,
     // Twelve months, anchored to their newest liked post rather than to the
     // clock. Anchoring to the clock would empty this for anyone dormant for a
     // year, and worse, would move the sample every day — the result cache keys
@@ -130,7 +148,8 @@
     // read closely and deserves the room. Four hundred rather than three: nine
     // of the 48 captions in a real twelve-month window run past it, and the
     // ones that do are the long-form posts somebody stops to read.
-    likedCaptionChars: 400,
+    // 200 since the six that remain are a glimpse rather than the evidence.
+    likedCaptionChars: 200,
     // Fifteen, the same as `likedAuthors` beside it and for the same reason:
     // past the top dozen a ranked list of accounts flattens into a tail of
     // ones saved once, which says nothing a follow count does not. The two had
@@ -138,8 +157,13 @@
     // twenty — and a save is if anything the stronger signal per item, since it
     // is something somebody meant to come back to.
     savedAuthors: 15,
-    topics: 100,
-    adInterests: 50,
+    // Twenty. Instagram's guesses about someone are its own inference, not
+    // anything they did, and past the first couple of dozen they flatten into
+    // a tail of ad categories.
+    topics: 20,
+    // Ad interests are no longer sent. They are Instagram's guesses for its
+    // advertisers — the weakest evidence in the digest by any measure — and
+    // the room goes to the reader's own messages instead.
     // The ceiling on one caption, past which it is clipped rather than
     // dropped. Set to 400 for a while, on the reasoning that a 400-character
     // caption is already several paragraphs. Back to 600 because the reasoning
@@ -159,7 +183,9 @@
     // covers the same ground — what a title adds over a channel is the
     // specificity of one video, which is worth having but not worth twice the
     // channel list.
-    youtubeTitles: 25,
+    // Ten since the cut that freed room for messages: a random handful from
+    // thousands adds little to the channel list beside it.
+    youtubeTitles: 10,
     // Forty. This was the last list in the Takeout block still at its original
     // size while channels, titles and Google searches had all been cut — a
     // leftover rather than a decision, and it showed: 4,294 characters, the
@@ -731,6 +757,32 @@
     return recent.filter(c => drawn.has(c)).map(c => c.display);
   }
 
+  /**
+   * The hashtags on the posts they liked, counted over the same twelve-month
+   * window the caption sample is drawn from, once per post, and ranked as
+   * "#tag ×count". Six captions show what a liked post looks like; this shows
+   * the spread of everything they liked in that year.
+   */
+  function rankLikedHashtags(records) {
+    if (!Array.isArray(records) || !records.length) return { ranked: [], distinct: 0 };
+    let newest = 0;
+    for (const item of records) if (item && Number.isFinite(item.ts) && item.ts > newest) newest = item.ts;
+    const counts = new Map();
+    for (const item of records) {
+      const ts = item && Number.isFinite(item.ts) ? item.ts : 0;
+      if (newest && ts && ts < newest - LIMITS.likedCaptionWindowSeconds) continue;
+      const tags = new Set((String((item && item.text) || '').toLowerCase().match(/#[\p{L}\p{N}_]{2,40}/gu) || []));
+      for (const tag of tags) counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+    // Ties break on the tag, so the ranking is total and the digest is the
+    // same on every rebuild — the result cache keys on it.
+    const ranked = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+      .slice(0, LIMITS.likedHashtags)
+      .map(([name, count]) => ({ name, count }));
+    return { ranked, distinct: counts.size };
+  }
+
   // Deterministic, and that is not a detail. The server keys its result cache
   // on the digest, so a draw made with Math.random would produce a different
   // digest on every rebuild — a different key, a missed cache, and the reader
@@ -1075,6 +1127,7 @@
     // half of that choice, since raising the caps would be re-inventing the
     // depth concept that was just removed.
     const maxChars = opts.maxChars || LIMITS.totalChars;
+    const likedTags = rankLikedHashtags(signals.likedCaptions);
 
     // Counted once, read twice: the histogram itself and, below, how many
     // distinct terms there were to begin with. That second number is the point
@@ -1130,11 +1183,11 @@
         // words in somebody's mouth — the one failure this digest must not
         // have. The prompt is told the same thing in the same words.
         likedPostCaptions: sampleLikedCaptions(signals.likedCaptions),
+        likedPostHashtags: likedTags.ranked,
       },
       // Instagram's own inference about this person — curated, and much less
       // noisy than anything derived from raw follows.
       instagramTopics: signals.topics.slice(0, LIMITS.topics),
-      instagramAdInterests: signals.adInterests.slice(0, LIMITS.adInterests),
       mostLikedAccounts: topKeys(signals.likedAuthors, LIMITS.likedAuthors),
       mostSavedAccounts: topKeys(signals.savedAuthors, LIMITS.savedAuthors),
       mostEngagedWith: topKeys(signals.commentedOn, 40),
@@ -1196,6 +1249,8 @@
       shown: digest.samples.likedPostCaptions.length,
       available: (signals.likedCaptions || []).length,
     };
+    digest.coverage.sampling.likedHashtags =
+      { shown: digest.samples.likedPostHashtags.length, available: likedTags.distinct };
     digest.coverage.sampling.engagedWith =
       { shown: digest.mostEngagedWith.length, available: countOf(signals.commentedOn) };
 
@@ -1575,6 +1630,71 @@
     return digest;
   }
 
+  // ---------- how the evidence is written for the model ----------
+  //
+  // The digest is the same object for both calls. How it is *written* is a
+  // separate question, and raw JSON answered it expensively: every sampled line
+  // paid for its quotes and comma, every ranked entry for `{"name":…,"count":…}`.
+  // So the small structured fields — profile, counts, rhythm, coverage, the
+  // message statistics — stay JSON, where their field names are what the
+  // prompts refer to, and every list is written out after them under its own
+  // dotted path, one item per line. The paths are the ones the prompts name.
+  //
+  // It lives here rather than in lib/prompts.js so the budget can measure it:
+  // the trim loop, the digest's recorded size and the server's size check all
+  // count this text — what the model is actually sent — not the JSON it is
+  // written from. lib/prompts.js writes the prompt with this same function.
+  //
+  // A line cannot start a section of its own: every item has its whitespace
+  // collapsed first, so no caption can smuggle in a newline and a `## ` header.
+  const EVIDENCE_LISTS = [
+    'samples.captions', 'samples.comments', 'samples.likedPostCaptions', 'samples.likedPostHashtags',
+    'directMessages.ownMessageSample',
+    'instagramTopics',
+    'mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith',
+    'google.topChannels', 'google.videoTitleSample', 'google.topYoutubeSearches', 'google.topGoogleSearches',
+    'facebook.postSample', 'facebook.commentSample', 'facebook.friends', 'facebook.topSearches',
+    'facebook.ownMessageSample',
+  ];
+
+  function evidenceLine(item) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      if ('name' in item && 'count' in item && Object.keys(item).length === 2) {
+        return String(item.name).replace(/\s+/g, ' ').trim() + ' ×' + item.count;
+      }
+      return JSON.stringify(item);
+    }
+    return String(item == null ? '' : item).replace(/\s+/g, ' ').trim();
+  }
+
+  function renderEvidence(digest) {
+    const skeleton = JSON.parse(JSON.stringify(digest && typeof digest === 'object' ? digest : {}));
+    const sections = [];
+    for (const path of EVIDENCE_LISTS) {
+      const keys = path.split('.');
+      let parent = skeleton;
+      for (const key of keys.slice(0, -1)) parent = parent && typeof parent === 'object' ? parent[key] : undefined;
+      const last = keys[keys.length - 1];
+      if (!parent || typeof parent !== 'object' || !Array.isArray(parent[last])) continue;
+      const list = parent[last];
+      delete parent[last];
+      // Empty is written rather than skipped: a list the reader unticked is a
+      // fact the model is told about, not a field that silently went missing.
+      sections.push(list.length
+        ? '## ' + path + ' — ' + list.length + (list.length === 1 ? ' item' : ' items') + '\n' +
+          list.map(evidenceLine).join('\n')
+        : '## ' + path + ' — empty');
+    }
+    return 'Structured fields first, as JSON. Every list follows under its own path, one item per line; ' +
+      'a ranked entry is written "name ×count".\n' + JSON.stringify(skeleton) +
+      (sections.length ? '\n\n' + sections.join('\n\n') : '');
+  }
+
+  /** How long the evidence is as the model reads it: the number every budget here counts. */
+  function evidenceChars(digest) { return renderEvidence(digest).length; }
+  // One list as it is written out, for the trim loop's "which costs most".
+  function listChars(list) { return list.map(evidenceLine).join('\n').length; }
+
   // The bound that actually holds the cost ceiling, so it has to survive a
   // pathological export rather than a typical one.
   //
@@ -1605,11 +1725,12 @@
       // right thing to lose first.
       ['likedPostCaptions', () => digest.samples.likedPostCaptions,
         v => { digest.samples.likedPostCaptions = v; }],
+      ['likedPostHashtags', () => digest.samples.likedPostHashtags,
+        v => { digest.samples.likedPostHashtags = v; }],
       ['comments', () => digest.samples.comments, v => { digest.samples.comments = v; }],
       ['mostLikedAccounts', () => digest.mostLikedAccounts, v => { digest.mostLikedAccounts = v; }],
       ['mostSavedAccounts', () => digest.mostSavedAccounts, v => { digest.mostSavedAccounts = v; }],
       ['instagramTopics', () => digest.instagramTopics, v => { digest.instagramTopics = v; }],
-      ['instagramAdInterests', () => digest.instagramAdInterests, v => { digest.instagramAdInterests = v; }],
     ];
     // Supplement lists are registered separately, and the loop empties these
     // before it touches anything above. The loop is otherwise source-blind —
@@ -1636,8 +1757,9 @@
     // up on them, which is the second half of "additions go first".
     const SUPPLEMENT_FLOOR = floors && floors.supplementFloor != null ? floors.supplementFloor : 10;
 
-    let encoded = JSON.stringify(digest);
-    while (encoded.length > maxChars) {
+    // Measured as the model reads it — see renderEvidence.
+    let size = evidenceChars(digest);
+    while (size > maxChars) {
       let worst = null;
       let worstCost = 0;
       // Two passes, not one list: any supplement still above its floor is
@@ -1646,7 +1768,7 @@
       for (const entry of trimmableSupplements) {
         const list = entry[1]();
         if (!Array.isArray(list) || list.length <= SUPPLEMENT_FLOOR) continue;
-        const cost = JSON.stringify(list).length;
+        const cost = listChars(list);
         if (cost > worstCost) { worstCost = cost; worst = entry; }
       }
       if (!worst) {
@@ -1654,7 +1776,7 @@
         for (const entry of trimmable) {
           const list = entry[1]();
           if (!Array.isArray(list) || list.length <= FLOOR) continue;
-          const cost = JSON.stringify(list).length;
+          const cost = listChars(list);
           if (cost > worstCost) { worstCost = cost; worst = entry; }
         }
       }
@@ -1663,8 +1785,11 @@
       // spending slightly over.
       if (!worst) break;
       const list = worst[1]();
-      worst[2](list.slice(0, Math.max(floor, Math.floor(list.length * 0.75))));
-      encoded = JSON.stringify(digest);
+      // A tenth at a time, so a digest a little over the line loses a little:
+      // a quarter at a time took sixty messages off an account a few hundred
+      // characters over.
+      worst[2](list.slice(0, Math.max(floor, Math.min(list.length - 1, Math.floor(list.length * 0.9)))));
+      size = evidenceChars(digest);
     }
 
     restateShown(digest);
@@ -1672,7 +1797,10 @@
     // 20 to 0 changes the length, and a size that described the draft rather
     // than the digest is a size that is wrong by a few characters on exactly
     // the accounts that were trimmed.
-    digest.coverage.digestChars = JSON.stringify(digest).length;
+    // Twice, because the number is itself part of the text it measures: the
+    // second pass counts the digits the first one wrote.
+    digest.coverage.digestChars = evidenceChars(digest);
+    digest.coverage.digestChars = evidenceChars(digest);
 
     return digest;
   }
@@ -1690,6 +1818,7 @@
     captions: d => d.samples && d.samples.captions,
     comments: d => d.samples && d.samples.comments,
     likedCaptions: d => d.samples && d.samples.likedPostCaptions,
+    likedHashtags: d => d.samples && d.samples.likedPostHashtags,
     topics: d => d.instagramTopics,
     likedAccounts: d => d.mostLikedAccounts,
     savedAccounts: d => d.mostSavedAccounts,
@@ -1764,9 +1893,10 @@
         captions: listOf(samples.captions),
         comments: listOf(samples.comments),
         likedPostCaptions: listOf(samples.likedPostCaptions),
+        likedPostHashtags: listOf(samples.likedPostHashtags),
       },
+      // Ad interests are no longer sent; one saved before that is dropped here.
       instagramTopics: listOf(d.instagramTopics),
-      instagramAdInterests: listOf(d.instagramAdInterests),
       mostLikedAccounts: listOf(d.mostLikedAccounts),
       mostSavedAccounts: listOf(d.mostSavedAccounts),
       mostEngagedWith: listOf(d.mostEngagedWith),
@@ -1880,7 +2010,7 @@
 
   function omitTopics(digest) {
     digest.instagramTopics = [];
-    digest.instagramAdInterests = [];
+    delete digest.instagramAdInterests;
     return digest;
   }
 
@@ -1929,6 +2059,10 @@
   function omitLikedCaptions(digest) {
     if (!digest.samples) return digest;
     digest.samples.likedPostCaptions = [];
+    digest.samples.likedPostHashtags = [];
+    if (digest.coverage && digest.coverage.sampling && digest.coverage.sampling.likedHashtags) {
+      digest.coverage.sampling.likedHashtags.shown = 0;
+    }
     // Zeroed rather than deleted, the same way omitCaptionsAndComments does
     // it: the reader declining to send something is not the same fact as the
     // export never having had it, and the confidence guidance reads both.
@@ -1962,7 +2096,7 @@
   }
 
   root.PsycheDigest = {
-    build, addSupplements, forModel,
+    build, addSupplements, forModel, renderEvidence, evidenceChars,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,

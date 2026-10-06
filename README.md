@@ -146,11 +146,16 @@ an Instagram export zip. Each real run costs about five cents and the total is p
 uses are options on `analyseCard` that production never passes, and a selftest check holds the
 default at MEDIUM on the configured model.
 
-**One digest of 80,000 characters.** `DIGEST_CHARS` in `docs/digest.js` is the decision; both cost
-ceilings follow from it. The per-list caps are sized so a heavy account lands near it through the
-caps themselves — 200 captions, 180 of their own messages from their ten main conversations, 60
-comments, 25 liked captions, 100 topics, 50 ad interests — with the trim loop as the backstop for
-the account that is heavy everywhere at once. At $0.75 / $3.75 per million tokens, worst case:
+**One digest of 80,000 characters, counted as the model reads it.** `DIGEST_CHARS` in `docs/digest.js`
+is the decision; both cost ceilings follow from it. The per-list caps are sized so a heavy account
+lands near it through the caps themselves — 200 captions, 250 of their own messages from their ten
+main conversations, 60 comments, 6 liked-post captions (200 characters each) with the 20 hashtags
+most used across every post they liked that year (`samples.likedPostHashtags`), 20 topics, 10 YouTube
+titles, and no ad interests — with the trim loop as the backstop for the account that is heavy
+everywhere at once, taking a tenth of the largest list at a time. Messages went from 180 to 250 when
+the weaker lists were cut: on a real heavy archive they were 1.8% of what was available against 45%
+of captions, and liked captions, ad interests and random video titles said least per character.
+At $0.75 / $3.75 per million tokens, worst case:
 
 | | free card | full premium report |
 |---|---|---|
@@ -159,12 +164,16 @@ the account that is heavy everywhere at once. At $0.75 / $3.75 per million token
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
 | **at most** | **$0.0515** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
 
-The digest row is an upper bound. The budget counts the digest as JSON characters, but neither call
-is sent JSON for it any more: `renderEvidence` keeps the small structured fields — profile, counts,
-rhythm, coverage, the message statistics — as JSON and writes every list after them under its own
-dotted path, one item per line, with ranked entries as "name ×count". By a rough token count that
-is 17–28% fewer tokens than the JSON on the fixtures, and both calls get the identical encoding of
-the identical digest.
+**The budget counts the text the model is sent, not the JSON.** `renderEvidence` (in `docs/digest.js`,
+which `lib/prompts.js` calls to write both prompts) keeps the small structured fields — profile,
+counts, rhythm, coverage, the message statistics — as JSON and writes every list after them under its
+own dotted path, one item per line, with ranked entries as "name ×count". The trim loop, the recorded
+`coverage.digestChars`, the review file's size and the server's 413 check all measure that text
+(`Digest.evidenceChars`). On a real heavy digest the saving over JSON is small — 78,697 characters
+became 74,642, and about 4% fewer tokens by a GPT tokenizer, because most of a real digest is prose
+where quotes and commas are a small share. (An earlier note here claimed 17–28%; that was measured on
+fixtures made mostly of ranked lists.) The 3.5 characters per token the ceilings assume was measured
+against Gemini on JSON and stays the conservative figure.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.
