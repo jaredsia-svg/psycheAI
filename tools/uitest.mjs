@@ -10895,26 +10895,20 @@ try {
       await sp.waitForTimeout(300);
       check('structured: the panel\'s Enlarge opens the card full screen',
         await sp.evaluate(() => document.querySelector('#card-dialog').open));
+      check('structured: on a laptop, full screen keeps Download and Share and explains nothing',
+        (await sp.locator('#card-download').isVisible()) && (await sp.locator('#card-share').isVisible()) &&
+        !(await sp.locator('#card-dialog-tip').isVisible()));
       await sp.keyboard.press('Escape');
       await sp.waitForTimeout(200);
       await sp.setViewportSize({ width: 390, height: 844 });
       await sp.waitForTimeout(300);
-      // On a phone the explanation rises as a sheet from the foot of the screen.
+      // On a phone pointing at the card explains nothing in place: the card is
+      // explained full screen.
       await sp.locator('#psyche-card [data-cx="type"]').scrollIntoViewIfNeeded();
-      await sp.evaluate(() => window.matchMedia('(hover: hover)').matches ? null : null);
       await sp.evaluate(() => document.querySelector('#psyche-card [data-cx="type"]') &&
         document.querySelector('#psyche-card [data-cx="type"]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true })));
       await sp.waitForTimeout(250);
-      check('structured: on a phone the explanation shows as a sheet at the foot of the screen',
-        await sp.evaluate(() => {
-          const pop = document.querySelector('#profile-side .cx-pop');
-          const r = pop.getBoundingClientRect();
-          return !pop.hidden && r.height > 80 && r.bottom <= innerHeight && r.bottom >= innerHeight - 20 && getComputedStyle(pop).position === 'fixed';
-        }));
-      // A tap anywhere but the sheet or another part of the card puts it away.
-      await sp.evaluate(() => document.querySelector('#view-profile .profile-hero, #profile-title').click());
-      await sp.waitForTimeout(200);
-      check('structured: and a tap anywhere else puts it away',
+      check('structured: on a phone pointing at the card explains nothing in place',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden));
       await sp.mouse.move(2, 2);
       // On a phone: one white box — the title, the card, how to learn more,
@@ -10929,18 +10923,66 @@ try {
           toolsFill: Math.abs(top('#profile-side .cx-tools').width - top('#profile-side .cx-home-hint').width) <= 2,
           oneBox: getComputedStyle(document.querySelector('#profile-top')).borderTopStyle === 'solid',
           noIntro: !shown('#profile-side .cx-home-intro'), noTapToOpen: !shown('#psyche-card-hint'),
-          tapHint: /Tap any part of your card|Hover over any part/.test(document.querySelector('#profile-side .cx-home-hint').innerText),
+          tapHint: /^Tap your card to open it full screen, then tap any part to learn more\.$/
+            .test(document.querySelector('#profile-side .cx-home-hint').innerText.replace(/^\W+/, '').trim()),
           spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       check('structured: on a phone the card sits in one box: title, card, how to learn more, then the three actions',
         Object.entries(phoneBox).every(([k, v]) => k === 'spill' ? v <= 1 : v), JSON.stringify(phoneBox));
+      // On a phone, tapping the card opens it full screen, explaining nothing
+      // on the page; full screen has no Download or Share, only a line saying
+      // to tap a part.
       await sp.click('#psyche-card [data-cx="bigFive"]');
+      await sp.waitForTimeout(300);
+      check('structured: on a phone tapping the card opens it full screen, explaining nothing on the page',
+        await sp.evaluate(() => document.querySelector('#card-dialog').open &&
+          document.querySelector('#profile-side .cx-pop').hidden &&
+          document.querySelector('#card-dialog .cx-pop').hidden));
+      check('structured: full screen on a phone has no Download or Share, only "Tap any part to learn more" below the card',
+        !(await sp.locator('#card-download').isVisible()) && !(await sp.locator('#card-share').isVisible()) &&
+        (await sp.locator('#card-dialog-tip').isVisible()) &&
+        (await sp.locator('#card-dialog-tip').innerText()).trim() === 'Tap any part to learn more' &&
+        await sp.evaluate(() => document.querySelector('#card-dialog-tip').getBoundingClientRect().top >=
+          document.querySelector('#psyche-card-full').getBoundingClientRect().bottom - 1));
+      // Tapping a part there explains it in a sheet that leaves the part in view.
+      const fullExplained = [];
+      for (const key of ['character', 'type', 'love']) {
+        await sp.click('#psyche-card-full [data-cx="' + key + '"]');
+        await sp.waitForTimeout(300);
+        fullExplained.push(await sp.evaluate(key => {
+          const pop = document.querySelector('#card-dialog .cx-pop');
+          const p = pop.getBoundingClientRect();
+          const part = document.querySelector('#psyche-card-full [data-cx="' + key + '"]');
+          const r = part.getBoundingClientRect();
+          return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
+            body: ['.cx-about', '.cx-yours', '.cx-why'].every(sel => pop.querySelector(sel)),
+            lit: part.classList.contains('pc-glow'), inView: p.top >= 0 && p.bottom <= innerHeight + 1,
+            overlap: Math.round(Math.max(0, Math.min(p.bottom, r.bottom) - Math.max(p.top, r.top))) };
+        }, key));
+        await sp.click('#card-dialog .cx-close');
+        await sp.waitForTimeout(200);
+      }
+      check('structured: in full screen on a phone, tapping a part explains it in a sheet that does not cover it',
+        fullExplained.every(e => e.shown && e.title && e.body && e.lit && e.inView && e.overlap === 0) &&
+          fullExplained[1].title === 'MBTI', JSON.stringify(fullExplained));
+      check('structured: and the sheet\'s cross puts it away, leaving the card full screen',
+        await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open));
+      // A tap off the card first puts an explanation away; the next closes the card.
+      await sp.click('#psyche-card-full [data-cx="motives"]');
       await sp.waitForTimeout(250);
-      check('structured: on a phone tapping the card does not open it full screen',
+      await sp.mouse.click(4, 4);
+      await sp.waitForTimeout(250);
+      check('structured: a tap off the card puts the explanation away first, without closing the card',
+        await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open &&
+          !document.querySelector('#psyche-card-full').classList.contains('pc-guiding')));
+      await sp.mouse.click(4, 4);
+      await sp.waitForTimeout(250);
+      check('structured: and the next tap off the card closes it',
         !(await sp.evaluate(() => document.querySelector('#card-dialog').open)));
       await sp.click('#profile-side .cx-tool[data-act="enlarge"]');
       await sp.waitForTimeout(300);
-      check('structured: Enlarge does', await sp.evaluate(() => document.querySelector('#card-dialog').open));
+      check('structured: Enlarge opens it the same way', await sp.evaluate(() => document.querySelector('#card-dialog').open &&
+        document.querySelector('#card-dialog').classList.contains('is-guided')));
       await sp.keyboard.press('Escape');
       await sp.waitForTimeout(200);
       await sp.setViewportSize({ width: 1100, height: 900 });

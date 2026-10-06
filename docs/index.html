@@ -345,12 +345,21 @@
           <span class="btn-icon-glyph" aria-hidden="true">⤴</span><span class="btn-icon-text" id="card-share-label"></span>
         </button>
       </div>
+      <!-- On a phone, in the structured layout, the card is explained here
+           rather than on the page: this line stands in for download and share,
+           and a tapped part's explanation rises in the sheet below. -->
+      <p class="card-dialog-tip" id="card-dialog-tip"></p>
       <p class="card-dialog-status" id="card-dialog-status" hidden></p>
       <!-- Inside the bar, not a sibling of it: the bar is what gives this its
            containing block, and that is what makes the gap between it and the
            download/share buttons a fact of the layout rather than a
            coincidence of widths on whichever phone you happen to be holding. -->
       <button class="card-dialog-close" id="card-dialog-close" type="button" aria-label="Close">✕</button>
+    </div>
+    <div class="cx-pop card-dialog-pop" role="status" aria-live="polite" hidden>
+      <button type="button" class="cx-close" aria-label="Close">✕</button>
+      <div class="cx-pop-head"><span class="cx-pop-icon" aria-hidden="true"></span><strong class="cx-pop-title"></strong></div>
+      <div class="cx-pop-body"></div>
     </div>
   </dialog>
 

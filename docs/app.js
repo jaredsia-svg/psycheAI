@@ -5297,7 +5297,8 @@
         '<p class="cx-status" role="status" hidden></p>' +
         '<p class="cx-home-intro">' + esc(G.home.intro) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
-          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
+          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span><span class="cx-hint-phone">' + esc(G.home.phone) +
+          '</span></span></p>' +
       '</div>' +
       '<div class="cx-stage">' +
         '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
@@ -5355,39 +5356,33 @@
 
   /** Marks each explained part of the reader's card with the key of its explanation. */
   function markCardParts() {
-    const card = $('#psyche-card');
-    if (!card) return;
-    for (const [key, selectors] of Object.entries(GUIDE_TARGETS)) {
-      for (const selector of selectors) {
-        card.querySelectorAll(selector).forEach(node => {
-          (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).setAttribute('data-cx', key);
-        });
+    // The page's card and its full-screen copy, which is where a phone explains it.
+    for (const card of [$('#psyche-card'), $('#psyche-card-full')]) {
+      if (!card) continue;
+      for (const [key, selectors] of Object.entries(GUIDE_TARGETS)) {
+        for (const selector of selectors) {
+          card.querySelectorAll(selector).forEach(node => {
+            (node.closest('.pc-spanel, .pc-shero, .pc-sconf') || node).setAttribute('data-cx', key);
+          });
+        }
       }
     }
   }
 
-  function lightCardPart(key) {
-    const card = $('#psyche-card');
+  function lightCardPart(key, card = $('#psyche-card')) {
     if (!card) return;
     card.querySelectorAll('.pc-glow').forEach(node => node.classList.remove('pc-glow'));
     card.classList.toggle('pc-guiding', Boolean(key));
     if (key) card.querySelectorAll('[data-cx="' + key + '"]').forEach(node => node.classList.add('pc-glow'));
   }
 
-  /** Pops the explanation of one part of the card out beside it, level with it. */
-  function explainCardPart(key) {
-    const panel = $('#profile-side .cx');
-    const stage = panel && panel.querySelector('.cx-stage');
-    const pop = panel && panel.querySelector('.cx-pop');
-    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
-    if (!pop) return;
-    $('#psyche-card') && $('#psyche-card').classList.remove('pc-hint');
-    if (!item) {
-      pop.hidden = true;
-      panel.classList.remove('is-explaining');
-      lightCardPart(null);
-      return;
-    }
+  // On a phone the card is too small to explain in place: tapping it opens it
+  // full screen, and the parts are explained there.
+  const explainsFullScreen = () => window.matchMedia('(max-width: 719px)').matches &&
+    $('#view-profile').classList.contains('profile-structured') && Boolean(cardGuideState);
+
+  /** Fills an explanation box with what one part of the card means. */
+  function fillCardPop(pop, item) {
     const G = Copy.STRUCTURED.cardGuide;
     const facts = cardGuideState.facts;
     pop.querySelector('.cx-pop-icon').textContent = item.icon;
@@ -5401,7 +5396,24 @@
         '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
       '<div class="cx-yours"><span class="cx-label">' + esc(G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>' +
       '<div class="cx-why"><span class="cx-label">' + esc(G.labels.why) + '</span>' + esc(item.why) + '</div>';
+    pop.scrollTop = 0;
     pop.hidden = false;
+  }
+
+  /** Pops the explanation of one part of the card out beside it, level with it. */
+  function explainCardPart(key) {
+    const panel = $('#profile-side .cx');
+    const pop = panel && panel.querySelector('.cx-pop');
+    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
+    if (!pop) return;
+    $('#psyche-card') && $('#psyche-card').classList.remove('pc-hint');
+    if (!item) {
+      pop.hidden = true;
+      panel.classList.remove('is-explaining');
+      lightCardPart(null);
+      return;
+    }
+    fillCardPop(pop, item);
     panel.classList.add('is-explaining');
     lightCardPart(key);
     // Level with the part it explains, kept inside the panel; the arrow
@@ -5416,11 +5428,34 @@
     pop.querySelector('.cx-arrow').style.top = Math.round(Math.max(14, Math.min(pop.offsetHeight - 14, middle - top))) + 'px';
   }
 
+  /**
+   * Full screen on a phone: the tapped part's explanation rises in a sheet on
+   * whichever side of the part has more room, and stops short of the part
+   * where it can, so the sheet does not cover what it explains.
+   */
+  function explainFullCardPart(key) {
+    const card = $('#psyche-card-full');
+    const pop = $('#card-dialog .cx-pop');
+    const item = cardGuideState && cardGuideState.items.find(entry => entry.key === key);
+    if (!pop || !card) return;
+    card.classList.remove('pc-hint');
+    if (!item) { pop.hidden = true; lightCardPart(null, card); return; }
+    fillCardPop(pop, item);
+    lightCardPart(key, card);
+    const part = card.querySelector('[data-cx="' + key + '"]');
+    const r = part && part.getBoundingClientRect();
+    if (!r) return;
+    const above = r.top, below = window.innerHeight - r.bottom;
+    pop.classList.toggle('at-top', above > below);
+    // Never shorter than a third of the screen: the sheet scrolls past that.
+    pop.style.maxHeight = Math.round(Math.max(window.innerHeight * 0.34, Math.max(above, below) - 24)) + 'px';
+  }
+
   const canHover = () => Boolean(window.matchMedia && window.matchMedia('(hover: hover)').matches);
   // Pointing at a part of the card explains it; leaving the card puts the
   // panel back to where to start.
   document.addEventListener('mouseover', event => {
-    if (!canHover() || !event.target.closest) return;
+    if (!canHover() || !event.target.closest || explainsFullScreen()) return;
     const part = event.target.closest('#psyche-card [data-cx]');
     if (part && $('#view-profile').classList.contains('profile-structured')) explainCardPart(part.getAttribute('data-cx'));
   });
@@ -5430,10 +5465,24 @@
     if ($('#view-profile').classList.contains('profile-structured')) explainCardPart(null);
   });
   // A tap on a part of the card, where there is no pointer to hover with,
-  // explains it instead of opening the card full screen; the line under the
-  // card still opens it. Captured, so the card's own click never sees it.
+  // explains it instead of opening the card full screen — except on a phone,
+  // where tapping the card opens it full screen and the parts are explained
+  // there. Captured, so the card's own click never sees it.
   document.addEventListener('click', event => {
     if (!event.target.closest) return;
+    const dialog = $('#card-dialog');
+    if (dialog && dialog.open && dialog.classList.contains('is-guided') && event.target.closest('#card-dialog')) {
+      const full = dialog.querySelector('.cx-pop');
+      const part = event.target.closest('#psyche-card-full [data-cx]');
+      if (part) explainFullCardPart(part.getAttribute('data-cx'));
+      else if (event.target.closest('.cx-close')) explainFullCardPart(null);
+      // A tap anywhere else first puts the explanation away; only with none
+      // showing does it close the card.
+      else if (!full.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#card-dialog-close')) explainFullCardPart(null);
+      else return;
+      event.stopPropagation();
+      return;
+    }
     // A tap anywhere but the explanation itself or another part of the card
     // puts the explanation away.
     const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
@@ -5453,7 +5502,8 @@
     const part = event.target.closest('#psyche-card [data-cx]');
     event.preventDefault();
     event.stopPropagation();
-    if (part) explainCardPart(part.getAttribute('data-cx'));
+    if (explainsFullScreen()) openPsycheCard();
+    else if (part) explainCardPart(part.getAttribute('data-cx'));
   }, true);
 
   // Confidence closes the report rather than opening it: read after the
@@ -6113,6 +6163,13 @@
   function openPsycheCard() {
     const dialog = $('#card-dialog');
     if (!dialog) return;
+    // On a phone, full screen is where the card is explained: no download or
+    // share, a line saying to tap, and the ring pulsing until a part is tapped.
+    const guided = explainsFullScreen();
+    dialog.classList.toggle('is-guided', guided);
+    $('#card-dialog-tip').textContent = guided ? Copy.STRUCTURED.cardGuide.fullTip : '';
+    explainFullCardPart(null);
+    $('#psyche-card-full').classList.toggle('pc-hint', guided);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     layoutPsycheCard();
@@ -6143,6 +6200,7 @@
   $('#card-download').addEventListener('click', downloadCardImage);
   $('#card-share').addEventListener('click', shareCardImage);
   $('#card-dialog-close').addEventListener('click', () => $('#card-dialog').close());
+  $('#card-dialog').addEventListener('close', () => explainFullCardPart(null));
   // Clicking the backdrop closes it: the dialog element itself fills the screen,
   // so a click that lands on it rather than on the card is a click outside.
   $('#card-dialog').addEventListener('click', event => {

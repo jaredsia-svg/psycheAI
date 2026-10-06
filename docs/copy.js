@@ -963,7 +963,11 @@
         intro: 'Your personality on a single card — who you are most like, what drives you and how you connect, read from your own data.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
+        // On a phone the card is too small to explain in place: it opens full screen first.
+        phone: 'Tap your card to open it full screen, then tap any part to learn more.',
       },
+      // Under the card full screen on a phone, in place of download and share.
+      fullTip: 'Tap any part to learn more',
       tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
       toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
       labels: { yours: 'Yours', why: 'Why it matters' },

@@ -3295,8 +3295,8 @@ the nav is gone. All of this holds (`[data-cx]`, marked by
 MBTI's background and each letter pair in plain words, the reader's own letters marked; Schwartz's ten
 values; why patterns are worth naming), the reader's own reading under **Yours**, and **Why it matters**.
 The part lights up and the rest of the card steps back; the ring pulses until the reader points at
-anything. On a phone, with nothing to hover, tapping a part explains it in a sheet that rises from the
-foot of the screen; the line under the card still opens it full screen. **Read from rounds its totals**
+anything. On a tablet, with nothing to hover, tapping a part explains it the same way; a phone explains
+it full screen instead (below). **Read from rounds its totals**
 (`roughCount()`): 9,741 messages reads "9.7k", 637 accounts "~600"; what was actually read stays exact. Evidence and method sits
 under the unlock offer (`freeMethodCardHtml()`): the score, why, what was read, and the data sources
 table (`freeSourcesHtml()`). Its **"Add / change data & re-run analysis" is the US$5 unlock**, never the
@@ -3328,10 +3328,17 @@ you", set by `markStructured()` as the reader scrolls — then the six numerals,
 fits whole on a 390px screen. **On a phone the Psyche Card sits in one white box**, read top to bottom:
 "Your Psyche Card", the card, "Tap any part of your card…", then Enlarge, Download and Share across the
 box — the panel's own boxes dissolve (`display: contents`) so their pieces can be ordered around the
-card, and the one-line introduction and "Tap to open full screen" go. Tapping the card explains the part
-tapped, a tap anywhere else puts the explanation away, and the card never opens full screen; only Enlarge
-does — on a laptop too, where "Tap to open full screen"
-is gone. **Download and Share beside the card** draw the image from the card on the page when the full
+card, and the one-line introduction and "Tap to open full screen" go. **On a phone the card is explained
+full screen, not on the page** (`explainsFullScreen()`: the structured layout under 720px wide): tapping
+the card anywhere opens it full screen, and the hint under it says so — "Tap your card to open it full
+screen, then tap any part to learn more." Full screen there has no Download or Share; in their place
+under the card is "Tap any part to learn more" (`.card-dialog.is-guided`, `#card-dialog-tip`), and the
+ring pulses until a part is tapped. A tapped part lights up and its explanation rises in a sheet inside
+the dialog (`explainFullCardPart()`, sharing `fillCardPop()` with the panel) on whichever side of the part
+has more room, sized to stop short of the part and scrolling if it must. Its cross, or a tap off the
+card, puts it away; only with no explanation showing does a tap off the card close full screen. On a
+laptop the card never opens full screen when clicked — only Enlarge opens it, and full screen there
+keeps Download and Share and explains nothing; "Tap to open full screen" is gone. **Download and Share beside the card** draw the image from the card on the page when the full
 screen view is closed (`cardImageBlob()`); they used to read the closed dialog's copy, which has no size,
 and failed without a word. **00 in the nav goes to the top of the page**: part 00 begins with the Psyche
 Card. **"Delete everything" asks first** in a warning sheet of its own (`#delete-dialog`) rather than the
