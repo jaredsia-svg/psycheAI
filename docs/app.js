@@ -630,7 +630,11 @@
     inner.style.transform = '';
     inner.style.width = '';
     inner.style.height = '';
-    if (!inner.clientHeight || inner.scrollHeight <= inner.clientHeight + 1) return;
+    // A card stretched taller than the story (full screen on a tall phone,
+    // fitGuidedCard) may draw its contents larger, up to this, rather than
+    // leave the extra height empty.
+    const grow = Number(el.dataset.grow) || 1;
+    if (!inner.clientHeight || (grow <= 1 && inner.scrollHeight <= inner.clientHeight + 1)) return;
     // A search rather than one division: scaling widens the box the text
     // wraps in, so the content gets shorter as it gets smaller, and a single
     // ratio over-shrinks it and leaves the foot of the story empty. Eight
@@ -645,6 +649,7 @@
     };
     let lo = 0.5;
     let hi = 1;
+    if (grow > 1 && apply(1)) { lo = 1; hi = grow; }
     for (let i = 0; i < 8; i++) {
       const mid = (lo + hi) / 2;
       if (apply(mid)) lo = mid; else hi = mid;
@@ -5913,6 +5918,35 @@
       Math.round(nav.getBoundingClientRect().bottom + 10) + 'px'));
   }
 
+  /**
+   * Full screen on a phone. Phones run from about 1:1.6 to 1:2.3 once the
+   * browser's own bars are taken off, and a fixed 9:16 card fitted into that
+   * leaves a band of empty screen at the sides or the foot. Here the card
+   * takes the screen's own shape instead, within reason: as wide as the
+   * screen less a slim margin, and as tall as the room above the line under
+   * it. A taller card draws its content larger, and a shorter one a little
+   * smaller (fitStoryContent); whatever height is left over is shared out
+   * between the sections (.is-guided .pc-story-in). Only
+   * this copy changes shape — the card on the page and the image saved from it
+   * stay 1080 x 1920.
+   */
+  function fitGuidedCard(dialog, card) {
+    if (!card) return;
+    const css = getComputedStyle(dialog);
+    const bar = dialog.querySelector('.card-dialog-bar');
+    const width = dialog.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    const height = dialog.clientHeight - parseFloat(css.paddingTop) - parseFloat(css.paddingBottom) - (bar ? bar.offsetHeight : 0);
+    if (width <= 0 || height <= 0) return;
+    const tall = Math.min(GUIDED_CARD_MAX_H, Math.max(GUIDED_CARD_MIN_H, STORY_W * height / width));
+    card.style.height = Math.round(tall) + 'px';
+    card.dataset.grow = String(GUIDED_CARD_GROW);
+    fitCard(card, width, height, 'screen');
+  }
+  const GUIDED_CARD_MIN_H = 1400;
+  const GUIDED_CARD_MAX_H = 2800;
+  // How much larger than the story's own type a tall phone may draw it.
+  const GUIDED_CARD_GROW = 1.3;
+
   function layoutPsycheCard() {
     const slot = $('#psyche-card-open');
     if (slot && !$('#psyche-card-section').hidden) {
@@ -5928,7 +5962,10 @@
       layoutSideActions();
     }
     const dialog = $('#card-dialog');
-    if (dialog && dialog.open) {
+    if (dialog && dialog.open && dialog.classList.contains('is-guided')) fitGuidedCard(dialog, $('#psyche-card-full'));
+    else if (dialog && dialog.open) {
+      $('#psyche-card-full').style.height = '';
+      delete $('#psyche-card-full').dataset.grow;
       // Full screen is the case the whole fixed-size approach exists for: fit
       // both axes, with a small margin so it never touches the edges.
       // The download bar is pinned to the bottom of the viewport, so the card is

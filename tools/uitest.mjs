@@ -10944,6 +10944,19 @@ try {
         (await sp.locator('#card-dialog-tip').innerText()).trim() === 'Tap any part to learn more' &&
         await sp.evaluate(() => document.querySelector('#card-dialog-tip').getBoundingClientRect().top >=
           document.querySelector('#psyche-card-full').getBoundingClientRect().bottom - 1));
+      // And the card fills the phone: a slim margin each side, the line under it
+      // close below, and nothing of the card cut off.
+      const fullFill = await sp.evaluate(() => {
+        const f = document.querySelector('#card-dialog .card-dialog-frame').getBoundingClientRect();
+        const tip = document.querySelector('#card-dialog-tip').getBoundingClientRect();
+        const inner = document.querySelector('#psyche-card-full .pc-story-in');
+        return { left: Math.round(f.left), right: Math.round(innerWidth - f.right), top: Math.round(f.top),
+          toTip: Math.round(tip.top - f.bottom), tipToFoot: Math.round(innerHeight - tip.bottom),
+          whole: inner.scrollHeight <= inner.clientHeight + 1 };
+      });
+      check('structured: full screen on a phone, the card fills the screen — a slim margin each side and under it',
+        fullFill.left <= 12 && fullFill.right <= 12 && fullFill.top <= 14 && fullFill.toTip <= 12 && fullFill.tipToFoot <= 14 && fullFill.whole,
+        JSON.stringify(fullFill));
       // Tapping a part there explains it in a sheet that leaves the part in view.
       const fullExplained = [];
       for (const key of ['character', 'type', 'love']) {

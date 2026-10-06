@@ -3099,10 +3099,20 @@ details.more[open] > summary::after { content: ' ▴'; }
    tap instead, and each tapped part explained in a sheet — at the foot of
    the screen, or at the top when the part sits in the lower half. */
 .card-dialog-tip { display: none; }
+/* The card as large as the phone allows: a slim margin, clear of the notch
+   and the home bar, and the line under it kept short. */
+.card-dialog.is-guided {
+  box-sizing: border-box;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left));
+}
+.card-dialog.is-guided .card-dialog-bar { gap: 0; padding: 6px 0 max(8px, env(safe-area-inset-bottom)); }
+.card-dialog.is-guided .card-dialog-close { top: 6px; margin-top: 0; right: 4px; }
+.card-dialog.is-guided .pc-story-in { justify-content: space-between; }
+.card-dialog.is-guided .pc-sfoot { margin-top: 0; }
 .card-dialog.is-guided .card-dialog-actions { display: none; }
 .card-dialog.is-guided .card-dialog-tip {
-  display: flex; align-items: center; min-height: 44px; margin: 0; padding: 0 68px;
-  color: #fff; font-size: .95rem; font-weight: 600; letter-spacing: .01em; text-align: center;
+  display: flex; align-items: center; justify-content: center; min-height: 44px; margin: 0; padding: 0 52px;
+  white-space: nowrap; color: #fff; font-size: clamp(.8rem, 3.8vw, .95rem); font-weight: 600; letter-spacing: .01em; text-align: center;
 }
 .card-dialog.is-guided .card-dialog-tip::before { content: "✨"; margin-right: .45rem; }
 .card-dialog.is-guided #psyche-card-full [data-cx] { cursor: pointer; }

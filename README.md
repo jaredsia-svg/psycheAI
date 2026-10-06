@@ -3333,7 +3333,13 @@ full screen, not on the page** (`explainsFullScreen()`: the structured layout un
 the card anywhere opens it full screen, and the hint under it says so — "Tap your card to open it full
 screen, then tap any part to learn more." Full screen there has no Download or Share; in their place
 under the card is "Tap any part to learn more" (`.card-dialog.is-guided`, `#card-dialog-tip`), and the
-ring pulses until a part is tapped. A tapped part lights up and its explanation rises in a sheet inside
+ring pulses until a part is tapped. **There the card fills the phone** (`fitGuidedCard()`): a 10px margin
+each side, clear of the notch and home bar, the tip line kept short under it. Phones run from about
+1:1.6 to 1:2.5 once the browser's bars are off, so this copy takes the screen's own shape rather than
+9:16 — its height set to match (1400–2800 on the 1080 canvas), its contents drawn up to 1.3× larger on a
+tall phone or a little smaller on a short one (`fitStoryContent()`, `data-grow`), and any height left
+over shared between the sections. The card on the page and the saved image stay 1080 x 1920. A tapped
+part lights up and its explanation rises in a sheet inside
 the dialog (`explainFullCardPart()`, sharing `fillCardPop()` with the panel) on whichever side of the part
 has more room, sized to stop short of the part and scrolling if it must. Its cross, or a tap off the
 card, puts it away; only with no explanation showing does a tap off the card close full screen. On a
