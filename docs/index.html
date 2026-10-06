@@ -1018,10 +1018,9 @@
   <!-- The premium unlock's Deeper read: on by default, offered only there.
        Its words come from docs/copy.js (deeperRead*). -->
   <label class="deeper-read" id="datasources-deeper" hidden>
-    <input type="checkbox" id="datasources-deeper-input" checked>
+    <input type="checkbox" id="datasources-deeper-input">
     <span class="deeper-read-body"><strong id="datasources-deeper-title"></strong>
-      <span class="muted" id="datasources-deeper-text"></span>
-      <span class="deeper-read-note" id="datasources-deeper-note"></span></span>
+      <span class="muted" id="datasources-deeper-text"></span></span>
   </label>
 
   <details class="supplement-help">
@@ -1099,12 +1098,9 @@
   <!-- What is taken out before anything leaves the device. Always shown. -->
   <div class="deid-note">
     <span class="deid-icon" aria-hidden="true">🛡️</span>
-    <p><strong>De-identified before it is sent.</strong> Your name and username, email addresses,
-      phone, ID, card and postal numbers are removed, everyone else’s @handles become [P1], [P2]…,
-      links are dropped and dates are cut to the month. No account, name or username travels with it.</p>
+    <p><strong>De-identified before sending.</strong> Your name, contact details, ID numbers and
+      other people’s handles are removed.</p>
   </div>
-  <!-- Shown only when this review is of a Deeper read (see askReview). -->
-  <p class="alert deeper-review-note" id="review-deep-note" hidden></p>
   <!-- The download row is written into #review-list itself, as its last
        child, rather than placed here as static markup — it has to sit below
        Photos, inside the same scroll region as the seven rows above it, not

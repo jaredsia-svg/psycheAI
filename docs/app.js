@@ -3069,9 +3069,6 @@
     // "send it to the model", never "and also pay for it" — a reader should
     // not discover a charge was coming after they already agreed to send.
     const paymentDue = Boolean(options && options.paymentDue);
-    // A Deeper read says so here too, where the reader is looking at it.
-    $('#review-deep-note').hidden = !(options && options.deep);
-    $('#review-deep-note').textContent = TEXT.deepReviewNote;
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
@@ -3488,8 +3485,7 @@
     if (settings.deeper) {
       $('#datasources-deeper-title').textContent = TEXT.deeperReadTitle;
       $('#datasources-deeper-text').textContent = TEXT.deeperReadText;
-      $('#datasources-deeper-note').textContent = TEXT.deeperReadNote;
-      $('#datasources-deeper-input').checked = settings.deeperOn !== false;
+      $('#datasources-deeper-input').checked = settings.deeperOn === true;
     }
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
     $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
@@ -6616,9 +6612,9 @@
    * the card as well. Back abandons the unlock (null).
    */
   async function collectDataForPremium() {
-    // On by default; a reader who switches it off and comes back to this
+    // Off by default; a reader who switches it on and comes back to this
     // popout from the review finds it as they left it.
-    let deeperOn = true;
+    let deeperOn = false;
     let notice = '';
     for (;;) {
       let collected;
@@ -6631,7 +6627,7 @@
       }
       notice = '';
       if (!collected) return null;
-      deeperOn = collected.deeper !== false;
+      deeperOn = collected.deeper === true;
       const fresh = key => typeof collected[key] === 'object';
       const anyFresh = ['instagram', 'google', 'facebook'].some(fresh);
       if (!anyFresh && !state.digest) {
@@ -7059,20 +7055,22 @@
     // Only when the data actually changed — something added, replaced, or left
     // out at the review — does the run rewrite the card, and only then is the
     // reader asked to agree to it.
-    // A Deeper read always redraws the card, so it always asks.
+    // A Deeper read asks for agreement only when sources were added on the
+    // way, judged on the standard digest it carries: the deeper sample on its
+    // own is no new data.
     const deepRead = kind === 'unlock' && Boolean(pendingPremiumDigest && pendingPremiumDigest.__deep);
-    const buysFreeRefresh = kind === 'unlock' && Boolean(pendingPremiumDigest) && (deepRead ||
-      (pendingPremiumDigest !== state.digest && digestFingerprint(pendingPremiumDigest) !== digestFingerprint(state.digest)));
+    const compared = deepRead ? pendingPremiumDigest.__standard : pendingPremiumDigest;
+    const buysFreeRefresh = kind === 'unlock' && Boolean(compared) &&
+      compared !== state.digest && digestFingerprint(compared) !== digestFingerprint(state.digest);
     $('#premium-dialog-blurb').textContent =
       kind === 'analysis' ? TEXT.analysisDialogBlurb
         : rerunAll ? TEXT.premiumRerunDialogBlurb
-        : deepRead ? TEXT.premiumDialogBlurbDeep
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
     // New data rewrites the free card as well: the reader agrees to that
     // before any way to pay comes alive.
     $('#premium-consent').hidden = !buysFreeRefresh;
-    $('#premium-consent-text').textContent = deepRead ? TEXT.premiumDeepConsent : TEXT.premiumRefreshConsent;
+    $('#premium-consent-text').textContent = TEXT.premiumRefreshConsent;
     $('#premium-consent-box').checked = false;
     dialog.classList.toggle('awaits-consent', buysFreeRefresh);
     $('#premium-cancel').textContent = TEXT.premiumCancel;

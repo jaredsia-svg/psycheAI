@@ -8327,10 +8327,8 @@ try {
   check('the unlock\'s data sources popout shows Google as already loaded',
     await page.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
       .classList.contains('is-added')));
-  check('and offers the Deeper read, switched on',
-    (await page.locator('#datasources-deeper').isVisible()) && (await page.locator('#datasources-deeper-input').isChecked()));
-  // The standard read here; the Deeper read has a test of its own.
-  await page.locator('#datasources-deeper-input').uncheck();
+  check('and offers the Deeper read, switched off until the reader chooses it',
+    (await page.locator('#datasources-deeper').isVisible()) && !(await page.locator('#datasources-deeper-input').isChecked()));
   await page.click('#datasources-continue');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('and with nothing changed, no consent is asked for',
@@ -10213,19 +10211,22 @@ try {
       await dp.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
       await dp.locator('.premium-unlock').first().click();
       await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
-      check('the unlock offers the Deeper read, switched on',
-        await dp.locator('#datasources-deeper-input').isChecked());
+      check('the unlock offers the Deeper read, off until the reader ticks it, saying only that more is sampled',
+        !(await dp.locator('#datasources-deeper-input').isChecked()) &&
+          /Samples more of your data/.test(await dp.locator('#datasources-deeper').innerText()) &&
+          !/Psyche Card/.test(await dp.locator('#datasources-deeper').innerText()));
+      await dp.locator('#datasources-deeper-input').check();
       await dp.click('#datasources-continue');
       await dp.waitForSelector('#review-dialog[open]', { timeout: 30000 });
-      check('the Deeper read is reviewed as itself, saying the card may change',
-        (await dp.locator('#review-deep-note').isVisible()) &&
-          /Psyche Card is re-read from it too, so its results may change/.test(await dp.locator('#review-deep-note').innerText()));
+      check('the review carries no Deeper read notice of its own',
+        (await dp.locator('#review-deep-note').count()) === 0 && !/Deeper read/.test(await dp.locator('#review-dialog').innerText()));
       await dp.click('#review-send');
       await dp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-      check('before paying, the reader agrees that the card may change',
-        (await dp.locator('#premium-consent').isVisible()) &&
-          /Deeper read, and understand the results on my Psyche Card may change/.test(await dp.locator('#premium-consent-text').innerText()) &&
-          await dp.evaluate(() => document.querySelector('#premium-dialog').classList.contains('awaits-consent')));
+      // Google was added on the way (it survived the cancelled payment above),
+      // so the ordinary agreement to new data is asked for — nothing about the
+      // Deeper read itself.
+      check('the payment sheet says nothing about the Deeper read',
+        !/Deeper read/.test(await dp.locator('#premium-dialog').innerText()));
       const before = deepBodies.length;
       await dp.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
       await agreeToRerun(dp);
@@ -11069,9 +11070,9 @@ try {
         (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
       // With no deeper digest on the device and no export in memory, a Deeper
       // read asks for the Instagram export again rather than going ahead.
-      check('structured: the popout offers the Deeper read, on by default, saying the card may change',
-        (await sp.locator('#datasources-deeper-input').isChecked()) &&
-        /Psyche Card is re-read .* may change/.test(await sp.locator('#datasources-deeper').innerText()));
+      check('structured: the popout offers the Deeper read, off by default',
+        !(await sp.locator('#datasources-deeper-input').isChecked()));
+      await sp.locator('#datasources-deeper-input').check();
       await sp.click('#datasources-continue');
       await sp.waitForFunction(() => document.querySelector('#datasources-dialog').open &&
         /Deeper read needs your Instagram export/.test(document.querySelector('#datasources-status').textContent), null, { timeout: 15000 });

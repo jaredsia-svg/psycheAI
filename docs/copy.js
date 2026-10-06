@@ -493,16 +493,11 @@
     // The premium unlock's Deeper read: on by default, and the reader told in
     // the popout, at the review and before paying that the card may change.
     deeperReadTitle: 'Deeper read',
-    deeperReadText: 'Reads up to 300 KB of your data instead of 80 KB – about four times as many of your ' +
-      'messages and captions, from twice as many conversations, and more of your searches, channels and ' +
-      'the accounts you engage with.',
-    deeperReadNote: 'Your Psyche Card is re-read from this fuller data too, so its results may change.',
+    deeperReadText: 'Samples more of your data – more messages, captions and searches – for a more detailed report.',
     deepNeedsInstagram: 'Deeper read needs your Instagram export once more – load it above, or switch ' +
       'Deeper read off to carry on with the data already loaded.',
-    deepReviewNote: 'This is your Deeper read: up to 300 KB of your data, which the full premium report is ' +
-      'written from. Your Psyche Card is re-read from it too, so its results may change.',
-    premiumDeepConsent: 'I am happy for my full analysis, including my Psyche Card, to be re-run with the ' +
-      'Deeper read, and understand the results on my Psyche Card may change.',
+    // The review's downloadable copy only: what this file is.
+    deepReviewNote: 'This is your Deeper read: a larger sample of your data, which the full premium report is written from.',
     premiumDeepReading: 'Reading your data in depth and writing your full report – this can take a few minutes.',
     premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
       'data makes a fuller report. Or carry on with what is already loaded.',
@@ -586,10 +581,6 @@
     premiumDialogBlurbWithData: 'One charge writes your full report and opens the roast, the mental ' +
       'wellness read, your attachment style, what partner truly suits you and the career assessment — ' +
       'and, because you added more data, redraws your card from it at no extra cost. Taken on this ' +
-      'device — Apple Pay or Google Pay, whichever this browser offers.',
-    premiumDialogBlurbDeep: 'One charge writes your full report and opens the roast, the mental ' +
-      'wellness read, your attachment style, what partner truly suits you and the career assessment — ' +
-      'all from your Deeper read, which re-reads your Psyche Card too, at no extra cost. Taken on this ' +
       'device — Apple Pay or Google Pay, whichever this browser offers.',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would

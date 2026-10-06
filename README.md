@@ -200,7 +200,8 @@ numbers become "PsycheEmail", "PsychePhone" and "PsycheNumber" (`ID_NUMBERS` —
 grouped card number, a postcode after "Singapore"); other people's @handles become "[P1]", "[P2]";
 links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
 are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
-popout says so at its top (`.deid-note`), and the FAQ has "Can the digest be linked back to me?". Both
+popout says so at its top in one line (`.deid-note`: "De-identified before sending. Your name, contact
+details, ID numbers and other people's handles are removed."), and the FAQ has "Can the digest be linked back to me?". Both
 say *de-identified*, not anonymous, on purpose: the reader's own writing, the real names of the accounts
 they engage with most (kept because a friend versus a brand is the evidence there), first names and
 places written in plain text, and their searches all remain, so someone who already knew them could
@@ -217,10 +218,11 @@ same archive with every list wider — 700 captions, 1,000 messages from twenty 
 channels, 40 titles, 100 YouTube and 150 Google searches, more Facebook — held to 300,000 characters,
 with the reader's review choices applied, and keeps it on the device as `psycheai_digest_deep`
 (`saveDeepDigest`; a device without room for it simply goes without). The free card never reads it.
-At the unlock the data popout offers **Deeper read, on by default**, saying the Psyche Card is re-read
-from it and its results may change; a source added there is merged into both digests. It is reviewed
-as itself (the review says so, and its download shows the deep digest), and the payment sheet always
-asks the reader to agree that the card may change. The paid call sends `deep: true`; the server allows
+At the unlock the data popout offers **Deeper read, off until the reader ticks it**, saying only that
+more of their data is sampled; a source added there is merged into both digests. It is reviewed as
+itself (the review's download shows the deep digest) with no notice of its own, and the payment sheet
+says nothing about it — it asks for agreement only when a source was added on the way, judged on the
+standard digest the deep one carries. The paid call sends `deep: true`; the server allows
 the larger digest only on a paid unlock that asks for it, and with no anchor card the card is redrawn
 from it before the full report. Afterwards the deep digest is kept beside the standard one, never in
 its place, so later free runs read the standard one. A reader who uploaded before this, or whose
