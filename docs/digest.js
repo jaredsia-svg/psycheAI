@@ -539,11 +539,54 @@
   };
   /** Runs `fn` with the deeper read's limits in place when `deep`, and puts them back. */
   function withDepth(deep, fn) {
-    if (!deep) return fn();
+    return deep ? withLimits(DEEP_LIMITS, fn) : fn();
+  }
+  /** Runs `fn` with `overrides` in LIMITS, and puts the old values back. */
+  function withLimits(overrides, fn) {
     const saved = {};
-    for (const key of Object.keys(DEEP_LIMITS)) saved[key] = LIMITS[key];
-    Object.assign(LIMITS, DEEP_LIMITS);
+    for (const key of Object.keys(overrides)) saved[key] = LIMITS[key];
+    Object.assign(LIMITS, overrides);
     try { return fn(); } finally { Object.assign(LIMITS, saved); }
+  }
+
+  // ---------- filling the standard read ----------
+  //
+  // The caps size a heavy account's digest near 80,000 characters, but a
+  // reader with no Google or Facebook data, or a lighter account, lands well
+  // under it — and the room was simply unused. The standard read now spends
+  // it on the reader's own words: built once at the caps, measured, then built
+  // again with the message and caption caps raised by what the room will hold,
+  // about two thirds of it to messages (the most under-sampled of the two)
+  // and a third to captions. The places added are recorded (`__fill`, never
+  // sent), and the trim loop takes them back first and evenly — so a source
+  // added later pushes out the extra, never the other way round.
+  //
+  // The standard read only. The Deeper read is sized by its own caps and
+  // left as it is.
+  const FILL_MIN_ROOM = 1500;
+  const FILL_MESSAGE_SHARE = 2 / 3;
+  function buildFilled(signals, opts) {
+    const base = build(signals, Object.assign({}, opts, { fill: false }));
+    const room = LIMITS.totalChars - evidenceChars(base);
+    if (room < FILL_MIN_ROOM) return base;
+    const msgs = (base.directMessages && base.directMessages.ownMessageSample) || [];
+    const caps = base.samples.captions || [];
+    // Only a list its cap actually bound has more to give.
+    const moreMsgs = msgs.length >= LIMITS.messages;
+    const moreCaps = caps.length >= LIMITS.captions;
+    if (!moreMsgs && !moreCaps) return base;
+    const share = moreMsgs && moreCaps ? FILL_MESSAGE_SHARE : moreMsgs ? 1 : 0;
+    const per = list => list.length ? listChars(list) / list.length + 1 : 150;
+    const raised = {
+      messages: LIMITS.messages + (moreMsgs ? Math.floor(room * share / per(msgs)) : 0),
+      captions: LIMITS.captions + (moreCaps ? Math.floor(room * (1 - share) / per(caps)) : 0),
+    };
+    // Built untrimmed, then trimmed with the extra recorded, so the loop takes
+    // the extra back before it would touch anything else.
+    const filled = withLimits(raised, () => build(signals, Object.assign({}, opts, { fill: false, maxChars: Infinity })));
+    filled.__fill = { ownMessages: msgs.length, captions: caps.length };
+    trimToBudget(filled, LIMITS.totalChars);
+    return filled;
   }
 
   // ---------- what each call can cost, at most ----------
@@ -1191,6 +1234,10 @@
       });
     }
     const opts = options || {};
+    // The standard read fills its spare room with the reader's own words —
+    // see buildFilled. Not when a test sets its own ceiling, nor in the
+    // Deeper read, nor for a caller that asks for the caps alone.
+    if (opts.fill !== false && !opts.maxChars && LIMITS.totalChars === DIGEST_CHARS) return buildFilled(signals, opts);
     const messages = signals.messages || {};
     // `maxChars` exists for the trim-loop tests and nothing else: production
     // passes nothing and gets the one derived ceiling. The loop only fires on
@@ -1924,6 +1971,32 @@
 
     // Measured as the model reads it — see renderEvidence.
     let size = evidenceChars(digest);
+    // The places the standard read added to fill its room go first, before
+    // any list is trimmed — see buildFilled. Taken evenly across the list
+    // rather than off its end, so no one conversation or year pays for it.
+    const fill = digest.__fill;
+    if (fill) {
+      const extras = [
+        [() => digest.directMessages && digest.directMessages.ownMessageSample,
+          v => { digest.directMessages.ownMessageSample = v; }, fill.ownMessages],
+        [() => digest.samples && digest.samples.captions, v => { digest.samples.captions = v; }, fill.captions],
+      ];
+      while (size > maxChars) {
+        let pick = null;
+        let most = 0;
+        for (const entry of extras) {
+          const list = entry[0]();
+          const extra = Array.isArray(list) ? list.length - entry[2] : 0;
+          if (extra > most) { most = extra; pick = entry; }
+        }
+        if (!pick) break;
+        const list = pick[0]();
+        const per = listChars(list) / list.length + 1;
+        const drop = Math.min(most, Math.max(1, Math.ceil((size - maxChars) / per)));
+        pick[1](dropEvenly(list, drop));
+        size = evidenceChars(digest);
+      }
+    }
     while (size > maxChars) {
       let worst = null;
       let worstCost = 0;
@@ -1968,6 +2041,15 @@
     digest.coverage.digestChars = evidenceChars(digest);
 
     return digest;
+  }
+
+  /** `list` with `n` of its items removed, spread evenly through it, order kept. */
+  function dropEvenly(list, n) {
+    if (n <= 0) return list;
+    if (n >= list.length) return [];
+    const gone = new Set();
+    for (let i = 0; i < n; i++) gone.add(Math.floor((i + 0.5) * list.length / n));
+    return list.filter((_, i) => !gone.has(i));
   }
 
   // Every `coverage.sampling.*.shown`, recounted from the list it describes.

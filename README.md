@@ -164,6 +164,18 @@ At $0.75 / $3.75 per million tokens, worst case:
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
 | **at most** | **$0.0515** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
 
+**The standard read fills its spare room with the reader's own words** (`buildFilled`). A reader with
+no Google or Facebook data, or a lighter account, used to land well under 80,000 and the room went
+unused. Now the digest is built once at the caps, measured, and built again with the message and
+caption caps raised by what the room holds — two thirds to messages, a third to captions, and only for
+a list whose cap actually bound — then trimmed to the line. The places added are recorded as `__fill`
+(never sent), and the trim loop takes them back first, evenly across the list, before it would touch
+any other list: so a source merged in later pushes out the extra, never the source. Only when there is
+more than 1,500 characters of room, and never in the Deeper read, which keeps its own caps. Every run
+therefore reads close to the 80,000 line; the worst-case cost is unchanged, and the typical one rises by
+a fraction of a cent. The unit suite builds with `fill: false` unless a check asks for it, since most of
+its checks are about the sampling rules at their caps.
+
 **The budget counts the text the model is sent, not the JSON.** `renderEvidence` (in `docs/digest.js`,
 which `lib/prompts.js` calls to write both prompts) keeps the small structured fields — profile,
 counts, rhythm, coverage, the message statistics — as JSON and writes every list after them under its

@@ -35,6 +35,11 @@ for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'digest.js', 'car
 const IG = globalThis.PsycheInstagram;
 const Supplement = globalThis.PsycheSupplement;
 const Digest = globalThis.PsycheDigest;
+// Most checks here are about the sampling rules at their caps, so they build
+// with the standard read's fill switched off; the fill has checks of its own,
+// which ask for it with `fill: true`.
+const buildFilled = Digest.build;
+Digest.build = (signals, options) => buildFilled(signals, Object.assign({ fill: false }, options));
 const Card = globalThis.PsycheCard;
 
 const prompts = await import('../lib/prompts.js').then(m => m.default);
@@ -5126,6 +5131,54 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       topics: Digest.LIMITS.topics, ads: Digest.LIMITS.adInterests }));
   // Ad interests are not sent at all now, and the budget counts the text the
   // model is sent rather than the JSON it is written from.
+  // -- filling the standard read --
+  //
+  // A digest with room under its line spends it on the reader's own messages
+  // and captions; the extra is what goes first when anything has to be cut.
+  {
+    const ig = {
+      ...heavySignals(),
+      messages: { total: 9000, threads: 3, groupThreads: 0, sent: 5000, received: 4000, avgSentLength: 90,
+        ownTexts: Array.from({ length: 3000 }, (_, i) => ({ text: 'A message of a fairly ordinary length about the plan, number ' + i,
+          ts: 1600000000 + i * 3600, thread: i % 3 })) },
+    };
+    const capped = Digest.build(ig, { includeMessages: true });
+    const filled = buildFilled(ig, { includeMessages: true, fill: true });
+    const added = filled.directMessages.ownMessageSample.length - capped.directMessages.ownMessageSample.length;
+    check('with room under the line, the standard read takes more of the reader\'s own messages and captions',
+      added > 0 && filled.samples.captions.length >= capped.samples.captions.length,
+      JSON.stringify({ capped: [capped.directMessages.ownMessageSample.length, capped.samples.captions.length],
+        filled: [filled.directMessages.ownMessageSample.length, filled.samples.captions.length] }));
+    check('and fills close to the line without passing it',
+      Digest.evidenceChars(filled) <= DIG && Digest.evidenceChars(filled) > DIG * 0.95, String(Digest.evidenceChars(filled)));
+    check('the extra it took is recorded and never sent',
+      filled.__fill && filled.__fill.ownMessages === capped.directMessages.ownMessageSample.length &&
+        !('__fill' in Digest.forModel(filled)));
+    check('every "shown" still matches its list after filling',
+      filled.coverage.sampling.ownMessages.shown === filled.directMessages.ownMessageSample.length &&
+        filled.coverage.sampling.captions.shown === filled.samples.captions.length);
+    check('filling is deterministic, so a rebuild keys the same in the result cache',
+      JSON.stringify(Digest.forModel(buildFilled(ig, { includeMessages: true, fill: true }))) === JSON.stringify(Digest.forModel(filled)));
+    // A source added afterwards pushes the extra out, not the source.
+    const google = {
+      span: {}, counts: { watched: 900, youtubeSearches: 300, googleSearches: 900, browsed: 0, prompts: 0 },
+      channels: new Map(Array.from({ length: 300 }, (_, i) => ['channel ' + i, 300 - i])),
+      videoTitles: Array.from({ length: 300 }, (_, i) => 'A video title long enough to keep, number ' + i),
+      youtubeSearchTerms: new Map(Array.from({ length: 300 }, (_, i) => ['youtube search ' + i, 300 - i])),
+      googleSearchTerms: new Map(Array.from({ length: 300 }, (_, i) => ['google search term ' + i, 300 - i])),
+      googleSearches: [], domains: new Map(), geminiPrompts: [],
+    };
+    const merged = Digest.addSupplements(JSON.parse(JSON.stringify(filled)), { google });
+    check('a source merged in later pushes out the extra, never the source itself',
+      Digest.evidenceChars(merged) <= DIG && merged.google.topChannels.length === Digest.LIMITS.youtubeChannels &&
+        merged.directMessages.ownMessageSample.length < filled.directMessages.ownMessageSample.length &&
+        merged.directMessages.ownMessageSample.length >= filled.__fill.ownMessages,
+      JSON.stringify({ channels: merged.google.topChannels.length, dms: merged.directMessages.ownMessageSample.length }));
+    const deepFilled = buildFilled(ig, { includeMessages: true, deep: true });
+    check('the Deeper read is not filled: it keeps its own caps',
+      !deepFilled.__fill && deepFilled.directMessages.ownMessageSample.length <= Digest.DEEP_LIMITS.messages);
+  }
+
   // -- the deeper read --
   //
   // Built from the same signals at upload, with every list wider, held to its
