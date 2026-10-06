@@ -11047,11 +11047,23 @@ try {
         const parts = [...document.querySelectorAll('#profile-body .full-report-locked .unlock-part')];
         return { parts: parts.map(p => p.querySelector('.unlock-part-num').textContent + ' ' + p.querySelector('h4').textContent),
           counts: parts.map(p => p.querySelectorAll('.premium-tier-item').length),
+          typeTraits: [...parts[0].querySelectorAll('.premium-tier-item strong')].some(n => n.textContent === 'MBTI & Big Five'),
+          // In the plan's part, on the right of it: the same row as the plan, after it.
+          secret: (() => {
+            const plan = parts[3] && parts[3].querySelector('.premium-tier-item');
+            const box = parts[3] && parts[3].querySelector('.unlock-secret');
+            if (!plan || !box) return false;
+            const a = plan.getBoundingClientRect(), b = box.getBoundingClientRect();
+            return b.left > a.right - 1 && Math.abs(b.top - a.top) < 4;
+          })(),
+          secretText: (parts[3] && parts[3].querySelector('.unlock-secret') || {}).textContent || '',
           intro: document.querySelector('#profile-side .cx-home-intro').textContent };
       });
-      check('structured: the free unlock offer runs as the report\'s five parts, each with its sections',
-        offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together|05 Appendix' &&
-          offerParts.counts.join() === '5,2,4,1,2', JSON.stringify(offerParts));
+      check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
+        offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together' &&
+          offerParts.counts.join() === '4,2,4,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+      check('structured: beside the plan, the offer keeps a secret bonus, naming nothing',
+        offerParts.secret && !/roast/i.test(offerParts.secretText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),

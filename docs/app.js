@@ -1533,11 +1533,15 @@
     const by = title => rows.find(row => row.title() === title);
     const paidTitle = key => PAID_SECTIONS.find(row => row.key === key).title();
     return [
-      { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns), by(S.explainTypeTitle), by(TEXT.bigFive), by(S.titles.wellness)] },
+      // MBTI and the Big Five as one row: both are the reading of the scores
+      // on the card, and four rows read better than five.
+      { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns),
+        { icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
       { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
       { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')), by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
-      { key: 'together', rows: [by(S.titles.development)] },
-      { key: 'appendix', rows: [{ icon: '🔍', title: () => S.titles.method, blurb: () => S.explainMethod }, by(TEXT.bonus)] },
+      // The plan on the left, and on the right a section the offer does not
+      // name — the roast, kept a surprise until it is unlocked.
+      { key: 'together', rows: [by(S.titles.development)], secret: true },
     ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
   }
 
@@ -1547,7 +1551,10 @@
       '<li class="unlock-part">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
         '<div><h4>' + esc(S.parts[part.key].title) + '</h4><p>' + esc(S.unlockParts[part.key]) + '</p></div></div>' +
-        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
+        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) +
+          (part.secret ? '<li class="unlock-secret"><span class="unlock-secret-icon" aria-hidden="true">🎁</span>' +
+            '<span class="premium-tier-text"><strong>' + esc(S.unlockSecretTitle) + '</strong>' +
+            '<span>' + esc(S.unlockSecretText) + '</span></span></li>' : '') + '</ul>' +
       '</li>').join('') + '</ol>';
   }
 

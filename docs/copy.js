@@ -1115,16 +1115,20 @@
       'ranked against each other from what you do, not what you say, with the tension between your top two.',
     explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
       'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
-    explainMethod: 'Where every finding came from – what was read, how much of it, and how sure each ' +
-      'read is – so any claim in the report can be checked against your own data.',
-    // The unlock offer on a free report, by the report's own five parts: a
+    // MBTI and the Big Five as one row of the unlock offer.
+    explainTypeTraitsTitle: 'MBTI & Big Five',
+    explainTypeTraits: 'Your four letters and your five traits taken apart – the behaviours behind each, the ' +
+      'evidence that pulls the other way, how firmly each one holds, and what it looks like in your ordinary week.',
+    // Beside the plan in the unlock offer: a section it does not name.
+    unlockSecretTitle: 'A secret bonus',
+    unlockSecretText: 'One more section, kept under wraps. Unlock the full report to find out what it is.',
+        // The unlock offer on a free report, by the report's own five parts: a
     // line each on what that part holds, then its sections.
     unlockParts: {
       who: 'The portrait behind your card, the patterns that run through it, your type, your traits and how you are doing.',
       drives: 'What you are working towards, what you keep coming back to, and what you hold to.',
       connect: 'How you are with the people close to you, and how you work.',
       together: 'What to build on, what to work on, and how your strengths behave under pressure.',
-      appendix: 'How every finding was read – and the roast.',
     },
   };
 
