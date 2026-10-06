@@ -60,7 +60,11 @@
     // heavy archive messages were 180 of 9,741 (1.8%) against 45% of captions:
     // the most under-sampled of the reader's own words, so the freed room goes
     // here.
-    messages: 250,
+    //
+    // 270 when lines sharing a year or a conversation began sharing one line
+    // of tags instead of repeating them (groupedLines), which on a real digest
+    // freed about 3,300 characters and a tenth of the tokens.
+    messages: 270,
     // Only the ten conversations they use most. Everything below that is the
     // one-off end of an inbox: a reply to a stranger, a delivery courier, a
     // group somebody was added to once. Those messages are real but they are
@@ -1682,18 +1686,51 @@
       // fact the model is told about, not a field that silently went missing.
       sections.push(list.length
         ? '## ' + path + ' — ' + list.length + (list.length === 1 ? ' item' : ' items') + '\n' +
-          list.map(evidenceLine).join('\n')
+          groupedLines(list.map(evidenceLine))
         : '## ' + path + ' — empty');
     }
     return 'Structured fields first, as JSON. Every list follows under its own path, one item per line; ' +
-      'a ranked entry is written "name ×count".\n' + JSON.stringify(skeleton) +
+      'a ranked entry is written "name ×count". Lines that share tags — a year, a conversation — sit ' +
+      'under one line of those tags, such as "[2024] [t3]:", which applies to every line below it ' +
+      'until the next.\n' + JSON.stringify(skeleton) +
       (sections.length ? '\n\n' + sections.join('\n\n') : '');
+  }
+
+  // The tags a sampled line can open with: its year, its conversation, the
+  // kind of post. Only these, so a caption that happens to begin "[sic]" is
+  // never mistaken for one.
+  const LINE_TAGS = /^((?:\[(?:\d{4}|t\d{1,2}|post|story|reel)\] )+)/;
+
+  /**
+   * Lines written in order, the tags they share said once. A digest's lines
+   * arrive grouped already — messages by conversation, then by year; captions
+   * by year — so "[2024] [t3] " opening four hundred lines in a row was about
+   * a tenth of the tokens in a real digest, spent repeating what the line
+   * above had just said. Each run of lines with the same tags is written
+   * under one line of them instead.
+   */
+  function groupedLines(lines) {
+    const out = [];
+    let current = null;
+    for (const line of lines) {
+      const match = LINE_TAGS.exec(line);
+      const tags = match ? match[1].trim() : '';
+      if (tags !== current) {
+        if (tags) out.push(tags + ':');
+        // A run with no tags after one that had them needs a line saying the
+        // tags have stopped applying.
+        else if (current) out.push('[untagged]:');
+        current = tags;
+      }
+      out.push(match ? line.slice(match[1].length) : line);
+    }
+    return out.join('\n');
   }
 
   /** How long the evidence is as the model reads it: the number every budget here counts. */
   function evidenceChars(digest) { return renderEvidence(digest).length; }
   // One list as it is written out, for the trim loop's "which costs most".
-  function listChars(list) { return list.map(evidenceLine).join('\n').length; }
+  function listChars(list) { return groupedLines(list.map(evidenceLine)).length; }
 
   // The bound that actually holds the cost ceiling, so it has to survive a
   // pathological export rather than a typical one.

@@ -2752,6 +2752,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-straits li, .pc-straits b { font-size: var(--pc-text); }
 .pc-schips span { font-size: var(--pc-text); }
 .pc-slove { font-size: var(--pc-text); }
+/* Round four: the card's small print a step up — the panel labels, the
+   strength pills, the kicker and franchise, the numerals and the footer read
+   at a glance on a phone, without the card turning heavy. */
+.pc-slab { font-size: 24px; }
+.pc-slab span:first-child { width: 42px; height: 42px; font-size: 23px; }
+.pc-sstrength { font-size: 21px; padding: 3px 13px; }
+.pc-skicker { font-size: 25.5px; }
+.pc-sfranchise { font-size: 25.5px; }
+.pc-spatterns .pc-snum, .pc-smotives .pc-snum { width: 44px; height: 44px; font-size: 23.5px; }
+.pc-sfoot { font-size: 21.5px; }
+.pc-ring-text { font-size: 21.5px; }
 
 /* ---------- what insights will I get? ----------
    Two tiers, and a note: the free summary card — what is on it, beside a

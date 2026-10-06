@@ -148,7 +148,7 @@ default at MEDIUM on the configured model.
 
 **One digest of 80,000 characters, counted as the model reads it.** `DIGEST_CHARS` in `docs/digest.js`
 is the decision; both cost ceilings follow from it. The per-list caps are sized so a heavy account
-lands near it through the caps themselves — 200 captions, 250 of their own messages from their ten
+lands near it through the caps themselves — 200 captions, 270 of their own messages from their ten
 main conversations, 60 comments, 6 liked-post captions (200 characters each) with the 20 hashtags
 most used across every post they liked that year (`samples.likedPostHashtags`), 20 topics, 10 YouTube
 titles, and no ad interests — with the trim loop as the backstop for the account that is heavy
@@ -174,6 +174,19 @@ became 74,642, and about 4% fewer tokens by a GPT tokenizer, because most of a r
 where quotes and commas are a small share. (An earlier note here claimed 17–28%; that was measured on
 fixtures made mostly of ranked lists.) The 3.5 characters per token the ceilings assume was measured
 against Gemini on JSON and stays the conservative figure.
+
+**Lines that share tags say them once.** Messages arrive grouped by conversation and then year, and
+captions by year, so "[2024] [t3] " opening every line repeated what the line above had said — about a
+tenth of the tokens in a real digest. `groupedLines` writes each run under one line of its tags
+("[2024] [t3]:"), with "[untagged]:" where a run without tags follows one with them, and only the known
+tags (a year, `t1`–`t99`, post/story/reel) count, so a caption that begins "[sic]" is never read as
+one. On a real heavy digest that took 19,970 tokens to 17,861 (10.6%) and freed about 3,300 characters,
+which went to messages: 250 became 270. The evidence's opening line tells the model how to read it.
+
+**Placeholders and other people's handles cost little.** The reader's own name stands in as
+"PsycheUser", but it appeared twice in a real digest, so a shorter token saves nothing worth having.
+Other people's @handles were 116 mentions, about 2.8% of the tokens, almost all friends tagged in
+captions.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.
@@ -3438,6 +3451,11 @@ alone on the last page under a "05 Appendix" label, and the contents list names 
 then each half in a card of its own under a small tracked label and a faint open quote in its corner:
 the least charitable read edged in pink, the honest friend's advice edged in green. The classic PDF's
 roast is unchanged.
+
+**The story card's small print is a step up**: panel labels 24px, strength pills 21px, kicker and
+franchise 25.5px, pattern and motive numerals 23.5px, the footer 21.5px. The card is a fixed canvas
+whose contents are scaled to fit, so on the sample this costs about one percent off the main text
+while the small print comes out eight to nine percent larger.
 
 **The PDF's MBTI opens on a "Your type" panel** (`Report.prototype.mbtiType`) rather than the four
 letters at display size over the section: the type at 26pt with its nickname and confidence on the
