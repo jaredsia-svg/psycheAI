@@ -213,7 +213,9 @@ grouped card number, a postcode after "Singapore"); other people's @handles beco
 links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
 are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
 popout says so at its top in one line (`.deid-note`: "De-identified before sending. Your name, contact
-details, ID numbers and other people's handles are removed."), and the FAQ has "Can the digest be linked back to me?". Both
+details, ID numbers and other people's handles are removed.", set small at `.76rem` so it does not crowd
+the list; the list itself scrolls inside a dialog up to 42rem tall and is never shorter than
+`min(14rem, 35vh)`), and the FAQ has "Can the digest be linked back to me?". Both
 say *de-identified*, not anonymous, on purpose: the reader's own writing, the real names of the accounts
 they engage with most (kept because a friend versus a brand is the evidence there), first names and
 places written in plain text, and their searches all remain, so someone who already knew them could
