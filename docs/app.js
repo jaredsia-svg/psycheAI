@@ -1552,7 +1552,7 @@
     return '<ol class="unlock-parts">' + explainedParts().map(part =>
       '<li class="unlock-part' + (part.secret ? ' unlock-part-half' : '') + '">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
-        '<div><h4>' + esc(S.parts[part.key].title) + '</h4><p>' + esc(S.unlockParts[part.key]) + '</p></div></div>' +
+        '<h4>' + esc(S.parts[part.key].title) + '</h4></div>' +
         '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
       '</li>' +
       (part.secret ? '<li class="unlock-secret"><span class="unlock-secret-icon" aria-hidden="true">🎁</span>' +
@@ -3495,6 +3495,7 @@
       $('#datasources-deeper-text').textContent = TEXT.deeperReadText;
       $('#datasources-deeper-input').checked = settings.deeperOn === true;
     }
+    $('#datasources-card-note-text').textContent = TEXT.cardChangeNote;
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
     $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
     const digest = state.digest;
@@ -3621,6 +3622,10 @@
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
       $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
+      // Over an existing card, any export read in (now or carried from an
+      // earlier visit) means the card is written again from new data.
+      $('#datasources-card-note').hidden = !(settings.cardNote &&
+        ['instagram', 'google', 'facebook'].some(source => typeof added[source] === 'object'));
     };
 
     return new Promise(resolve => {
@@ -3763,7 +3768,7 @@
     for (;;) {
       let collected;
       try {
-        collected = await askDataSources();
+        collected = await askDataSources({ cardNote: true });
       } catch (error) {
         flash('#profile-alert', (error && error.message) || 'Could not read that export.');
         return;
@@ -6628,7 +6633,7 @@
       let collected;
       try {
         collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb,
-          deeper: true, deeperOn, notice });
+          deeper: true, deeperOn, notice, cardNote: true });
       } catch (error) {
         flash('#profile-alert', (error && error.message) || 'Could not read that export.');
         return null;
@@ -6992,7 +6997,6 @@
     });
 
     payButton.onclick = async () => {
-      if (consentMissing()) return;
       payButton.disabled = true;
       errorEl.hidden = true;
       try {
@@ -7061,11 +7065,9 @@
     // should be told everything it covers at the moment they agree to it,
     // not discover the extra afterwards.
     // Only when the data actually changed — something added, replaced, or left
-    // out at the review — does the run rewrite the card, and only then is the
-    // reader asked to agree to it.
-    // A Deeper read asks for agreement only when sources were added on the
-    // way, judged on the standard digest it carries: the deeper sample on its
-    // own is no new data.
+    // out at the review — does the run rewrite the card, and only then does
+    // the blurb say so. A Deeper read is judged on the standard digest it
+    // carries: the deeper sample on its own is no new data.
     const deepRead = kind === 'unlock' && Boolean(pendingPremiumDigest && pendingPremiumDigest.__deep);
     const compared = deepRead ? pendingPremiumDigest.__standard : pendingPremiumDigest;
     const buysFreeRefresh = kind === 'unlock' && Boolean(compared) &&
@@ -7075,12 +7077,9 @@
         : rerunAll ? TEXT.premiumRerunDialogBlurb
         : buysFreeRefresh ? TEXT.premiumDialogBlurbWithData
         : TEXT.premiumDialogBlurb;
-    // New data rewrites the free card as well: the reader agrees to that
-    // before any way to pay comes alive.
-    $('#premium-consent').hidden = !buysFreeRefresh;
-    $('#premium-consent-text').textContent = TEXT.premiumRefreshConsent;
-    $('#premium-consent-box').checked = false;
-    dialog.classList.toggle('awaits-consent', buysFreeRefresh);
+    // New data rewrites the free card as well. The reader was told so in the
+    // data popout the moment they loaded it (#datasources-card-note), so
+    // nothing here stands between them and paying.
     $('#premium-cancel').textContent = TEXT.premiumCancel;
     // Reset with the rest of the dialog's state: runPremiumAnalysis greys it
     // out once a charge or code is accepted, and this markup is reused across
@@ -7153,7 +7152,7 @@
         const mockButton = $('#premium-mock-pay');
         mockButton.textContent = TEXT.premiumMockPay;
         mockButton.hidden = false;
-        mockButton.onclick = () => { if (!consentMissing()) onPaymentAuthorised({ paymentIntentId: intent.id }, dialog); };
+        mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
         return;
       }
 
@@ -7227,16 +7226,7 @@
   // goes straight to the same paid route a real payment reaches, with a code
   // instead of a paymentIntentId, so it works even mid-dialog while a wallet
   // button is already mounted, and even on a server with no Stripe key set.
-  /** True while the payment sheet is waiting for the re-run consent to be ticked. */
-  function consentMissing() {
-    return $('#premium-dialog').classList.contains('awaits-consent');
-  }
-  $('#premium-consent-box').addEventListener('change', event => {
-    $('#premium-dialog').classList.toggle('awaits-consent', !event.target.checked);
-  });
-
   function applyPromoCode() {
-    if (consentMissing()) return;
     const input = $('#premium-promo-input');
     const code = input.value.trim();
     if (!code) return;

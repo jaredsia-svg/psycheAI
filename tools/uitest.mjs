@@ -202,12 +202,6 @@ async function passSupplement(page) {
 // opened synchronously from a user gesture. Driving the chooser exercises that
 // path; poking the input behind it would pass even if the button were wired to
 // nothing at all.
-// Where new data was added on the way to a payment, the sheet asks the reader
-// to agree the card may change before any way to pay comes alive; a flow that
-// is not testing that agreement gives it, the way a reader going ahead would.
-async function agreeToRerun(page) {
-  if (await page.locator('#premium-consent').isVisible()) await page.check('#premium-consent-box');
-}
 
 async function addSupplement(page, source, buffer, name) {
   await page.waitForSelector('#supplement-dialog[open]', { timeout: 30000 });
@@ -5153,7 +5147,6 @@ try {
     await new Promise(resolve => setTimeout(resolve, 700));
     await route.continue();
   });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   // ---- (the data offer is checked before payment now — see above) ----
   //
@@ -8138,7 +8131,6 @@ try {
   check('re-running with the loaded data still asks to pay before analysing',
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeMergedSend + 1, 60000);
@@ -8246,7 +8238,6 @@ try {
   await page.waitForSelector('#review-dialog[open]', { timeout: 15000 });
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await page.waitForSelector('#profile-body .trust-sources', { timeout: 60000 });
@@ -8297,7 +8288,6 @@ try {
   const beforeReplaceSend = analyseBodies.length;
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeReplaceSend + 1, 60000);
@@ -8329,10 +8319,10 @@ try {
       .classList.contains('is-added')));
   check('and offers the Deeper read, switched off until the reader chooses it',
     (await page.locator('#datasources-deeper').isVisible()) && !(await page.locator('#datasources-deeper-input').isChecked()));
+  check('and with nothing newly loaded, no note says the card may change',
+    !(await page.locator('#datasources-card-note').isVisible()));
   await page.click('#datasources-continue');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  check('and with nothing changed, no consent is asked for',
-    !(await page.locator('#premium-consent').isVisible()));
   await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
@@ -8380,7 +8370,6 @@ try {
     /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   // The view never actually leaves #view-profile for this path — unlike a
@@ -8458,6 +8447,8 @@ try {
   check('the unlock button opens the data sources popout before asking for any money',
     (await page.locator('#datasources-dialog').isVisible()) &&
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
+  check('before anything is loaded, the popout says nothing about the card changing',
+    !(await page.locator('#datasources-card-note').isVisible()));
   check('it lists every source, Facebook included, so more can be added before paying',
     ['instagram', 'google', 'facebook'].every(Boolean) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
@@ -8471,6 +8462,9 @@ try {
   await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
   await page.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
     .classList.contains('is-added'), null, { timeout: 30000 });
+  check('once new data is loaded, the popout notes the Psyche Card may change',
+    (await page.locator('#datasources-card-note').isVisible()) &&
+    (await page.locator('#datasources-card-note').innerText()).includes('Updating your data sources may result in changes to your Psyche Card'));
   // The standard read: this test is about added data; the Deeper read has its own.
   await page.locator('#datasources-deeper-input').uncheck();
   await page.click('#datasources-continue');
@@ -8506,19 +8500,13 @@ try {
   const reportBeforeUnlock = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('psycheai_profile')).createdAt);
   const analysesBeforeUnlock = analyseBodies.length;
-  // New data re-runs the whole analysis, card included: the reader ticks that
-  // they are happy with that before any way to pay comes alive.
-  check('with new data, the payment sheet asks the reader to agree the card may change',
-    (await page.locator('#premium-consent').isVisible()) &&
-    /results on my Psyche Card may change/.test(await page.locator('#premium-consent').innerText()) &&
-    !(await page.locator('#premium-consent-box').isChecked()));
+  // New data re-runs the whole analysis, card included: the reader was told
+  // so in the data popout, and the payment sheet does not ask again.
+  check('with new data, the payment sheet asks for no extra agreement — no tickbox stands before paying',
+    (await page.locator('#premium-dialog input[type="checkbox"]').count()) === 0 &&
+    (await page.evaluate(() => getComputedStyle(document.querySelector('.premium-promo')).pointerEvents)) !== 'none' &&
+    analyseBodies.length === analysesBeforeUnlock);
   await page.fill('#premium-promo-input', UITEST_PROMO);
-  await page.evaluate(() => document.querySelector('#premium-promo-apply').click());
-  await page.waitForTimeout(400);
-  check('and until it is ticked, no way to pay does anything',
-    analyseBodies.length === analysesBeforeUnlock &&
-    (await page.evaluate(() => getComputedStyle(document.querySelector('.premium-promo')).pointerEvents)) === 'none');
-  await page.check('#premium-consent-box');
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
     const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
@@ -8810,7 +8798,6 @@ try {
 
   // Paying goes through, and the payment reaches the server with the request.
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
-  await agreeToRerun(page);
   await page.click('#premium-mock-pay');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   await openAllSections(page);
@@ -10229,7 +10216,6 @@ try {
         !/Deeper read/.test(await dp.locator('#premium-dialog').innerText()));
       const before = deepBodies.length;
       await dp.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
-      await agreeToRerun(dp);
       await dp.click('#premium-mock-pay');
       await dp.waitForFunction(() => !document.querySelector('#premium-dialog').open, null, { timeout: 60000 });
       await waitForLength(deepBodies, before + 1, 60000);
@@ -11098,8 +11084,7 @@ try {
       await sp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
       check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',
         !/Psyche Card again/i.test(await sp.locator('#premium-dialog-title').innerText()) &&
-        !(await sp.locator('#premium-consent').isVisible()) &&
-        !(await sp.evaluate(() => document.querySelector('#premium-dialog').classList.contains('awaits-consent'))));
+        (await sp.locator('#premium-dialog input[type="checkbox"]').count()) === 0);
       await sp.click('#premium-cancel');
       await sp.waitForTimeout(400);
       check('structured: and Cancel leaves the report as it was',

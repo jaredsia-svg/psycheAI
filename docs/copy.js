@@ -486,8 +486,8 @@
     // which is the one actually charged. Two numbers agreeing is a sign they
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: 'US$5',
-    premiumRefreshConsent: 'I am happy for my full analysis to be re-run with the new data, and understand ' +
-      'the results on my Psyche Card may change.',
+    // In the data popout, once a fresh export is loaded over an existing card.
+    cardChangeNote: 'Updating your data sources may result in changes to your Psyche Card.',
     freeAddData: 'Add / change data & re-run analysis',
     premiumSourcesTitle: 'Your data for the full report',
     // The premium unlock's Deeper read: on by default, and the reader told in
@@ -1122,14 +1122,6 @@
     // Beside the plan in the unlock offer: a section it does not name.
     unlockSecretTitle: 'A secret bonus',
     unlockSecretText: 'One more section, kept under wraps. Unlock the full report to find out what it is.',
-        // The unlock offer on a free report, by the report's own five parts: a
-    // line each on what that part holds, then its sections.
-    unlockParts: {
-      who: 'The portrait behind your card, the patterns that run through it, your type, your traits and how you are doing.',
-      drives: 'What you are working towards, what you keep coming back to, and what you hold to.',
-      connect: 'How you are with the people close to you, and how you work.',
-      together: 'What to build on, what to work on, and how your strengths behave under pressure.',
-    },
   };
 
   // ---------- character emblems (the structured layout's catalogue) ----------

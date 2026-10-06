@@ -912,8 +912,8 @@ comes with it, closed by **See sample report** (`#insight-sample`) at its bottom
 
 Under a free card, the unlock offer lists what the full report explains and adds. In the structured
 layout it runs as **four of the report's parts** (`explainedParts()`, `unlockPartsHtml()`): each a white
-panel led by its numeral (01–04), the part's title from `Copy.STRUCTURED.parts`, a line on what it holds
-(`Copy.STRUCTURED.unlockParts`), then its sections with their blurbs (`explainedSections()`), the paid
+panel led by its numeral (01–04) and the part's title from `Copy.STRUCTURED.parts` — no line under the
+title — then its sections with their blurbs (`explainedSections()`), the paid
 ones where they sit in the report. Part 1 has four rows — the portrait, the signature patterns, **MBTI &
 Big Five as one row** (`explainTypeTraits`) and wellbeing. There is no appendix in the offer: Part 4's panel
 takes the left half of its row (`.unlock-part-half`), and **a secret bonus** is a panel of its own on the
@@ -3397,12 +3397,14 @@ US$2 re-run of the card. **It and "Unlock the full premium report" open the same
 sources popout, titled "Your data for the full report" (`collectDataForPremium()`, which replaced
 `collectExtraDataForPremium`), where any source — Instagram, Google, Facebook, and whatever comes later —
 can be added or replaced by a fresh export, or the reader carries on with what is loaded. New data goes
-through the review, then the payment sheet; nothing new goes straight to the payment sheet. **Only when
-the data actually changed does the payment sheet ask the reader to agree** that the whole analysis is
-re-run and the card may change (`#premium-consent`) — a new evidence summary whose fingerprint
-(`digestFingerprint()`: coverage, counts, and each supplement's counts) differs from the one the card was
-read from. Until that box is ticked no way to pay does anything — the wallet button, the card form, the
-promo code and mock pay are all inert (`.awaits-consent`, `consentMissing()`). With no evidence summary
+through the review, then the payment sheet; nothing new goes straight to the payment sheet. **The
+payment sheet asks for no agreement of its own.** Instead, the moment a fresh export is loaded in the data
+popout over an existing card — the unlock's popout and the report page's "Add / change data" alike, never
+a first upload (`askDataSources({ cardNote: true })`) — a short note appears there: "Updating your data
+sources may result in changes to your Psyche Card." (`#datasources-card-note`, `Copy.cardChangeNote`).
+When the data actually changed — a new evidence summary whose fingerprint (`digestFingerprint()`:
+coverage, counts, and each supplement's counts) differs from the one the card was read from — the payment
+sheet's blurb says the card is redrawn at no extra cost. With no evidence summary
 on the device and no export loaded, the popout's Continue says what is needed instead of doing nothing. A free report has no "Download full report"
 either: there is nothing beyond the card, which has its own download. In the left column of a full
 report the card likewise fills its box. **Part 05** is a heading over two boxes of their own, Evidence
