@@ -6431,7 +6431,7 @@ try {
     JSON.stringify({ strokes: (markRegion.match(/^S$/gm) || []).length,
       fills: (markRegion.match(/^f$/gm) || []).length }));
   check('the PDF carries the same provenance line the page prints',
-    /Generated \w+ \d+, \d{4}\s+·\s+from an Instagram data export\s+·\s+\d+\/100 confidence/
+    /Generated \w+ \d+, \d{4}\s+·\s+\d+\/100 confidence/
       .test(pdfText.replace(/\\/g, '')),
     (/\(Generated[^)]*\)/.exec(pdfText) || ['not found'])[0].slice(0, 90));
 
@@ -10693,6 +10693,9 @@ try {
       const rawPdf = await pdfOf('structured');
       const pages = rawPdf.split('endstream').slice(0, -1).map(prose).filter(text => text.trim());
       const pageOf = text => pages.findIndex(page => page.includes(text));
+      check('structured PDF: page one says when and how confident, without "from an Instagram data export"',
+        /Generated .+?·\s*\d+\/100 confidence/.test(pages[0].replace(/\\267/g, '·')) &&
+          !pages[0].includes('from an Instagram data export'), pages[0].slice(0, 300));
       check('structured PDF: the cover holds the card and the contents list',
         ['YOU ARE MOST LIKE', 'YOUR PATTERNS', 'INSIDE THIS REPORT', 'Putting it together'].every(t => pages[0].includes(t)),
         pages[0].slice(0, 400));

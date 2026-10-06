@@ -1354,7 +1354,7 @@
     // band: it is what the page was printed from, which is a colophon, and it
     // reads as one down there instead of as a subtitle.
     const confidence = report.confidence || {};
-    const stamp = ['Generated ' + (meta.date || ''), 'from an Instagram data export',
+    const stamp = ['Generated ' + (meta.date || ''),
       Math.round(Number(confidence.score) || 0) + '/100 confidence']
       .filter(Boolean).join('  ·  ');
     doc.draw(toWinAnsi(stamp), MARGIN, PAGE.height - MARGIN, { size: 8.8, color: SOFT });
@@ -2243,7 +2243,7 @@
       y += 31;
     }
     // Provenance under the title, where a reader looks for when and from what.
-    const stamp = ['Generated ' + (meta.date || ''), 'from an Instagram data export', confidence + '/100 confidence']
+    const stamp = ['Generated ' + (meta.date || ''), confidence + '/100 confidence']
       .join('  ·  ');
     doc.draw(toWinAnsi(stamp), MARGIN, y - 8, { size: 8.8, color: mix(WHITE, ACCENT, 0.18) });
 

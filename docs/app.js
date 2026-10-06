@@ -5508,7 +5508,7 @@
     $('#letterhead-meta').textContent =
       'Generated ' + new Date(profile.createdAt).toLocaleDateString(undefined,
         { year: 'numeric', month: 'long', day: 'numeric' }) +
-      ' · from an Instagram data export · ' + Math.round(report.confidence.score) + '/100 confidence';
+      ' · ' + Math.round(report.confidence.score) + '/100 confidence';
 
     paintQrCanvas('#qr-canvas');
 
