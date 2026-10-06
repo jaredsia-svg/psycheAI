@@ -11005,13 +11005,15 @@ try {
           return { key, shown: !pop.hidden, title: pop.querySelector('.cx-pop-title').textContent,
             body: ['.cx-about', '.cx-yours', '.cx-why'].every(sel => pop.querySelector(sel)),
             lit: part.classList.contains('pc-glow'), inView: p.top >= 0 && p.bottom <= innerHeight + 1,
+            // Right against the part: just under it, or just over it.
+            beside: (p.top >= r.bottom - 1 && p.top - r.bottom <= 14) || (p.bottom <= r.top + 1 && r.top - p.bottom <= 14),
             overlap: Math.round(Math.max(0, Math.min(p.bottom, r.bottom) - Math.max(p.top, r.top))) };
         }, key));
         await sp.click('#card-dialog .cx-close');
         await sp.waitForTimeout(200);
       }
       check('structured: in full screen on a phone, tapping a part explains it in a sheet that does not cover it',
-        fullExplained.every(e => e.shown && e.title && e.body && e.lit && e.inView && e.overlap === 0) &&
+        fullExplained.every(e => e.shown && e.title && e.body && e.lit && e.inView && e.overlap === 0 && e.beside) &&
           fullExplained[1].title === 'MBTI', JSON.stringify(fullExplained));
       check('structured: and the sheet\'s cross puts it away, leaving the card full screen',
         await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open));

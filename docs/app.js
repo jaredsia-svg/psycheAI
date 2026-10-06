@@ -5434,9 +5434,10 @@
   }
 
   /**
-   * Full screen on a phone: the tapped part's explanation rises in a sheet on
-   * whichever side of the part has more room, and stops short of the part
-   * where it can, so the sheet does not cover what it explains.
+   * Full screen on a phone: the tapped part's explanation opens right beside
+   * it, on whichever side has more room — under "Who you are most like", over
+   * the love languages — so the sheet reads as the part's own note and does
+   * not cover what it explains.
    */
   function explainFullCardPart(key) {
     const card = $('#psyche-card-full');
@@ -5450,10 +5451,24 @@
     const part = card.querySelector('[data-cx="' + key + '"]');
     const r = part && part.getBoundingClientRect();
     if (!r) return;
-    const above = r.top, below = window.innerHeight - r.bottom;
-    pop.classList.toggle('at-top', above > below);
-    // Never shorter than a third of the screen: the sheet scrolls past that.
-    pop.style.maxHeight = Math.round(Math.max(window.innerHeight * 0.34, Math.max(above, below) - 24)) + 'px';
+    // Right against the part — just under it, or just over it when there is
+    // more room above — and kept on screen. Never shorter than a third of the
+    // screen: the sheet scrolls past that, overlapping the part only if it must.
+    const H = window.innerHeight, gap = 8, edge = 12;
+    const least = Math.round(H * 0.34);
+    const under = r.bottom < H - r.top;
+    pop.classList.toggle('at-top', !under);
+    if (under) {
+      const top = Math.min(r.bottom + gap, H - edge - least);
+      pop.style.top = Math.round(Math.max(edge, top)) + 'px';
+      pop.style.bottom = 'auto';
+      pop.style.maxHeight = Math.round(H - edge - Math.max(edge, top)) + 'px';
+    } else {
+      const bottom = Math.max(r.top - gap, edge + least);
+      pop.style.bottom = Math.round(H - Math.min(H - edge, bottom)) + 'px';
+      pop.style.top = 'auto';
+      pop.style.maxHeight = Math.round(Math.min(H - edge, bottom) - edge) + 'px';
+    }
   }
 
   const canHover = () => Boolean(window.matchMedia && window.matchMedia('(hover: hover)').matches);

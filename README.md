@@ -3345,9 +3345,11 @@ each side, clear of the notch and home bar, the tip line kept short under it. Ph
 9:16 — its height set to match (1400–2800 on the 1080 canvas), its contents drawn up to 1.3× larger on a
 tall phone or a little smaller on a short one (`fitStoryContent()`, `data-grow`), and any height left
 over shared between the sections. The card on the page and the saved image stay 1080 x 1920. A tapped
-part lights up and its explanation rises in a sheet inside
-the dialog (`explainFullCardPart()`, sharing `fillCardPop()` with the panel) on whichever side of the part
-has more room, sized to stop short of the part and scrolling if it must. Its cross, or a tap off the
+part lights up and its explanation opens in a sheet inside
+the dialog (`explainFullCardPart()`, sharing `fillCardPop()` with the panel) right against the part, 8px
+off it, on whichever side has more room — just under "Who you are most like", just over the love
+languages — scrolling if it must, and covering the part only when the screen leaves less than a third
+of its height free. Its cross, or a tap off the
 card, puts it away; only with no explanation showing does a tap off the card close full screen. On a
 laptop the card never opens full screen when clicked — only Enlarge opens it, and full screen there
 keeps Download and Share and explains nothing; "Tap to open full screen" is gone. **Download and Share beside the card** draw the image from the card on the page when the full
