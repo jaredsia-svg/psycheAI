@@ -947,6 +947,13 @@
     // `when` skips a part the card does not have.
     cardGuide: {
       title: 'How to read your Psyche Card',
+      // What the panel says before any part of the card is pointed at.
+      home: {
+        title: 'Your Psyche Card',
+        intro: 'Your personality on a single card — who you are most like, what drives you and how you connect, read from your own data.',
+        hover: 'Hover over any part of your card to learn more about your personality.',
+        tap: 'Tap any part of your card to learn more about your personality.',
+      },
       tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
       toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
       labels: { yours: 'Yours', why: 'Why it matters' },

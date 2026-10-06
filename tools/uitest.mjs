@@ -10549,21 +10549,24 @@ try {
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
-      // A full report on a wide, tall screen: the Psyche Card sits small in the
-      // left column above the nav, and opens full screen when clicked.
+      // A full report opens on the Psyche Card and what it means, as a free
+      // one does — no thumbnail in the left column above the nav.
       await sp.setViewportSize({ width: 1440, height: 900 });
       await sp.evaluate(() => window.scrollTo(0, 0));
       await sp.waitForTimeout(300);
-      const sideCard = await sp.evaluate(() => {
+      const paidTop = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
-        const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+        const side = document.querySelector('#profile-side');
+        const s = side.getBoundingClientRect();
         const body = document.querySelector('#profile-body').getBoundingClientRect();
-        return { fixed: getComputedStyle(document.querySelector('#psyche-card-section')).position === 'fixed',
-          beside: card.right <= body.left, above: card.bottom <= nav.top, sameColumn: Math.abs(card.left - nav.left) < 2,
-          small: card.width <= 240, navFits: nav.bottom <= innerHeight };
+        const overview = document.querySelector('#profile-body .part-card[data-part-card="overview"]').getBoundingClientRect();
+        return { notFixed: getComputedStyle(document.querySelector('#psyche-card-section')).position !== 'fixed',
+          inColumn: card.left >= body.left - 1, beside: !side.hidden && s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
+          sameHeight: Math.abs(card.height - s.height) <= 2, aboveOverview: Math.max(card.bottom, s.bottom) <= overview.top,
+          title: side.querySelector('.cx-home-title') && side.querySelector('.cx-home-title').textContent };
       });
-      check('structured: a full report on a wide screen keeps its Psyche Card above the nav in the left column',
-        Object.values(sideCard).every(Boolean), JSON.stringify(sideCard));
+      check('structured: a full report opens on the Psyche Card and what it means, above 00 Overview, with no thumbnail by the nav',
+        Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
       const actions = await sp.evaluate(() => {
         const row = document.querySelector('#view-profile .cta-row');
         const r = row.getBoundingClientRect();
@@ -10586,9 +10589,9 @@ try {
       await sp.keyboard.press('Escape');
       await sp.setViewportSize({ width: 1100, height: 900 });
       await sp.waitForTimeout(300);
-      check('structured: below that width the card is back at the top of the column',
-        await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card-section')).position !== 'fixed' &&
-          document.querySelector('#psyche-card-section').getBoundingClientRect().bottom <=
+      check('structured: at a laptop width the card and its panel still sit above the report',
+        await sp.evaluate(() => Math.max(document.querySelector('#psyche-card-section').getBoundingClientRect().bottom,
+          document.querySelector('#profile-side').getBoundingClientRect().bottom) <=
             document.querySelector('#profile-body').getBoundingClientRect().top + 1));
 
       // Ticking an action keeps it ticked on this device.
@@ -10729,8 +10732,16 @@ try {
           sameHeight: Math.abs(card.height - s.height) <= 2,
           fills: Math.abs(frame.width - card.width) <= 3,
           // Empty but for the card's three actions until a part is pointed at.
-          guide: side.querySelectorAll('.cx-tool').length === 3 && side.querySelector('.cx-pop').hidden &&
-            side.innerText.replace(/\s+/g, ' ').trim() === 'Enlarge Download Share',
+          // Until a part is pointed at: its title, the three actions across its
+          // width, a line on what the card is, and how to learn more.
+          guide: (() => {
+            const tools = [...side.querySelectorAll('.cx-tool')];
+            const row = side.querySelector('.cx-tools').getBoundingClientRect();
+            const span = tools.length === 3 ? tools[2].getBoundingClientRect().right - tools[0].getBoundingClientRect().left : 0;
+            return side.querySelector('.cx-pop').hidden && /^Your Psyche Card/.test(side.innerText.trim()) &&
+              Math.abs(span - row.width) <= 2 && row.width >= side.clientWidth - 40 &&
+              /Hover over any part of your card/.test(side.innerText) && side.querySelector('.cx-home-intro').textContent.length > 40;
+          })(),
           method: Boolean(method && offer && (offer.compareDocumentPosition(method) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
             /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
           trust: document.querySelectorAll('#rerun-with-data, #view-profile .trust-sources').length +

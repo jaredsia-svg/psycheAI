@@ -2894,23 +2894,11 @@ details.more[open] > summary::after { content: ' ▴'; }
   #profile-body .part-nav-item:not(:has(.part-nav-num)) { padding-left: 2.45rem; }
 }
 
-/* The full report on a wide, tall screen: the Psyche Card shrinks into the
-   left column above the nav, and opens full screen when clicked. The nav's
-   top is the card's measured height (--side-card-h, set by layoutPsycheCard). */
+/* The full report on a wide, tall screen: the nav down the left column,
+   scrolling on its own if a short screen cannot hold all of it, and the
+   page's three actions under it. */
 @media (min-width: 1340px) and (min-height: 760px) {
-  #view-profile.profile-paid #psyche-card-section {
-    position: fixed; z-index: 10; top: 4.6rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px));
-    width: 232px; margin: 0; padding: 0; border-radius: 16px; overflow: hidden;
-  }
-  #view-profile.profile-paid #psyche-card-section .psyche-card-slot { margin: 0; }
-  #view-profile.profile-paid #psyche-card-section .psyche-card-hint { font-size: .74rem; margin: 0; padding: .35rem 0 .45rem; }
-  /* Under the card the nav tightens up, and scrolls on its own if a short
-     screen still cannot hold all of it. */
-  #view-profile.profile-paid #profile-body .part-nav {
-    top: calc(4.6rem + var(--side-card-h, 440px) + .6rem);
-    max-height: calc(100vh - 4.6rem - var(--side-card-h, 440px) - 5.2rem); overflow-y: auto;
-  }
-  #view-profile.profile-paid #profile-body .part-nav-item { padding: .3rem .7rem; }
+  #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - 6.5rem - 5.2rem); overflow-y: auto; }
   /* The page's three actions, under the nav: quiet icons in the nav's own
      box style, each named by a tooltip. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
@@ -2941,31 +2929,41 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
 }
 
-/* The free report: no nav, the Psyche Card on the left half of the column
-   and what it was read from on the right. Stacked on a phone. */
+/* Both reports open on the Psyche Card, three fifths of the column, and
+   beside it what each part of it means. Stacked on a phone. */
 .profile-top { margin-bottom: 1rem; }
-#view-profile.profile-free .profile-top { display: grid; gap: 1rem; align-items: start; }
-#view-profile.profile-free #profile-side { padding: 1rem; overflow: visible; }
+#view-profile.profile-structured .profile-top { display: grid; gap: 1rem; align-items: start; }
+#view-profile.profile-structured #profile-side { padding: 1rem; overflow: visible; }
 @media (min-width: 720px) {
   /* The card three fifths of the width, what it means the rest, the two
      the same height. */
-  #view-profile.profile-free .profile-top { grid-template-columns: 3fr 2fr; align-items: stretch; }
+  #view-profile.profile-structured .profile-top { grid-template-columns: 3fr 2fr; align-items: stretch; }
 }
-#view-profile.profile-free #psyche-card-section { width: auto; margin: 0; }
+#view-profile.profile-structured #psyche-card-section { width: auto; margin: 0; }
 /* The card fills its box, edge to edge, on a free report and in the left
    column of a full one: no padding round it, and no shadow of its own. */
-#view-profile.profile-free #psyche-card-section { padding: 0; overflow: hidden; }
-#view-profile.profile-free .psyche-card-slot { margin: 0; }
-#view-profile.profile-free #psyche-card, #view-profile.profile-paid #psyche-card { box-shadow: none; }
-#view-profile.profile-free .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
+#view-profile.profile-structured #psyche-card-section { padding: 0; overflow: hidden; }
+#view-profile.profile-structured .psyche-card-slot { margin: 0; }
+#view-profile.profile-structured #psyche-card { box-shadow: none; }
+#view-profile.profile-structured .psyche-card-hint { margin: 0; padding: .55rem 0 .7rem; }
 .free-method-card { margin-top: 1rem; }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —
    then that part's meaning pops out level with it, an arrow pointing back. */
 .cx { position: relative; height: 100%; display: flex; flex-direction: column; gap: .8rem; }
-.cx-tools { display: flex; justify-content: flex-end; gap: .4rem; }
+.cx-home { transition: opacity .25s ease; }
+.cx.is-explaining .cx-home { opacity: .12; }
+.cx-home-title { margin: 0 0 .7rem; font-size: 1.2rem; line-height: 1.25; }
+.cx-home-intro { margin: .85rem 0 .6rem; font-size: .9rem; line-height: 1.55; color: var(--ink-soft); }
+.cx-home-hint {
+  display: flex; gap: .55rem; align-items: flex-start; margin: 0; padding: .65rem .75rem; border-radius: 12px;
+  font-size: .85rem; line-height: 1.45; font-weight: 600; color: var(--accent); background: var(--accent-soft);
+}
+.cx-home-hint .cx-hint-tap { display: none; }
+@media (hover: none) { .cx-home-hint .cx-hint-tap { display: inline; } .cx-home-hint .cx-hint-hover { display: none; } }
+.cx-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
 .cx-tool {
-  display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 4.1rem;
+  display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0;
   padding: .5rem .55rem .4rem; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt);
   font: inherit; font-size: .7rem; font-weight: 700; color: var(--ink-soft); cursor: pointer;
   transition: border-color .2s, color .2s, transform .2s, box-shadow .2s;
@@ -3017,7 +3015,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: var(--accent);
 }
 .cx-why .cx-label { color: var(--good); }
-#view-profile.profile-free #psyche-card [data-cx] { cursor: help; }
+#view-profile.profile-structured #psyche-card [data-cx] { cursor: help; }
 /* Where to start: the ring pulses until the reader points at anything. */
 .psyche-card.pc-hint .pc-sconf { border-radius: 999px; animation: pc-pulse 1.8s ease-in-out infinite; }
 @keyframes pc-pulse {

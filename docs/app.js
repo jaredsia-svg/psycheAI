@@ -5258,10 +5258,16 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
       svg + '</svg><span>' + esc(G.tools[act]) + '</span></button>';
     return '<div class="cx" aria-label="' + esc(G.title) + '">' +
-      '<div class="cx-tools">' +
-        tool('enlarge', '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>') +
-        tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
-        tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
+      '<div class="cx-home">' +
+        '<h2 class="cx-home-title">' + esc(G.home.title) + '</h2>' +
+        '<div class="cx-tools">' +
+          tool('enlarge', '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>') +
+          tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
+          tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
+        '</div>' +
+        '<p class="cx-home-intro">' + esc(G.home.intro) + '</p>' +
+        '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
+          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
       '</div>' +
       '<div class="cx-stage">' +
         '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
@@ -5386,12 +5392,12 @@
   document.addEventListener('mouseover', event => {
     if (!canHover() || !event.target.closest) return;
     const part = event.target.closest('#psyche-card [data-cx]');
-    if (part && $('#view-profile').classList.contains('profile-free')) explainCardPart(part.getAttribute('data-cx'));
+    if (part && $('#view-profile').classList.contains('profile-structured')) explainCardPart(part.getAttribute('data-cx'));
   });
   document.addEventListener('mouseout', event => {
     const slot = event.target.closest && event.target.closest('#psyche-card-open');
     if (!slot || !canHover() || (event.relatedTarget && slot.contains(event.relatedTarget))) return;
-    if ($('#view-profile').classList.contains('profile-free')) explainCardPart(null);
+    if ($('#view-profile').classList.contains('profile-structured')) explainCardPart(null);
   });
   // A tap on a part of the card, where there is no pointer to hover with,
   // explains it instead of opening the card full screen; the line under the
@@ -5408,7 +5414,7 @@
     }
     if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
     const part = event.target.closest('#psyche-card [data-cx]');
-    if (!part || canHover() || !$('#view-profile').classList.contains('profile-free')) return;
+    if (!part || canHover() || !$('#view-profile').classList.contains('profile-structured')) return;
     event.preventDefault();
     event.stopPropagation();
     explainCardPart(part.getAttribute('data-cx'));
@@ -5520,10 +5526,12 @@
     const structured = reportLayout() === 'structured';
     const explained = hasExplanations(profile);
     const view = $('#view-profile');
+    view.classList.toggle('profile-structured', structured);
     view.classList.toggle('profile-free', structured && !explained);
     view.classList.toggle('profile-paid', structured && explained);
+    // Both open on the card with what it means beside it.
     const side = $('#profile-side');
-    side.hidden = !(structured && !explained);
+    side.hidden = !structured;
     setHtml(side, side.hidden ? '' : cardGuideHtml(report));
     if (!side.hidden) {
       markCardParts();
@@ -5804,8 +5812,8 @@
   // Both copies are scaled here rather than in CSS, because the fit depends on
   // the viewport and on the column the preview happens to be sitting in, and
   // neither is knowable from a stylesheet.
-  // A full report on a wide, tall screen keeps its card in the left column
-  // above the part nav (styles.css, .profile-paid), at thumbnail size.
+  // A full report on a wide, tall screen has its nav down the left column,
+  // with the page's actions under it (styles.css, .profile-paid).
   function sideCardMode() {
     const view = $('#view-profile');
     return Boolean(view && view.classList.contains('profile-paid') &&
@@ -5827,14 +5835,10 @@
       // opposite of what a summary above the report is for. It is a thumbnail
       // to be tapped, so it is sized like one.
       const width = slot.clientWidth || CARD_W;
-      const side = sideCardMode();
-      // In the left column and on a free report the card fills its box's
-      // width, however tall that makes it.
-      const fill = side || $('#view-profile').classList.contains('profile-free');
+      // Beside what it means, the card fills its box's width, however tall
+      // that makes it.
+      const fill = $('#view-profile').classList.contains('profile-structured');
       fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
-      // The nav below a card in the left column starts where the card ends,
-      // and the page's actions where the nav ends.
-      if (side) $('#view-profile').style.setProperty('--side-card-h', $('#psyche-card-section').offsetHeight + 'px');
       layoutSideActions();
     }
     const dialog = $('#card-dialog');

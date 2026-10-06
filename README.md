@@ -3284,8 +3284,12 @@ its name kept for screen readers only. On a full report at 1340px or wider (and 
 into the left column above the part nav and opens full screen when clicked; the nav's top is the card's
 measured height (`--side-card-h`, set by `layoutPsycheCard()`). **A free report has no nav**: the card
 fills three fifths of the column, edge to edge, and the panel beside it the rest, the two the same height.
-The panel is empty but for the card's own three actions along its top — Enlarge, Download, Share, each an
-icon over a word — until the reader points at a part of the card (`[data-cx]`, marked by
+Until the reader points at a part of the card, the panel rests on its title, "Your Psyche Card", the
+card's own three actions across its width — Enlarge, Download, Share, each an icon over a word — a line on
+what the card is, and how to learn more ("Hover over any part of your card…", "Tap…" on a touch screen).
+**A full report opens the same way**: the card and this panel above 00 Overview, with the part nav down
+the left column on a wide screen and the page's actions under it — the thumbnail that used to sit above
+the nav is gone. All of this holds (`[data-cx]`, marked by
 `markCardParts()`). Then that part's meaning pops out level with it, pointing back at it
 (`explainCardPart()`, words in `Copy.STRUCTURED.cardGuide`): what the part is and where it comes from (the
 MBTI's background and each letter pair in plain words, the reader's own letters marked; Schwartz's ten
