@@ -5908,7 +5908,7 @@
   function sideCardMode() {
     const view = $('#view-profile');
     return Boolean(view && view.classList.contains('profile-paid') &&
-      window.matchMedia && window.matchMedia('(min-width: 1340px) and (min-height: 760px)').matches);
+      window.matchMedia && window.matchMedia('(min-width: 1000px) and (min-height: 520px)').matches);
   }
 
   function layoutSideActions() {

@@ -3280,9 +3280,13 @@ entries; what you bring beside where it gets hard, and your other strengths besi
 use the same pair of lists (`pairedListsHtml()`).
 
 **The Psyche Card** (what was "the summary card") is shown by itself at the top of the report, with
-its name kept for screen readers only. On a full report at 1340px or wider (and 760px tall), it shrinks
-into the left column above the part nav and opens full screen when clicked; the nav's top is the card's
-measured height (`--side-card-h`, set by `layoutPsycheCard()`). **A free report has no nav**: the card
+its name kept for screen readers only. **On any laptop (1000px wide or more) a full report has its part
+nav down the left**, the page's actions under it once the screen is 520px tall (`sideCardMode()`).
+Where the screen is too narrow to centre the 820px report with the nav beside it (under about 1350px),
+the report moves right to make room (`main.container`, `margin-left: max(248px, …)`) rather than the
+nav dropping back to a bar over the report. **A free report has no nav** and no "Download full report"
+— the action row's own `display` used to override that button's `hidden`
+(`.cta-row .btn[hidden]`). The card
 fills three fifths of the column, edge to edge, and the panel beside it the rest, the two the same height.
 Until the reader points at a part of the card, the panel rests on its title, "Your Psyche Card", the
 card's own three actions across its width — Enlarge, Download, Share, each an icon over a word — a line on

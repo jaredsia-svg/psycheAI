@@ -631,6 +631,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .cta-row { display: flex; flex-wrap: wrap; gap: .7rem; align-items: center; margin-top: 1.4rem; }
 /* The icons only show where the row moves into the left column. */
 .cta-row .btn { display: inline-flex; align-items: center; gap: .45rem; }
+/* A free report has no full report to download: hidden must win over the row's display. */
+.cta-row .btn[hidden] { display: none !important; }
 .cta-row .cta-icon { display: block; flex: none; width: 18px; height: 18px; }
 
 /* ---------- upload ---------- */
@@ -2884,7 +2886,14 @@ details.more[open] > summary::after { content: ' ▴'; }
   .part-nav .part-nav-item { flex: none; width: 1.7rem; padding: .22rem 0; font-size: .7rem; text-align: center; }
   .part-nav .part-nav-num { margin: 0; opacity: 1; }
 }
-@media (min-width: 1340px) {
+/* On any laptop the nav stands down the left. Where the screen is too narrow
+   to centre the 820px report with the nav beside it, the report moves right
+   to make room rather than the nav giving up its column. */
+@media (min-width: 1000px) {
+  body:has(#view-profile:not([hidden]) #profile-body .part-nav) main.container {
+    margin-left: max(248px, calc((100vw - 820px) / 2)); margin-right: auto;
+    max-width: min(820px, calc(100vw - 248px));
+  }
   #profile-body .part-nav {
     position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - 820px) / 2 - 248px)); width: 232px;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
@@ -2899,7 +2908,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The full report on a wide, tall screen: the nav down the left column,
    scrolling on its own if a short screen cannot hold all of it, and the
    page's three actions under it. */
-@media (min-width: 1340px) and (min-height: 760px) {
+@media (min-width: 1000px) and (min-height: 520px) {
   #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - 6.5rem - 5.2rem); overflow-y: auto; }
   /* The page's three actions, under the nav: quiet icons in the nav's own
      box style, each named by a tooltip. Its top is the nav's measured foot

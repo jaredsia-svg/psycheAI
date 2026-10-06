@@ -10647,6 +10647,25 @@ try {
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
           actions.tips === 'Download full report|Test compatibility|Delete everything', JSON.stringify(actions));
+      // Every laptop has the nav down the left — a small one too, where the
+      // report moves right to make room — with the actions under it.
+      for (const [w, h] of [[1280, 620], [1024, 600]]) {
+        await sp.setViewportSize({ width: w, height: h });
+        await sp.evaluate(() => window.scrollTo(0, 0));
+        await sp.waitForTimeout(300);
+        const small = await sp.evaluate(() => {
+          const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+          const row = document.querySelector('#view-profile .cta-row').getBoundingClientRect();
+          const top = document.querySelector('#profile-top').getBoundingClientRect();
+          const body = document.querySelector('#profile-body').getBoundingClientRect();
+          return { fixed: getComputedStyle(document.querySelector('#profile-body .part-nav')).position === 'fixed',
+            left: nav.left <= 20, clear: nav.right <= Math.min(top.left, body.left) - 12,
+            actions: getComputedStyle(document.querySelector('#view-profile .cta-row')).position === 'fixed' && row.top >= nav.bottom - 1 && row.bottom <= innerHeight,
+            spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        check('structured: on a ' + w + 'px laptop the nav stands down the left, clear of the report, with the actions under it',
+          small.fixed && small.left && small.clear && small.actions && small.spill <= 1, JSON.stringify(small));
+      }
       await sp.setViewportSize({ width: 1100, height: 900 });
       await sp.waitForTimeout(300);
       check('structured: at a laptop width the card and its panel still sit above the report',
@@ -10810,7 +10829,8 @@ try {
           trust: document.querySelectorAll('#rerun-with-data').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
           sources: Boolean(method && method.querySelector('.trust-sources .source-list') && method.querySelector('#free-add-data')),
-          download: !document.querySelector('#export-pdf-bottom').hidden,
+          // What is on screen, not the attribute: the row's own display once overrode it.
+          download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display !== 'none',
           sideText: side.innerText.replace(/\s+/g, ' ').trim() };
       });
       check('structured: a free report has no nav, its card filling three fifths and an empty panel for what it means, the same height',
