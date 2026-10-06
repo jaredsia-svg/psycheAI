@@ -10538,13 +10538,19 @@ try {
           const r = nav.getBoundingClientRect();
           const header = document.querySelector('.nav').getBoundingClientRect();
           const items = [...nav.querySelectorAll('.part-nav-item')];
+          const current = nav.querySelector('.part-nav-item.is-current');
           return { height: Math.round(r.height), stuck: Math.abs(r.top - header.bottom) <= 2,
             numerals: items.map(i => i.innerText.trim()).join(' '), lead: nav.querySelector('.part-nav-lead').innerText.trim(),
+            current: current ? current.querySelector('.part-nav-label').textContent : '',
+            leadFits: nav.querySelector('.part-nav-lead').getBoundingClientRect().right <= items[0].getBoundingClientRect().left + 1,
+            // The longest name, whole, on a 390px phone.
+            longestFits: (() => { const lead = nav.querySelector('.part-nav-lead'); const was = lead.textContent;
+              lead.textContent = 'How you connect & work'; const fits = lead.scrollWidth <= lead.clientWidth; lead.textContent = was; return fits; })(),
             oneRow: new Set(items.map(i => Math.round(i.getBoundingClientRect().top))).size === 1,
             spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
         });
-        check('structured: on a phone the nav is a thin bar of part numbers under the header',
-          thin.height <= 36 && thin.stuck && thin.numerals === '00 01 02 03 04 05' && /part/i.test(thin.lead) &&
+        check('structured: on a phone the nav is a thin bar under the header: the part being read by name, then the numbers',
+          thin.height <= 36 && thin.stuck && thin.numerals === '00 01 02 03 04 05' && thin.lead && thin.lead === thin.current && thin.leadFits && thin.longestFits &&
             thin.oneRow && thin.spill <= 1, JSON.stringify(thin));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
@@ -10802,10 +10808,32 @@ try {
           return !pop.hidden && r.height > 80 && r.bottom <= innerHeight && r.bottom >= innerHeight - 20 && getComputedStyle(pop).position === 'fixed';
         }));
       await sp.mouse.move(2, 2);
-      check('structured: on a phone the free report stacks the card over its evidence, nothing off the side',
-        await sp.evaluate(() => document.querySelector('#profile-side').getBoundingClientRect().top >=
-          document.querySelector('#psyche-card-section').getBoundingClientRect().bottom - 1 &&
-          document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1));
+      // On a phone: one white box — the title, the card, how to learn more,
+      // then the three actions — with no intro line and no "Tap to open".
+      const phoneBox = await sp.evaluate(() => {
+        const top = el => document.querySelector(el).getBoundingClientRect();
+        const card = top('#psyche-card-section');
+        const shown = el => getComputedStyle(document.querySelector(el)).display !== 'none';
+        return { titleAbove: top('#profile-side .cx-home-title').bottom <= card.top,
+          hintBelow: top('#profile-side .cx-home-hint').top >= card.bottom - 1,
+          toolsBelowHint: top('#profile-side .cx-tools').top >= top('#profile-side .cx-home-hint').bottom - 1,
+          toolsFill: Math.abs(top('#profile-side .cx-tools').width - top('#profile-side .cx-home-hint').width) <= 2,
+          oneBox: getComputedStyle(document.querySelector('#profile-top')).borderTopStyle === 'solid',
+          noIntro: !shown('#profile-side .cx-home-intro'), noTapToOpen: !shown('#psyche-card-hint'),
+          tapHint: /Tap any part of your card|Hover over any part/.test(document.querySelector('#profile-side .cx-home-hint').innerText),
+          spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      check('structured: on a phone the card sits in one box: title, card, how to learn more, then the three actions',
+        Object.entries(phoneBox).every(([k, v]) => k === 'spill' ? v <= 1 : v), JSON.stringify(phoneBox));
+      await sp.click('#psyche-card [data-cx="bigFive"]');
+      await sp.waitForTimeout(250);
+      check('structured: on a phone tapping the card does not open it full screen',
+        !(await sp.evaluate(() => document.querySelector('#card-dialog').open)));
+      await sp.click('#profile-side .cx-tool[data-act="enlarge"]');
+      await sp.waitForTimeout(300);
+      check('structured: Enlarge does', await sp.evaluate(() => document.querySelector('#card-dialog').open));
+      await sp.keyboard.press('Escape');
+      await sp.waitForTimeout(200);
       await sp.setViewportSize({ width: 1100, height: 900 });
       check('structured: no console errors', spErrors.length === 0, spErrors.join(' | '));
     } finally {

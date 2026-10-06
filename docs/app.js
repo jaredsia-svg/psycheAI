@@ -4368,10 +4368,10 @@
     const S = Copy.STRUCTURED;
     // Evidence and method and the roast sit inside part 05, the appendix.
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
-    // On a phone it is one thin row of numerals under the site's header —
-    // "Part 00 … 05" — with the names kept for screen readers and wider screens.
+    // On a phone it is one thin row under the site's header: the name of the
+    // part being read, then the numerals 00 … 05.
     return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' +
-      '<span class="part-nav-lead" aria-hidden="true">' + esc(S.partNavLead) + '</span>' + items.map(([key, num, title]) =>
+      '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
       (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
   }
@@ -5070,8 +5070,13 @@
     const nav = root.querySelector('.part-nav');
     if (!nav || typeof IntersectionObserver !== 'function') return;
     if (partObserver) partObserver.disconnect();
-    const light = key => nav.querySelectorAll('.part-nav-item').forEach(button =>
-      button.classList.toggle('is-current', button.getAttribute('data-part-target') === key));
+    // On a phone the nav's lead names the part the reader is in.
+    const lead = nav.querySelector('.part-nav-lead');
+    const light = key => nav.querySelectorAll('.part-nav-item').forEach(button => {
+      const on = button.getAttribute('data-part-target') === key;
+      button.classList.toggle('is-current', on);
+      if (on && lead) lead.textContent = button.querySelector('.part-nav-label').textContent;
+    });
     // Whole parts are watched, not their headings, so a jump into the middle
     // of a long part (the plan, deep in part 04) still lights that part. The
     // part crossing a thin band near the top of the screen is the current one.
@@ -5413,11 +5418,15 @@
       return;
     }
     if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
+    // On a phone the card itself never opens full screen — Enlarge does —
+    // and a tap on one of its parts explains that part.
+    if (!event.target.closest('#psyche-card-open') || !$('#view-profile').classList.contains('profile-structured')) return;
+    const narrow = window.matchMedia && window.matchMedia('(max-width: 719px)').matches;
     const part = event.target.closest('#psyche-card [data-cx]');
-    if (!part || canHover() || !$('#view-profile').classList.contains('profile-structured')) return;
+    if (!narrow && (canHover() || !part)) return;
     event.preventDefault();
     event.stopPropagation();
-    explainCardPart(part.getAttribute('data-cx'));
+    if (part) explainCardPart(part.getAttribute('data-cx'));
   }, true);
 
   // Confidence closes the report rather than opening it: read after the

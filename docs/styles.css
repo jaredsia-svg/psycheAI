@@ -2875,11 +2875,12 @@ details.more[open] > summary::after { content: ' ▴'; }
     margin: 0 0 .8rem; padding: .2rem .35rem; border-radius: 12px;
   }
   .part-nav .part-nav-label { display: none; }
+  /* The part being read by name, as much of it as fits, then the numerals. */
   .part-nav .part-nav-lead {
-    display: block; flex: none; padding: 0 .35rem 0 .3rem; font-size: .62rem; font-weight: 700;
-    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft);
+    display: block; flex: 1 1 auto; min-width: 0; padding: 0 .3rem 0 .4rem; font-size: .74rem; font-weight: 700;
+    color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .part-nav .part-nav-item { flex: 1 1 0; padding: .22rem 0; font-size: .74rem; text-align: center; }
+  .part-nav .part-nav-item { flex: none; width: 1.7rem; padding: .22rem 0; font-size: .7rem; text-align: center; }
   .part-nav .part-nav-num { margin: 0; opacity: 1; }
 }
 @media (min-width: 1340px) {
@@ -3023,9 +3024,38 @@ details.more[open] > summary::after { content: ' ▴'; }
   50% { box-shadow: 0 0 0 22px rgba(123, 63, 160, 0); }
 }
 @media (prefers-reduced-motion: reduce) { .psyche-card.pc-hint .pc-sconf { animation: none; } .cx-pop { transition: none; animation: none; } }
+/* On a phone the card and its panel become one white box, read top to
+   bottom: the title, the card, how to learn more, then the three actions.
+   The panel's own boxes dissolve (display: contents) so their pieces can be
+   ordered around the card; the one-line introduction and "Tap to open full
+   screen" go — Enlarge is the way to full screen here. */
+@media (max-width: 719px) {
+  #view-profile.profile-structured .profile-top {
+    display: flex; flex-direction: column; align-items: stretch; gap: .8rem; position: relative; overflow: hidden;
+    background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 1rem;
+  }
+  #view-profile.profile-structured .profile-top::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; opacity: .8;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  }
+  #view-profile.profile-structured #profile-side, #view-profile.profile-structured .cx,
+  #view-profile.profile-structured .cx-home { display: contents; }
+  #view-profile.profile-structured #profile-side::before { display: none; }
+  #view-profile.profile-structured #psyche-card-section {
+    order: 2; border: 0; box-shadow: none; background: transparent; border-radius: 14px; margin: 0;
+  }
+  #view-profile.profile-structured #psyche-card-section::before { display: none; }
+  #view-profile.profile-structured .psyche-card-hint { display: none; }
+  #view-profile.profile-structured .psyche-card-slot { cursor: default; }
+  .cx-home-title { order: 1; margin: 0; text-align: center; }
+  .cx-home-intro { display: none; }
+  .cx-home-hint { order: 3; justify-content: center; text-align: left; }
+  .cx-tools { order: 4; }
+  .cx-stage { order: 5; }
+}
 /* On a phone the explanation rises from the foot of the screen instead. */
 @media (max-width: 719px) {
-  .cx-tools { justify-content: center; }
   .cx-stage { min-height: 0; flex: none; }
   .cx-pop { position: fixed; left: 12px; right: 12px; top: auto; bottom: 12px; transform: none !important; z-index: 30;
     max-height: 72vh; overflow-y: auto; padding-right: 2.4rem; }

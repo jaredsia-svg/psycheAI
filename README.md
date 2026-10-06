@@ -3313,8 +3313,13 @@ download, test compatibility, delete — each carry an icon and a label; beside 
 screen they move under the part nav in the left column as quiet icon buttons in the nav's own box style,
 each named by a tooltip (`data-tip`), placed at the nav's measured foot (`--side-nav-bottom`,
 `layoutSideActions()`). **On a phone the part nav is one thin bar** stuck under the site's header
-(`--header-h`, measured on load and resize): "Part" and the six numerals, the names kept as tooltips and
-for screen readers. **A jump from the nav** sets the part's
+(`--header-h`, measured on load and resize): the name of the part being read — "Overview", "What drives
+you", set by `markStructured()` as the reader scrolls — then the six numerals, sized so the longest name
+fits whole on a 390px screen. **On a phone the Psyche Card sits in one white box**, read top to bottom:
+"Your Psyche Card", the card, "Tap any part of your card…", then Enlarge, Download and Share across the
+box — the panel's own boxes dissolve (`display: contents`) so their pieces can be ordered around the
+card, and the one-line introduction and "Tap to open full screen" go. Tapping the card explains the part
+tapped and never opens it full screen; only Enlarge does. **A jump from the nav** sets the part's
 `scroll-margin-top` to whatever is pinned over the page at that width (`pinnedHeight()` — the site
 header, and the nav itself where it sticks), so the part's heading always lands in full view. **Read from** says what
 was read of each source and what was only counted — "180 of your 9,741 messages read", "623 stories

@@ -929,7 +929,6 @@
       compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
     },
     partNavLabel: 'Parts of this report',
-    partNavLead: 'Part',
     // The card's own labels in the structured layout.
     // The PDF's overview page: a line over the headline, and the four facts
     // set as tiles under the character.
