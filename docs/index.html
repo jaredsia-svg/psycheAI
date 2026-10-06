@@ -551,6 +551,16 @@
     <p>Hosting and payment providers can see that the site was called, or that a payment happened.
       They do not receive the data. There is no account.</p>
 
+    <h3>Can the digest be linked back to me?</h3>
+    <p>The digest is de-identified on your device before it is sent. Your name and
+      username become a blank, and email addresses, phone numbers, ID, card and postal numbers are
+      removed. Everyone else’s @handles become numbers like [P1], links are dropped, and dates are
+      cut to the month. There is no account, login or email address attached to the request, and
+      PsycheAI keeps no copy of it.</p>
+    <p>What remains is your own writing and the accounts you engage with most, because that is what
+      the reading is made from. So it is de-identified rather than anonymous: a stranger holding it
+      would not know whose it is, but someone who already knows you well might recognise you in it.</p>
+
     <h3>Can anyone else access my data?</h3>
     <p>PsycheAI has no database. There is no sign-up, no password to create, no email address and no
       stored files. Nothing you send is retained, so there is no accumulated data for anyone to
@@ -1086,6 +1096,13 @@
   <h2 id="review-dialog-title">Review what gets sent</h2>
   <p class="muted">Choose which data gets analysed by Gemini or Claude. None of this data or the
     results can be accessed by PsycheAI or others.</p>
+  <!-- What is taken out before anything leaves the device. Always shown. -->
+  <div class="deid-note">
+    <span class="deid-icon" aria-hidden="true">🛡️</span>
+    <p><strong>De-identified before it is sent.</strong> Your name and username, email addresses,
+      phone, ID, card and postal numbers are removed, everyone else’s @handles become [P1], [P2]…,
+      links are dropped and dates are cut to the month. No account, name or username travels with it.</p>
+  </div>
   <!-- Shown only when this review is of a Deeper read (see askReview). -->
   <p class="alert deeper-review-note" id="review-deep-note" hidden></p>
   <!-- The download row is written into #review-list itself, as its last

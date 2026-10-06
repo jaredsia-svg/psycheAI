@@ -9122,6 +9122,7 @@ try {
       'How long does it take?',
       'What file do I need?',
       'What data leaves this device?',
+      'Can the digest be linked back to me?',
       'Can anyone else access my data?',
       'Can I verify this?',
       'How accurate is it?',
@@ -10182,6 +10183,32 @@ try {
       });
       check('the upload keeps a deeper digest on the device beside the standard one',
         kept.deep && kept.standardPlain && kept.more, JSON.stringify(kept));
+
+      // Google loaded on the way to the payment sheet, then Cancel: coming back
+      // to the unlock finds it still loaded, with nothing to load again.
+      await dp.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
+      await dp.locator('.premium-unlock').first().click();
+      await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [googleChooser] = await Promise.all([
+        dp.waitForEvent('filechooser', { timeout: 15000 }),
+        dp.click('#datasources-dialog .mode-option[data-datasource="google"]'),
+      ]);
+      await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
+      await dp.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
+        .classList.contains('is-added'), null, { timeout: 30000 });
+      await dp.click('#datasources-continue');
+      await dp.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+      await dp.click('#review-send');
+      await dp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+      await dp.click('#premium-cancel');
+      await dp.waitForFunction(() => !document.querySelector('#premium-dialog').open, null, { timeout: 15000 });
+      await dp.locator('.premium-unlock').first().click();
+      await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('Google loaded for an unlock and then cancelled at payment is still loaded when the unlock is opened again',
+        await dp.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
+          .classList.contains('is-added')));
+      await dp.click('#datasources-back');
+      await dp.waitForFunction(() => !document.querySelector('#datasources-dialog').open, null, { timeout: 15000 });
 
       await dp.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
       await dp.locator('.premium-unlock').first().click();

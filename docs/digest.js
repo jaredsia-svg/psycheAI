@@ -1155,7 +1155,9 @@
       ? clamp(1 - Math.sqrt(variance) / average, 0, 1)
       : null;
 
-    const iso = seconds => (seconds && Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString().slice(0, 10) : null);
+    // To the month, not the day: the day an account began is a fact that can
+    // pick one person out, and the month says as much about a trajectory.
+    const iso = seconds => (seconds && Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString().slice(0, 7) : null);
 
     return {
       hourOfDay: hours,
@@ -1468,6 +1470,16 @@
   const NAME_MARK = 'PsycheUser';
   const EMAIL_MARK = 'PsycheEmail';
   const PHONE_MARK = 'PsychePhone';
+  const NUMBER_MARK = 'PsycheNumber';
+  // Identity, card and address numbers, before the phone patterns see them:
+  // a Singapore NRIC or FIN ("S1234567A"), a card number in its usual groups
+  // ("4111 1111 1111 1111"), and a postcode written after the country. Each
+  // is unambiguous where it appears and says nothing about a personality.
+  const ID_NUMBERS = [
+    [/\b[STFGM]\d{7}[A-Z]\b/gi, NUMBER_MARK],
+    [/\b\d{4}([ -]?)\d{4}\1\d{4}\1\d{1,7}\b/g, NUMBER_MARK],
+    [/\b(Singapore|S'pore|SG)\s*\(?\d{6}\)?/gi, '$1 ' + NUMBER_MARK],
+  ];
 
   // Any address, anyone's. The best value in this whole pass: an address is an
   // unambiguous identifier, it turns up in exactly the places that carry the
@@ -1607,6 +1619,7 @@
       // Addresses first. A phone pattern would otherwise take the digits out
       // of an address like j.smith2024@mail.com and leave a broken one behind.
       let out = text.replace(EMAIL, EMAIL_MARK);
+      for (const [pattern, mark] of ID_NUMBERS) out = out.replace(pattern, mark);
       for (const pattern of PHONES) out = out.replace(pattern, PHONE_MARK);
       return out;
     };
@@ -1650,7 +1663,7 @@
       digest.coverage.sources.push('google');
       digest.google = {
         note: 'From a Google Takeout "My Activity" export. Counts are complete; the text is sampled.',
-        span: g.span,
+        span: monthSpan(g.span),
         // Spread rather than passed through, so the distinct-domain count can
         // sit beside the visit count without mutating the supplement object
         // the caller still holds. It is what survives of topDomains: how many
@@ -1686,7 +1699,7 @@
       digest.facebook = {
         note: 'From a Facebook export. Only the user\'s own messages are sampled; the other side of ' +
           'every conversation was counted and discarded.',
-        span: f.span,
+        span: monthSpan(f.span),
         counts: f.counts,
         postSample: sampleTexts(f.posts, LIMITS.fbPosts, 240),
         commentSample: sampleTexts(f.comments, LIMITS.fbComments, 240),
@@ -2021,6 +2034,13 @@
     return out;
   }
   function listOf(value) { return Array.isArray(value) ? value : []; }
+  // A source's first and last dates to the month — see rhythm's own.
+  function monthSpan(span) {
+    if (!span || typeof span !== 'object') return span;
+    const out = Object.assign({}, span);
+    for (const key of ['first', 'last']) if (typeof out[key] === 'string') out[key] = out[key].slice(0, 7);
+    return out;
+  }
   function plain(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
 
   function forModel(input, options) {
@@ -2065,7 +2085,12 @@
     // counts and no rhythm, and an empty object in their place would read to
     // the model as an account with nothing in it rather than as an opt-out.
     if (plain(d.counts)) out.counts = d.counts;
-    if (plain(d.rhythm)) out.rhythm = d.rhythm;
+    if (plain(d.rhythm)) {
+      out.rhythm = Object.assign({}, d.rhythm);
+      for (const key of ['firstActivity', 'lastActivity']) {
+        if (typeof out.rhythm[key] === 'string') out.rhythm[key] = out.rhythm[key].slice(0, 7);
+      }
+    }
     const dm = plain(d.directMessages);
     if (dm) {
       out.directMessages = {
@@ -2080,7 +2105,7 @@
     const g = plain(d.google);
     if (g) {
       out.google = {
-        note: g.note, span: g.span, counts: plain(g.counts) || {},
+        note: g.note, span: monthSpan(g.span), counts: plain(g.counts) || {},
         topChannels: listOf(g.topChannels),
         videoTitleSample: listOf(g.videoTitleSample),
         topYoutubeSearches: listOf(g.topYoutubeSearches),
@@ -2090,7 +2115,7 @@
     const f = plain(d.facebook);
     if (f) {
       out.facebook = {
-        note: f.note, span: f.span, counts: plain(f.counts) || {},
+        note: f.note, span: monthSpan(f.span), counts: plain(f.counts) || {},
         postSample: listOf(f.postSample),
         commentSample: listOf(f.commentSample),
         friends: listOf(f.friends),

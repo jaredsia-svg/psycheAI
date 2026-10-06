@@ -2813,6 +2813,24 @@ check('the reader\'s own handle is replaced with a placeholder',
 }
 // Other people's handles become numbers: never sent, still told apart from
 // the account holder and from each other, the same number for the same person.
+// Identity, card and postal numbers, and dates to the month: details that pick
+// one person out and say nothing about a personality.
+{
+  const ids = Digest.build({
+    ...signals,
+    captions: [{ text: 'my NRIC is S1234567A and the card 4111 1111 1111 1111 expires soon', ts: 1700000000 },
+      { text: 'moved to Singapore 238823 last spring, it was a long move', ts: 1700000100 },
+      { text: 'ran 2024 metres in 1:42, a 4-4 split nobody saw coming', ts: 1700000200 }],
+  }, { includeMessages: false });
+  const text = ids.samples.captions.join(' | ');
+  check('identity, card and postal numbers are replaced before sending',
+    !/S1234567A|4111|238823/.test(text) && /PsycheNumber/.test(text) && /Singapore PsycheNumber/.test(text), text);
+  check('while years and times are left alone', /ran 2024 metres in 1:42/.test(text), text);
+  check('dates of activity are given to the month, not the day',
+    /^\d{4}-\d{2}$/.test(String(digest.rhythm.firstActivity)) && /^\d{4}-\d{2}$/.test(String(digest.rhythm.lastActivity)) &&
+      /^\d{4}-\d{2}$/.test(String(Digest.forModel(Object.assign({}, digest, { rhythm: Object.assign({}, digest.rhythm, { firstActivity: '2012-10-21' }) })).rhythm.firstActivity)),
+    JSON.stringify([digest.rhythm.firstActivity, digest.rhythm.lastActivity]));
+}
 check('other people\'s handles are replaced by numbered markers, never sent',
   !JSON.stringify(Digest.forModel(digest)).includes('@mokkzy') && !JSON.stringify(Digest.forModel(digest)).includes('@yuhanchong') &&
     digest.samples.captions.some(c => /\[P\d+\]/.test(c)));

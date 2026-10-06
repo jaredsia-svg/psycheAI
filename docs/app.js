@@ -3879,7 +3879,9 @@
       // what would wipe the premiumAnalysis this same charge is about to
       // write — see the comment that used to sit where this branch is now.
       applyReviewDecision(digest, decision);
-      pendingDataSourceReads = {};
+      // Kept until the charge has bought something: a reader who cancels the
+      // payment sheet and comes back finds Google and Facebook still loaded.
+      // Cleared in runPremiumAnalysis once the run succeeds.
       await openPremiumDialog($('#rerun-with-data'), 'rerunAll', digest);
       return;
     }
@@ -6689,7 +6691,9 @@
       if (decision === REVIEW_BACK) continue;
       if (!decision) return null;
       if (digest !== state.digest) applyReviewDecision(digest, decision);
-      pendingDataSourceReads = {};
+      // Not cleared here: the payment sheet comes next, and a reader who
+      // cancels it and comes back must find what they loaded still loaded.
+      // runPremiumAnalysis clears it once the unlock has gone through.
       if (!deep) return digest;
       applyReviewDecision(deep, decision);
       // Carried with it, so a successful unlock keeps the standard digest —
@@ -6852,6 +6856,8 @@
         recordRun();
       }
       clearJob();
+      // What was loaded for this unlock is now part of it.
+      pendingDataSourceReads = {};
       await adoptFullReport(full, dataChanged);
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.

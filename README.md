@@ -194,6 +194,23 @@ is a friend, a brand or a newsroom is the evidence there. The saving is small �
 2.8% of a real digest's tokens — but the privacy is not. The reader's own "PsycheUser" marker appeared
 twice in a real digest, so it was left as it is.
 
+**What is de-identified before sending, and what is not.** On the device, before review: the reader's
+name and username become "PsycheUser"; email addresses, phone numbers, and identity, card and postal
+numbers become "PsycheEmail", "PsychePhone" and "PsycheNumber" (`ID_NUMBERS` — a Singapore NRIC/FIN, a
+grouped card number, a postcode after "Singapore"); other people's @handles become "[P1]", "[P2]";
+links are stripped; and activity dates — `rhythm.firstActivity`/`lastActivity` and each source's span —
+are given to the month (`monthSpan`, applied again in `forModel` for digests stored before). The review
+popout says so at its top (`.deid-note`), and the FAQ has "Can the digest be linked back to me?". Both
+say *de-identified*, not anonymous, on purpose: the reader's own writing, the real names of the accounts
+they engage with most (kept because a friend versus a brand is the evidence there), first names and
+places written in plain text, and their searches all remain, so someone who already knew them could
+recognise them. Nothing in it names them, and no account or login travels with it.
+
+**Sources loaded for an unlock survive a cancelled payment.** `pendingDataSourceReads` is cleared only
+once `runPremiumAnalysis` succeeds, not when the data step ends, so a reader who adds Google or Facebook,
+reviews, and cancels at the payment sheet finds them still loaded when they open the unlock, or Add /
+change data, again.
+
 **The Deeper read** (`DEEP_LIMITS`, `withDepth`). At upload the browser builds a second digest from the
 same archive with every list wider — 700 captions, 1,000 messages from twenty conversations (none over
 15%), 200 comments, 20 liked captions and 40 hashtags, 30 liked and saved accounts, 40 topics, 100

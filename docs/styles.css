@@ -3257,3 +3257,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .free-method .free-why { margin: 0 0 .8rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.5; }
 .free-method .trait-evidence { margin: .3rem 0 0; }
 .free-method .evidence-head { margin-top: .4rem; }
+/* The review's de-identification note: what is taken out before anything is sent. */
+.deid-note {
+  display: flex; gap: .65rem; align-items: flex-start; margin: .2rem 0 .9rem; padding: .75rem .85rem;
+  border-radius: 12px; border: 1px solid color-mix(in srgb, var(--good) 45%, transparent);
+  background: color-mix(in srgb, var(--good-soft) 75%, var(--bg-alt));
+}
+.deid-icon { font-size: 1.15rem; line-height: 1.3; flex: none; }
+.deid-note p { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--ink); }
+.deid-note strong { color: var(--good); }
