@@ -1495,6 +1495,35 @@
     ];
   }
 
+  /**
+   * The same offer, by the report's five parts: what each part holds, then its
+   * sections. The overview's summary and patterns open Part 1, the part they
+   * lead into, so the offer has the report's five numbered parts and no more.
+   */
+  function explainedParts() {
+    const S = Copy.STRUCTURED;
+    const rows = explainedSections();
+    const by = title => rows.find(row => row.title() === title);
+    const paidTitle = key => PAID_SECTIONS.find(row => row.key === key).title();
+    return [
+      { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns), by(S.explainTypeTitle), by(TEXT.bigFive), by(S.titles.wellness)] },
+      { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
+      { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')), by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
+      { key: 'together', rows: [by(S.titles.development)] },
+      { key: 'appendix', rows: [{ icon: '🔍', title: () => S.titles.method, blurb: () => S.explainMethod }, by(TEXT.bonus)] },
+    ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
+  }
+
+  function unlockPartsHtml() {
+    const S = Copy.STRUCTURED;
+    return '<ol class="unlock-parts">' + explainedParts().map(part =>
+      '<li class="unlock-part">' +
+        '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
+        '<div><h4>' + esc(S.parts[part.key].title) + '</h4><p>' + esc(S.unlockParts[part.key]) + '</p></div></div>' +
+        '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
+      '</li>').join('') + '</ol>';
+  }
+
   function tierItemsHtml(rows, blurbOf) {
     return rows.map(row =>
       '<li class="premium-tier-item">' +
@@ -1519,8 +1548,9 @@
       '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
       // One list: the explanations and the four premium sections are one
       // purchase, and splitting them made the four read as an afterthought.
-      '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
-      (reportLayout() === 'structured' ? '' : tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb())) + '</ul>' +
+      (reportLayout() === 'structured' ? unlockPartsHtml()
+        : '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
+          tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>') +
       '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
       premiumUnlockLabel(false) + '</button>' +
       '</div>';
@@ -5285,7 +5315,7 @@
    * the reader's own reading, and why it is worth knowing. Above it, the
    * card's own three actions: enlarge, download, share.
    */
-  function cardGuideHtml(report) {
+  function cardGuideHtml(report, paid) {
     const G = Copy.STRUCTURED.cardGuide;
     cardGuideState = cardGuideFor(report);
     const tool = (act, svg) => '<button type="button" class="cx-tool" data-act="' + act + '" title="' + esc(G.toolTips[act]) + '">' +
@@ -5300,7 +5330,8 @@
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
         '</div>' +
         '<p class="cx-status" role="status" hidden></p>' +
-        '<p class="cx-home-intro">' + esc(G.home.intro) + '</p>' +
+        // What the card is, then where its reasoning is: below, or behind the unlock.
+        '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span><span class="cx-hint-phone">' + esc(G.home.phone) +
           '</span></span></p>' +
@@ -5734,7 +5765,7 @@
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
     side.hidden = !structured;
-    setHtml(side, side.hidden ? '' : cardGuideHtml(report));
+    setHtml(side, side.hidden ? '' : cardGuideHtml(report, explained));
     if (!side.hidden) {
       markCardParts();
       // Where to start: the ring pulses gently until the reader points at anything.

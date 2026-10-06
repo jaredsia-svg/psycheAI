@@ -10723,6 +10723,9 @@ try {
       });
       check('structured: a full report opens on the Psyche Card and what it means, above 00 Overview, with no thumbnail by the nav',
         Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
+      const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
+      check('structured: a full report\'s panel points to the report below for the reasoning behind the card',
+        /Read the report below for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
       const actions = await sp.evaluate(() => {
         const row = document.querySelector('#view-profile .cta-row');
         const r = row.getBoundingClientRect();
@@ -10929,6 +10932,21 @@ try {
           freeShape.sameHeight && freeShape.fills && freeShape.guide, JSON.stringify(freeShape));
       check('structured: Evidence and method sits under the unlock offer with the data sources table, no US$2 re-run and no download',
         freeShape.method && freeShape.sources && freeShape.trust === 0 && !freeShape.download, JSON.stringify(freeShape));
+      // The unlock offer, by the report's five parts, and the panel saying
+      // where the reasoning behind the card is.
+      const offerParts = await sp.evaluate(() => {
+        const parts = [...document.querySelectorAll('#profile-body .full-report-locked .unlock-part')];
+        return { parts: parts.map(p => p.querySelector('.unlock-part-num').textContent + ' ' + p.querySelector('h4').textContent),
+          counts: parts.map(p => p.querySelectorAll('.premium-tier-item').length),
+          intro: document.querySelector('#profile-side .cx-home-intro').textContent };
+      });
+      check('structured: the free unlock offer runs as the report\'s five parts, each with its sections',
+        offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together|05 Appendix' &&
+          offerParts.counts.join() === '5,2,4,1,2', JSON.stringify(offerParts));
+      check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',
+        /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
+          /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
+        offerParts.intro);
       // Its "Add / change data" is the US$5 unlock — data first, then payment —
       // never the US$2 re-run of the card.
       // A real report has its evidence summary on the device.

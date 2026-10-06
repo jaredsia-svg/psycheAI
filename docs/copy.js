@@ -960,7 +960,10 @@
       // What the panel says before any part of the card is pointed at.
       home: {
         title: 'Your Psyche Card',
-        intro: 'Your personality on a single card — who you are most like, what drives you and how you connect, read from your own data.',
+        intro: 'Your personality on a single card – who you are most like, what drives you and how you connect, read from your own data.',
+        // After the intro: where the reasoning behind the card is, free and paid.
+        introFree: 'Unlock the premium report to read the full analysis and reasoning behind your Psyche Card.',
+        introPaid: 'Read the report below for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
         // On a phone the card is too small to explain in place: it opens full screen first.
@@ -1103,6 +1106,17 @@
       'ranked against each other from what you do, not what you say, with the tension between your top two.',
     explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
       'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
+    explainMethod: 'Where every finding came from – what was read, how much of it, and how sure each ' +
+      'read is – so any claim in the report can be checked against your own data.',
+    // The unlock offer on a free report, by the report's own five parts: a
+    // line each on what that part holds, then its sections.
+    unlockParts: {
+      who: 'The portrait behind your card, the patterns that run through it, your type, your traits and how you are doing.',
+      drives: 'What you are working towards, what you keep coming back to, and what you hold to.',
+      connect: 'How you are with the people close to you, and how you work.',
+      together: 'What to build on, what to work on, and how your strengths behave under pressure.',
+      appendix: 'How every finding was read – and the roast.',
+    },
   };
 
   // ---------- character emblems (the structured layout's catalogue) ----------

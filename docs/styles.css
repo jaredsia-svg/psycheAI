@@ -366,6 +366,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    width for a report-width block; on the welcome page's narrower marketing
    copy there is no button at all. */
 .paid-consolidated { margin-bottom: 1.2rem; }
+/* The unlock offer on a free structured report, by the report's five parts:
+   each a white panel led by its numeral, its title and a line on what it
+   holds, then its sections. */
+.unlock-parts { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; gap: .65rem; }
+.unlock-part { padding: .85rem clamp(.8rem, 2.5vw, 1rem) .9rem; border-radius: 14px; background: var(--bg-alt); }
+.unlock-part-head { display: flex; align-items: center; gap: .75rem; }
+.unlock-part-num {
+  flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 12px;
+  font-size: .9rem; font-weight: 800; letter-spacing: .02em; color: #fff; font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+}
+.unlock-part-head h4 { margin: 0; font-size: 1rem; line-height: 1.3; }
+.unlock-part-head p { margin: .1rem 0 0; font-size: .84rem; line-height: 1.4; color: var(--ink-soft); }
+.unlock-part .premium-tier-list { margin-top: .75rem; }
 .paid-consolidated .btn { margin-top: 1rem; width: 100%; }
 
 /* The sample dialog. The head is pinned and only the report scrolls, so the

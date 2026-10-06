@@ -831,9 +831,15 @@ comes with it, closed by **See sample report** (`#insight-sample`) at its bottom
 `Copy.STRUCTURED.insights`.
 
 Under a free card, the unlock offer lists what the full report explains and adds. In the structured
-layout that list runs in the report's own order, with the paid sections where they sit in the report
-(`explainedSections()`); in the classic layout it is the explanations followed by **`PAID_SECTIONS`** —
-the same table the report renders those sections from and the PDF gates them on.
+layout it runs as **the report's five parts** (`explainedParts()`, `unlockPartsHtml()`): each a white
+panel led by its numeral (01–05), the part's title from `Copy.STRUCTURED.parts`, a line on what it holds
+(`Copy.STRUCTURED.unlockParts`), then its sections with their blurbs (`explainedSections()`), the paid
+ones where they sit in the report. The overview's summary and signature patterns open Part 1, and Part 5
+holds Evidence and method and the roast. In the classic layout it is the explanations followed by
+**`PAID_SECTIONS`** — the same table the report renders those sections from and the PDF gates them on.
+The panel beside the card ends its one-line introduction (an en dash, not an em dash) on where the
+reasoning behind the card is: "Unlock the premium report to read the full analysis…" on a free report,
+"Read the report below for the full analysis…" on a full one (`introFree`, `introPaid`).
 
 That is not tidiness. This is marketing copy naming four sections by title and quoting a price, and
 marketing copy that has silently drifted from the product is the kind of wrong nobody notices for
