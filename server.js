@@ -485,12 +485,18 @@ async function handleAnalyse(request, response) {
   // premium report are written from identical evidence. The full report is
   // keyed on the digest *and* the card it explains, so a report written to
   // explain one card is never served to a reader holding another.
-  const sent = Digest.forModel(body.digest);
+  //
+  // A Deeper read is the one exception to the 80,000-character line, and only
+  // on a paid unlock: the reader chose it, has paid, and was told the card
+  // will be redrawn from it. It is bounded by its own 300,000 instead — see
+  // DEEP_LIMITS in docs/digest.js and the two caps that price it.
+  const deep = full && body.deep === true;
+  const sent = Digest.forModel(body.digest, { deep });
   // The backstop for the one thing forModel cannot bound by construction —
   // the number of keys in the few objects it copies whole. An honest digest
   // never gets here; Digest.build lands every real export under the line.
   // Counted as the model reads it, the same measure the trim loop uses.
-  if (Digest.evidenceChars(sent) > Digest.LIMITS.totalChars) {
+  if (Digest.evidenceChars(sent) > (deep ? Digest.DEEP_DIGEST_CHARS : Digest.LIMITS.totalChars)) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
   }

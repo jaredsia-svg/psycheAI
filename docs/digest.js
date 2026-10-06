@@ -506,6 +506,42 @@
   // for the account that is heavy everywhere at once.
   const DIGEST_CHARS = 80000;
   LIMITS.totalChars = DIGEST_CHARS;
+  // The most items any one list may carry into a request, past which
+  // forModel's clamp cuts it whatever it holds.
+  LIMITS.maxListItems = 400;
+
+  // ---------- the deeper read ----------
+  //
+  // A second digest, built from the same archive at the same moment as the
+  // standard one, for a premium unlock that asks for it. Up to 300,000
+  // characters — more of everything rather than more messages alone: about
+  // four times the captions and messages, from twice as many conversations,
+  // and wider lists of accounts, hashtags, channels and searches. Built in the
+  // browser at upload, kept on the device beside the standard digest, and sent
+  // only on a paid unlock with Deeper read switched on. The free card never
+  // reads it; a Deeper read redraws the card from it, which is why the reader
+  // is told the card's results may change.
+  //
+  // Overrides rather than a second table, applied for the length of one build
+  // (withDepth below), so every sampler that reads LIMITS reads these without
+  // being taught a second set of names.
+  const DEEP_DIGEST_CHARS = 300000;
+  const DEEP_LIMITS = {
+    captions: 700, comments: 200, likedCaptions: 20, likedHashtags: 40,
+    messages: 1000, messageTopThreads: 20, messageThreadCap: 0.15,
+    likedAuthors: 30, savedAuthors: 30, topics: 40,
+    youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 150,
+    fbPosts: 400, fbComments: 300, fbMessages: 400, fbSearches: 150,
+    totalChars: DEEP_DIGEST_CHARS, maxListItems: 1200,
+  };
+  /** Runs `fn` with the deeper read's limits in place when `deep`, and puts them back. */
+  function withDepth(deep, fn) {
+    if (!deep) return fn();
+    const saved = {};
+    for (const key of Object.keys(DEEP_LIMITS)) saved[key] = LIMITS[key];
+    Object.assign(LIMITS, DEEP_LIMITS);
+    try { return fn(); } finally { Object.assign(LIMITS, saved); }
+  }
 
   // ---------- what each call can cost, at most ----------
   //
@@ -539,6 +575,25 @@
   // once the structured card named its top three motivators (it was 16,655
   // while the card's prompt was the full report's, cut down).
   const FREE_FIXED_INPUT_TOKENS = 5900;
+
+  // ---------- what a deeper read can cost, at most ----------
+  //
+  // The same worst case, against the 300,000-character deep digest. A Deeper
+  // read redraws the card from it before the full report, so both calls read
+  // it:
+  //
+  //   card          8,000 out  × $3.75/M = $0.0300
+  //                  5,900 prompt + 85,714 digest × $0.75/M = $0.0687
+  //                 at most $0.0987                    → DEEP_FREE_COST_CAP $0.099
+  //
+  //   full report  28,000 out  × $3.75/M = $0.1050
+  //                 37,600 prompt + 85,714 digest × $0.75/M = $0.0925
+  //                 at most $0.1975                    → DEEP_COST_CAP $0.198
+  //
+  // About $0.30 for the whole unlock, against a US$5 payment. Held by the same
+  // selftest check as the standard caps.
+  const DEEP_FREE_COST_CAP = 0.099;
+  const DEEP_COST_CAP = 0.198;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -1121,6 +1176,13 @@
    * @param {object} options  { includeMessages }
    */
   function build(signals, options) {
+    if (options && options.deep) {
+      return withDepth(true, () => {
+        const digest = build(signals, Object.assign({}, options, { deep: false }));
+        digest.__deep = true;
+        return digest;
+      });
+    }
     const opts = options || {};
     const messages = signals.messages || {};
     // `maxChars` exists for the trim-loop tests and nothing else: production
@@ -1321,6 +1383,7 @@
     // Before the trim, so the budget is measured against the text that will
     // actually be sent rather than a slightly longer draft of it.
     redactOwnHandle(digest, signals.profile.username, signals.profile.name);
+    pseudonymiseHandles(digest);
     trimToBudget(digest, maxChars);
     return digest;
   }
@@ -1350,6 +1413,45 @@
   // cleaner thing to match on than a handle that might read like an ordinary
   // word.
   const OWN_HANDLE = 'PsycheUser';
+
+  /**
+   * Other people's @handles in the reader's own text, and in the posts they
+   * liked, replaced by a number: "@yuhanchong" becomes "[P1]", the same number
+   * for the same person everywhere in the digest. Their handles never leave
+   * the device, and the model can still see that one person is tagged in
+   * eight posts and messaged about in three. The ranked account lists keep
+   * their names — whether an account is a friend, a brand or a newsroom is the
+   * evidence there, and a number would erase it.
+   *
+   * The numbering is kept on the digest (`__people`, never sent — forModel
+   * copies known fields only), so a source merged in later gives a person
+   * already numbered the same number again.
+   */
+  const HANDLE_IN_TEXT = /(^|[^\w@.])@([A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?)/g;
+  function pseudonymiseHandles(digest) {
+    const people = digest.__people || {};
+    let next = Object.keys(people).length + 1;
+    const swap = text => String(text).replace(HANDLE_IN_TEXT, (all, before, handle) => {
+      const key = handle.toLowerCase();
+      if (key === OWN_HANDLE.toLowerCase()) return all;
+      if (!people[key]) people[key] = next++;
+      return before + '[P' + people[key] + ']';
+    });
+    const lists = [
+      digest.samples && digest.samples.captions, digest.samples && digest.samples.comments,
+      digest.samples && digest.samples.likedPostCaptions,
+      digest.directMessages && digest.directMessages.ownMessageSample,
+      digest.facebook && digest.facebook.postSample, digest.facebook && digest.facebook.commentSample,
+      digest.facebook && digest.facebook.ownMessageSample,
+    ];
+    for (const list of lists) {
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) if (typeof list[i] === 'string') list[i] = swap(list[i]);
+    }
+    if (digest.profile && typeof digest.profile.bio === 'string') digest.profile.bio = swap(digest.profile.bio);
+    if (Object.keys(people).length) digest.__people = people;
+    return digest;
+  }
 
   // The markers. Coined words rather than ordinary ones, and that is the whole
   // design: a substitution has to be unmistakable for a substitution.
@@ -1619,6 +1721,9 @@
    * histogram — the same ordering a first-time upload gets.
    */
   function addSupplements(digest, supplements, options) {
+    if (options && options.deep) {
+      return withDepth(true, () => addSupplements(digest, supplements, Object.assign({}, options, { deep: false })));
+    }
     const opts = options || {};
     applySupplements(digest, supplements || {});
     // The handle is not recoverable from the digest by this point — that is the
@@ -1630,6 +1735,7 @@
     // to an assistant. Worth closing where it is free, not worth asking for an
     // Instagram export again to close.
     redactOwnHandle(digest, opts.ownHandle, opts.ownName);
+    pseudonymiseHandles(digest);
     trimToBudget(digest, opts.maxChars || LIMITS.totalChars);
     return digest;
   }
@@ -1673,6 +1779,9 @@
 
   function renderEvidence(digest) {
     const skeleton = JSON.parse(JSON.stringify(digest && typeof digest === 'object' ? digest : {}));
+    // The device's own bookkeeping — the handle numbering, the deep flag — is
+    // never evidence and never sent.
+    for (const key of Object.keys(skeleton)) if (key.startsWith('__')) delete skeleton[key];
     const sections = [];
     for (const path of EVIDENCE_LISTS) {
       const keys = path.split('.');
@@ -1692,7 +1801,8 @@
     return 'Structured fields first, as JSON. Every list follows under its own path, one item per line; ' +
       'a ranked entry is written "name ×count". Lines that share tags — a year, a conversation — sit ' +
       'under one line of those tags, such as "[2024] [t3]:", which applies to every line below it ' +
-      'until the next.\n' + JSON.stringify(skeleton) +
+      'until the next. [P1], [P2] … stand for other people\'s @handles, the same number for the same ' +
+      'person throughout.\n' + JSON.stringify(skeleton) +
       (sections.length ? '\n\n' + sections.join('\n\n') : '');
   }
 
@@ -1905,7 +2015,7 @@
     }
     // A digest is four levels deep at most. Anything deeper is not one.
     if (depth > 6) return null;
-    if (Array.isArray(value)) return value.slice(0, 400).map(v => clampStrings(v, depth + 1));
+    if (Array.isArray(value)) return value.slice(0, LIMITS.maxListItems).map(v => clampStrings(v, depth + 1));
     const out = {};
     for (const key of Object.keys(value).slice(0, 200)) out[key] = clampStrings(value[key], depth + 1);
     return out;
@@ -1914,6 +2024,8 @@
   function plain(value) { return value && typeof value === 'object' && !Array.isArray(value) ? value : null; }
 
   function forModel(input, options) {
+    // A deeper read is bounded by its own, larger limits — see DEEP_LIMITS.
+    if (options && options.deep) return withDepth(true, () => forModel(input, Object.assign({}, options, { deep: false })));
     const opts = options || {};
     const d = plain(input) || {};
     const samples = plain(d.samples) || {};
@@ -2133,7 +2245,7 @@
   }
 
   root.PsycheDigest = {
-    build, addSupplements, forModel, renderEvidence, evidenceChars,
+    build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,

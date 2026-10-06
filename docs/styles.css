@@ -3011,6 +3011,17 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: var(--accent-soft); font-size: .88rem; line-height: 1.45; color: var(--ink); cursor: pointer; text-align: left;
 }
 .premium-consent[hidden] { display: none; }
+/* The unlock's Deeper read, in the data popout: a switch on by default. */
+.deeper-read {
+  display: flex; gap: .65rem; align-items: flex-start; margin: .9rem 0 .2rem; padding: .75rem .85rem; border-radius: 12px;
+  border: 1px solid var(--accent); background: var(--accent-soft); cursor: pointer; text-align: left;
+}
+.deeper-read[hidden] { display: none; }
+.deeper-read input { flex: none; width: 1.15rem; height: 1.15rem; margin-top: .15rem; accent-color: var(--accent); }
+.deeper-read-body { display: grid; gap: .2rem; font-size: .88rem; line-height: 1.45; }
+.deeper-read-body strong { color: var(--ink); }
+.deeper-read-note { font-weight: 600; color: var(--accent); }
+.deeper-review-note[hidden] { display: none; }
 .premium-consent input { flex: none; width: 1.1rem; height: 1.1rem; margin-top: .1rem; accent-color: var(--accent); }
 .premium-dialog.awaits-consent #premium-payment-request-button, .premium-dialog.awaits-consent #premium-card-fallback,
 .premium-dialog.awaits-consent #premium-mock-pay, .premium-dialog.awaits-consent .premium-promo {

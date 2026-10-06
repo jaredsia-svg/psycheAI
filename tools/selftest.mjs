@@ -2772,9 +2772,10 @@ check('digest samples captions', digest.samples.captions.length > 0 && digest.sa
 // floor and a half-recent/half-longest selection in front of it. Both of the
 // reported shapes have to actually reach the model, next to the username that
 // is the only thing letting it tell @mokkzy from the account holder.
+// Other people reach it as numbered markers rather than handles — see
+// pseudonymiseHandles — so the captions still have to be there, carrying them.
 check('captions about other people reach the model, or the rule guards nothing',
-  digest.samples.captions.some(c => c.includes('@mokkzy')) &&
-  digest.samples.captions.some(c => c.includes('@yuhanchong')),
+  digest.samples.captions.filter(c => /\[P\d+\]/.test(c)).length >= 2,
   digest.samples.captions.length + ' captions sampled');
 // ---------- the reader's own handle ----------
 //
@@ -2810,9 +2811,29 @@ check('the reader\'s own handle is replaced with a placeholder',
   check('with the placeholder left in its place rather than a hole',
     serialised.includes('psycheuser'), JSON.stringify(planted.samples.captions).slice(0, 120));
 }
-check('while other people\'s handles survive, which is what the rule needs',
-  digest.samples.captions.some(c => c.includes('@mokkzy')) &&
-  digest.samples.captions.some(c => c.includes('@yuhanchong')));
+// Other people's handles become numbers: never sent, still told apart from
+// the account holder and from each other, the same number for the same person.
+check('other people\'s handles are replaced by numbered markers, never sent',
+  !JSON.stringify(Digest.forModel(digest)).includes('@mokkzy') && !JSON.stringify(Digest.forModel(digest)).includes('@yuhanchong') &&
+    digest.samples.captions.some(c => /\[P\d+\]/.test(c)));
+{
+  const people = Digest.build({
+    ...signals,
+    captions: [{ text: 'dinner with @mokkzy and @yuhanchong tonight', ts: 1700000000 },
+      { text: 'out again with @Mokkzy, then the long walk home', ts: 1700000100 },
+      { text: 'emailed someone@example.com about it', ts: 1700000200 }],
+  }, { includeMessages: false });
+  const text = people.samples.captions.join(' | ');
+  const sent = JSON.stringify(Digest.forModel(people));
+  check('the same person keeps the same number, whatever the case of the handle',
+    /dinner with \[P1\] and \[P2\]/.test(text) && /again with \[P1\], then the long walk home/.test(text), text);
+  check('an email address is not taken for a handle',
+    !/someone\[P/.test(text), text);
+  check('and the numbering stays on the device: no handle is in what is sent',
+    !/mokkzy|yuhanchong/i.test(sent) && !('__people' in Digest.forModel(people)));
+  check('the evidence tells the model what the markers are',
+    Digest.renderEvidence(Digest.forModel(people)).includes('[P1], [P2] … stand for other people'));
+}
 
 {
   // A handle short enough to be an ordinary word is only replaced in its
@@ -2855,8 +2876,8 @@ check('while other people\'s handles survive, which is what the rule needs',
   // landed on an ordinary word, which is the one cost of a blunt scrub.
   check('and warns that a marker on an ordinary word is a substitution, not a person writing strangely',
     /is a substitution that landed on an ordinary word/i.test(prompts.PROFILE_SYSTEM));
-  check('and that everybody else\'s handle is still real, which is the rule it sits in',
-    /Everybody else's handle is untouched and real/i.test(prompts.PROFILE_SYSTEM));
+  check('and that everybody else\'s handle is a numbered marker, a different person from the reader',
+    /Everybody else's @handle has been replaced by a numbered marker/i.test(prompts.PROFILE_SYSTEM));
 
   // A digest built with no handle at all must come back unchanged rather than
   // scrubbed to nothing by an empty pattern.
@@ -2986,7 +3007,7 @@ check('the years are real ones off the fixture, not a constant',
 // The prefix must not eat the caption. A dated sample that dropped the text
 // would pass the check above and be worthless.
 check('the caption itself survives the prefix',
-  digest.samples.captions.some(c => /^\[\d{4}\] .*@mokkzy/.test(c)));
+  digest.samples.captions.some(c => /^\[\d{4}\] .*\[P\d+\]/.test(c)));
 // Chronological, because the model is being asked to read a trajectory out of
 // this and a shuffled sequence makes that harder for no reason. The sample is
 // picked in two passes (recent half, longest half) which land interleaved, so
@@ -5087,6 +5108,56 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       topics: Digest.LIMITS.topics, ads: Digest.LIMITS.adInterests }));
   // Ad interests are not sent at all now, and the budget counts the text the
   // model is sent rather than the JSON it is written from.
+  // -- the deeper read --
+  //
+  // Built from the same signals at upload, with every list wider, held to its
+  // own 300,000-character line, and paid for by its own two caps.
+  {
+    const deepSignals = { ...worstSignals };
+    const deep = Digest.build(deepSignals, { includeMessages: true, deep: true });
+    const standard = Digest.build(deepSignals, { includeMessages: true });
+    check('a deeper read is marked as one, and the limits are back to standard after it',
+      deep.__deep === true && !standard.__deep && Digest.LIMITS.totalChars === DIG && Digest.LIMITS.messages === 270);
+    check('a deeper read carries far more of the reader\'s own words than the standard digest',
+      deep.directMessages.ownMessageSample.length > standard.directMessages.ownMessageSample.length * 2 &&
+        deep.samples.captions.length > standard.samples.captions.length * 2,
+      JSON.stringify({ dms: [standard.directMessages.ownMessageSample.length, deep.directMessages.ownMessageSample.length],
+        captions: [standard.samples.captions.length, deep.samples.captions.length] }));
+    // On an ordinary export, where the trim loop has nothing to do: the
+    // heaviest one above fills even the deeper line with captions and messages.
+    const google = {
+      span: {}, counts: { watched: 900, youtubeSearches: 300, googleSearches: 900, browsed: 0, prompts: 0 },
+      channels: new Map(Array.from({ length: 300 }, (_, i) => ['channel ' + i, 300 - i])),
+      videoTitles: Array.from({ length: 300 }, (_, i) => 'A video title long enough to keep, number ' + i),
+      youtubeSearchTerms: new Map(Array.from({ length: 300 }, (_, i) => ['youtube search ' + i, 300 - i])),
+      googleSearchTerms: new Map(Array.from({ length: 300 }, (_, i) => ['google search term ' + i, 300 - i])),
+      googleSearches: [], domains: new Map(), geminiPrompts: [],
+    };
+    const plainDeep = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false, deep: true });
+    const plainStandard = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false });
+    check('and more of the other lists too, not only messages and captions',
+      plainDeep.google.topChannels.length === 100 && plainStandard.google.topChannels.length === 50 &&
+        plainDeep.google.topGoogleSearches.length === 150 && plainStandard.google.topGoogleSearches.length === 50 &&
+        plainDeep.google.videoTitleSample.length === 40 && plainStandard.google.videoTitleSample.length === 10,
+      JSON.stringify([plainStandard.google.topChannels.length, plainDeep.google.topChannels.length,
+        plainStandard.google.topGoogleSearches.length, plainDeep.google.topGoogleSearches.length]));
+    check('the heaviest export\'s deeper read lands under its 300,000-character line, and well past 80,000',
+      Digest.evidenceChars(deep) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(deep) > DIG * 2,
+      String(Digest.evidenceChars(deep)));
+    const sentDeep = Digest.forModel(deep, { deep: true });
+    check('a deeper read is sent whole when it is asked for as one',
+      sentDeep.directMessages.ownMessageSample.length === deep.directMessages.ownMessageSample.length &&
+        Digest.evidenceChars(sentDeep) <= Digest.DEEP_DIGEST_CHARS);
+    check('but cut to the standard line by anything that does not ask for it',
+      Digest.evidenceChars(Digest.forModel(deep)) <= DIG);
+    check('the deeper read\'s two calls each fit their own cost cap',
+      Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
+        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS,
+      Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
+        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
+    check('and together cost about thirty cents at most',
+      Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP < 0.30);
+  }
   check('ad interests are no longer part of a digest', !('instagramAdInterests' in heavy) &&
     !('instagramAdInterests' in Digest.forModel(Object.assign({}, heavy, { instagramAdInterests: ['Ad interest 1'] }))));
   check('the recorded digest size is the evidence text the model reads, not the JSON',

@@ -160,8 +160,14 @@ async function loadSource(page, source, buffer, name) {
 // payment sheet only after it — data, then review, then money. Every unlock in
 // this suite that is not specifically about that step carries on with what is
 // already loaded, which is also what the ordinary reader does.
-async function skipPremiumDataOffer(page) {
+async function skipPremiumDataOffer(page, options) {
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 20000 });
+  // The standard read unless a test asks for the deeper one: these pages hold
+  // a standard digest only, and a Deeper read would ask for the export again.
+  if (!(options && options.deeper)) {
+    const box = page.locator('#datasources-deeper-input');
+    if (await box.isVisible()) await box.uncheck();
+  }
   await page.click('#datasources-continue');
 }
 
@@ -8321,6 +8327,10 @@ try {
   check('the unlock\'s data sources popout shows Google as already loaded',
     await page.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
       .classList.contains('is-added')));
+  check('and offers the Deeper read, switched on',
+    (await page.locator('#datasources-deeper').isVisible()) && (await page.locator('#datasources-deeper-input').isChecked()));
+  // The standard read here; the Deeper read has a test of its own.
+  await page.locator('#datasources-deeper-input').uncheck();
   await page.click('#datasources-continue');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('and with nothing changed, no consent is asked for',
@@ -8463,6 +8473,8 @@ try {
   await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
   await page.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
     .classList.contains('is-added'), null, { timeout: 30000 });
+  // The standard read: this test is about added data; the Deeper read has its own.
+  await page.locator('#datasources-deeper-input').uncheck();
   await page.click('#datasources-continue');
   // Adding genuinely new data goes through the review, exactly as the first
   // upload does. Skipping does not, because skipping sends nothing new — but
@@ -10140,6 +10152,75 @@ try {
   // drawn by the same page when asked with ?layout=structured, from a fully
   // unlocked profile: the hand-written sample plus its premium fixture, so
   // every block has real content to lay out.
+  // ---- the Deeper read, end to end ----
+  //
+  // Built beside the standard digest at upload and kept on the device; on by
+  // default at the unlock, where the reader is told — in the popout, at the
+  // review and before paying — that the card may change; sent under its own
+  // limit; and kept beside the standard digest afterwards, never in its place.
+  {
+    const dp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const deepBodies = [];
+    const dpErrors = [];
+    dp.on('request', request => {
+      if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) deepBodies.push(request.postData());
+    });
+    dp.on('pageerror', error => dpErrors.push(error.message));
+    try {
+      await dp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await dp.evaluate(() => localStorage.clear());
+      await dp.reload({ waitUntil: 'load' });
+      await dp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await chooseDepth(dp);
+      await answerReview(dp);
+      await dp.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      const kept = await dp.evaluate(() => {
+        const deep = JSON.parse(localStorage.getItem('psycheai_digest_deep') || 'null');
+        const standard = JSON.parse(localStorage.getItem('psycheai_digest') || 'null');
+        return { deep: Boolean(deep && deep.__deep), standardPlain: Boolean(standard && !standard.__deep),
+          more: deep && standard ? deep.samples.captions.length >= standard.samples.captions.length : false };
+      });
+      check('the upload keeps a deeper digest on the device beside the standard one',
+        kept.deep && kept.standardPlain && kept.more, JSON.stringify(kept));
+
+      await dp.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
+      await dp.locator('.premium-unlock').first().click();
+      await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('the unlock offers the Deeper read, switched on',
+        await dp.locator('#datasources-deeper-input').isChecked());
+      await dp.click('#datasources-continue');
+      await dp.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+      check('the Deeper read is reviewed as itself, saying the card may change',
+        (await dp.locator('#review-deep-note').isVisible()) &&
+          /Psyche Card is re-read from it too, so its results may change/.test(await dp.locator('#review-deep-note').innerText()));
+      await dp.click('#review-send');
+      await dp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+      check('before paying, the reader agrees that the card may change',
+        (await dp.locator('#premium-consent').isVisible()) &&
+          /Deeper read, and understand the results on my Psyche Card may change/.test(await dp.locator('#premium-consent-text').innerText()) &&
+          await dp.evaluate(() => document.querySelector('#premium-dialog').classList.contains('awaits-consent')));
+      const before = deepBodies.length;
+      await dp.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
+      await agreeToRerun(dp);
+      await dp.click('#premium-mock-pay');
+      await dp.waitForFunction(() => !document.querySelector('#premium-dialog').open, null, { timeout: 60000 });
+      await waitForLength(deepBodies, before + 1, 60000);
+      const sentBody = JSON.parse(deepBodies[before]);
+      check('the paid run asks for the Deeper read, with no card to anchor it — the card is redrawn',
+        sentBody.deep === true && !sentBody.anchor, JSON.stringify({ deep: sentBody.deep, anchor: Boolean(sentBody.anchor) }));
+      const after = await dp.evaluate(() => {
+        const deep = JSON.parse(localStorage.getItem('psycheai_digest_deep') || 'null');
+        const standard = JSON.parse(localStorage.getItem('psycheai_digest') || 'null');
+        return { deep: Boolean(deep && deep.__deep && !deep.__standard), standardPlain: Boolean(standard && !standard.__deep) };
+      });
+      check('afterwards the deeper digest is kept beside the standard one, never in its place',
+        after.deep && after.standardPlain, JSON.stringify(after));
+      check('the Deeper read runs with no page errors', dpErrors.length === 0, dpErrors.join(' | '));
+    } finally {
+      await dp.close();
+    }
+  }
+
   // The welcome page's sample card, full screen, in the structured layout: its
   // parts explained as the reader's own are — beside the card on a laptop as
   // the pointer moves over it, against the tapped part on a phone — with a
@@ -10959,8 +11040,19 @@ try {
       await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('structured: a free report\'s "Add / change data" opens the same data sources popout the unlock does',
         (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
-      // Changing nothing carries on to the US$5 payment, with no consent box:
-      // nothing about the card is about to change.
+      // With no deeper digest on the device and no export in memory, a Deeper
+      // read asks for the Instagram export again rather than going ahead.
+      check('structured: the popout offers the Deeper read, on by default, saying the card may change',
+        (await sp.locator('#datasources-deeper-input').isChecked()) &&
+        /Psyche Card is re-read .* may change/.test(await sp.locator('#datasources-deeper').innerText()));
+      await sp.click('#datasources-continue');
+      await sp.waitForFunction(() => document.querySelector('#datasources-dialog').open &&
+        /Deeper read needs your Instagram export/.test(document.querySelector('#datasources-status').textContent), null, { timeout: 15000 });
+      check('structured: with no deeper digest kept, a Deeper read asks for the Instagram export again',
+        await sp.evaluate(() => !document.querySelector('#premium-dialog').open && !document.querySelector('#review-dialog').open));
+      // Changing nothing with the standard read carries on to the US$5
+      // payment, with no consent box: nothing about the card is about to change.
+      await sp.locator('#datasources-deeper-input').uncheck();
       await sp.click('#datasources-continue');
       await sp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
       check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',

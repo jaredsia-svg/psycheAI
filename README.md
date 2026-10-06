@@ -183,10 +183,32 @@ tags (a year, `t1`–`t99`, post/story/reel) count, so a caption that begins "[s
 one. On a real heavy digest that took 19,970 tokens to 17,861 (10.6%) and freed about 3,300 characters,
 which went to messages: 250 became 270. The evidence's opening line tells the model how to read it.
 
-**Placeholders and other people's handles cost little.** The reader's own name stands in as
-"PsycheUser", but it appeared twice in a real digest, so a shorter token saves nothing worth having.
-Other people's @handles were 116 mentions, about 2.8% of the tokens, almost all friends tagged in
-captions.
+**Other people's @handles never leave the device** (`pseudonymiseHandles`). In the reader's captions,
+comments, messages, the liked-post captions and the Facebook text, every other @handle becomes a
+numbered marker — "[P1]", "[P2]" — the same number for the same person throughout, case aside, so the
+model can still see that one person is tagged in eight posts. The numbering is kept on the digest as
+`__people`, which `forModel` never copies, so a source merged in later numbers a known person the
+same. Email addresses are not mistaken for handles, and the reader's own "@PsycheUser" is left alone.
+The ranked account lists (most liked, saved, engaged with) keep their real names: whether an account
+is a friend, a brand or a newsroom is the evidence there. The saving is small — handles were about
+2.8% of a real digest's tokens — but the privacy is not. The reader's own "PsycheUser" marker appeared
+twice in a real digest, so it was left as it is.
+
+**The Deeper read** (`DEEP_LIMITS`, `withDepth`). At upload the browser builds a second digest from the
+same archive with every list wider — 700 captions, 1,000 messages from twenty conversations (none over
+15%), 200 comments, 20 liked captions and 40 hashtags, 30 liked and saved accounts, 40 topics, 100
+channels, 40 titles, 100 YouTube and 150 Google searches, more Facebook — held to 300,000 characters,
+with the reader's review choices applied, and keeps it on the device as `psycheai_digest_deep`
+(`saveDeepDigest`; a device without room for it simply goes without). The free card never reads it.
+At the unlock the data popout offers **Deeper read, on by default**, saying the Psyche Card is re-read
+from it and its results may change; a source added there is merged into both digests. It is reviewed
+as itself (the review says so, and its download shows the deep digest), and the payment sheet always
+asks the reader to agree that the card may change. The paid call sends `deep: true`; the server allows
+the larger digest only on a paid unlock that asks for it, and with no anchor card the card is redrawn
+from it before the full report. Afterwards the deep digest is kept beside the standard one, never in
+its place, so later free runs read the standard one. A reader who uploaded before this, or whose
+device had no room, is asked for the Instagram export once more or to switch it off. Worst case the two
+calls cost $0.099 and $0.198 (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`), about $0.30 against US$5.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.
