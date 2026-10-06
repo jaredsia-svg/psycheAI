@@ -2382,13 +2382,9 @@
     if (unlock) openPremiumDialog(unlock, 'unlock');
     // A free report's "Add / change data": the same unlock, offering every
     // source not yet loaded before the payment.
+    // A free report's "Add / change data" is the same unlock, data first.
     const add = event.target.closest('#free-add-data');
-    if (add) {
-      // The full report is written from the evidence summary on this device;
-      // with it gone, say what is needed rather than doing nothing.
-      if (!state.digest) { flash('#profile-alert', TEXT.freeAddDataNeedsInstagram); return; }
-      openPremiumDialog(add, 'unlock', null, { offerAll: true });
-    }
+    if (add) openPremiumDialog(add, 'unlock');
   });
 
   // Delegated for the same reason — the covers are written by innerHTML in
@@ -6319,46 +6315,71 @@
    * Returns the digest the paid call should use, or null to abandon the
    * unlock entirely (Back at the supplement offer).
    */
-  async function collectExtraDataForPremium(options) {
-    const current = state.digest;
-    // The unlock offers data only to a report with none beyond Instagram; the
-    // free report's own "Add / change data" offers whatever is still missing.
-    const offerAll = Boolean(options && options.offerAll);
-    if (!current || (offerAll ? current.google && current.facebook : current.google || current.facebook)) return current;
-
-    let supplements = null;
-    try {
-      supplements = await askSupplement(state.signals && state.signals.supplements);
-    } catch (error) {
-      return current;
+  /**
+   * The data step of the US$5 unlock: the same "Add or change your data"
+   * popout the report page uses, listing every source with a tick for what is
+   * already loaded, so a reader can add Facebook (or any source added later)
+   * before paying. Nothing changed and it hands back the digest the card was
+   * written from, and the payment sheet follows directly; something added or
+   * replaced goes through the review first, and the run it pays for rewrites
+   * the card as well. Back abandons the unlock (null).
+   */
+  async function collectDataForPremium() {
+    for (;;) {
+      let collected;
+      try {
+        collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb });
+      } catch (error) {
+        flash('#profile-alert', (error && error.message) || 'Could not read that export.');
+        return null;
+      }
+      if (!collected) return null;
+      const fresh = key => typeof collected[key] === 'object';
+      if (!['instagram', 'google', 'facebook'].some(fresh)) {
+        if (state.digest) return state.digest;
+        // Nothing to write the full report from: the Instagram export has
+        // gone from this device and was not loaded again.
+        flash('#profile-alert', TEXT.rerunNeedsInstagram);
+        return null;
+      }
+      // The same merge addDataAndRerun makes: a fresh Instagram read replaces
+      // the signals wholesale, so supplements from this session are read off
+      // the old object first.
+      const priorSupplements = state.signals && state.signals.supplements;
+      if (fresh('instagram')) state.signals = collected.instagram;
+      const extra = { google: fresh('google') ? collected.google : undefined, facebook: fresh('facebook') ? collected.facebook : undefined };
+      let digest;
+      try {
+        if (state.signals) {
+          state.signals.supplements = Object.assign({}, priorSupplements,
+            extra.google ? { google: extra.google } : null, extra.facebook ? { facebook: extra.facebook } : null);
+          digest = Digest.build(state.signals, { includeMessages: true });
+        } else if (state.digest) {
+          digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
+        } else {
+          flash('#profile-alert', TEXT.rerunNeedsInstagram);
+          return null;
+        }
+      } catch (error) {
+        flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
+        return null;
+      }
+      // Payment is the next step whatever happens here: this review sits
+      // inside the unlock itself.
+      const decision = await askReview(digest, { paymentDue: true });
+      if (decision === REVIEW_BACK) continue;
+      if (!decision) return null;
+      applyReviewDecision(digest, decision);
+      pendingDataSourceReads = {};
+      return digest;
     }
-    // Back resolves null and means "I have changed my mind about all of this",
-    // which is worth honouring now that nothing has been charged yet. Skip
-    // resolves an empty object and means "get on with the unlock".
-    if (!supplements) return null;
-    if (!supplements.google && !supplements.facebook) return current;
+  }
 
-    // Merged rather than rebuilt from the archive: the paid call takes no
-    // photographs, so nothing here needs the Instagram export still to be in
-    // memory — see Digest.addSupplements.
-    let enriched;
-    try {
-      enriched = Digest.addSupplements(JSON.parse(JSON.stringify(current)), supplements, { ownHandle: ownHandle(), ownName: ownDisplayName() });
-    } catch (error) {
-      return current;
-    }
-
-    // Payment is unconditionally the next step here — this review sits inside
-    // the US$5 unlock itself, never reached without one due.
-    const decision = await askReview(enriched, { paymentDue: true });
-    // Escape or Back at the review drops the addition rather than the unlock:
-    // they have seen what the extra data contains and declined to send it, so
-    // the paid call proceeds on the digest it would have used anyway.
-    if (!decision || decision === REVIEW_BACK) return current;
-
-    applyReviewDecision(enriched, decision);
-    enriched.__addedSupplements = supplements;
-    return enriched;
+  /** What a digest says about the data it was built from, to tell whether it changed. */
+  function digestFingerprint(digest) {
+    if (!digest) return '';
+    return JSON.stringify([digest.coverage || null, digest.counts || null,
+      digest.google ? digest.google.counts || true : null, digest.facebook ? digest.facebook.counts || true : null]);
   }
 
   /**
@@ -6643,7 +6664,7 @@
    * the attempt ends — cancelled, failed or unlocked all leave a clean cover
    * behind, in case the reader closes the dialog and tries again.
    */
-  async function openPremiumDialog(button, product, preparedDigest, options) {
+  async function openPremiumDialog(button, product, preparedDigest) {
     // Three products share this dialog now. `kind` is what the server is told
     // and what verifyPaid checks the payment against, so a wrong value here
     // sends a reader's US$5 to the wrong ledger — hence a lookup with an
@@ -6672,7 +6693,7 @@
     if (preparedDigest) {
       pendingPremiumDigest = preparedDigest;
     } else if (kind === 'unlock' && !unlockReceipt()) {
-      const collected = await collectExtraDataForPremium(options);
+      const collected = await collectDataForPremium();
       // Back at the supplement offer abandons the unlock. Nothing has been
       // charged and no dialog has been opened, so this simply returns.
       if (!collected) return;
@@ -6687,8 +6708,11 @@
     // the free sections as well — and says so. A reader agreeing to a price
     // should be told everything it covers at the moment they agree to it,
     // not discover the extra afterwards.
-    const buysFreeRefresh = kind === 'unlock' &&
-      Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
+    // Only when the data actually changed — something added, replaced, or left
+    // out at the review — does the run rewrite the card, and only then is the
+    // reader asked to agree to it.
+    const buysFreeRefresh = kind === 'unlock' && Boolean(pendingPremiumDigest) &&
+      pendingPremiumDigest !== state.digest && digestFingerprint(pendingPremiumDigest) !== digestFingerprint(state.digest);
     $('#premium-dialog-blurb').textContent =
       kind === 'analysis' ? TEXT.analysisDialogBlurb
         : rerunAll ? TEXT.premiumRerunDialogBlurb

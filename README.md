@@ -3300,12 +3300,17 @@ foot of the screen; the line under the card still opens it full screen. **Read f
 (`roughCount()`): 9,741 messages reads "9.7k", 637 accounts "~600"; what was actually read stays exact. Evidence and method sits
 under the unlock offer (`freeMethodCardHtml()`): the score, why, what was read, and the data sources
 table (`freeSourcesHtml()`). Its **"Add / change data & re-run analysis" is the US$5 unlock**, never the
-US$2 re-run of the card: it opens the data offer for every source not yet loaded
-(`collectExtraDataForPremium({ offerAll: true })`), then the review, then the payment sheet. **When new
-data was added, the payment sheet asks the reader to agree** that the whole analysis is re-run and the
-card may change (`#premium-consent`); until that box is ticked no way to pay does anything — the wallet
-button, the card form, the promo code and mock pay are all inert (`.awaits-consent`, `consentMissing()`).
-With no evidence summary on the device, the button says what is needed instead of doing nothing. A free report has no "Download full report"
+US$2 re-run of the card. **It and "Unlock the full premium report" open the same popout**: the data
+sources popout, titled "Your data for the full report" (`collectDataForPremium()`, which replaced
+`collectExtraDataForPremium`), where any source — Instagram, Google, Facebook, and whatever comes later —
+can be added or replaced by a fresh export, or the reader carries on with what is loaded. New data goes
+through the review, then the payment sheet; nothing new goes straight to the payment sheet. **Only when
+the data actually changed does the payment sheet ask the reader to agree** that the whole analysis is
+re-run and the card may change (`#premium-consent`) — a new evidence summary whose fingerprint
+(`digestFingerprint()`: coverage, counts, and each supplement's counts) differs from the one the card was
+read from. Until that box is ticked no way to pay does anything — the wallet button, the card form, the
+promo code and mock pay are all inert (`.awaits-consent`, `consentMissing()`). With no evidence summary
+on the device and no export loaded, the popout's Continue says what is needed instead of doing nothing. A free report has no "Download full report"
 either: there is nothing beyond the card, which has its own download. In the left column of a full
 report the card likewise fills its box. **Part 05** is a heading over two boxes of their own, Evidence
 and method and then the roast, and does not fold. On the card, each MBTI letter carries its strength in

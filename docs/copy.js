@@ -489,8 +489,9 @@
     premiumRefreshConsent: 'I am happy for my full analysis to be re-run with the new data, and understand ' +
       'the results on my Psyche Card may change.',
     freeAddData: 'Add / change data & re-run analysis',
-    freeAddDataNeedsInstagram: 'Your Instagram export is no longer on this device. Start again from the home page ' +
-      'with your export, and you can add Google or Facebook and unlock the full report from there.',
+    premiumSourcesTitle: 'Your data for the full report',
+    premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
+      'data makes a fuller report. Or carry on with what is already loaded.',
     freeAddDataNote: 'Adding data comes with the full premium report (US$5): add your sources first, then ' +
       'everything — your Psyche Card and the full report — is written from all of it.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',

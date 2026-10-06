@@ -156,13 +156,13 @@ async function loadSource(page, source, buffer, name) {
   await continueFromDataSources(page);
 }
 
-// Pressing the unlock button now opens the Google/Facebook offer FIRST, and
-// the payment sheet only after it — data, then review, then money. Every
-// unlock in this suite that is not specifically about that offer skips
-// straight past it, which is also what the ordinary reader does.
+// Pressing the unlock button opens the data sources popout FIRST, and the
+// payment sheet only after it — data, then review, then money. Every unlock in
+// this suite that is not specifically about that step carries on with what is
+// already loaded, which is also what the ordinary reader does.
 async function skipPremiumDataOffer(page) {
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
-  await page.click('#supplement-skip');
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 20000 });
+  await page.click('#datasources-continue');
 }
 
 // The whole opening move of an unlock: press the button, skip the data offer,
@@ -660,10 +660,9 @@ try {
       const unlock = payPage.locator('.premium-unlock').first();
       await unlock.scrollIntoViewIfNeeded();
       await unlock.click();
-      // No skipPremiumDataOffer here, deliberately. The seeded digest already
-      // carries Google, and collectExtraDataForPremium() short-circuits the
-      // offer when it does — so waiting for that dialog waits for something
-      // that never opens, which is what hung the first version of this block.
+      // The data sources popout opens first on every unlock now; carrying on
+      // with what is loaded leads to the payment sheet.
+      await skipPremiumDataOffer(payPage);
       await payPage.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
       // Mock mode's stand-in for the wallet sheet appears only once a real
       // PaymentIntent has come back, so its arrival is the proof that the
@@ -8313,17 +8312,19 @@ try {
 
   // Unlock premium first, with the promo code — mock mode's cash-free path,
   // used elsewhere in this suite — so the rerun below has a real paid unlock
-  // to carry (or not carry) forward. Google is already in this session's
-  // digest (carried forward across the Instagram replacement above), so
-  // collectExtraDataForPremium() correctly skips the data offer this time —
-  // see its own short-circuit on an existing current.google/.facebook — and
-  // goes straight to the payment sheet. openUnlockPayment always expects the
-  // offer, so it is not used here.
+  // to carry (or not carry) forward. The data sources popout opens first on
+  // every unlock, showing Google already loaded; carrying on with it changes
+  // nothing, so the payment sheet follows with no consent to give.
   await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
   await page.locator('.premium-unlock').first().click();
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+  check('the unlock\'s data sources popout shows Google as already loaded',
+    await page.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
+      .classList.contains('is-added')));
+  await page.click('#datasources-continue');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
-  check('the data offer is skipped outright once Google is already in the digest',
-    !(await page.evaluate(() => document.querySelector('#supplement-dialog').open)));
+  check('and with nothing changed, no consent is asked for',
+    !(await page.locator('#premium-consent').isVisible()));
   await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
   await page.waitForFunction(() => {
@@ -8445,15 +8446,24 @@ try {
   // here exactly as a reader would.
   await page.locator('.premium-unlock').first().scrollIntoViewIfNeeded();
   await page.locator('.premium-unlock').first().click();
-  await page.waitForSelector('#supplement-dialog[open]', { timeout: 20000 });
-  check('the unlock button opens the data offer before asking for any money',
-    (await page.locator('#supplement-dialog').isVisible()) &&
+  await page.waitForSelector('#datasources-dialog[open]', { timeout: 20000 });
+  check('the unlock button opens the data sources popout before asking for any money',
+    (await page.locator('#datasources-dialog').isVisible()) &&
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
-  check('Skip is offered here, unlike the forced re-run offer',
-    await page.locator('#supplement-skip').isVisible());
+  check('it lists every source, Facebook included, so more can be added before paying',
+    ['instagram', 'google', 'facebook'].every(Boolean) &&
+    (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
+    (await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible()) &&
+    (await page.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
 
-  await addSupplement(page, 'google', buildTakeoutZip(), 'takeout.zip');
-  await page.click('#supplement-continue');
+  const [googleChooser] = await Promise.all([
+    page.waitForEvent('filechooser', { timeout: 15000 }),
+    page.click('#datasources-dialog .mode-option[data-datasource="google"]'),
+  ]);
+  await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
+  await page.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
+    .classList.contains('is-added'), null, { timeout: 30000 });
+  await page.click('#datasources-continue');
   // Adding genuinely new data goes through the review, exactly as the first
   // upload does. Skipping does not, because skipping sends nothing new — but
   // Chrome history and Gemini prompts must never reach a model unreviewed
@@ -10817,19 +10827,20 @@ try {
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       await sp.locator('#free-add-data').scrollIntoViewIfNeeded();
       await sp.click('#free-add-data');
-      await sp.waitForFunction(() => document.querySelector('#supplement-dialog').open || document.querySelector('#premium-dialog').open,
-        null, { timeout: 15000 });
-      const addFlow = await sp.evaluate(() => ({
-        offer: document.querySelector('#supplement-dialog').open,
-        title: document.querySelector('#premium-dialog').open ? document.querySelector('#premium-dialog-title').textContent : '',
-      }));
-      check('structured: a free report\'s "Add / change data" opens the full report\'s unlock, not a US$2 re-run',
-        (addFlow.offer || /premium/i.test(addFlow.title)) && !/Psyche Card again/i.test(addFlow.title), JSON.stringify(addFlow));
-      // Back at the offer abandons the unlock: nothing charged, nothing open.
-      if (addFlow.offer) await sp.click('#supplement-back');
-      else await sp.click('#premium-cancel');
+      await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('structured: a free report\'s "Add / change data" opens the same data sources popout the unlock does',
+        (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
+      // Changing nothing carries on to the US$5 payment, with no consent box:
+      // nothing about the card is about to change.
+      await sp.click('#datasources-continue');
+      await sp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+      check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',
+        !/Psyche Card again/i.test(await sp.locator('#premium-dialog-title').innerText()) &&
+        !(await sp.locator('#premium-consent').isVisible()) &&
+        !(await sp.evaluate(() => document.querySelector('#premium-dialog').classList.contains('awaits-consent'))));
+      await sp.click('#premium-cancel');
       await sp.waitForTimeout(400);
-      check('structured: and Back leaves the report as it was, with no payment sheet',
+      check('structured: and Cancel leaves the report as it was',
         await sp.evaluate(() => !document.querySelector('#supplement-dialog').open && !document.querySelector('#premium-dialog').open));
       // Pointing at a part of the card pops its explanation out on the right,
       // level with it — the ring first, as the panel suggests.
