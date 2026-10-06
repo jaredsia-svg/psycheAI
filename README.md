@@ -3425,6 +3425,17 @@ keep", "Evidence behind every finding" and "A bonus roast" on a laptop, and drop
 page it is a sixth part card (`PART_ORDER` ends in `appendix`) and one "05 Appendix" entry in the nav in
 place of the two it replaced; in the PDF it follows on after Part 4 where there is room, with the roast
 alone on the last page under a "05 Appendix" label, and the contents list names it like any other part.
+**The PDF's roast** (`renderStructuredRoast()`) puts the caveat in a tinted note rather than fineprint,
+then each half in a card of its own under a small tracked label and a faint open quote in its corner:
+the least charitable read edged in pink, the honest friend's advice edged in green. The classic PDF's
+roast is unchanged.
+
+**The PDF's MBTI opens on a "Your type" panel** (`Report.prototype.mbtiType`) rather than the four
+letters at display size over the section: the type at 26pt with its nickname and confidence on the
+left, and on the right each pair as a short spectrum — the picked pole's name in bold purple, the other
+grey, the marker leaning that way by how firmly it was picked (`MBTI_LEAN`: slight, moderate, clear).
+Each letter's card below carries its strength in a pill (filled for "clear") and its "in your week"
+line as a purple italic quote with a bar down its side.
 
 **No heading is left at the foot of a page.** Every part opens a page of its own, and each section's
 title is drawn together with its first block inside `Report.keep()`: the block is drawn once, and if it

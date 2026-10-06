@@ -882,7 +882,8 @@
    * the tempering lives inside `why` now — kept so a report saved while it was
    * separate still lays out with all its text.
    */
-  Report.prototype.axis = function (letter, pole, strength, why, inPractice, counterEvidence) {
+  Report.prototype.axis = function (letter, pole, strength, why, inPractice, counterEvidence, options) {
+    const structured = Boolean(options && options.structured);
     const nameStyle = { size: 11.5, bold: true, color: INK };
     const whyStyle = { size: 9.8, color: INK, leading: 14 };
     this.need(76);
@@ -895,7 +896,14 @@
 
     const textLeft = this.x + 40;
     const textWidth = this.w - 40;
-    if (strength) {
+    if (strength && structured) {
+      // How firmly, in a pill: the firmer the letter, the stronger the fill.
+      const label = toWinAnsi(String(strength).toLowerCase());
+      const width = measure(label, 8, true) + 16;
+      const firm = String(strength).toLowerCase() === 'clear';
+      this.doc.roundRect(this.x + this.w - width, top, width, 15, 7.5, firm ? ACCENT : mix(ACCENT, WHITE, 0.85));
+      this.doc.draw(label, this.x + this.w - width + 8, top + 10.3, { size: 8, bold: true, color: firm ? WHITE : ACCENT });
+    } else if (strength) {
       const label = toWinAnsi(strength);
       const width = measure(label, 8, true, 0.8);
       this.doc.draw(label, this.x + this.w - width, top + 9,
@@ -917,11 +925,77 @@
       this.body(counterEvidence,
         { x: textLeft, width: textWidth, size: whyStyle.size, leading: whyStyle.leading });
     }
-    if (inPractice) {
+    if (inPractice && structured) {
+      // What the letter looks like in their week, set off as a quote: a bar
+      // down its side, a size up from an aside and in the letter's colour.
+      this.space(6);
+      const start = this.doc.y;
+      const page = this.doc.pageNumber;
+      this.body(inPractice, { x: textLeft + 10, width: textWidth - 10, size: 9.4, italic: true, color: ACCENT, leading: 13.4 });
+      if (this.doc.pageNumber === page) this.doc.roundRect(textLeft, start + 1, 2.5, this.doc.y - start - 3, 1.25, mix(ACCENT, WHITE, 0.55));
+    } else if (inPractice) {
       this.space(3);
       this.body(inPractice, { x: textLeft, width: textWidth, size: this.small ? 8.5 : 9.4, color: SOFT, leading: this.small ? 12.2 : 13.4 });
     }
     this.space(3);
+    return this;
+  };
+
+  // The four MBTI pairs in their usual order, the first of each on the left.
+  const MBTI_PAIRS = [['E', 'I'], ['N', 'S'], ['T', 'F'], ['J', 'P']];
+  // How far from the middle a letter's marker sits, by how firmly it was picked.
+  const MBTI_LEAN = { slight: 0.28, moderate: 0.6, clear: 0.9 };
+
+  /**
+   * The structured report's type, at a glance: the four letters at a reading
+   * size with the type's nickname and confidence on the left, and on the
+   * right each pair as a short spectrum, its marker leaning to the letter
+   * picked and as far as it was picked — the letters themselves left to the
+   * cards below rather than set at display size over the section.
+   */
+  Report.prototype.mbtiType = function (mbti, letters) {
+    const doc = this.doc;
+    const picked = {};
+    for (const l of letters || []) if (l && l.choice) picked[l.choice] = l;
+    const rows = MBTI_PAIRS.map(pair => ({ pair, letter: picked[pair[0]] || picked[pair[1]] })).filter(row => row.letter);
+    this.need(110);
+    this.boxed(() => {
+      const top = doc.y;
+      const L = this.x;
+      const leftW = 132;
+      doc.draw(toWinAnsi('YOUR TYPE'), L, top + 8, { size: 7.2, bold: true, color: SOFT, tracking: 1.3 });
+      doc.draw(toWinAnsi(String(mbti.type || '')), L, top + 36, { size: 26, bold: true, color: ACCENT, tracking: 1.5 });
+      let y = top + 52;
+      if (mbti.nickname) { doc.draw(toWinAnsi(mbti.nickname), L, y, { size: 10, bold: true, color: INK }); y += 14; }
+      if (mbti.confidence) doc.draw(toWinAnsi(TEXT.mbtiConfidence + mbti.confidence), L, y, { size: 8.4, color: SOFT });
+      // The spectra, beside it.
+      const R = L + leftW + 14;
+      const RW = this.w - leftW - 14;
+      const nameW = 64;
+      const trackL = R + nameW + 8;
+      const trackW = RW - 2 * (nameW + 8);
+      const rowH = 20;
+      const first = top + 6 + Math.max(0, (72 - rows.length * rowH) / 2);
+      rows.forEach(({ pair, letter }, i) => {
+        const cy = first + i * rowH + 8;
+        const leftName = toWinAnsi((Copy.MBTI_POLES[pair[0]] || {}).name || pair[0]);
+        const rightName = toWinAnsi((Copy.MBTI_POLES[pair[1]] || {}).name || pair[1]);
+        const onLeft = letter.choice === pair[0];
+        const style = chosen => ({ size: 8.2, bold: chosen, color: chosen ? ACCENT : SOFT });
+        doc.draw(leftName, trackL - 8 - measure(leftName, 8.2, onLeft), cy + 3, style(onLeft));
+        doc.draw(rightName, trackL + trackW + 8, cy + 3, style(!onLeft));
+        doc.roundRect(trackL, cy - 2.5, trackW, 5, 2.5, mix(LINE, WHITE, 0.2));
+        const mid = trackL + trackW / 2;
+        doc.rect(mid - 0.4, cy - 4.5, 0.8, 9, mix(SOFT, WHITE, 0.45));
+        const lean = MBTI_LEAN[String(letter.strength || '').toLowerCase()] || 0.6;
+        const at = mid + (onLeft ? -1 : 1) * lean * trackW / 2;
+        doc.roundRect(Math.min(mid, at), cy - 2.5, Math.abs(at - mid), 5, 2.5, mix(ACCENT, WHITE, 0.55));
+        doc.circle(at, cy, 5.2, WHITE);
+        doc.circle(at, cy, 4, ACCENT);
+      });
+      // As tall as the taller of the two columns, and no taller.
+      doc.y = Math.max(y + 4, first + rows.length * rowH - 2);
+    }, { fill: WASH, pad: 14 });
     return this;
   };
 
@@ -1484,7 +1558,8 @@
   // PAID_SECTIONS: it is read straight off the report object, not off
   // `meta.unlocked`, which is exactly the shortcut the comment above
   // PAID_SECTIONS warns against for anything paid.
-  function renderRoast(out, roast) {
+  function renderRoast(out, roast, options) {
+    if (options && options.structured) return renderStructuredRoast(out, roast);
     out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
     out.fineprint(TEXT.bonusCaveat);
     if (roast.harsh) {
@@ -1495,6 +1570,27 @@
       out.h3(TEXT.bonusAdvice);
       out.body(roast.advice, { size: 10, leading: 15 });
     }
+  }
+
+  /**
+   * The structured report's roast: the caveat as a tinted note rather than
+   * fineprint, then each half in a card of its own — the unkind read edged in
+   * pink under a large open quote, the honest friend's advice edged in green.
+   */
+  function renderStructuredRoast(out, roast) {
+    const doc = out.doc;
+    out.sectionTitle(TEXT.bonus, TEXT.bonusSub);
+    out.note(TEXT.bonusCaveat);
+    const half = (label, text, color) => out.boxed(() => {
+      const top = doc.y;
+      // A large open quote in the card's corner, faint, as the half's mark.
+      doc.draw(toWinAnsi('“'), out.x + out.w - 26, top + 34, { size: 46, bold: true, color: mix(color, WHITE, 0.78) });
+      doc.draw(toWinAnsi(label.toUpperCase()), out.x, top + 9, { size: 7.8, bold: true, color, tracking: 1.2 });
+      doc.y = top + 20;
+      out.body(text, { size: 10.2, leading: 15.6, width: out.w - 30 });
+    }, { bar: color, pad: 16, padTop: 14, gap: 12 });
+    if (roast.harsh) half(TEXT.bonusHarsh, roast.harsh, ACCENT_2);
+    if (roast.advice) half(TEXT.bonusAdvice, roast.advice, GOOD);
   }
 
   // ---------- the report ----------
@@ -2621,14 +2717,11 @@
     if (mbti) {
       const axes = (mbti.letters || []).filter(Boolean);
       const axisCard = letter => out.boxed(() =>
-        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice),
+        out.axis(letter.choice, Copy.axisLabel(letter.choice, letter.axis), letter.strength, letter.why, letter.inPractice, null, { structured: true }),
       { padTop: 6 });
       out.keep(() => {
         out.sectionTitle('MBTI', def('mbti'));
-        if (mbti.type) {
-          doc.draw(toWinAnsi(mbti.type), MARGIN, doc.y + 28, { size: 32, bold: true, color: ACCENT, tracking: 3 });
-          doc.y += 42;
-        }
+        if (mbti.type) out.mbtiType(mbti, axes);
         if (axes[0]) axisCard(axes[0]);
       });
       axes.slice(1).forEach(letter => out.keep(() => axisCard(letter)));
@@ -2907,7 +3000,7 @@
     if (source.bonus) {
       out.page();
       out.eyebrow(numeral('appendix') + '  ' + S.parts.appendix.title, ACCENT_2);
-      renderRoast(out, source.bonus);
+      renderRoast(out, source.bonus, { structured: true });
     }
 
     storyContents(doc, out, cardBottom);
