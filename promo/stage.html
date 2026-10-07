@@ -362,8 +362,11 @@ function words(el, t, from, to) {
   popAt(el, t, Array.from({ length: n }, (_, i) => from + (to - from) * i / Math.max(1, n)));
 }
 // When each on-screen word should appear: matched to the spoken words (scene.words, from the voice
-// itself) by longest common subsequence, then a beat early so the pop lands as the word is heard.
+// itself) by longest common subsequence, then early enough to be read just before it is heard.
 // "PsycheAI" on screen is "psyche ai" spoken. Unmatched words sit evenly between matched neighbours.
+// Text is fully readable READ_AHEAD before the voice says it. A word's pop reaches full opacity
+// POP_READABLE after it starts (opacity is k * 2.5 over a 0.28 s pop), so it starts that much earlier again.
+const READ_AHEAD = 0.12, POP_READABLE = 0.112, EARLY = READ_AHEAD + POP_READABLE;
 const timesCache = new Map();
 function spokenTimes(el, scene) {
   if (timesCache.has(el)) return timesCache.get(el);
@@ -386,13 +389,14 @@ function spokenTimes(el, scene) {
     if (before !== undefined) return at[before] + 0.2 * (i - before);
     if (after !== undefined) return Math.max(scene.vo, at[after] - 0.2 * (after - i));
     return scene.vo + 0.2 * i;
-  }).map(v => v - 0.08);
+  }).map(v => v - EARLY);
   timesCache.set(el, out);
   return out;
 }
 function scene(i, t) {
   const s = S[i]; const el = $('s' + i);
-  const kIn = prog(t, s.start - 0.04, s.start + 0.22), kOut = prog(t, s.end - 0.18, s.end + 0.04);
+  // A quick cross-fade on the cut, so a scene is fully in before its first word is due.
+  const kIn = prog(t, s.start - 0.1, s.start + 0.06), kOut = prog(t, s.end - 0.06, s.end + 0.12);
   const o = Math.min(kIn, 1 - kOut);
   el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
   el.style.transform = 'scale(' + (0.94 + 0.06 * ease(kIn) + 0.1 * kOut * kOut) + ')';
@@ -485,7 +489,7 @@ function render(t) {
     // Each card as its name is said.
     const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
     [['f1', said('instagram', M[0] + 1.45), 50, -6], ['f2', said('google', M[1]), 390, 3], ['f3', said('facebook', M[2] + 0.2), 730, 6]].forEach(([id, when, x, rot], i) => {
-      const pop = back(prog(t, when - 0.1, when + 0.3)), el = $(id);
+      const pop = back(prog(t, when - 0.1 - EARLY, when + 0.3 - EARLY)), el = $(id);
       el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (1230 + (800 - 1230) * suck) + 'px';
       el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
       el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) + ') rotate(' + rot * (1 - suck) + 'deg)';
@@ -502,8 +506,8 @@ function render(t) {
     $('cardWrap').style.opacity = prog(c.local, 0, 0.25);
     hlEls.forEach((el, i) => {
       const at = c.s.marks[i + 1], next = i + 1 < HL.length ? c.s.marks[i + 2] : c.s.end - 0.15;
-      const o = Math.min(prog(t, at - 0.08, at + 0.12), 1 - prog(t, next - 0.05, next + 0.1));
-      el.style.opacity = o; el.style.transform = 'scale(' + (0.9 + 0.1 * back(prog(t, at - 0.08, at + 0.25))) + ')';
+      const o = Math.min(prog(t, at - 0.14 - READ_AHEAD, at - READ_AHEAD), 1 - prog(t, next - 0.14 - READ_AHEAD, next - READ_AHEAD));
+      el.style.opacity = o; el.style.transform = 'scale(' + (0.9 + 0.1 * back(prog(t, at - 0.14 - READ_AHEAD, at + 0.2 - READ_AHEAD))) + ')';
     });
   }
   c = scene(6, t);
@@ -543,7 +547,7 @@ function render(t) {
     $('tick').style.strokeDasharray = 80; $('tick').style.strokeDashoffset = 80 * (1 - ease(prog(c.local, 0.3, 0.7)));
     $('shield').style.transform = 'scale(' + (0.7 + 0.3 * back(prog(c.local, 0, 0.45))) + ')';
     const lineAt = [c.s.marks[0], c.s.marks[1] - 0.35, c.s.marks[2]];
-    ['p1', 'p2', 'p3'].forEach((id, i) => { const k = back(prog(t, lineAt[i] - 0.15, lineAt[i] + 0.3));
+    ['p1', 'p2', 'p3'].forEach((id, i) => { const k = back(prog(t, lineAt[i] - 0.15 - EARLY, lineAt[i] + 0.3 - EARLY));
       $(id).style.opacity = clamp(k * 2); $(id).style.transform = 'translateX(' + (1 - Math.min(1, k)) * -80 + 'px)'; });
     const codeIn = ease(prog(t, lineAt[1] + 0.3, lineAt[1] + 0.7));
     $('code').style.opacity = codeIn; $('code').style.transform = 'translateY(' + (1 - codeIn) * 40 + 'px)';
@@ -557,7 +561,7 @@ function render(t) {
     $('mark2').style.transform = 'scale(' + back(prog(c.local, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + c.local * 50 + 'deg)';
     $('endCard').style.transform = 'translateY(' + (1 - ease(prog(c.local, 0.15, 0.6))) * 260 + 'px) rotate(' + Math.sin(c.local * 2.2) * 5 + 'deg) scale(' + (1 + pulse * 0.03) + ')';
     $('endCard').style.opacity = prog(c.local, 0.15, 0.4);
-    const p = prog(t, c.s.marks[1] - 0.1, c.s.marks[1] + 0.25);
+    const p = prog(t, c.s.marks[1] - 0.22 - READ_AHEAD, c.s.marks[1] - READ_AHEAD);
     $('cta').style.opacity = p; $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * back(p) + pulse * 0.06 * p) + ')';
   }
 }

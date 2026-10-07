@@ -72,7 +72,8 @@ def words(text):
     text = text.replace('{B}', 'psyche ai').replace('analysed', 'analyzed').lower()
     # The recogniser writes a spoken address as one: "psyche ai dot app" comes back "psycheai.app".
     text = re.sub(r'(?<=[a-z])\.(?=[a-z])', ' dot ', text).replace('psycheai', 'psyche ai')
-    return re.findall(r"[a-z']+", text)
+    # A spelled-out ending, "dot I O", is heard as ".io".
+    return [part for w in re.findall(r"[a-z']+", text) for part in (['i', 'o'] if w == 'io' else [w])]
 
 def pauses(a, phrases):
     """Where each phrase after the first starts: the silence nearest where its share of the script falls."""

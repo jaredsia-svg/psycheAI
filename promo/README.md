@@ -11,7 +11,7 @@ It makes two versions from the same voiceover, set in `config.json`:
 
 | Version | Ends with | Files |
 | --- | --- | --- |
-| `reel`, for Instagram | "Your first Psyche Card is free! Link in bio." | `out/PsycheAI-reel.mp4` (1080×1920, post this), `out/PsycheAI-reel-music-only.mp4`, `out/PsycheAI-reel-cover.jpg` |
+| `reel`, for Instagram | "Your first Psyche Card is free! Try it at PsycheAI dot io." (button: psycheai.io) | `out/PsycheAI-reel.mp4` (1080×1920, post this), `out/PsycheAI-reel-music-only.mp4`, `out/PsycheAI-reel-cover.jpg` |
 | `site`, for the front page | "Your first Psyche Card is free! Try it below." | `out/PsycheAI-site.mp4` (720 wide, about 4 MB) and its poster, **also copied into `docs/media/`**, which is what the front page plays |
 
 `npm run promo -- site` builds only the named version (the voiceover is always remade).
@@ -27,7 +27,7 @@ Each version in `promo/config.json` has three settings:
 
 ```json
 {
-  "reel": { "button": "Link in bio ↗", "spoken": "Link in bio.", "theme": "light" },
+  "reel": { "button": "psycheai.io ↗", "spoken": "Try it at {B} dot I O.", "theme": "light" },
   "site": { "button": "Try it below ↓", "spoken": "Try it below.", "theme": "light" }
 }
 ```
@@ -35,8 +35,8 @@ Each version in `promo/config.json` has three settings:
 - `button` is the text on the last screen's button, arrow included. A long one shrinks to fit.
 - `spoken` is what the voice says after "Your first Psyche Card is free!". Write `{B}` wherever it
   should say **PsycheAI**: that is the only way it is pronounced right (see below). Spell an address
-  the way it is said: for the site's address, `"button": "psycheai.app ↗"` and
-  `"spoken": "Try it at {B} dot app."`. A longer ending makes the video a little longer.
+  the way it is said, as the reel's `"Try it at {B} dot I O."` does. A longer ending makes the
+  video a little longer. "Link in bio" is `"button": "Link in bio ↗"`, `"spoken": "Link in bio."`.
 - `theme` is `"light"` (pastel, plum text) or `"dark"` (deep purple, white text).
 
 A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
