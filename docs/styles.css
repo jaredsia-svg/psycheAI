@@ -3315,9 +3315,32 @@ details.more[open] > summary::after { content: ' ▴'; }
   border: 1px solid var(--line); background: var(--bg-alt);
 }
 .provenance-item { display: flex; align-items: center; gap: .5rem; font-size: .78rem; color: var(--ink-soft); }
-.provenance-item b { color: var(--ink); font-weight: 600; }
+.provenance-item b { color: var(--ink); font-weight: 600; white-space: nowrap; }
+/* A free report's foot is one line: Delete everything on the left, who wrote
+   the card on the right, the two boxes the same height. Wraps to two lines
+   only when the screen is too narrow for both. */
+#view-profile.profile-free .profile-foot {
+  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: space-between; gap: .7rem; margin-top: 1.4rem;
+}
+#view-profile.profile-free .profile-foot .cta-row { margin: 0; align-items: stretch; }
+#view-profile.profile-free .profile-foot .cta-row .btn { min-height: 0; padding-block: .45rem; }
+#view-profile.profile-free .profile-foot .provenance { margin: 0; }
+#view-profile.profile-free .profile-foot .provenance-box { align-content: center; }
+/* On a phone there is no room for both at full width, so the delete button
+   becomes its red bin alone — its name still read out, and still asked about
+   before anything goes — and the stamp takes the rest of the line. */
+@media (max-width: 559px) {
+  #view-profile.profile-free .profile-foot { flex-wrap: nowrap; }
+  #view-profile.profile-free .profile-foot .cta-row { flex: none; }
+  #view-profile.profile-free .profile-foot .cta-row .btn { padding-inline: .8rem; }
+  #view-profile.profile-free .profile-foot .cta-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  #view-profile.profile-free .profile-foot .provenance { flex: 1 1 auto; min-width: 0; }
+  #view-profile.profile-free .profile-foot .provenance-box { width: 100%; }
+}
 .provenance-icon {
-  display: grid; place-items: center; width: 1.25rem; height: 1.25rem; border-radius: 999px; font-size: .7rem; color: #fff;
+  display: grid; place-items: center; flex: none; width: 1.25rem; height: 1.25rem; border-radius: 999px; font-size: .7rem; color: #fff;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
 .profile-top > .section-card { margin-bottom: 0; }
