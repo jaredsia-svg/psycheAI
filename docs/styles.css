@@ -2817,12 +2817,10 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-soft) 40%, var(--bg-alt)));
 }
 .card-features strong { display: block; font-size: .9rem; line-height: 1.3; }
-.card-features small { display: block; font-size: .78rem; color: var(--ink-soft); line-height: 1.35; margin-top: .1rem; }
 @media (max-width: 479px) {
-  .card-features li { flex-direction: column; align-items: flex-start; gap: .4rem; padding: .7rem .6rem; }
+  .card-features li { align-items: center; gap: .5rem; padding: .6rem .55rem; }
   .card-feature-icon { width: 2rem; height: 2rem; font-size: .95rem; border-radius: 10px; }
   .card-features strong { font-size: .84rem; }
-  .card-features small { font-size: .74rem; }
 }
 
 /* The card itself: tilted, lifted, and a tap away from full screen. */

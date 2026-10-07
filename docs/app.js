@@ -1700,9 +1700,10 @@
         '<p class="tier-badges"><span class="tier-badge tier-badge-free">' + esc(I.freeBadge) + '</span></p>' +
         '<h3 class="tier-title">' + esc(I.freeTitle) + '</h3>' +
         '<p class="tier-blurb">' + esc(I.freeBlurb) + '</p>' +
-        '<ul class="card-features">' + I.cardItems.map(([icon, title, line]) =>
+        // The name of each part of the card, and nothing under it.
+        '<ul class="card-features">' + I.cardItems.map(([icon, title]) =>
           '<li><span class="card-feature-icon" aria-hidden="true">' + esc(icon) + '</span>' +
-          '<span><strong>' + esc(title) + '</strong><small>' + esc(line) + '</small></span></li>').join('') + '</ul>' +
+          '<span><strong>' + esc(title) + '</strong></span></li>').join('') + '</ul>' +
       '</div>' +
       // The card itself, small, and a tap away from full screen.
       '<button type="button" class="insight-preview" id="insight-card-open" aria-label="' + esc(I.previewOpen) + '">' +
