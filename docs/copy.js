@@ -390,6 +390,12 @@
     // it, which is the distinction the score itself was getting wrong.
     confidenceBasedOn: 'Read from',
     premiumBadge: 'Premium',
+    // The welcome hero's video: its accessible name, and the one button on it,
+    // which says what tapping it will do.
+    heroVideoLabel: 'PsycheAI in 45 seconds: what it reads, your Psyche Card and the full report',
+    heroVideoSound: 'Tap for sound',
+    heroVideoMute: 'Mute',
+    heroVideoPlay: 'Play with sound',
     // The roast's counterpart to that badge. It marks the section the same way
     // — a word in the heading saying what kind of thing this is — but says
     // "included" rather than "paid for", which is the distinction a reader

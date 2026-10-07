@@ -2440,6 +2440,59 @@
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
+  initHeroVideo();
+
+  /**
+   * The welcome hero's video. It loops silently while it is on screen and
+   * pauses when it is not. Its one button turns the sound on, which also starts
+   * it again from the top so the voice is heard from its first line, and plays
+   * it once through; at the end it falls back to silent looping. For a reader
+   * who asked for less motion it never starts on its own: the button plays it.
+   */
+  function initHeroVideo() {
+    const video = $('#hero-video');
+    const button = $('#hero-video-sound');
+    if (!video || !button) return;
+    const still = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    let onScreen = false;
+    video.setAttribute('aria-label', TEXT.heroVideoLabel);
+    const label = () => {
+      const [icon, text] = !video.muted ? ['🔊', TEXT.heroVideoMute]
+        : still() && video.paused ? ['▶', TEXT.heroVideoPlay] : ['🔇', TEXT.heroVideoSound];
+      button.querySelector('.hero-video-icon').textContent = icon;
+      button.querySelector('.hero-video-text').textContent = text;
+    };
+    const silent = () => {
+      video.muted = true;
+      video.loop = true;
+      if (onScreen && !still()) video.play().catch(() => {});
+      else video.pause();
+      label();
+    };
+    const toggle = () => {
+      if (video.muted || video.paused) {
+        video.muted = false;
+        video.loop = false;
+        video.currentTime = 0;
+        video.play().catch(silent);
+      } else {
+        silent();
+      }
+      label();
+    };
+    button.addEventListener('click', toggle);
+    video.addEventListener('click', toggle);
+    video.addEventListener('ended', () => { video.currentTime = 0; silent(); });
+    ['play', 'pause', 'volumechange'].forEach(name => video.addEventListener(name, label));
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => {
+        onScreen = entries[entries.length - 1].isIntersecting;
+        if (!onScreen) video.pause();
+        else if (video.muted && !still()) video.play().catch(() => {});
+      }, { threshold: 0.4 }).observe(video);
+    }
+    label();
+  }
   // Drawn with the insights block, after this runs, so the clicks are delegated.
   document.addEventListener('click', event => {
     const sample = event.target.closest('#insight-sample');

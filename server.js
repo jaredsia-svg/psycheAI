@@ -107,7 +107,10 @@ const TYPES = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
   '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
 };
 
 // ---------- helpers ----------
@@ -832,7 +835,7 @@ async function handleCompatibility(request, response) {
   });
 }
 
-function serveStatic(requestedPath, response) {
+function serveStatic(requestedPath, request, response) {
   const target = path.join(ROOT, requestedPath === '/' ? 'index.html' : requestedPath);
 
   // Never serve anything outside docs/, whatever the traversal attempt.
@@ -842,16 +845,60 @@ function serveStatic(requestedPath, response) {
     return;
   }
 
+  const type = TYPES[path.extname(resolved).toLowerCase()] || 'application/octet-stream';
+  if (type.startsWith('video/')) {
+    serveMedia(resolved, type, request, response);
+    return;
+  }
   fs.readFile(resolved, (error, data) => {
     if (error) {
       response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
       return;
     }
     response.writeHead(200, {
-      'Content-Type': TYPES[path.extname(resolved).toLowerCase()] || 'application/octet-stream',
+      'Content-Type': type,
       'Cache-Control': 'no-cache',
     });
     response.end(data);
+  });
+}
+
+// A video is streamed, never read whole, and answers byte ranges: Safari and
+// every iPhone browser ask for "bytes=0-1" first and will not play a video
+// whose server does not reply 206. The ETag lets a returning visitor's browser
+// keep its copy until the file is rebuilt, rather than downloading megabytes
+// again on every visit under no-cache.
+function serveMedia(file, type, request, response) {
+  fs.stat(file, (error, stat) => {
+    if (error || !stat.isFile()) {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
+      return;
+    }
+    const etag = '"' + stat.size.toString(36) + '-' + Math.floor(stat.mtimeMs).toString(36) + '"';
+    const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache', ETag: etag };
+    if (request.headers['if-none-match'] === etag) {
+      response.writeHead(304, headers).end();
+      return;
+    }
+    const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.range || '');
+    if (!range || (!range[1] && !range[2])) {
+      response.writeHead(200, { ...headers, 'Content-Length': stat.size });
+      if (request.method === 'HEAD') { response.end(); return; }
+      fs.createReadStream(file).on('error', () => response.destroy()).pipe(response);
+      return;
+    }
+    // "bytes=500-" is from 500 to the end; "bytes=-500" is the last 500.
+    let start = range[1] ? Number(range[1]) : Math.max(0, stat.size - Number(range[2]));
+    let end = range[1] && range[2] ? Math.min(Number(range[2]), stat.size - 1) : stat.size - 1;
+    if (start >= stat.size || start > end) {
+      response.writeHead(416, { ...headers, 'Content-Range': 'bytes */' + stat.size }).end();
+      return;
+    }
+    response.writeHead(206, { ...headers, 'Content-Range': 'bytes ' + start + '-' + end + '/' + stat.size,
+      'Content-Length': end - start + 1 });
+    if (request.method === 'HEAD') { response.end(); return; }
+    // A stream error with no listener would take the whole server down.
+    fs.createReadStream(file, { start, end }).on('error', () => response.destroy()).pipe(response);
   });
 }
 
@@ -1116,7 +1163,7 @@ function routeRequest(route, url, request, response) {
     return;
   }
 
-  serveStatic(route, response);
+  serveStatic(route, request, response);
 }
 
 // Node closes an idle keep-alive socket after 5 seconds by default, which is

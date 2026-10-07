@@ -1749,21 +1749,84 @@ try {
       return Math.round(pill.top - actions.bottom) + 'px above, ' +
         Math.round(card.bottom - pill.bottom) + 'px below';
     }));
-  // The hero's warm band closes under the buttons, which are the last thing in
-  // it. The badge used to sit in the space beneath them; with it gone the
-  // buttons' own bottom margin was holding open an empty row, so the threshold
-  // is tight enough to catch that coming back — it was 48px, it is 26 now.
-  check('the warm band closes just under the hero actions, not a screen later',
-    await page.evaluate(() => {
-      const actions = document.querySelector('.hero-actions').getBoundingClientRect();
-      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      return hero.bottom - actions.bottom < 34;
-    }),
-    await page.evaluate(() => {
-      const actions = document.querySelector('.hero-actions').getBoundingClientRect();
-      const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
-      return Math.round(hero.bottom - actions.bottom) + 'px of band below the buttons';
-    }));
+  // The hero's warm band closes under the last thing in it — the buttons, or on
+  // a phone the video under them. The badge used to sit in the space beneath
+  // the buttons; with it gone their own bottom margin was holding open an
+  // empty row, so the threshold is tight enough to catch that coming back — it
+  // was 48px, it is 26 now.
+  const bandBelow = () => page.evaluate(() => {
+    const hero = document.querySelector('#view-welcome .hero').getBoundingClientRect();
+    const last = Math.max(...['.hero-actions', '.hero-video']
+      .map(selector => document.querySelector(selector).getBoundingClientRect().bottom));
+    return Math.round(hero.bottom - last);
+  });
+  check('the warm band closes just under the last thing in the hero, not a screen later',
+    (await bandBelow()) < 34, (await bandBelow()) + 'px of band below it');
+
+  // ---- the hero's video ----
+  //
+  // 9:16, so its size is set by its width: centred under the buttons on a
+  // phone and no taller than most of the screen, beside the headline on a
+  // laptop, and in neither case wider than the page.
+  for (const [label, width, height] of [['phone', 390, 844], ['laptop', 1280, 900]]) {
+    const vp = await browser.newPage({ viewport: { width, height } });
+    try {
+      await vp.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await vp.waitForTimeout(300);
+      const box = await vp.evaluate(() => {
+        const r = el => document.querySelector(el).getBoundingClientRect();
+        const v = r('.hero-video');
+        return { left: v.left, right: v.right, top: v.top, bottom: v.bottom, width: v.width, height: v.height,
+          actionsBottom: r('.hero-actions').bottom, h1Right: r('#view-welcome h1').right, h1Top: r('#view-welcome h1').top,
+          viewport: innerWidth, scroll: document.documentElement.scrollWidth };
+      });
+      check('the hero video keeps its 9:16 shape on a ' + label,
+        Math.abs(box.height / box.width - 16 / 9) < 0.02, Math.round(box.width) + '×' + Math.round(box.height));
+      check('and widens the page by nothing on a ' + label, box.scroll <= box.viewport, box.scroll + ' > ' + box.viewport);
+      if (label === 'phone') {
+        check('on a phone it sits centred under the buttons, no taller than three quarters of the screen',
+          box.top >= box.actionsBottom && Math.abs((box.left + box.right) / 2 - width / 2) < 2 &&
+          box.height <= height * 0.75, JSON.stringify(box));
+      } else {
+        check('on a laptop it sits beside the headline, phone-sized',
+          box.left >= box.h1Right && box.top < box.actionsBottom && box.width <= 260, JSON.stringify(box));
+      }
+    } finally {
+      await vp.close();
+    }
+  }
+  {
+    const video = await page.evaluate(async () => {
+      const v = document.querySelector('#hero-video');
+      const status = async url => (await fetch(url, { method: 'HEAD' })).status;
+      return { muted: v.muted, inline: v.playsInline, preload: v.getAttribute('preload'),
+        name: v.getAttribute('aria-label'), want: window.PsycheCopy.TEXT.heroVideoLabel,
+        button: document.querySelector('#hero-video-sound').textContent.trim(),
+        sound: window.PsycheCopy.TEXT.heroVideoSound,
+        poster: await status(v.getAttribute('poster')), source: await status(v.querySelector('source').getAttribute('src')) };
+    });
+    check('the video starts muted and inline, and downloads nothing until it is on screen',
+      video.muted && video.inline && video.preload === 'none', JSON.stringify(video));
+    check('it is named for a screen reader, and its one button offers sound',
+      video.name === video.want && video.button.endsWith(video.sound), JSON.stringify(video));
+    check('its poster and the video itself are both there to be served',
+      video.poster === 200 && video.source === 200, JSON.stringify(video));
+  }
+  // A reader who asked for less motion is never shown a moving picture
+  // uninvited: the button says it will play rather than offering sound.
+  {
+    const still = await browser.newPage({ viewport: { width: 1100, height: 900 }, reducedMotion: 'reduce' });
+    try {
+      await still.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await still.waitForTimeout(500);
+      const state = await still.evaluate(() => ({ paused: document.querySelector('#hero-video').paused,
+        button: document.querySelector('#hero-video-sound').textContent.trim(), want: window.PsycheCopy.TEXT.heroVideoPlay }));
+      check('with reduced motion the video waits to be played, and the button says so',
+        state.paused && state.button.endsWith(state.want), JSON.stringify(state));
+    } finally {
+      await still.close();
+    }
+  }
   // ---- the heading outline ----
   //
   // Somebody navigating by heading meets these in order and nothing else. A
@@ -9084,9 +9147,12 @@ try {
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   // Reads only. readFileSync is the one other call allowed, and only because
   // the server loads docs/digest.js once at boot to derive the free digest
-  // itself — a read of its own code, not of anybody's data.
+  // itself — a read of its own code, not of anybody's data. stat and
+  // createReadStream are the front page video's: it is streamed in ranges
+  // rather than read whole, still a read of the site's own files.
+  const readOnly = ['fs.readFile', 'fs.readFileSync', 'fs.stat', 'fs.createReadStream'];
   check('the claim that nothing is written to disk holds in server.js',
-    (serverSource.match(/fs\.\w+/g) || []).every(call => call === 'fs.readFile' || call === 'fs.readFileSync') &&
+    (serverSource.match(/fs\.\w+/g) || []).every(call => readOnly.includes(call)) &&
     (serverSource.match(/fs\.readFileSync/g) || []).length === 1,
     (serverSource.match(/fs\.\w+/g) || []).join(', '));
   check('the claim that responses are not cached holds too',

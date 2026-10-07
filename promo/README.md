@@ -1,43 +1,45 @@
 # PsycheAI promo video
 
 A 9:16 video (about 45 seconds) for Instagram Reels and Stories, built entirely from this folder:
-the voice, the music and every frame. Nothing here is served by the app.
+the voice, the music and every frame. The website version also plays at the top of the front page.
 
 ```
 npm run promo
 ```
 
-That one command makes four files in `promo/out/`:
+It makes two versions from the same voiceover, set in `config.json`:
 
-| File | What it is for |
-| --- | --- |
-| `PsycheAI-reel.mp4` | The video with voiceover and music, 1080×1920. Post this. |
-| `PsycheAI-reel-music-only.mp4` | The same picture over the music alone. |
-| `PsycheAI-reel-cover.jpg` | A frame from the Psyche Card scene, for the cover. |
-| `PsycheAI-reel-web.mp4` | A 720-wide copy of about 4 MB, for putting on the website. |
+| Version | Ends with | Files |
+| --- | --- | --- |
+| `reel`, for Instagram | "Your first Psyche Card is free! Link in bio." | `out/PsycheAI-reel.mp4` (1080×1920, post this), `out/PsycheAI-reel-music-only.mp4`, `out/PsycheAI-reel-cover.jpg` |
+| `site`, for the front page | "Your first Psyche Card is free! Try it below." | `out/PsycheAI-site.mp4` (720 wide, about 4 MB) and its poster, **also copied into `docs/media/`**, which is what the front page plays |
+
+`npm run promo -- site` builds only the named version (the voiceover is always remade).
+After building `site`, commit `docs/media/` so the site serves the new video.
 
 The first run sets up Python in `promo/.cache` and downloads the voice and a speech recogniser
-(about 350 MB, kept for later runs), so it takes about five minutes. Later runs take about three.
-It needs `python3`, `curl` and the repo's `npm install` (for Playwright).
+(about 350 MB, kept for later runs). A full build takes about ten minutes, most of it rendering
+frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright).
 
-## Changing the link at the end
+## Changing the ending, the link or the colours
 
-Edit `promo/config.json`, then run `npm run promo`:
+Each version in `promo/config.json` has three settings:
 
 ```json
 {
-  "endLink": "psycheai.app",
-  "endLinkSpoken": "Try it at {B} dot app."
+  "reel": { "button": "Link in bio ↗", "spoken": "Link in bio.", "theme": "light" },
+  "site": { "button": "Try it below ↓", "spoken": "Try it below.", "theme": "light" }
 }
 ```
 
-- `endLink` is the text in the button on the last screen. A long address shrinks to fit.
-- `endLinkSpoken` is what the voice says after "Your first Psyche Card is free!". Write `{B}`
-  wherever it should say **PsycheAI**: that is the only way it is pronounced right (see below).
-  Spell the address the way it should be said: "dot app", not ".app".
+- `button` is the text on the last screen's button, arrow included. A long one shrinks to fit.
+- `spoken` is what the voice says after "Your first Psyche Card is free!". Write `{B}` wherever it
+  should say **PsycheAI**: that is the only way it is pronounced right (see below). Spell an address
+  the way it is said: for the site's address, `"button": "psycheai.app ↗"` and
+  `"spoken": "Try it at {B} dot app."`. A longer ending makes the video a little longer.
+- `theme` is `"light"` (pastel, plum text) or `"dark"` (deep purple, white text).
 
-The default is `"Link in bio"` / `"Link in bio."`. A longer spoken link makes the video longer:
-"Try it at {B} dot app." adds about a second and a half.
+A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
 
 ## How it is made
 
@@ -49,7 +51,7 @@ The default is `"Link in bio"` / `"Link in bio."`. A longer spoken link makes th
    the voice ran it into "Psychete AI", and as "Psyche, A. I." it ended a sentence on each letter.
    The card and report lines, which are lists, are spoken one phrase at a time so the highlights
    land on the words; `build/vo/marks.json` records where each phrase starts.
-2. **`audio.py`** lays the lines out into scenes (`build/timeline.json`), writes an original
+2. **`audio.py`** lays one version's lines out into scenes (`build/<version>/timeline.json`), writes an original
    118 BPM track for them, and mixes the two with the music ducked under the voice.
 3. **`render.mjs`** draws `stage.html` frame by frame in Chromium at 30 fps and encodes it with
    the mix. The brand mark comes from `docs/copy.js`, so it matches the site.
@@ -72,10 +74,11 @@ picture and measures each part with the same selectors the card guide uses.
 ## Checking a scene without rendering it all
 
 ```
-node promo/render.mjs --stills '[18.3, 27.4]'
+node promo/render.mjs site --stills '[18.3, 27.4]'
 ```
 
-writes `build/still-18_3.png` and `build/still-27_4.png` from the current timeline.
+writes `build/site/still-18_3.png` and `build/site/still-27_4.png` from that version's current
+timeline (after a build, or after `vo.py` and `audio.py site`).
 
 ## Licences
 

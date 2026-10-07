@@ -3,7 +3,8 @@
 #
 # First run sets up a Python environment and downloads the voice and the speech
 # recogniser into promo/.cache (about 350 MB, kept for later runs). Everything it
-# makes lands in promo/out. See promo/README.md.
+# makes lands in promo/out, and the website version also in docs/media.
+# See promo/README.md.
 set -euo pipefail
 cd "$(dirname "$0")"
 CACHE=.cache
@@ -27,18 +28,36 @@ fetch asr-models/sherpa-onnx-whisper-base.en.tar.bz2 sherpa-onnx-whisper-base.en
 FF=$($PY -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
 
 echo "Voiceover"; $PY vo.py
-echo "Music and mix"; $PY audio.py
-echo "Video"; node render.mjs --video "$FF"
-
 mkdir -p out
-cp build/psycheai-reel.mp4 out/PsycheAI-reel.mp4
-# The same picture over the music alone, for posting with Instagram's own music or captions.
-"$FF" -y -v error -i build/psycheai-reel.mp4 -i build/music-only.wav -map 0:v -map 1:a -c:v copy \
-  -c:a aac -b:a 192k -ar 48000 -shortest -movflags +faststart out/PsycheAI-reel-music-only.mp4
-# A cover frame from the card scene.
-COVER=$($PY -c "import json; s = json.load(open('build/timeline.json'))['scenes'][5]; print(s['marks'][3])")
-"$FF" -y -v error -ss "$COVER" -i build/psycheai-reel.mp4 -frames:v 1 -q:v 2 out/PsycheAI-reel-cover.jpg
-# A lighter copy for the website: 720 wide, a few MB instead of ~25.
-"$FF" -y -v error -i build/psycheai-reel.mp4 -vf scale=720:-2 -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p \
-  -c:a aac -b:a 96k -movflags +faststart out/PsycheAI-reel-web.mp4
+# Every version in config.json, or only those named: npm run promo -- site
+VERSIONS=${*:-$($PY -c "import json; print(' '.join(json.load(open('config.json'))))")}
+for V in $VERSIONS; do
+  echo "Music, mix and video: $V"
+  $PY audio.py "$V"
+  node render.mjs "$V" --video "$FF"
+  # The cover or poster: the Psyche Card scene, halfway through "Which character you are most like",
+  # with one highlight fully on rather than two crossing.
+  COVER=$($PY -c "import json; m = json.load(open('build/$V/timeline.json'))['scenes'][5]['marks']; print((m[1] + m[2]) / 2)")
+  case $V in
+    reel)
+      cp build/reel/video.mp4 out/PsycheAI-reel.mp4
+      # The same picture over the music alone.
+      "$FF" -y -v error -i build/reel/video.mp4 -i build/reel/music-only.wav -map 0:v -map 1:a -c:v copy \
+        -c:a aac -b:a 192k -ar 48000 -shortest -movflags +faststart out/PsycheAI-reel-music-only.mp4
+      "$FF" -y -v error -ss "$COVER" -i build/reel/video.mp4 -frames:v 1 -q:v 2 out/PsycheAI-reel-cover.jpg
+      ;;
+    site)
+      # 720 wide and about 4 MB, straight into the site: docs/media is what the front page plays.
+      "$FF" -y -v error -i build/site/video.mp4 -vf scale=720:-2 -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p \
+        -c:a aac -b:a 96k -movflags +faststart out/PsycheAI-site.mp4
+      "$FF" -y -v error -ss "$COVER" -i build/site/video.mp4 -frames:v 1 -vf scale=720:-2 -q:v 4 out/PsycheAI-site-poster.jpg
+      mkdir -p ../docs/media
+      cp out/PsycheAI-site.mp4 ../docs/media/psycheai-intro.mp4
+      cp out/PsycheAI-site-poster.jpg ../docs/media/psycheai-intro-poster.jpg
+      ;;
+    *)
+      cp "build/$V/video.mp4" "out/PsycheAI-$V.mp4"
+      ;;
+  esac
+done
 ls -lh out

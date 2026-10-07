@@ -1220,6 +1220,20 @@ passes `'auto'` when it is set. It is checked in two browser contexts that diffe
 setting, recording the options the handler actually passes: a check on either context alone would
 have passed against the bug.
 
+**The welcome hero plays the promo video** (`.hero-video`, `docs/media/psycheai-intro.mp4`, built by
+`npm run promo` — see `promo/README.md`). It is 9:16, so it is sized by its width and never
+stretched: on a phone it sits centred under the two buttons, as wide as fits without taking more than
+about three quarters of the screen's height; from 720px up the hero becomes two columns and it sits
+beside the headline at 230px. `aspect-ratio` holds its space before it loads, so nothing jumps.
+`initHeroVideo()` loops it muted only while it is on screen (an IntersectionObserver), with
+`preload="none"` so a visitor who never reaches it never downloads it. Its one button, "Tap for
+sound", turns the sound on and restarts it from the top so the voice is heard from its first line,
+plays it once through, then falls back to silent looping. For a reader who asked for less motion it
+never starts on its own and the button says "Play with sound". The server streams it rather than
+reading it whole, answering byte ranges with 206 — Safari, and so every iPhone browser, opens a
+video with `Range: bytes=0-1` and will not play one served as a plain 200 — and an ETag, so a
+returning visitor's browser keeps its copy (`serveMedia()` in `server.js`).
+
 **The profile page echoes the welcome hero now**, rather than the plain `.page-head` every other
 internal page uses. `.profile-hero` reuses `.hero`'s bleed, rounded foot and two-radial-gradient wash
 outright, and only overrides what has to differ because there is one line of text and one button here

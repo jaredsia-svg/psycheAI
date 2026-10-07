@@ -242,6 +242,32 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .profile-hero { margin-bottom: 1.1rem; }
 
 .hero .lede { margin: 0 0 1.1rem; max-width: 46ch; }
+
+/* The promo video. 9:16, so it is sized by its width and never stretched: on
+   a phone it sits centred under the buttons, as wide as fits without taking
+   more than about three quarters of the screen's height; from a tablet up it
+   moves beside the headline at a fixed phone-like size. aspect-ratio holds
+   its space before anything loads, so the page never jumps when it does. */
+.hero-video {
+  position: relative; margin: 1.4rem auto 0;
+  width: min(72vw, 290px, calc(74svh * 9 / 16)); aspect-ratio: 9 / 16;
+  border-radius: 22px; overflow: hidden; background: #f7effd;
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.hero-video video { display: block; width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+.hero-video-sound {
+  position: absolute; left: 50%; bottom: .7rem; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: .35rem; white-space: nowrap;
+  padding: .42rem .85rem; border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(32, 12, 46, .72); color: #fff; font: 600 .8rem/1.2 var(--font);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.hero-video-sound:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+@media (min-width: 720px) {
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 2rem; align-items: center; }
+  .hero-video { margin: 0; width: 230px; }
+}
 /* Nothing follows the buttons in the hero any more — the privacy badge that
    used to sit under them moved down to "Start here" — so their bottom margin
    was left holding open a row with nothing in it. Scoped through .hero to beat

@@ -1,4 +1,4 @@
 {
-  "endLink": "Link in bio",
-  "endLinkSpoken": "Link in bio."
+  "reel": { "button": "Link in bio ↗", "spoken": "Link in bio.", "theme": "light" },
+  "site": { "button": "Try it below ↓", "spoken": "Try it below.", "theme": "light" }
 }

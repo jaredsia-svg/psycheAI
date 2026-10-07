@@ -5,7 +5,7 @@
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6677,6 +6677,57 @@ check('the schema requires evidence on strengths and frictions',
     survived.aliveAfter === 200, String(survived.aliveAfter));
   check('and still serving the page — one bad URL is not an outage for everybody else',
     survived.pageAfter === 200, String(survived.pageAfter));
+}
+
+// ---------- the front page's video is streamed in ranges ----------
+//
+// Safari, and so every browser on an iPhone, opens a video by asking for
+// "bytes=0-1" and refuses to play one whose server answers 200 with the whole
+// file. The video is also the largest thing the site serves, so a returning
+// visitor's browser must be able to keep it: an ETag, answered with 304.
+{
+  const port = 8932;
+  const video = join(root, 'docs', 'media', 'psycheai-intro.mp4');
+  const size = statSync(video).size;
+  const child = execFileSync(process.execPath,
+    ['-e', `
+      const { spawn } = require('node:child_process');
+      const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+        env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1' }, stdio: 'ignore',
+      });
+      const get = async (path, headers = {}) => {
+        const response = await fetch('http://localhost:${port}' + path, { headers });
+        const body = Buffer.from(await response.arrayBuffer());
+        return { status: response.status, length: body.length, type: response.headers.get('content-type'),
+          range: response.headers.get('content-range'), accept: response.headers.get('accept-ranges'),
+          etag: response.headers.get('etag') };
+      };
+      setTimeout(async () => {
+        const path = '/media/psycheai-intro.mp4';
+        const out = { whole: await get(path), first: await get(path, { Range: 'bytes=0-1' }),
+          tail: await get(path, { Range: 'bytes=-100' }), past: await get(path, { Range: 'bytes=${size}-' }),
+          poster: await get('/media/psycheai-intro-poster.jpg') };
+        out.again = await get(path, { 'If-None-Match': out.whole.etag });
+        server.kill();
+        process.stdout.write(JSON.stringify(out));
+      }, 900);
+    `],
+    { env: { PATH: process.env.PATH }, timeout: 20000 });
+  const got = JSON.parse(child.toString());
+  check('the front page video is served whole as video/mp4, saying it takes ranges',
+    got.whole.status === 200 && got.whole.length === size && got.whole.type === 'video/mp4' &&
+    got.whole.accept === 'bytes', JSON.stringify(got.whole));
+  check('a range request gets 206 and exactly the bytes asked for — what Safari needs to play it',
+    got.first.status === 206 && got.first.length === 2 && got.first.range === 'bytes 0-1/' + size,
+    JSON.stringify(got.first));
+  check('a suffix range gets the last bytes',
+    got.tail.status === 206 && got.tail.length === 100 && got.tail.range === 'bytes ' + (size - 100) + '-' + (size - 1) + '/' + size,
+    JSON.stringify(got.tail));
+  check('a range past the end is refused with 416', got.past.status === 416, JSON.stringify(got.past));
+  check('a browser that already has the video gets 304, not the megabytes again',
+    got.again.status === 304 && got.again.length === 0, JSON.stringify(got.again));
+  check('and its poster is served as a JPEG', got.poster.status === 200 && got.poster.type === 'image/jpeg',
+    JSON.stringify(got.poster));
 }
 
 // ---------- one payment, one generation at a time ----------

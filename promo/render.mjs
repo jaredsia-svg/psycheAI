@@ -1,7 +1,9 @@
 // Renders promo/stage.html frame by frame into ffmpeg, or a few stills.
 //
-//   node promo/render.mjs --video <ffmpeg>       build/psycheai-reel.mp4, with build/mix.wav
-//   node promo/render.mjs --stills '[1.5, 20]'   build/still-1_5.png, build/still-20.png
+//   node promo/render.mjs reel --video <ffmpeg>       build/reel/video.mp4, with build/reel/mix.wav
+//   node promo/render.mjs site --stills '[1.5, 20]'   build/site/still-1_5.png, build/site/still-20.png
+//
+// The first argument is a version in config.json.
 //
 // The stage reads the timeline audio.py wrote, the card parts capture.mjs measured,
 // the brand mark from docs/copy.js and the closing link from config.json.
@@ -12,13 +14,14 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
 const dir = fileURLToPath(new URL('.', import.meta.url)).replace(/\/$/, '');
-const [mode, arg] = process.argv.slice(2);
-const tl = readFileSync(dir + '/build/timeline.json', 'utf8');
+const [version, mode, arg] = process.argv.slice(2);
+const out = dir + '/build/' + version;
+const tl = readFileSync(out + '/timeline.json', 'utf8');
 // The card's height over its width, read from the PNG header, for the highlight boxes.
 const png = readFileSync(dir + '/assets/card.png');
 const parts = JSON.stringify({ ...JSON.parse(readFileSync(dir + '/assets/card-parts.json', 'utf8')),
   aspect: png.readUInt32BE(20) / png.readUInt32BE(16) });
-const config = readFileSync(dir + '/config.json', 'utf8');
+const config = JSON.stringify(JSON.parse(readFileSync(dir + '/config.json', 'utf8'))[version]);
 const sandbox = { window: {} };
 sandbox.self = sandbox.window;
 sandbox.globalThis = sandbox;
@@ -39,14 +42,14 @@ const total = JSON.parse(tl).total;
 if (mode === '--stills') {
   for (const t of JSON.parse(arg)) {
     await page.evaluate(t => window.render(t), t);
-    await page.screenshot({ path: dir + '/build/still-' + String(t).replace('.', '_') + '.png' });
+    await page.screenshot({ path: out + '/still-' + String(t).replace('.', '_') + '.png' });
   }
 } else if (mode === '--video') {
   const FPS = 30;
   const frames = Math.round(total * FPS);
   const ff = spawn(arg, ['-y', '-v', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-i', dir + '/build/mix.wav', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
-    '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-shortest', '-movflags', '+faststart', dir + '/build/psycheai-reel.mp4'],
+    '-i', out + '/mix.wav', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-profile:v', 'high',
+    '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-shortest', '-movflags', '+faststart', out + '/video.mp4'],
   { stdio: ['pipe', 'inherit', 'inherit'] });
   for (let f = 0; f < frames; f++) {
     await page.evaluate(t => window.render(t), f / FPS);
@@ -57,7 +60,7 @@ if (mode === '--stills') {
   ff.stdin.end();
   await new Promise(r => ff.on('close', r));
 } else {
-  console.error('usage: node promo/render.mjs --video <ffmpeg> | --stills "[t, ...]"');
+  console.error('usage: node promo/render.mjs <version> --video <ffmpeg> | --stills "[t, ...]"');
   process.exitCode = 1;
 }
 if (errors.length) console.error('page errors', JSON.stringify(errors));

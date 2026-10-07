@@ -32,8 +32,8 @@ body { font-family: Inter, sans-serif; color: #fff; }
 /* footprint */
 .chip { position: absolute; padding: 18px 30px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
   font-size: 38px; font-weight: 800; white-space: nowrap; }
-#print { position: absolute; left: 290px; top: 760px; width: 500px; height: 620px; }
-#print path { fill: none; stroke: url(#pg); stroke-width: 10; stroke-linecap: round; }
+#print { position: absolute; left: 230px; top: 690px; width: 620px; height: 769px; }
+#print path { fill: none; stroke: url(#pg); stroke-width: 6.5; stroke-linecap: round; }
 /* sources */
 .file { position: absolute; width: 300px; padding: 26px; border-radius: 26px; background: #fff; color: #2b2035; box-shadow: 0 24px 60px rgba(0,0,0,.4); }
 .file .ext { display: inline-block; font-size: 24px; font-weight: 900; color: #fff; padding: 6px 14px; border-radius: 10px; }
@@ -73,6 +73,27 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .swap { display: inline-grid; vertical-align: top; }
 .swap span { grid-area: 1 / 1; white-space: nowrap; }
 #shield { position: absolute; left: 430px; top: 290px; width: 220px; height: 250px; }
+/* The light theme ("theme": "light" in config.json): a pastel daylight wash, plum
+   text, and a deeper coral-to-violet gradient that still reads on a pale ground. */
+body.light { color: #2a1238; }
+body.light .blob { mix-blend-mode: multiply; filter: blur(90px); }
+body.light .spark { background: #ff9ec4; box-shadow: 0 0 12px 3px rgba(224,69,123,.35); }
+body.light .grad, body.light .grad .w { background-image: linear-gradient(90deg, #ff7a45, #e0457b 50%, #8a3fd0); }
+body.light .soft { color: #6b3f8f; }
+body.light .page, body.light .file, body.light .tile { box-shadow: 0 30px 70px rgba(90,40,120,.2); }
+body.light .nope { color: #e0457b; text-shadow: none; }
+body.light .chip { background: #fff; border-color: #e4d2f3; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
+body.light #mark path { stroke: #7b3fa0; }
+body.light .glow { background: radial-gradient(circle, rgba(255,158,196,.75), rgba(199,146,255,0) 65%); }
+body.light #cardWrap img { box-shadow: 0 40px 90px rgba(90,40,120,.25); }
+body.light .hl { border-color: #ff8a3d; box-shadow: 0 0 34px rgba(255,138,61,.55); }
+body.light .tag { background: #ff8a3d; color: #fff; }
+body.light .tile.on { outline-color: #ff8a3d; }
+body.light .code { background: #fff; border-color: #e4d2f3; color: #2a1238; box-shadow: 0 20px 50px rgba(90,40,120,.14); }
+body.light .code .k { color: #c2407a; }
+body.light #shield path:first-of-type { fill: #fff; }
+body.light #tick { stroke: #e0457b; }
+body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
 .pill { position: absolute; left: 50%; padding: 28px 60px; border-radius: 999px; font-size: 50px; font-weight: 900; white-space: nowrap;
   background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
 </style></head>
@@ -172,8 +193,18 @@ document.querySelectorAll('[data-words]').forEach(el => {
 });
 
 // Scene palettes: the two lead colours of the background, shifting scene to scene.
-const PAL = [['#5b1d8f', '#c2407a'], ['#4a1e9a', '#d0507a'], ['#6a1c86', '#e06666'], ['#2e2a9e', '#b04fd6'],
+const LIGHT = CONFIG.theme === 'light';
+document.body.classList.toggle('light', LIGHT);
+// Pale yellow vanishes on the light ground, so the gradients that start with it start deeper there.
+if (LIGHT) {
+  document.querySelectorAll('#pg stop').forEach((stop, i) => stop.setAttribute('stop-color', ['#ff7a45', '#e0457b', '#8a3fd0'][i]));
+  document.querySelectorAll('#sg stop').forEach((stop, i) => stop.setAttribute('stop-color', ['#ff7a45', '#e0457b'][i]));
+}
+const PAL_LIGHT = [['#f3dcff', '#ffd6e7'], ['#e6dcff', '#ffdbe6'], ['#f6d9f6', '#ffe0cc'], ['#dfe3ff', '#f0d6ff'],
+  ['#ffd9ec', '#ffe2c7'], ['#f0dcff', '#ffd3e6'], ['#e2dcff', '#ffd6e8'], ['#d9ecff', '#e6dcff'], ['#f3d6ff', '#ffd9e8']];
+const PAL_DARK = [['#5b1d8f', '#c2407a'], ['#4a1e9a', '#d0507a'], ['#6a1c86', '#e06666'], ['#2e2a9e', '#b04fd6'],
   ['#8a1f78', '#ff7a59'], ['#5b1d8f', '#ff6fae'], ['#3d2aa8', '#e2558c'], ['#1f4d8f', '#6b4fd6'], ['#7a1f8f', '#ff7eb3']];
+const PAL = LIGHT ? PAL_LIGHT : PAL_DARK;
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
 
@@ -187,15 +218,46 @@ function questionnaire(holder, n) {
 }
 questionnaire($('pages'), 7); questionnaire($('pages2'), 7);
 const markSvg = MARK.paths.map(d => '<path d="' + d + '"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
-$('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g, '<path fill="none" stroke="#fff" stroke-width="3.4" ');
+$('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g, '<path fill="none" stroke="' + (LIGHT ? '#7b3fa0' : '#fff') + '" stroke-width="3.4" ');
+// A digital footprint drawn like a fingerprint: a right foot's sole as rings
+// of broken ridges shrinking to a core, and five toes, each a small whorl.
 const prints = [];
-for (let i = 0; i < 11; i++) {
-  const rx = 40 + i * 20, ry = 60 + i * 24, cx = 250, cy = 330 + i * 4, gap = 0.35 + (i % 3) * 0.15;
-  const a0 = Math.PI * (1.5 + gap), a1 = Math.PI * (3.5 - gap), pts = [];
-  for (let k = 0; k <= 60; k++) { const a = a0 + (a1 - a0) * k / 60; pts.push((cx + rx * Math.cos(a)).toFixed(1) + ' ' + (cy + ry * Math.sin(a)).toFixed(1)); }
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', 'M' + pts.join(' L'));
-  $('prints').appendChild(path); prints.push(path);
+const ridge = d => { const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', d); $('prints').appendChild(path); prints.push(path); };
+const SOLE = [[150, 262], [182, 205], [248, 182], [318, 190], [362, 232], [370, 300], [352, 372], [333, 442], [333, 510],
+  [314, 568], [266, 598], [216, 590], [190, 548], [195, 488], [214, 430], [204, 372], [168, 322]];
+// A smooth closed outline through those points (Catmull-Rom), 12 samples a span.
+const outline = [];
+SOLE.forEach((p1, i) => {
+  const p0 = SOLE[(i - 1 + SOLE.length) % SOLE.length], p2 = SOLE[(i + 1) % SOLE.length], p3 = SOLE[(i + 2) % SOLE.length];
+  for (let k = 0; k < 12; k++) {
+    const t = k / 12, t2 = t * t, t3 = t2 * t;
+    outline.push([0, 1].map(j => 0.5 * (2 * p1[j] + (p2[j] - p0[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2 +
+      (3 * p1[j] - p0[j] - 3 * p2[j] + p3[j]) * t3)));
+  }
+});
+const CORE = [262, 395];
+for (let ring = 0; ring < 9; ring++) {
+  const scale = 1 - ring * 0.105, n = outline.length;
+  // Each ridge breaks somewhere different and stops short, as a fingerprint's do.
+  const from = Math.floor(((ring * 37) % 100) / 100 * n), span = Math.floor(n * (ring ? 0.86 + (ring % 3) * 0.04 : 1));
+  const pts = [];
+  for (let k = 0; k <= span; k++) {
+    const [x, y] = outline[(from + k) % n];
+    pts.push((CORE[0] + (x - CORE[0]) * scale).toFixed(1) + ' ' + (CORE[1] + (y - CORE[1]) * scale).toFixed(1));
+  }
+  ridge('M' + pts.join(' L'));
 }
+[[178, 122, 36, 46], [244, 98, 25, 31], [296, 106, 21, 27], [338, 128, 18, 23], [372, 164, 15, 19]].forEach(([cx, cy, rx, ry], toe) => {
+  for (let ring = 0; ring < (toe ? 2 : 3); ring++) {
+    const k = 1 - ring * 0.36, gap = 0.5 + ring * 0.7 + toe, pts = [];
+    for (let j = 0; j <= 40; j++) {
+      const a = gap + (Math.PI * 2 - 0.7) * j / 40;
+      pts.push((cx + rx * k * Math.cos(a)).toFixed(1) + ' ' + (cy + ry * k * Math.sin(a)).toFixed(1));
+    }
+    ridge('M' + pts.join(' L'));
+  }
+});
 prints.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.dataset.len = L; });
 const CHIPS = ['3:12 am', '♥ 4,812 likes', 'how to…', '47 deadlines', 'saved', 'posted 2019', 'searched', '13-day quiet streak', 'same 12 friends'];
 const chipEls = CHIPS.map(c => { const d = document.createElement('div'); d.className = 'chip'; d.textContent = c; $('chips').appendChild(d); return d; });
@@ -212,7 +274,7 @@ const hlEls = HL.map(([key, label]) => {
 const TILES = [
   ['01', 'Who you are', 'Signature patterns · MBTI & Big Five · Wellbeing'],
   ['02', 'What drives you', 'Motivators · Interests · Values'],
-  ['03', 'How you connect & work', 'Love · Attachment · Ideal partner · Career'],
+  ['03', 'How you connect & work', 'Love · Attachment style · Ideal partner · Career'],
   ['04', 'Putting it together', 'Your development plan'],
 ];
 // 01: the character's emblem (the app's own Mulan sword), on the card's gradient.
@@ -226,7 +288,7 @@ const MOTIVES = [['openness', 55], ['openness', 41], ['openness', 34], ['enhance
   ['conservation', 61], ['conservation', 52], ['conservation', 38], ['transcendence', 84], ['transcendence', 47]];
 const GROUP = { openness: '#ffb35c', enhancement: '#ff6f9e', conservation: '#a46be0', transcendence: '#5b3bd0' };
 function rose(grow) {
-  const cx = 220, cy = 100, inner = 10, outer = 92, f = n => n.toFixed(1);
+  const cx = 220, cy = 84, inner = 9, outer = 74, f = n => n.toFixed(1);
   let out = [25, 50, 75, 100].map(l => '<circle cx="' + cx + '" cy="' + cy + '" r="' + f(inner + (outer - inner) * l / 100) + '" fill="none" stroke="#e3d6ee" stroke-width="1.5"/>').join('');
   MOTIVES.forEach(([g, v], i) => {
     const a0 = -Math.PI / 2 + i * Math.PI / 5 + 0.03, a1 = -Math.PI / 2 + (i + 1) * Math.PI / 5 - 0.03;
@@ -236,7 +298,8 @@ function rose(grow) {
   });
   return out;
 }
-const THUMB2 = '<svg viewBox="0 0 440 200"><g id="rose"></g></svg>';
+const THUMB2 = '<svg viewBox="0 0 440 200"><g id="rose"></g>' +
+  '<text x="220" y="188" text-anchor="middle" font-family="Inter, sans-serif" font-size="24" font-weight="800" fill="#7b3fa0">Shalom Schwartz\u2019s 10 values</text></svg>';
 // 03: the attachment map, zooming in on where the sample lands (leans secure).
 const THUMB3 = '<svg class="th3" viewBox="0 0 440 200"><g id="attach">' +
   '<rect x="120" y="10" width="200" height="180" rx="10" fill="#fff" stroke="#d9c8e8" stroke-width="2.5"/>' +
@@ -288,8 +351,9 @@ function render(t) {
   const nxt = Math.min(S.length - 1, cur + 1); const k = prog(t, S[cur].end - 0.5, S[cur].end + 0.3);
   const c1 = mixHex(PAL[cur][0], PAL[nxt][0], k), c2 = mixHex(PAL[cur][1], PAL[nxt][1], k);
   const pulse = beatPulse(t);
-  document.body.style.background = 'radial-gradient(130% 90% at 50% 0%, ' + c1 + ' 0%, #1a0b2a 62%, #10071a 100%)';
-  $('b1').style.background = c2; $('b2').style.background = c1; $('b3').style.background = '#ffb35c';
+  document.body.style.background = LIGHT ? 'radial-gradient(130% 90% at 50% 0%, ' + c1 + ' 0%, #fdf7fc 60%, #f7effd 100%)'
+    : 'radial-gradient(130% 90% at 50% 0%, ' + c1 + ' 0%, #1a0b2a 62%, #10071a 100%)';
+  $('b1').style.background = c2; $('b2').style.background = c1; $('b3').style.background = LIGHT ? '#ffd2b0' : '#ffb35c';
   $('b1').style.opacity = 0.5 + pulse * 0.3; $('b2').style.opacity = 0.45 + pulse * 0.3; $('b3').style.opacity = 0.18 + pulse * 0.2;
   $('b1').style.transform = 'translate(' + Math.sin(t * .6) * 140 + 'px,' + Math.cos(t * .45) * 180 + 'px) scale(' + (1 + pulse * 0.12) + ')';
   $('b2').style.transform = 'translate(' + Math.cos(t * .5) * 160 + 'px,' + Math.sin(t * .4) * 200 + 'px) scale(' + (1 + pulse * 0.12) + ')';
@@ -320,7 +384,7 @@ function render(t) {
       el.style.transform = 'translate(-50%,-50%) scale(' + ((1 - 0.6 * k) * (0.7 + 0.3 * back(prog(c.local, 0.15 + i * 0.06, 0.45 + i * 0.06)))) + ')';
       el.style.opacity = Math.min(prog(c.local, 0.15 + i * 0.06, 0.35 + i * 0.06), 1 - prog(c.local, 1.9, 2.3));
     });
-    prints.forEach((p, i) => { p.style.strokeDashoffset = p.dataset.len * (1 - ease(prog(c.local, 1.7 + i * 0.06, 2.9 + i * 0.06))); });
+    prints.forEach((p, i) => { p.style.strokeDashoffset = p.dataset.len * (1 - ease(prog(c.local, 1.7 + i * 0.04, 2.8 + i * 0.04))); });
     $('print').style.opacity = prog(c.local, 1.6, 2.0); $('print').style.transform = 'scale(' + (1 + pulse * 0.05) + ')';
   }
   c = scene(4, t);
@@ -365,7 +429,7 @@ function render(t) {
     $('mulanName').style.transform = 'translateX(' + ((x - 220) * 0.35).toFixed(1) + 'px)';
     // 02: the wheel grows in, then keeps turning.
     $('rose').innerHTML = rose(ease(prog(L, 0.3, 1.2)));
-    $('rose').setAttribute('transform', 'rotate(' + (L * 40).toFixed(1) + ' 220 100)');
+    $('rose').setAttribute('transform', 'rotate(' + (L * 40).toFixed(1) + ' 220 84)');
     // 03: zoom towards the dot.
     const z = 1 + 0.9 * easeIO(prog(L, 0.8, c.len - 0.4));
     $('attach').setAttribute('transform', 'translate(178 122) scale(' + z.toFixed(3) + ') translate(-178 -122) translate(' + (42 * (z - 1) / 0.9).toFixed(1) + ' ' + (-22 * (z - 1) / 0.9).toFixed(1) + ')');
@@ -390,7 +454,7 @@ function render(t) {
     $('code').style.opacity = codeIn; $('code').style.transform = 'translateY(' + (1 - codeIn) * 40 + 'px)';
     ['sw1', 'sw2', 'sw3'].forEach((id, i) => {
       const at = lineAt[1] + 1.2 + i * 0.35, k = prog(t, at, at + 0.35), [a, b] = $(id).children;
-      a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)'; b.style.color = '#ffd36e'; a.style.display = k >= 1 ? 'none' : '';
+      a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)'; b.style.color = LIGHT ? '#e0457b' : '#ffd36e'; a.style.display = k >= 1 ? 'none' : '';
     });
   }
   c = scene(8, t);
@@ -402,8 +466,8 @@ function render(t) {
     $('cta').style.opacity = p; $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * back(p) + pulse * 0.06 * p) + ')';
   }
 }
-// The closing link, from config.json, shrunk to fit if it is long.
-$('cta').textContent = CONFIG.endLink + '  ↗';
+// The closing button, from this version in config.json, shrunk to fit if it is long.
+$('cta').textContent = CONFIG.button;
 for (let size = 50; $('cta').offsetWidth > 940 && size > 26; size -= 2) $('cta').style.fontSize = size + 'px';
 window.render = render;
 window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);

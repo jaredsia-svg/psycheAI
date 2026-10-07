@@ -35,9 +35,9 @@ LINES = [
       'your type,', 'your traits,', 'your interests and values,', 'and your love languages.'], 0.87, True),
     (['Then unlock the full report.', 'Who you are,', 'what drives you,', 'how you connect and work,', 'and a plan to grow.'], 0.87, True),
     (['Your files never leave your device.', 'Only a de-identified summary is analysed by Gemini,', 'and {B} keeps no copy.'], 0.92, None),
-    # The closing words come from config.json, so the link can change without touching this file.
-    (['Your first Psyche Card is free!', CONFIG['endLinkSpoken']], 0.9, True),
 ]
+# The closing line: this, then each version's own words from config.json.
+END = 'Your first Psyche Card is free!'
 
 def phonemes(text):
     if '{B}' not in text: return v.phonemize(text)
@@ -98,31 +98,37 @@ def best_take(text, ls):
         if score == 1.0: break
     return best
 
-marks = []
-for i, (phrases, ls, split) in enumerate(LINES, 1):
+def speak(phrases, ls, split):
+    """One line: its audio, where each phrase after the first starts, and how it scored."""
     if split:
         out, cuts, t, scores = [], [], 0.0, []
         for k, p in enumerate(phrases):
             score, a = best_take(p, ls)
             if k: out.append(np.zeros(int(0.06 * SR), np.float32)); t += 0.06; cuts.append(round(t, 3))
             out.append(a); t += len(a) / SR; scores.append(round(score, 2))
-        a, ok, score = np.concatenate(out), True, min(scores)
-        got = 'phrase scores ' + str(scores)
-    else:
-        best = None
-        for take in range(TAKES):
-            a = trim(say(' '.join(phrases), ls))
-            got = words(heard(a))
-            score = difflib.SequenceMatcher(None, words(' '.join(phrases)), got).ratio()
-            cuts = pauses(a, phrases)
-            ok = cuts is not None
-            cuts = cuts or []
-            key = (ok, score)
-            if best is None or key > best[0]: best = (key, a, cuts, ' '.join(got))
-            if ok and score == 1.0: break
-        (ok, score), a, cuts, got = best
+        return np.concatenate(out), cuts, True, min(scores), 'phrase scores ' + str(scores)
+    best = None
+    for take in range(TAKES):
+        a = trim(say(' '.join(phrases), ls))
+        got = words(heard(a))
+        score = difflib.SequenceMatcher(None, words(' '.join(phrases)), got).ratio()
+        cuts = pauses(a, phrases)
+        ok = cuts is not None
+        key = (ok, score)
+        if best is None or key > best[0]: best = (key, a, cuts or [], ' '.join(got))
+        if ok and score == 1.0: break
+    (ok, score), a, cuts, got = best
+    return a, cuts, ok, score, got
+
+def write(name, phrases, ls, split):
+    a, cuts, ok, score, got = speak(phrases, ls, split)
     a = a / np.max(np.abs(a)) * 0.9
-    sf.write(f'{OUT}/l{i:02d}.wav', a, SR, subtype='PCM_16')
-    marks.append([0.0] + cuts)
-    print(i, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)
+    sf.write(f'{OUT}/{name}.wav', a, SR, subtype='PCM_16')
+    print(name, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)
+    return [0.0] + cuts
+
+# Lines 1-8 are shared; the closing line is spoken once per version in config.json.
+marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}}
+for version, settings in CONFIG.items():
+    marks['end'][version] = write('l09-' + version, [END, settings['spoken']], 0.9, True)
 json.dump(marks, open(OUT + '/marks.json', 'w'))

@@ -1,11 +1,14 @@
 """Timeline from the voiceover, an upbeat original track, and the final mix."""
-import json, os, subprocess, wave
+import json, os, subprocess, sys, wave
 import numpy as np
 import imageio_ffmpeg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 VO = HERE + '/build/vo'
-BUILD = HERE + '/build'
+# One version from config.json per run: python audio.py reel
+VERSION = sys.argv[1]
+BUILD = HERE + '/build/' + VERSION
+os.makedirs(BUILD, exist_ok=True)
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 SR = 48000
 
@@ -14,12 +17,12 @@ def load(path):
                          capture_output=True, check=True).stdout
     return np.frombuffer(out, dtype=np.int16).astype(np.float32) / 32768.0
 
-N_LINES = 9
-lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, N_LINES + 1)]
+lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, 9)] + [load(f'{VO}/l09-{VERSION}.wav')]
 dur = [len(x) / SR for x in lines]
 
 GAP, LEAD = 0.16, 0.06
 marks = json.load(open(VO + '/marks.json'))
+marks = marks['lines'] + [marks['end'][VERSION]]
 minimum = {0: 1.5}
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
