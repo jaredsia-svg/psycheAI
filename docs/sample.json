@@ -214,14 +214,7 @@
       "evidence": "19 posts, 17 of them June–August"
     }
   ],
-  "beliefs": [
-    {
-      "belief": "Showing up is the whole of friendship",
-      "detail": "Not stated anywhere, but it is the most consistent theme in four years of captions: presence is what you praise in others and what you record in yourself.",
-      "evidence": "Recurring language of turning up, collecting people, being there",
-      "confidence": "moderate"
-    }
-  ],
+  "beliefs": [],
   "values": [
     {
       "value": "Reliability",
@@ -399,9 +392,7 @@
       "Craft",
       "Belonging"
     ],
-    "beliefs": [
-      "Showing up is friendship"
-    ],
+    "beliefs": [],
     "relationshipStrengths": [
       "Remembers the detail",
       "Handles friction privately"
@@ -452,12 +443,17 @@
     "develop": [
       {
         "title": "Let the credit land",
-        "detail": "You narrate collective wins and almost never your own part in them, so the people who rely on you most may not know how much you carry.",
+        "detail": "You narrate collective wins and almost never your own part in them, so the people who rely on you most may not know how much you carry. Under pressure your reliability tips into absorbing everyone's overflow.",
         "pattern": "p1",
         "raisedBy": [
           "work",
           "relationships"
         ],
+        "earlySigns": [
+          "Saying yes before checking your calendar",
+          "Sending every reminder in the group chat"
+        ],
+        "counterMove": "Before taking on the next unassigned job, name who else could do it and ask them first.",
         "actions": [
           {
             "horizon": "this week",
@@ -466,79 +462,34 @@
           {
             "horizon": "this quarter",
             "step": "Hand one recurring job – the booking, the reminders – to someone else and leave it with them."
-          },
-          {
-            "horizon": "this year",
-            "step": "Ask for the role or title that matches the work you already do."
           }
         ],
         "reflect": "Whose job are you doing that nobody asked you to do – and what would happen if you stopped?"
       },
       {
         "title": "Say the heavy part out loud",
-        "detail": "Nothing in your writing admits a hard week, which keeps people at a warm distance and leaves you carrying the cost alone.",
+        "detail": "Nothing in your writing admits a hard week, which keeps people at a warm distance and leaves you carrying the cost alone. Under strain your warmth turns into keeping the peace at your own expense.",
         "pattern": "p2",
         "raisedBy": [
           "attachment",
           "wellness",
           "relationships"
         ],
+        "earlySigns": [
+          "Agreeing in the moment and resenting it later",
+          "Going quiet with one person while staying warm with everyone else"
+        ],
+        "counterMove": "Raise the small thing within a day, in one sentence, while it is still small.",
         "actions": [
           {
             "horizon": "this week",
             "step": "Tell one person in your inner circle one thing that has been hard this month, without fixing it for them."
-          },
-          {
-            "horizon": "this quarter",
-            "step": "When someone offers help, take it once before you decline it."
           }
         ],
         "reflect": "Who knows how you are actually doing right now?"
       }
     ]
   },
-  "pressurePoints": [
-    {
-      "strength": "Reliability",
-      "overused": "Absorbing everyone's overflow",
-      "level": "marked",
-      "pattern": "p1",
-      "detail": "Work with no owner becomes yours by default. It is why you are valuable, and probably why the quiet stretches after each event run longer than the events themselves.",
-      "earlySigns": [
-        "Saying yes before checking your calendar",
-        "Sending every reminder in the group chat",
-        "Weekends that disappear into other people's plans"
-      ],
-      "mitigation": "Before taking on the next unassigned job, name who else could do it and ask them first.",
-      "question": "What would you drop if nobody were watching?"
-    },
-    {
-      "strength": "Warmth",
-      "overused": "Keeping the peace at your own expense",
-      "level": "moderate",
-      "pattern": "p2",
-      "detail": "You avoid friction in public almost completely. Under strain that becomes saying nothing and keeping score in silence.",
-      "earlySigns": [
-        "Agreeing in the moment and resenting it later",
-        "Going quiet with one person while staying warm with everyone else"
-      ],
-      "mitigation": "Raise the small thing within a day, in one sentence, while it is still small.",
-      "question": "What are you not saying to someone close to you right now?"
-    },
-    {
-      "strength": "High standards",
-      "overused": "Quietly redoing other people's work",
-      "level": "mild",
-      "pattern": "none",
-      "detail": "You care how a thing is done. Under time pressure that tips into fixing it yourself rather than saying what was wrong.",
-      "earlySigns": [
-        "Re-checking a task you already delegated",
-        "Doing it yourself because it is quicker"
-      ],
-      "mitigation": "Say what good looks like before you hand something over, not after.",
-      "question": "Where is 'quicker to do it myself' costing you most?"
-    }
-  ],
   "premiumAnalysis": {
     "wellness": {
       "lifeTrajectory": {
@@ -596,16 +547,8 @@
       "overall": "A steady, well-connected life with one clear pressure point: the load you carry for other people, carried quietly and late. Social connection is your strongest dimension; cognitive load is the one worth watching first.",
       "suggestions": [
         {
-          "title": "Hand one standing job to someone else",
-          "detail": "Pick one thing you always organise – the group booking, the reminder – and give it away for a month."
-        },
-        {
           "title": "Protect the recovery fortnight",
           "detail": "After a big event, keep the quiet stretch on purpose rather than filling it with the next plan."
-        },
-        {
-          "title": "Say one need out loud this week",
-          "detail": "Something small, to one person. The aim is practice, not a confession."
         }
       ]
     },
@@ -668,16 +611,6 @@
         "detail": "Work without an owner becomes yours by default. It makes you indispensable and leaves less room for the work that would move you forward."
       },
       "actions": [
-        {
-          "horizon": "this week",
-          "title": "Write down three things you delivered",
-          "detail": "Your own contribution, in \"I\" not \"we\". Keep the list going."
-        },
-        {
-          "horizon": "this quarter",
-          "title": "Turn one unofficial job into an official one",
-          "detail": "Ask for the coordinating you already do to be part of your role – and credited."
-        },
         {
           "horizon": "this year",
           "title": "Aim for a role that rewards follow-through",

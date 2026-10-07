@@ -1693,7 +1693,7 @@
       who: ['MBTI', TEXT.bigFive, S.titles.wellness],
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
       connect: [TEXT.loveHead, S.howYouAttach, S.whoSuitsYou, S.titles.work],
-      together: [S.titles.development, S.titles.plan, S.titles.pressurePoints],
+      together: [S.titles.development, S.titles.plan],
     };
     return '<div class="insight-tier insight-free">' +
       '<div class="insight-free-copy">' +
@@ -4838,8 +4838,9 @@
     }
     const holding = [].concat(
       coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
-      career.weaknesses || [],
-      career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
+      career.weaknesses || []).slice(0, 2);
+    // Two at most, and no separate "where it goes wrong": a report written
+    // before the prompt said so could otherwise repeat one cost three ways.
     // Two columns: what sets them apart, and what holds them back. What they
     // are not using is an untapped strength, not a cost, so it closes the
     // strengths side rather than joining the list of costs.
@@ -4868,9 +4869,9 @@
       html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
         '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
         (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
-        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>' +
-        ((attachment.implications || []).length
-          ? '<h4 class="sub-head">' + esc(S.inPractice) + '</h4>' + points(attachment.implications) : '');
+        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>';
+      // No "In practice": what the style gives and costs is under what they
+      // bring and where it gets hard, just below.
     }
     html += '<div class="paired-lists bring-pair">' + pairedListsHtml(
       { title: S.whatYouBring, items: relationship.strengths },
@@ -4924,6 +4925,11 @@
       html += '<h3 class="h-warn">' + esc(S.titles.develop) + '</h3><div class="dev-list dev-grid">' +
         develop.map(item => '<div class="dev-item dev-develop' + patternClass(item.pattern) + '"><h4>' + esc(item.title) + '</h4>' +
           '<p>' + esc(item.detail) + '</p>' +
+          // What used to be "Under pressure": the early signs and the move
+          // for that moment, on the area they belong to.
+          ((item.earlySigns || []).length
+            ? '<p class="connects-label">' + esc(S.earlySigns) + '</p>' + list(item.earlySigns, 'ticks') : '') +
+          (item.counterMove ? '<p><span class="connects-label">' + esc(S.counterMove) + '</span>' + esc(item.counterMove) + '</p>' : '') +
           (item.reflect ? '<p class="reflect"><span class="connects-label">' + esc(S.reflect) + '</span>' +
             esc(item.reflect) + '</p>' : '') + '</div>').join('') + '</div>';
     }

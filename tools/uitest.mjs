@@ -10322,7 +10322,7 @@ try {
       // A line under a title only where the title does not already say it.
       check('structured: a short line only under the sections whose title needs one',
         subs.some(t => /^Five research-backed traits/.test(t)) && subs.some(t => /not clinically validated/.test(t)) &&
-        subs.some(t => /Schwartz/.test(t)) && subs.some(t => /how clearly your data shows the cost/.test(t)) &&
+        subs.some(t => /Schwartz/.test(t)) && !subs.some(t => /how clearly your data shows the cost/.test(t)) &&
         subs.length <= 7 && subs.every(t => t.length <= 100), JSON.stringify(subs));
 
       const cardFace = await sp.evaluate(() => {
@@ -10365,7 +10365,7 @@ try {
         cardFace.sizes.length === 1 && cardFace.labels.some(l => /Values & Beliefs/.test(l)) &&
         cardFace.labels.some(l => /^.?Interests$/.test(l.trim())), JSON.stringify([cardFace.sizes, cardFace.labels]));
       check('structured: values and beliefs together as what you stand for',
-        cardFace.standFor.join() === '4,3', cardFace.standFor.join());
+        cardFace.standFor.join() === '3,3', cardFace.standFor.join());
       check('structured: and carries no Enneagram, even from a report saved with one',
         !cardFace.enneagram);
       check('structured: the report has no Enneagram section',
@@ -10379,8 +10379,8 @@ try {
         (await sp.evaluate(() => {
           const card = Array.from(document.querySelectorAll('#profile-body .section-card'))
             .find(c => /Values & Beliefs/.test(c.querySelector('h2').textContent));
-          // One list: the sample's three values and its belief, drawn alike, with no tag saying which is which.
-          return card && card.querySelectorAll('h3').length === 0 && card.querySelectorAll('.tile').length === 4 &&
+          // One list of three — the sample's values — with no tag saying which is a value and which a belief.
+          return card && card.querySelectorAll('h3').length === 0 && card.querySelectorAll('.tile').length === 3 &&
             card.querySelectorAll('.pill-belief, .tile-belief').length === 0 && !/\bBelief\b/.test(card.textContent);
         })));
       check('structured: MBTI opens Part 1, above the Big Five',
@@ -10438,11 +10438,11 @@ try {
         (await sp.locator('#profile-body .dev-build').count()) === 2 &&
         (await sp.locator('#profile-body .dev-develop').count()) === 2 &&
         (await sp.locator('#profile-body .development-card .timeline-col').count()) === 3 &&
-        (await sp.locator('#profile-body .development-card .plan-step').count()) === 10);
-      const levels = await sp.$$eval('#profile-body .pressure-level', nodes =>
-        nodes.map(n => n.querySelectorAll('.pressure-step.is-on').length));
-      check('structured: pressure points show their level as a three-step meter',
-        levels.join() === '3,2,1', levels.join());
+        (await sp.locator('#profile-body .development-card .plan-step').count()) === 8);
+      check('structured: each area to develop carries its early signs and a counter-move, and there is no separate Under pressure',
+        (await sp.locator('#profile-body .dev-develop ul.ticks').count()) === 2 &&
+        (await sp.$$eval('#profile-body .dev-develop', nodes => nodes.every(n => /Counter-move/i.test(n.textContent)))) &&
+        (await sp.locator('#profile-body .pressure-card, #profile-body .pressure-level').count()) === 0);
       const work = await sp.locator('#profile-body .work-card').innerText();
       check('structured: How you work merges the description and the coach\'s read into one section',
         /Finishes things/.test(work) && /You finish what other people announce/.test(work) &&
@@ -10584,8 +10584,6 @@ try {
         visuals.attachMap === 1 && /Approximate/.test(await sp.locator('#profile-body .attach-map figcaption').textContent()));
       check('structured: ideal partner as need against careful-of, wellbeing as six tiles',
         visuals.partnerCols === 2 && visuals.wellnessTiles === 6);
-      check('structured: pressure points on a gauge, further along the more marked they are',
-        visuals.gauges.join() === '86%,58%,30%', visuals.gauges.join());
       check('structured: How you work carries no actions of its own — they are on the plan',
         visuals.workTimeline === 0 && visuals.trends === 4, JSON.stringify([visuals.workTimeline, visuals.trends]));
       const merged = await sp.evaluate(() => {
@@ -10620,16 +10618,16 @@ try {
           return good[good.length - 1] === 'Not yet using: Your organising, unseen' &&
             !/What you are not using/.test(work.textContent);
         }));
-      check('structured: How you work holds everything holding them back as one list',
-        merged.holding.join('|') === 'Invisible by default|Under-claims|Absorbs the overflow|Where it goes wrong' &&
+      check('structured: How you work holds what holds them back as one short list, two at most, with no "where it goes wrong"',
+        merged.holding.join('|') === 'Invisible by default|Under-claims' &&
         !merged.workHeads.some(h => /day to day|What to do|What could hold you back|What is costing you/.test(h)),
         JSON.stringify([merged.holding, merged.workHeads]));
       check('structured: the plan carries every action — develop areas, work and wellbeing',
         merged.planFrom.filter(f => f === 'How you work').length === 3 &&
         merged.planFrom.filter(f => f === 'Wellbeing').length === 2, merged.planFrom.join(', '));
       check('structured: wellbeing no longer has its own list of suggestions', !merged.wellnessHelp);
-      check('structured: Under pressure names no pattern under each item',
-        !/From pattern/i.test(await sp.locator('#profile-body .pressure-card').textContent()));
+      check('structured: attachment has no "In practice" list',
+        !/In practice/i.test(await sp.locator('#profile-body .relationships-card').textContent()));
       check('structured: Who suits you is a verdict banner over two numbered lists',
         (await sp.locator('#profile-body .partner-summary').count()) === 1 &&
         (await sp.locator('#profile-body .partner .partner-need .partner-items li').count()) === samplePremium.idealPartner.needs.length &&
@@ -10870,13 +10868,13 @@ try {
       const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
         'Values & Beliefs', 'How you connect & work', 'Attachment style', 'What you bring', 'Who suits you',
-        'What holds you back', 'Putting it together', 'Development plan', 'Your plan', 'Under pressure',
+        'What holds you back', 'Putting it together', 'Development plan', 'Your plan',
         'Evidence and method', 'Let us roast you'];
       check('structured PDF: the page\'s sections in the page\'s order',
         pdfOrder.every((text, i, all) => at(text) >= 0 && (i === 0 || at(text) > at(all[i - 1]))),
         pdfOrder.map(text => text + '@' + at(text)).join(', '));
       check('structured PDF: none of what the page dropped',
-        !['About this report', 'PART 1', 'The unvarnished read', 'CONNECTS TO', 'RAISED BY', 'Digital footprint',
+        !['About this report', 'PART 1', 'The unvarnished read', 'CONNECTS TO', 'RAISED BY', 'Digital footprint', 'Strengths that turn costly when overused', 'IN PRACTICE', 'Where it goes wrong',
           'Your digital footprint', 'Sources read', 'REPORT FORMAT', 'Structured report, v1', 'BUILD'].some(t => structuredPdf.includes(t)) &&
           !/\bBelief\b/.test(structuredPdf) &&
           !structuredPdf.includes(sampleReport.mbti.caveat.slice(0, 40)),
@@ -10906,7 +10904,7 @@ try {
       // A section's heading is never left at the foot of a page with its
       // first block overleaf: the page that opens each section carries its heading.
       const opens = [['Your signature patterns', 'SHOWS UP IN'], ['How you work', 'YOUR EDGE'],
-        ['Who suits you', 'What you actually need'], ['Under pressure', 'EARLY SIGNS'],
+        ['Who suits you', 'What you actually need'], ['Develop', 'EARLY SIGNS'],
         ['Five research-backed traits', 'Prefers the familiar and proven'], ['Development plan', 'Build on']];
       check('structured PDF: every section heading shares its page with its first block',
         opens.every(([title, first]) => pageOf(first) > 0 && pages[pageOf(first)].includes(title)),

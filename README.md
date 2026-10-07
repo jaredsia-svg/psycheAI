@@ -3342,7 +3342,7 @@ here is either this app's own or a published academic model.
 | **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
 | **Part 3 – How you connect & work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
-| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it, with actions and a reflection question) · **Under pressure** (strengths that turn costly when overused, with a three-step level, early signs, a counter-move and a question) |
+| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it; each develop area carries the strength it tips over from, two early signs, a counter-move and a reflection question) · **Your plan** (about five actions, one column per horizon in the PDF) |
 | **After Part 4** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
 | **Last** | The roast, after the method rather than mid-report, with no heading of its own |
 
@@ -3568,13 +3568,48 @@ before the field falls back to the three highest of the paid report's ten. **Val
 four at most** — three values and one belief, in both prompts and both schemas — and the page and the
 PDF draw no more than that from an older report.
 
-The model writes four more fields for it — `patterns`, `motivators`, `development` and
-`pressurePoints` (`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of every classic field, so the
+The model writes three more fields for it — `patterns`, `motivators` and `development`
+(`STRUCTURED_KEYS` in `lib/prompts.js`) — on top of the classic fields, so the
 change is additive: a report written in this layout still renders classic, and `?layout=classic` or
 `?layout=structured` on any page draws the same stored report either way for comparison. The extra
 prompt is about 2,800 input tokens, and the four fields are sized at roughly two ordinary sections of
 output; `FIXED_INPUT_TOKENS` rose to 37,600 and `COST_CAP` to $0.151 to keep the 80,000-character
 digest inside the cap. **To revert**, set `PSYCHEAI_REPORT_LAYOUT=classic`.
+
+**Less repetition, written into the schema rather than asked for.** A review of two real paid reports
+found the same point made three or four times — the character three times before page 3, MBTI letters
+re-arguing the Big Five, the edge restated as the first strength, one cost listed three ways, the same
+action three times with different deadlines, and "Under pressure" repeating the develop areas. The
+prompts already forbade most of it, so where a field existed only to be repeated, the structured schema
+now leaves it out (`reshaped()` in `lib/prompts.js`; classic is unchanged):
+
+- `summary` is about 120 words with **no numbers or scores** (`STRUCTURED_SUMMARY`); the character box
+  above it stays.
+- **Values & Beliefs is three at most**, chosen after `topMotivators` and `patterns` in the free call
+  and forbidden to restate either.
+- `attachment.implications` ("In practice") is gone — relationships' own strengths and weaknesses carry it.
+- `career.watchOuts` ("Where it goes wrong") is gone; `career.strengths` must not restate the edge and
+  `career.weaknesses` is at most one cost that `holdingBack` does not name, so "What holds you back"
+  is two items at most (the page and the PDF also cap it at two for older reports).
+- **`pressurePoints` is folded into `development.develop`**: each area to develop carries the strength it
+  tips over from, `earlySigns` and `counterMove`. Older reports still render their "Under pressure" cards.
+- **The plan holds about five actions**: one or two from each develop area, `careerAssessment.actions`
+  and `wellness.suggestions`, and none the same step on a different deadline.
+
+The full prompt also gained **Plain words, short sentences** (a short banned-word list, British spelling,
+sentence case for every name) and **What never appears in the report**: conversation tags (`[t1]`),
+field names, sampling figures outside the confidence fields, "neuroticism", and "we". Conversation tags
+are also caught after the model writes: `untagged()` in `lib/privacy.js` turns "thread t1" into "one of
+your closest conversations" and "threads t1, t2" into "your closest conversations" in every report
+before it is stored or served.
+
+**PDF flow.** Only the five parts start a new page. A panel or a pair of panels that does not fit splits
+between two of its items (`rowsThatFit()`, `continued()`) when a fair part fits, instead of jumping
+whole and leaving a gap; `keep()` now notices a heading stranded at the foot of a page with its first
+block overleaf (`breakPage()`/`markHead()`) and moves the two together. The plan is a grid — a column
+per horizon, cards in rows of equal height, the column heads repeated after a page break (`planGrid()`).
+An older report's "Under pressure" card draws a real arrow between the strength and what it turns into
+instead of "->", with no end labels repeating the heading.
 
 **The paid call sends a pinned schema.** Gemini refuses the whole structured schema with a bare
 400 "Request contains an invalid argument." — it is past a complexity limit Gemini does not name,

@@ -519,7 +519,19 @@
 
   /** Start a new page when the next block will not fit. */
   Report.prototype.need = function (height) {
-    if (this.doc.y + height > PAGE.height - MARGIN - 26) this.page();
+    if (this.doc.y + height > PAGE.height - MARGIN - 26) this.breakPage();
+    return this;
+  };
+
+  /** A page break mid-flow, noted for `keep`, which checks no heading was left behind. */
+  Report.prototype.breakPage = function () {
+    if (this.breaks) this.breaks.push({ page: this.doc.pageNumber, y: this.doc.y });
+    return this.page();
+  };
+
+  /** Where the last heading ended, so `keep` can tell one stranded at a page's foot. */
+  Report.prototype.markHead = function () {
+    this.headEnd = { page: this.doc.pageNumber, y: this.doc.y };
     return this;
   };
 
@@ -537,11 +549,23 @@
     const bottom = PAGE.height - MARGIN - 26;
     const before = { pages: doc.pages.length, length: doc.buffer.length, y: doc.y, contents: this.contents.length };
     const outerTitled = this.titled;
+    const outerBreaks = this.breaks;
+    const outerHead = this.headEnd;
     this.titled = false;
+    this.breaks = [];
+    this.headEnd = null;
     draw();
     const titled = this.titled;
+    const breaks = this.breaks;
+    const head = this.headEnd;
     this.titled = outerTitled || titled;
+    this.breaks = outerBreaks;
+    this.headEnd = head || outerHead;
     if (doc.pages.length === before.pages || before.y <= top + 6) return this;
+    // A heading whose content all went overleaf — a panel that would not fit
+    // under it moved whole — is a heading alone at the foot of a page.
+    const stranded = Boolean(head && breaks.length && head.page === before.pages &&
+      breaks[0].page === before.pages && breaks[0].y - head.y < 40);
     // How it broke: the room it had on its first page, and what ran over.
     const room = bottom - before.y;
     const spilled = doc.pages.length - before.pages;
@@ -552,7 +576,7 @@
     // A card that breaks with a fair share on each side stays as it fell —
     // its card continues overleaf (see `boxed`). A heading must keep a third
     // of a page of its own content under it, and no scrap is left on either side.
-    if (room >= (titled ? 200 : 120) && tail >= 90) return this;
+    if (!stranded && room >= (titled ? 200 : 120) && tail >= 90) return this;
     doc.pages.length = before.pages;
     doc.buffer = doc.pages[before.pages - 1].content;
     doc.buffer.length = before.length;
@@ -674,7 +698,7 @@
     this.doc.draw(toWinAnsi(String(text).toUpperCase()), this.x, this.doc.y + 8,
       { size: 7.5, bold: true, color: color || ACCENT_2, tracking: 1.2 });
     this.doc.y += 15;
-    return this;
+    return this.markHead();
   };
 
   /** A section head: the page's card-head, minus the glyph. */
@@ -705,7 +729,7 @@
       this.body(sub, { size: 9.4, color: SOFT, leading: 13.4 });
       this.space(5);
     }
-    return this;
+    return this.markHead();
   };
 
   /** A heading inside a section — the page's h3. */
@@ -721,7 +745,7 @@
       this.doc.draw(line, this.x, this.doc.y + 9, style);
       this.doc.y += 17;
     }
-    return this;
+    return this.markHead();
   };
 
   /** A ticked list item — the page's `ul.ticks`. */
@@ -1950,6 +1974,25 @@
     return this;
   };
 
+  /** A small label, then short bullets: a develop area's early signs. */
+  Report.prototype.signs = function (label, items, color) {
+    const doc = this.doc;
+    this.need(30);
+    this.space(5);
+    doc.draw(toWinAnsi(String(label).toUpperCase()), this.x, doc.y + 7, { size: 7, bold: true, color: color || SOFT, tracking: 1 });
+    doc.y += 12;
+    for (const item of items) {
+      wrap(toWinAnsi(item), this.w - 11, T_BODY).forEach((line, i) => {
+        this.need(14);
+        if (!i) doc.circle(this.x + 2.5, doc.y + 6.2, 2, color || WARN);
+        doc.draw(line, this.x + 11, doc.y + 9.4, T_BODY);
+        doc.y += 13.4;
+      });
+    }
+    this.space(3);
+    return this;
+  };
+
   /**
    * A part divider — its numeral and title, as the page's part heading has —
    * recorded in the cover's contents in place of sections.
@@ -2058,6 +2101,26 @@
       },
     };
   }
+  /**
+   * How many of `rows` fit in `room`, cutting only where a new item starts
+   * (a row with space before it), so a title is never parted from its text.
+   * Nought when not even the first item fits.
+   */
+  function rowsThatFit(rows, width, room) {
+    let best = 0;
+    for (let k = 1; k < rows.length; k++) {
+      if (!((rows[k].before || 0) >= 6)) continue;
+      if (layoutRows(rows.slice(0, k), width).height <= room) best = k;
+      else break;
+    }
+    return best;
+  }
+
+  /** The rows after a cut, the first no longer spaced from what came before it. */
+  function continued(rows) {
+    return rows.map((row, i) => (i ? row : Object.assign({}, row, { before: 0 })));
+  }
+
   // The width a row's right-hand label is aligned against; set by whoever
   // draws the block, since one layout can be drawn in a column of any width.
   let blockWidth = COLUMN;
@@ -2075,7 +2138,7 @@
       this.doc.y += 16;
     }
     this.space(6);
-    return this;
+    return this.markHead();
   };
 
   /**
@@ -2087,12 +2150,24 @@
     const o = options || {};
     const pad = 12;
     const inner = COLUMN - pad * 2 - 4;
+    rows = (rows || []).filter(row => row && row.text);
     const body = layoutRows(rows, inner);
     const labelH = o.label ? 15 : 0;
     const height = body.height + labelH + pad * 2;
     if (height > PAGE.height - MARGIN * 2 - 80) {
-      for (const row of rows) if (row && row.text) this.body(row.text, { size: row.style.size, bold: row.style.bold, italic: row.style.italic, color: row.style.color });
+      for (const row of rows) this.body(row.text, { size: row.style.size, bold: row.style.bold, italic: row.style.italic, color: row.style.color });
       return this;
+    }
+    // Not room for all of it, but room for a fair part: split between two of
+    // its items rather than moving the whole box and leaving a gap.
+    const room = PAGE.height - MARGIN - 26 - this.doc.y;
+    if (height + 8 > room && room >= 140 && !o.whole) {
+      const cut = rowsThatFit(rows, inner, room - labelH - pad * 2 - 8);
+      if (cut > 0 && cut < rows.length) {
+        this.panel(rows.slice(0, cut), Object.assign({}, o, { whole: true }));
+        this.breakPage();
+        return this.panel(continued(rows.slice(cut)), Object.assign({}, o, { label: o.label }));
+      }
     }
     this.need(height + 8);
     const top = this.doc.y;
@@ -2115,24 +2190,45 @@
    * { title, color, fill, rows }. Too tall for a page together, and they are
    * set one above the other instead.
    */
-  Report.prototype.pairedPanels = function (left, right) {
+  Report.prototype.pairedPanels = function (left, right, options) {
+    const o = options || {};
     const gap = 12;
     const pad = 11;
     const width = (COLUMN - gap) / 2;
     const inner = width - pad * 2;
-    const sides = [left, right].filter(side => side && (side.rows || []).some(row => row && row.text));
+    const clean = side => side && Object.assign({}, side, { rows: (side.rows || []).filter(row => row && row.text) });
+    // Each side keeps its column; a continuation may have only one of them.
+    const sides = [clean(left), clean(right)].map((side, column) => side && Object.assign(side, { column }))
+      .filter(side => side && side.rows.length);
     if (!sides.length) return this;
     const laid = sides.map(side => ({ side, body: layoutRows(side.rows, inner) }));
     const titleH = 24;
     const height = Math.max(...laid.map(l => l.body.height)) + titleH + pad * 2;
-    if (sides.length === 1 || height > PAGE.height - MARGIN * 2 - 80) {
+    if ((sides.length === 1 && !o.continued) || height > PAGE.height - MARGIN * 2 - 80) {
       for (const side of sides) this.panel(side.rows, { label: side.title, bar: side.color, fill: side.fill });
       return this;
     }
+    // Not room for both whole, but room for a fair part: split each side
+    // between two of its items and carry on overleaf, in the same columns.
+    const room = PAGE.height - MARGIN - 26 - this.doc.y;
+    if (height + 8 > room && room >= 160 && !o.whole) {
+      const fit = room - titleH - pad * 2 - 8;
+      const cuts = [left, right].map(side => {
+        const rows = clean(side) ? clean(side).rows : [];
+        return layoutRows(rows, inner).height <= fit ? rows.length : rowsThatFit(rows, inner, fit);
+      });
+      const sideRows = [left, right].map(side => (clean(side) ? clean(side).rows : []));
+      if (cuts.every((cut, i) => cut > 0 || !sideRows[i].length) && cuts.some((cut, i) => cut < sideRows[i].length)) {
+        const part = (side, i, from, to) => side && Object.assign({}, side, { rows: from ? continued(sideRows[i].slice(from)) : sideRows[i].slice(0, to) });
+        this.pairedPanels(part(left, 0, 0, cuts[0]), part(right, 1, 0, cuts[1]), { whole: true, continued: true });
+        this.breakPage();
+        return this.pairedPanels(part(left, 0, cuts[0]), part(right, 1, cuts[1]), { continued: true });
+      }
+    }
     this.need(height + 8);
     const top = this.doc.y;
-    laid.forEach(({ side, body }, i) => {
-      const x = MARGIN + i * (width + gap);
+    laid.forEach(({ side, body }) => {
+      const x = MARGIN + side.column * (width + gap);
       this.doc.roundRect(x, top, width, height, 9, side.fill || WHITE);
       this.doc.roundRect(x, top, width, 4, 2, side.color || ACCENT);
       this.doc.draw(toWinAnsi(side.title), x + pad, top + pad + 10, { size: 10.4, bold: true, color: side.color || ACCENT });
@@ -2180,10 +2276,27 @@
     };
     this.boxed(() => {
       const headStyle = { size: 11.2, bold: true, color: INK };
-      const head = wrap(toWinAnsi(item.strength + '  ->  ' + (item.overused || '')), this.w - 120, headStyle);
+      // The strength, a drawn arrow, and what it turns into — WinAnsi has no
+      // arrow glyph, and "->" read as code. Too long for one line, and the two
+      // go on two lines with the arrow leading the second.
+      const strength = toWinAnsi(item.strength || '');
+      const overused = toWinAnsi(item.overused || '');
+      const room = this.w - 120;
+      const oneLine = measure(strength, 11.2, true) + 24 + measure(overused, 11.2, true) <= room;
+      const head = oneLine ? [strength] : wrap(strength, room, headStyle).concat(overused ? [''] : []);
       this.need(head.length * 15 + 60);
       const top = doc.y;
-      head.forEach((line, i) => doc.draw(line, this.x, top + 10 + i * 15, headStyle));
+      head.forEach((line, i) => line && doc.draw(line, this.x, top + 10 + i * 15, headStyle));
+      if (overused) {
+        const row = head.length - 1;
+        const ax = oneLine ? this.x + measure(strength, 11.2, true) + 7 : this.x;
+        const ay = top + 6 + row * 15;
+        doc.setStroke(WARN);
+        doc.op('1.2 w 1 J 1 j');
+        doc.tracePath('M0 3H10M7 0L10 3L7 6', v => ax + v, v => PAGE.height - (ay + v));
+        doc.op('S');
+        doc.draw(overused, ax + 17, top + 10 + row * 15, headStyle);
+      }
       levelMeter(doc, this.x + this.w, top, item.level, labels.level);
       // The bar: green at its best, warm where it costs, and a marker at the level.
       const barTop = top + head.length * 15 + 6;
@@ -2196,10 +2309,8 @@
         doc.circle(this.x + this.w * reach, barTop + 2, 5, WHITE);
         doc.circle(this.x + this.w * reach, barTop + 2, 3.5, INK);
       }
-      doc.draw(toWinAnsi(labels.atBest), this.x, barTop + 14, { size: 7, color: SOFT });
-      const over = toWinAnsi(labels.overused);
-      doc.draw(over, this.x + this.w - measure(over, 7, false), barTop + 14, { size: 7, color: SOFT });
-      doc.y = barTop + 22;
+      // No end labels: the heading already says what each end is.
+      doc.y = barTop + 14;
       if (item.detail) this.body(item.detail, { size: 9.6, leading: 13.8 });
       const signs = (item.earlySigns || []).filter(Boolean);
       if (signs.length) {
@@ -2852,16 +2963,8 @@
         ], { fill: WASH, bar: ACCENT });
         evidence(attachment.derivedFrom);
       });
-      const practice = (attachment.implications || []).filter(item => item && item.title);
-      if (practice.length) {
-        out.keep(() => {
-          out.eyebrow(S.inPractice, SOFT);
-          out.panel(practice.flatMap((item, i) => [
-            { text: item.title, style: T_TITLE, leading: 14, before: i ? 8 : 0 },
-            item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
-          ]).filter(Boolean), { fill: WHITE, bar: ACCENT_2 });
-        });
-      }
+      // No "In practice": what the style gives and costs is under what they
+      // bring and where it gets hard, just below.
     }
     const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
       { text: item.title, style: T_TITLE, leading: 14, before: i ? 9 : 0 },
@@ -2904,10 +3007,10 @@
     });
     const strengths = (career.strengths || []).concat(coaching && coaching.underused
       ? [{ title: S.notYetUsing + coaching.underused.headline, detail: coaching.underused.detail }] : []);
+    // Two at most, and no separate "where it goes wrong" — the page's list.
     const holding = [].concat(
       coaching && coaching.holdingBack ? [{ title: coaching.holdingBack.headline, detail: coaching.holdingBack.detail }] : [],
-      career.weaknesses || [],
-      career.watchOuts ? [{ title: S.whereItGoesWrong, detail: career.watchOuts }] : []);
+      career.weaknesses || []).slice(0, 2);
     out.space(4);
     out.pairedPanels(
       { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, color: GOOD, fill: GOOD_WASH, rows: pointRows(strengths) },
@@ -2925,6 +3028,13 @@
         if (!i) out.space(4);
         out.boxed(() => {
           out.point(item.title, item.detail, { bar: false, size: 11, detailColor: INK, detailSize: 9.6, detailLeading: 13.8 });
+          // What used to be "Under pressure", on the area it belongs to.
+          const signs = (item.earlySigns || []).filter(Boolean);
+          if (signs.length) out.signs(S.earlySigns, signs, color);
+          if (item.counterMove) {
+            out.space(2);
+            out.labelled(S.counterMove, item.counterMove, { color: INK, size: 9.4, labelColor: color });
+          }
           if (item.reflect) {
             out.space(2);
             out.labelled(S.reflect, item.reflect, { italic: true, color: INK, size: 9.4, labelColor: color });
@@ -2947,19 +3057,15 @@
       const groups = horizons.map((horizon, i) => ({ horizon,
         here: actions.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) }))
         .filter(g => g.here.length);
-      // As on the page: each horizon named in a column on the left, and its
-      // steps beside it as cards with a box to tick.
-      const labelW = 96;
-      groups.forEach((g, gi) => g.here.forEach((action, i) => out.keep(() => {
-        if (!gi && !i) out.h3(S.titles.plan);
-        if (!i) {
-          out.space(gi ? 10 : 4);
-          if (gi) doc.hairline(doc.y - 6, MARGIN, MARGIN + COLUMN, mix(LINE, WHITE, 0.2));
-          doc.circle(MARGIN + 4, doc.y + 9, 4, ACCENT);
-          doc.draw(toWinAnsi(TEXT.careerHorizons[g.horizon]), MARGIN + 14, doc.y + 12.5, { size: 10, bold: true, color: INK });
-        }
-        inset(labelW, () => out.boxed(() => planStep(out, action), { pad: 10, gap: 6, radius: 9 }));
-      })));
+      // A column per horizon — this week, this quarter, this year — with its
+      // steps stacked under it as cards with a box to tick.
+      if (groups.length) {
+        out.keep(() => {
+          out.h3(S.titles.plan);
+          out.space(4);
+          planGrid(out, groups);
+        });
+      }
     }
     const pressure = (source.pressurePoints || []).filter(item => item && item.strength);
     pressure.forEach((item, i) => out.keep(() => {
@@ -3009,44 +3115,66 @@
   }
 
   /**
-   * One step of the plan: a box to tick, the step, its detail a size down,
-   * and where it came from as a tag.
+   * The plan as a grid: a column per horizon, headed by its name, and its
+   * steps as cards under it, a row of cards at a time so a page break falls
+   * between rows (the column heads repeat overleaf). Cards in a row share a
+   * height, so the grid reads as one table.
    */
-  function planStep(out, action) {
+  function planGrid(out, groups) {
     const doc = out.doc;
-    const top = doc.y;
-    doc.roundRect(out.x, top + 1, 12, 12, 3, mix(ACCENT, WHITE, 0.45));
-    doc.roundRect(out.x + 1.3, top + 2.3, 9.4, 9.4, 2.2, WHITE);
-    const saved = { x: out.x, w: out.w };
-    out.x += 22;
-    out.w -= 22;
-    const style = { size: 10.2, bold: true, color: INK };
-    for (const line of wrap(toWinAnsi(action.step), out.w, style)) {
-      out.need(15);
-      doc.draw(line, out.x, doc.y + 10, style);
-      doc.y += 14.5;
+    const gap = 10;
+    const n = groups.length;
+    const colW = (COLUMN - gap * (n - 1)) / n;
+    const pad = 9;
+    const textW = colW - pad * 2 - 16;
+    const stepStyle = { size: 9.4, bold: true, color: INK };
+    const detailStyle = { size: 8.4, color: SOFT };
+    const fromStyle = { size: 7.2, bold: true, color: ACCENT };
+    const card = action => {
+      const step = wrap(toWinAnsi(action.step), textW, stepStyle);
+      const detail = action.detail ? wrap(toWinAnsi(action.detail), textW, detailStyle) : [];
+      const from = action.from ? wrap(toWinAnsi(action.from), textW, fromStyle) : [];
+      const h = pad * 2 + step.length * 12.4 + (detail.length ? 3 + detail.length * 11.2 : 0) +
+        (from.length ? 5 + from.length * 9.6 : 0);
+      return { step, detail, from, h };
+    };
+    const laid = groups.map(g => g.here.map(card));
+    const bottom = PAGE.height - MARGIN - 26;
+    const header = () => {
+      const top = doc.y;
+      groups.forEach((g, i) => {
+        const x = MARGIN + i * (colW + gap);
+        doc.roundRect(x, top, colW, 20, 6, mix(ACCENT, WHITE, 0.86));
+        doc.circle(x + 11, top + 10, 3.2, ACCENT);
+        doc.draw(toWinAnsi(TEXT.careerHorizons[g.horizon]), x + 19, top + 13.6, { size: 9, bold: true, color: INK });
+      });
+      doc.y = top + 26;
+    };
+    const rows = Math.max(...laid.map(col => col.length));
+    const first = Math.max(...laid.map(col => (col[0] ? col[0].h : 0)));
+    if (doc.y + 26 + first > bottom) out.page();
+    header();
+    for (let r = 0; r < rows; r++) {
+      const h = Math.max(...laid.map(col => (col[r] ? col[r].h : 0)));
+      if (doc.y + h > bottom) { out.page(); header(); }
+      const top = doc.y;
+      laid.forEach((col, i) => {
+        const c = col[r];
+        if (!c) return;
+        const x = MARGIN + i * (colW + gap);
+        doc.roundRect(x, top, colW, h, 8, mix(LINE, WHITE, 0.15));
+        doc.roundRect(x + 0.8, top + 0.8, colW - 1.6, h - 1.6, 7.4, WHITE);
+        doc.roundRect(x + pad, top + pad + 0.5, 10, 10, 2.5, mix(ACCENT, WHITE, 0.45));
+        doc.roundRect(x + pad + 1.2, top + pad + 1.7, 7.6, 7.6, 1.8, WHITE);
+        const tx = x + pad + 16;
+        let y = top + pad;
+        c.step.forEach(line => { doc.draw(line, tx, y + 9, stepStyle); y += 12.4; });
+        if (c.detail.length) { y += 3; c.detail.forEach(line => { doc.draw(line, tx, y + 8, detailStyle); y += 11.2; }); }
+        if (c.from.length) { y += 5; c.from.forEach(line => { doc.draw(line, tx, y + 7, fromStyle); y += 9.6; }); }
+      });
+      doc.y = top + h + 6;
     }
-    if (action.detail) out.body(action.detail, { size: 9, color: SOFT, leading: 12.8 });
-    if (action.from) { out.space(2); planSource(out, action.from); doc.y -= 4; }
-    out.x = saved.x;
-    out.w = saved.w;
-  }
-
-  /** A plan step's source, as a small bent arrow and a tag in the accent. */
-  function planSource(out, from) {
-    const doc = out.doc;
-    out.need(18);
-    const text = toWinAnsi(from);
-    const x = out.x;
-    const top = doc.y + 2;
-    doc.setStroke(ACCENT);
-    doc.op('0.9 w 1 J 1 j');
-    doc.tracePath('M0 0V5H6M4 3L6 5L4 7', v => x + v, v => PAGE.height - (top + 1 + v));
-    doc.op('S');
-    const w = measure(text, 7.4, true) + 12;
-    doc.roundRect(x + 10, top, w, 13, 6.5, mix(ACCENT, WHITE, 0.86));
-    doc.draw(text, x + 16, top + 9.1, { size: 7.4, bold: true, color: ACCENT });
-    doc.y += 18;
+    doc.y += 2;
   }
 
   // ---------- serialisation ----------

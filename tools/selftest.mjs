@@ -5903,6 +5903,18 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const nothing = { data: { a: 'Nothing private here.' } };
   check('a clean report is returned as it came',
     privacy.scrubResult(nothing, leakDigest) === nothing && privacy.scrubResult(nothing, null) === nothing);
+  // Conversation tags from the digest ([t1]–[t10]) never reach the reader,
+  // even when the model writes them in: a real report said "thread t1" six times.
+  {
+    const tagged = { a: 'In thread t1, you said so.', b: ['Advice across message threads t1, t2, and t5.', 'Colleagues across multiple threads (t1, t2) calmly.'],
+      c: 'Meet at t2 station.' };
+    const { data: untagged, removed: tagCount } = privacy.scrub(tagged, null);
+    check('conversation tags are written out as words, even with no names to remove',
+      untagged.a === 'In one of your closest conversations, you said so.' &&
+      untagged.b[0] === 'Advice across your closest conversations.' &&
+      untagged.b[1] === 'Colleagues across your closest conversations calmly.' &&
+      untagged.c === 'Meet at t2 station.' && tagCount === 3, JSON.stringify(untagged));
+  }
 
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
   check('both report routes scrub before the result is stored or served',
@@ -5943,8 +5955,11 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the structured schema drops only the Enneagram; every other classic field is written unchanged',
     prompts.STRUCTURED_DROPS.join() === 'enneagram' && !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
-    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key =>
+    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
+      'summary', 'career', 'wellness', 'attachment', 'careerAssessment'].includes(key)).every(key =>
       structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
+    // Reshaped rather than dropped: the same sections, leaner.
+    ['summary', 'career', 'wellness', 'attachment', 'careerAssessment'].every(key => structured.required.includes(key)) &&
     // Values and beliefs keep their fields, capped at four between them.
     structured.properties.values.items === classicSchema.properties.values.items &&
     structured.properties.beliefs.items === classicSchema.properties.beliefs.items,
@@ -5952,18 +5967,29 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('its QR card keeps the same fields, with the Enneagram always empty',
     Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
     /Always an empty string/.test(structured.properties.card.properties.enneagram.description));
-  check('and adds exactly the four thread fields, all required',
-    prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development,pressurePoints' &&
+  check('and adds exactly the three thread fields, all required',
+    prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development' &&
     prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in classicSchema.properties)));
   const order = Object.keys(structured.properties);
   check('patterns are written straight after the summary, before any section that points back at them',
     order.indexOf('patterns') === order.indexOf('summary') + 1 &&
     order.indexOf('development') > order.indexOf('careerAssessment') &&
-    order.indexOf('pressurePoints') === order.length - 1, order.join(','));
+    order.indexOf('development') === order.length - 1, order.join(','));
+  check('the structured report is leaner where sections shared a page: no watch-outs, no "In practice", no separate pressure points',
+    !('watchOuts' in structured.properties.career.properties) &&
+    !('implications' in structured.properties.attachment.properties) &&
+    !('pressurePoints' in structured.properties) &&
+    ['earlySigns', 'counterMove'].every(key => key in structured.properties.development.properties.develop.items.properties) &&
+    'watchOuts' in classicSchema.properties.career.properties && 'implications' in classicSchema.properties.attachment.properties);
+  check('the executive summary is about 120 words with no scores',
+    /About 120 words/.test(structured.properties.summary.description) &&
+    /No numbers or scores of any kind/.test(structured.properties.summary.description));
   const enneagramBullet = prompts.CLASSIC_FULL_SYSTEM.slice(prompts.CLASSIC_FULL_SYSTEM.indexOf('- **Enneagram**: '),
     prompts.CLASSIC_FULL_SYSTEM.indexOf('\n\n- **activity**: ') + 2);
   check('the structured prompt is the classic one without its Enneagram section, plus the thread',
-    prompts.STRUCTURED_FULL_SYSTEM === prompts.CLASSIC_FULL_SYSTEM.replace(enneagramBullet, '') + '\n\n' + prompts.STRUCTURED_ADDON &&
+    prompts.STRUCTURED_FULL_SYSTEM === (prompts.CLASSIC_FULL_SYSTEM.replace(enneagramBullet, '') + '\n\n' + prompts.STRUCTURED_ADDON)
+      .replace('go back to `attachment.why` and `attachment.implications` and pull', 'go back to `attachment.why` and pull')
+      .replace('do not smuggle one back into `workStyle` or `watchOuts`.', 'do not smuggle one back into `workStyle`.') &&
     !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
   check('the prompt that ties them in is in the structured prompt and nowhere in the classic one',
     prompts.STRUCTURED_FULL_SYSTEM.includes(prompts.STRUCTURED_ADDON) &&
@@ -5974,9 +6000,17 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('motivators are all ten of Schwartz\'s values, scored against each other',
     prompts.MOTIVATORS.length === 10 && /relative to their other nine/.test(prompts.STRUCTURED_ADDON) &&
     /each exactly once/.test(prompts.STRUCTURED_ADDON));
-  check('pressure levels describe their own data, never a comparison with other people',
-    /never a comparison with other people/.test(prompts.STRUCTURED_ADDON) &&
+  check('a strength under pressure is behaviour, never a condition',
     /hard limits on clinical language apply here/.test(prompts.STRUCTURED_ADDON));
+  check('the plan holds about five actions and forbids the same step on a different deadline',
+    /about five in all/.test(prompts.STRUCTURED_ADDON) && /different deadline/.test(prompts.STRUCTURED_ADDON));
+  check('the full prompt keeps plumbing out of the report and writes plainly',
+    /Never write a tag, a thread number/.test(prompts.CLASSIC_FULL_SYSTEM) &&
+    /always "emotional sensitivity"/.test(prompts.CLASSIC_FULL_SYSTEM) &&
+    /never about itself as "we"/.test(prompts.CLASSIC_FULL_SYSTEM) &&
+    /British spelling throughout/.test(prompts.CLASSIC_FULL_SYSTEM) &&
+    /Sentence case for every name/.test(prompts.CLASSIC_FULL_SYSTEM) &&
+    /Do not use these words at all/.test(prompts.CLASSIC_FULL_SYSTEM));
 
   // The page and the PDF read their labels from copy.js; the model writes
   // keys from prompts.js. The two vocabularies have to be the same lists.
@@ -6093,18 +6127,21 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       order.indexOf('cardHighlights') > order.indexOf('patterns') &&
       /do not restate a pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description), order.join(','));
     check('the structured free prompt states what the card prints from the lists, and keeps them chip-length',
-      /one list of at most four — up to three values\s+and one belief/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /one list of at most three in all/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /under 40 characters/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       !/first three, three and two/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /first three, three and two/.test(prompts.CLASSIC_FREE_SYSTEM));
     check('values and beliefs are one list on the page, so both structured prompts forbid a belief restating a value',
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
       /none may restate, narrow or overlap another/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
-      /one list of at most four/.test(prompts.STRUCTURED_FULL_SYSTEM));
-    check('values and beliefs are capped at four between them in both structured schemas',
-      /never more than three/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
-      /At most one/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
-      /no two overlapping/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+      /one list of at most three/.test(prompts.STRUCTURED_FULL_SYSTEM) &&
+      /none may restate a top motivator or a signature pattern/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /none may restate a top motivator or a pattern/.test(prompts.STRUCTURED_FULL_SYSTEM));
+    check('values and beliefs are capped at three between them in both structured schemas, chosen after the motivators and patterns',
+      /never more than three entries in all/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+      /At most one, and only if values has fewer than three/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.beliefs.description) &&
+      /restate a top motivator or a signature pattern/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.values.description) &&
+      order.indexOf('values') > order.indexOf('topMotivators') && order.indexOf('values') > order.indexOf('patterns') &&
       /never more than three/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.values.description) &&
       /At most one/.test(prompts.STRUCTURED_FULL_SCHEMA.properties.beliefs.description) &&
       prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties.values.description === prompts.STRUCTURED_FULL_SCHEMA.properties.values.description);
