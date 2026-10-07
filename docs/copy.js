@@ -975,7 +975,14 @@
           yours: f => f.type + (f.letters.length ? ': ' + f.letters.join(', ') + '.' : '.') +
             ' A slight letter sits near the middle — you can go either way.' },
         { key: 'bigFive', icon: '📊', title: 'Big Five', when: f => f.trait,
-          about: 'The most researched model of personality: five traits, each scored 0–100, most people landing between 35 and 65. It predicts how you work, handle stress and get on with people better than most measures.',
+          about: 'The most researched model of personality. The four traits on your card:',
+          // The traits the card shows, each in a line.
+          terms: [
+            ['Openness', 'how curious you are about new ideas and experiences.'],
+            ['Conscientiousness', 'how organised and reliable you are.'],
+            ['Agreeableness', 'how readily you accommodate others rather than challenge them.'],
+            ['Sensitivity', 'how strongly and quickly you feel stress.'],
+          ],
           yours: f => 'Your ' + f.trait.toLowerCase() + ' at ' + f.traitScore + ' is the one furthest from the middle.' },
         { key: 'standFor', icon: '⚖️', title: 'Values, beliefs and interests', when: f => f.value || f.interest,
           about: 'Values and beliefs are the principles your posts and messages keep returning to; interests are what lasts beyond a passing phase. When what you do matches what you value, life feels meaningful.',

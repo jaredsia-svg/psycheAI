@@ -3402,7 +3402,8 @@ the nav is gone. All of this holds (`[data-cx]`, marked by
 MBTI's background and each letter pair in plain words, the reader's own letters marked; Schwartz's ten
 values; why patterns are worth naming) and why it is worth knowing, in **one short paragraph** of two
 sentences or so, then the reader's own reading under **Yours** ("On this card" in the sample). There is
-no separate "Why it matters" box any more: it was folded into the paragraph.
+no separate "Why it matters" box any more: it was folded into the paragraph. The Big Five's note is one line, then the four traits
+on the card defined in a line each (`terms`, drawn like MBTI's letter pairs) — no score ranges.
 The part lights up and the rest of the card steps back; the ring pulses until the reader points at
 anything. On a tablet, with nothing to hover, tapping a part explains it the same way; a phone explains
 it full screen instead (below). **Read from rounds its totals**

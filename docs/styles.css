@@ -3133,6 +3133,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-letters { list-style: none; margin: 0 0 .7rem; padding: 0; display: grid; gap: .4rem; }
 .cx-letters li { display: grid; grid-template-columns: auto 1fr; gap: .55rem; align-items: start; font-size: .8rem; line-height: 1.45; color: var(--ink-soft); }
 .cx-letters strong { color: var(--ink); }
+.cx-terms li { grid-template-columns: 1fr; }
 .cx-pair { display: inline-flex; gap: .15rem; }
 .cx-pair b {
   display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 6px; font-size: .74rem;

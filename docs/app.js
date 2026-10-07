@@ -5537,6 +5537,9 @@
         '<li><span class="cx-pair"><b class="' + (facts.chosen.includes(a) ? 'is-yours' : '') + '">' + esc(a) + '</b>' +
         '<b class="' + (facts.chosen.includes(b) ? 'is-yours' : '') + '">' + esc(b) + '</b></span>' +
         '<span><strong>' + esc(what) + '</strong> ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
+      // The Big Five's traits, one line each.
+      (item.terms ? '<ul class="cx-letters cx-terms">' + item.terms.map(([term, line]) =>
+        '<li><span><strong>' + esc(term) + '</strong> – ' + esc(line) + '</span></li>').join('') + '</ul>' : '') +
       '<div class="cx-yours"><span class="cx-label">' + esc(state.yoursLabel || G.labels.yours) + '</span>' + esc(item.yours(facts)) + '</div>';
     pop.scrollTop = 0;
     pop.hidden = false;
