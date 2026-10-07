@@ -25,7 +25,8 @@ marks = json.load(open(VO + '/marks.json'))
 # When each word is said, per line, for the on-screen words to appear in time with the voice.
 word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, 9)] + [marks['words']['l09-' + VERSION]]
 marks = marks['lines'] + [marks['end'][VERSION]]
-minimum = {0: 1.5}
+# The question scene holds on a little after its line, for the questionnaire being ripped up.
+minimum = {0: 1.5, 2: LEAD + dur[2] + 0.75}
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.35 if i == 0 else LEAD

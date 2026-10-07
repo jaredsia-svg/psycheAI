@@ -25,9 +25,18 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .q { display: flex; gap: 18px; align-items: center; margin-bottom: 28px; }
 .q i { width: 30px; height: 30px; border: 3px solid #c9b6d8; border-radius: 8px; flex: none; }
 .q b { height: 14px; border-radius: 7px; background: #eadff2; flex: 1; }
-.strike { position: absolute; z-index: 30; left: 150px; top: 1060px; width: 780px; height: 30px; border-radius: 15px;
-  background: linear-gradient(90deg, #ffd36e, #ff5f9a); transform-origin: left center; box-shadow: 0 0 50px rgba(255,95,154,.9); }
-.nope { position: absolute; z-index: 31; left: 0; right: 0; top: 1160px; text-align: center; font-size: 120px; font-weight: 900; color: #ffd36e;
+/* The questionnaire stack lives outside the scenes so it carries through both
+   without fading out and in again; each page is two halves with a jagged tear
+   between them, drawn whole until the stack is ripped apart. */
+#qstack { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.qpage { position: absolute; left: 230px; top: 700px; width: 600px; height: 780px; }
+.qpage .page { left: 0; top: 0; }
+#nosign { position: absolute; left: 250px; top: 810px; width: 560px; height: 560px; z-index: 40; }
+.scrap { position: absolute; width: 64px; height: 40px; background: #fff; border-radius: 4px; z-index: 35;
+  box-shadow: 0 6px 14px rgba(60,20,90,.25); }
+.scrap::after { content: ''; position: absolute; left: 10px; right: 10px; top: 16px; height: 6px; border-radius: 3px; background: #e6d9f0; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 60; pointer-events: none; }
+.nope { position: absolute; z-index: 45; left: 0; right: 0; top: 1160px; text-align: center; font-size: 120px; font-weight: 900; color: #ffd36e;
   text-shadow: 0 10px 40px rgba(0,0,0,.5); }
 /* footprint */
 .chip { position: absolute; z-index: 1; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
@@ -102,19 +111,22 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
 <body><div id="stage">
   <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
   <div id="sparks"></div>
+  <div id="qstack">
+    <div id="pages"></div>
+    <svg id="nosign" viewBox="-300 -300 600 600"><circle r="240" fill="rgba(229,56,59,.08)" stroke="#e5383b" stroke-width="46"/>
+      <line x1="-170" y1="-170" x2="170" y2="170" stroke="#e5383b" stroke-width="46" stroke-linecap="round"/></svg>
+    <div id="scraps"></div>
+    <div class="nope" id="nope">0 questions</div>
+  </div>
 
   <section class="scene" id="s0"><div class="big" style="top:760px;font-size:118px;text-align:center" data-words>What if I told you…</div></section>
 
   <section class="scene" id="s1">
     <div class="big" style="top:300px;font-size:86px" data-words><span class="soft">…you could get a</span> <span class="grad">full personality study</span> <span class="soft">of yourself…</span></div>
-    <div id="pages"></div>
   </section>
 
   <section class="scene" id="s2">
     <div class="big" style="top:300px;font-size:96px" data-words>…without answering a <span class="grad">single question?</span></div>
-    <div id="pages2"></div>
-    <div class="strike" id="strike"></div>
-    <div class="nope" id="nope">0 questions</div>
   </section>
 
   <section class="scene" id="s3">
@@ -138,7 +150,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s6">
-    <div class="big" style="top:250px;font-size:80px;text-align:center" data-words>Then unlock the <span class="grad">full report</span></div>
+    <div class="big" style="top:250px;font-size:80px;text-align:center" data-words>Then unlock the<br><span class="grad">full report</span></div>
     <div id="tiles"></div>
   </section>
 
@@ -163,6 +175,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
     <img id="endCard" src="assets/card.png" style="position:absolute;left:390px;top:800px;width:300px;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
     <div class="pill" id="cta" style="top:1370px"></div>
   </section>
+  <div id="flash"></div>
 </div>
 <script>
 const TL = __TIMELINE__;
@@ -210,15 +223,21 @@ const PAL = LIGHT ? PAL_LIGHT : PAL_DARK;
 const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
   return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
 
-function questionnaire(holder, n) {
-  for (let i = 0; i < n; i++) {
-    const p = document.createElement('div'); p.className = 'page';
-    p.innerHTML = '<h4>Personality questionnaire · page ' + (i + 1) + ' of 10</h4>' +
-      Array.from({ length: 12 }, (_, k) => '<div class="q"><i></i><b style="max-width:' + (45 + ((k * 37 + i * 11) % 50)) + '%"></b></div>').join('');
-    holder.appendChild(p);
-  }
-}
-questionnaire($('pages'), 7); questionnaire($('pages2'), 7);
+// Each page twice, clipped either side of the same jagged tear, so ripping it is moving the halves apart.
+const tearLine = Array.from({ length: 21 }, (_, k) => (50 + (((k * 37) % 7) - 3) * 1.4).toFixed(1) + '% ' + (k * 5) + '%').join(', ');
+const HALVES = ['polygon(0 0, ' + tearLine + ', 0 100%)', 'polygon(' + tearLine + ', 100% 100%, 100% 0)'];
+const qpages = Array.from({ length: 7 }, (_, i) => {
+  const wrap = document.createElement('div'); wrap.className = 'qpage';
+  const inner = '<h4>Personality questionnaire · page ' + (i + 1) + ' of 10</h4>' +
+    Array.from({ length: 12 }, (_, k) => '<div class="q"><i></i><b style="max-width:' + (45 + ((k * 37 + i * 11) % 50)) + '%"></b></div>').join('');
+  const halves = HALVES.map(clip => { const h = document.createElement('div'); h.className = 'page'; h.innerHTML = inner;
+    h.style.clipPath = clip; wrap.appendChild(h); return h; });
+  $('pages').appendChild(wrap);
+  return { wrap, halves };
+});
+const scraps = Array.from({ length: 18 }, (_, i) => { const d = document.createElement('div'); d.className = 'scrap'; $('scraps').appendChild(d);
+  const a = -Math.PI / 2 + ((i * 2.399) % (Math.PI * 2)), speed = 700 + (i * 97) % 600;
+  return { el: d, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed - 500, spin: ((i * 53) % 720) - 360, dx: ((i * 41) % 160) - 80, dy: ((i * 67) % 400) - 200 }; });
 const markSvg = MARK.paths.map(d => '<path d="' + d + '"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
 $('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g, '<path fill="none" stroke="' + (LIGHT ? '#7b3fa0' : '#fff') + '" stroke-width="3.4" ');
 // A digital footprint drawn like a fingerprint: a right foot's sole as rings
@@ -402,17 +421,49 @@ function render(t) {
 
   let c = scene(0, t);
   c = scene(1, t);
-  if (c.o) [...$('pages').children].forEach((p, i) => {
-    const k = ease(prog(c.local, 0.1 + i * 0.3, 0.45 + i * 0.3)); const r = (i % 2 ? 1 : -1) * (2 + i * 1.8);
-    p.style.transform = 'translate(' + (i * 10) + 'px,' + ((1 - k) * 1300 - i * 16) + 'px) rotate(' + r * Math.min(1, k) + 'deg)';
-    p.style.opacity = k > 0 ? 1 : 0; p.style.zIndex = i;
-  });
   c = scene(2, t);
-  if (c.o) {
-    const strike = ease(prog(c.local, 0.45, 0.75)), away = easeIO(prog(c.local, 1.0, 1.6));
-    $('strike').style.transform = 'scaleX(' + strike + ') rotate(-8deg) translateX(' + away * 1400 + 'px)';
-    [...$('pages2').children].forEach((p, i) => { p.style.transform = 'translate(' + (away * 1500 + i * 10) + 'px,' + (i * -16) + 'px) rotate(' + ((i % 2 ? 1 : -1) * (2 + i * 1.8) + away * 25) + 'deg)'; p.style.zIndex = i; });
-    const nk = back(prog(c.local, 1.3, 1.65)); $('nope').style.opacity = prog(c.local, 1.3, 1.45); $('nope').style.transform = 'scale(' + (0.4 + 0.6 * nk) + ') rotate(-4deg)';
+  // The questionnaire: piled up page by page through scene 1, then on "single" a "no" sign slams onto it
+  // (flash, shake), the crack opens, and every page rips in two, the halves and scraps flying off.
+  {
+    const s1 = S[1], s2 = S[2];
+    const stackO = Math.min(prog(t, s1.start - 0.04, s1.start + 0.22), 1 - prog(t, s2.end - 0.18, s2.end + 0.04));
+    $('qstack').style.display = stackO > 0.001 ? 'block' : 'none';
+    $('qstack').style.opacity = stackO;
+    const said = ((s2.words || []).find(([w]) => w === 'single') || [0, s2.vo + 0.9])[1];
+    const slam = said - 0.05, tear = slam + 0.42;
+    const crack = 7 * prog(t, slam + 0.08, tear);
+    // The tear: each half hinges open from the top about its foot, as paper tears, then they fly apart.
+    const open = ease(prog(t, tear, tear + 0.22));
+    const fly = Math.pow(prog(t, tear + 0.2, tear + 1.0), 1.6);
+    qpages.forEach(({ wrap, halves }, i) => {
+      const k = ease(prog(t - s1.start, 0.1 + i * 0.3, 0.45 + i * 0.3)), r = (i % 2 ? 1 : -1) * (2 + i * 1.8);
+      wrap.style.transform = 'translate(' + (i * 10) + 'px,' + ((1 - k) * 1300 - i * 16) + 'px) rotate(' + r * Math.min(1, k) + 'deg)';
+      wrap.style.opacity = k > 0 ? 1 : 0; wrap.style.zIndex = i;
+      const spread = 1 + i * 0.09;
+      halves.forEach((h, side) => {
+        const dir = side ? 1 : -1;
+        h.style.transform = 'translate(' + dir * (crack + open * 30 + fly * 900 * spread) + 'px,' + (fly * fly * 560 * spread) + 'px) rotate(' +
+          dir * (open * 9 + fly * 34 * spread) + 'deg)';
+        h.style.transformOrigin = side ? '0% 100%' : '100% 100%';
+      });
+    });
+    const drop = prog(t, slam - 0.16, slam);
+    const settle = t > slam ? Math.exp(-(t - slam) * 10) * Math.sin((t - slam) * 40) * 0.06 : 0;
+    $('nosign').style.opacity = (drop > 0 ? 1 : 0) * (1 - prog(t, tear, tear + 0.25));
+    $('nosign').style.transform = 'scale(' + ((1 + 1.7 * (1 - ease(drop)) + settle) * (1 + 0.45 * prog(t, tear, tear + 0.25))) + ') rotate(' + (1 - ease(drop)) * -20 + 'deg)';
+    const since = t - tear - 0.12;
+    scraps.forEach(p => {
+      const d = Math.max(0, since);
+      p.el.style.left = (530 + p.dx * 0.3 + p.vx * d) + 'px'; p.el.style.top = (1090 + p.dy + p.vy * d + 1500 * d * d) + 'px';
+      p.el.style.transform = 'rotate(' + p.spin * d + 'deg)';
+      p.el.style.opacity = since >= 0 ? 1 - prog(since, 0.7, 1.1) : 0;
+    });
+    const nk = back(prog(t, tear + 0.55, tear + 0.9));
+    $('nope').style.opacity = prog(t, tear + 0.55, tear + 0.7); $('nope').style.transform = 'scale(' + (0.4 + 0.6 * nk) + ') rotate(-4deg)';
+    // A hard shake on the slam, a smaller one on the rip, and a white flash with the slam.
+    const amp = (t > slam ? 30 * Math.exp(-(t - slam) * 9) : 0) + (t > tear ? 16 * Math.exp(-(t - tear) * 10) : 0);
+    $('stage').style.transform = amp > 0.3 ? 'translate(' + (amp * Math.sin(t * 93)).toFixed(1) + 'px,' + (amp * Math.cos(t * 71)).toFixed(1) + 'px)' : '';
+    $('flash').style.opacity = t > slam ? 0.75 * Math.exp(-(t - slam) * 11) : 0;
   }
   c = scene(3, t);
   if (c.o) {
@@ -458,7 +509,9 @@ function render(t) {
   c = scene(6, t);
   if (c.o) tileEls.forEach((el, i) => {
     const at = c.s.marks[i + 1]; const k = back(prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.6 + i * 0.12));
-    const lit = prog(t, at - 0.1, at + 0.1) * (1 - prog(t, at + 1.0, at + 1.2));
+    // Lit from its name until the next tile is named.
+    const next = c.s.marks[i + 2] !== undefined ? c.s.marks[i + 2] : at + 1.2;
+    const lit = prog(t, at - 0.1, at + 0.1) * (1 - prog(t, next - 0.1, next + 0.05));
     el.style.opacity = prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.3 + i * 0.12);
     el.style.transform = 'translateY(' + (1 - Math.min(1, k)) * 120 + 'px) scale(' + (0.85 + 0.15 * k + lit * 0.05) + ')';
     el.classList.toggle('on', lit > 0.3);
