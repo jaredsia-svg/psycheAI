@@ -10729,21 +10729,27 @@ try {
         check('structured: on a phone the nav is a thin bar under the header: the part being read by name, then the numbers',
           thin.height <= 36 && thin.stuck && thin.numerals === '00 01 02 03 04 05' && thin.lead && thin.lead === thin.current && thin.leadFits && thin.longestFits &&
             thin.oneRow && thin.spill <= 1, JSON.stringify(thin));
-        // The page's three actions: one row across the phone, an icon over a small label each.
+        // The page's two actions — Test compatibility is under the card's tools
+        // now — one row across the phone, an icon over a small label each.
         const phoneActions = await sp.evaluate(() => {
           const row = document.querySelector('#view-profile .cta-row');
           const buttons = [...row.querySelectorAll('.btn')].filter(b => getComputedStyle(b).display !== 'none');
           const boxes = buttons.map(b => b.getBoundingClientRect());
           const r = row.getBoundingClientRect();
-          return { three: buttons.length === 3, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
+          return { two: buttons.length === 2, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
             sameSize: boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1 && Math.abs(b.height - boxes[0].height) <= 1),
-            across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[2].right - r.right) <= 1,
+            across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
+            thinCompat: (() => {
+              const compat = document.querySelector('#profile-side .cx-compat.is-thin');
+              const tools = document.querySelector('#profile-side .cx-tools');
+              return Boolean(compat && tools && (tools.compareDocumentPosition(compat) & Node.DOCUMENT_POSITION_FOLLOWING));
+            })(),
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone a full report\'s three actions sit side by side across the screen, each an icon over its label',
-          phoneActions.three && phoneActions.oneRow && phoneActions.sameSize && phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Download full report|Test compatibility|Delete everything', JSON.stringify(phoneActions));
+        check('structured: on a phone a full report\'s two actions sit side by side across the screen, each an icon over its label, and Test compatibility is a thin button under the card\'s tools',
+          phoneActions.two && phoneActions.oneRow && phoneActions.sameSize && phoneActions.across && phoneActions.iconAbove &&
+            phoneActions.labels === 'Download full report|Delete everything' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -10792,7 +10798,7 @@ try {
       });
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.tips === 'Download full report|Test compatibility|Delete everything', JSON.stringify(actions));
+          actions.tips === 'Download full report|Delete everything', JSON.stringify(actions));
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {

@@ -4523,9 +4523,13 @@ worse failure than a slightly thinner comparison.
 The profile page ends in three parts, in this order: the report, then the action row, then a line of
 fineprint naming the model and the time it ran. The action row holds three buttons — **Download full
 report**, **Test compatibility** and **Delete everything** — all housekeeping rather than part of the
-document, so they close the page rather than sitting inside it. On a **free** structured report only
-Delete everything stays there: Test compatibility moves under "Your Psyche Card", a full-width button
-below Enlarge, Download and Share (`.cx-compat`, which clicks `#test-compat-open`). The **payment sheet**
+document, so they close the page rather than sitting inside it. In the structured layout **Test
+compatibility moves under "Your Psyche Card"**, a full-width button below Enlarge, Download and Share
+(`.cx-compat`, which clicks `#test-compat-open`) — on a paid report a thin one (`.is-thin`), and the
+action row keeps Download full report and Delete everything (a free report: Delete everything only).
+The phone's row lays out a column per visible action. The **sample dialog's** title bar is a slim strip
+(`#sample-dialog .sample-dialog-head`), and its part nav sticks flush to the top of the scrolling body
+(`top: -1rem`, over the body's padding). The **payment sheet**
 for the unlock has no blurb — its title, then the ways to pay — since the offer has already said what it
 opens; the re-run and US$2 sheets keep a one-line blurb each (no wallet sentence, no reasoning about
 cost). The wellbeing and roast caveats are two sentences each, still saying "not a diagnosis" and

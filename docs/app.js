@@ -5429,9 +5429,10 @@
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
         '</div>' +
-        // A free report's compatibility test sits with the card, under its
-        // three tools; a paid one keeps it in the action row.
-        (paid ? '' : '<button type="button" class="cx-compat">' +
+        // The compatibility test sits with the card, under its three tools —
+        // a thin line of a button on a paid report, where the report below
+        // is what the page is for.
+        ('<button type="button" class="cx-compat' + (paid ? ' is-thin' : '') + '">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
           '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>' + esc(G.compat) + '</span></button>') +
         '<p class="cx-status" role="status" hidden></p>' +
@@ -5881,8 +5882,8 @@
     }
     // A free report has only the card, which has its own download.
     $('#export-pdf-bottom').hidden = structured && !explained;
-    // …and its compatibility test sits under the card's tools (.cx-compat).
-    $('#test-compat-open').hidden = structured && !explained;
+    // Either way its compatibility test sits under the card's tools (.cx-compat).
+    $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     layoutSideActions();

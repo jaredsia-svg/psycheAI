@@ -405,6 +405,11 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   background: var(--bg-alt);
 }
 .sample-dialog-head h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 1.15rem; }
+/* The sample's head is a slim bar: the report is what the dialog is for. */
+#sample-dialog .sample-dialog-head { padding: .35rem clamp(.8rem, 3vw, 1.2rem); gap: .6rem; }
+#sample-dialog .sample-dialog-head h2 { font-size: .95rem; }
+#sample-dialog .sample-close { width: 30px; height: 30px; margin: 0; border-radius: 8px; }
+#sample-dialog .sample-close svg { width: 16px; height: 16px; }
 
 .sample-close {
   flex: none; display: grid; place-items: center;
@@ -651,7 +656,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
    screen, each an icon over a small label, in the card tools' own style. */
 @media (max-width: 719px) {
   #view-profile.profile-paid .cta-row {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; align-items: stretch;
+    /* A column per visible action, however many there are. */
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .5rem; align-items: stretch;
   }
   /* The same height whichever label wraps, icons on one line along the top. */
   #view-profile.profile-paid .cta-row .btn {
@@ -2896,7 +2902,8 @@ details.more[open] > summary::after { content: ' ▴'; }
   border: 1px solid var(--line); box-shadow: var(--shadow);
 }
 .part-nav::-webkit-scrollbar { display: none; }
-#sample-sections .part-nav { top: 0; }
+/* Flush with the top of the sample's scrolling body, over its padding. */
+#sample-sections .part-nav { top: -1rem; }
 .part-nav-item {
   flex: none; border: 0; border-radius: 999px; padding: .32rem .8rem; cursor: pointer; white-space: nowrap;
   background: transparent; color: var(--ink-soft); font: inherit; font-size: .82rem; font-weight: 600;
@@ -3102,6 +3109,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   transition: border-color .2s, transform .2s, box-shadow .2s;
 }
 .cx-compat svg { width: 18px; height: 18px; }
+/* On a paid report, a thin line of a button: the report below is the page's business. */
+.cx-compat.is-thin { padding: .32rem .7rem; margin-top: .4rem; border-radius: 10px; font-size: .78rem; gap: .4rem; }
+.cx-compat.is-thin svg { width: 15px; height: 15px; }
 .cx-compat:hover, .cx-compat:focus-visible {
   border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
 }
