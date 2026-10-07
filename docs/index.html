@@ -71,7 +71,8 @@
          scrolls it into view never downloads it. The button's words and the
          video's name are set from copy.js by initHeroVideo(). -->
     <figure class="hero-video">
-      <video id="hero-video" muted playsinline loop preload="none" poster="media/psycheai-intro-poster.jpg">
+      <video id="hero-video" muted playsinline loop preload="none" poster="media/psycheai-intro-poster.jpg"
+             disableremoteplayback disablepictureinpicture x-webkit-airplay="deny">
         <source src="media/psycheai-intro.mp4" type="video/mp4">
       </video>
       <button type="button" class="hero-video-sound" id="hero-video-sound">

@@ -284,6 +284,17 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 /* Full screen takes the whole player: the frame fills the screen, the video
    shows whole (letterboxed, not cropped) and the bar spans the foot. Written
    twice because a selector list with one unknown pseudo-class drops entirely. */
+/* On a phone the player expands over the page instead of using the browser's
+   full screen (see initHeroVideo): the same look, fixed over the window, the
+   hero lifted above the sticky nav, and the page under it held still. */
+.hero:has(.hero-video.is-expanded) { z-index: 1000; }
+.hero-video.is-expanded {
+  position: fixed; inset: 0; z-index: 1000; width: 100%; height: 100%; margin: 0;
+  aspect-ratio: auto; border-radius: 0; box-shadow: none; background: #000;
+}
+.hero-video.is-expanded video { object-fit: contain; }
+.hero-video.is-expanded .hero-video-bar { padding: 2rem 1rem max(.8rem, env(safe-area-inset-bottom)); }
+html.hero-video-open, html.hero-video-open body { overflow: hidden; }
 /* The page's own scrollbar, and the gutter kept for it (scrollbar-gutter above), would otherwise
    stay beside the player as a strip down the right. */
 html:has(.hero-video:fullscreen) { overflow: hidden; scrollbar-gutter: auto; }

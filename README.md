@@ -1239,8 +1239,13 @@ the sound on and restarts it from the top so the voice is heard from its first l
 through, then falls back to silent looping. For a reader who asked for less motion it never starts on
 its own and that button says "Play with sound". Full screen takes the whole player, so the controls
 come with it, shows the 9:16 frame whole (letterboxed, not cropped), and the same button brings it
-back; going full screen from the silent loop turns the sound on from the top. iPhone Safari has no
-full screen for anything but a video, so there it opens Safari's own player (`webkitEnterFullscreen`).
+back; going full screen from the silent loop turns the sound on from the top. On a phone (a coarse
+pointer) it does not use the browser's full screen at all: Android lays its own "drag from top and
+touch back to exit" notice over any page that does, and iPhone Safari would swap in its own player.
+The player instead expands over the window (`.is-expanded`, the hero lifted above the sticky nav and
+the page held still), with a history entry so the phone's Back closes it like any video player, as
+Esc and the same button do. The video opts out of casting (`disableremoteplayback`), which is what
+put a "cast to screen" button in its top-left corner on Android.
 The server streams it rather than
 reading it whole, answering byte ranges with 206 — Safari, and so every iPhone browser, opens a
 video with `Range: bytes=0-1` and will not play one served as a plain 200 — and an ETag, so a

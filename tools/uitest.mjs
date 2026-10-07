@@ -1859,6 +1859,44 @@ try {
       !after.full && after.label === T.heroVideoFull, JSON.stringify(after));
     await page.evaluate(() => { const v = document.querySelector('#hero-video'); v.muted = true; v.pause(); });
   }
+  // On a phone the player expands over the page rather than using the
+  // browser's full screen, which on Android lays its own "drag from top to
+  // exit" notice over the video; the phone's Back closes it like any player.
+  // Casting is turned off, which is what put a cast button in its corner.
+  {
+    const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    try {
+      await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await phone.waitForTimeout(300);
+      const cast = await phone.evaluate(() => document.querySelector('#hero-video').disableRemotePlayback);
+      const depth = await phone.evaluate(() => history.length);
+      await phone.locator('#hero-video-full').scrollIntoViewIfNeeded();
+      await phone.tap('#hero-video-full');
+      await phone.waitForTimeout(250);
+      const open = await phone.evaluate(() => {
+        const frame = document.querySelector('.hero-video');
+        const r = frame.getBoundingClientRect();
+        const top = document.elementFromPoint(innerWidth / 2, 30);
+        return { expanded: frame.classList.contains('is-expanded'), browserFull: Boolean(document.fullscreenElement),
+          covers: r.left === 0 && r.top === 0 && Math.round(r.width) === innerWidth && Math.round(r.height) === innerHeight,
+          onTop: frame.contains(top), muted: document.querySelector('#hero-video').muted,
+          fit: getComputedStyle(document.querySelector('#hero-video')).objectFit, depth: history.length,
+          label: document.querySelector('#hero-video-full').getAttribute('aria-label') };
+      });
+      await phone.goBack();
+      await phone.waitForTimeout(250);
+      const closed = await phone.evaluate(() => ({ expanded: document.querySelector('.hero-video').classList.contains('is-expanded'),
+        welcome: !document.querySelector('#view-welcome').hidden, url: location.pathname }));
+      check('on a phone the video is never cast: no cast button', cast === true, String(cast));
+      check('on a phone full screen covers the window with the player, sound on, without the browser\'s full screen',
+        open.expanded && !open.browserFull && open.covers && open.onTop && !open.muted && open.fit === 'contain' &&
+          open.depth === depth + 1, JSON.stringify(open));
+      check('and the phone\'s Back closes it, staying on the page',
+        !closed.expanded && closed.welcome && closed.url === '/', JSON.stringify(closed));
+    } finally {
+      await phone.close();
+    }
+  }
   // A reader who asked for less motion is never shown a moving picture
   // uninvited: the button says it will play rather than offering sound.
   {

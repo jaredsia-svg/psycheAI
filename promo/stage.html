@@ -30,9 +30,11 @@ body { font-family: Inter, sans-serif; color: #fff; }
 .nope { position: absolute; z-index: 31; left: 0; right: 0; top: 1160px; text-align: center; font-size: 120px; font-weight: 900; color: #ffd36e;
   text-shadow: 0 10px 40px rgba(0,0,0,.5); }
 /* footprint */
-.chip { position: absolute; padding: 18px 30px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
-  font-size: 38px; font-weight: 800; white-space: nowrap; }
-#print { position: absolute; left: 230px; top: 690px; width: 620px; height: 769px; }
+.chip { position: absolute; z-index: 1; padding: 12px 20px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
+  font-size: 23px; font-weight: 800; white-space: nowrap; }
+#print { z-index: 2; }
+/* Sized so the foot (about 180 x 420) sits centred at 540, 1110, inside the orbit of habits around it. */
+#print { position: absolute; left: 330px; top: 840px; width: 400px; height: 496px; }
 #print path { fill: none; stroke: url(#pg); stroke-width: 6.5; stroke-linecap: round; }
 /* sources */
 .file { position: absolute; width: 300px; padding: 26px; border-radius: 26px; background: #fff; color: #2b2035; box-shadow: 0 24px 60px rgba(0,0,0,.4); }
@@ -82,7 +84,7 @@ body.light .grad, body.light .grad .w { background-image: linear-gradient(90deg,
 body.light .soft { color: #6b3f8f; }
 body.light .page, body.light .file, body.light .tile { box-shadow: 0 30px 70px rgba(90,40,120,.2); }
 body.light .nope { color: #e0457b; text-shadow: none; }
-body.light .chip { background: #fff; border-color: #e4d2f3; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
+body.light .chip { background: rgba(255,255,255,.92); border-color: #e4d2f3; color: #4a2366; box-shadow: 0 10px 30px rgba(90,40,120,.12); }
 body.light #mark path { stroke: #7b3fa0; }
 body.light .glow { background: radial-gradient(circle, rgba(255,158,196,.75), rgba(199,146,255,0) 65%); }
 body.light #cardWrap img { box-shadow: 0 40px 90px rgba(90,40,120,.25); }
@@ -259,7 +261,10 @@ for (let ring = 0; ring < 9; ring++) {
   }
 });
 prints.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.dataset.len = L; });
-const CHIPS = ['3:12 am', '♥ 4,812 likes', 'how to…', '47 deadlines', 'saved', 'posted 2019', 'searched', '13-day quiet streak', 'same 12 friends'];
+// Things a digital footprint actually shows: habits, not data types.
+// Six, evenly spaced: any more and neighbours meet where the orbit flattens at its top and bottom.
+const CHIPS = ['Scrolls at 2 a.m.', 'Saves recipes, never cooks', 'Searches \u201chow to say no\u201d', 'Replies within a minute',
+  'Only posts on holidays', 'Loops the same 3 creators'];
 const chipEls = CHIPS.map(c => { const d = document.createElement('div'); d.className = 'chip'; d.textContent = c; $('chips').appendChild(d); return d; });
 PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.love.w, h: PARTS.standFor.h };
 // One box per phrase of the card line, after "You'll get a Psyche Card."
@@ -382,15 +387,16 @@ function render(t) {
   }
   c = scene(3, t);
   if (c.o) {
+    // The habits pop in one by one, then circle the footprint slowly for the whole scene, on an orbit that clears it.
     chipEls.forEach((el, i) => {
-      const a = i / chipEls.length * Math.PI * 2 + 0.4, k = easeIO(prog(c.local, 0.3 + i * 0.07, 2.0 + i * 0.05));
-      const sx = 540 + Math.cos(a) * 400, sy = 1130 + Math.sin(a) * 340;
-      el.style.left = (sx + (540 - sx) * k) + 'px'; el.style.top = (sy + (1070 - sy) * k) + 'px';
-      el.style.transform = 'translate(-50%,-50%) scale(' + ((1 - 0.6 * k) * (0.7 + 0.3 * back(prog(c.local, 0.15 + i * 0.06, 0.45 + i * 0.06)))) + ')';
-      el.style.opacity = Math.min(prog(c.local, 0.15 + i * 0.06, 0.35 + i * 0.06), 1 - prog(c.local, 1.9, 2.3));
+      const a = -Math.PI / 2 + i / chipEls.length * Math.PI * 2 + c.local * 0.17;
+      el.style.left = (540 + Math.cos(a) * 340) + 'px'; el.style.top = (1102 + Math.sin(a) * 352) + 'px';
+      const pop = ease(prog(c.local, 0.1 + i * 0.16, 0.45 + i * 0.16));
+      el.style.transform = 'translate(-50%,-50%) scale(' + (0.6 + 0.4 * pop) + ')';
+      el.style.opacity = prog(c.local, 0.1 + i * 0.16, 0.25 + i * 0.16);
     });
-    prints.forEach((p, i) => { p.style.strokeDashoffset = p.dataset.len * (1 - ease(prog(c.local, 1.7 + i * 0.04, 2.8 + i * 0.04))); });
-    $('print').style.opacity = prog(c.local, 1.6, 2.0); $('print').style.transform = 'scale(' + (1 + pulse * 0.05) + ')';
+    prints.forEach((p, i) => { p.style.strokeDashoffset = p.dataset.len * (1 - ease(prog(c.local, 0.6 + i * 0.04, 1.7 + i * 0.04))); });
+    $('print').style.opacity = prog(c.local, 0.5, 0.9); $('print').style.transform = 'scale(' + (1 + pulse * 0.05) + ')';
   }
   c = scene(4, t);
   if (c.o) {

@@ -2085,6 +2085,9 @@
   let closingGuideFromHistory = false;
 
   window.addEventListener('popstate', () => {
+    // The hero video, expanded over the page on a phone, is the topmost thing
+    // there can be: Back closes it first, as it would any phone video player.
+    if (collapseHeroVideo && collapseHeroVideo(true)) return;
     // The guide is checked before the sample because it is the one that can be
     // open on top: it is reachable from the welcome page, where the sample is
     // reachable too, and whichever was opened last is the one a Back press is
@@ -2440,6 +2443,9 @@
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
+  // Set by initHeroVideo: closes the video if it is expanded over the page and
+  // says whether it was, so Back can close it (see the popstate listener).
+  let collapseHeroVideo = null;
   initHeroVideo();
 
   /**
@@ -2454,10 +2460,16 @@
    * asked for less motion it never starts on its own.
    *
    * Full screen takes the whole player, so the controls come with it, and
-   * shows the 9:16 frame whole rather than cropped. iPhone Safari has no full
-   * screen for anything but a video, so there it opens Safari's own player
-   * (webkitEnterFullscreen), which has its own controls. Going full screen
-   * from the silent loop turns the sound on and starts from the top.
+   * shows the 9:16 frame whole rather than cropped. Going full screen from the
+   * silent loop turns the sound on and starts from the top.
+   *
+   * On a phone it does not use the browser's full screen at all: Android lays
+   * its own "drag from top and touch back to exit" notice over any page that
+   * does, and iPhone Safari would swap in its own player. Instead the player
+   * expands to cover the window (.is-expanded), with a history entry so the
+   * phone's Back closes it like any video player, as Esc does. The video also
+   * opts out of casting (disableremoteplayback), which is what put a "cast to
+   * screen" button in its corner on Android.
    */
   function initHeroVideo() {
     const video = $('#hero-video');
@@ -2488,6 +2500,23 @@
       return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     };
     const fullElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+    // A phone, or anything without real full screen for an element, expands the player over the page instead.
+    const expandsInstead = () => (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+      !(frame.requestFullscreen || frame.webkitRequestFullscreen);
+    const expanded = () => frame.classList.contains('is-expanded');
+    let expandedEntry = false;
+    const setExpanded = on => {
+      frame.classList.toggle('is-expanded', on);
+      document.documentElement.classList.toggle('hero-video-open', on);
+      paint();
+    };
+    collapseHeroVideo = fromHistory => {
+      if (!expanded()) return false;
+      setExpanded(false);
+      if (expandedEntry && !fromHistory) history.back();
+      expandedEntry = false;
+      return true;
+    };
     let onScreen = false;
     let heldByReader = false;
     video.setAttribute('aria-label', TEXT.heroVideoLabel);
@@ -2496,7 +2525,7 @@
     const paint = () => {
       icon(play, video.paused ? 'play' : 'pause', video.paused ? TEXT.heroVideoPlayShort : TEXT.heroVideoPause);
       icon(mute, video.muted ? 'muted' : 'sound', video.muted ? TEXT.heroVideoUnmute : TEXT.heroVideoMute);
-      const isFull = fullElement() === frame;
+      const isFull = fullElement() === frame || expanded();
       icon(full, isFull ? 'shrink' : 'expand', isFull ? TEXT.heroVideoExitFull : TEXT.heroVideoFull);
       // The big invitation only while it is silent.
       sound.hidden = !video.muted;
@@ -2544,19 +2573,25 @@
       tick();
     });
     full.addEventListener('click', () => {
+      if (expanded()) { collapseHeroVideo(false); return; }
       if (fullElement()) {
         const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
         if (leaving && leaving.catch) leaving.catch(() => {});
         return;
       }
       if (video.muted) withSound();
+      if (expandsInstead()) {
+        history.pushState({ psycheaiVideo: true }, '');
+        expandedEntry = true;
+        setExpanded(true);
+        return;
+      }
       try {
-        const entering = frame.requestFullscreen ? frame.requestFullscreen()
-          : frame.webkitRequestFullscreen ? frame.webkitRequestFullscreen()
-            : video.webkitEnterFullscreen ? video.webkitEnterFullscreen() : null;
+        const entering = frame.requestFullscreen ? frame.requestFullscreen() : frame.webkitRequestFullscreen();
         if (entering && entering.catch) entering.catch(() => {});
-      } catch (error) { /* no full screen here: it plays on the page with sound instead */ }
+      } catch (error) { setExpanded(true); }
     });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && expanded()) collapseHeroVideo(false); });
     document.addEventListener('fullscreenchange', paint);
     document.addEventListener('webkitfullscreenchange', paint);
     ['play', 'pause', 'volumechange'].forEach(name => video.addEventListener(name, paint));
@@ -2567,13 +2602,14 @@
         const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
         if (leaving && leaving.catch) leaving.catch(() => {});
       }
+      collapseHeroVideo(false);
       video.currentTime = 0;
       silent();
     });
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(entries => {
         onScreen = entries[entries.length - 1].isIntersecting;
-        if (fullElement() === frame) return;
+        if (fullElement() === frame || expanded()) return;
         if (!onScreen) video.pause();
         else if (video.muted && !still() && !heldByReader) go();
       }, { threshold: 0.4 }).observe(video);
