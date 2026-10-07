@@ -29,6 +29,7 @@ BRAND = list('sˈaɪkiː ˈeɪ ˈaɪ')
 TAKES = 24
 
 # (phrases, length scale, record each phrase on its own[, pause between phrases in seconds]).
+# A phrase may be (text, length scale) to be said at its own pace, and the pause a list, one per gap.
 # A list has no pauses to find,
 # so its phrases are recorded one by one, each checked on its own.
 LINES = [
@@ -38,8 +39,9 @@ LINES = [
     # Slower than the rest, and a beat after "footprint" so the idea lands before the payoff.
     (["And what if your digital footprint,", "could show you patterns you have never noticed before?"], 1.0, True, 0.38),
     (['{B} reads the Instagram,', 'Google,', 'and Facebook data you already have.'], 1.0, None),
-    (["You'll get a Psyche Card.", "Which character you're most like,", 'your signature patterns,', 'your motivations,',
-      'your type,', 'your traits,', 'your interests and values,', 'and your love languages.'], 0.87, True),
+    # The card's own line is said slower than the list after it, with a beat before the list starts.
+    ([("You will get a Psyche Card.", 1.0), "Which character you're most like,", 'your signature patterns,', 'your motivations,',
+      'your type,', 'your traits,', 'your interests and values,', 'and your love languages.'], 0.87, True, [0.45] + [0.06] * 6),
     (['Then unlock the full report.', 'Who you are,', 'what drives you,', 'how you connect and work,', 'and a plan to grow.'], 0.87, True),
     (['Your files never leave your device.', 'Only a de-identified summary is analysed by Gemini,', 'and {B} keeps no copy.'], 0.92, None),
 ]
@@ -111,8 +113,10 @@ def speak(phrases, ls, split, pause=0.06):
     if split:
         out, cuts, t, scores = [], [], 0.0, []
         for k, p in enumerate(phrases):
-            score, a = best_take(p, ls)
-            if k: out.append(np.zeros(int(pause * SR), np.float32)); t += pause; cuts.append(round(t, 3))
+            text, pace = p if isinstance(p, tuple) else (p, ls)
+            score, a = best_take(text, pace)
+            gap = (pause[k - 1] if isinstance(pause, list) else pause) if k else 0
+            if k: out.append(np.zeros(int(gap * SR), np.float32)); t += gap; cuts.append(round(t, 3))
             out.append(a); t += len(a) / SR; scores.append(round(score, 2))
         return np.concatenate(out), cuts, True, min(scores), 'phrase scores ' + str(scores)
     best = None
@@ -162,7 +166,7 @@ def write(name, phrases, ls, split, pause=0.06):
     a = a / np.max(np.abs(a)) * 0.9
     sf.write(f'{OUT}/{name}.wav', a, SR, subtype='PCM_16')
     print(name, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)
-    word_marks[name] = word_times(a, ' '.join(phrases))
+    word_marks[name] = word_times(a, ' '.join(p[0] if isinstance(p, tuple) else p for p in phrases))
     return [0.0] + cuts
 
 # Lines 1-8 are shared; the closing line is spoken once per version in config.json.

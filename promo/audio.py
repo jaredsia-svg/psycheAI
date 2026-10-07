@@ -29,9 +29,11 @@ word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, 9)] + [marks['words'
 marks = marks['lines'] + [marks['end'][VERSION]]
 # The question scene holds on a little after its line, for the questionnaire being ripped up.
 minimum = {0: 1.5, 2: LEAD + dur[2] + 0.61}
+# The Psyche Card scene lets the card land before the voice names it.
+EXTRA_LEAD = {5: 0.35}
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
-    lead = 0.35 if i == 0 else LEAD
+    lead = 0.35 if i == 0 else LEAD + EXTRA_LEAD.get(i, 0)
     length = max(lead + d + GAP, minimum.get(i, 0))
     if i == len(dur) - 1: length = lead + d + 0.86
     scenes.append({'start': round(t, 3), 'end': round(t + length, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
