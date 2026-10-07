@@ -23,13 +23,15 @@ rec = sherpa_onnx.OfflineRecognizer.from_whisper(encoder=W + 'encoder.int8.onnx'
 BRAND = list('sˈaɪkiː ˈeɪ ˈaɪ')
 TAKES = 24
 
-# (phrases, length scale, record each phrase on its own). A list has no pauses to find,
+# (phrases, length scale, record each phrase on its own[, pause between phrases in seconds]).
+# A list has no pauses to find,
 # so its phrases are recorded one by one, each checked on its own.
 LINES = [
     (['What if I told you...'], 0.87, None),
     (['you could get a full personality study of yourself,'], 0.87, None),
     (['without answering a single question?'], 0.87, None),
-    (["And what if your digital footprint could show you patterns you have never noticed before?"], 0.87, None),
+    # Slower than the rest, and a beat after "footprint" so the idea lands before the payoff.
+    (["And what if your digital footprint,", "could show you patterns you have never noticed before?"], 1.0, True, 0.38),
     (['{B} reads the Instagram,', 'Google,', 'and Facebook data you already have.'], 1.0, None),
     (["You'll get a Psyche Card.", "Which character you're most like,", 'your signature patterns,', 'your motivations,',
       'your type,', 'your traits,', 'your interests and values,', 'and your love languages.'], 0.87, True),
@@ -98,13 +100,13 @@ def best_take(text, ls):
         if score == 1.0: break
     return best
 
-def speak(phrases, ls, split):
+def speak(phrases, ls, split, pause=0.06):
     """One line: its audio, where each phrase after the first starts, and how it scored."""
     if split:
         out, cuts, t, scores = [], [], 0.0, []
         for k, p in enumerate(phrases):
             score, a = best_take(p, ls)
-            if k: out.append(np.zeros(int(0.06 * SR), np.float32)); t += 0.06; cuts.append(round(t, 3))
+            if k: out.append(np.zeros(int(pause * SR), np.float32)); t += pause; cuts.append(round(t, 3))
             out.append(a); t += len(a) / SR; scores.append(round(score, 2))
         return np.concatenate(out), cuts, True, min(scores), 'phrase scores ' + str(scores)
     best = None
@@ -120,8 +122,8 @@ def speak(phrases, ls, split):
     (ok, score), a, cuts, got = best
     return a, cuts, ok, score, got
 
-def write(name, phrases, ls, split):
-    a, cuts, ok, score, got = speak(phrases, ls, split)
+def write(name, phrases, ls, split, pause=0.06):
+    a, cuts, ok, score, got = speak(phrases, ls, split, pause)
     a = a / np.max(np.abs(a)) * 0.9
     sf.write(f'{OUT}/{name}.wav', a, SR, subtype='PCM_16')
     print(name, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)

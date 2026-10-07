@@ -2443,55 +2443,143 @@
   initHeroVideo();
 
   /**
-   * The welcome hero's video. It loops silently while it is on screen and
-   * pauses when it is not. Its one button turns the sound on, which also starts
-   * it again from the top so the voice is heard from its first line, and plays
-   * it once through; at the end it falls back to silent looping. For a reader
-   * who asked for less motion it never starts on its own: the button plays it.
+   * The welcome hero's video, with a player of its own: a timing bar to drag,
+   * play/pause, the time, mute, and full screen / back.
+   *
+   * It loops silently while it is on screen and pauses when it is not, unless
+   * the reader paused it themselves, which it then respects. "Tap for sound"
+   * (or a tap on the picture while it is silent) turns the sound on and starts
+   * it again from the top so the voice is heard from its first line, plays it
+   * once through, and at the end falls back to silent looping. For a reader who
+   * asked for less motion it never starts on its own.
+   *
+   * Full screen takes the whole player, so the controls come with it, and
+   * shows the 9:16 frame whole rather than cropped. iPhone Safari has no full
+   * screen for anything but a video, so there it opens Safari's own player
+   * (webkitEnterFullscreen), which has its own controls. Going full screen
+   * from the silent loop turns the sound on and starts from the top.
    */
   function initHeroVideo() {
     const video = $('#hero-video');
-    const button = $('#hero-video-sound');
-    if (!video || !button) return;
-    const still = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    let onScreen = false;
-    video.setAttribute('aria-label', TEXT.heroVideoLabel);
-    const label = () => {
-      const [icon, text] = !video.muted ? ['🔊', TEXT.heroVideoMute]
-        : still() && video.paused ? ['▶', TEXT.heroVideoPlay] : ['🔇', TEXT.heroVideoSound];
-      button.querySelector('.hero-video-icon').textContent = icon;
-      button.querySelector('.hero-video-text').textContent = text;
+    const frame = video && video.closest('.hero-video');
+    if (!video || !frame) return;
+    const sound = $('#hero-video-sound');
+    const play = $('#hero-video-play');
+    const mute = $('#hero-video-mute');
+    const full = $('#hero-video-full');
+    const seek = $('#hero-video-seek');
+    const time = $('#hero-video-time');
+    const ICONS = {
+      play: '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
+      pause: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor" stroke="none"/>',
+      muted: '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" stroke="none"/><path d="M16.5 9.5l5 5M21.5 9.5l-5 5"/>',
+      sound: '<path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" stroke="none"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+      expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+      shrink: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
     };
+    const icon = (button, name, label) => {
+      button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + ICONS[name] + '</svg>';
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    };
+    const still = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const clock = seconds => {
+      const s = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+      return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    };
+    const fullElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+    let onScreen = false;
+    let heldByReader = false;
+    video.setAttribute('aria-label', TEXT.heroVideoLabel);
+    seek.setAttribute('aria-label', TEXT.heroVideoSeek);
+
+    const paint = () => {
+      icon(play, video.paused ? 'play' : 'pause', video.paused ? TEXT.heroVideoPlayShort : TEXT.heroVideoPause);
+      icon(mute, video.muted ? 'muted' : 'sound', video.muted ? TEXT.heroVideoUnmute : TEXT.heroVideoMute);
+      const isFull = fullElement() === frame;
+      icon(full, isFull ? 'shrink' : 'expand', isFull ? TEXT.heroVideoExitFull : TEXT.heroVideoFull);
+      // The big invitation only while it is silent.
+      sound.hidden = !video.muted;
+      sound.querySelector('.hero-video-text').textContent = still() && video.paused ? TEXT.heroVideoPlay : TEXT.heroVideoSound;
+      sound.querySelector('.hero-video-icon').textContent = still() && video.paused ? '▶' : '🔇';
+    };
+    const tick = () => {
+      const d = video.duration;
+      if (Number.isFinite(d) && d > 0 && document.activeElement !== seek) seek.value = String(Math.round(video.currentTime / d * 1000));
+      time.textContent = clock(video.currentTime) + ' / ' + (Number.isFinite(d) ? clock(d) : '–:––');
+    };
+    const frameLoop = () => { tick(); if (!video.paused) requestAnimationFrame(frameLoop); };
+    const go = () => video.play().catch(() => {});
+    // From the top, with sound, once through.
+    const withSound = () => {
+      heldByReader = false;
+      video.muted = false;
+      video.loop = false;
+      video.currentTime = 0;
+      go();
+      paint();
+    };
+    // Back to the silent loop.
     const silent = () => {
       video.muted = true;
       video.loop = true;
-      if (onScreen && !still()) video.play().catch(() => {});
+      if (onScreen && !still() && !heldByReader) go();
       else video.pause();
-      label();
+      paint();
     };
-    const toggle = () => {
-      if (video.muted || video.paused) {
-        video.muted = false;
-        video.loop = false;
-        video.currentTime = 0;
-        video.play().catch(silent);
-      } else {
-        silent();
+
+    sound.addEventListener('click', withSound);
+    video.addEventListener('click', () => {
+      if (video.muted) withSound();
+      else if (video.paused) { heldByReader = false; go(); }
+      else { heldByReader = true; video.pause(); }
+    });
+    play.addEventListener('click', () => {
+      if (video.paused) { heldByReader = false; go(); } else { heldByReader = true; video.pause(); }
+    });
+    mute.addEventListener('click', () => { if (video.muted) withSound(); else { video.muted = true; paint(); } });
+    seek.addEventListener('input', () => {
+      const d = video.duration;
+      if (Number.isFinite(d) && d > 0) video.currentTime = Number(seek.value) / 1000 * d;
+      tick();
+    });
+    full.addEventListener('click', () => {
+      if (fullElement()) {
+        const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (leaving && leaving.catch) leaving.catch(() => {});
+        return;
       }
-      label();
-    };
-    button.addEventListener('click', toggle);
-    video.addEventListener('click', toggle);
-    video.addEventListener('ended', () => { video.currentTime = 0; silent(); });
-    ['play', 'pause', 'volumechange'].forEach(name => video.addEventListener(name, label));
+      if (video.muted) withSound();
+      try {
+        const entering = frame.requestFullscreen ? frame.requestFullscreen()
+          : frame.webkitRequestFullscreen ? frame.webkitRequestFullscreen()
+            : video.webkitEnterFullscreen ? video.webkitEnterFullscreen() : null;
+        if (entering && entering.catch) entering.catch(() => {});
+      } catch (error) { /* no full screen here: it plays on the page with sound instead */ }
+    });
+    document.addEventListener('fullscreenchange', paint);
+    document.addEventListener('webkitfullscreenchange', paint);
+    ['play', 'pause', 'volumechange'].forEach(name => video.addEventListener(name, paint));
+    video.addEventListener('play', () => requestAnimationFrame(frameLoop));
+    ['timeupdate', 'loadedmetadata', 'seeked'].forEach(name => video.addEventListener(name, tick));
+    video.addEventListener('ended', () => {
+      if (fullElement() === frame) {
+        const leaving = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if (leaving && leaving.catch) leaving.catch(() => {});
+      }
+      video.currentTime = 0;
+      silent();
+    });
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(entries => {
         onScreen = entries[entries.length - 1].isIntersecting;
+        if (fullElement() === frame) return;
         if (!onScreen) video.pause();
-        else if (video.muted && !still()) video.play().catch(() => {});
+        else if (video.muted && !still() && !heldByReader) go();
       }, { threshold: 0.4 }).observe(video);
     }
-    label();
+    paint();
+    tick();
   }
   // Drawn with the insights block, after this runs, so the clicks are delegated.
   document.addEventListener('click', event => {

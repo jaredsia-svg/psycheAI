@@ -116,7 +116,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s3">
-    <div class="big" style="top:260px;font-size:80px" data-words><span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you have never noticed before?</div>
+    <div class="big" style="top:260px;font-size:80px" data-words data-split="6"><span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you have never noticed before?</div>
     <svg id="print" viewBox="0 0 500 620"><defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset=".5" stop-color="#ff7eb3"/><stop offset="1" stop-color="#c792ff"/></linearGradient></defs><g id="prints"></g></svg>
     <div id="chips"></div>
   </section>
@@ -329,9 +329,11 @@ const tileEls = TILES.map(([n, title, keys], i) => {
 const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createElement('div'); s.className = 'spark'; $('sparks').appendChild(s);
   return { el: s, x: (i * 397) % 1080, speed: 60 + (i * 53) % 90, phase: (i * 0.37) % 1, size: 4 + (i * 7) % 9 }; });
 
-function words(el, t, from, to) {
+function words(el, t, from, to, split = 0, from2 = 0, to2 = 0) {
   const ws = el.querySelectorAll('.w'); const n = ws.length;
-  ws.forEach((w, i) => { const a = from + (to - from) * i / Math.max(1, n); const k = prog(t, a, a + 0.28);
+  const at = i => !split ? from + (to - from) * i / Math.max(1, n)
+    : i < split ? from + (to - from) * i / split : from2 + (to2 - from2) * (i - split) / Math.max(1, n - split);
+  ws.forEach((w, i) => { const a = at(i); const k = prog(t, a, a + 0.28);
     w.style.opacity = clamp(k * 2.5); w.style.transform = 'translateY(' + (1 - ease(k)) * 40 + 'px) scale(' + (0.55 + 0.45 * back(k)) + ')'; });
 }
 function scene(i, t) {
@@ -341,7 +343,10 @@ function scene(i, t) {
   el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
   el.style.transform = 'scale(' + (0.94 + 0.06 * ease(kIn) + 0.1 * kOut * kOut) + ')';
   const w = el.querySelector('[data-words]');
-  if (w && o) words(w, t, s.vo - 0.05, s.vo + Math.min(1.6, (s.voEnd - s.vo) * 0.6));
+  // A line spoken in two halves (data-split = words in the first) pops in two halves too.
+  const split = w && Number(w.dataset.split);
+  if (w && o && split && s.marks[1]) words(w, t, s.vo - 0.05, s.marks[1] - 0.1, split, s.marks[1] - 0.05, s.marks[1] + 1.2);
+  else if (w && o) words(w, t, s.vo - 0.05, s.vo + Math.min(1.6, (s.voEnd - s.vo) * 0.6));
   return { s, local: t - s.start, len: s.end - s.start, o, voLen: s.voEnd - s.vo };
 }
 function beatPulse(t) { if (t < S[3].start) return 0; const ph = (t % BEAT) / BEAT; return Math.exp(-ph * 6) * ((t >= DROP && t < BREAK) || t >= FINAL ? 1 : 0.45); }

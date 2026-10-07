@@ -1812,6 +1812,53 @@ try {
     check('its poster and the video itself are both there to be served',
       video.poster === 200 && video.source === 200, JSON.stringify(video));
   }
+  // The video's own player: a timing bar, play/pause, the time, mute, and full
+  // screen / back. Each control is named for what pressing it does, and full
+  // screen takes the whole player so the controls come with it.
+  {
+    await page.locator('#hero-video-full').scrollIntoViewIfNeeded();
+    const T = await page.evaluate(() => window.PsycheCopy.TEXT);
+    const named = () => page.evaluate(() => Object.assign(Object.fromEntries(['play', 'mute', 'full', 'seek']
+      .map(id => [id, document.querySelector('#hero-video-' + id).getAttribute('aria-label')])),
+    { paused: document.querySelector('#hero-video').paused }));
+    const before = await named();
+    check('the video has a timing bar, play, mute and full screen, each named for what it does',
+      before.play === (before.paused ? T.heroVideoPlayShort : T.heroVideoPause) && before.mute === T.heroVideoUnmute && before.full === T.heroVideoFull &&
+        before.seek === T.heroVideoSeek && /\d:\d\d \/ /.test(await page.locator('#hero-video-time').innerText()),
+      JSON.stringify(before));
+    // Sound on and off from the bar.
+    await page.click('#hero-video-mute');
+    const soundOn = await page.evaluate(() => ({ muted: document.querySelector('#hero-video').muted,
+      label: document.querySelector('#hero-video-mute').getAttribute('aria-label'),
+      invite: document.querySelector('#hero-video-sound').hidden }));
+    await page.click('#hero-video-mute');
+    const soundOff = await page.evaluate(() => document.querySelector('#hero-video').muted);
+    check('its mute button turns the sound on and off, and "Tap for sound" steps aside while it is on',
+      !soundOn.muted && soundOn.label === T.heroVideoMute && soundOn.invite && soundOff, JSON.stringify(soundOn));
+    await page.click('#hero-video-full');
+    await page.waitForFunction(() => document.fullscreenElement, null, { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const inFull = await page.evaluate(() => {
+      const frame = document.querySelector('.hero-video');
+      const bar = document.querySelector('.hero-video-bar').getBoundingClientRect();
+      return { full: document.fullscreenElement === frame, muted: document.querySelector('#hero-video').muted,
+        fit: getComputedStyle(document.querySelector('#hero-video')).objectFit,
+        fills: Math.abs(frame.getBoundingClientRect().width - innerWidth) < 2,
+        barShown: bar.bottom <= innerHeight + 1 && bar.height > 20,
+        label: document.querySelector('#hero-video-full').getAttribute('aria-label') };
+    });
+    await page.click('#hero-video-full');
+    await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 3000 }).catch(() => {});
+    await page.waitForTimeout(150);
+    const after = await page.evaluate(() => ({ full: Boolean(document.fullscreenElement),
+      label: document.querySelector('#hero-video-full').getAttribute('aria-label') }));
+    check('full screen takes the whole player, the video whole and the controls with it, with sound',
+      inFull.full && inFull.fills && inFull.barShown && inFull.fit === 'contain' && !inFull.muted &&
+        inFull.label === T.heroVideoExitFull, JSON.stringify(inFull));
+    check('and the same button brings it back to the page',
+      !after.full && after.label === T.heroVideoFull, JSON.stringify(after));
+    await page.evaluate(() => { const v = document.querySelector('#hero-video'); v.muted = true; v.pause(); });
+  }
   // A reader who asked for less motion is never shown a moving picture
   // uninvited: the button says it will play rather than offering sound.
   {

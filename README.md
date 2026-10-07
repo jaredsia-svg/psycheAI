@@ -1231,10 +1231,17 @@ stretched: on a phone it sits centred under the two buttons, as wide as fits wit
 about three quarters of the screen's height; from 720px up the hero becomes two columns and it sits
 beside the headline at 230px. `aspect-ratio` holds its space before it loads, so nothing jumps.
 `initHeroVideo()` loops it muted only while it is on screen (an IntersectionObserver), with
-`preload="none"` so a visitor who never reaches it never downloads it. Its one button, "Tap for
-sound", turns the sound on and restarts it from the top so the voice is heard from its first line,
-plays it once through, then falls back to silent looping. For a reader who asked for less motion it
-never starts on its own and the button says "Play with sound". The server streams it rather than
+`preload="none"` so a visitor who never reaches it never downloads it, and never resumes a video the
+reader paused. It has a player of its own across its foot, in one row: play/pause and the time, the
+timing bar (a range input you can drag) stretching between them, then mute and full screen — each
+button named for what pressing it does. "Tap for sound" sits above the bar while it is silent: it turns
+the sound on and restarts it from the top so the voice is heard from its first line, plays it once
+through, then falls back to silent looping. For a reader who asked for less motion it never starts on
+its own and that button says "Play with sound". Full screen takes the whole player, so the controls
+come with it, shows the 9:16 frame whole (letterboxed, not cropped), and the same button brings it
+back; going full screen from the silent loop turns the sound on from the top. iPhone Safari has no
+full screen for anything but a video, so there it opens Safari's own player (`webkitEnterFullscreen`).
+The server streams it rather than
 reading it whole, answering byte ranges with 206 — Safari, and so every iPhone browser, opens a
 video with `Range: bytes=0-1` and will not play one served as a plain 200 — and an ETag, so a
 returning visitor's browser keeps its copy (`serveMedia()` in `server.js`).

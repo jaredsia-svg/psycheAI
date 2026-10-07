@@ -396,6 +396,13 @@
     heroVideoSound: 'Tap for sound',
     heroVideoMute: 'Mute',
     heroVideoPlay: 'Play with sound',
+    // The player's own controls, each named for what pressing it does.
+    heroVideoPlayShort: 'Play',
+    heroVideoPause: 'Pause',
+    heroVideoUnmute: 'Turn sound on',
+    heroVideoFull: 'Full screen',
+    heroVideoExitFull: 'Exit full screen',
+    heroVideoSeek: 'Position in the video',
     // The roast's counterpart to that badge. It marks the section the same way
     // — a word in the heading saying what kind of thing this is — but says
     // "included" rather than "paid for", which is the distinction a reader

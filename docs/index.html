@@ -77,6 +77,18 @@
       <button type="button" class="hero-video-sound" id="hero-video-sound">
         <span class="hero-video-icon" aria-hidden="true"></span><span class="hero-video-text"></span>
       </button>
+      <!-- The player, one row across the foot: play/pause and the time, the
+           timing bar taking the space between, then mute and full screen.
+           Icons and names are set by initHeroVideo() as the state changes. -->
+      <div class="hero-video-bar">
+        <div class="hero-video-row">
+          <button type="button" class="hv-btn" id="hero-video-play"></button>
+          <span class="hero-video-time" id="hero-video-time" aria-hidden="true"></span>
+          <input type="range" class="hero-video-seek" id="hero-video-seek" min="0" max="1000" step="1" value="0">
+          <button type="button" class="hv-btn" id="hero-video-mute"></button>
+          <button type="button" class="hv-btn" id="hero-video-full"></button>
+        </div>
+      </div>
     </figure>
   </header>
 
