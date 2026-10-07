@@ -1781,6 +1781,12 @@ messages towards it each let that archive through, and each is caught.
 
 ### Supplementary sources: Google Takeout and Facebook
 
+**Download steps are written once.** Each source's steps live in a `<template>` in `index.html`
+(`#howto-instagram`, `#howto-google`, `#howto-facebook`), and `app.js` copies each into every
+`<ol data-howto="…">` at start-up — the front page's how-to card, the first-upload "Add more data?"
+popout and the "Add or change your data" popout — so the three can no longer drift apart. A UI check
+holds them identical.
+
 Instagram is the performed self: what somebody chose to publish. A Google Takeout "My Activity"
 export is the unperformed half — what they searched, watched, browsed and asked an AI — and a
 Facebook export is usually an older life stage that Instagram replaced. Both are offered *after*

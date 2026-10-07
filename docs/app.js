@@ -2646,6 +2646,13 @@
   // export arrives as several .zip parts, and dropping them together stays
   // faster than any picker. Nothing advertises it any more, which is the
   // trade — an accelerator for the people who already reach for it.
+  // The download steps, written once in index.html (#howto-instagram and the
+  // rest), copied into every list that shows them.
+  for (const list of document.querySelectorAll('ol[data-howto]')) {
+    const steps = document.getElementById('howto-' + list.dataset.howto);
+    if (steps) list.replaceChildren(steps.content.cloneNode(true));
+  }
+
   $('#open-sources').addEventListener('click', startFromSources);
   // Opens the walkthrough over the popout rather than instead of it: the
   // reader came here to load a file and is stepping aside to see how, so the

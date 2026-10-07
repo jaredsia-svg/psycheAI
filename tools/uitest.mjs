@@ -1536,7 +1536,7 @@ try {
   // everything "Takeout ships HTML by default, and an HTML export cannot be
   // read at all" did, in a line a reader will actually finish.
   check('it names the JSON fix Takeout hides two menus deep, and warns off HTML',
-    /Multiple formats/.test(optionalOpen) && /JSON, not HTML/i.test(optionalOpen),
+    /Multiple formats/.test(optionalOpen) && /JSON \(not HTML\)/i.test(optionalOpen),
     optionalOpen.replace(/\s+/g, ' ').slice(0, 200));
   check('and no longer explains the rationale twice over',
     !/ships HTML by default/i.test(optionalOpen) &&
@@ -1552,10 +1552,10 @@ try {
   // exists.
   check('no format-trap widget is left behind — the warning is text now',
     (await page.locator('.format-trap').count()) === 0);
-  const igStep = (await page.locator('.help-card > ol > li').nth(3).innerText())
+  const igStep = (await page.locator('.help-card > ol > li').nth(2).innerText())
     .replace(/\s+/g, ' ').trim();
   check('the Instagram list says JSON, not HTML, in one short line',
-    /Set Format to JSON, not HTML\.?$/.test(igStep), igStep);
+    /Format to JSON \(not HTML\)/.test(igStep) && igStep.length < 140, igStep);
 
   // ---- deep links, with the long way round kept underneath ----
   //
@@ -1875,8 +1875,8 @@ try {
   // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
-    ['Accounts Centre', 'Your information and permissions', 'Export / Download your information',
-      'Create Export', 'All time', 'JSON', 'lower quality'].join(' | '),
+    ['Accounts Centre', 'Your information and permissions', 'Download your information',
+      'Create export', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's own menus, and they go stale the
@@ -1884,11 +1884,16 @@ try {
   // is not in this list: it is a real destination rather than a button inside
   // somebody else's UI, so it is a genuine link instead of a ui-label —
   // checked separately below.
+  check('each source\'s steps are one text, the same on the front page and in both popouts',
+    await page.evaluate(() => ['instagram', 'google', 'facebook'].every(source => {
+      const texts = [...document.querySelectorAll('ol[data-howto="' + source + '"]')].map(ol => ol.textContent.replace(/\s+/g, ' ').trim());
+      return texts.length >= 2 && texts[0].length > 40 && texts.every(text => text === texts[0]);
+    })));
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['Deselect all', 'My Activity', 'Multiple formats', 'Next Step', 'Export once',
-      'Create Export'].join(' | '),
+    ['Deselect all', 'My Activity', 'Multiple formats', 'Next step', 'Export once',
+      'Create export'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole

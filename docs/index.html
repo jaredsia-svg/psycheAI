@@ -117,21 +117,8 @@
         See illustration
       </button>
     </div>
-    <ol>
-      <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
-            target="_blank" rel="noopener noreferrer">Download your information</a>.
-          <span class="step-fallback">If that link does not open it, go the long way: Instagram →
-            Settings → <span class="ui-label">Accounts Centre</span> →
-            <span class="ui-label">Your information and permissions</span> →
-            <span class="ui-label">Export / Download your information</span>.</span></li>
-      <li>Choose <span class="ui-label">Create Export</span> → Choose your Instagram account.</li>
-      <li>Set Date Range to <span class="ui-label">All time</span> for the best results.</li>
-      <li>Set Format to <span class="ui-label">JSON</span>, not HTML.</li>
-      <li>Set Media Quality to <span class="ui-label">lower quality</span> to save space on your
-          device. Start export.</li>
-      <li>Instagram emails you a download link, usually within a few hours. Download it to your
-          device and upload it below.</li>
-    </ol>
+    <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
+    <ol data-howto="instagram"></ol>
 
     <!-- Inside the Instagram card rather than beside it, because the two are
          one job — "get your data" — and a second card of the same weight read
@@ -158,19 +145,7 @@
       </summary>
 
       <h3>Google Takeout</h3>
-      <ol>
-        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
-              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
-            <span class="step-fallback">If that link does not work, go to
-              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
-              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
-              <span class="ui-label">My Activity</span> on its own.</span></li>
-        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
-            change Activity records to JSON, not HTML.</strong></li>
-        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
-            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
-            usually within minutes.</li>
-      </ol>
+      <ol data-howto="google"></ol>
     </details>
   </div>
 
@@ -910,29 +885,9 @@
     <summary>See download instructions</summary>
     <div class="supplement-help-body">
       <h3>Google Takeout</h3>
-      <ol>
-        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
-              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
-            <span class="step-fallback">If that link does not work, go to
-              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
-              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
-              <span class="ui-label">My Activity</span> on its own.</span></li>
-        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
-            change Activity records to JSON, not HTML.</strong></li>
-        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
-            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
-            usually within minutes.</li>
-      </ol>
+      <ol data-howto="google"></ol>
       <h3>Facebook</h3>
-      <ol>
-        <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
-            <span class="ui-label">Accounts Centre</span> →
-            <span class="ui-label">Your information and permissions</span>.</li>
-        <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
-        <li>Set Date Range to <span class="ui-label">All time</span> and Format to
-            <span class="ui-label">JSON</span>.</li>
-        <li>Under what to include, posts, comments, friends and messages are the parts that are read.</li>
-      </ol>
+      <ol data-howto="facebook"></ol>
     </div>
   </details>
 
@@ -1013,45 +968,16 @@
     <summary>See download instructions</summary>
     <div class="supplement-help-body">
       <h3>Instagram</h3>
-      <ol>
-        <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
-              target="_blank" rel="noopener noreferrer">Download your information</a> — this goes
-            straight to the right page.
-            <span class="step-fallback">If that link does not open it, go the long way: Instagram →
-              Settings → <span class="ui-label">Accounts Centre</span> →
-              <span class="ui-label">Your information and permissions</span> →
-              <span class="ui-label">Export / Download your information</span>.</span></li>
-        <li>Choose <span class="ui-label">Create Export</span>, Date Range <span class="ui-label">All
-            time</span>, and <strong>Format JSON</strong> — an HTML export cannot be read.</li>
-      </ol>
+      <ol data-howto="instagram"></ol>
       <h3>Google Takeout</h3>
-      <ol>
-        <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
-              target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
-            <span class="step-fallback">If that link does not work, go to
-              <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a>,
-              press <span class="ui-label">Deselect all</span>, then scroll to the middle and tick
-              <span class="ui-label">My Activity</span> on its own.</span></li>
-        <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and
-            change Activity records to JSON, not HTML.</strong></li>
-        <li>Click <span class="ui-label">Next Step</span>, <span class="ui-label">Export once</span>,
-            as a .zip file, and <span class="ui-label">Create Export</span>. Google emails a link,
-            usually within minutes.</li>
-      </ol>
+      <ol data-howto="google"></ol>
       <!-- Facebook's steps live in this same block but are hidden unless the
            Facebook row is on offer — see askDataSources, which already hides
            the row itself per entry point. Removing them outright would leave
            the report page offering a source with no instructions for it. -->
       <div class="help-facebook" data-help="facebook">
         <h3>Facebook</h3>
-        <ol>
-          <li>In Facebook, open <span class="ui-label">Settings &amp; privacy</span> →
-              <span class="ui-label">Accounts Centre</span> →
-              <span class="ui-label">Your information and permissions</span>.</li>
-          <li>Choose <span class="ui-label">Download your information</span> → your Facebook account.</li>
-          <li>Set Date Range to <span class="ui-label">All time</span> and Format to
-              <span class="ui-label">JSON</span>.</li>
-        </ol>
+        <ol data-howto="facebook"></ol>
       </div>
       <!-- Written steps are enough for somebody who has done this before; the
            reader who is lost wants to see the screens. Same walkthrough the
@@ -1195,6 +1121,44 @@
        page is running, so a report of a problem can name it. -->
   <p class="footer-version" id="footer-version" hidden></p>
 </footer>
+
+<!-- The download steps for each source, written once. app.js copies each
+     into every <ol data-howto="…"> — the front page and both data popouts — so
+     the three can never drift apart again. -->
+<template id="howto-instagram">
+  <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
+        target="_blank" rel="noopener noreferrer">Download your information</a>.
+      <span class="step-fallback">If the link doesn’t open: Instagram → Settings →
+        <span class="ui-label">Accounts Centre</span> →
+        <span class="ui-label">Your information and permissions</span> →
+        <span class="ui-label">Download your information</span>.</span></li>
+  <li>Choose <span class="ui-label">Create export</span> → your Instagram account →
+      <span class="ui-label">Export to device</span>.</li>
+  <li>Set Date range to <span class="ui-label">All time</span>, Format to
+      <strong><span class="ui-label">JSON</span> (not HTML)</strong>, and Media quality to
+      <span class="ui-label">Lower</span>. Start the export.</li>
+  <li>Instagram emails a link, usually within a few hours. Download the .zip to this device and
+      load it into PsycheAI.</li>
+</template>
+<template id="howto-google">
+  <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
+        target="_blank" rel="noopener noreferrer">Takeout with only My Activity selected</a>.
+      <span class="step-fallback">If the link doesn’t work:
+        <a href="https://takeout.google.com" target="_blank" rel="noopener noreferrer">takeout.google.com</a> →
+        <span class="ui-label">Deselect all</span> → tick <span class="ui-label">My Activity</span> only.</span></li>
+  <li><strong>In the My Activity row, open <span class="ui-label">Multiple formats</span> and set
+      Activity records to JSON (not HTML).</strong></li>
+  <li><span class="ui-label">Next step</span> → <span class="ui-label">Export once</span> → .zip →
+      <span class="ui-label">Create export</span>. Google emails a link, usually within minutes.</li>
+</template>
+<template id="howto-facebook">
+  <li>Facebook → <span class="ui-label">Settings &amp; privacy</span> →
+      <span class="ui-label">Accounts Centre</span> →
+      <span class="ui-label">Your information and permissions</span> →
+      <span class="ui-label">Download your information</span> → your Facebook account.</li>
+  <li>Set Date range to <span class="ui-label">All time</span> and Format to
+      <span class="ui-label">JSON</span>. Your posts, comments, friends and messages are what’s read.</li>
+</template>
 
 <script src="vendor/qrcode.js"></script>
 <script src="vendor/jsqr.js"></script>
