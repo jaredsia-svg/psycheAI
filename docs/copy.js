@@ -329,12 +329,7 @@
     // the whole app, so it is worded identically on every run rather than
     // being left to a field the model could soften, shorten or forget. See
     // the comment on the wellness schema in lib/prompts.js.
-    wellnessCaveat: 'This reads patterns in social-media behaviour — when you post, who you talk to, ' +
-      'what you write about. It is not a measurement of your mental health, not a screening tool and ' +
-      'not a professional opinion, and it cannot see your circumstances, your history or your reasons. ' +
-      'Nothing here is a diagnosis of anything. If something above lands heavier than a passing thought, ' +
-      'the person to talk to about it is a person — a GP or a qualified professional can actually assess ' +
-      'what this cannot.',
+    wellnessCaveat: 'A read of patterns in how you use social media, not of your mental health – it is not a diagnosis and cannot see your circumstances. If anything here weighs on you, talk to a GP or a qualified professional.',
 
     qr: 'What your QR code contains',
     qrSub: 'Only this — the compact card the other person’s report is built from.',
@@ -423,9 +418,7 @@
     // Each line says what that part of the report actually contains, at the
     // length the four premium covers already run to, so the reader is deciding
     // on specifics rather than on section names.
-    fullReportBlurb: 'Your card shows the conclusions. The full premium report shows the working – every ' +
-      'score, letter and type explained from your own data – and goes further, into your wellness, your ' +
-      'attachment style, the partner who suits you and your career:',
+    fullReportBlurb: 'Your card shows the conclusions. The full report shows the working, and goes further.',
     explainWho: 'Why that character fits you and not a neighbouring one, then the long read on who you ' +
       'are – the patterns that run through years of your posts and messages, drawn together into a ' +
       'portrait specific enough that it could not be anyone else\'s.',
@@ -475,11 +468,7 @@
     // Stays on screen beside the writing rather than only appearing on the
     // cover: this is the part a reader most needs while they are reading it,
     // and the part they are least likely to scroll back up for.
-    bonusCaveat: 'This is an AI model being deliberately harsh about behavioural traces from your ' +
-      'IG data. It is not an assessment, not a diagnosis and not a professional opinion of any kind. ' +
-      'It cannot see your circumstances, your history or your reasons. Treat it as a provocation to ' +
-      'argue with, not a verdict — and if any of it lands somewhere heavier than that, the person to ' +
-      'talk to about it is a person.',
+    bonusCaveat: 'An AI being deliberately harsh about your data – not an assessment and not a diagnosis. Argue with it, and if any of it lands heavier than that, talk to someone you trust or a professional.',
     // The section's own button is drawn before anything has been fetched
     // from the server, so it carries this static label; the dialog it opens
     // fetches a real PaymentIntent and shows *that* amount once it has one,
@@ -523,14 +512,11 @@
     // Deliberately says the payment is fine and names no price: somebody who
     // has already paid and is being asked to press a button again needs to
     // know they are collecting, not buying.
-    pendingAnalysisText: 'Your payment went through, but the analysis did not reach this device — ' +
-      'you probably closed the tab or lost signal while it was running. Nothing more to pay.',
+    pendingAnalysisText: 'Your payment went through but the analysis didn’t arrive. Fetching it again is free.',
     pendingAnalysisLabel: 'Get the analysis you paid for',
-    pendingCompatText: 'Your payment went through, but the compatibility report did not reach this ' +
-      'device. Nothing more to pay, and you will not have to scan the code again.',
+    pendingCompatText: 'Your payment went through but the report didn’t arrive. Fetching it again is free – no need to scan again.',
     pendingCompatLabel: 'Get the report you paid for',
-    pendingNeedsInstagram: 'Your payment is still good, but your Instagram export is no longer on ' +
-      'this device. Load it again and the analysis you paid for will run without charging you.',
+    pendingNeedsInstagram: 'Your payment is still good. Load your Instagram export again and the analysis will run at no charge.',
     // Shown to somebody who put their phone down mid-analysis and came back.
     // It says the two things they need: nothing was lost, and there is nothing
     // for them to do — because the instinct on returning to a waiting screen
@@ -539,18 +525,14 @@
       'be open. Picking it back up now; it will appear as soon as it is finished.',
     premiumResumeLabel: 'Get the premium report you paid for',
     premiumResumeTitle: 'You have already paid',
-    premiumResumeBlurb: 'Your payment went through but the analysis did not reach this device — the ' +
-      'tab closed, the connection dropped, or the device slept while it was being written. Fetching ' +
-      'it again costs nothing.',
+    premiumResumeBlurb: 'Your payment went through but the report didn’t arrive. Fetching it again is free.',
     premiumResumeAction: 'Fetch my premium report',
     // The second thing this app sells, and the reason its copy is separate
     // from the unlock's: they buy different things, and a dialog that says
     // "unlock premium sections" while charging US$2 for a re-run would be
     // describing the wrong purchase.
     analysisDialogTitle: 'Run your Psyche Card again',
-    analysisDialogBlurb: 'Your first Psyche Card is free. Each one after that — including re-running ' +
-      'with Google or Facebook data added — is US$2, because every run is a fresh call to the AI ' +
-      'model and costs real money to produce.',
+    analysisDialogBlurb: 'Your first Psyche Card is free; each one after that is US$2.',
     // Shown on the upload page and beside the re-run button once the free run
     // is spent, so the price is never a surprise sprung at the last moment.
     analysisPriceNote: 'Your next Psyche Card costs US$2.',
@@ -573,9 +555,7 @@
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
     premiumRerunDialogTitle: 'Re-run your full premium report',
-    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data — your card ' +
-      'and the full premium report together. Taken on this device — Apple Pay or Google Pay, ' +
-      'whichever this browser offers.',
+    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data – your card and the full premium report together.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     // Followed immediately by the card fallback mounting itself (see

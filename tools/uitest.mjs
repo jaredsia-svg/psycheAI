@@ -1375,7 +1375,7 @@ try {
       // Somebody who has already paid and is being asked to press a button
       // again needs to know they are collecting, not buying.
       check('and the offer says the payment is fine rather than naming a price',
-        /nothing more to pay/i.test(owed.text) && !/\$/.test(owed.text) &&
+        /fetching it again is free/i.test(owed.text) && !/\$/.test(owed.text) &&
         /paid for/i.test(owed.label), JSON.stringify(owed));
 
       const analysePosts = [];
@@ -1403,7 +1403,7 @@ try {
       await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() }, false);
       const noExport = await banner();
       check('with the export gone, the offer says so and offers no button to press',
-        noExport.shown && !noExport.canPress && /export is no longer on this device/i.test(noExport.text),
+        noExport.shown && !noExport.canPress && /load your instagram export again/i.test(noExport.text),
         JSON.stringify(noExport));
 
       // Coming back is not always a page load. A phone that suspends a tab and
@@ -5234,7 +5234,7 @@ try {
     await page.evaluate(() => {
       const card = document.querySelector('#profile-body .wellness-card');
       const caveat = card && card.querySelector('.wellness-caveat');
-      return /not a measurement of your mental health/i.test(card.innerText) &&
+      return /not of your mental health/i.test(card.innerText) &&
         Boolean(caveat) && caveat.offsetParent !== null;
     }));
   check('no clinical condition is named in the mocked wellness content', await page.evaluate(() => {
@@ -5346,8 +5346,8 @@ try {
   check('the overall read and the suggestions both render',
     /Taken together/i.test(wellnessCard.text) && /What might actually help/i.test(wellnessCard.text));
   check('the static caveat is shown with the writing, not buried',
-    /not a measurement of your mental health/i.test(wellnessCard.text) &&
-    /the person to talk to about it is a person/i.test(wellnessCard.text) &&
+    /not of your mental health/i.test(wellnessCard.text) &&
+    /talk to a GP or a qualified professional/i.test(wellnessCard.text) &&
     (await page.locator('#profile-body .wellness-caveat').isVisible()));
   // Scoped to the model's own output, with the caveat excluded — the caveat
   // is the one part of this card that is *supposed* to contain the word
@@ -5363,7 +5363,7 @@ try {
         .test(card.textContent);
     }));
   check('the caveat does disclaim a diagnosis, which is why it is excluded above',
-    /Nothing here is a diagnosis of anything/i.test(
+    /it is not a diagnosis/i.test(
       await page.locator('#profile-body .wellness-caveat').innerText()));
 
   // ---- attachment style, and the career coach ----
@@ -6493,7 +6493,7 @@ try {
     pdfText.includes('(The least charitable assessment of you)') &&
     pdfText.includes('(What an honest friend would tell you)') &&
     /uncharitable reading/i.test(pdfProse) && /unsoftened advice/i.test(pdfProse) &&
-    /not an assessment, not a diagnosis/i.test(pdfProse));
+    /not an assessment and not a diagnosis/i.test(pdfProse));
   // The downloaded file is the copy that gets kept and forwarded, so it needs
   // the same two-provider record the page grew once paid content existed —
   // otherwise a reader who saves the PDF loses the one place that says a
@@ -6531,7 +6531,7 @@ try {
     unpaidPdfText.includes('(Let us roast you)') &&
     unpaidPdfText.includes('(The least charitable assessment of you)') &&
     unpaidPdfText.includes('(What an honest friend would tell you)') &&
-    /not an assessment, not a diagnosis/i.test(unpaidProse) &&
+    /not an assessment and not a diagnosis/i.test(unpaidProse) &&
     /uncharitable reading/i.test(unpaidProse) && /unsoftened advice/i.test(unpaidProse));
   // ...and it is the same report otherwise, so the check above is about the
   // paywall rather than about a build that quietly failed and returned little.
@@ -9144,12 +9144,13 @@ try {
   // thing to go and tap while following instructions, and the weight is what
   // makes it findable mid-step. Both halves are checked, so unbolding the FAQ
   // by restyling the class everywhere would fail here.
-  check('and the screen names it mentions stay underlined, just not heavy',
+  // The file answer now names no screens at all; any that come back must be light.
+  check('and any screen names it mentions stay underlined, just not heavy',
     await page.evaluate(() => {
       const inFaq = [...document.querySelectorAll('#view-about .ui-label')];
       const outside = [...document.querySelectorAll('.ui-label')]
         .filter(el => !el.closest('#view-about') && !el.closest('.step-fallback'));
-      if (!inFaq.length || !outside.length) return false;
+      if (!outside.length) return false;
       const light = inFaq.every(el => Number(getComputedStyle(el).fontWeight) < 600 &&
         getComputedStyle(el).textDecorationLine.includes('underline'));
       const heavyElsewhere = outside.every(el => Number(getComputedStyle(el).fontWeight) >= 600);

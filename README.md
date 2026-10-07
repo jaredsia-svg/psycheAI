@@ -4485,7 +4485,10 @@ document, so they close the page rather than sitting inside it. On a **free** st
 Delete everything stays there: Test compatibility moves under "Your Psyche Card", a full-width button
 below Enlarge, Download and Share (`.cx-compat`, which clicks `#test-compat-open`). The **payment sheet**
 for the unlock has no blurb — its title, then the ways to pay — since the offer has already said what it
-opens; the re-run and US$2 sheets keep theirs. An empty wallet slot (no Apple Pay or Google Pay, or mock
+opens; the re-run and US$2 sheets keep a one-line blurb each (no wallet sentence, no reasoning about
+cost). The wellbeing and roast caveats are two sentences each, still saying "not a diagnosis" and
+pointing to a professional; the payment-recovery lines are one sentence each; and the FAQ's file answer
+is one line plus the illustration link. An empty wallet slot (no Apple Pay or Google Pay, or mock
 mode) collapses rather than leaving a band under the title.
 
 **Test compatibility** opens a popout carrying the QR code, the copy-link and download-QR buttons, and
