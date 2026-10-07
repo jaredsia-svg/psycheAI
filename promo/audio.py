@@ -22,6 +22,8 @@ dur = [len(x) / SR for x in lines]
 
 GAP, LEAD = 0.16, 0.06
 marks = json.load(open(VO + '/marks.json'))
+# When each word is said, per line, for the on-screen words to appear in time with the voice.
+word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, 9)] + [marks['words']['l09-' + VERSION]]
 marks = marks['lines'] + [marks['end'][VERSION]]
 minimum = {0: 1.5}
 scenes, t = [], 0.0
@@ -30,7 +32,8 @@ for i, d in enumerate(dur):
     length = max(lead + d + GAP, minimum.get(i, 0))
     if i == len(dur) - 1: length = lead + d + 1.0
     scenes.append({'start': round(t, 3), 'end': round(t + length, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
-                   'marks': [round(t + lead + m, 3) for m in marks[i]]})
+                   'marks': [round(t + lead + m, 3) for m in marks[i]],
+                   'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})
     t += length
 TOTAL = round(t, 3)
 

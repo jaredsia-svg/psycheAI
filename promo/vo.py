@@ -20,6 +20,11 @@ SR = v.config.sample_rate
 W = HERE + '/.cache/asr/sherpa-onnx-whisper-base.en/base.en-'
 rec = sherpa_onnx.OfflineRecognizer.from_whisper(encoder=W + 'encoder.int8.onnx', decoder=W + 'decoder.int8.onnx',
                                                  tokens=W + 'tokens.txt', language='en', task='transcribe')
+# A second recogniser, for when each word is said: Whisper hears the words best, this one says when.
+Z = HERE + '/.cache/asr/sherpa-onnx-zipformer-en-2023-06-26/'
+timer = sherpa_onnx.OfflineRecognizer.from_transducer(encoder=Z + 'encoder-epoch-99-avg-1.int8.onnx',
+                                                      decoder=Z + 'decoder-epoch-99-avg-1.onnx',
+                                                      joiner=Z + 'joiner-epoch-99-avg-1.int8.onnx', tokens=Z + 'tokens.txt')
 BRAND = list('sˈaɪkiː ˈeɪ ˈaɪ')
 TAKES = 24
 
@@ -122,15 +127,46 @@ def speak(phrases, ls, split, pause=0.06):
     (ok, score), a, cuts, got = best
     return a, cuts, ok, score, got
 
+def word_times(a, script):
+    """When each word of the script starts in `a`, in seconds.
+
+    The recogniser's words are lined up against the script's, so a word it
+    mishears ("you are" for "your") still gets its neighbours' timing: matched
+    words take the recogniser's time, the rest are placed evenly between them.
+    """
+    s = timer.create_stream(); s.accept_waveform(SR, a); timer.decode_stream(s)
+    heard_words, times = [], []
+    for token, at in zip(s.result.tokens, s.result.timestamps):
+        if token.startswith(' ') or not heard_words:
+            heard_words.append(''); times.append(at)
+        heard_words[-1] += token.strip().lower()
+    want = words(script)
+    known = {}
+    for block in difflib.SequenceMatcher(None, want, heard_words).get_matching_blocks():
+        for k in range(block.size): known[block.a + k] = times[block.b + k]
+    out = []
+    for i, w in enumerate(want):
+        if i in known: out.append(known[i]); continue
+        before = max((j for j in known if j < i), default=None)
+        after = min((j for j in known if j > i), default=None)
+        if before is not None and after is not None:
+            out.append(known[before] + (known[after] - known[before]) * (i - before) / (after - before))
+        elif before is not None: out.append(known[before] + 0.25 * (i - before))
+        elif after is not None: out.append(max(0.0, known[after] - 0.25 * (after - i)))
+        else: out.append(len(a) / SR * i / max(1, len(want)))
+    return [[w, round(t, 3)] for w, t in zip(want, out)]
+
 def write(name, phrases, ls, split, pause=0.06):
     a, cuts, ok, score, got = speak(phrases, ls, split, pause)
     a = a / np.max(np.abs(a)) * 0.9
     sf.write(f'{OUT}/{name}.wav', a, SR, subtype='PCM_16')
     print(name, f'{len(a) / SR:.2f}s', 'score', round(score, 3), 'pauses ok' if ok else 'PAUSES?', [0.0] + cuts, '|', got)
+    word_marks[name] = word_times(a, ' '.join(phrases))
     return [0.0] + cuts
 
 # Lines 1-8 are shared; the closing line is spoken once per version in config.json.
-marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}}
+word_marks = {}
+marks = {'lines': [write(f'l{i:02d}', *line) for i, line in enumerate(LINES, 1)], 'end': {}, 'words': word_marks}
 for version, settings in CONFIG.items():
     marks['end'][version] = write('l09-' + version, [END, settings['spoken']], 0.9, True)
 json.dump(marks, open(OUT + '/marks.json', 'w'))

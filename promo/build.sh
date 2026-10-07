@@ -2,7 +2,7 @@
 # Builds the PsycheAI promo video from scratch: npm run promo
 #
 # First run sets up a Python environment and downloads the voice and the speech
-# recogniser into promo/.cache (about 350 MB, kept for later runs). Everything it
+# recognisers into promo/.cache (about 700 MB, kept for later runs). Everything it
 # makes lands in promo/out, and the website version also in docs/media.
 # See promo/README.md.
 set -euo pipefail
@@ -25,6 +25,7 @@ fetch() { # fetch <release path> <directory it unpacks to> <into>
 }
 fetch tts-models/vits-piper-en_US-ljspeech-high.tar.bz2 vits-piper-en_US-ljspeech-high $CACHE/voices
 fetch asr-models/sherpa-onnx-whisper-base.en.tar.bz2 sherpa-onnx-whisper-base.en $CACHE/asr
+fetch asr-models/sherpa-onnx-zipformer-en-2023-06-26.tar.bz2 sherpa-onnx-zipformer-en-2023-06-26 $CACHE/asr
 FF=$($PY -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())")
 
 echo "Voiceover"; $PY vo.py

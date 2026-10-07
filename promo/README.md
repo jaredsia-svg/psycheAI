@@ -18,7 +18,7 @@ It makes two versions from the same voiceover, set in `config.json`:
 After building `site`, commit `docs/media/` so the site serves the new video.
 
 The first run sets up Python in `promo/.cache` and downloads the voice and a speech recogniser
-(about 350 MB, kept for later runs). A full build takes about ten minutes, most of it rendering
+(about 700 MB, kept for later runs). A full build takes about ten minutes, most of it rendering
 frames. It needs `python3`, `curl` and the repo's `npm install` (for Playwright).
 
 ## Changing the ending, the link or the colours
@@ -50,7 +50,9 @@ A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
    **PsycheAI** is given as sounds, SY-kee AY EYE, rather than spelling: written as "Psyche AI"
    the voice ran it into "Psychete AI", and as "Psyche, A. I." it ended a sentence on each letter.
    The card and report lines, which are lists, are spoken one phrase at a time so the highlights
-   land on the words; `build/vo/marks.json` records where each phrase starts.
+   land on the words; `build/vo/marks.json` records where each phrase starts. A second recogniser
+   (a Zipformer transducer, which reports when each word begins) times every word of every line, and
+   the on-screen words are matched to the spoken ones so each pops in as the voice says it.
 2. **`audio.py`** lays one version's lines out into scenes (`build/<version>/timeline.json`), writes an original
    118 BPM track for them, and mixes the two with the music ducked under the voice.
 3. **`render.mjs`** draws `stage.html` frame by frame in Chromium at 30 fps and encodes it with

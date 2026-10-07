@@ -118,7 +118,7 @@ body.light #endCard { box-shadow: 0 30px 70px rgba(90,40,120,.25) !important; }
   </section>
 
   <section class="scene" id="s3">
-    <div class="big" style="top:260px;font-size:80px" data-words data-split="6"><span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you have never noticed before?</div>
+    <div class="big" style="top:260px;font-size:80px" data-words><span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you have never noticed before?</div>
     <svg id="print" viewBox="0 0 500 620"><defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset=".5" stop-color="#ff7eb3"/><stop offset="1" stop-color="#c792ff"/></linearGradient></defs><g id="prints"></g></svg>
     <div id="chips"></div>
   </section>
@@ -334,12 +334,42 @@ const tileEls = TILES.map(([n, title, keys], i) => {
 const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createElement('div'); s.className = 'spark'; $('sparks').appendChild(s);
   return { el: s, x: (i * 397) % 1080, speed: 60 + (i * 53) % 90, phase: (i * 0.37) % 1, size: 4 + (i * 7) % 9 }; });
 
-function words(el, t, from, to, split = 0, from2 = 0, to2 = 0) {
-  const ws = el.querySelectorAll('.w'); const n = ws.length;
-  const at = i => !split ? from + (to - from) * i / Math.max(1, n)
-    : i < split ? from + (to - from) * i / split : from2 + (to2 - from2) * (i - split) / Math.max(1, n - split);
-  ws.forEach((w, i) => { const a = at(i); const k = prog(t, a, a + 0.28);
+function popAt(el, t, times) {
+  el.querySelectorAll('.w').forEach((w, i) => { const k = prog(t, times[i], times[i] + 0.28);
     w.style.opacity = clamp(k * 2.5); w.style.transform = 'translateY(' + (1 - ease(k)) * 40 + 'px) scale(' + (0.55 + 0.45 * back(k)) + ')'; });
+}
+function words(el, t, from, to) {
+  const n = el.querySelectorAll('.w').length;
+  popAt(el, t, Array.from({ length: n }, (_, i) => from + (to - from) * i / Math.max(1, n)));
+}
+// When each on-screen word should appear: matched to the spoken words (scene.words, from the voice
+// itself) by longest common subsequence, then a beat early so the pop lands as the word is heard.
+// "PsycheAI" on screen is "psyche ai" spoken. Unmatched words sit evenly between matched neighbours.
+const timesCache = new Map();
+function spokenTimes(el, scene) {
+  if (timesCache.has(el)) return timesCache.get(el);
+  const norm = x => x.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9']/g, '').replace(/^psycheai$/, 'psyche');
+  const shown = [...el.querySelectorAll('.w')].map(w => norm(w.textContent));
+  const said = scene.words.map(([w]) => norm(w));
+  const n = shown.length, m = said.length, L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    L[i][j] = shown[i] && shown[i] === said[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const at = new Array(n).fill(null);
+  for (let i = 0, j = 0; i < n && j < m;) {
+    if (shown[i] && shown[i] === said[j]) { at[i] = scene.words[j][1]; i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+  }
+  const known = at.map((v, i) => v === null ? null : i).filter(i => i !== null);
+  const out = at.map((v, i) => {
+    if (v !== null) return v;
+    const before = known.filter(k => k < i).pop(), after = known.find(k => k > i);
+    if (before !== undefined && after !== undefined) return at[before] + (at[after] - at[before]) * (i - before) / (after - before);
+    if (before !== undefined) return at[before] + 0.2 * (i - before);
+    if (after !== undefined) return Math.max(scene.vo, at[after] - 0.2 * (after - i));
+    return scene.vo + 0.2 * i;
+  }).map(v => v - 0.08);
+  timesCache.set(el, out);
+  return out;
 }
 function scene(i, t) {
   const s = S[i]; const el = $('s' + i);
@@ -348,9 +378,8 @@ function scene(i, t) {
   el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
   el.style.transform = 'scale(' + (0.94 + 0.06 * ease(kIn) + 0.1 * kOut * kOut) + ')';
   const w = el.querySelector('[data-words]');
-  // A line spoken in two halves (data-split = words in the first) pops in two halves too.
-  const split = w && Number(w.dataset.split);
-  if (w && o && split && s.marks[1]) words(w, t, s.vo - 0.05, s.marks[1] - 0.1, split, s.marks[1] - 0.05, s.marks[1] + 1.2);
+  // Each word pops in as the voice says it; words the voice does not say are placed between their neighbours.
+  if (w && o && s.words && s.words.length) popAt(w, t, spokenTimes(w, s));
   else if (w && o) words(w, t, s.vo - 0.05, s.vo + Math.min(1.6, (s.voEnd - s.vo) * 0.6));
   return { s, local: t - s.start, len: s.end - s.start, o, voLen: s.voEnd - s.vo };
 }
@@ -402,7 +431,9 @@ function render(t) {
   if (c.o) {
     // Each file pops into the row as it is named, then all three fly into the mark.
     const M = c.s.marks, at = f => c.s.vo + f * c.voLen, suck = easeIO(prog(t, at(0.86), at(0.86) + 0.6));
-    [['f1', M[0] + 1.45, 50, -6], ['f2', M[1], 390, 3], ['f3', M[2] + 0.2, 730, 6]].forEach(([id, when, x, rot], i) => {
+    // Each card as its name is said.
+    const said = (name, fallback) => ((c.s.words || []).find(([w]) => w === name) || [0, fallback])[1];
+    [['f1', said('instagram', M[0] + 1.45), 50, -6], ['f2', said('google', M[1]), 390, 3], ['f3', said('facebook', M[2] + 0.2), 730, 6]].forEach(([id, when, x, rot], i) => {
       const pop = back(prog(t, when - 0.1, when + 0.3)), el = $(id);
       el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (1230 + (800 - 1230) * suck) + 'px';
       el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
