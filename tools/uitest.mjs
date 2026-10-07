@@ -931,7 +931,13 @@ try {
         typeof record.key === 'string' && /^card:[0-9a-f]{64}$/.test(record.key),
         JSON.stringify(record));
       check('the record holds a key, a kind and a time, never a report',
-        Object.keys(record).sort().join(',') === 'at,auth,key,kind', Object.keys(record).join(','));
+        Object.keys(record).filter(k => k !== 'ownName').sort().join(',') === 'at,auth,key,kind', Object.keys(record).join(','));
+      // The model only ever sees "PsycheUser"; the reader's own name stays on
+      // this device, in the record, so a page that rejoins the job can put it
+      // back on the card.
+      check('and the reader\'s own name, kept on this device for the card a rejoining page receives',
+        typeof record.ownName === 'string' && record.ownName.length > 0 && !/PsycheUser/i.test(record.ownName),
+        JSON.stringify(record.ownName));
       check('and it names what the result is, so collecting it cannot guess wrong',
         record.kind === 'analysis', String(record.kind));
       // The first poll is a couple of seconds behind the POST by design, so
@@ -958,6 +964,44 @@ try {
         await jobPage.locator('#view-profile').isVisible());
       check('and the job record is cleared once it has been collected',
         (await jobPage.evaluate(() => localStorage.getItem('psycheai_job'))) === null);
+      // That page never read the archive, yet the card, the page's title and
+      // the stored profile carry the reader's name rather than the placeholder.
+      const resumedName = await jobPage.evaluate(() => ({ title: document.querySelector('#profile-title').textContent,
+        stored: /PsycheUser/.test(localStorage.getItem('psycheai_profile') || '') }));
+      check('and the card it receives is named for the reader, not "PsycheUser"',
+        !/PsycheUser/.test(resumedName.title) && !resumedName.stored, JSON.stringify(resumedName));
+
+      // A card stored before that fix — replaced by a paid report written from
+      // a newly added source — still says "PsycheUser" on the card, the page
+      // and the PDF. The real name is gone from storage, so it is mended the
+      // next time the archive is read on this device, without re-running.
+      {
+        const sample = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
+        const fixPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+        try {
+          await fixPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+          await fixPage.evaluate(report => {
+            localStorage.clear();
+            const placeholder = Object.assign({}, report, { card: Object.assign({}, report.card, { name: 'PsycheUser' }),
+              summary: 'PsycheUser organises the room.' });
+            localStorage.setItem('psycheai_profile', JSON.stringify({ report: placeholder, card: placeholder.card,
+              payload: 'x', model: 'mock', createdAt: new Date().toISOString(), explained: true }));
+          }, sample);
+          await fixPage.reload({ waitUntil: 'load' });
+          await fixPage.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+          const before = await fixPage.locator('#profile-title').textContent();
+          await fixPage.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+          await fixPage.waitForFunction(() => !/PsycheUser/.test(localStorage.getItem('psycheai_profile') || ''), null, { timeout: 30000 }).catch(() => {});
+          const after = await fixPage.evaluate(() => { const p = JSON.parse(localStorage.getItem('psycheai_profile'));
+            return { name: p.card.name, reportName: p.report.card.name, summary: p.report.summary, payload: p.payload !== 'x',
+              left: /PsycheUser/.test(JSON.stringify(p)) }; });
+          check('a card stored as "PsycheUser" is renamed once the archive is read again on the device',
+            /PsycheUser/.test(before) && !after.left && after.name && after.name === after.reportName && after.payload &&
+              !/PsycheUser/.test(after.summary), JSON.stringify({ before, after }));
+        } finally {
+          await fixPage.close();
+        }
+      }
 
       // The same treatment for "Add / change data & re-run analysis", which is
       // the other way into an analysis and the one a returning reader uses.

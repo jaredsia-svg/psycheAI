@@ -206,6 +206,16 @@ is a friend, a brand or a newsroom is the evidence there. The saving is small �
 2.8% of a real digest's tokens — but the privacy is not. The reader's own "PsycheUser" marker appeared
 twice in a real digest, so it was left as it is.
 
+**The name comes back on the device.** Everything the model returns says "PsycheUser" where the reader
+is meant (the server sets the card's name to it outright), so the app gives the real name back before
+anything is stored, shown, put in a QR code or printed (`withOwnName`): the card, the page's "…'s
+psyche", the PDF header and any stray mention in the writing. Every way a card can arrive does this —
+the free card, a paid report that writes a new card because a source was added on the way to paying
+(which used to miss it), and a page that rejoins a job after the first was closed, which reads the name
+from the job record written when the work started (`ownName`, kept only on the device). A profile stored
+before that fix is mended the next time the archive is read on the device (`repairOwnName`), without
+running anything again.
+
 **What is de-identified before sending, and what is not.** On the device, before review: the reader's
 name and username become "PsycheUser"; email addresses, phone numbers, and identity, card and postal
 numbers become "PsycheEmail", "PsychePhone" and "PsycheNumber" (`ID_NUMBERS` — a Singapore NRIC/FIN, a

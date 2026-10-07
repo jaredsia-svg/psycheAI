@@ -1194,9 +1194,9 @@
   // PAID_SECTIONS, unlockedSections and the PDF have always looked for them.
   const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
 
-  async function adoptFullReport(result, replaceCard) {
+  async function adoptFullReport(result, replaceCard, savedName) {
     if (!state.profile) return;
-    const written = Object.assign({}, result.data);
+    const written = withOwnName(Object.assign({}, result.data), ownNameFrom(savedName));
     const premium = {};
     for (const key of PREMIUM_KEYS) {
       if (written[key]) premium[key] = written[key];
@@ -1215,7 +1215,8 @@
     delete written.freeCard;
     result = Object.assign({}, result, { data: written });
     if (replaceCard) {
-      const cardFields = (freshCard || result.data).card;
+      const cardFields = Object.assign({}, (freshCard || result.data).card);
+      if (isPlaceholder(cardFields.name) && ownNameFrom(savedName)) cardFields.name = ownNameFrom(savedName);
       state.profile.report = freshCard ? overlayCard(result.data, freshCard) : result.data;
       if (freshCard) state.profile.freeReport = freshCard;
       state.profile.card = Card.shape(cardFields);
@@ -1324,12 +1325,65 @@
     return String(profile.name || profile.username || '').trim();
   }
 
+  // The reader's name and handle reach the model as this placeholder and never
+  // as themselves (docs/digest.js). Whatever comes back carrying it is given the
+  // real name here, on the device, before it is stored, shown, put in a QR code
+  // or printed: the card's name, the page's "…'s psyche", the PDF's header, and
+  // any stray mention in the writing.
+  const OWN_PLACEHOLDER = /\bPsycheUser\b/g;
+  const isPlaceholder = name => /^\s*PsycheUser\s*$/i.test(String(name || ''));
+  function withOwnName(value, real) {
+    if (!real) return value;
+    if (typeof value === 'string') return value.replace(OWN_PLACEHOLDER, real);
+    if (Array.isArray(value)) return value.map(item => withOwnName(item, real));
+    if (value && typeof value === 'object') {
+      const out = {};
+      for (const key of Object.keys(value)) out[key] = withOwnName(value[key], real);
+      return out;
+    }
+    return value;
+  }
+  // The real name from wherever it can still be had: the archive in memory, the
+  // job record written when the work started (for a page that rejoined it), or
+  // the card the reader already has, if that one was named properly.
+  function ownNameFrom(saved) {
+    const card = state.profile && state.profile.card;
+    return ownDisplayName() || String(saved || '').trim() || (card && !isPlaceholder(card.name) ? String(card.name || '').trim() : '');
+  }
+
+  /**
+   * Puts the real name back on a profile stored before this was fixed: a card
+   * replaced by a paid report said "PsycheUser", and so did the page and PDF
+   * headers. The name is gone from what was stored, so this waits for the
+   * archive to be read again on this device, then mends the card, its QR code
+   * and the writing in place, without running anything again.
+   */
+  async function repairOwnName(signals) {
+    const own = (signals && signals.profile) || {};
+    const real = String(own.name || own.username || '').trim() || ownDisplayName();
+    const profile = state.profile;
+    if (!real || !profile || !/PsycheUser/.test(JSON.stringify(profile))) return;
+    for (const key of ['report', 'freeReport', 'premiumAnalysis']) {
+      if (profile[key]) profile[key] = withOwnName(profile[key], real);
+    }
+    const cardFields = withOwnName(Object.assign({}, (profile.report && profile.report.card) || profile.card), real);
+    if (isPlaceholder(cardFields.name)) cardFields.name = real;
+    profile.card = Card.shape(cardFields);
+    profile.payload = await Card.encodeCard(cardFields);
+    store.write(KEYS.profile, profile);
+    if (!$('#view-profile').hidden) renderProfile();
+  }
+
   function rememberJob(key, kind, auth, context) {
+    const ownName = ownNameFrom();
     store.write(KEYS.job, {
       key,
       kind: kind || 'analysis',
       auth: auth || null,
       at: Date.now(),
+      // So a page that rejoins this job, with the archive no longer in memory,
+      // can still give the card its real name (see withOwnName).
+      ...(ownName ? { ownName } : {}),
       ...(context || {}),
     });
   }
@@ -2382,6 +2436,7 @@
       // has to be read off the old object before it is replaced.
       const priorSupplements = state.signals && state.signals.supplements;
       if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
           typeof collected.google === 'object' ? { google: collected.google } : null,
@@ -3507,6 +3562,9 @@
         includeMessages: true,
         onProgress: p => setProgress(Math.round((p.total ? p.done / p.total : 0) * 70), p.label),
       });
+      // The archive names the reader, so a stored card that lost their name
+      // gets it back now, whatever they go on to do with this upload.
+      repairOwnName(signals).catch(() => {});
 
       // The supplement offer and the review are one loop, because Back on the
       // review steps upstream to the offer rather than abandoning the upload.
@@ -3988,6 +4046,7 @@
       // state.signals), so a second pass is idempotent rather than additive.
       const priorSupplements = state.signals && state.signals.supplements;
       if (typeof collected.instagram === 'object') state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
 
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
@@ -4168,7 +4227,7 @@
    * two copies of this would be two chances for a resumed report to be worth
    * slightly less than a waited-for one.
    */
-  async function adoptProfile(result) {
+  async function adoptProfile(result, savedName) {
     // In hand. Nothing is owed any more, so the offers to collect it go away
     // before anything else can fail below and leave them standing.
     clearPending();
@@ -4183,14 +4242,12 @@
     // name reaches the QR code the reader chooses to share, and never reaches
     // the model at all.
     //
-    // Only when the model actually returned the placeholder, so a real name it
-    // was given is never overwritten; and only while the archive is in memory,
-    // which is true on the run that generated the card and not on a resumed
-    // one — where the card is already whatever the first attempt made it.
-    const realName = ownDisplayName();
-    if (realName && /^PsycheUser$/i.test(String(result.data.card.name || '').trim())) {
-      result.data.card.name = realName;
-    }
+    // Only where the model actually returned the placeholder, so a real name
+    // it was given is never overwritten. The name comes from the archive in
+    // memory or, on a page that rejoined the job after the first was closed,
+    // from the job record written when it started (see ownNameFrom).
+    const realName = ownNameFrom(savedName);
+    if (realName) result = Object.assign({}, result, { data: withOwnName(result.data, realName) });
     const payload = await Card.encodeCard(result.data.card);
     state.profile = {
       report: result.data,
@@ -4273,12 +4330,12 @@
         // The unlock's one call: the written report and the four premium
         // sections, laid under the card the reader has. ('explain' is the
         // record a page from the previous deploy wrote for the same thing.)
-        await adoptFullReport(result, Boolean(job.replaceCard));
+        await adoptFullReport(result, Boolean(job.replaceCard), job.ownName);
         renderProfile();
         show('profile');
         openPaidSections();
       } else if (comparing) adoptComparison(result, job.other, job.mode, job.stance);
-      else await adoptProfile(result);
+      else await adoptProfile(result, job.ownName);
       return true;
     } catch (error) {
       clearJob();
@@ -6889,6 +6946,7 @@
       // the old object first.
       const priorSupplements = state.signals && state.signals.supplements;
       if (fresh('instagram')) state.signals = collected.instagram;
+      repairOwnName().catch(() => {});
       const extra = { google: fresh('google') ? collected.google : undefined, facebook: fresh('facebook') ? collected.facebook : undefined };
       let digest = state.digest;
       let deep = null;
