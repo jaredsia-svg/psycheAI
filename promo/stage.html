@@ -366,7 +366,7 @@ function words(el, t, from, to) {
 // "PsycheAI" on screen is "psyche ai" spoken. Unmatched words sit evenly between matched neighbours.
 // Text is fully readable READ_AHEAD before the voice says it. A word's pop reaches full opacity
 // POP_READABLE after it starts (opacity is k * 2.5 over a 0.28 s pop), so it starts that much earlier again.
-const READ_AHEAD = 0.12, POP_READABLE = 0.112, EARLY = READ_AHEAD + POP_READABLE;
+const READ_AHEAD = 0.25, POP_READABLE = 0.112, EARLY = READ_AHEAD + POP_READABLE;
 const timesCache = new Map();
 function spokenTimes(el, scene) {
   if (timesCache.has(el)) return timesCache.get(el);

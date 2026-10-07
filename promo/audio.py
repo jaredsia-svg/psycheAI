@@ -20,20 +20,20 @@ def load(path):
 lines = [load(f'{VO}/l{i:02d}.wav') for i in range(1, 9)] + [load(f'{VO}/l09-{VERSION}.wav')]
 dur = [len(x) / SR for x in lines]
 
-# Each scene starts just as the last line ends and its own voice comes 0.2 s later: the same 0.22 s between
-# lines as before, but room for its first words to be on screen before they are said.
-GAP, LEAD = 0.02, 0.2
+# Each scene starts just as the last line ends and its own voice comes 0.32 s later, room for its first
+# words to be on screen a quarter of a second before they are said (READ_AHEAD in stage.html).
+GAP, LEAD = 0.02, 0.32
 marks = json.load(open(VO + '/marks.json'))
 # When each word is said, per line, for the on-screen words to appear in time with the voice.
 word_marks = [marks['words'][f'l{i:02d}'] for i in range(1, 9)] + [marks['words']['l09-' + VERSION]]
 marks = marks['lines'] + [marks['end'][VERSION]]
 # The question scene holds on a little after its line, for the questionnaire being ripped up.
-minimum = {0: 1.5, 2: LEAD + dur[2] + 0.61}
+minimum = {0: 1.5, 2: LEAD + dur[2] + 0.49}
 scenes, t = [], 0.0
 for i, d in enumerate(dur):
     lead = 0.35 if i == 0 else LEAD
     length = max(lead + d + GAP, minimum.get(i, 0))
-    if i == len(dur) - 1: length = lead + d + 0.86
+    if i == len(dur) - 1: length = lead + d + 0.74
     scenes.append({'start': round(t, 3), 'end': round(t + length, 3), 'vo': round(t + lead, 3), 'voEnd': round(t + lead + d, 3),
                    'marks': [round(t + lead + m, 3) for m in marks[i]],
                    'words': [[w, round(t + lead + at, 3)] for w, at in word_marks[i]]})

@@ -1,6 +1,6 @@
 # PsycheAI promo video
 
-A 9:16 video (about 45 seconds) for Instagram Reels and Stories, built entirely from this folder:
+A 9:16 video (about 47 seconds) for Instagram Reels and Stories, built entirely from this folder:
 the voice, the music and every frame. The website version also plays at the top of the front page.
 
 ```
@@ -52,7 +52,9 @@ A version with any other name is built too, into `out/PsycheAI-<name>.mp4`.
    The card and report lines, which are lists, are spoken one phrase at a time so the highlights
    land on the words; `build/vo/marks.json` records where each phrase starts. A second recogniser
    (a Zipformer transducer, which reports when each word begins) times every word of every line, and
-   the on-screen words are matched to the spoken ones so each pops in as the voice says it.
+   the on-screen words are matched to the spoken ones so each is fully on screen a quarter of a
+   second before the voice says it (`READ_AHEAD` in `stage.html`; `LEAD` in `audio.py` leaves each
+   scene room for its first words).
 2. **`audio.py`** lays one version's lines out into scenes (`build/<version>/timeline.json`), writes an original
    118 BPM track for them, and mixes the two with the music ducked under the voice.
 3. **`render.mjs`** draws `stage.html` frame by frame in Chromium at 30 fps and encodes it with
