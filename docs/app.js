@@ -1690,7 +1690,7 @@
     const I = S.insights;
     const parts = ['who', 'drives', 'connect', 'together'];
     const sectionsOf = {
-      who: ['MBTI', TEXT.bigFive, S.titles.wellness],
+      who: [I.characterChip, S.titles.patterns, 'MBTI', TEXT.bigFive, S.titles.wellness],
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
       connect: [TEXT.loveHead, S.howYouAttach, S.whoSuitsYou, S.titles.work],
       together: [S.titles.development, S.titles.plan],

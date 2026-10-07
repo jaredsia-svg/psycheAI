@@ -901,12 +901,14 @@ them to match, so the next rename fails rather than half-lands.
 
 **The welcome page's "What insights will I get?"** is two tiers and a note, built by `insightsHtml()` in
 `docs/app.js` into the `[data-insights]` slot. The free tier is the summary card: the eight things on
-it, by the card's own labels, as one white box of two columns and four rows (`.card-features`, the
+it, by the card's own labels (the first as "Your character / superhero", short enough for a phone's
+column), as one white box of two columns and four rows (`.card-features`, the
 same four by two on a phone), beside a real card drawn from `sample.json` (`drawInsightPreview`). The
 card is a button (`#insight-card-open`): clicking it shows the whole card full screen in the sample card
 dialog (`openInsightCard()`), with no caption under it. The
 premium tier is the full report by its four numbered parts — named from `Copy.STRUCTURED.parts`, with
-each part's sections as chips from the report's own titles — its price (`premiumPriceLabel`) and what
+each part's sections as chips from the report's own titles (Part 1 leads with **Your character** and
+**Your signature patterns**, as the report itself does) — its price (`premiumPriceLabel`) and what
 comes with it, closed by **See sample report** (`#insight-sample`) at its bottom right. Under both, a line saying compatibility is free. The words around the names live in
 `Copy.STRUCTURED.insights`.
 

@@ -887,7 +887,7 @@
       freeTitle: 'Your Psyche Card',
       freeBlurb: 'One card that sums you up, ready to share — read from your own data in a few minutes.',
       cardItems: [
-        ['🦸', 'The character you are most like'],
+        ['🦸', 'Your character / superhero'],
         ['🧵', 'Your signature patterns'],
         ['🧲', 'What motivates you'],
         ['🧭', 'MBTI'],
@@ -901,11 +901,13 @@
       premiumTitle: 'The full premium report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
       partBlurbs: {
-        who: 'Your MBTI letter by letter and your Big Five trait by trait, and a wellbeing read across six dimensions.',
+        who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
         connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
         together: 'A development plan built from everything above, a step-by-step plan you can tick off, and how your strengths behave under pressure.',
       },
+      // Part 1's first section tag, for the character comparison.
+      characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
       compatTitle: 'Compatibility, free',
       compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
