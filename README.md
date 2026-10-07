@@ -4779,7 +4779,11 @@ lib/
   nonce.js            signed tickets for those same routes
 server.js             static hosting, the API routes, and the guard table in front of them
 tools/                test suites, the synthetic export fixture, model listing
+promo/                the Instagram promo video: npm run promo (see promo/README.md)
 ```
+
+The promo video's closing link ("Link in bio" today, the site's address later) is one line in
+`promo/config.json`; `npm run promo` rebuilds the voice, music and picture around it.
 
 ## What this is not
 

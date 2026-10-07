@@ -1,0 +1,410 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Inter; src: url('assets/inter.woff2') format('woff2'); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #160a22; }
+body { font-family: Inter, sans-serif; color: #fff; }
+#stage { position: absolute; inset: 0; overflow: hidden; }
+#bg { position: absolute; inset: -10%; }
+.blob { position: absolute; border-radius: 50%; filter: blur(80px); mix-blend-mode: screen; }
+#b1 { width: 820px; height: 820px; left: -200px; top: 60px; }
+#b2 { width: 760px; height: 760px; right: -220px; top: 900px; }
+#b3 { width: 560px; height: 560px; left: 300px; top: 1400px; }
+.spark { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 0 14px 4px rgba(255,200,240,.8); }
+.scene { position: absolute; inset: 0; opacity: 0; transform-origin: 50% 45%; }
+.big { position: absolute; z-index: 20; left: 80px; right: 80px; font-weight: 850; letter-spacing: -0.025em; line-height: 1.06; }
+.w { display: inline-block; transform-origin: 50% 80%; }
+.grad { background: linear-gradient(90deg, #ffd36e, #ff7eb3 55%, #c792ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.grad .w { background: linear-gradient(90deg, #ffd36e, #ff7eb3 55%, #c792ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.soft { color: #f1e2ff; font-weight: 700; }
+/* questionnaire */
+.page { position: absolute; width: 600px; height: 780px; left: 230px; top: 700px; background: #fff; border-radius: 26px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45); padding: 46px 50px; color: #2b2035; }
+.page h4 { font-size: 28px; margin-bottom: 24px; color: #7b3fa0; }
+.q { display: flex; gap: 18px; align-items: center; margin-bottom: 28px; }
+.q i { width: 30px; height: 30px; border: 3px solid #c9b6d8; border-radius: 8px; flex: none; }
+.q b { height: 14px; border-radius: 7px; background: #eadff2; flex: 1; }
+.strike { position: absolute; z-index: 30; left: 150px; top: 1060px; width: 780px; height: 30px; border-radius: 15px;
+  background: linear-gradient(90deg, #ffd36e, #ff5f9a); transform-origin: left center; box-shadow: 0 0 50px rgba(255,95,154,.9); }
+.nope { position: absolute; z-index: 31; left: 0; right: 0; top: 1160px; text-align: center; font-size: 120px; font-weight: 900; color: #ffd36e;
+  text-shadow: 0 10px 40px rgba(0,0,0,.5); }
+/* footprint */
+.chip { position: absolute; padding: 18px 30px; border-radius: 999px; background: rgba(255,255,255,.16); border: 2px solid rgba(255,255,255,.35);
+  font-size: 38px; font-weight: 800; white-space: nowrap; }
+#print { position: absolute; left: 290px; top: 760px; width: 500px; height: 620px; }
+#print path { fill: none; stroke: url(#pg); stroke-width: 10; stroke-linecap: round; }
+/* sources */
+.file { position: absolute; width: 300px; padding: 26px; border-radius: 26px; background: #fff; color: #2b2035; box-shadow: 0 24px 60px rgba(0,0,0,.4); }
+.file .ext { display: inline-block; font-size: 24px; font-weight: 900; color: #fff; padding: 6px 14px; border-radius: 10px; }
+.file .name { margin-top: 16px; font-size: 34px; font-weight: 850; line-height: 1.1; }
+.file .sub { margin-top: 8px; font-size: 23px; color: #7a6a88; font-weight: 600; }
+#mark { position: absolute; left: 380px; top: 720px; width: 320px; height: 320px; }
+#mark path { fill: none; stroke: #fff; stroke-width: 3.4; }
+.glow { position: absolute; left: 290px; top: 630px; width: 500px; height: 500px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,126,179,.9), rgba(199,146,255,0) 65%); }
+/* card */
+/* The card is taller than the safe area, so it sits in a window and pans down to the last parts. */
+#cardClip { position: absolute; left: 0; right: 0; top: 410px; height: 1100px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(transparent 0, #000 40px, #000 calc(100% - 40px), transparent); }
+#cardWrap { position: absolute; left: 170px; top: 40px; width: 740px; }
+#cardWrap img { width: 740px; display: block; border-radius: 30px; box-shadow: 0 40px 100px rgba(0,0,0,.55); }
+.hl { position: absolute; border: 6px solid #ffd36e; border-radius: 24px; box-shadow: 0 0 40px rgba(255,211,110,.9); }
+.tag { position: absolute; padding: 10px 24px; border-radius: 999px; background: #ffd36e; color: #2a0f22; font-weight: 900; font-size: 30px; white-space: nowrap;
+  left: 50%; top: -30px; transform: translate(-50%,-50%); }
+/* the report grid */
+.tile { position: absolute; width: 440px; height: 430px; border-radius: 30px; overflow: hidden; background: #fff; color: #241a2e;
+  box-shadow: 0 30px 80px rgba(0,0,0,.45); }
+.tile .thumb { height: 200px; overflow: hidden; position: relative; background: #f6f0fa; }
+.tile .thumb svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.th1 { background: linear-gradient(120deg, #6a2a94, #c2407a 70%, #ff7eb3); }
+.th1 .name { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: #fff; font-size: 40px; font-weight: 900; letter-spacing: .02em; }
+.th3 text { font-family: Inter, sans-serif; font-weight: 800; }
+.tile .body { padding: 20px 26px; }
+.tile .n { font-size: 30px; font-weight: 900; color: #c2407a; letter-spacing: .04em; }
+.tile .t { font-size: 37px; font-weight: 850; line-height: 1.08; margin-top: 4px; letter-spacing: -0.02em; }
+.tile .k { margin-top: 12px; font-size: 25px; font-weight: 650; color: #6b5a7b; line-height: 1.32; }
+.tile.on { outline: 6px solid #ffd36e; }
+/* privacy */
+.line { position: absolute; z-index: 20; left: 80px; right: 80px; font-size: 64px; font-weight: 850; letter-spacing: -0.02em; line-height: 1.1; }
+.code { position: absolute; left: 130px; right: 130px; top: 1150px; padding: 40px 46px; border-radius: 28px; background: rgba(255,255,255,.12);
+  border: 2px solid rgba(255,255,255,.3); font-family: 'DejaVu Sans Mono', monospace; font-size: 34px; line-height: 1.6; color: #fff; }
+.code .k { color: #ffd36e; }
+.swap { display: inline-grid; vertical-align: top; }
+.swap span { grid-area: 1 / 1; white-space: nowrap; }
+#shield { position: absolute; left: 430px; top: 290px; width: 220px; height: 250px; }
+.pill { position: absolute; left: 50%; padding: 28px 60px; border-radius: 999px; font-size: 50px; font-weight: 900; white-space: nowrap;
+  background: linear-gradient(90deg, #ff7eb3, #c792ff); box-shadow: 0 20px 60px rgba(255,126,179,.6); }
+</style></head>
+<body><div id="stage">
+  <div id="bg"><div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div></div>
+  <div id="sparks"></div>
+
+  <section class="scene" id="s0"><div class="big" style="top:760px;font-size:118px;text-align:center" data-words>What if I told you…</div></section>
+
+  <section class="scene" id="s1">
+    <div class="big" style="top:300px;font-size:86px" data-words><span class="soft">…you could get a</span> <span class="grad">full personality study</span> <span class="soft">of yourself…</span></div>
+    <div id="pages"></div>
+  </section>
+
+  <section class="scene" id="s2">
+    <div class="big" style="top:300px;font-size:96px" data-words>…without answering a <span class="grad">single question?</span></div>
+    <div id="pages2"></div>
+    <div class="strike" id="strike"></div>
+    <div class="nope" id="nope">0 questions</div>
+  </section>
+
+  <section class="scene" id="s3">
+    <div class="big" style="top:260px;font-size:80px" data-words><span class="soft">And what if your</span> <span class="grad">digital footprint</span> could show you patterns you have never noticed before?</div>
+    <svg id="print" viewBox="0 0 500 620"><defs><linearGradient id="pg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset=".5" stop-color="#ff7eb3"/><stop offset="1" stop-color="#c792ff"/></linearGradient></defs><g id="prints"></g></svg>
+    <div id="chips"></div>
+  </section>
+
+  <section class="scene" id="s4">
+    <div class="big" style="top:250px;font-size:78px" data-words><span class="grad">PsycheAI</span> reads the <span class="grad">Instagram, Google</span> and <span class="grad">Facebook</span> data you already have.</div>
+    <div class="glow" id="glow"></div>
+    <svg id="mark" viewBox="0 0 140 140"></svg>
+    <div class="file" id="f1"><span class="ext" style="background:linear-gradient(45deg,#f9a03f,#e1306c,#833ab4)">ZIP</span><div class="name">Instagram</div><div class="sub">posts, likes, messages</div></div>
+    <div class="file" id="f2"><span class="ext" style="background:linear-gradient(90deg,#4285f4,#34a853,#fbbc05,#ea4335)">ZIP</span><div class="name">Google</div><div class="sub">searches, YouTube</div></div>
+    <div class="file" id="f3"><span class="ext" style="background:#1877f2">ZIP</span><div class="name">Facebook</div><div class="sub">posts, friends, chats</div></div>
+  </section>
+
+  <section class="scene" id="s5">
+    <div class="big" style="top:230px;font-size:84px;text-align:center" data-words>You will get a<br><span class="grad">Psyche Card</span></div>
+    <div id="cardClip"><div id="cardWrap"><img src="assets/card.png"><div id="hls"></div></div></div>
+  </section>
+
+  <section class="scene" id="s6">
+    <div class="big" style="top:250px;font-size:80px;text-align:center" data-words>Then unlock the <span class="grad">full report</span></div>
+    <div id="tiles"></div>
+  </section>
+
+  <section class="scene" id="s7">
+    <svg id="shield" viewBox="0 0 110 125"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#ffd36e"/><stop offset="1" stop-color="#ff7eb3"/></linearGradient></defs>
+      <path d="M55 4 L102 22 V60 C102 92 80 112 55 121 C30 112 8 92 8 60 V22 Z" fill="rgba(255,255,255,.12)" stroke="url(#sg)" stroke-width="5"/>
+      <path id="tick" d="M34 63 L50 79 L78 47" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="line" style="top:610px" id="p1">Your files never leave <span class="grad">your device.</span></div>
+    <div class="line" style="top:790px" id="p2"><span class="soft">Only a</span> de-identified summary <span class="soft">is analysed.</span></div>
+    <div class="line" style="top:970px" id="p3">PsycheAI keeps <span class="grad">no copy.</span></div>
+    <div class="code" id="code">
+      <div><span class="k">name:</span> <span class="swap" id="sw1"><span>"Alex Tan"</span><span>"PsycheUser"</span></span></div>
+      <div><span class="k">email:</span> <span class="swap" id="sw2"><span>"alex@mail.com"</span><span>"PsycheEmail"</span></span></div>
+      <div><span class="k">caption:</span> "dinner w/ <span class="swap" id="sw3"><span>@jamie.k</span><span>[P1]</span></span>"</div>
+    </div>
+  </section>
+
+  <section class="scene" id="s8">
+    <svg id="mark2" viewBox="0 0 140 140" style="position:absolute;left:450px;top:240px;width:180px;height:180px"></svg>
+    <div class="big" style="top:440px;font-size:54px;text-align:center;letter-spacing:.02em">PsycheAI</div>
+    <div class="big" style="top:530px;font-size:92px;text-align:center" data-words>Your first <span class="grad">Psyche Card</span> is free!</div>
+    <img id="endCard" src="assets/card.png" style="position:absolute;left:390px;top:800px;width:300px;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+    <div class="pill" id="cta" style="top:1370px"></div>
+  </section>
+</div>
+<script>
+const TL = __TIMELINE__;
+const PARTS = __PARTS__;
+const MARK = __MARK__;
+const CONFIG = __CONFIG__;
+const S = TL.scenes; const BEAT = 60 / TL.bpm;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const back = x => { const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const DROP = S[4].start, BREAK = S[7].start, FINAL = S[8].start;
+
+// Word-by-word pop: wrap every word of [data-words] in its own span, keeping the colour spans.
+document.querySelectorAll('[data-words]').forEach(el => {
+  const walk = node => [...node.childNodes].forEach(ch => {
+    if (ch.nodeType === 3) {
+      const frag = document.createDocumentFragment();
+      ch.textContent.split(/(\s+)/).forEach(part => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) frag.appendChild(document.createTextNode(part));
+        else { const w = document.createElement('span'); w.className = 'w'; w.textContent = part; frag.appendChild(w); }
+      });
+      ch.replaceWith(frag);
+    } else walk(ch);
+  });
+  walk(el);
+});
+
+// Scene palettes: the two lead colours of the background, shifting scene to scene.
+const PAL = [['#5b1d8f', '#c2407a'], ['#4a1e9a', '#d0507a'], ['#6a1c86', '#e06666'], ['#2e2a9e', '#b04fd6'],
+  ['#8a1f78', '#ff7a59'], ['#5b1d8f', '#ff6fae'], ['#3d2aa8', '#e2558c'], ['#1f4d8f', '#6b4fd6'], ['#7a1f8f', '#ff7eb3']];
+const mixHex = (a, b, k) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b);
+  return 'rgb(' + A.map((v, i) => Math.round(v + (B[i] - v) * k)).join(',') + ')'; };
+
+function questionnaire(holder, n) {
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('div'); p.className = 'page';
+    p.innerHTML = '<h4>Personality questionnaire · page ' + (i + 1) + ' of 10</h4>' +
+      Array.from({ length: 12 }, (_, k) => '<div class="q"><i></i><b style="max-width:' + (45 + ((k * 37 + i * 11) % 50)) + '%"></b></div>').join('');
+    holder.appendChild(p);
+  }
+}
+questionnaire($('pages'), 7); questionnaire($('pages2'), 7);
+const markSvg = MARK.paths.map(d => '<path d="' + d + '"/>').join('') + '<circle cx="70" cy="70" r="11" fill="#ffd36e"/>';
+$('mark').innerHTML = markSvg; $('mark2').innerHTML = markSvg.replace(/<path /g, '<path fill="none" stroke="#fff" stroke-width="3.4" ');
+const prints = [];
+for (let i = 0; i < 11; i++) {
+  const rx = 40 + i * 20, ry = 60 + i * 24, cx = 250, cy = 330 + i * 4, gap = 0.35 + (i % 3) * 0.15;
+  const a0 = Math.PI * (1.5 + gap), a1 = Math.PI * (3.5 - gap), pts = [];
+  for (let k = 0; k <= 60; k++) { const a = a0 + (a1 - a0) * k / 60; pts.push((cx + rx * Math.cos(a)).toFixed(1) + ' ' + (cy + ry * Math.sin(a)).toFixed(1)); }
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path'); path.setAttribute('d', 'M' + pts.join(' L'));
+  $('prints').appendChild(path); prints.push(path);
+}
+prints.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.dataset.len = L; });
+const CHIPS = ['3:12 am', '♥ 4,812 likes', 'how to…', '47 deadlines', 'saved', 'posted 2019', 'searched', '13-day quiet streak', 'same 12 friends'];
+const chipEls = CHIPS.map(c => { const d = document.createElement('div'); d.className = 'chip'; d.textContent = c; $('chips').appendChild(d); return d; });
+PARTS.interestsValues = { x: PARTS.standFor.x, y: PARTS.standFor.y, w: PARTS.love.w, h: PARTS.standFor.h };
+// One box per phrase of the card line, after "You'll get a Psyche Card."
+const HL = [['character', 'Which character you are most like'], ['patterns', 'Signature patterns'], ['motives', 'Your motivations'],
+  ['type', 'Your type'], ['bigFive', 'Your traits'], ['interestsValues', 'Interests & values'], ['love', 'Love languages']];
+const hlEls = HL.map(([key, label]) => {
+  const p = PARTS[key], CW = 740, CH = CW * PARTS.aspect, box = document.createElement('div'); box.className = 'hl';
+  Object.assign(box.style, { left: (p.x * CW - 6) + 'px', top: (p.y * CH - 6) + 'px', width: (p.w * CW + 12) + 'px', height: (p.h * CH + 12) + 'px' });
+  const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = label; box.appendChild(tag);
+  $('hls').appendChild(box); return box;
+});
+const TILES = [
+  ['01', 'Who you are', 'Signature patterns · MBTI & Big Five · Wellbeing'],
+  ['02', 'What drives you', 'Motivators · Interests · Values'],
+  ['03', 'How you connect & work', 'Love · Attachment · Ideal partner · Career'],
+  ['04', 'Putting it together', 'Your development plan'],
+];
+// 01: the character's emblem (the app's own Mulan sword), on the card's gradient.
+const SWORD = '<path d="M37 6h5v5L24 29l-5-5z" fill="currentColor" fill-opacity=".18"/><path d="M40 8L23 25"/><path d="M13 20c3 5 10 12 15 15"/><path d="M18 30l-7 7"/><path d="M15.5 30.5l2 2M13 33l2 2"/><circle cx="8.5" cy="39.5" r="3" fill="currentColor" fill-opacity=".18"/><path d="M36 18v5M33.5 20.5h5"/>';
+const THUMB1 = '<div class="th1" style="position:absolute;inset:0"><svg viewBox="0 0 440 200"><g id="mulanTrail"></g>' +
+  '<g id="mulan"><circle r="58" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.6)" stroke-width="3"/>' +
+  '<g transform="translate(-36,-38) scale(1.5)" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" color="#fff">' + SWORD + '</g></g></svg>' +
+  '<div class="name" id="mulanName">Mulan</div></div>';
+// 02: Schwartz's ten values, the sample's scores, coloured by group.
+const MOTIVES = [['openness', 55], ['openness', 41], ['openness', 34], ['enhancement', 66], ['enhancement', 18],
+  ['conservation', 61], ['conservation', 52], ['conservation', 38], ['transcendence', 84], ['transcendence', 47]];
+const GROUP = { openness: '#ffb35c', enhancement: '#ff6f9e', conservation: '#a46be0', transcendence: '#5b3bd0' };
+function rose(grow) {
+  const cx = 220, cy = 100, inner = 10, outer = 92, f = n => n.toFixed(1);
+  let out = [25, 50, 75, 100].map(l => '<circle cx="' + cx + '" cy="' + cy + '" r="' + f(inner + (outer - inner) * l / 100) + '" fill="none" stroke="#e3d6ee" stroke-width="1.5"/>').join('');
+  MOTIVES.forEach(([g, v], i) => {
+    const a0 = -Math.PI / 2 + i * Math.PI / 5 + 0.03, a1 = -Math.PI / 2 + (i + 1) * Math.PI / 5 - 0.03;
+    const r = inner + (outer - inner) * v / 100 * grow, p = (rr, a) => f(cx + rr * Math.cos(a)) + ' ' + f(cy + rr * Math.sin(a));
+    out += '<path fill="' + GROUP[g] + '" d="M' + p(inner, a0) + ' L' + p(r, a0) + ' A' + f(r) + ' ' + f(r) + ' 0 0 1 ' + p(r, a1) +
+      ' L' + p(inner, a1) + ' A' + inner + ' ' + inner + ' 0 0 0 ' + p(inner, a0) + ' Z"/>';
+  });
+  return out;
+}
+const THUMB2 = '<svg viewBox="0 0 440 200"><g id="rose"></g></svg>';
+// 03: the attachment map, zooming in on where the sample lands (leans secure).
+const THUMB3 = '<svg class="th3" viewBox="0 0 440 200"><g id="attach">' +
+  '<rect x="120" y="10" width="200" height="180" rx="10" fill="#fff" stroke="#d9c8e8" stroke-width="2.5"/>' +
+  '<rect x="120" y="100" width="100" height="90" fill="#efe3fa"/>' +
+  '<line x1="220" y1="10" x2="220" y2="190" stroke="#c9b6d8" stroke-width="2" stroke-dasharray="6 6"/>' +
+  '<line x1="120" y1="100" x2="320" y2="100" stroke="#c9b6d8" stroke-width="2" stroke-dasharray="6 6"/>' +
+  '<text x="170" y="40" text-anchor="middle" font-size="17" fill="#9a88aa">Anxious</text>' +
+  '<text x="270" y="40" text-anchor="middle" font-size="17" fill="#9a88aa">Fearful</text>' +
+  '<text x="170" y="178" text-anchor="middle" font-size="17" fill="#7b3fa0">Secure</text>' +
+  '<text x="270" y="178" text-anchor="middle" font-size="17" fill="#9a88aa">Avoidant</text>' +
+  '<circle id="attachBlob" cx="178" cy="122" r="26" fill="#c2407a" opacity=".22"/><circle cx="178" cy="122" r="7" fill="#c2407a"/></g></svg>';
+// 04: a plan being ticked off.
+const THUMB4 = '<svg viewBox="0 0 440 200">' + [0, 1, 2, 3].map(i => {
+  const y = 22 + i * 44;
+  return '<rect x="96" y="' + y + '" width="30" height="30" rx="8" fill="#fff" stroke="#c9b6d8" stroke-width="3" id="box' + i + '"/>' +
+    '<path id="tk' + i + '" d="M' + 102 + ' ' + (y + 15) + ' l7 8 l15 -16" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="40"/>' +
+    '<rect x="146" y="' + (y + 9) + '" width="' + [190, 150, 210, 130][i] + '" height="12" rx="6" fill="#e6d9f0" id="bar' + i + '"/>';
+}).join('') + '</svg>';
+const THUMBS = [THUMB1, THUMB2, THUMB3, THUMB4];
+const tileEls = TILES.map(([n, title, keys], i) => {
+  const d = document.createElement('div'); d.className = 'tile';
+  d.style.left = (i % 2 ? 560 : 80) + 'px'; d.style.top = (i < 2 ? 520 : 990) + 'px';
+  d.innerHTML = '<div class="thumb">' + THUMBS[i] + '</div><div class="body"><div class="n">' + n + '</div><div class="t">' + title +
+    '</div><div class="k">' + keys + '</div></div>';
+  $('tiles').appendChild(d); return d;
+});
+const sparks = Array.from({ length: 26 }, (_, i) => { const s = document.createElement('div'); s.className = 'spark'; $('sparks').appendChild(s);
+  return { el: s, x: (i * 397) % 1080, speed: 60 + (i * 53) % 90, phase: (i * 0.37) % 1, size: 4 + (i * 7) % 9 }; });
+
+function words(el, t, from, to) {
+  const ws = el.querySelectorAll('.w'); const n = ws.length;
+  ws.forEach((w, i) => { const a = from + (to - from) * i / Math.max(1, n); const k = prog(t, a, a + 0.28);
+    w.style.opacity = clamp(k * 2.5); w.style.transform = 'translateY(' + (1 - ease(k)) * 40 + 'px) scale(' + (0.55 + 0.45 * back(k)) + ')'; });
+}
+function scene(i, t) {
+  const s = S[i]; const el = $('s' + i);
+  const kIn = prog(t, s.start - 0.04, s.start + 0.22), kOut = prog(t, s.end - 0.18, s.end + 0.04);
+  const o = Math.min(kIn, 1 - kOut);
+  el.style.opacity = o; el.style.display = o > 0.001 ? 'block' : 'none';
+  el.style.transform = 'scale(' + (0.94 + 0.06 * ease(kIn) + 0.1 * kOut * kOut) + ')';
+  const w = el.querySelector('[data-words]');
+  if (w && o) words(w, t, s.vo - 0.05, s.vo + Math.min(1.6, (s.voEnd - s.vo) * 0.6));
+  return { s, local: t - s.start, len: s.end - s.start, o, voLen: s.voEnd - s.vo };
+}
+function beatPulse(t) { if (t < S[3].start) return 0; const ph = (t % BEAT) / BEAT; return Math.exp(-ph * 6) * ((t >= DROP && t < BREAK) || t >= FINAL ? 1 : 0.45); }
+
+function render(t) {
+  const si = S.findIndex(s => t < s.end); const cur = si < 0 ? S.length - 1 : si;
+  const nxt = Math.min(S.length - 1, cur + 1); const k = prog(t, S[cur].end - 0.5, S[cur].end + 0.3);
+  const c1 = mixHex(PAL[cur][0], PAL[nxt][0], k), c2 = mixHex(PAL[cur][1], PAL[nxt][1], k);
+  const pulse = beatPulse(t);
+  document.body.style.background = 'radial-gradient(130% 90% at 50% 0%, ' + c1 + ' 0%, #1a0b2a 62%, #10071a 100%)';
+  $('b1').style.background = c2; $('b2').style.background = c1; $('b3').style.background = '#ffb35c';
+  $('b1').style.opacity = 0.5 + pulse * 0.3; $('b2').style.opacity = 0.45 + pulse * 0.3; $('b3').style.opacity = 0.18 + pulse * 0.2;
+  $('b1').style.transform = 'translate(' + Math.sin(t * .6) * 140 + 'px,' + Math.cos(t * .45) * 180 + 'px) scale(' + (1 + pulse * 0.12) + ')';
+  $('b2').style.transform = 'translate(' + Math.cos(t * .5) * 160 + 'px,' + Math.sin(t * .4) * 200 + 'px) scale(' + (1 + pulse * 0.12) + ')';
+  $('b3').style.transform = 'translate(' + Math.sin(t * .7) * 220 + 'px,' + Math.cos(t * .6) * 120 + 'px)';
+  sparks.forEach(p => { const y = 1980 - ((t * p.speed + p.phase * 2000) % 2080); p.el.style.left = (p.x + Math.sin(t + p.phase * 6) * 30) + 'px';
+    p.el.style.top = y + 'px'; p.el.style.width = p.el.style.height = p.size + 'px'; p.el.style.opacity = (t >= S[3].start ? 0.75 : 0.35) * (0.6 + pulse * 0.4); });
+
+  let c = scene(0, t);
+  c = scene(1, t);
+  if (c.o) [...$('pages').children].forEach((p, i) => {
+    const k = ease(prog(c.local, 0.1 + i * 0.3, 0.45 + i * 0.3)); const r = (i % 2 ? 1 : -1) * (2 + i * 1.8);
+    p.style.transform = 'translate(' + (i * 10) + 'px,' + ((1 - k) * 1300 - i * 16) + 'px) rotate(' + r * Math.min(1, k) + 'deg)';
+    p.style.opacity = k > 0 ? 1 : 0; p.style.zIndex = i;
+  });
+  c = scene(2, t);
+  if (c.o) {
+    const strike = ease(prog(c.local, 0.45, 0.75)), away = easeIO(prog(c.local, 1.0, 1.6));
+    $('strike').style.transform = 'scaleX(' + strike + ') rotate(-8deg) translateX(' + away * 1400 + 'px)';
+    [...$('pages2').children].forEach((p, i) => { p.style.transform = 'translate(' + (away * 1500 + i * 10) + 'px,' + (i * -16) + 'px) rotate(' + ((i % 2 ? 1 : -1) * (2 + i * 1.8) + away * 25) + 'deg)'; p.style.zIndex = i; });
+    const nk = back(prog(c.local, 1.3, 1.65)); $('nope').style.opacity = prog(c.local, 1.3, 1.45); $('nope').style.transform = 'scale(' + (0.4 + 0.6 * nk) + ') rotate(-4deg)';
+  }
+  c = scene(3, t);
+  if (c.o) {
+    chipEls.forEach((el, i) => {
+      const a = i / chipEls.length * Math.PI * 2 + 0.4, k = easeIO(prog(c.local, 0.3 + i * 0.07, 2.0 + i * 0.05));
+      const sx = 540 + Math.cos(a) * 400, sy = 1130 + Math.sin(a) * 340;
+      el.style.left = (sx + (540 - sx) * k) + 'px'; el.style.top = (sy + (1070 - sy) * k) + 'px';
+      el.style.transform = 'translate(-50%,-50%) scale(' + ((1 - 0.6 * k) * (0.7 + 0.3 * back(prog(c.local, 0.15 + i * 0.06, 0.45 + i * 0.06)))) + ')';
+      el.style.opacity = Math.min(prog(c.local, 0.15 + i * 0.06, 0.35 + i * 0.06), 1 - prog(c.local, 1.9, 2.3));
+    });
+    prints.forEach((p, i) => { p.style.strokeDashoffset = p.dataset.len * (1 - ease(prog(c.local, 1.7 + i * 0.06, 2.9 + i * 0.06))); });
+    $('print').style.opacity = prog(c.local, 1.6, 2.0); $('print').style.transform = 'scale(' + (1 + pulse * 0.05) + ')';
+  }
+  c = scene(4, t);
+  if (c.o) {
+    // Each file pops into the row as it is named, then all three fly into the mark.
+    const M = c.s.marks, at = f => c.s.vo + f * c.voLen, suck = easeIO(prog(t, at(0.86), at(0.86) + 0.6));
+    [['f1', M[0] + 1.45, 50, -6], ['f2', M[1], 390, 3], ['f3', M[2] + 0.2, 730, 6]].forEach(([id, when, x, rot], i) => {
+      const pop = back(prog(t, when - 0.1, when + 0.3)), el = $(id);
+      el.style.left = (x + (390 - x) * suck) + 'px'; el.style.top = (1230 + (800 - 1230) * suck) + 'px';
+      el.style.opacity = clamp(pop * 3) * (1 - prog(suck, 0.8, 1));
+      el.style.transform = 'translateY(' + (1 - Math.min(1, pop)) * 200 + 'px) scale(' + (0.6 + 0.4 * pop) * (1 - 0.85 * suck) + ') rotate(' + rot * (1 - suck) + 'deg)';
+    });
+    $('glow').style.opacity = 0.45 + pulse * 0.55; $('glow').style.transform = 'scale(' + (1 + pulse * 0.2) + ')';
+    $('mark').style.transform = 'rotate(' + c.local * 60 + 'deg) scale(' + (1 + pulse * 0.1) + ')';
+  }
+  c = scene(5, t);
+  if (c.o) {
+    const k = back(prog(c.local, 0, 0.6));
+    // Pan between "your traits" and "your interests and values" so the bottom rows come into view.
+    const pan = -260 * easeIO(prog(t, c.s.marks[5] + 0.1, c.s.marks[6] - 0.05));
+    $('cardWrap').style.transform = 'translateY(' + ((1 - Math.min(1, k)) * 300 + pan) + 'px) scale(' + (0.9 + 0.1 * k + pulse * 0.015) + ') rotate(' + (1 - Math.min(1, k)) * -6 + 'deg)';
+    $('cardWrap').style.opacity = prog(c.local, 0, 0.25);
+    hlEls.forEach((el, i) => {
+      const at = c.s.marks[i + 1], next = i + 1 < HL.length ? c.s.marks[i + 2] : c.s.end - 0.15;
+      const o = Math.min(prog(t, at - 0.08, at + 0.12), 1 - prog(t, next - 0.05, next + 0.1));
+      el.style.opacity = o; el.style.transform = 'scale(' + (0.9 + 0.1 * back(prog(t, at - 0.08, at + 0.25))) + ')';
+    });
+  }
+  c = scene(6, t);
+  if (c.o) tileEls.forEach((el, i) => {
+    const at = c.s.marks[i + 1]; const k = back(prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.6 + i * 0.12));
+    const lit = prog(t, at - 0.1, at + 0.1) * (1 - prog(t, at + 1.0, at + 1.2));
+    el.style.opacity = prog(t, c.s.start + 0.15 + i * 0.12, c.s.start + 0.3 + i * 0.12);
+    el.style.transform = 'translateY(' + (1 - Math.min(1, k)) * 120 + 'px) scale(' + (0.85 + 0.15 * k + lit * 0.05) + ')';
+    el.classList.toggle('on', lit > 0.3);
+  });
+  if (c.o) {
+    const L = c.local;
+    // 01: the emblem strides across the box and back, bobbing and swinging.
+    const x = 220 + Math.sin(L * 1.6) * 120, y = 82 + Math.abs(Math.sin(L * 4.8)) * -14;
+    $('mulan').setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') rotate(' + (Math.sin(L * 4.8) * 12).toFixed(1) + ')');
+    $('mulanName').style.transform = 'translateX(' + ((x - 220) * 0.35).toFixed(1) + 'px)';
+    // 02: the wheel grows in, then keeps turning.
+    $('rose').innerHTML = rose(ease(prog(L, 0.3, 1.2)));
+    $('rose').setAttribute('transform', 'rotate(' + (L * 40).toFixed(1) + ' 220 100)');
+    // 03: zoom towards the dot.
+    const z = 1 + 0.9 * easeIO(prog(L, 0.8, c.len - 0.4));
+    $('attach').setAttribute('transform', 'translate(178 122) scale(' + z.toFixed(3) + ') translate(-178 -122) translate(' + (42 * (z - 1) / 0.9).toFixed(1) + ' ' + (-22 * (z - 1) / 0.9).toFixed(1) + ')');
+    $('attachBlob').setAttribute('r', (26 + Math.sin(L * 5) * 5).toFixed(1));
+    // 04: ticked one by one, the last as "a plan to grow" is said.
+    const end = c.s.marks[4] - c.s.start + 0.3;
+    [0, 1, 2, 3].forEach(i => {
+      const k = ease(prog(L, 0.9 + i * (end - 0.9) / 3, 0.9 + i * (end - 0.9) / 3 + 0.3));
+      $('box' + i).setAttribute('fill', k > 0 ? '#c2407a' : '#fff'); $('box' + i).setAttribute('stroke', k > 0 ? '#c2407a' : '#c9b6d8');
+      $('tk' + i).setAttribute('stroke-dashoffset', (40 * (1 - k)).toFixed(1));
+      $('bar' + i).setAttribute('fill', k > 0.5 ? '#f3c5d8' : '#e6d9f0');
+    });
+  }
+  c = scene(7, t);
+  if (c.o) {
+    $('tick').style.strokeDasharray = 80; $('tick').style.strokeDashoffset = 80 * (1 - ease(prog(c.local, 0.3, 0.7)));
+    $('shield').style.transform = 'scale(' + (0.7 + 0.3 * back(prog(c.local, 0, 0.45))) + ')';
+    const lineAt = [c.s.marks[0], c.s.marks[1] - 0.35, c.s.marks[2]];
+    ['p1', 'p2', 'p3'].forEach((id, i) => { const k = back(prog(t, lineAt[i] - 0.15, lineAt[i] + 0.3));
+      $(id).style.opacity = clamp(k * 2); $(id).style.transform = 'translateX(' + (1 - Math.min(1, k)) * -80 + 'px)'; });
+    const codeIn = ease(prog(t, lineAt[1] + 0.3, lineAt[1] + 0.7));
+    $('code').style.opacity = codeIn; $('code').style.transform = 'translateY(' + (1 - codeIn) * 40 + 'px)';
+    ['sw1', 'sw2', 'sw3'].forEach((id, i) => {
+      const at = lineAt[1] + 1.2 + i * 0.35, k = prog(t, at, at + 0.35), [a, b] = $(id).children;
+      a.style.opacity = 1 - k; a.style.filter = 'blur(' + k * 10 + 'px)'; b.style.opacity = k; b.style.filter = 'blur(' + (1 - k) * 10 + 'px)'; b.style.color = '#ffd36e'; a.style.display = k >= 1 ? 'none' : '';
+    });
+  }
+  c = scene(8, t);
+  if (c.o) {
+    $('mark2').style.transform = 'scale(' + back(prog(c.local, 0, 0.5)) * (1 + pulse * 0.08) + ') rotate(' + c.local * 50 + 'deg)';
+    $('endCard').style.transform = 'translateY(' + (1 - ease(prog(c.local, 0.15, 0.6))) * 260 + 'px) rotate(' + Math.sin(c.local * 2.2) * 5 + 'deg) scale(' + (1 + pulse * 0.03) + ')';
+    $('endCard').style.opacity = prog(c.local, 0.15, 0.4);
+    const p = prog(t, c.s.marks[1] - 0.1, c.s.marks[1] + 0.25);
+    $('cta').style.opacity = p; $('cta').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * back(p) + pulse * 0.06 * p) + ')';
+  }
+}
+// The closing link, from config.json, shrunk to fit if it is long.
+$('cta').textContent = CONFIG.endLink + '  ↗';
+for (let size = 50; $('cta').offsetWidth > 940 && size > 26; size -= 2) $('cta').style.fontSize = size + 'px';
+window.render = render;
+window.ready = Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode())]);
+</script></body></html>
