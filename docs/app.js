@@ -4123,7 +4123,7 @@
     $('#working-title').textContent = modelName() + ' is reading your profile';
     $('#working-note').textContent =
       'A ' + Math.round((sent.coverage.digestChars || 0) / 1000) + 'KB summary was sent for ' +
-      'analysis. It usually takes up to three minutes for the personality analysis to be ' +
+      'analysis. It usually takes up to a minute for the personality analysis to be ' +
       'completed. Please be patient.';
     startElapsed('Analysing');
     show('working');

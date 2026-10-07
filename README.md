@@ -1225,6 +1225,10 @@ on the right, the two boxes stretched to the same height (`.profile-foot`, which
 action row and `#analysed-by` so they can share a row; a full report's actions keep their own layout).
 Under 560px the button is its red bin alone, its label kept for screen readers, so both still fit.
 
+**The hero's faint brand mark sits in a corner**, now the video takes the hero's right: the top left
+from 720px up, mostly off the edge and fainter (opacity .09) so the headline reads over it; the top right
+of the header on a phone, smaller (165px).
+
 **The welcome hero plays the promo video** (`.hero-video`, `docs/media/psycheai-intro.mp4`, built by
 `npm run promo` — see `promo/README.md`). It is 9:16, so it is sized by its width and never
 stretched: on a phone it sits centred under the two buttons, as wide as fits without taking more than
@@ -1558,8 +1562,8 @@ failed, and three of those in a row is a broken provider, not a reader who needs
 
 ## The analysis outlives the page that asked for it
 
-An analysis takes about three minutes, and for most of this app's life the browser had to hold one
-connection open for all of them. Everything built to survive that connection dying — the keep-alive
+A free card takes up to a minute (the page says so while it waits) and the full report several, and for
+most of this app's life the browser had to hold one connection open for all of it. Everything built to survive that connection dying — the keep-alive
 whitespace, the retry on a cut stream, the retry on a dropped socket, the result cache behind both —
 was a way of recovering from a design in which a phone being a phone was a failure.
 

@@ -210,6 +210,15 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
   stroke: url(#hero-mark-gradient) currentColor;
 }
 .hero-mark circle { fill: url(#hero-mark-gradient) currentColor; }
+/* With the video on the hero's right, the mark moves to a corner: the top
+   right of the header on a phone, the top left beside the headline from 720px
+   up, mostly off the edge and fainter there so the headline reads over it. */
+@media (max-width: 719px) {
+  #view-welcome .hero-mark { top: -3.6rem; right: -3.4rem; transform: none; width: 165px; opacity: .1; }
+}
+@media (min-width: 720px) {
+  #view-welcome .hero-mark { top: -6.6rem; left: -5.6rem; right: auto; transform: none; width: 260px; opacity: .09; }
+}
 /* Stops set from CSS rather than as SVG attributes so they follow the theme:
    both ends are the same pair the headline's own gradient uses. Reused by
    the profile page's gradient defs too, since a CSS class applies wherever
