@@ -1470,9 +1470,10 @@ check('the sample report carries none of the three paid-only sections',
   !('wellness' in sample) && !('attachment' in sample) &&
   !('idealPartner' in sample) && !('careerAssessment' in sample),
   Object.keys(sample).join(','));
-check('but the card still carries the compressed attachment read the QR code needs',
+check('but the card still carries the attachment and conflict lines the link needs',
   typeof sample.card.attachment === 'string' && sample.card.attachment.length > 0 &&
-  typeof sample.card.attachmentWhy === 'string' && sample.card.attachmentWhy.length > 0);
+  typeof sample.card.conflictStyle === 'string' && sample.card.conflictStyle.length > 0 &&
+  !('attachmentWhy' in sample.card) && !('summary' in sample.card) && !('enneagram' in sample.card));
 // The roast is free again, so the sample — the one report every visitor
 // reads before uploading anything — has to carry real harsh/advice writing
 // for it, not just satisfy the schema's presence check above.
@@ -1589,25 +1590,17 @@ check('each MBTI letter carries strength and a practical reading',
 check('a letter can be marked as a slight lean',
   mbtiProps.letters.items.properties.strength.enum.includes('slight'));
 
-const enneagramProps = prompts.PROFILE_SCHEMA.properties.enneagram.properties;
-check('Enneagram names a type, its wing and nickname',
-  ['type', 'wing', 'nickname', 'confidence', 'why', 'caveat'].every(k => k in enneagramProps));
-check('Enneagram type is one of the nine, or an honest Uncertain',
-  prompts.PROFILE_SCHEMA.properties.enneagram.properties.type.enum
-    .every(t => /^[1-9]$/.test(t) || t === 'Uncertain') &&
-  prompts.PROFILE_SCHEMA.properties.enneagram.properties.type.enum.length === 10);
-check('Enneagram stays short: no per-facet breakdown the way MBTI has one',
-  !('letters' in enneagramProps) && !('facets' in enneagramProps));
-check('Enneagram is asked to name the fear and desire the type centres on',
-  /core fear and desire/.test(enneagramProps.why.description));
-check('Enneagram caveat distinguishes it from MBTI rather than just hedging',
-  /different lens from MBTI/.test(enneagramProps.caveat.description));
-check('Enneagram\'s explanation is asked for at five or six sentences, not two or three',
-  /Five or six sentences, not two or three/.test(enneagramProps.why.description));
-check('Enneagram is asked to explain the type in plain language, not just cite it',
-  /as if the reader has never heard of it/.test(enneagramProps.why.description));
-check('Enneagram is asked to explain what the wing specifically adds, not just name it',
-  /what the wing specifically adds or shifts/.test(enneagramProps.why.description));
+// The Enneagram is gone from the app: no schema, prompt, report, card or link
+// field asks for or carries one.
+check('no report schema asks for an Enneagram',
+  !('enneagram' in prompts.PROFILE_SCHEMA.properties) && !('enneagram' in prompts.FULL_SCHEMA.properties) &&
+  !('enneagram' in prompts.FREE_SCHEMA.properties) && !('enneagram' in prompts.CARD_SCHEMA.properties) &&
+  !/enneagram/i.test(JSON.stringify([prompts.PROFILE_SCHEMA, prompts.FULL_SCHEMA, prompts.FREE_SCHEMA,
+    prompts.CLASSIC_FULL_SCHEMA, prompts.CLASSIC_FREE_SCHEMA, prompts.PREMIUM_SCHEMA])));
+check('and no prompt mentions one',
+  ![prompts.PROFILE_SYSTEM, prompts.FULL_SYSTEM, prompts.FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM,
+    prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM,
+    prompts.PREMIUM_SYSTEM, prompts.COMPATIBILITY_SYSTEM].some(text => /enneagram/i.test(text)));
 
 const activityProps = prompts.PROFILE_SCHEMA.properties.activity.properties;
 check('activity section covers behaviour, not just counts',
@@ -1715,8 +1708,9 @@ check('the prompt tells it to write attachment as a standalone section',
   /its own section, not part of the relationship read above/.test(prompts.PREMIUM_SYSTEM));
 // The card's own compressed attachment fields are a different thing and must
 // not have been dragged along by the move — they are what travels in the QR.
-check('the card keeps its own compressed attachment fields',
-  ['attachment', 'attachmentWhy'].every(k => k in prompts.PROFILE_SCHEMA.properties.card.properties));
+check('the card keeps its own attachment and conflict lines, without the reasoning that identified people',
+  ['attachment', 'conflictStyle'].every(k => k in prompts.PROFILE_SCHEMA.properties.card.properties) &&
+  !('attachmentWhy' in prompts.PROFILE_SCHEMA.properties.card.properties));
 
 // ---------- the wellness section ----------
 //
@@ -2288,12 +2282,6 @@ for (const [label, needle] of [
   ['hedges the receiving side harder', /which is thinner evidence, so hedge it harder/],
   ['warns that touch is invisible in this data', /Physical touch is close to invisible in this data/],
   ['lets a close MBTI axis stay hedged', /a hedged letter is more useful than a confident wrong one/],
-  ['asks Enneagram not to rephrase MBTI', /a short second lens beside MBTI, not a rephrasing of it/],
-  ['lets an Enneagram wing stay blank', /left blank rather than forced/],
-  ['asks Enneagram for five or six sentences of real explanation',
-    /five or six sentences, because the reader should finish understanding the number and the wing/],
-  ['flags disagreement between Enneagram and MBTI rather than hiding it',
-    /if the Enneagram read and the MBTI read seem to pull in different directions/],
   ['asks for behaviour, not statistics', /read the account as behaviour, not statistics/],
   ['keeps observation and inference distinguishable', /the reader should be able to tell which is which/],
   ['does not moralise about screen time', /not to moralise about screen time/],
@@ -5015,7 +5003,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         sentConfig = request.config;
         lastModel = request.model;
         return (async function* () {
-          yield { text: JSON.stringify({ mbti: { type: 'ISTJ' }, enneagram: { type: '1', wing: '' },
+          yield { text: JSON.stringify({ mbti: { type: 'ISTJ' }, topMotivators: ['security', 'achievement'],
+            patterns: [{ id: 'p1', name: 'The quiet organiser' }],
             confidence: { score: 40 }, card: { headline: 'h' } }),
           candidates: [{ finishReason: 'STOP' }], usageMetadata: {} };
         })();
@@ -5065,7 +5054,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       JSON.stringify({ override: overrideConfig.thinkingConfig, plain: defaultRequest.config.thinkingConfig }));
     check('a real engine\'s card comes back completed from its own answer',
       Boolean(cardAnswer && cardAnswer.data && cardAnswer.data.card) &&
-      cardAnswer.data.card.mbti === 'ISTJ' && cardAnswer.data.card.enneagram === '1' &&
+      cardAnswer.data.card.mbti === 'ISTJ' && !('enneagram' in cardAnswer.data.card) &&
+      cardAnswer.data.card.motivators.join() === 'security,achievement' &&
+      cardAnswer.data.card.patterns.join() === 'The quiet organiser' &&
       cardAnswer.data.card.confidence === 40 && cardAnswer.data.card.headline === 'h',
       JSON.stringify(cardAnswer && cardAnswer.data && cardAnswer.data.card));
     check('and asks for the card schema, under the card prompt',
@@ -5371,38 +5362,37 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     !props.summary && !props.bonus && !props.activity && !props.career &&
     !props.bigFive.properties.openness.properties.reading &&
     !props.mbti.properties.letters.items.properties.why &&
-    !props.essence.properties.why && !props.enneagram.properties.why,
+    !props.essence.properties.why,
     Object.keys(props).join(','));
   check('and everything the card face shows',
-    ['confidence', 'essence', 'cardHighlights', 'bigFive', 'mbti', 'enneagram', 'interests',
+    ['confidence', 'essence', 'cardHighlights', 'bigFive', 'mbti', 'interests',
       'values', 'beliefs', 'relationship', 'card'].every(key => key in props) &&
     (prompts.CLASSIC_FREE_SCHEMA.required || []).length === Object.keys(props).length,
     Object.keys(props).join(','));
-  // The structured card: the Enneagram gone, the signature patterns named.
+  // The structured card: the signature patterns named.
   const sprops = prompts.STRUCTURED_FREE_SCHEMA.properties;
-  check('the structured card drops the Enneagram, names the patterns and its motivators, picks a catalogue character, and caps values and beliefs; nothing else changed',
-    !('enneagram' in sprops) && 'patterns' in sprops && 'topMotivators' in sprops && Array.isArray(sprops.essence.properties.character.enum) &&
-    Object.keys(props).filter(key => !['enneagram', 'essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key => sprops[key] === props[key]) &&
+  check('the structured card names the patterns and its motivators, picks a catalogue character, and caps values and beliefs; nothing else changed',
+    'patterns' in sprops && 'topMotivators' in sprops && Array.isArray(sprops.essence.properties.character.enum) &&
+    Object.keys(props).filter(key => !['essence', 'cardHighlights', 'values', 'beliefs'].includes(key)).every(key => sprops[key] === props[key]) &&
     prompts.STRUCTURED_FREE_SCHEMA.required.length === Object.keys(sprops).length,
     Object.keys(sprops).join(','));
   check('the card\'s patterns are names and a line — the evidence is the paid report\'s job',
     Object.keys(sprops.patterns.items.properties).join() === 'id,name,line');
-  check('the structured card prompt drops the Enneagram and asks for the patterns',
-    !/Enneagram/.test(prompts.STRUCTURED_FREE_SYSTEM) && /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
-    /# Enneagram/.test(prompts.CLASSIC_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CLASSIC_FREE_SYSTEM));
+  check('the structured card prompt asks for the patterns',
+    /# Signature patterns/.test(prompts.STRUCTURED_FREE_SYSTEM) && !/# Signature patterns/.test(prompts.CLASSIC_FREE_SYSTEM));
   check('and is otherwise the classic card prompt, so the rules that decide a letter or a score are the same',
     prompts.STRUCTURED_FREE_SYSTEM.length > prompts.CLASSIC_FREE_SYSTEM.length - 400 &&
-    prompts.CLASSIC_FREE_SYSTEM.split('# ').filter(part => !/^Enneagram/.test(part))
+    prompts.CLASSIC_FREE_SYSTEM.split('# ')
       .every(part => prompts.STRUCTURED_FREE_SYSTEM.includes(part.split('\n')[0])));
   check('the card schema is small next to the full one', freeSchema.length < JSON.stringify(prompts.PROFILE_SCHEMA).length / 2);
 
   // -- the card writes only what is new on it --
   const cardProps = prompts.FREE_SCHEMA.properties.card.properties;
-  check('the card schema no longer asks for the ten fields it already has answers to',
-    prompts.CARD_DERIVED_KEYS.length === 10 &&
+  check('the card schema no longer asks for the eight fields it already has answers to',
+    prompts.CARD_DERIVED_KEYS.length === 8 &&
     prompts.CARD_DERIVED_KEYS.every(key => !(key in cardProps)) &&
-    ['headline', 'summary', 'attachment', 'attachmentWhy', 'energy', 'workStyle', 'rhythm']
-      .every(key => key in cardProps),
+    ['headline', 'attachment', 'conflictStyle', 'energy', 'workStyle', 'rhythm', 'careerWeaknesses']
+      .every(key => key in cardProps) && !('summary' in cardProps) && !('attachmentWhy' in cardProps),
     Object.keys(cardProps).join(','));
   // withCard against a hand-written answer, so the check reads the copying
   // itself rather than the mock, which would agree with anything.
@@ -5410,10 +5400,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     confidence: { score: 61.6, level: 'moderate', basedOn: [] },
     bigFive: { openness: { score: 70 }, conscientiousness: { score: 44 }, extraversion: { score: 38 },
       agreeableness: { score: 66 }, neuroticism: { score: 52 } },
-    mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
+    mbti: { type: 'INFJ' },
     interests: [{ name: 'Trail running' }, { name: 'Cooking' }, { name: 'Film' }, { name: 'Chess' }, { name: 'Fifth' }],
-    values: [{ value: 'Loyalty' }, { value: 'Craft' }, { value: 'Calm' }, { value: 'Fourth' }],
-    beliefs: [],
+    values: [{ value: 'Loyalty' }, { value: 'Craft' }],
+    beliefs: [{ belief: 'Slow is not late' }],
+    topMotivators: ['benevolence', 'not-a-motivator', 'security'],
+    patterns: [{ id: 'p1', name: 'The quiet organiser' }, { id: 'p2', name: 'Bursts, then recovery' }],
     relationship: { loveLanguages: {
       receiving: [{ language: 'Quality time', strength: 'primary' }, { language: 'Words of affirmation', strength: 'secondary' }, { language: 'Gifts', strength: 'minor' }],
       giving: [{ language: 'Acts of service', strength: 'primary' }, { language: 'Quality time', strength: 'minor' }],
@@ -5421,18 +5413,19 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     card: { headline: 'The one holding the camera', energy: 'participant, a few close ties' },
   } }).data.card;
   check('the card\'s repeated fields are copied from the answer, in the card\'s own format',
-    answered.mbti === 'INFJ' && answered.enneagram === '4w5' && answered.confidence === 62 &&
+    answered.mbti === 'INFJ' && !('enneagram' in answered) && answered.confidence === 62 &&
     answered.bigFive.extraversion === 38 && answered.interests.length === 4 &&
-    answered.values.join('|') === 'Loyalty|Craft|Calm' && answered.beliefs.length === 0 &&
+    answered.values.join('|') === 'Loyalty|Craft|Slow is not late' && !('beliefs' in answered) &&
+    answered.motivators.join() === 'benevolence,security' &&
+    answered.patterns.join('|') === 'The quiet organiser|Bursts, then recovery' &&
     answered.loveReceiving.join('|') === 'Quality time (primary)|Words of affirmation (secondary)' &&
     answered.loveGiving.join('|') === 'Acts of service (primary)' && answered.name === 'PsycheUser',
     JSON.stringify(answered));
   check('while what the model wrote on the card is kept as it wrote it',
     answered.headline === 'The one holding the camera' && answered.energy === 'participant, a few close ties');
-  check('an uncertain type carries no enneagram onto the card',
-    prompts.withCard({ data: { mbti: { type: 'Uncertain' }, enneagram: { type: '9' } } }).data.card.enneagram === '');
-  check('and the card still encodes to a QR payload',
-    Card.shape(answered).mbti === 'INFJ' && Card.shape(answered).enneagram === '4w5');
+  check('and the card shapes for the link with values and beliefs as one list, motivators and pattern names',
+    Card.shape(answered).mbti === 'INFJ' && Card.shape(answered).values.length === 3 &&
+    Card.shape(answered).motivators.join() === 'benevolence,security' && Card.shape(answered).patterns.length === 2);
 
   // -- the evidence, written compactly --
   const rendered = prompts.renderEvidence(heavyWithDms);
@@ -5538,8 +5531,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and no longer tells either half that the other is a separate call it never sees',
     !/separate paid pass/.test(full) && !/free half is already written/.test(full) &&
     !/never sees this text/.test(full));
-  // Every field of both, except what the active layout deliberately drops
-  // (the structured layout has no Enneagram).
+  // Every field of both, except anything the active layout deliberately drops
+  // (none now).
   const dropped = prompts.REPORT_LAYOUT === 'structured' ? prompts.STRUCTURED_DROPS : [];
   check('the merged schema asks for every field of both, and all of them are required',
     Object.keys(prompts.PROFILE_SCHEMA.properties).concat(prompts.PREMIUM_KEYS)
@@ -5705,7 +5698,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     mbti: { type: 'INFJ', letters: [
       { axis: 'E/I', choice: 'I', strength: 'moderate' }, { axis: 'N/S', choice: 'N', strength: 'slight' },
       { axis: 'T/F', choice: 'F', strength: 'clear' }, { axis: 'J/P', choice: 'J', strength: 'moderate' }] },
-    enneagram: { type: '4', wing: '5' }, essence: { character: 'Hermione Granger' },
+    essence: { character: 'Hermione Granger' },
     bigFive: { openness: { score: 70, band: 'high' }, extraversion: { score: 38, band: 'low' } },
   });
   const other = compare.conclusions({
@@ -5713,12 +5706,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       { axis: 'E/I', choice: 'I', strength: 'moderate' }, { axis: 'N/S', choice: 'N', strength: 'moderate' },
       // Same strength, other letter: a strength only agrees when its letter does.
       { axis: 'T/F', choice: 'T', strength: 'clear' }, { axis: 'J/P', choice: 'J', strength: 'moderate' }] },
-    enneagram: { type: '5', wing: '4' }, essence: { character: 'Hermione Granger' },
+    essence: { character: 'Hermione Granger' },
     bigFive: { openness: { score: 64, band: 'high' }, extraversion: { score: 46, band: 'moderate' } },
   });
   const a = compare.agreement(base, [base, other]);
   check('agreement counts what matches, letter by letter and trait by trait',
-    a.type === 0.5 && a.letters === 7 / 8 && a.lettersWithStrength === 6 / 8 && a.enneagram === 0.5 &&
+    a.type === 0.5 && a.letters === 7 / 8 && a.lettersWithStrength === 6 / 8 && !('enneagram' in a) &&
     a.bigFiveBands === 3 / 4 && a.bigFiveMeanScoreDiff === 3.5 && a.character === 1,
     JSON.stringify(a));
   check('and a single run has nothing to agree with', compare.agreement(base, []) === null);
@@ -5767,7 +5760,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     out = String((error.stdout || '') + (error.stderr || '') || error.message);
   }
   check('the tool runs end to end, and the mock agrees with itself completely',
-    /mock:MEDIUM \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%.*0 of 2/.test(out),
+    /mock:MEDIUM \(baseline, vs itself\)\s+100%\s+100%\s+100%\s+100%\s+0\.0\s+100%.*0 of 2/.test(out),
     out.split('\n').slice(-6).join(' | '));
   check('and it says what a real run would cost before sending anything',
     !/roughly \$/.test(out) && /\(mock, free\)/.test(out));
@@ -5966,10 +5959,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 
   const structured = prompts.STRUCTURED_FULL_SCHEMA;
   const classicSchema = prompts.CLASSIC_FULL_SCHEMA;
-  check('the structured schema drops only the Enneagram; every other classic field is written unchanged',
-    prompts.STRUCTURED_DROPS.join() === 'enneagram' && !('enneagram' in structured.properties) &&
+  check('the structured schema drops nothing; every other classic field is written unchanged',
+    prompts.STRUCTURED_DROPS.length === 0 && !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
-    Object.keys(classicSchema.properties).filter(key => !['enneagram', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
+    Object.keys(classicSchema.properties).filter(key => !['card', 'essence', 'cardHighlights', 'values', 'beliefs',
       'summary', 'career', 'wellness', 'attachment', 'careerAssessment'].includes(key)).every(key =>
       structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
     // Reshaped rather than dropped: the same sections, leaner.
@@ -5978,9 +5971,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     structured.properties.values.items === classicSchema.properties.values.items &&
     structured.properties.beliefs.items === classicSchema.properties.beliefs.items,
     Object.keys(structured.properties).join(','));
-  check('its QR card keeps the same fields, with the Enneagram always empty',
+  check('its shareable card keeps the same fields, and none is the Enneagram',
     Object.keys(structured.properties.card.properties).join() === Object.keys(classicSchema.properties.card.properties).join() &&
-    /Always an empty string/.test(structured.properties.card.properties.enneagram.description));
+    !('enneagram' in structured.properties.card.properties));
   check('and adds exactly the three thread fields, all required',
     prompts.STRUCTURED_KEYS.join() === 'patterns,motivators,development' &&
     prompts.STRUCTURED_KEYS.every(key => structured.required.includes(key) && !(key in classicSchema.properties)));
@@ -5998,10 +5991,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the executive summary is about 120 words with no scores',
     /About 120 words/.test(structured.properties.summary.description) &&
     /No numbers or scores of any kind/.test(structured.properties.summary.description));
-  const enneagramBullet = prompts.CLASSIC_FULL_SYSTEM.slice(prompts.CLASSIC_FULL_SYSTEM.indexOf('- **Enneagram**: '),
-    prompts.CLASSIC_FULL_SYSTEM.indexOf('\n\n- **activity**: ') + 2);
-  check('the structured prompt is the classic one without its Enneagram section, plus the thread',
-    prompts.STRUCTURED_FULL_SYSTEM === (prompts.CLASSIC_FULL_SYSTEM.replace(enneagramBullet, '') + '\n\n' + prompts.STRUCTURED_ADDON)
+  check('the structured prompt is the classic one plus the thread',
+    prompts.STRUCTURED_FULL_SYSTEM === (prompts.CLASSIC_FULL_SYSTEM + '\n\n' + prompts.STRUCTURED_ADDON)
       .replace('go back to `attachment.why` and `attachment.implications` and pull', 'go back to `attachment.why` and pull')
       .replace('do not smuggle one back into `workStyle` or `watchOuts`.', 'do not smuggle one back into `workStyle`.') &&
     !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
@@ -6057,12 +6048,25 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     JSON.stringify(pinned.patterns));
   const pinnedText = prompts.profileBlocks({}, pinned).map(b => b.text).join('\n');
   check('and the paid call is told to keep their ids, names and order',
-    /keep their ids, names and order exactly/.test(pinnedText) && !/this enneagram/.test(pinnedText));
+    /keep their ids, names and order exactly/.test(pinnedText) && !/enneagram/i.test(pinnedText));
   const classicAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, enneagram: { type: '4', wing: '5' },
     bigFive: { openness: { score: 60 } } });
   const classicText = prompts.profileBlocks({}, classicAnchor).map(b => b.text).join('\n');
-  check('a classic card still anchors its Enneagram, and says nothing about patterns',
-    /this enneagram/.test(classicText) && !/signature patterns/.test(classicText) && !('patterns' in classicAnchor));
+  check('a classic card anchors no Enneagram even from an old report that had one, and says nothing about patterns',
+    !/enneagram/i.test(classicText) && !/signature patterns/.test(classicText) && !('patterns' in classicAnchor));
+  // The lines shown under the card are anchored too, so the full report
+  // explains them rather than contradicting them.
+  const linesAnchor = prompts.anchorFrom({ mbti: { type: 'INFJ' }, bigFive: { openness: { score: 60 } },
+    card: { attachment: 'Leans secure (tentative)', conflictStyle: 'Goes <quiet>, then circles back', energy: 'Participant',
+      careerWeaknesses: ['Says yes to too much', 'Slow to delegate', 'Third'] } });
+  const linesText = prompts.profileBlocks({}, linesAnchor).map(b => b.text).join('\n');
+  check('the card\'s conflict, attachment, energy and work-cost lines anchor the full report, cleaned',
+    linesAnchor.cardLines && linesAnchor.cardLines.conflictStyle === 'Goes  quiet , then circles back' &&
+    linesAnchor.cardLines.careerWeaknesses.length === 2 && /`attachment.conflict`, which opens with it/.test(linesText),
+    JSON.stringify(linesAnchor.cardLines));
+  check('and the full report has a place to explain the conflict style',
+    'conflict' in prompts.FULL_SCHEMA.properties.attachment.properties &&
+    /Where the card already names their conflict style, open with it/.test(prompts.FULL_SCHEMA.properties.attachment.properties.conflict.description));
 
   // The character catalogue: the model chooses from it, the page draws each
   // one's emblem, and the two lists are the same list.
@@ -6334,7 +6338,7 @@ const cardPayload = await Card.encodeCard(report.card);
 const decoded = await Card.decodeCard(cardPayload);
 
 check('card payload is prefixed and compact', cardPayload.startsWith(Card.VERSION) && cardPayload.length < 1600, cardPayload.length + ' chars');
-check('card payload is comfortably scannable', cardPayload.length <= Card.COMFORTABLE_PAYLOAD, cardPayload.length + ' chars');
+check('card payload fits the link budget', cardPayload.length <= Card.COMFORTABLE_PAYLOAD, cardPayload.length + ' chars');
 check('card round-trips', !!decoded);
 check('card round-trips the name', decoded.name === report.card.name);
 check('card round-trips the Big Five', JSON.stringify(decoded.bigFive) === JSON.stringify(report.card.bigFive));
@@ -6346,8 +6350,10 @@ check('card excludes the long-form report',
   !JSON.stringify(decoded).includes('Mock summary paragraph'));
 
 // The card used to carry a tenth of the report, and specifically not the parts
-// the compatibility prompt says decide the answer. Each of these was absent
-// before K4, so each one is a thing the second model call could not see.
+// the compatibility prompt says decide the answer. Each of these is a thing
+// the second model call could not see without it; K5 added the conflict
+// style and the work costs, and dropped the Enneagram, the summary and the
+// attachment's reasoning.
 // Read defensively: if a field stops being emitted at all, this has to report
 // which one rather than dying on an undefined and printing a stack trace.
 const carries = (key, min) => typeof decoded[key] === 'string'
@@ -6355,12 +6361,29 @@ const carries = (key, min) => typeof decoded[key] === 'string'
   : Array.isArray(decoded[key]) && decoded[key].length > min;
 for (const [label, present] of [
   ['love languages, which decide the romantic read', carries('loveReceiving', 0) && carries('loveGiving', 0)],
-  ['the reasoning under the attachment guess', carries('attachmentWhy', 40)],
+  ['the attachment leaning', carries('attachment', 5)],
+  ['the conflict style, which every basis turns on', carries('conflictStyle', 5)],
   ['contact appetite, which decides the platonic read', carries('energy', 10)],
   ['work style, which decides the professional read', carries('workStyle', 10)],
-  ['the Enneagram type', carries('enneagram', 0)],
+  ['what holds them back at work', carries('careerWeaknesses', 0)],
 ]) {
   check('the card carries ' + label, Boolean(present));
+}
+check('and none of what K5 dropped: the Enneagram, the summary, the attachment\'s reasoning, separate beliefs',
+  ['enneagram', 'summary', 'attachmentWhy', 'beliefs'].every(key => !(key in decoded)), Object.keys(decoded).join(','));
+{
+  // Motivators and pattern names travel too, the motivators as their place in
+  // Schwartz's ten, and an unknown word never survives the trip.
+  const withThread = Object.assign({}, report.card, { motivators: ['benevolence', 'bogus', 'security'],
+    patterns: [{ name: 'The quiet organiser' }, 'Bursts, then recovery'] });
+  const thread = await Card.decodeCard(await Card.encodeCard(withThread));
+  check('the motivators and pattern names round-trip through the link',
+    thread.motivators.join() === 'benevolence,security' && thread.patterns.join('|') === 'The quiet organiser|Bursts, then recovery' &&
+    Array.isArray(Card.pack(Card.shape(withThread)).mv), JSON.stringify({ m: thread.motivators, p: thread.patterns }));
+  // A line a few characters over its cap loses its last word, not half of it.
+  check('an over-long line is cut at a word, not mid-word',
+    Card.shape({ name: 'A', rhythm: 'Early mornings, weekend-weighted, social in bursts, and more beyond' }).rhythm ===
+      'Early mornings, weekend-weighted, social in bursts, and');
 }
 
 // A code someone saved as a JPEG months ago still has to read. K4 both renamed
@@ -6398,11 +6421,36 @@ check('a K3 code keeps the data it carried',
   legacyDecoded && legacyDecoded.name === 'Alex' && legacyDecoded.bigFive.agreeableness === 70 &&
   legacyDecoded.relationshipStrengths[0] === 'Shows up consistently');
 check('a K3 code gains the fields it never had, as empties',
-  Boolean(legacyDecoded) && ['enneagram', 'attachmentWhy', 'energy', 'workStyle'].every(k => legacyDecoded[k] === '') &&
+  Boolean(legacyDecoded) && ['conflictStyle', 'energy', 'workStyle'].every(k => legacyDecoded[k] === '') &&
   Array.isArray(legacyDecoded.loveGiving) && legacyDecoded.loveGiving.length === 0);
+{
+  // A real K4 link: short keys, beliefs under their own key, an Enneagram,
+  // the summary and the reasoning. It opens, with the beliefs folded into
+  // values and the rest left behind.
+  const k4wire = { n: 'Sam', h: 'Old', s: 'Old summary.', m: 'ENTP', g: '7w8', a: 'leans secure (tentative)',
+    w: 'Old reasoning', v: ['Freedom'], f: ['Slow is fine'], i: ['Chess'], b: [60, 50, 70, 40, 30] };
+  const bytes = new TextEncoder().encode(JSON.stringify(k4wire));
+  const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const packed = new Uint8Array(await new Response(stream).arrayBuffer());
+  const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let out = '';
+  for (let i = 0; i < packed.length; i += 3) {
+    const [b0, b1, b2] = [packed[i], packed[i + 1], packed[i + 2]];
+    out += B64[b0 >> 2] + B64[((b0 & 3) << 4) | ((b1 || 0) >> 4)];
+    if (b1 === undefined) break;
+    out += B64[((b1 & 15) << 2) | ((b2 || 0) >> 6)];
+    if (b2 === undefined) break;
+    out += B64[b2 & 63];
+  }
+  const k4 = await Card.decodeCard('K4' + out);
+  check('a K4 link still opens, its beliefs folded into values, its Enneagram, summary and reasoning left behind',
+    Boolean(k4) && k4.name === 'Sam' && k4.values.join('|') === 'Freedom|Slow is fine' &&
+    !('enneagram' in k4) && !('summary' in k4) && !('attachmentWhy' in k4) && k4.bigFive.extraversion === 70,
+    JSON.stringify(k4));
+}
 check('a payload with no known prefix is still rejected',
   (await Card.decodeCard('K9' + cardPayload.slice(2))) === null);
-check('a K4 payload is genuinely packed, not just renamed',
+check('a K5 payload is genuinely packed, not just renamed',
   !JSON.stringify(Card.pack(Card.shape(report.card))).includes('relationshipStrengths'));
 check('packing round-trips every field it carries',
   JSON.stringify(Card.shape(Card.unpack(Card.pack(Card.shape(report.card))))) ===
@@ -6421,7 +6469,8 @@ const legacyShape = Card.shape({
 check('a pre-K4 card keeps its relationship phrases',
   legacyShape.relationshipStrengths[0] === 'Shows up consistently');
 check('a pre-K4 card gains the new fields as empties, never undefined',
-  ['enneagram', 'attachmentWhy', 'energy', 'workStyle'].every(key => legacyShape[key] === '') &&
+  ['conflictStyle', 'energy', 'workStyle'].every(key => legacyShape[key] === '') &&
+  Array.isArray(legacyShape.motivators) && legacyShape.motivators.length === 0 &&
   Array.isArray(legacyShape.loveGiving) && legacyShape.loveGiving.length === 0 &&
   Array.isArray(legacyShape.loveReceiving) && legacyShape.loveReceiving.length === 0);
 check('a pre-K4 card keeps the data it did carry',
@@ -6439,10 +6488,10 @@ const bloated = Card.shape({
   ...report.card,
   name: 'x'.repeat(200),
   interests: Array.from({ length: 40 }, (_, i) => 'interest number ' + i + ' with an unreasonably long label attached'),
-  summary: 'y'.repeat(2000),
+  workStyle: 'y'.repeat(2000),
 });
 check('card trims an over-long name', bloated.name.length <= Card.CAPS.name);
-check('card trims an over-long summary', bloated.summary.length <= Card.CAPS.summary + 1);
+check('card trims an over-long line', bloated.workStyle.length <= Card.CAPS.workStyle);
 check('card caps list length', bloated.interests.length === Card.CAPS.lists.interests);
 check('card caps phrase length', bloated.interests.every(p => p.length <= Card.CAPS.phrase));
 const bloatedPayload = await Card.encodeCard(bloated);
@@ -6470,12 +6519,14 @@ function noise(length) {
 }
 const CAPS = Card.CAPS;
 const stuffed = {
-  name: noise(CAPS.name), headline: noise(CAPS.headline), summary: noise(CAPS.summary),
-  mbti: 'ENFJ', enneagram: noise(CAPS.enneagram),
+  name: noise(CAPS.name), headline: noise(CAPS.headline),
+  mbti: 'ENFJ',
   bigFive: { openness: 62, conscientiousness: 71, extraversion: 48, agreeableness: 77, neuroticism: 35 },
-  attachment: noise(CAPS.attachment), attachmentWhy: noise(CAPS.attachmentWhy),
+  attachment: noise(CAPS.attachment), conflictStyle: noise(CAPS.conflictStyle),
   rhythm: noise(CAPS.rhythm), energy: noise(CAPS.energy),
   workStyle: noise(CAPS.workStyle), confidence: 88,
+  motivators: ['self-direction', 'universalism', 'benevolence'],
+  patterns: Array.from({ length: CAPS.patterns }, () => noise(CAPS.pattern)),
 };
 for (const [key, count] of Object.entries(CAPS.lists)) {
   stuffed[key] = Array.from({ length: count }, () => noise(CAPS.phrase));
@@ -6558,7 +6609,7 @@ check('the schema requires evidence on strengths and frictions',
   check('derived facts do not invent an overlap',
     !/Trail running/.test(facts.split('\n')[0]) && !/Nightlife/.test(facts));
   check('derived facts report no overlap plainly',
-    /Values in common: none/.test(facts));
+    /Values & beliefs in common: none/.test(facts));
   check('derived facts state both scores and the gap for every trait',
     /openness: Sam 62, Jordan 80 \(moderate gap, 18 points\)/.test(facts) &&
     /conscientiousness: Sam 71, Jordan 40 \(wide gap, 31 points\)/.test(facts) &&

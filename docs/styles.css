@@ -1246,6 +1246,8 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
    sentence of the argument — a reader who has just been handed one of four
    loaded words should meet this before they meet the working. */
 .attachment-tone { font-weight: 600; margin-top: -.2rem; }
+/* How they handle disagreement, under the attachment read. */
+.attach-conflict { margin: .7rem 0 0; }
 
 ul.ticks { list-style: none; padding-left: 0; margin: .4rem 0 0; }
 ul.ticks li { position: relative; padding-left: 1.5rem; margin-bottom: .4rem; }
@@ -1992,7 +1994,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .pc-blurb { font-size: 25px; line-height: 1.48; margin: 16px 0 0; opacity: .96; }
 
-.pc-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pc-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .pc-stat {
   background: var(--bg-alt); border: 1px solid var(--line); border-radius: 20px;
   padding: 22px 24px; min-width: 0;
@@ -2003,10 +2005,10 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   color: var(--ink-soft); margin: 0 0 12px; font-weight: 600;
 }
 /* The label text is a flex item, which defaults to a content-based minimum
-   width and refuses to shrink below it — so "ENNEAGRAM" at this uppercase
+   width and refuses to shrink below it — so a long label at this uppercase
    letter-spacing simply overflowed the box rather than wrapping, on a narrow
-   card's three-column stat row. Same fix as .pc-trait-label: let it shrink
-   and break instead. */
+   card's stat row. Same fix as .pc-trait-label: let it shrink and break
+   instead. */
 .pc-lab-text { min-width: 0; overflow-wrap: break-word; }
 .pc-big { font-size: 46px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .pc-sub { font-size: 24px; color: var(--ink-soft); margin: 6px 0 0; }
@@ -2079,12 +2081,9 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-col,
 .psyche-card.pc-narrow .pc-half { padding: 15px 17px; }
 .psyche-card.pc-narrow .pc-lab { margin-bottom: 8px; }
-/* Three equal columns on a narrow card leave each stat label about a sixth
-   of the card's width. "Enneagram" is one word and, at the label's usual
-   letter-spacing, needs more than that — .pc-lab-text's overflow-wrap keeps
-   it from spilling into the box beside it, but breaking wherever the browser
-   likes reads worse than the labels beside it. Tightening the spacing here
-   is enough for it to fit on its own line instead. */
+/* On a narrow card a stat label gets little of the card's width, and at the
+   label's usual letter-spacing a long one breaks wherever the browser likes.
+   Tightening the spacing here is enough for each to fit on its own line. */
 .psyche-card.pc-narrow .pc-stats .pc-lab { font-size: 16px; letter-spacing: .06em; }
 /* "Agreeableness" is one unbreakable word, so at the narrow card's column width
    it pushed its own score past the card edge and the frame clipped it. Smaller
@@ -2094,10 +2093,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .psyche-card.pc-narrow .pc-desc { font-size: 17px; margin-top: 6px; }
 /* Four strength words across one narrow column: "moderate" twice will not fit
    at full size, and the last one ran into the block beside it. */
-/* Big Five stays in the same row as type and Enneagram on a narrow card too —
-   dropping to two columns left it orphaned alone at half width on its own
-   row, which read as broken rather than intentional. Three narrow columns
-   squeeze the TYPE block's letter pair, so the letters stack one per row
+/* Big Five stays in the same row as the type on a narrow card too. Narrow
+   columns squeeze the TYPE block's letter pair, so the letters stack one per row
    below instead of 2x2: the box grows taller to hold them rather than the
    row losing a column to make them wider. */
 .psyche-card.pc-narrow .pc-letters {
@@ -2437,9 +2434,9 @@ p.connects-label { margin: .8rem 0 .2rem; }
   .method-list dd { margin-bottom: .4rem; }
 }
 
-/* The structured layout's card: the signature patterns in the column the
-   Enneagram used to take. Numbered like the patterns in the report, so the
-   reader can match the card to the section that explains it. */
+/* The structured layout's card: the signature patterns, numbered like the
+   patterns in the report, so the reader can match the card to the section
+   that explains it. */
 .pc-patterns { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .pc-patterns li { display: flex; gap: 12px; align-items: baseline; font-size: 23px; line-height: 1.3; font-weight: 600; }
 .pc-pattern-num {
@@ -3557,3 +3554,33 @@ details.more[open] > summary::after { content: ' ▴'; }
 .guide-cta h2 { margin: 0 0 .4rem; }
 .guide-cta p { margin: .3rem 0; }
 .footer-guides { margin: .4rem 0 0; font-size: .8rem; }
+
+/* "Beyond your card", under a free card and above the unlock box: the card's
+   other lines in three columns — relationships, day to day, work — that stack
+   on a phone. Short rows, ticks for strengths and a mark for watch-outs, in
+   the card's own register. */
+.beyond-card h2 { margin: 0; font-size: 1.25rem; }
+.beyond-sub { margin: .3rem 0 1rem; color: var(--ink-soft); font-size: .92rem; }
+.beyond-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 759px) { .beyond-grid { grid-template-columns: minmax(0, 1fr); } }
+.beyond-col {
+  padding: .9rem 1rem; border-radius: 16px; border: 1px solid var(--line);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 55%, var(--bg-alt)), var(--bg-alt));
+}
+.beyond-col h3 { display: flex; align-items: center; gap: .45rem; margin: 0 0 .55rem; font-size: 1rem; }
+.beyond-line + .beyond-line { margin-top: .7rem; }
+.beyond-label {
+  margin: 0 0 .15rem; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.beyond-tag {
+  display: inline-block; margin-left: .3rem; padding: .05rem .45rem; border-radius: 999px;
+  font-size: .62rem; letter-spacing: .06em; background: var(--accent-soft); color: var(--accent);
+}
+.beyond-value { margin: 0; font-weight: 600; line-height: 1.35; }
+.beyond-list { list-style: none; margin: 0; padding: 0; }
+.beyond-list li { display: flex; gap: .45rem; align-items: baseline; font-weight: 600; line-height: 1.35; margin: .15rem 0; }
+.beyond-list li span { flex: none; width: 1em; text-align: center; font-weight: 800; }
+.beyond-good li span { color: var(--good); }
+.beyond-warn li span { color: var(--warn); }
+.beyond-foot { margin: .9rem 0 0; font-size: .88rem; color: var(--ink-soft); }

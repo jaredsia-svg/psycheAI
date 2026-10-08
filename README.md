@@ -85,7 +85,7 @@ here is the *gate*, not the ability to ever ask again.
 
 **The free tier costs at most about US$0.05 a run**, and it gets there by changing what the free run is
 rather than how hard the model thinks about it. A free run returns the **summary card** — the
-character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
+character, the MBTI type and its four letters, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable
 card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
 sections are the **US$5 unlock: the full premium report**, written by **one** model call.
@@ -101,8 +101,9 @@ same file, byte for byte — so the only difference between them is what they ar
   picked, and every hard limit. The price is two copies of those rules. A selftest check names each
   one that has been the fix for a reported wrong answer, and fails if it is missing from either
   prompt. The card schema asks the model only for what is new on the shareable card: headline,
-  summary, strengths and weaknesses, attachment, rhythm, energy and work style. The ten card fields
-  that repeat its own conclusions (type, enneagram, scores, lists, love languages, confidence) are
+  strengths and weaknesses in relationships and at work, attachment, conflict style, rhythm, energy
+  and work style. The eight card fields that repeat its own conclusions (type, scores, lists, love
+  languages, confidence) are
   copied from its answer by `withCard`, so they cannot disagree with it and are not paid for twice
   at the output rate. Both calls think at the same level, `MEDIUM`.
 - **The full premium report** (`analyseFull`, kind `full`) runs `FULL_SYSTEM` against `FULL_SCHEMA`.
@@ -130,7 +131,7 @@ card is redrawn from them.
 thinking level, a cheaper model — trades on whether the card's conclusions survive it, and that is
 a measurement, not an argument. `tools/compare.mjs` runs the free card call several times on a real
 digest and reports, per configuration, its cost and how often the type, each letter (with and
-without its strength), the enneagram, the Big Five bands and the character match the baseline, plus
+without its strength), the Big Five bands and the character match the baseline, plus
 the mean Big Five score difference. The baseline row is the production setting compared with its
 own first run, which is the number to read first: a card that disagrees with itself a third of the
 time sets the ceiling on how well anything else can agree with it.
@@ -160,9 +161,9 @@ At $0.75 / $3.75 per million tokens, worst case:
 | | free card | full premium report |
 |---|---|---|
 | output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 5,900 → $0.0044 | 37,600 → $0.0282 |
+| prompt plus schema | 6,300 → $0.0047 | 37,600 → $0.0282 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0515** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
+| **at most** | **$0.0518** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
 
 **The standard read fills its spare room with the reader's own words** (`buildFilled`). A reader with
 no Google or Facebook data, or a lighter account, used to land well under 80,000 and the room went
@@ -619,7 +620,7 @@ system prompt on its own call), stated to hold *however directly the reader fram
 which is there because the framing was, literally, that request.
 
 The safety caveat itself is not something the model writes: unlike the validity caveats elsewhere in
-this file (MBTI, Enneagram, love languages — "this framework is popular rather than validated"),
+this file (MBTI, love languages — "this framework is popular rather than validated"),
 `PREMIUM_SCHEMA` has no `caveat` field at all. It is fixed copy (`bonusCaveat` in `docs/copy.js`) shown
 beside the writing regardless of what came back, so it is never subject to being softened, forgotten or
 phrased differently on a given run.
@@ -1394,10 +1395,8 @@ These are estimates from sizes; `npm run usage` has the real figures once there 
 shows compatibility calls ending on `MAX_TOKENS`, raise the cap.
 
 The link carries the same card for a free reader as for a paid one: the free analysis writes every
-field in it, including the ones the visible card does not show (attachment, rhythm, energy, work
-style, relationship and career strengths, the summary) — short phrases written for this comparison,
-not the full report's explanations of them. Only the Enneagram is absent, since the free analysis
-does not produce one.
+field in it, including the ones the visible card does not show — and those are shown under the card
+now, in *Beyond your card* (see [The K5 card](#the-k5-card-and-beyond-your-card)).
 
 Two ways to move between them, and the first needs no deploy:
 
@@ -3487,12 +3486,12 @@ here is either this app's own or a published academic model.
 | **After Part 4** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
 | **Last** | The roast, after the method rather than mid-report, with no heading of its own |
 
-**No Enneagram, and the patterns are on the free card.** The structured layout drops the Enneagram
-from both calls, the card and the PDF; its column on the summary card now names the two or three
-signature patterns. They are decided by the free card call (`STRUCTURED_FREE_SCHEMA`), so they are
+**No Enneagram anywhere, and the patterns are on the free card.** The Enneagram is gone from the app
+— both layouts, both calls, the card, the link, the page and the PDF; the summary card's column names
+the two or three signature patterns instead. They are decided by the free card call (`STRUCTURED_FREE_SCHEMA`), so they are
 the hook a reader sees before paying, and the paid report is anchored to them (`anchorFrom` carries
-their ids, names and lines) so it explains the same patterns under the same names. The QR card keeps
-its `enneagram` field, always empty in this layout, so codes already shared still decode.
+their ids, names and lines) so it explains the same patterns under the same names. A link made before
+the Enneagram went still opens; its Enneagram is simply left behind.
 
 **Characters come from a catalogue, each with an original emblem.** In the structured layout the
 model chooses the character from `CHARACTER_CATALOGUE` (28 characters across temperaments, in
@@ -3767,7 +3766,7 @@ reader who added a source while paying) runs the card first and the pinned repor
 ### The report opens as an index, not a scroll
 
 Every section arrives shut. What a reader meets on the psyche page is a list of headings — Who you
-are, Big Five, MBTI, Enneagram, Interests, Values & Beliefs, In relationships, At work, Your digital
+are, Big Five, MBTI, Interests, Values & Beliefs, In relationships, At work, Your digital
 footprint, the roast, and the four paid sections — each one line of title, one line of purpose, and a
 chevron. Opening one is a click on the row. The full report is around **6,000 pixels** tall; shut, it
 is **1,835**, and 577 of those are the confidence card at the bottom that does not collapse. A reader
@@ -3904,7 +3903,7 @@ it — covered by a check that stores an old-shape profile and renders it.
 Under the character sits a two-or-three-paragraph summary that lands the findings from every section
 below, so someone who reads only the opening still leaves with the answers.
 
-A **glance strip** — MBTI type, highest and lowest Big Five trait, Enneagram type and wing — used to
+A **glance strip** — MBTI type, highest and lowest Big Five trait — used to
 sit between the two. It came off the page once the psyche card moved above the report, since the card
 already carried all four and repeating them a few centimetres below was the same facts twice. It
 survived in the PDF a while longer on the grounds that the PDF had no card in front of it; page one is
@@ -3932,17 +3931,7 @@ outright so the model does not smuggle one into the last axis. It also requires 
 which would survive being pasted into a stranger's profile be rewritten or cut, that one of the four
 sting slightly, and that a hedged letter beats a confident wrong one.
 
-Right after it, **Enneagram** — the smallest section in the schema, but not a throwaway one: one
-type (1-9), its wing when one is clear (written bare, so the client builds "9w1" rather than the
-model doing string formatting), its nickname, a confidence level, five or six sentences of real
-explanation, and a caveat. No per-facet breakdown the way MBTI has one — a second full typing system
-next to the first would be a wall, not a second look — but the one paragraph it does get is asked to
-teach, not just cite: explain what the core type itself centres on in plain language, as if the
-reader has never heard of it, then explain what the wing specifically adds or shifts, and only then
-tie both to something in their data. A reader should come away understanding the number and the wing
-on their own terms, not just being told which ones they got. The caveat does one more specific job
-beyond the usual "this is popular, not validated" hedge: say plainly if the Enneagram read and the
-MBTI read seem to pull in different directions, rather than quietly smoothing the disagreement over.
+There is no Enneagram section: the Enneagram has been removed from the app.
 
 **Your digital footprint**, which is the part of the export nobody reads themselves: what they post and
 in what mix, when they reach for the app, how their use changed month by month, and what they take
@@ -4281,8 +4270,7 @@ correct: the card is width-bound there, so a narrower one is drawn *larger*. It 
 the column count gives way instead, two-up on narrow. Body text went 12.1px to 13.6px.
 
 **The glance row is gone from the page, and now from the PDF too.** It repeated the MBTI type, the
-enneagram and the highest and lowest traits a few centimetres under a card that already shows all
-four. The PDF kept its own while it had no card in front of it; once page one became that card the
+highest and lowest traits a few centimetres under a card that already shows them. The PDF kept its own while it had no card in front of it; once page one became that card the
 same reasoning applied there, and the strip, its renderer, `Copy.glanceItems` and its four labels all
 went. A check asserts neither renderer builds one — the call *and* the thing it called, because a
 renderer left behind with no caller is the kind of dead code that gets wired back up by accident.
@@ -4473,7 +4461,7 @@ Removing that headline left the band with the title at the top and 70pt of empty
 then the report's first section heading immediately below — a paid document opening on dead space.
 Page one is now a real cover carrying the **psyche card**, the same object the reader sees on screen:
 the character and franchise over the four-sentence blurb, then the MBTI code with its per-axis
-strengths, the Enneagram type and wing, the five trait scores, the values/beliefs/interests row and
+strengths, the five trait scores, the values/beliefs/interests row and
 the giving/receiving pair. It is the one thing in this product people actually share, and the only
 page of a nine-page PDF anybody would screenshot rather than read, so it is what the document should
 open on. The report proper starts on page two, under the running head.
@@ -4549,7 +4537,7 @@ Zootopia".
 
 **A layout.** The report is the profile page, section for section, in the same order: a letterhead,
 then *Who you are* (the character, the headline findings strip, the summary), *Big Five*, *MBTI*,
-*Enneagram*, *Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram
+*Interests*, *Values & Beliefs*, *In relationships*, *At work*, *Your Instagram
 behaviour*, *Your matches* when this device has any, and *How much to trust this*.
 Running head and page numbers on every page — the head carries the orbit mark and the word
 *PsycheAI* beside it, the same lockup the nav and the cover use, because a page pulled out of the
@@ -4647,6 +4635,54 @@ because a shorter link survives being pasted through chat apps intact.
 The card is also exactly what the compatibility call receives, so whatever is trimmed is invisible to
 the other person's report — and your long-form report never leaves your device.
 
+### The K5 card, and Beyond your card
+
+The shareable card — what the compatibility link carries and what the comparison reads — is shaped
+around what the three kinds of comparison turn on. Partners turn on conflict, emotional safety, care
+given against care wanted, and life direction; friends and family on shared interests, energy and
+how much contact each wants; colleagues on complementary strengths and gaps, standards, disagreement
+and load, and a manager and their report on direction, autonomy, whether problems surface and what
+keeps someone. **K5** (`docs/card.js`) carries, besides name, headline, MBTI, the Big Five and
+confidence:
+
+| For | Fields |
+|---|---|
+| What they care about | interests ×4, **values & beliefs as one list** ×3, **top motivators** ×3 (Schwartz's ten, sent as their index), **pattern names** ×3 |
+| Relationships | love languages (2 received, 1 given), attachment, **conflict style**, relationship strengths ×2 and watch-outs ×2 |
+| Day to day | rhythm, social energy **and how they keep in touch** (who starts conversations, reply speed and length) |
+| Work | work style, career strengths ×2, **what holds them back** ×2 |
+
+It dropped the **Enneagram** (gone from the app), the **summary** (the headline and the rest say it)
+and the **attachment's reasoning** (the most identifying line, in a link anyone can decode); separate
+beliefs became part of values. Motivators and pattern names are copied from the free answer by
+`withCard` rather than written twice; the conflict style and the work costs are new lines in the free
+call's card (`CARD_SCHEMA`). A sample card's link is about 760 characters; the budget
+(`COMFORTABLE_PAYLOAD`) is 1,000 now that no QR code has to scan it. Lines are cut at a word, not
+mid-word. **K4 and K3 links still open**: a K4 link's beliefs fold into values, and its Enneagram,
+summary and reasoning are left behind. A saved card is re-shaped before it is sent to a comparison.
+
+**Each line matches the premium report.** The full report is anchored to the card (`anchorFrom`'s
+`cardLines`): the attachment leaning is `attachment.style`, worded the same way; the conflict style is
+explained by a new **`attachment.conflict`** ("In conflict", under the attachment read on the page
+and in the PDF), which opens with the card's words; social energy and contact are what
+`wellness.socialConnection` explains; and each work cost is one of what holds them back
+(`careerAssessment.holdingBack` or `career.weaknesses`).
+
+**Each basis is pointed at the fields that decide it** (`lean` on each mode and work stance, printed
+in the request): romantic leans on conflict style, attachment, love languages, motivators and
+values, rhythm, relationship watch-outs and neuroticism; friends on interests, contact, extraversion,
+conflict and agreeableness; colleagues on strengths and work costs, work style, conscientiousness,
+conflict and rhythm; a manager on their report's motivators and work costs and both conflict styles.
+The derived facts add the top motivators the two share.
+
+**Beyond your card** (`beyondCardHtml`) shows these lines to the reader, on a free report, between
+the card and the unlock box: three columns — *In relationships* (attachment and conflict, each with a
+*tentative* tag in place of the model's "(tentative)", strengths ✓ and watch-outs), *Day to day*
+(rhythm, social energy & contact) and *At work* (work style, strengths, what holds you back) —
+stacked on a phone, under the line *"A few more things your data says. These also go into your
+compatibility link."* and over *"The full report explains each of these with the evidence behind
+it."* It reads the card the link carries, so what the reader sees is what is shared.
+
 ### What the card carries, and what that cost
 
 The card used to hold about a tenth of the report, and specifically the wrong tenth. The
@@ -4657,9 +4693,9 @@ and the card carried none of those. Love languages were absent entirely; attachm
 same prompt says matters least, had eight slots. The model was being asked to weigh evidence it had
 never been given, so it fell back on hobbies and filled the rest with something plausible.
 
-**K4** carries the reasoning under the attachment guess, both love-language sides, an `energy` line
-for contact appetite, a `workStyle` line, and the Enneagram type — the five things the mode briefs
-actually name.
+**K4** carried the reasoning under the attachment guess, both love-language sides, an `energy` line
+for contact appetite, a `workStyle` line, and the Enneagram type. **K5** (now) is shaped around what
+the three kinds of comparison turn on — see *The K5 card* below.
 
 There was no spare room for any of it. The `COMFORTABLE_PAYLOAD` constant claimed 1800 characters and
 that number was fiction: measured against the scan ladder in `tools/uitest.mjs` — redraw at 450px and

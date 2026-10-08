@@ -1164,7 +1164,6 @@
       ? (fullBlurb.match(/[^.!?]+[.!?]+["'’”)]*(\s+|$)/g) || [fullBlurb]).slice(0, 2).join('').trim()
       : fullBlurb;
     const mbti = report.mbti || {};
-    const enneagram = report.enneagram || {};
     const five = report.bigFive || {};
     const love = (report.relationship && report.relationship.loveLanguages) || {};
     const confidence = Number((card || {}).confidence);
@@ -1203,10 +1202,8 @@
     const letters = (mbti.letters || []).map(l => toWinAnsi(structured
       ? String(l.choice || '') + '  ' + ((Copy.MBTI_POLES[l.choice] || {}).name || '') + (l.strength ? ' · ' + l.strength : '')
       : String(l.choice || '') + '  ' + String(l.strength || '')));
-    const enneagramBadge = enneagram.type && !structured
-      ? String(enneagram.type) + (enneagram.wing ? 'w' + enneagram.wing : '') : '';
-    // The structured layout has no Enneagram: its column holds the signature
-    // patterns, numbered as the report numbers them.
+    // The structured layout's column holds the signature patterns, numbered as
+    // the report numbers them.
     const patternLines = structured
       ? (Array.isArray(report.patterns) ? report.patterns : [])
         .filter(p => p && /^p[1-3]$/.test(p.id) && p.name)
@@ -1249,10 +1246,7 @@
       ? [{ label: TEXT.cardPatterns, lines: patternLines, style: { size: 9, bold: true, color: INK }, leading: 12 },
         { label: Copy.STRUCTURED.titles.motivators, lines: motiveLines, style: { size: 9, bold: true, color: INK }, leading: 12 }]
       : [];
-    const statCells = structured
-      ? [typeCell, fiveCell]
-      : [typeCell, { label: TEXT.cardEnneagram, lead: enneagramBadge ? toWinAnsi(enneagramBadge) : '',
-        lines: [enneagram.nickname && toWinAnsi(enneagram.nickname)].filter(Boolean) }, fiveCell];
+    const statCells = [typeCell, fiveCell];
     // Structured: values and beliefs as one "what you stand for", beside what
     // they are into — the story card's two panels.
     const chipCells = structured
@@ -1679,9 +1673,9 @@
         if (essence.why) out.body(essence.why, { size: 10.2, leading: 15 });
         out.space(8);
       }
-      // The glance strip — type, highest trait, lowest trait, enneagram — used to
+      // The glance strip — type, highest trait, lowest trait — used to
       // sit here. It came off the profile page a while ago because the psyche
-      // card above it already carried all four, and repeating them a few
+      // card above it already carried them, and repeating them a few
       // centimetres below was the same facts twice. The PDF kept its copy on the
       // grounds that it had no card in front of it. It does now: page one is that
       // card. So the same reasoning applies and the strip goes, leaving the
@@ -1713,15 +1707,6 @@
         out.fineprint(mbti.caveat);
       }
 
-      // 4. Enneagram — a short second lens beside MBTI, not a wall of its own.
-      const enneagram = source.enneagram;
-      if (enneagram) {
-        const badge = (enneagram.type || '') + (enneagram.wing ? 'w' + enneagram.wing : '');
-        out.sectionTitle(TEXT.enneagramPrefix + badge + (enneagram.nickname ? '  ' + enneagram.nickname : ''),
-          TEXT.mbtiConfidence + (enneagram.confidence || ''));
-        if (enneagram.why) out.body(enneagram.why, { size: 10.2, leading: 15 });
-        out.fineprint(enneagram.caveat);
-      }
 
     // Page/PDF parity for the trajectory chip — see trajectoryPill in app.js.
     // The PDF's tile takes one pill, so the two are joined rather than stacked:
@@ -2960,6 +2945,8 @@
           attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
           attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
           attachment.why && { text: attachment.why, style: T_BODY, leading: 13.8, before: 6 },
+          attachment.conflict && { text: TEXT.attachmentConflict, style: T_TITLE, leading: 14, before: 8 },
+          attachment.conflict && { text: attachment.conflict, style: T_BODY, leading: 13.8, before: 2 },
         ], { fill: WASH, bar: ACCENT });
         evidence(attachment.derivedFrom);
       });

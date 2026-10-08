@@ -16,7 +16,6 @@
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
   const axisLabel = Copy.axisLabel;
-  const ENNEAGRAM_DESCRIPTIONS = Copy.ENNEAGRAM_DESCRIPTIONS;
 
   const $ = sel => document.querySelector(sel);
   const KEYS = {
@@ -455,7 +454,6 @@
     const essence = report.essence || {};
     const name = essenceName(essence);
     const mbti = report.mbti || {};
-    const enneagram = report.enneagram || {};
     const bigFiveRows = bigFiveCardRows(report.bigFive);
     const love = (report.relationship && report.relationship.loveLanguages) || {};
     const confidence = Number(card.confidence);
@@ -465,12 +463,6 @@
       '<span class="pc-letter"><b>' + esc(letter.choice || '') + '</b>' +
       '<i>' + esc(letter.strength || '') + '</i></span>').join('');
 
-    const enneagramLabel = enneagram.type
-      ? esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '')
-      : '';
-    // The type's own textbook definition, not this person's — see
-    // ENNEAGRAM_DESCRIPTIONS for why that split matters.
-    const enneagramDesc = ENNEAGRAM_DESCRIPTIONS[enneagram.type] || '';
 
     const blurb = cardBlurb(report);
 
@@ -501,11 +493,6 @@
         '<div class="pc-stat">' + cardLab(CARD_ICONS.type, TEXT.cardType) +
           (letters ? '<div class="pc-letters">' + letters + '</div>' : '') +
           '</div>' +
-        (enneagramLabel ? '<div class="pc-stat">' + cardLab(CARD_ICONS.enneagram, TEXT.cardEnneagram) +
-          '<p class="pc-big">' + enneagramLabel + '</p>' +
-          (enneagram.nickname ? '<p class="pc-sub">' + esc(enneagram.nickname) + '</p>' : '') +
-          (enneagramDesc ? '<p class="pc-desc">' + esc(enneagramDesc) + '</p>' : '') +
-          '</div>' : '') +
         (bigFiveRows.length ? '<div class="pc-stat pc-stat-bigfive">' + cardLab(CARD_ICONS.bigFive, TEXT.cardBigFive) +
           '<div class="pc-trait-list">' +
           bigFiveRows.map(row => '<p class="pc-trait"><span class="pc-trait-label">' + esc(row.label) +
@@ -855,7 +842,7 @@
     if (!card) return '';
     return '<div class="card section-card">' +
       sectionHead('🔗', esc(TEXT.linkContents), esc(TEXT.linkContentsSub)) +
-      '<p><strong>' + esc(card.headline) + '</strong></p><p>' + esc(card.summary) + '</p>' +
+      '<p><strong>' + esc(card.headline) + '</strong></p>' +
       tags(card.interests) +
       '<p class="fineprint">' + esc(TEXT.linkContentsFineprint) + '</p></div>';
   }
@@ -934,6 +921,7 @@
       // before this field existed still renders.
       (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
       '<p>' + esc(attachment.why) + '</p>' +
+      (attachment.conflict ? '<p class="essence-label">' + esc(TEXT.attachmentConflict) + '</p><p>' + esc(attachment.conflict) + '</p>' : '') +
       ((attachment.derivedFrom || []).length
         ? '<p class="essence-label">' + esc(TEXT.readFrom) + '</p>' +
           '<p class="trait-evidence">' + attachment.derivedFrom
@@ -1164,12 +1152,6 @@
       if ((card.mbti.letters || []).length) out.mbti.letters = card.mbti.letters.map(letter => {
         const written = ((full.mbti || {}).letters || []).find(l => l && l.axis === letter.axis) || {};
         return Object.assign({}, written, { axis: letter.axis, choice: letter.choice, strength: letter.strength });
-      });
-    }
-    if (card.enneagram) {
-      out.enneagram = Object.assign({}, out.enneagram, {
-        type: card.enneagram.type, wing: card.enneagram.wing,
-        nickname: card.enneagram.nickname || (out.enneagram || {}).nickname,
       });
     }
     // Lists keep the card's entries in the card's order, each carrying the full
@@ -4800,18 +4782,6 @@
     }).join('') + '</div>';
   }
 
-  /** `extra` is appended inside the card — the structured layout's pattern links. */
-  function enneagramCardHtml(enneagram, head, extra, sub) {
-    if (!enneagram) return '';
-    const badge = esc(enneagram.type) + (enneagram.wing ? 'w' + esc(enneagram.wing) : '');
-    return '<div class="card section-card">' +
-      head('🔢', esc(TEXT.enneagramPrefix) + badge +
-        (enneagram.nickname ? ' <span class="type-nickname">' + esc(enneagram.nickname) + '</span>' : ''),
-        sub || esc(TEXT.mbtiConfidence) + esc(enneagram.confidence)) +
-      '<p>' + esc(enneagram.why) + '</p>' +
-      '<p class="fineprint">' + esc(enneagram.caveat) + '</p>' + (extra || '') + '</div>';
-  }
-
   function interestsHtml(interests) {
     if (!(interests || []).length) return '<p class="muted">' + esc(TEXT.interestsEmpty) + '</p>';
     return '<div class="tile-grid">' + interests.map(item =>
@@ -5322,7 +5292,10 @@
       html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
         '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
         (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
-        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>';
+        readingFull(attachment.why, attachment.derivedFrom) +
+        // How they handle disagreement: the card's conflict style, explained.
+        (attachment.conflict ? '<p class="attach-conflict"><strong>' + esc(TEXT.attachmentConflict) + '.</strong> ' +
+          esc(attachment.conflict) + '</p>' : '') + '</div></div>';
       // No "In practice": what the style gives and costs is under what they
       // bring and where it gets hard, just below.
     }
@@ -5703,6 +5676,47 @@
     light('overview');
   }
 
+  /**
+   * "Beyond your card": the card's lines the card itself has no room for —
+   * attachment, conflict, rhythm, social energy, work style, and the
+   * strengths and costs in relationships and at work. They travel in the
+   * compatibility link, so the reader sees what is in it; each is one the full
+   * report explains, so the panel leads into the unlock box under it. A
+   * "(tentative)" the model wrote becomes a tag rather than words in the line.
+   */
+  function beyondCardHtml(card) {
+    if (!card || typeof card !== 'object') return '';
+    const B = Copy.STRUCTURED.beyond;
+    const line = (label, value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      const tentative = /\(tentative\)\s*$/i.test(raw);
+      const text = raw.replace(/\s*\(tentative\)\s*$/i, '');
+      return '<div class="beyond-line"><p class="beyond-label">' + esc(label) +
+        (tentative ? ' <span class="beyond-tag">' + esc(B.tentative) + '</span>' : '') + '</p>' +
+        '<p class="beyond-value">' + esc(text.charAt(0).toUpperCase() + text.slice(1)) + '</p></div>';
+    };
+    const list = (label, items, kind) => {
+      const rows = (Array.isArray(items) ? items : []).filter(Boolean);
+      if (!rows.length) return '';
+      return '<div class="beyond-line"><p class="beyond-label">' + esc(label) + '</p><ul class="beyond-list beyond-' + kind + '">' +
+        rows.map(item => '<li><span aria-hidden="true">' + (kind === 'good' ? '✓' : '!') + '</span>' + esc(item) + '</li>').join('') + '</ul></div>';
+    };
+    const columns = [
+      ['💞', B.relationships, line(B.attachment, card.attachment) + line(B.conflict, card.conflictStyle) +
+        list(B.strengths, card.relationshipStrengths, 'good') + list(B.watchOuts, card.relationshipWeaknesses, 'warn')],
+      ['☀️', B.dayToDay, line(B.rhythm, card.rhythm) + line(B.energy, card.energy)],
+      ['💼', B.work, line(B.workStyle, card.workStyle) + list(B.strengths, card.careerStrengths, 'good') +
+        list(B.holdsBack, card.careerWeaknesses, 'warn')],
+    ].filter(([, , body]) => body);
+    if (!columns.length) return '';
+    return '<section class="card section-card beyond-card screen-only" aria-labelledby="beyond-title">' +
+      '<h2 id="beyond-title">' + esc(B.title) + '</h2><p class="beyond-sub">' + esc(B.sub) + '</p>' +
+      '<div class="beyond-grid">' + columns.map(([icon, title, body]) =>
+        '<div class="beyond-col"><h3><span aria-hidden="true">' + icon + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
+      '</div><p class="beyond-foot">' + esc(B.foot) + ' <span aria-hidden="true">↓</span></p></section>';
+  }
+
   function reportSectionsHtml(report, options) {
     const sample = Boolean(options && options.sample);
     // The free report is the card above this and nothing else. What sits
@@ -5713,7 +5727,7 @@
       // Structured: Evidence and method under the offer (freeMethodCardHtml),
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
-      return fullReportLockedHtml() +
+      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
@@ -5729,7 +5743,7 @@
     let html = '';
 
     // No glance row here any more: the psyche card above the report already
-    // shows the type, the enneagram and the highest and lowest traits, and
+    // shows the type and the highest and lowest traits, and
     // saying them again three centimetres lower is just the same four facts
     // twice. The PDF keeps its own — it has no card in front of it.
     html += '<div class="card section-card">' + head('👤', esc(TEXT.whoYouAre)) +
@@ -5757,10 +5771,6 @@
 
     html += mbtiAxesHtml(mbti);
     html += '<p class="fineprint">' + esc(mbti.caveat) + '</p></div>';
-
-    // Enneagram: a short second lens right beside MBTI, not a wall of its own
-    // — one type, one wing, one paragraph, no per-facet breakdown.
-    html += enneagramCardHtml(report.enneagram, head, '');
 
     // Interests.
     html += '<div class="card section-card">' + head('✨', esc(TEXT.interests)) +
@@ -8215,7 +8225,10 @@
     // one has nothing owed to remember, only a job to rejoin.
     if (auth && Object.keys(auth).length) rememberPending('compatibility', auth, { other, mode, stance });
     try {
-      const result = await LLM.analyseCompatibility(state.profile.card, other, mode, stance, auth,
+      // Re-shaped on the way out, so a card saved before the link format last
+      // changed is sent in today's shape, with nothing the comparison no
+      // longer reads.
+      const result = await LLM.analyseCompatibility(Card.shape(state.profile.card), other, mode, stance, auth,
         { onJob: key => rememberJob(key, 'compatibility', auth, { other, mode, stance }) });
       adoptComparison(result, other, mode, stance);
     } catch (error) {

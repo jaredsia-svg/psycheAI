@@ -44,30 +44,11 @@
     return { name: pole.name, against: MBTI_POLES[pole.opposite].name };
   }
 
-  // One neutral, textbook sentence per type — fixed vocabulary the same way
-  // MBTI_POLES is, and for the same reason: it describes the type itself,
-  // not this person, so it is resolved here rather than asked of the model.
-  // The card's own `why` field is the personalised version of this and runs
-  // five or six sentences, too long for the card; this is the one-line
-  // definition that makes the nickname legible on its own.
-  const ENNEAGRAM_DESCRIPTIONS = {
-    1: 'Principled and improvement-driven, with a strong inner critic and a fear of being wrong.',
-    2: 'Warm and generous, driven to be needed and to earn love through giving.',
-    3: 'Success-driven and adaptable, oriented around image and getting things done.',
-    4: 'Introspective and expressive, drawn to what feels authentic and wary of being ordinary.',
-    5: 'Curious and self-contained, gathering knowledge while guarding their time and energy.',
-    6: 'Committed and vigilant, scanning for risk and seeking security through trust.',
-    7: 'Spontaneous and optimistic, chasing new experiences to outrun discomfort.',
-    8: 'Assertive and protective, wanting control and resisting being controlled.',
-    9: 'Easygoing and accommodating, seeking harmony and often merging with other people\'s agendas.',
-  };
-
   // One glyph per block on the psyche card. Emoji rather than artwork for the
   // same reason the essence icon is: the card has to survive being a PDF, a
   // screenshot and a print, and an emoji needs no asset pipeline to do it.
   const CARD_ICONS = {
     type: '🧭',
-    enneagram: '🔢',
     bigFive: '📊',
     values: '⚖️',
     beliefs: '💡',
@@ -231,8 +212,6 @@
     cardImageError: 'Could not build the image',
 
     cardType: 'MBTI',
-    cardEnneagram: 'Enneagram',
-    // The structured layout's middle column, where the Enneagram used to be.
     cardPatterns: 'Your patterns',
     cardBigFive: 'Big Five',
     cardValues: 'Values',
@@ -251,10 +230,6 @@
     mbtiPrefix: 'MBTI: ',
     mbtiConfidence: 'Confidence: ',
     mbtiOver: 'over ',
-
-    // Reuses mbtiConfidence for its own "Confidence: " line — the same word,
-    // not a second one to keep in step.
-    enneagramPrefix: 'Enneagram: ',
 
     interests: 'Interests',
     interestsEmpty: 'Nothing stood out strongly.',
@@ -283,6 +258,9 @@
     attachmentPrefix: 'Attachment: ',
     readFrom: 'Read from',
     attachmentPractice: 'What it means in practice',
+    // How they handle disagreement, inside the attachment read — the line the
+    // card shows as its conflict style, explained.
+    attachmentConflict: 'In conflict',
     loveHead: 'Your love languages',
     loveReceiving: 'How you want to be loved',
     loveReceivingBlurb: 'What lands, when it is aimed at you.',
@@ -342,10 +320,10 @@
 
     linkContents: 'What your link contains',
     linkContentsSub: 'Only this — the compact card the other person’s report is built from.',
-    linkContentsFineprint: 'Plus your Big Five scores and what each one means for you, MBTI and Enneagram, ' +
-      'values, beliefs, relationship and career strengths and weaknesses with a line on each, ' +
-      'your attachment guess and the reasoning under it, your love languages, and your rhythm and ' +
-      'energy — all as short phrases.',
+    linkContentsFineprint: 'Plus your Big Five scores, MBTI, top motivators and pattern names, ' +
+      'values & beliefs, relationship and work strengths and what holds you back, your attachment ' +
+      'and conflict style, your love languages, and your rhythm, energy and work style — all as ' +
+      'short phrases, the same ones shown under your card.',
 
     // What "Send my link" puts in the share sheet, or on the clipboard where
     // there is none. Written in the sender's own voice, since they send it.
@@ -471,10 +449,9 @@
     explainBigFive: 'Each of your five scores taken apart – what pushed it up, what held it down, and the ' +
       'evidence behind it, counted, from your captions, messages and rhythm. Including where the case is ' +
       'thinner than the number suggests.',
-    explainTypesTitle: 'MBTI & Enneagram',
+    explainTypesTitle: 'MBTI',
     explainTypes: 'Letter by letter – the behaviours that put each one there, the evidence that pulls the ' +
-      'other way, and how firmly it holds. Then your enneagram type and wing in plain language, and what ' +
-      'both look like in your ordinary week.',
+      'other way, how firmly it holds, and what each letter looks like in your ordinary week.',
     explainListsTitle: 'Interests, values & beliefs',
     explainLists: 'What you actually care about, with the evidence for each – where it shows up, how ' +
       'often and since when. Each is marked as lasting, rising, fading or dormant, so you can see which ' +
@@ -1051,6 +1028,26 @@
     nothingYet: 'Nothing here yet.',
     // The merged sections' own headings.
     howYouAttach: 'Attachment style',
+    // "Beyond your card": the card's other lines, under it on a free report.
+    // They are what travels in the compatibility link beside what the card
+    // shows, and each is one the full report explains.
+    beyond: {
+      title: 'Beyond your card',
+      sub: 'A few more things your data says. These also go into your compatibility link.',
+      relationships: 'In relationships',
+      dayToDay: 'Day to day',
+      work: 'At work',
+      attachment: 'Attachment',
+      conflict: 'In conflict',
+      rhythm: 'Rhythm',
+      energy: 'Social energy & contact',
+      workStyle: 'Work style',
+      strengths: 'Strengths',
+      watchOuts: 'Watch-outs',
+      holdsBack: 'What holds you back',
+      tentative: 'tentative',
+      foot: 'The full report explains each of these with the evidence behind it.',
+    },
     whatYouBring: 'What you bring',
     whereItGetsHard: 'Where it gets hard',
     whoSuitsYou: 'Who suits you',
@@ -1104,7 +1101,7 @@
 
     // The extra lines in the unlock list under a free card, for what this
     // layout adds. Same length and register as the explain* lines in TEXT.
-    // The types row of the unlock list, without the Enneagram this layout drops.
+    // The types row of the unlock list.
     explainTypeTitle: 'MBTI',
     explainListsTitle: 'Interests, Values & Beliefs',
     explainType: 'Letter by letter – the behaviours that put each one there, the evidence that pulls the ' +
@@ -1204,7 +1201,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, ENNEAGRAM_DESCRIPTIONS, LOVE_LANGUAGE_ICONS, CARD_ICONS,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
     CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt,
   };

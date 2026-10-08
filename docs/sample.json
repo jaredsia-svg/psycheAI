@@ -154,14 +154,6 @@
     ],
     "caveat": "MBTI is popular rather than validated, and this one is inferred indirectly from behaviour rather than from any questionnaire. Treat the E as the softest of the four."
   },
-  "enneagram": {
-    "type": "2",
-    "wing": "1",
-    "nickname": "The Helper",
-    "confidence": "moderate",
-    "why": "Type Two organises around being needed, and the evidence is direct: your own news is consistently attached to somebody else's. The One wing shows in the standards — helpful to a particular quality, not indiscriminately.",
-    "caveat": "The Enneagram is a lens rather than a measurement, and a different one from the MBTI above. It is included because the two disagree usefully: the type says what drives you, the MBTI says how it comes out."
-  },
   "activity": {
     "posting": {
       "headline": "Steady, planned, event-shaped",
@@ -371,9 +363,7 @@
   "card": {
     "name": "Emily Carter",
     "headline": "Organiser with a warm centre and a quiet battery",
-    "summary": "Reliable, generous and hard to reciprocate with. Plans in blocks, recovers alone.",
     "mbti": "ENFJ",
-    "enneagram": "2w1",
     "bigFive": {
       "openness": 61,
       "conscientiousness": 84,
@@ -392,7 +382,6 @@
       "Craft",
       "Belonging"
     ],
-    "beliefs": [],
     "relationshipStrengths": [
       "Remembers the detail",
       "Handles friction privately"
@@ -405,8 +394,12 @@
       "Closes what they open",
       "Does the unassigned work"
     ],
-    "attachment": "Leans secure, anxious edges (tentative)",
-    "attachmentWhy": "Four steady years with one group; initiates 3x more than receives; recovers after peaks",
+    "careerWeaknesses": [
+      "Under-claims her wins",
+      "Absorbs the unowned work"
+    ],
+    "attachment": "Leans secure, self-reliant streak (tentative)",
+    "conflictStyle": "Smooths it over, raises it later (tentative)",
     "loveReceiving": [
       "Quality time (primary)",
       "Words of affirmation (secondary)"
@@ -415,7 +408,7 @@
       "Acts of service (primary)"
     ],
     "rhythm": "Early mornings, weekend-weighted, social in bursts",
-    "energy": "Participant not broadcaster; wide circle, twelve people who matter",
+    "energy": "Participant; wide circle, twelve who matter; starts most chats",
     "workStyle": "Plans in blocks, high quiet standards, finishes what starts",
     "confidence": 86
   },
@@ -556,6 +549,7 @@
       "style": "Leans secure, with a self-reliant streak",
       "styleTone": "Steady, warm and dependable – people can count on you, and you rarely make closeness feel like hard work.",
       "why": "Steady reply times, no bursts of messages after a silence, and warmth spread across many people point to secure. Avoidant was considered and set aside: you seek people out constantly. What keeps it from plain secure is how rarely you lean on anyone yourself.",
+      "conflict": "You smooth friction over in the moment and raise it later, in private, if at all – you would rather absorb a small annoyance than turn it into a conversation. It keeps things calm, and it means the people close to you rarely learn what bothered you until you have already made up your mind about it. Saying the small thing early, while it is still small, costs you less than you expect.",
       "derivedFrom": [
         "Replies within the hour in 70% of threads",
         "No message bursts after a gap in four years",

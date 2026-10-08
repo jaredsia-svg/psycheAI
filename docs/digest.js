@@ -595,8 +595,8 @@
   // the model thinks for all of it, against a digest at its full 80,000.
   //
   //   free card     8,000 out  × $3.75/M = $0.0300
-  //                  5,900 prompt + 22,857 digest × $0.75/M = $0.0216
-  //                 at most $0.0516                    → FREE_COST_CAP $0.052
+  //                  6,300 prompt + 22,857 digest × $0.75/M = $0.0219
+  //                 at most $0.0519                    → FREE_COST_CAP $0.052
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
@@ -617,10 +617,10 @@
   const FREE_COST_CAP = 0.052;
   const FREE_MAX_OUTPUT_TOKENS = 8000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
-  // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 5,678
-  // once the structured card named its top three motivators (it was 16,655
-  // while the card's prompt was the full report's, cut down).
-  const FREE_FIXED_INPUT_TOKENS = 5900;
+  // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117
+  // once the card gained its conflict style and work costs (5,678 before; it
+  // was 16,655 while the card's prompt was the full report's, cut down).
+  const FREE_FIXED_INPUT_TOKENS = 6300;
 
   // ---------- what a deeper read can cost, at most ----------
   //
@@ -629,8 +629,8 @@
   // it, and the two together are held to $0.25:
   //
   //   card          8,000 out  × $3.75/M = $0.0300
-  //                  5,900 prompt + 54,286 digest × $0.75/M = $0.0451
-  //                 at most $0.0751                    → DEEP_FREE_COST_CAP $0.076
+  //                  6,300 prompt + 54,286 digest × $0.75/M = $0.0454
+  //                 at most $0.0754                    → DEEP_FREE_COST_CAP $0.076
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 37,600 prompt + 54,286 digest × $0.75/M = $0.0689

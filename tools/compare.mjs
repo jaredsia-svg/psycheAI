@@ -103,7 +103,6 @@ export function conclusions(data) {
   return {
     type: d.mbti && d.mbti.type,
     letters,
-    enneagram: d.enneagram ? String(d.enneagram.type || '') + (d.enneagram.wing ? 'w' + d.enneagram.wing : '') : '',
     bands,
     scores,
     character: d.essence && d.essence.character,
@@ -121,11 +120,10 @@ export function agreement(baseline, runs) {
   if (!n) return null;
   const axes = Object.keys(baseline.letters);
   const traits = Object.keys(baseline.bands);
-  let type = 0; let letterHits = 0; let strengthHits = 0; let ennea = 0; let bandHits = 0; let character = 0;
+  let type = 0; let letterHits = 0; let strengthHits = 0; let bandHits = 0; let character = 0;
   let scoreDiff = 0; let scoreCount = 0;
   for (const run of runs) {
     if (run.type === baseline.type) type += 1;
-    if (run.enneagram === baseline.enneagram) ennea += 1;
     if (run.character === baseline.character) character += 1;
     for (const axis of axes) {
       const a = baseline.letters[axis];
@@ -146,7 +144,6 @@ export function agreement(baseline, runs) {
     type: type / n,
     letters: axes.length ? letterHits / (n * axes.length) : 1,
     lettersWithStrength: axes.length ? strengthHits / (n * axes.length) : 1,
-    enneagram: ennea / n,
     bigFiveBands: traits.length ? bandHits / (n * traits.length) : 1,
     bigFiveMeanScoreDiff: scoreCount ? scoreDiff / scoreCount : 0,
     character: character / n,
@@ -245,7 +242,7 @@ async function main() {
       if (result) {
         const c = conclusions(result.data);
         cards.push(c);
-        what = String(c.type).padEnd(5) + ' ' + String(c.enneagram).padEnd(4);
+        what = String(c.type).padEnd(10);
       } else {
         failed += 1;
         what = ('FAILED ' + ((failure && failure.finishReason) || 'error')).padEnd(10);
@@ -261,14 +258,14 @@ async function main() {
 
   const pct = x => (x === null || x === undefined ? '—' : Math.round(x * 100) + '%');
   const rows = summarise(results);
-  console.log('\n  ' + 'config'.padEnd(46) + 'type  letters  +strength  ennea  bands  Δscore  char   $/card  thinking  failed');
+  console.log('\n  ' + 'config'.padEnd(46) + 'type  letters  +strength  bands  Δscore  char   $/card  thinking  failed');
   for (const row of rows) {
     const a = row.against;
     console.log('  ' + row.label.padEnd(46) + (a ? [
       pct(a.type).padEnd(6), pct(a.letters).padEnd(9), pct(a.lettersWithStrength).padEnd(11),
-      pct(a.enneagram).padEnd(7), pct(a.bigFiveBands).padEnd(7), a.bigFiveMeanScoreDiff.toFixed(1).padEnd(8),
+      pct(a.bigFiveBands).padEnd(7), a.bigFiveMeanScoreDiff.toFixed(1).padEnd(8),
       pct(a.character).padEnd(7),
-    ].join('') : '(one run: nothing to compare)'.padEnd(63)) +
+    ].join('') : '(one run: nothing to compare)'.padEnd(56)) +
       (row.cost === null ? 'unpriced' : '$' + row.cost.toFixed(4)).padEnd(9) +
       String(Math.round(row.thinking)).padEnd(10) + row.failed + ' of ' + row.runs);
   }

@@ -1820,8 +1820,8 @@ try {
   // frameworks — the price and the running time were in it briefly and came
   // out again, so they are not asserted here.
   //
-  // Four frameworks, not six. Enneagram and attachment style are still in the
-  // report and are still named on the page further down; they came out of this
+  // Four frameworks, not five. Attachment style is still in the report and is
+  // still named on the page further down; they came out of this
   // line because a lede that lists everything reads as a specification rather
   // than a claim. "and other insights" is doing that work now, so the check
   // asserts the four that are named rather than every framework that exists.
@@ -3915,9 +3915,32 @@ try {
   check('and under it one locked block offering the full report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only the card that holds the controls',
-    freeState.sections.length === 1 && /confidence-card/.test(freeState.sections[0]),
+  check('no written section is on the page — only "Beyond your card" and the card that holds the controls',
+    freeState.sections.length === 2 && /beyond-card/.test(freeState.sections[0]) && /confidence-card/.test(freeState.sections[1]),
     JSON.stringify(freeState.sections));
+  // "Beyond your card": the card's other lines, between the card and the
+  // unlock box, read from the card the link carries.
+  const beyond = await page.evaluate(() => {
+    const panel = document.querySelector('#profile-body .beyond-card');
+    const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
+    const locked = document.querySelector('#profile-body .full-report-locked');
+    const text = panel ? panel.innerText : '';
+    const strip = v => String(v || '').replace(/\s*\(tentative\)\s*$/i, '');
+    return {
+      columns: panel ? panel.querySelectorAll('.beyond-col').length : 0,
+      beforeUnlock: Boolean(panel && locked && (panel.compareDocumentPosition(locked) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      lines: ['attachment', 'conflictStyle', 'rhythm', 'energy', 'workStyle'].every(key =>
+        !card[key] || text.toLowerCase().includes(strip(card[key]).toLowerCase())),
+      lists: ['relationshipStrengths', 'relationshipWeaknesses', 'careerStrengths', 'careerWeaknesses']
+        .every(key => (card[key] || []).every(item => text.includes(item))),
+      tentative: panel ? panel.querySelectorAll('.beyond-tag').length : 0,
+      saysLink: /compatibility link/.test(text),
+    };
+  });
+  check('a free report shows "Beyond your card" in three columns, between the card and the unlock box',
+    beyond.columns === 3 && beyond.beforeUnlock && beyond.saysLink, JSON.stringify(beyond));
+  check('with every line and list the link carries, and the guesses tagged tentative rather than worded so',
+    beyond.lines && beyond.lists && beyond.tentative >= 2, JSON.stringify(beyond));
   check('the roast is not on a free page at all', freeState.roast === 0);
   check('the block names every explanation and every premium section the unlock opens',
     JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));
@@ -3935,7 +3958,7 @@ try {
     !freeReport.essence.why && freeState.stored.explained !== true,
     Object.keys(freeReport).join(','));
   check('while the card carries every conclusion the card face shows',
-    Boolean(freeReport.mbti.type && freeReport.enneagram.type && freeReport.essence.character &&
+    Boolean(freeReport.mbti.type && !freeReport.enneagram && freeReport.essence.character &&
       freeReport.cardHighlights && Number.isFinite(freeReport.bigFive.openness.score) &&
       freeReport.card && freeReport.card.name),
     JSON.stringify({ mbti: freeReport.mbti.type, character: freeReport.essence.character }));
@@ -4335,8 +4358,8 @@ try {
       return Boolean(card) && !card.hidden &&
         (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }));
-  check('it carries the character, the enneagram and a summary',
-    /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
+  check('it carries the character and a summary, and no Enneagram',
+    /Bruce Banner/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
     /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
@@ -4472,8 +4495,8 @@ try {
       return Boolean(card) && !card.hidden &&
         (card.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     }));
-  check('it carries the character, the enneagram and a summary',
-    /Bruce Banner/.test(cardText) && /9w1/.test(cardText) &&
+  check('it carries the character and a summary, and no Enneagram',
+    /Bruce Banner/.test(cardText) && !/Enneagram|9w1/i.test(cardText) &&
     /Mock card summary, sentence one/.test(cardText), cardText.replace(/\s+/g, ' ').slice(0, 120));
   // The four-letter code is gone: the row below it spells the same type out and
   // says how firmly each letter was picked, so printing ENFJ above it was the
@@ -4490,26 +4513,6 @@ try {
   check('each MBTI letter carries how strongly it leans',
     (cardText.match(/slight|moderate|clear/g) || []).length >= 4,
     JSON.stringify(cardText.match(/slight|moderate|clear/g)));
-  // The type's own fixed definition (docs/copy.js's ENNEAGRAM_DESCRIPTIONS),
-  // not a personalised reading — sits under the nickname in the Enneagram
-  // block, one sentence, so the badge and the nickname mean something to a
-  // reader who has never heard of the Enneagram.
-  check('the Enneagram box carries a one-sentence description of the type',
-    await page.evaluate(() => {
-      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
-      const enneagram = stats.find(s => /Enneagram/i.test(s.querySelector('.pc-lab').textContent));
-      const desc = enneagram && enneagram.querySelector('.pc-desc');
-      return Boolean(desc) && desc.textContent.trim().length > 0 &&
-        desc.compareDocumentPosition(enneagram.querySelector('.pc-sub')) === Node.DOCUMENT_POSITION_PRECEDING;
-    }), cardText.replace(/\s+/g, ' ').slice(0, 260));
-  check('the description matches the type shown, not a different one',
-    await page.evaluate(() => {
-      const stats = [...document.querySelectorAll('#psyche-card .pc-stat')];
-      const enneagram = stats.find(s => /Enneagram/i.test(s.querySelector('.pc-lab').textContent));
-      const type = enneagram.querySelector('.pc-big').textContent.trim().charAt(0);
-      const desc = enneagram.querySelector('.pc-desc').textContent.trim();
-      return desc === window.PsycheCopy.ENNEAGRAM_DESCRIPTIONS[type];
-    }));
   // Whole sentences only. Truncating to a character count and appending an
   // ellipsis put a visible "…" on the card and left the reader with a thought
   // that stops halfway; a shorter complete passage is the better trade.
@@ -4551,7 +4554,7 @@ try {
     const rows = [...document.querySelectorAll('#psyche-card .pc-trait')];
     return rows.length === 4 && rows.every(row => row.scrollWidth <= row.clientWidth + 1);
   }));
-  // The box is stretched to match the taller MBTI/Enneagram blocks beside it
+  // The box is stretched to match the taller MBTI block beside it
   // (grid rows default to align-items: stretch); the four rows should use
   // that height rather than sitting bunched at the top with empty space
   // below them, so the last row's bottom edge should land near the box's,
@@ -4633,25 +4636,21 @@ try {
       const style = getComputedStyle(document.querySelector('#psyche-card-full .pc-letters'));
       return style.display === 'grid' && style.gridTemplateColumns.split(' ').length === 2;
     }));
-  // With three stat boxes, the narrow card's two-column grid otherwise leaves
-  // Big Five as the odd one, orphaned alone at half the card's width on row
-  // two — reported from a real phone. It should span the full row instead.
   // Reported from a real phone: on a narrow card, Big Five used to drop to
-  // its own row at half the card's width. All three now stay three-across,
-  // with each box free to grow taller instead of the row losing a column.
-  check('type, Enneagram and Big Five stay in one row on a narrow card',
+  // its own row at half the card's width. Both stay side by side, with each
+  // box free to grow taller instead of the row losing a column.
+  check('type and Big Five stay in one row on a narrow card',
     await page.evaluate(() => {
       const card = document.querySelector('#psyche-card-full');
       card.classList.add('pc-narrow');
       const stats = [...card.querySelectorAll('.pc-stats .pc-stat')];
       const tops = stats.map(s => Math.round(s.getBoundingClientRect().top));
-      const ok = stats.length === 3 && tops.every(t => Math.abs(t - tops[0]) <= 1);
+      const ok = stats.length === 2 && tops.every(t => Math.abs(t - tops[0]) <= 1);
       card.classList.remove('pc-narrow');
       return ok;
     }));
-  // Long single words ("Enneagram" in the label, "Conscientiousness" and
-  // "Agreeableness" among the trait names) have nowhere to wrap at a
-  // three-narrow-column width unless they can break inside the word — without
+  // Long single words ("Conscientiousness" and "Agreeableness" among the
+  // trait names) have nowhere to wrap at a narrow column width unless they can break inside the word — without
   // that they overflowed straight past their own box into the score or the
   // stat beside them.
   check('long one-word labels and trait names wrap instead of overflowing on a narrow card',
@@ -6278,29 +6277,9 @@ try {
   check('the "analysed by" line is no longer inside the report body',
     !/Analysed by/.test(await page.locator('#profile-body').innerText()));
 
-  // ---- Enneagram: a short second lens right after MBTI ----
-  check('Enneagram comes directly after MBTI, before Interests',
-    at('MBTI') >= 0 && at('Enneagram') === at('MBTI') + 1 && at('Enneagram') < at('Interests'),
-    order.join(' | '));
-  check('the Enneagram heading names the type, wing and nickname the mock set',
-    (await page.locator('#profile-body h2', { hasText: 'Enneagram' }).innerText()).trim() ===
-      'Enneagram: 9w1 The Peacemaker',
-    await page.locator('#profile-body h2', { hasText: 'Enneagram' }).innerText());
-  const enneagramCard = page.locator('#profile-body .section-card', { has: page.locator('h2', { hasText: 'Enneagram' }) });
-  check('it shows a confidence line the same way MBTI does',
-    /Confidence: moderate/.test(await enneagramCard.locator('.card-sub').innerText()));
-  const enneagramText = await enneagramCard.innerText();
-  check('it explains the core type itself, not just the evidence for it',
-    /type nine centres on/.test(enneagramText));
-  check('it separately explains what the wing specifically adds',
-    /one-wing specifically adds/.test(enneagramText));
-  check('the explanation runs to five or six sentences, not two or three',
-    (await enneagramCard.locator('p:not([class])').innerText()).split(/(?<=[.!?])\s+/).length >= 5,
-    await enneagramCard.locator('p:not([class])').innerText());
-  check('it carries the caveat too',
-    /different lens from the MBTI/.test(enneagramText));
-  check('it stays short: no per-axis breakdown the way MBTI has one',
-    (await enneagramCard.locator('.axis').count()) === 0);
+  // ---- no Enneagram: it is gone from the app ----
+  check('the report has no Enneagram section, and Interests follows MBTI',
+    at('MBTI') >= 0 && !/Enneagram/i.test(await page.locator('#profile-body').innerText()) && at('Interests') > at('MBTI'));
 
   // ---- the character opener ----
   check('the profile opens on a character', await page.locator('.essence-noun').isVisible());
@@ -6623,7 +6602,7 @@ try {
     coverStream.length + ' bytes of cover stream');
   // The card's own rows, so a cover that kept the hero and quietly lost
   // everything under it does not pass.
-  for (const label of ['MBTI', 'ENNEAGRAM', 'BIG FIVE', 'VALUES', 'RECEIVES LOVE AS']) {
+  for (const label of ['MBTI', 'BIG FIVE', 'VALUES', 'RECEIVES LOVE AS']) {
     check('the card prints its ' + label + ' row on the cover', coverHas(label));
   }
   // The report proper starts overleaf. A cover that ran into the first section
@@ -7029,12 +7008,8 @@ try {
     !pdfText.includes('(Worth changing)') && !pdfText.includes('(Leave alone)') &&
     !pdfText.includes('(Where this ends up)'),
     String(pdfText.match(/\((?:Who you actually read|What Instagram thinks you are|Worth changing|Leave alone|Where this ends up)\)/g)));
-  check('the PDF carries the Enneagram type, wing and nickname the page shows',
-    pdfText.includes('(Enneagram: 9w1 The Peacemaker)'));
-  check('the PDF explains the type and the wing, not just the evidence for them',
-    /type nine centres on/.test(pdfText) && /one-wing specifically adds/.test(pdfText));
-  check('the PDF carries the Enneagram caveat',
-    /different lens from the MBTI/.test(pdfText));
+  check('the PDF carries no Enneagram',
+    !/Enneagram/i.test(pdfText));
   // Trimmed from the behavioural read and moved off the profile page entirely
   // — the PDF mirrors the page, so neither belongs in the report any more.
   check('the PDF no longer carries the dropped attention facet',
@@ -9898,11 +9873,11 @@ try {
     await page.locator('#link-contents .card-head h2').innerText());
   check('it explains only the card is shared, not the full report',
     /the compact card/i.test(await page.locator('#link-contents .card-sub').innerText()));
-  check('it shows the card headline and summary that are actually in the link',
+  check('it shows the card headline that is actually in the link, and says what else travels with it',
     await page.evaluate(() => {
       const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
       const text = document.querySelector('#link-contents').innerText;
-      return text.includes(card.headline) && text.includes(card.summary);
+      return text.includes(card.headline) && /conflict style/.test(text) && !/Enneagram/i.test(text);
     }));
   check('it lists the card\'s interests as tags',
     (await page.locator('#link-contents .tag').count()) >= 1);

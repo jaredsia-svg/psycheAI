@@ -16,12 +16,17 @@
 (function (root) {
   'use strict';
 
-  // K4 widened the card; K3 codes still decode, they simply arrive without the
-  // fields that did not exist when they were made. Someone may have a code
-  // saved as a JPEG or printed on something, and silently refusing to read it
-  // would be a worse failure than a slightly thinner comparison.
-  const VERSION = 'K4';
-  const READABLE = ['K4', 'K3'];
+  // K5 reshaped the card around what the three kinds of comparison turn on:
+  // it gained the conflict style, what holds them back at work, their top
+  // motivators and their patterns' names, and dropped the Enneagram (gone from
+  // the app), the summary (the headline and the rest say it) and the
+  // attachment's reasoning (the most identifying line, in a link anyone can
+  // decode). Values and beliefs travel as the one list the card shows. K4 and
+  // K3 links still decode, arriving without the fields they never had —
+  // silently refusing a link someone saved would be a worse failure than a
+  // slightly thinner comparison.
+  const VERSION = 'K5';
+  const READABLE = ['K5', 'K4', 'K3'];
 
   // Hard caps. The prompt asks for these lengths; this enforces them, because
   // a schema cannot express "up to 8 items" and an over-long card produces a
@@ -38,45 +43,40 @@
   const CAPS = {
     name: 24,
     headline: 60,
-    summary: 120,
-    enneagram: 8,
-    attachment: 38,
-    attachmentWhy: 95,
-    rhythm: 48,
-    energy: 60,
+    attachment: 52,
+    conflictStyle: 48,
+    rhythm: 56,
+    energy: 70,
     workStyle: 75,
     phrase: 34,
+    pattern: 40,
     lists: {
       interests: 4,
+      // Values & Beliefs, one list, as on the card.
       values: 3,
-      beliefs: 2,
       loveReceiving: 2,
       loveGiving: 1,
       relationshipStrengths: 2,
       relationshipWeaknesses: 2,
       careerStrengths: 2,
+      careerWeaknesses: 2,
     },
+    motivators: 3,
+    patterns: 3,
   };
+  // Schwartz's ten, the only words the motivators field may hold.
+  const MOTIVATORS = ['self-direction', 'stimulation', 'hedonism', 'achievement', 'power',
+    'security', 'conformity', 'tradition', 'benevolence', 'universalism'];
 
   const TRAIT_KEYS = ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'];
 
-  // Beyond about this many characters a QR code needs so many modules that
-  // phone cameras start to struggle at normal screen sizes.
-  //
-  // This was 1800 for a long time and 1800 was never true. Measured against
-  // the scan ladder in tools/uitest.mjs — redraw at 450px and 300px, and sit
-  // the code in a 480p and a 720p camera frame — a payload of 656 (QR version
-  // 18, 89 modules) passes everything, 721 (version 19, 93 modules) still
-  // does, and 761 (version 20, 97 modules) starts dropping frames. Past that
-  // it is erratic rather than progressively worse: 838 passed and 924 failed,
-  // because whether a given code survives downscaling depends on its own bit
-  // pattern. Erratic is the worst kind of limit to ship, so the budget is set
-  // where results were still solid.
-  //
-  // The old value meant the "dense, use the link instead" warning could never
-  // fire — 1800 characters is roughly QR version 33, which no phone reads off
-  // a screen at any size.
-  const COMFORTABLE_PAYLOAD = 730;
+  // The longest a link's payload should run. It was 730 while the card also
+  // travelled as a QR code, the most a phone camera read reliably off a
+  // screen; the QR is gone and a link has no such ceiling, but a short one
+  // still survives being pasted through chat apps and is quicker to share, so
+  // the budget stays — at 1,000, which K5's wider card fits with room (a full
+  // sample card is about 760).
+  const COMFORTABLE_PAYLOAD = 1000;
 
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const B64_INDEX = (() => {
@@ -125,7 +125,16 @@
 
   // ---------- shaping ----------
 
-  const text = (value, max) => String(value === null || value === undefined ? '' : value).replace(/\s+/g, ' ').trim().slice(0, max);
+  // Cut to the cap at a word boundary where there is one, so a line that runs
+  // a few characters long loses its last word rather than half of it — these
+  // lines are read by people now, under the card, not only by the model.
+  const text = (value, max) => {
+    const clean = String(value === null || value === undefined ? '' : value).replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    const cut = clean.slice(0, max);
+    const space = cut.lastIndexOf(' ');
+    return (space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:–—-]+$/, '');
+  };
 
   function phrases(value, limit) {
     if (!Array.isArray(value)) return [];
@@ -145,15 +154,13 @@
     const source = card || {};
     const five = source.bigFive || {};
     const out = {
-      v: 4,
+      v: 5,
       name: text(source.name, CAPS.name) || 'They',
       headline: text(source.headline, CAPS.headline),
-      summary: text(source.summary, CAPS.summary),
       mbti: text(source.mbti, 12),
-      enneagram: text(source.enneagram, CAPS.enneagram),
       bigFive: {},
       attachment: text(source.attachment, CAPS.attachment),
-      attachmentWhy: text(source.attachmentWhy, CAPS.attachmentWhy),
+      conflictStyle: text(source.conflictStyle, CAPS.conflictStyle),
       rhythm: text(source.rhythm, CAPS.rhythm),
       energy: text(source.energy, CAPS.energy),
       workStyle: text(source.workStyle, CAPS.workStyle),
@@ -161,8 +168,18 @@
     };
     for (const key of TRAIT_KEYS) out.bigFive[key] = score(five[key]);
     for (const key of Object.keys(CAPS.lists)) {
-      out[key] = phrases(source[key], CAPS.lists[key]);
+      // A card from before values and beliefs were one list brings its
+      // beliefs in after its values.
+      const list = key === 'values' && Array.isArray(source.beliefs)
+        ? (Array.isArray(source.values) ? source.values : []).concat(source.beliefs) : source[key];
+      out[key] = phrases(list, CAPS.lists[key]);
     }
+    out.motivators = (Array.isArray(source.motivators) ? source.motivators : [])
+      .map(m => String(m || '').toLowerCase().trim()).filter((m, i, all) => MOTIVATORS.includes(m) && all.indexOf(m) === i)
+      .slice(0, CAPS.motivators);
+    out.patterns = (Array.isArray(source.patterns) ? source.patterns : [])
+      .map(item => text(item && typeof item === 'object' ? item.name : item, CAPS.pattern)).filter(Boolean)
+      .slice(0, CAPS.patterns);
     return out;
   }
 
@@ -181,11 +198,13 @@
   // shape() is still the canonical form, and unpack() restores it exactly, so
   // nothing downstream of decodeCard knows this happened.
   const PACKED_KEYS = {
-    name: 'n', headline: 'h', summary: 's', mbti: 'm', enneagram: 'g',
-    attachment: 'a', attachmentWhy: 'w', rhythm: 'r', energy: 'y', workStyle: 'k', confidence: 'c', interests: 'i', values: 'v', beliefs: 'f',
-    loveReceiving: 'lr', loveGiving: 'lg', careerStrengths: 'cs',
-    relationshipStrengths: 'rs', relationshipWeaknesses: 'rw',
+    name: 'n', headline: 'h', mbti: 'm',
+    attachment: 'a', conflictStyle: 'x', rhythm: 'r', energy: 'y', workStyle: 'k', confidence: 'c', interests: 'i', values: 'v',
+    loveReceiving: 'lr', loveGiving: 'lg', careerStrengths: 'cs', careerWeaknesses: 'cw',
+    relationshipStrengths: 'rs', relationshipWeaknesses: 'rw', patterns: 'p',
   };
+  // A K4 link's beliefs, packed under their old key; shape() folds them into values.
+  const LEGACY_KEYS = { beliefs: 'f' };
 
   /** Canonical card → the short-keyed object that actually gets compressed. */
   function pack(shaped) {
@@ -197,17 +216,20 @@
       if (value === '' || (Array.isArray(value) && !value.length)) continue;
       out[short] = value;
     }
-    // Positional, so the five trait names cost nothing.
+    // Positional, so the five trait names cost nothing, and the motivators by
+    // their place in Schwartz's ten.
     out.b = TRAIT_KEYS.map(key => shaped.bigFive[key]);
+    if ((shaped.motivators || []).length) out.mv = shaped.motivators.map(m => MOTIVATORS.indexOf(m));
     return out;
   }
 
   /** The inverse: short-keyed wire object → what shape() would have produced. */
   function unpack(packed) {
     const out = {};
-    for (const [long, short] of Object.entries(PACKED_KEYS)) {
+    for (const [long, short] of Object.entries(Object.assign({}, PACKED_KEYS, LEGACY_KEYS))) {
       if (short in packed) out[long] = packed[short];
     }
+    if (Array.isArray(packed.mv)) out.motivators = packed.mv.map(i => MOTIVATORS[i]).filter(Boolean);
     if (Array.isArray(packed.b)) {
       out.bigFive = {};
       TRAIT_KEYS.forEach((key, index) => { out.bigFive[key] = packed.b[index]; });
@@ -249,5 +271,5 @@
     return match ? match[1] : raw.replace(/\s+/g, '');
   }
 
-  root.PsycheCard = { encodeCard, decodeCard, extractPayload, shape, pack, unpack, CAPS, COMFORTABLE_PAYLOAD, VERSION, READABLE };
+  root.PsycheCard = { encodeCard, decodeCard, extractPayload, shape, pack, unpack, CAPS, COMFORTABLE_PAYLOAD, VERSION, READABLE, MOTIVATORS };
 })(typeof window !== 'undefined' ? window : globalThis);
