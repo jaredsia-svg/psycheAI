@@ -533,10 +533,10 @@ async function handleAnalyse(request, response) {
   // keyed on the digest *and* the card it explains, so a report written to
   // explain one card is never served to a reader holding another.
   //
-  // A Deeper read is the one exception to the 80,000-character line, and only
-  // on a paid unlock: the reader chose it, has paid, and was told the card
-  // will be redrawn from it. It is bounded by its own 300,000 instead — see
-  // DEEP_LIMITS in docs/digest.js and the two caps that price it.
+  // The premium read is the one exception to the 80,000-character line, and
+  // only on a paid unlock: the card's digest with the sources added at the
+  // unlock on top. It is bounded by its own 160,000 instead — see "the
+  // premium read" in docs/digest.js and the two caps that price it.
   const deep = full && body.deep === true;
   const sent = Digest.forModel(body.digest, { deep });
   // The backstop for the one thing forModel cannot bound by construction —

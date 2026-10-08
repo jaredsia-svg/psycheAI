@@ -46,9 +46,10 @@
   const KEYS = {
     profile: 'psycheai_profile',
     digest: 'psycheai_digest',
-    // The premium read's digest, built beside the standard one at upload and
-    // kept only on this device — see DEEP_LIMITS in docs/digest.js. Listed
-    // here so Delete everything takes it with the rest.
+    // A second, wider digest that uploads used to build and keep beside the
+    // standard one. Nothing writes it now — the premium read starts from the
+    // standard digest (see premiumDigestFrom) — and one left over from an
+    // older visit is removed at start-up. Listed so Delete everything does too.
     deepDigest: 'psycheai_digest_deep',
     history: 'psycheai_history',
     // Written the moment a payment clears and before the analysis is asked
@@ -125,6 +126,7 @@
     remove(key) { try { localStorage.removeItem(key); } catch (error) { /* nothing to drop */ } },
     clearAll() { for (const key of Object.values(KEYS)) localStorage.removeItem(key); },
   };
+  store.remove(KEYS.deepDigest);
 
   // ---------- how many analyses this browser has already had ----------
   //
@@ -181,28 +183,6 @@
     return false;
   }
 
-  /**
-   * The premium read's digest, built from the archive in memory with the same
-   * review choices as the standard one, and kept beside it. Free: it is built
-   * in the browser and sent only on an unlock. A device with no room left for
-   * it simply goes without — the unlock then widens the standard digest
-   * instead (premiumDigestFrom).
-   */
-  function saveDeepDigest(signals, decision) {
-    let deep = null;
-    try {
-      if (signals) {
-        deep = Digest.build(signals, { includeMessages: true, deep: true });
-        if (decision) applyReviewDecision(deep, decision);
-      }
-    } catch (error) { deep = null; }
-    state.deepDigest = deep;
-    if (!deep || !store.write(KEYS.deepDigest, deep)) {
-      state.deepDigest = null;
-      store.remove(KEYS.deepDigest);
-    }
-  }
-
   /** True when the next analysis is past this browser's free allowance. */
   function mustPayForAnalysis() {
     return runCount() >= freeAnalyses;
@@ -211,7 +191,6 @@
   const state = {
     profile: store.read(KEYS.profile, null),
     digest: store.read(KEYS.digest, null),
-    deepDigest: store.read(KEYS.deepDigest, null),
     // The parsed Instagram export itself, in memory only and only for as long
     // as this page lives. It is what "Add / change data & re-run analysis"
     // needs to add a Google or Facebook export without asking for the
@@ -2674,7 +2653,6 @@
       state.digest = digest;
       pendingDataSourceReads = {};
       writeDigest(digest);
-      saveDeepDigest(state.signals, decision);
       await runAnalysis(digest, auth);
       return;
     }
@@ -3913,7 +3891,6 @@
     // session without asking for the Instagram export again.
     state.signals = signals;
     writeDigest(digest);
-    saveDeepDigest(signals, decision);
     await runAnalysis(digest, uploadAuth);
   }
 
@@ -4385,7 +4362,7 @@
         google: typeof collected.google === 'object' ? collected.google : undefined,
         facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
         whatsapp: typeof collected.whatsapp === 'object' ? collected.whatsapp : undefined,
-      });
+      }, typeof collected.instagram === 'object' ? priorSupplements || {} : null);
       // Anything other than Back is terminal: the run happened, the payment
       // was declined, the reader pressed Escape, or something failed and has
       // already written its own message to #profile-alert.
@@ -4393,7 +4370,9 @@
     }
   }
 
-  async function rerunWithAdditionalData(extraSupplements) {
+  // `freshInstagram` is set — to the supplements the replaced export had —
+  // only when an Instagram export was loaded again on the way here.
+  async function rerunWithAdditionalData(extraSupplements, freshInstagram) {
     // Once premium is unlocked, "Add / change data & re-run" stops being the
     // US$2 free-only re-run: the four paid sections are sitting on evidence
     // this new data is about to make stale, so the US$5 unlock price now
@@ -4436,9 +4415,20 @@
     }
 
     // Once premium is unlocked the run this pays for writes the full report
-    // too, so what is reviewed and sent is the premium read, with each source
-    // given its share; the standard digest beside it takes the same decisions.
-    const premium = alreadyUnlocked ? premiumDigestFrom(extraSupplements, true) : null;
+    // too, so what is reviewed and sent is the premium read: the card's own
+    // digest with the sources added here on top (premiumDigestFrom), or the
+    // standard digest of an Instagram export loaded again with them. The
+    // standard digest beside it takes the same decisions.
+    let premium = null;
+    if (alreadyUnlocked) {
+      const adding = Object.values(extraSupplements || {}).some(Boolean);
+      let base = state.digest || digest;
+      if (freshInstagram && signals) {
+        base = adding ? Digest.build(Object.assign({}, signals, { supplements: Object.assign({}, freshInstagram) }), { includeMessages: true }) : digest;
+      }
+      premium = premiumDigestFrom(base, extraSupplements);
+      if (!premium || !premium.__deep) premium = null;
+    }
 
     let decision;
     try {
@@ -4492,7 +4482,6 @@
 
     state.digest = digest;
     writeDigest(digest);
-    if (state.signals) saveDeepDigest(state.signals, decision);
     // Whatever was pending is now either committed into digest above or
     // superseded by it — see pendingDataSourceReads' own declaration.
     pendingDataSourceReads = {};
@@ -7507,8 +7496,9 @@
    * popout the report page uses, listing every source with a tick for what is
    * already loaded, so a reader can add Facebook (or any source added later)
    * before paying. It hands back the premium read (premiumDigestFrom): with
-   * nothing changed, the one kept at upload, and the payment sheet follows
-   * directly; with something added or replaced, rebuilt and reviewed first,
+   * nothing changed, the standard digest the card was read from, and the
+   * payment sheet follows directly; with something added or replaced, that
+   * digest with the new sources on top, reviewed first,
    * and the run it pays for rewrites the card as well. Back abandons the
    * unlock (null).
    */
@@ -7543,8 +7533,10 @@
       };
       // Two digests come out of this. The standard one — what every later
       // free run reads — takes any source added here; the premium read is
-      // what the full report is written from, with each source given its
-      // share (see "the premium read" in docs/digest.js).
+      // what the full report is written from: the standard digest the card
+      // was read from, untouched, with the added sources on top (see "the
+      // premium read" in docs/digest.js).
+      const adding = Object.keys(extra).filter(key => extra[key]);
       let digest = state.digest;
       let premium = null;
       try {
@@ -7561,64 +7553,67 @@
             return null;
           }
         }
-        premium = premiumDigestFrom(extra, anyFresh);
+        // The base: the card's own digest — or, for an Instagram export loaded
+        // again here, the standard digest of that export with the sources it
+        // already had, before anything added here.
+        let base = state.digest;
+        if (fresh('instagram')) {
+          base = adding.length ? Digest.build(Object.assign({}, state.signals, { supplements: Object.assign({}, priorSupplements) }),
+            { includeMessages: true }) : digest;
+        }
+        premium = premiumDigestFrom(base, extra);
       } catch (error) {
-        // A stored digest too old or too odd to widen: with nothing new, the
-        // unlock still goes ahead on the standard digest as it is.
-        if (!anyFresh && state.digest) return state.digest;
         flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
         return null;
       }
       if (!premium) { flash('#profile-alert', TEXT.rerunNeedsInstagram); return null; }
-      // Nothing new: the payment sheet follows directly. What is sent is the
-      // premium read kept at upload, which was built under that upload's
-      // review, or the standard digest it was built beside.
-      if (!anyFresh) {
-        premium.__standard = state.digest;
-        return premium;
-      }
+      // Nothing new: the payment sheet follows directly, and the full report
+      // is written from exactly the digest the card was read from.
+      if (!anyFresh) return premium;
       // Something added or replaced: reviewed as what will be sent. Payment is
       // the next step whatever happens here: this review sits inside the
       // unlock itself.
-      const decision = await askReview(premium, { paymentDue: true, deep: true });
+      const decision = await askReview(premium, { paymentDue: true, deep: Boolean(premium.__deep) });
       if (decision === REVIEW_BACK) continue;
       if (!decision) return null;
-      if (digest !== state.digest) applyReviewDecision(digest, decision);
+      if (digest !== state.digest && digest !== premium) applyReviewDecision(digest, decision);
       applyReviewDecision(premium, decision);
       // Carried with it, so a successful unlock keeps the standard digest
-      // up to date with any source added here, while the premium read is
-      // kept beside it. Not cleared here: the payment sheet comes next, and a
-      // reader who cancels it and comes back must find what they loaded
-      // still loaded; runPremiumAnalysis clears it once the unlock is through.
-      premium.__standard = digest;
-      premium.__fresh = true;
+      // up to date with any source added here. Not cleared here: the payment
+      // sheet comes next, and a reader who cancels it and comes back must
+      // find what they loaded still loaded; runPremiumAnalysis clears it once
+      // the unlock is through. (An Instagram export loaded again with nothing
+      // else is simply the new standard digest, and goes as one.)
+      if (premium.__deep) {
+        premium.__standard = digest;
+        premium.__fresh = true;
+      }
       return premium;
     }
   }
 
   /**
-   * The digest the full premium report reads: up to 150,000 characters,
-   * shared between the sources (docs/digest.js, "the premium read").
+   * The digest the full premium report reads: `base` — the standard digest,
+   * up to 80,000 characters — with any source in `extra` merged on top, to a
+   * line of 160,000 (docs/digest.js, "the premium read").
    *
-   * Rebuilt from the export in memory only when something was just added —
-   * a review follows that. Otherwise it is the premium read kept at upload,
-   * built under the decisions of that upload's review, or failing that the
-   * standard digest widened to the premium line. A source added here is
-   * merged in, a fresh copy replacing an older one, and takes its share.
+   * Nothing in the base is trimmed: Instagram and every source it already
+   * carried are marked protected, and only the sources added here share the
+   * room above it. A source loaded again replaces its older copy and counts
+   * as added. With nothing to add, `base` itself comes back, unchanged.
    */
-  function premiumDigestFrom(extra, rebuild) {
-    if (rebuild && state.signals) return Digest.build(state.signals, { includeMessages: true, deep: true });
-    const base = state.deepDigest || state.digest;
+  function premiumDigestFrom(base, extra) {
     if (!base) return null;
-    const copy = JSON.parse(JSON.stringify(base));
     const adding = {};
-    for (const [key, value] of Object.entries(extra || {})) {
-      if (!value) continue;
-      adding[key] = value;
+    for (const [key, value] of Object.entries(extra || {})) if (value) adding[key] = value;
+    if (!Object.keys(adding).length) return base;
+    const copy = JSON.parse(JSON.stringify(base));
+    for (const key of Object.keys(adding)) {
       delete copy[key];
       if (copy.coverage && Array.isArray(copy.coverage.sources)) copy.coverage.sources = copy.coverage.sources.filter(s => s !== key);
     }
-    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
+    const protect = ['instagram'].concat(['google', 'facebook', 'whatsapp'].filter(key => copy[key]));
+    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true, protect });
     out.__deep = true;
     return out;
   }
@@ -7752,14 +7747,12 @@
       // shared pendingPremiumDigest variable again: a reopened dialog resets
       // that, and reading it here would be one stray caller away from a null.
       if (deepRead) {
-        // The premium read is kept beside the standard one, never in its
-        // place: every later free run reads the standard one, and the server
-        // would cut a premium one back to its line anyway.
+        // The premium read is not kept: every later free run reads the
+        // standard digest, which takes the sources added here, and the next
+        // unlock starts from it again.
         const standard = paidDigest.__standard;
         delete paidDigest.__standard;
         delete paidDigest.__fresh;
-        state.deepDigest = paidDigest;
-        if (!store.write(KEYS.deepDigest, paidDigest)) { state.deepDigest = null; store.remove(KEYS.deepDigest); }
         if (dataChanged && standard && standard !== state.digest) {
           state.digest = standard;
           writeDigest(standard);
@@ -8264,7 +8257,6 @@
     store.clearAll();
     state.profile = null;
     state.digest = null;
-    state.deepDigest = null;
     state.signals = null;
     // Back to the page a new reader starts on, from its top.
     show('welcome');

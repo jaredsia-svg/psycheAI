@@ -8889,8 +8889,8 @@ try {
   }, { timeout: 30000 });
   {
     const unlockBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-    check('an unlock with nothing new reads the premium digest, still anchored to the card, so the card is not redrawn',
-      unlockBody.product === 'unlock' && unlockBody.deep === true && Boolean(unlockBody.anchor),
+    check('an unlock with nothing new sends the card\'s own digest, anchored to the card, so the card is not redrawn',
+      unlockBody.product === 'unlock' && unlockBody.deep === undefined && Boolean(unlockBody.anchor),
       JSON.stringify({ product: unlockBody.product, deep: unlockBody.deep, anchor: Boolean(unlockBody.anchor) }));
   }
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
@@ -9207,18 +9207,15 @@ try {
     bareBodies[0].promoCode === UITEST_PROMO &&
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
     Boolean(bareBodies[0].anchor.card) && bareBodies[0].anchor.summary === undefined &&
-    bareBodies[0].deep === true &&
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor', 'deep'].includes(k)),
+      'product', 'anchor'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
-  // The premium read: the same sources the free card was read from moments
-  // before, with at least as much of each — never less.
+  // With nothing added, the premium read is the card's own digest: exactly
+  // what the free card was read from moments before.
   const cardRequest = JSON.parse(analyseBodies[analysesBeforeBareUnlock - 1]);
-  check('the unlock sends the premium read: the card\'s own sources, with at least as much of them',
+  check('the unlock with nothing added sends exactly the digest the card was read from',
     cardRequest.product !== 'unlock' && bareBodies.length === 1 &&
-    JSON.stringify(bareBodies[0].digest.coverage.sources) === JSON.stringify(cardRequest.digest.coverage.sources) &&
-    JSON.stringify(bareBodies[0].digest).length >= JSON.stringify(cardRequest.digest).length &&
-    bareBodies[0].digest.samples.captions.length >= cardRequest.digest.samples.captions.length,
+    JSON.stringify(bareBodies[0].digest) === JSON.stringify(cardRequest.digest),
     JSON.stringify({ card: JSON.stringify(cardRequest.digest).length,
       unlock: bareBodies[0] ? JSON.stringify(bareBodies[0].digest).length : null }));
   const afterBareUnlock = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')));
@@ -10186,10 +10183,10 @@ try {
   // every block has real content to lay out.
   // ---- the premium read, end to end ----
   //
-  // Built beside the standard digest at upload and kept on the device; read by
-  // every unlock — there is no option for it — under its own limit, with each
-  // source given its share; and kept beside the standard digest afterwards,
-  // never in its place.
+  // Nothing is built for it at upload: every unlock starts from the card's own
+  // standard digest — there is no option for it — sends it untouched when
+  // nothing is added, and puts a source added on the way on top of it, under
+  // its own limit. Not kept afterwards.
   {
     const dp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
     const deepBodies = [];
@@ -10207,13 +10204,12 @@ try {
       await answerReview(dp);
       await dp.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
       const kept = await dp.evaluate(() => {
-        const deep = JSON.parse(localStorage.getItem('psycheai_digest_deep') || 'null');
         const standard = JSON.parse(localStorage.getItem('psycheai_digest') || 'null');
-        return { deep: Boolean(deep && deep.__deep), standardPlain: Boolean(standard && !standard.__deep),
-          more: deep && standard ? deep.samples.captions.length >= standard.samples.captions.length : false };
+        return { deep: localStorage.getItem('psycheai_digest_deep') !== null, standardPlain: Boolean(standard && !standard.__deep),
+          captions: standard && standard.samples.captions, dms: standard && standard.directMessages && standard.directMessages.ownMessageSample };
       });
-      check('the upload keeps a premium digest on the device beside the standard one',
-        kept.deep && kept.standardPlain && kept.more, JSON.stringify(kept));
+      check('the upload keeps one summary only, the standard one',
+        !kept.deep && kept.standardPlain, JSON.stringify({ deep: kept.deep, standardPlain: kept.standardPlain }));
 
       // Google loaded on the way to the payment sheet, then Cancel: coming back
       // to the unlock finds it still loaded, with nothing to load again.
@@ -10262,14 +10258,17 @@ try {
       check('the paid run sends the premium digest, with Google in it and no card to anchor it — new data redraws the card',
         sentBody.deep === true && !sentBody.anchor && Boolean(sentBody.digest && sentBody.digest.google),
         JSON.stringify({ deep: sentBody.deep, anchor: Boolean(sentBody.anchor), google: Boolean(sentBody.digest && sentBody.digest.google) }));
+      check('and its Instagram part is the card\'s own digest, not a line of it trimmed',
+        JSON.stringify(sentBody.digest.samples.captions) === JSON.stringify(kept.captions) &&
+          JSON.stringify(sentBody.digest.directMessages.ownMessageSample) === JSON.stringify(kept.dms),
+        JSON.stringify({ sent: sentBody.digest.samples.captions.length, kept: kept.captions.length }));
       const after = await dp.evaluate(() => {
-        const deep = JSON.parse(localStorage.getItem('psycheai_digest_deep') || 'null');
         const standard = JSON.parse(localStorage.getItem('psycheai_digest') || 'null');
-        return { deep: Boolean(deep && deep.__deep && !deep.__standard && !deep.__fresh && deep.google),
-          standardPlain: Boolean(standard && !standard.__deep && standard.google) };
+        return { deep: localStorage.getItem('psycheai_digest_deep') !== null,
+          standardPlain: Boolean(standard && !standard.__deep && !standard.__standard && !standard.__fresh && standard.google) };
       });
-      check('afterwards the premium digest is kept beside the standard one, never in its place, both with Google',
-        after.deep && after.standardPlain, JSON.stringify(after));
+      check('afterwards only the standard digest is kept, and it has Google',
+        !after.deep && after.standardPlain, JSON.stringify(after));
       check('the premium read runs with no page errors', dpErrors.length === 0, dpErrors.join(' | '));
     } finally {
       await dp.close();

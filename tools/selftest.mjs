@@ -5223,30 +5223,36 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         merged.directMessages.ownMessageSample.length < filled.directMessages.ownMessageSample.length &&
         merged.directMessages.ownMessageSample.length >= filled.__fill.ownMessages,
       JSON.stringify({ channels: merged.google.topChannels.length, dms: merged.directMessages.ownMessageSample.length }));
-    const deepFilled = buildFilled(ig, { includeMessages: true, deep: true });
-    check('the Deeper read is not filled: it keeps its own caps',
-      !deepFilled.__fill && deepFilled.directMessages.ownMessageSample.length <= Digest.DEEP_LIMITS.messages);
   }
 
   // -- the premium read --
   //
-  // Built from the same signals at upload, with every list wider, held to its
-  // own 150,000-character line, shared between the sources, and paid for by
-  // its own two caps.
+  // The card's own standard digest, never trimmed, with sources added at the
+  // unlock merged on top to a 160,000-character line, the added sources
+  // sharing the room above it by weight, and paid for by its own two caps.
   {
-    const deepSignals = { ...worstSignals };
-    const deep = Digest.build(deepSignals, { includeMessages: true, deep: true });
-    const standard = Digest.build(deepSignals, { includeMessages: true });
-    check('a deeper read is marked as one, and the limits are back to standard after it',
-      deep.__deep === true && !standard.__deep && Digest.LIMITS.totalChars === DIG && Digest.LIMITS.messages === 270);
-    check('a premium read carries more of the reader\'s own words than the standard digest, in a far larger whole',
-      deep.directMessages.ownMessageSample.length > standard.directMessages.ownMessageSample.length &&
-        deep.samples.captions.length > standard.samples.captions.length &&
-        Digest.evidenceChars(deep) > Digest.evidenceChars(standard) * 1.6,
-      JSON.stringify({ dms: [standard.directMessages.ownMessageSample.length, deep.directMessages.ownMessageSample.length],
-        captions: [standard.samples.captions.length, deep.samples.captions.length] }));
-    // On an ordinary export, where the trim loop has nothing to do: the
-    // heaviest one above fills even the deeper line with captions and messages.
+    check('nothing builds a second, wider Instagram digest any more',
+      !('captions' in Digest.DEEP_LIMITS) && !('messages' in Digest.DEEP_LIMITS) &&
+        !Digest.build(worstSignals, { includeMessages: true, deep: true }).__deep);
+    check('the premium read\'s two calls each fit their own cost cap at its 160,000-character line',
+      Digest.DEEP_DIGEST_CHARS === 160000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
+        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS,
+      Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
+        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
+    check('and together cost no more than twenty-five cents',
+      Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP <= 0.25, String(Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP));
+
+    // -- its weights --
+    const S = Digest.SOURCE_SHARES;
+    check('only added sources have weights: WhatsApp 34, Google and Facebook 25 each',
+      JSON.stringify(S) === JSON.stringify({ whatsapp: 34, google: 25, facebook: 25 }), JSON.stringify(S));
+    const room = Digest.allocateShares({ google: 10000, facebook: 90000, whatsapp: 90000 }, S, 80000);
+    check('a source under its part keeps what it has, and the rest goes to the others by weight',
+      room.google === 10000 && Math.abs(room.facebook + room.whatsapp - 70000) <= 2 &&
+        Math.abs(room.whatsapp / room.facebook - 34 / 25) < 0.01, JSON.stringify(room));
+    const alone = Digest.allocateShares({ whatsapp: 200000 }, S, 80000);
+    check('a source added alone gets the whole room above the base', alone.whatsapp === 80000, JSON.stringify(alone));
+
     const google = {
       span: {}, counts: { watched: 900, youtubeSearches: 300, googleSearches: 900, browsed: 0, prompts: 0 },
       channels: new Map(Array.from({ length: 300 }, (_, i) => ['channel ' + i, 300 - i])),
@@ -5255,48 +5261,6 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       googleSearchTerms: new Map(Array.from({ length: 300 }, (_, i) => ['google search term ' + i, 300 - i])),
       googleSearches: [], domains: new Map(), geminiPrompts: [],
     };
-    const plainDeep = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false, deep: true });
-    const plainStandard = Digest.build({ ...signals, supplements: { google } }, { includeMessages: false });
-    check('and more of the other lists too, not only messages and captions',
-      plainDeep.google.topChannels.length === 100 && plainStandard.google.topChannels.length === 50 &&
-        plainDeep.google.topGoogleSearches.length === 140 && plainStandard.google.topGoogleSearches.length === 50 &&
-        plainDeep.google.videoTitleSample.length === 40 && plainStandard.google.videoTitleSample.length === 10,
-      JSON.stringify([plainStandard.google.topChannels.length, plainDeep.google.topChannels.length,
-        plainStandard.google.topGoogleSearches.length, plainDeep.google.topGoogleSearches.length]));
-    check('the heaviest export\'s premium read lands under its 150,000-character line, and well past 80,000',
-      Digest.DEEP_DIGEST_CHARS === 150000 && Digest.evidenceChars(deep) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(deep) > DIG * 1.6,
-      String(Digest.evidenceChars(deep)));
-    const sentDeep = Digest.forModel(deep, { deep: true });
-    check('a deeper read is sent whole when it is asked for as one',
-      sentDeep.directMessages.ownMessageSample.length === deep.directMessages.ownMessageSample.length &&
-        Digest.evidenceChars(sentDeep) <= Digest.DEEP_DIGEST_CHARS);
-    check('but cut to the standard line by anything that does not ask for it',
-      Digest.evidenceChars(Digest.forModel(deep)) <= DIG);
-    check('the deeper read\'s two calls each fit their own cost cap',
-      Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS,
-      Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
-        Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
-    check('and together cost no more than twenty-five cents',
-      Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP <= 0.25, String(Digest.DEEP_COST_CAP + Digest.DEEP_FREE_COST_CAP));
-
-    // -- its shares --
-    //
-    // Every source gets its own room, out of 150,000: Instagram 66,000,
-    // WhatsApp 34,000, Google and Facebook 25,000 each, with a missing or
-    // smaller source's room handed on to the rest.
-    const S = Digest.SOURCE_SHARES;
-    check('the premium read\'s shares add up to its line',
-      S.instagram + S.whatsapp + S.google + S.facebook === Digest.DEEP_DIGEST_CHARS &&
-        S.instagram === 66000 && S.whatsapp === 34000 && S.google === 25000 && S.facebook === 25000, JSON.stringify(S));
-    const room = Digest.allocateShares({ instagram: 200000, google: 10000, facebook: 90000, whatsapp: 90000 }, S, 150000);
-    check('a source under its share keeps what it has, and the rest goes to the others by share',
-      room.google === 10000 && room.instagram + room.facebook + room.whatsapp === 140000 &&
-        room.instagram > S.instagram && room.facebook > S.facebook && room.whatsapp > S.whatsapp &&
-        Math.abs(room.instagram / room.whatsapp - S.instagram / S.whatsapp) < 0.01, JSON.stringify(room));
-    const alone = Digest.allocateShares({ instagram: 200000 }, S, 150000);
-    check('Instagram alone gets the whole premium read', alone.instagram === 150000, JSON.stringify(alone));
-
     const at = i => 1500000000 + i * 86400;
     const facebook = {
       source: 'facebook', span: { first: at(0), last: at(3000) }, kinds: { posts: true, comments: true, messages: true, friends: true },
@@ -5305,7 +5269,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       comments: Array.from({ length: 900 }, (_, i) => ({ text: 'A Facebook comment of some length that says something about them, number ' + i, ts: at(i) })),
       friends: Array.from({ length: 600 }, (_, i) => 'Friend ' + i),
       searchTerms: new Map(), searches: [],
-      ownMessages: Array.from({ length: 3000 }, (_, i) => ({ text: 'A Messenger message of my own, long enough to count, number ' + i, ts: at(i) })),
+      ownMessages: Array.from({ length: 3000 }, (_, i) => ({ text: 'A Messenger message of my own, long enough to count, number ' + i + ' ' + 'y'.repeat(120), ts: at(i) })),
     };
     const whatsapp = { chats: [1, 2, 3].map(n => ({
       chat: 'c' + n, kind: n === 3 ? 'group' : 'one-to-one', members: n === 3 ? 6 : 2,
@@ -5314,30 +5278,56 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       userHours: new Array(24).fill(100), userWeekdays: new Array(7).fill(500),
       conversationsStartedByUser: 300, conversationsStartedByOthers: 280, medianUserReplyMinutes: 6, medianOthersReplyMinutes: 9,
       averageSentLength: 70, userQuestionShare: 0.2,
-      ownMessages: Array.from({ length: 4000 }, (_, i) => ({ text: 'A WhatsApp message I wrote in chat ' + n + ', with enough words to read, number ' + i, ts: at(i) })),
+      ownMessages: Array.from({ length: 4000 }, (_, i) => ({ text: 'A WhatsApp message I wrote in chat ' + n + ', with enough words to read, number ' + i + ' ' + 'z'.repeat(120), ts: at(i) })),
     })) };
-    const everything = Digest.build({ ...worstSignals, supplements: { google, facebook, whatsapp } }, { includeMessages: true, deep: true });
-    const sizes = Digest.sourceSizes(everything);
-    const near = (got, want) => got <= want * 1.02 && got >= want * 0.92;
-    // Google here is smaller than its share, so its spare room is the others'.
-    const rooms = Digest.allocateShares({ instagram: 1e6, google: sizes.google, facebook: 1e6, whatsapp: 1e6 }, S, Digest.DEEP_DIGEST_CHARS);
-    check('with all four sources, each lands at its own room and the whole under the line',
-      Digest.evidenceChars(everything) <= Digest.DEEP_DIGEST_CHARS && sizes.google < S.google &&
-        near(sizes.instagram, rooms.instagram) && near(sizes.whatsapp, rooms.whatsapp) && near(sizes.facebook, rooms.facebook) &&
-        rooms.instagram > S.instagram && rooms.whatsapp > S.whatsapp, JSON.stringify({ sizes, rooms }));
 
-    // The case this exists for: a premium read already full of Instagram and
+    // The case this exists for: a card digest already full of Instagram and
     // Google, with Facebook and WhatsApp added at the unlock.
-    const full = Digest.build({ ...worstSignals, supplements: { google } }, { includeMessages: true, deep: true });
-    const before = Digest.sourceSizes(full);
-    const added = Digest.addSupplements(JSON.parse(JSON.stringify(full)), { facebook, whatsapp }, { deep: true });
+    const base = Digest.build({ ...worstSignals, supplements: { google } }, { includeMessages: true });
+    const before = Digest.sourceSizes(base);
+    const merge = (digest, adding, protect) => Digest.addSupplements(JSON.parse(JSON.stringify(digest)), adding, { deep: true, protect });
+    const added = merge(base, { facebook, whatsapp }, ['instagram', 'google']);
     const after = Digest.sourceSizes(added);
-    check('sources added to a full premium read get their shares, and Instagram gives way to its own',
-      before.instagram > S.instagram * 1.3 && Digest.evidenceChars(added) <= Digest.DEEP_DIGEST_CHARS &&
-        near(after.whatsapp, rooms.whatsapp) && near(after.facebook, rooms.facebook) && near(after.instagram, rooms.instagram) &&
-        after.whatsapp > 30000 && after.facebook > 22000,
+    const strip = d => { const out = JSON.parse(JSON.stringify(d)); delete out.facebook; delete out.whatsapp; return out; };
+    const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    check('the base digest is near its 80,000 before anything is added',
+      Digest.evidenceChars(base) > Digest.DIGEST_CHARS * 0.9 && Digest.evidenceChars(base) <= Digest.DIGEST_CHARS, String(Digest.evidenceChars(base)));
+    check('sources added at the unlock go on top: nothing of Instagram or Google is cut',
+      sameList(added.samples, base.samples) && sameList(added.directMessages.ownMessageSample, base.directMessages.ownMessageSample) &&
+        sameList(added.google, base.google) && sameList(added.mostLikedAccounts, base.mostLikedAccounts) &&
+        after.instagram >= before.instagram && after.google === before.google,
       JSON.stringify({ before, after }));
-    check('and the standard digest is untouched by any of it: no shares, its own line',
+    const top = Digest.DEEP_DIGEST_CHARS - before.instagram - before.google;
+    const rooms = Digest.allocateShares({ facebook: 1e6, whatsapp: 1e6 }, S, top);
+    const near = (got, want) => got <= want * 1.02 && got >= want * 0.9;
+    check('and share the room above it by weight, the whole under 160,000',
+      Digest.evidenceChars(added) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(added) > Digest.DEEP_DIGEST_CHARS * 0.95 &&
+        near(after.whatsapp, rooms.whatsapp) && near(after.facebook, rooms.facebook) && after.whatsapp > after.facebook,
+      JSON.stringify({ after, rooms }));
+    check('an added source over its room is thinned evenly, keeping its newest lines',
+      /number 3999\b/.test(added.whatsapp.ownMessageSample.join('\n')) || /number 39\d\d\b/.test(added.whatsapp.ownMessageSample.join('\n')),
+      added.whatsapp.ownMessageSample.slice(-2).join(' | '));
+    check('the premium read carries coverage for what was added, and the shown counts match',
+      added.coverage.sources.includes('facebook') && added.coverage.sources.includes('whatsapp') &&
+        added.coverage.sampling.whatsappMessages.shown === added.whatsapp.ownMessageSample.length);
+    const sent = Digest.forModel(added, { deep: true });
+    check('a premium read is sent whole when it is asked for as one',
+      sameList(Digest.renderEvidence(sent), Digest.renderEvidence(Digest.forModel(added, { deep: true }))) &&
+        sent.directMessages.ownMessageSample.length === added.directMessages.ownMessageSample.length &&
+        sent.whatsapp.ownMessageSample.length === added.whatsapp.ownMessageSample.length);
+    // To within the few characters the added sources' fixed fields take: a
+    // premium read is never sent without asking for it, and the server
+    // refuses anything left over its line.
+    check('but cut back to about the standard line by anything that does not ask for it',
+      Digest.evidenceChars(Digest.forModel(added)) <= DIG * 1.01, String(Digest.evidenceChars(Digest.forModel(added))));
+    // A source already in the base and loaded again: replaced, and counted as added.
+    const fewer = { ...google, videoTitles: google.videoTitles.slice(0, 5), channels: new Map([['one channel', 3]]) };
+    const noGoogle = strip(base); delete noGoogle.google;
+    noGoogle.coverage.sources = noGoogle.coverage.sources.filter(x => x !== 'google');
+    const replaced = merge(noGoogle, { google: fewer }, ['instagram']);
+    check('a source loaded again replaces its older copy',
+      replaced.google.topChannels.length === 1 && sameList(replaced.samples, base.samples));
+    check('and the standard digest is untouched by any of it: no weights, its own line',
       Digest.LIMITS.sourceShares === undefined && Digest.LIMITS.totalChars === DIG);
   }
   check('ad interests are no longer part of a digest', !('instagramAdInterests' in heavy) &&

@@ -503,7 +503,7 @@
     cardChangeNote: 'Updating your data sources may result in changes to your Psyche Card.',
     premiumSourcesTitle: 'Your data for the full report',
     // The review's downloadable copy only, at the unlock: what this file is.
-    deepReviewNote: 'This is the larger sample of your data the full premium report is written from, shared between your sources.',
+    deepReviewNote: 'This is what the full premium report is written from: everything your card was read from, with the data you just added on top.',
     premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
       'data makes a fuller report. Or carry on with what is already loaded.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
