@@ -1054,11 +1054,8 @@ textarea { resize: vertical; }
 
 /* ---- the compatibility report, in the order the PDF uses ---- */
 .compat-head { margin-bottom: 1.2rem; }
-.compat-head-row { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .compat-head h1 { margin: 0 0 .35rem; }
 .compat-head #report-sub { margin: 0; font-size: .86rem; }
-.compat-download { display: inline-flex; align-items: center; gap: .45rem; flex: none; }
-.compat-download .cta-icon { width: 18px; height: 18px; }
 /* The answer: the ring, the band in words, the verdict. */
 .compat-lead { align-items: center; }
 .compat-lead .ring { width: 116px; height: 116px; }
@@ -1067,18 +1064,41 @@ textarea { resize: vertical; }
 @media (max-width: 540px) {
   .compat-lead { flex-direction: column; text-align: center; }
 }
-/* The best thing and the biggest risk, side by side. */
-.compat-short { display: grid; gap: .9rem; margin: 0 0 1rem; }
-@media (min-width: 680px) { .compat-short { grid-template-columns: 1fr 1fr; } }
-.compat-side { padding: .95rem 1.05rem; border-radius: 14px; border: 1px solid var(--line); border-top: 4px solid var(--good); background: var(--good-soft); }
-.compat-risk { border-top-color: var(--warn); background: var(--warn-soft); }
-.compat-side h3 { display: flex; align-items: center; gap: .55rem; margin: 0 0 .45rem; font-size: 1rem; color: var(--good); }
-.compat-risk h3 { color: var(--warn); }
-.compat-side .partner-badge { background: var(--bg-alt); }
-.compat-risk .partner-badge { color: var(--warn); }
-.compat-side p { margin: 0; line-height: 1.55; }
-.compat-common { margin: 0 0 1.2rem; }
-.compat-common h3 { margin: 0 0 .5rem; font-size: 1rem; }
+.compat-common { margin: .9rem 0 0; }
+.compat-common h3 { margin: 0 0 .45rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
+@media (max-width: 540px) { .compat-common .tags { justify-content: center; } }
+/* The two types, axis by axis: each person's letter, whether they share it,
+   and how much that axis counts. Same is green, different is amber; the two
+   axes that matter most carry a filled weight label. */
+.type-pair { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .6rem; margin: 0 0 .7rem; }
+.type-badge { padding: .25rem .65rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 800; letter-spacing: .06em; font-size: .95rem; }
+.type-badge-b { background: var(--accent-2); }
+.type-pair-name { font-weight: 650; }
+.type-pair-and { color: var(--ink-soft); font-weight: 700; margin: 0 .2rem; }
+.type-summary { margin: 0 0 1rem; font-size: 1.02rem; line-height: 1.55; color: var(--ink); }
+.type-axes { display: grid; gap: .8rem; }
+@media (min-width: 720px) { .type-axes { grid-template-columns: 1fr 1fr; } }
+.type-axis { padding: .85rem 1rem; border-radius: 14px; border: 1px solid var(--line); border-top: 4px solid var(--good); background: var(--good-soft); }
+.type-axis.is-diff { border-top-color: var(--warn); background: var(--warn-soft); }
+.type-axis-head { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; margin-bottom: .55rem; }
+.type-axis-name { font-weight: 750; }
+.type-axis-code { font-weight: 600; font-size: .8rem; color: var(--ink-soft); margin-left: .2rem; }
+.type-weight { flex: none; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  padding: .15rem .5rem; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); background: var(--bg-alt); }
+.weight-most .type-weight { background: var(--accent); border-color: var(--accent); color: #fff; }
+.type-axis-letters { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .5rem; }
+.type-person { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: .5rem; align-items: center; min-width: 0; }
+.type-person:last-child { justify-items: end; text-align: right; grid-template-columns: 1fr auto; }
+.type-person:last-child .type-letter { grid-column: 2; grid-row: 1 / span 2; }
+.type-person:last-child .type-word, .type-person:last-child .type-who { grid-column: 1; }
+.type-letter { grid-row: 1 / span 2; width: 2.1rem; height: 2.1rem; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-size: 1.05rem; background: var(--bg-alt); color: var(--accent); border: 2px solid currentColor; }
+.type-person:last-child .type-letter { color: var(--accent-2); }
+.type-word { font-weight: 650; font-size: .88rem; line-height: 1.2; }
+.type-who { font-size: .74rem; color: var(--ink-soft); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.type-match { font-size: 1.35rem; font-weight: 800; line-height: 1; color: var(--good); }
+.is-diff .type-match { color: var(--warn); }
+.type-reading { margin: .65rem 0 0; line-height: 1.5; font-size: .92rem; }
 /* Evidence: one small line under what it supports. */
 .ev-line { margin: .3rem 0 0; font-size: .78rem; font-style: italic; color: var(--ink-soft); line-height: 1.45; }
 .partner-items .ev-line { padding: 0; }
@@ -1091,29 +1111,15 @@ textarea { resize: vertical; }
 .play-b ul.ticks li::before { color: var(--accent-2); }
 .play-both { margin-top: .9rem; padding: .9rem 1rem; border-radius: 14px; background: var(--accent-soft); }
 .play-both h3 { margin: 0 0 .4rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
-/* Things to say, as speech. */
-.card ul.talk-list { list-style: none; padding: 0; margin: .2rem 0 0; display: grid; gap: .6rem; }
-.talk-list li { margin: 0; padding: .7rem .95rem; border-radius: 16px 16px 16px 4px; background: var(--accent-soft);
-  font-style: italic; line-height: 1.5; border-left: 3px solid var(--accent-2); }
-.talk-list li::before { content: '\201C'; }
-.talk-list li::after { content: '\201D'; }
-/* The actions, the profile page's way: icon and label, equal width on a phone. */
+/* The actions, as the paid report's card tools: icon above a short label. */
 .compat-share-status { text-align: center; }
 .compat-return { margin-top: 1.4rem; }
 .bonus-actions { align-items: center; }
 .bonus-actions .btn { display: inline-flex; align-items: center; }
 .bonus-actions .cta-icon { width: 1.05em; height: 1.05em; margin-right: .45rem; }
-.compat-actions .btn { display: inline-flex; align-items: center; gap: .45rem; }
-@media (max-width: 540px) {
-  .compat-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
-  .compat-actions .btn {
-    flex-direction: column; justify-content: flex-start; gap: .35rem; min-width: 0; margin: 0;
-    padding: .7rem .35rem .6rem; border-radius: 14px; font-size: .74rem; line-height: 1.2; text-align: center; white-space: normal;
-  }
-  .compat-actions .cta-icon { width: 22px; height: 22px; }
-  .compat-download .cta-label { display: none; }
-  .compat-download { padding: .55rem .7rem; }
-}
+.compat-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; max-width: 30rem; margin: 1.4rem auto 0; }
+.compat-actions .cx-tool { font-size: .78rem; padding: .7rem .5rem .6rem; gap: .35rem; }
+.compat-actions .cx-tool svg { width: 22px; height: 22px; }
 .playbook h3 { margin-top: 0; }
 .playbook ul, .card ul { padding-left: 1.15rem; }
 .card li { margin-bottom: .5rem; }
@@ -1610,6 +1616,9 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    what the reader actually saw as the page jumping under the dialog. */
 .compat-dialog { width: min(38rem, calc(100vw - 2rem)); }
 .compat-dialog .link-title { padding-right: 2.2rem; }
+.compat-paste { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.compat-paste[hidden] { display: none; }
+.compat-paste .field { margin-bottom: .6rem; }
 .compat-dialog-close {
   position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
   border-radius: 50%; border: 1px solid var(--line); background: var(--bg);

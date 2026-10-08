@@ -1970,6 +1970,8 @@
     // underneath it — a failed run, a deleted profile, a fresh session. Kept
     // truthful on arrival rather than only at boot, since arriving is when it
     // is read.
+    const guides = $('.footer-guides');
+    if (guides) guides.hidden = !(view === 'welcome' && !state.profile);
     if (view === 'welcome') {
       refreshStartHere();
       $('#view-welcome').classList.toggle('is-returning', Boolean(state.profile));
@@ -6973,6 +6975,34 @@
     else dialog.setAttribute('open', '');
   });
   $('#compat-dialog-close').addEventListener('click', () => $('#compat-dialog').close());
+  // "Got their link?" opens a box for it in the popout itself, rather than
+  // sending the reader to another page to find one.
+  $('#compat-paste-toggle').addEventListener('click', () => {
+    const form = $('#compat-paste');
+    form.hidden = false;
+    $('#compat-paste-toggle').setAttribute('aria-expanded', 'true');
+    $('#compat-paste-input').focus();
+  });
+  $('#compat-paste').addEventListener('submit', async event => {
+    event.preventDefault();
+    const value = $('#compat-paste-input').value;
+    // Read here first, so a link that is not one is said so in the popout
+    // the reader is looking at, not on a page behind it.
+    if (!(await Card.decodeCard(Card.extractPayload(value)))) {
+      linkStatus('#compat-paste-status', 'That is not a PsycheAI link. Copy the whole link they sent you.');
+      return;
+    }
+    $('#compat-dialog').close();
+    $('#compat-paste-input').value = '';
+    // Backing out of the basis picker lands on My Compatibility; the link
+    // waits in its box there, so choosing again does not mean pasting again.
+    $('#paste-input').value = value;
+    await runMatch(value);
+  });
+  $('#compat-dialog').addEventListener('close', () => {
+    $('#compat-paste').hidden = true;
+    $('#compat-paste-toggle').setAttribute('aria-expanded', 'false');
+  });
   $('#compat-dialog').addEventListener('click', event => {
     if (event.target === $('#compat-dialog')) $('#compat-dialog').close();
   });
@@ -7757,9 +7787,7 @@
    * renderReport fills — the report on screen is the one that gets written,
    * whether it arrived from a fresh scan or from the history table.
    */
-  function exportCompatPdf(event) {
-    const button = event.currentTarget;
-    const label = button.textContent;
+  function exportCompatPdf() {
     const last = state.lastReport;
     if (!last) return;
     try {
@@ -7784,12 +7812,11 @@
       link.remove();
       setTimeout(() => URL.revokeObjectURL(href), 10000);
     } catch (error) {
-      button.textContent = 'Could not build the PDF';
-      setTimeout(() => { button.textContent = label; }, 3000);
+      // In the line under the buttons, which carry an icon a new label would wipe.
+      linkStatus('#compat-share-status', 'Could not build the PDF.');
     }
   }
 
-  $('#export-compat-top').addEventListener('click', exportCompatPdf);
   $('#export-compat-bottom').addEventListener('click', exportCompatPdf);
 
   // "Delete everything" asks first, in its own sheet. The note names the one
@@ -8060,34 +8087,23 @@
       ? Copy.stanceText(Copy.WORK_STANCES[stance].option, otherName) : '';
 
     // The title and the basis pills live in the static header rather than in
-    // the rendered body, so the Download button can sit beside them the way it
-    // does on the profile page.
+    // the rendered body.
     $('#report-title').textContent = myName + ' & ' + otherName;
     $('#report-sub').innerHTML =
-      '<span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span> ' +
-      (stanceLabel ? '<span class="pill pill-clear">' + esc(stanceLabel) + '</span> ' : '') +
-      esc(TEXT.compatOneQuestion);
+      '<span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span>' +
+      (stanceLabel ? ' <span class="pill pill-clear">' + esc(stanceLabel) + '</span>' : '');
     // Kept for the PDF, which is built from whatever was last rendered.
     state.lastReport = { report, otherName, myName, mode, stance, when };
     $('#compat-return').hidden = !state.profile;
     $('#compat-return-title').textContent = TEXT.compatReturnTitle(otherName);
     $('#compat-return-text').textContent = TEXT.compatReturnText(otherName);
 
-    // The same order as the PDF: the answer first (score and verdict, the best
-    // thing and the biggest risk, what they share), then the working, then
-    // what it looks like, then what to do about it.
+    // Four blocks, the same order as the PDF: the answer (score, verdict and
+    // what they share), the two types axis by axis, what it looks like day to
+    // day, and what each of them should do about it.
     const [labelA, labelB] = window.PsychePDF ? window.PsychePDF.pairLabels(myName, otherName) : [myName, otherName];
-    let html = scoreCard(MODE_LABELS[mode], report);
-    html += '<div class="compat-short">' +
-      (report.biggestUpside ? '<div class="compat-side compat-up"><h3><span class="partner-badge" aria-hidden="true">↑</span>' +
-        esc(TEXT.compatUpside) + '</h3><p>' + esc(report.biggestUpside) + '</p></div>' : '') +
-      (report.biggestRisk ? '<div class="compat-side compat-risk"><h3><span class="partner-badge" aria-hidden="true">!</span>' +
-        esc(TEXT.compatRisk) + '</h3><p>' + esc(report.biggestRisk) + '</p></div>' : '') +
-      '</div>';
-    if ((report.sharedGround || []).length) {
-      html += '<div class="compat-common"><h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(report.sharedGround) + '</div>';
-    }
-    html += dimensionsCard(report);
+    let html = scoreCard(report);
+    html += typesCard(report.typeMatch, labelA, labelB);
 
     // What works and what will rub, side by side in the profile's own two
     // columns, each point with its evidence on one small line.
@@ -8114,41 +8130,58 @@
       ((play.together || []).length ? '<div class="play-both"><h3>' + esc(TEXT.compatBoth) + '</h3>' + list(play.together, 'ticks') + '</div>' : '') +
       '</div>';
 
-    if ((report.conversationStarters || []).length) {
-      html += '<div class="card section-card compat-talk"><h2>' + esc(TEXT.compatTalk) + '</h2>' +
-        '<ul class="talk-list">' + report.conversationStarters.filter(Boolean).map(line => '<li>' + esc(line) + '</li>').join('') +
-        '</ul></div>';
-    }
-
     if (report.caveats) html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
     setHtml($('#report-body'), html);
   }
 
-  // One number for a whole pairing hides where the fit actually is, and a
-  // reader cannot argue with it. These are the same bars the Big Five uses,
-  // for the same reason: a score with its reasoning attached is checkable, and
-  // a pair that is strong on values and poor on rhythms should look like it.
-  function dimensionsCard(report) {
-    const items = (report.dimensions || []).filter(d => d && d.name);
-    if (!items.length) return '';
-    return '<div class="card section-card"><h2>' + esc(TEXT.compatDimensions) + '</h2>' +
-      '<p class="card-sub">' + esc(TEXT.compatDimensionsSub) + '</p>' +
-      items.map(item => bar(item.name, item.score,
-        (item.reading ? '<p class="trait-reading">' + esc(item.reading) + '</p>' : '') +
-        evidenceLine(item.evidence, 'trait-evidence'))).join('') +
+  // The two types, axis by axis: what the axis decides, each person's letter,
+  // whether they share it, how much it counts, and what it means for them.
+  // A report made before this section existed has none, and shows none.
+  function typesCard(typeMatch, labelA, labelB) {
+    const types = typeMatch || {};
+    const axes = (types.axes || []).filter(axis => axis && axis.axis && TEXT.compatTypeAxes[axis.axis]);
+    if (!axes.length && !types.summary) return '';
+    const person = (label, letter, names) =>
+      '<span class="type-person"><span class="type-letter">' + esc(letter) + '</span>' +
+      '<span class="type-word">' + esc(names[letter] || letter) + '</span><span class="type-who">' + esc(label) + '</span></span>';
+    return '<div class="card section-card compat-types"><h2>' + esc(TEXT.compatTypes) + '</h2>' +
+      (types.typeA && types.typeB
+        ? '<p class="type-pair"><span class="type-badge">' + esc(types.typeA) + '</span><span class="type-pair-name">' + esc(labelA) +
+          '</span><span class="type-pair-and" aria-hidden="true">&amp;</span><span class="type-badge type-badge-b">' + esc(types.typeB) +
+          '</span><span class="type-pair-name">' + esc(labelB) + '</span></p>'
+        : '') +
+      (types.summary ? '<p class="type-summary">' + esc(types.summary) + '</p>' : '') +
+      (axes.length ? '<div class="type-axes">' + axes.map(axis => {
+        const names = TEXT.compatTypeAxes[axis.axis];
+        return '<div class="type-axis ' + (axis.same ? 'is-same' : 'is-diff') + ' weight-' + esc(axis.weight) + '">' +
+          '<div class="type-axis-head"><span class="type-axis-name">' + esc(names.name) + ' <span class="type-axis-code">' + esc(axis.axis) + '</span></span>' +
+          '<span class="type-weight">' + esc(TEXT.compatWeight[axis.weight] || '') + '</span></div>' +
+          '<div class="type-axis-letters">' + person(labelA, axis.a, names) +
+          // A sign rather than the word, so a long letter name has the room on
+          // a phone; the word is there for a screen reader, and the panel's
+          // own green or amber says the same thing.
+          '<span class="type-match" title="' + esc(axis.same ? TEXT.compatSame : TEXT.compatDiffer) + '"><span aria-hidden="true">' +
+            (axis.same ? '=' : '≠') + '</span><span class="visually-hidden">' + esc(axis.same ? TEXT.compatSame : TEXT.compatDiffer) + '</span></span>' +
+          person(labelB, axis.b, names) + '</div>' +
+          (axis.reading ? '<p class="type-reading">' + esc(axis.reading) + '</p>' : '') + '</div>';
+      }).join('') + '</div>' : '') +
       '</div>';
   }
 
-  // The score, the band in words and the verdict: the answer, before the
-  // working. The basis is the header's pill, so it is not said again here.
-  function scoreCard(label, report) {
+  // The score, the band in words, the verdict, and what the two share: the
+  // answer, before anything else. The basis is the header's pill, so it is
+  // not said again here.
+  function scoreCard(report) {
     const value = Math.round(Number(report.score) || 0);
     const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
+    const shared = (report.sharedGround || []).filter(Boolean);
     return '<div class="card score-card score-single compat-lead tier-' + tier + '">' +
       '<div class="ring" data-pct="' + value + '"><span>' + value + '</span></div>' +
       '<div>' + (report.band ? '<p class="band compat-band">' + esc(report.band) + '</p>' : '') +
-      '<p class="compat-verdict">' + esc(report.verdict) + '</p></div></div>';
+      '<p class="compat-verdict">' + esc(report.verdict) + '</p>' +
+      (shared.length ? '<div class="compat-common"><h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(shared) + '</div>' : '') +
+      '</div></div>';
   }
 
   // Evidence as one small line under what it supports, rather than a row of

@@ -3544,7 +3544,7 @@ box — the panel's own boxes dissolve (`display: contents`) so their pieces can
 card, and the one-line introduction and "Tap to open full screen" go. **On a phone the card is explained
 full screen, not on the page** (`explainsFullScreen()`: the structured layout under 720px wide): tapping
 the card anywhere opens it full screen, and the hint under it says so — "Tap your card to open it full
-screen, then tap any part to learn more." Full screen there has no Download or Share; in their place
+screen, then tap any part to learn more." — now just *Tap to open full screen*. Full screen there has no Download or Share; in their place
 under the card is "Tap any part to learn more" (`.card-dialog.is-guided`, `#card-dialog-tip`), and the
 ring pulses until a part is tapped. **There the card fills the phone** (`fitGuidedCard()`): a 10px margin
 each side, clear of the notch and home bar, the tip line kept short under it. Phones run from about
@@ -4674,25 +4674,59 @@ the PDF, which has no link panel or buttons after its own confidence section for
 
 ## Compatibility
 
-**The report, on the page and in the PDF, gives the answer before the working.** One order for both:
-the score as a ring with the band in words and the verdict beside it; **Biggest upside** and **Biggest
-risk** side by side (green and amber); the common ground as chips; the five dimensions, each a bar, one
-sentence of reasoning and its evidence on one small italic line rather than a row of chips; **How it
-plays out**, What works and What will rub in the profile's own two green/amber columns; the playbook as
-a column per person and a "Both of you" panel; and the conversation starters set as quotes. The PDF
-cover carries the names, the basis, the band and the score ring in the band, and the verdict leads page
-one. Every block is kept whole on a page (`keep`, and the paired panels with `whole`) so no point is
-split across a break; the section reserve is lowered (`titleReserve`) so page one is not left half
-empty. Two people with the same name are told apart as "(you)" and "(them)" wherever the report names
-them side by side (`pairLabels`, shared by both renderings). The page's actions carry icons in the
-profile's style, Download first, and on a phone they sit as three equal tiles.
+**The report is four blocks, on the page and in the PDF.** It had grown long and repetitive — five
+scored dimensions, a biggest upside and a biggest risk that restated the verdict, and conversation
+starters — and all of that is gone, from the schema as well as the page, so the model is not asked to
+write it. What is left:
 
-The prompt was tightened against what a real report did: it now says each thing once (the verdict,
-the upside and the risk in different words; a piece of evidence quoted once in the whole report;
-common ground not the strengths retitled), never talks about the data ("their exact catalogued tags
-do not match verbatim in the system ledger"), quotes a phrase only whole, and calls two people with
-the same name "<name> A" and "<name> B" consistently. The verdict is under 80 words and a dimension's
-reading is one sentence.
+1. **The answer**: the score as a ring, the band in words, a verdict of two or three sentences under
+   60 words whose first sentence is the sharpest true thing about the pair, and *What you share* as
+   tags inside the same card.
+2. **Your types together** (`typeMatch`): both MBTI types, one sentence on what they are like
+   together, and the four axes as panels — each person's letter in words, = or ≠ between them (green
+   or amber panel), how much the axis counts, and one sentence on what it means for these two.
+3. **How it plays out**: two or three things that work and two or three that will rub, each with its
+   evidence on one small line.
+4. **The playbook**: three things for each person, two for both.
+
+**How the types are weighed.** Until now the model was handed a mechanical line ("ENFP vs ISTJ —
+shares 1 of 4 axes") and nothing about what it meant. `TYPE_AXES` in `lib/prompts.js` now says, and
+the system prompt explains: **E/I matters most** (how much company and quiet each needs — a split is
+a weekly negotiation over evenings and weekends), **S/N as much** (concrete and present against ideas
+and possibilities — the usual reason two people feel off-wavelength), **T/F less** (how each decides
+and fights; a difference balances a pair and costs most in arguments) and **J/P least** (plans against
+open options). For work, J/P and T/F count for more than elsewhere, but E/I and S/N still lead. The
+card carries only the four letters, so each letter's strength comes from the Big Five trait that
+tracks it — extraversion for E/I, openness for S/N, agreeableness for T/F, conscientiousness for J/P —
+and the derived facts say, per axis, whether each person's letter is *a lean*, *moderate* or *clear*:
+two leans either side of the line are closer than their letters suggest. Sharing E/I and S/N lifts
+the score; splitting both lowers it unless the scores show the gaps are small.
+
+The letters on the page are not the model's: `settleTypeMatch` writes them in on the server from the
+two cards, attaches each axis's weight, and matches the model's readings to axes by name. With either
+type missing or uncertain there are no axes, and the summary is written from the Big Five. A report
+saved before this has no type section and shows none.
+
+The five focus areas per basis and stance (*Briefing and direction*, *Whether problems reach you*… for
+a manager) still go to the model, as what matters most on that basis, rather than as five scored
+sections.
+
+**The page's actions** are the paid report's card tools: three tiles, an icon over a short label —
+**Download PDF**, **Share result** and **Back to Compatibility** (to My Compatibility, where the report
+is listed). The download at the top and *Check someone else* are gone. The PDF has the same four blocks:
+the cover, the verdict and what they share, the types as two rows of paired panels, then how it plays
+out and the playbook. Every block is kept whole on a page, and two people with the same name are told
+apart as "(you)" and "(them)" (`pairLabels`).
+
+The prompt still says each thing once (a piece of evidence quoted once in the whole report; shared
+ground not the strengths retitled), never talks about the data, quotes a phrase only whole, and calls
+two people with the same name "<name> A" and "<name> B".
+
+**"Got their link?"** in the Test compatibility popout opens a paste box right there, rather than going
+to My Compatibility to find one. A link that is not one is refused in the popout; a real one closes it
+and goes straight to choosing the basis, and backing out of that leaves the link in My Compatibility's
+box. **The guide links** at the foot (*Instagram personality test*, *Compatibility test*…) show only on
+the main page for a new reader.
 
 **My Compatibility** is titled for whoever the device belongs to, and opens with one short sentence
 on what a comparison is for: open someone's link and get a score, the five things behind it, what

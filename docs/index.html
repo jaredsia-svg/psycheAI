@@ -441,9 +441,17 @@
       <div class="btn-row">
         <button class="btn" id="share-link" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
         <button class="btn btn-ghost" id="copy-link" type="button">Copy link</button>
-        <button class="btn btn-ghost" data-nav="scan" type="button">Got their link? →</button>
+        <button class="btn btn-ghost" id="compat-paste-toggle" type="button" aria-expanded="false" aria-controls="compat-paste">Got their link? →</button>
       </div>
       <p class="fineprint link-status" id="share-link-status" role="status"></p>
+      <!-- Their link, pasted right here rather than on another page. -->
+      <form class="compat-paste" id="compat-paste" hidden>
+        <label class="field">Paste their link
+          <input type="text" id="compat-paste-input" placeholder="https://psycheai.io/#p=…" autocomplete="off">
+        </label>
+        <button class="btn" id="compat-paste-go" type="submit">Check compatibility</button>
+        <p class="fineprint link-status" id="compat-paste-status" role="status"></p>
+      </form>
     </div>
   </dialog>
 
@@ -542,15 +550,10 @@
 <!-- ══════════════ report ══════════════ -->
 <section id="view-report" class="view" hidden>
   <!-- The pair in the same band the profile page opens with, the basis as a
-       pill under the names, and the download beside them. -->
+       pill under the names. The download is with the other actions below. -->
   <header class="hero profile-hero compat-head screen-only">
-    <div class="compat-head-row">
-      <div>
-        <h1 id="report-title">Your compatibility report</h1>
-        <p class="muted" id="report-sub"></p>
-      </div>
-      <button class="btn compat-download no-print" id="export-compat-top" aria-label="Download PDF"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download PDF</span></button>
-    </div>
+    <h1 id="report-title">Your compatibility report</h1>
+    <p class="muted" id="report-sub"></p>
   </header>
 
   <div id="report-body"></div>
@@ -567,14 +570,13 @@
     <p class="fineprint link-status" id="share-link-report-status" role="status"></p>
   </div>
 
-  <!-- Four actions with icons, in the profile page's style: the download and
-       the story image filled, the two ways on outlined. The image is for a
-       story, so it carries the address rather than a link. -->
-  <div class="cta-row compat-actions no-print">
-    <button class="btn" id="export-compat-bottom"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download PDF</span></button>
-    <button class="btn" id="share-compat-image" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span class="cta-label">Share result</span></button>
-    <button class="btn btn-outline" data-nav="scan"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 5.5"/><path d="M14 10a5 5 0 0 0-7.07 0L4.1 12.83a5 5 0 0 0 7.07 7.07l1.33-1.33"/></svg><span class="cta-label">Check someone else</span></button>
-    <button class="btn btn-outline" data-nav="profile"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back to my profile</span></button>
+  <!-- Three actions as the paid report's card tools: an icon above a short
+       label. The image is for a story, so it carries the address rather than a
+       link; Back goes to My Compatibility, where this report is listed. -->
+  <div class="compat-actions no-print">
+    <button class="cx-tool" id="export-compat-bottom" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span>Download PDF</span></button>
+    <button class="cx-tool" id="share-compat-image" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share result</span></button>
+    <button class="cx-tool" id="compat-back" data-nav="scan" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span>Back to Compatibility</span></button>
   </div>
   <p class="fineprint link-status compat-share-status no-print" id="compat-share-status" role="status"></p>
 </section>
@@ -1229,6 +1231,8 @@
       code on GitHub</a></p>
   <!-- The guides, for search engines to find and for anyone who wants the
        longer explanation. -->
+  <!-- The guides are for someone deciding whether to start, so they show on
+       the main page for a new reader and nowhere else (see show() in app.js). -->
   <p class="footer-guides"><a href="/instagram-personality-test">Instagram personality test</a> ·
     <a href="/compatibility-test">Compatibility test</a> · <a href="/mbti-test-no-questions">MBTI test without questions</a> ·
     <a href="/download-instagram-data">Download your Instagram data</a></p>

@@ -745,22 +745,27 @@
     // The compatibility report. It is two renderings of one document for the
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
-    compatDimensions: 'Where it holds and where it does not',
-    compatDimensionsSub: 'Each scored on its own, on the same scale as the number above: 50 is ' +
-      'two people picked at random.',
-    compatShort: 'The short version',
-    compatUpside: 'Biggest upside',
-    compatRisk: 'Biggest risk',
-    compatCommon: 'Common ground',
+    compatCommon: 'What you share',
+    // The two MBTI types, axis by axis. Each axis by what it decides, its two
+    // letters in words, and how much it counts between two people (see
+    // TYPE_AXES in lib/prompts.js).
+    compatTypes: 'Your types together',
+    compatTypeAxes: {
+      'E/I': { name: 'Energy', E: 'Extravert', I: 'Introvert' },
+      'S/N': { name: 'Attention', S: 'Sensing', N: 'Intuitive' },
+      'T/F': { name: 'Decisions', T: 'Thinking', F: 'Feeling' },
+      'J/P': { name: 'Structure', J: 'Judging', P: 'Perceiving' },
+    },
+    compatWeight: { most: 'Matters most', less: 'Matters less' },
+    compatSame: 'Same',
+    compatDiffer: 'Different',
     // Over What works and What will rub, which sit side by side under it.
     compatHowItPlays: 'How it plays out',
     compatWorks: 'What works',
     compatRubs: 'What will rub',
     compatBoth: 'Both of you',
-    compatTalk: 'Things to actually talk about',
     compatFor: 'For ',
     compatSuffix: ' compatibility',
-    compatOneQuestion: 'This report answers one question. Scan again to compare on a different basis.',
 
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
@@ -991,7 +996,7 @@
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
         // On a phone the card is too small to explain in place: it opens full screen first.
-        phone: 'Tap your card to open it full screen, then tap any part to learn more.',
+        phone: 'Tap to open full screen',
       },
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',

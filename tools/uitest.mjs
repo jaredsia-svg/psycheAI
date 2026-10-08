@@ -1617,6 +1617,8 @@ try {
       await guidePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
       // Requesting the export comes first, because it takes Instagram hours:
       // the hero's second button says so, and the steps card is titled for it.
+      check('a new reader sees the guide links at the foot of the main page',
+        await guidePage.locator('.footer-guides').isVisible());
       check('the hero\'s second button is "Request data", and there is no separate "New here?" line',
         (await guidePage.locator('#hero-start').innerText()).trim() === 'Request data' &&
           (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
@@ -7054,10 +7056,10 @@ try {
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
-    'Where it holds and where it does not', 'The short version', 'What works', 'What will rub',
-    'Things to actually talk about', 'Your compatibility results']);
+    'Your types together', 'What you share', 'What works', 'What will rub',
+    'Your compatibility results']);
 
-  check('every section title is defined in copy.js', sharing.inCopy === 16, JSON.stringify(sharing));
+  check('every section title is defined in copy.js', sharing.inCopy === 15, JSON.stringify(sharing));
   check('the page does not re-type any section title',
     sharing.retypedInApp.length === 0, sharing.retypedInApp.join(' | '));
   check('the PDF does not re-type any section title',
@@ -7362,6 +7364,8 @@ try {
       return a.width > 0 && a.width <= 300 && a.right <= b.right + 1 &&
         document.documentElement.scrollWidth <= window.innerWidth + 1;
     }));
+  check('the guide links at the foot show only to a new reader, so not here',
+    !(await page.locator('.footer-guides').isVisible()));
   check('where the data steps and the Start here card are not shown to them',
     await page.evaluate(() => document.querySelector('#view-welcome').classList.contains('is-returning')) &&
       !(await page.locator('#view-welcome .help-card').isVisible()) &&
@@ -9198,10 +9202,24 @@ try {
     });
   });
 
-  await page.click('[data-nav="scan"]');
-  await page.waitForSelector('#view-scan:not([hidden])');
-  await page.fill('#paste-input', 'https://example.com/#p=' + otherPayload);
-  await page.click('#paste-go');
+  // Their link goes into the popout itself: "Got their link?" opens a box
+  // for it there rather than sending the reader to another page.
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])');
+  await page.click('#test-compat-open');
+  await page.click('#compat-paste-toggle');
+  check('"Got their link?" opens a paste box in the popout itself, ready to type in',
+    await page.locator('#compat-paste-input').isVisible() &&
+      await page.evaluate(() => document.activeElement === document.querySelector('#compat-paste-input')) &&
+      await page.locator('#compat-dialog').isVisible());
+  await page.fill('#compat-paste-input', 'https://psycheai.io/#p=nonsense');
+  await page.click('#compat-paste-go');
+  await page.waitForTimeout(200);
+  check('a link that is not one is refused in the popout, which stays open',
+    /not a PsycheAI link/.test(await page.locator('#compat-paste-status').innerText()) &&
+      await page.locator('#compat-dialog').isVisible());
+  await page.fill('#compat-paste-input', 'https://example.com/#p=' + otherPayload);
+  await page.click('#compat-paste-go');
 
   // ---- the basis picker ----
   //
@@ -9212,6 +9230,8 @@ try {
     await page.locator('#mode-dialog').isVisible());
   check('the picker names the other person',
     /Jordan/.test(await page.locator('#mode-dialog-sub').innerText()));
+  check('and the popout the link was pasted into has closed behind it',
+    !(await page.evaluate(() => document.querySelector('#compat-dialog').open)));
   check('all three bases are offered',
     (await page.locator('#mode-dialog .mode-option').allInnerTexts()).join(' | ').replace(/\n/g, ' ')
       .match(/Romantic|Family \/ Friends|Professional/g).length >= 3);
@@ -9311,47 +9331,49 @@ try {
   check('no raw undefined in the report', !/\bundefined\b/.test(reportText));
   check('the old two-tab report is gone', (await page.locator('#report-body .tab').count()) === 0);
 
-  // A single score for a whole pairing cannot show where the fit is thin, so
-  // the report breaks it into the five dimensions that matter for the basis
-  // that was actually chosen — and each one shows its working the way the Big
-  // Five bars do, rather than asserting a number.
-  const dimensionBars = page.locator('#report-body .section-card .trait-block');
-  check('the report scores five separate dimensions', (await dimensionBars.count()) === 5);
-  check('the dimensions are the ones for the stance chosen',
+  // Four blocks and no more: the answer (with what they share), the two types,
+  // how it plays out, and what to do. The sections that made it long and
+  // repetitive — the five scored dimensions, the upside and risk, the
+  // conversation starters — are gone from the page.
+  check('the report is four blocks: the answer, the types, how it plays out, what to do',
+    (await page.locator('#report-body > .card').count()) === 4 &&
+      (await page.locator('#report-body .compat-lead .compat-common').count()) === 1 &&
+      (await page.locator('#report-body .compat-types').count()) === 1 &&
+      (await page.locator('#report-body .compat-plays').count()) === 1 &&
+      (await page.locator('#report-body .compat-playbook').count()) === 1,
+    String(await page.locator('#report-body > .card').count()) + ' cards');
+  check('with no dimensions, no upside and risk, and nothing to talk about',
+    !/Where it holds and where it does not|Biggest upside|Biggest risk|Things to actually talk about/.test(reportText) &&
+      (await page.locator('#report-body .trait-block, #report-body .compat-short, #report-body .talk-list').count()) === 0);
+  // The types, axis by axis: the letters from the two cards, E/I and S/N
+  // marked as mattering most, each with what it means for these two.
+  const typeAxes = await page.evaluate(() => [...document.querySelectorAll('#report-body .type-axis')].map(axis => ({
+    name: axis.querySelector('.type-axis-name').textContent,
+    weight: axis.querySelector('.type-weight').textContent,
+    letters: [...axis.querySelectorAll('.type-letter')].map(l => l.textContent).join(''),
+    match: axis.querySelector('.type-match .visually-hidden').textContent,
+    sign: axis.querySelector('.type-match [aria-hidden]').textContent,
+    reading: (axis.querySelector('.type-reading') || {}).textContent || '',
+  })));
+  const myType = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.mbti);
+  check('the types section reads all four axes, E/I and S/N as mattering most',
+    typeAxes.length === 4 && typeAxes.map(a => a.weight).join(',') === 'Matters most,Matters most,Matters less,Matters less' &&
+      /^Energy E\/I/.test(typeAxes[0].name) && /^Attention S\/N/.test(typeAxes[1].name), JSON.stringify(typeAxes));
+  check('with each person\'s letter from their card, whether they share it, and what it means for them',
+    typeAxes.every((axis, i) => axis.letters === myType[i] + myType[i] && axis.match === 'Same' && axis.sign === '=' && /Jordan/.test(axis.reading)) &&
+      /Ale\u00e7/.test(await page.locator('#report-body .type-pair').innerText()), JSON.stringify(typeAxes));
+  // The five focus areas for the stance still steer what is written: the
+  // mock titles its strengths with them.
+  check('what it says is about the focus areas for the stance chosen',
     /Briefing and direction/.test(reportText) && /Whether problems reach you/.test(reportText),
     reportText.slice(0, 300));
-  check('a manager is not given the peer dimensions',
+  check('a manager is not given the peer focus areas',
     !/Load balance/.test(reportText) && !/Complementary strengths/.test(reportText));
-  check('nor the dimensions of another basis entirely',
+  check('nor those of another basis entirely',
     !/Emotional safety/.test(reportText) && !/Appetite for contact/.test(reportText));
   check('the stance reached the server, not just the basis',
     JSON.parse(compatBodies[compatBodies.length - 1]).stance === 'superior',
     compatBodies[compatBodies.length - 1]);
-  check('every dimension draws a filled bar',
-    (await page.locator('#report-body .section-card .bar-fill').count()) === 5);
-  // Not just that the bars exist — that they are actually as wide as their
-  // numbers say. These widths used to be style="" attributes and the CSP now
-  // refuses those, so the value is applied from a data attribute after
-  // insertion instead. Verified by removing that applier: all five bars then
-  // render *full*, reading 100 against numbers of 72, 44, 61, 55 and 68, while
-  // the ring falls the other way and draws empty against a score of 66.
-  // Counting five bars passes against every one of those, which is why this
-  // measures them.
-  const barGeometry = await page.evaluate(() => {
-    const blocks = [...document.querySelectorAll('#report-body .section-card .trait-block')];
-    return blocks.map(block => {
-      const fill = block.querySelector('.bar-fill');
-      const track = block.querySelector('.bar');
-      const shown = Number((block.querySelector('.trait-num') || {}).textContent);
-      const ratio = track.getBoundingClientRect().width
-        ? fill.getBoundingClientRect().width / track.getBoundingClientRect().width : 0;
-      return { shown, drawn: Math.round(ratio * 100) };
-    });
-  });
-  check('and each bar is drawn to the width its own number claims',
-    barGeometry.length === 5 &&
-    barGeometry.every(bar => bar.shown > 0 && Math.abs(bar.drawn - bar.shown) <= 2),
-    JSON.stringify(barGeometry));
   // The ring is the same problem in a custom property rather than a width:
   // --pct drives a conic-gradient, and an unset one is a ring drawn empty
   // around a number that says 82.
@@ -9365,10 +9387,6 @@ try {
   });
   check('and the score ring carries the percentage it displays',
     ringPct && ringPct.shown > 0 && ringPct.pct === ringPct.shown, JSON.stringify(ringPct));
-  check('every dimension shows its reasoning',
-    (await page.locator('#report-body .section-card .trait-reading').count()) === 5);
-  check('every dimension cites what put it there',
-    (await page.locator('#report-body .section-card .trait-evidence').count()) === 5);
 
   // Strengths and frictions used to be assertable with nothing behind them.
   // ---- the compatibility PDF ----
@@ -9376,14 +9394,14 @@ try {
   // Same discipline as the profile's: click the real button, keep the file the
   // browser saved, and read the text back out of it rather than trusting that
   // it was drawn. Streams are uncompressed, so the words are greppable.
-  check('a comparison offers a download at the top and the bottom',
-    await page.locator('#export-compat-top').isVisible() &&
+  check('the download is with the other actions, not at the top as well',
+    (await page.locator('#export-compat-top, #view-report .compat-head button').count()) === 0 &&
     await page.locator('#export-compat-bottom').isVisible());
 
   const compatPdfPath = join(shotDir, 'compatibility.pdf');
   const [compatDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
-    page.click('#export-compat-top'),
+    page.click('#export-compat-bottom'),
   ]);
   await compatDownload.saveAs(compatPdfPath);
   const compatText = readFileSync(compatPdfPath).toString('latin1');
@@ -9410,21 +9428,22 @@ try {
     ['both names on the cover', 'Ale\xe7 & Jordan'],
     ['the basis it answered', 'Professional / work'],
     ['which side of it', 'I am the superior of Jordan'],
-    ['the dimensions section', 'Where it holds and where it does not'],
-    ['a dimension chosen for the stance', 'Briefing and direction'],
-    ['the best thing about the pair', 'Biggest upside'],
-    ['and the biggest risk', 'Biggest risk'],
+    ['the types section', 'Your types together'],
+    ['an axis and its weight', 'Matters most'],
+    ['a focus area for the stance', 'Briefing and direction'],
     ['what works', 'What works'],
     ['what will rub', 'What will rub'],
     ['the playbook heading for the stance', 'How to manage Jordan'],
     ['advice addressed to each person', 'For Ale\xe7'],
-    ['the conversation starters', 'Things to actually talk about'],
   ]) {
     check('the comparison PDF carries ' + label, compatDrawn.includes(needle),
       needle.slice(0, 40));
   }
-  check('the comparison PDF does not print the peer dimensions for a manager',
+  check('the comparison PDF does not print the peer focus areas for a manager',
     !compatDrawn.includes('Load balance'));
+  check('nor the sections taken out of the page',
+    !['Where it holds and where it does not', 'Biggest upside', 'Biggest risk', 'Things to actually talk about']
+      .some(t => compatDrawn.includes(t)));
   check('the comparison PDF stamps which model ran it',
     /Analysed by mock on/.test(compatDrawn));
 
@@ -9432,20 +9451,18 @@ try {
   check('strengths and frictions cite their evidence too',
     (await page.locator('#report-body .compat-plays .ev-line').count()) >= 3,
     String(await page.locator('#report-body .compat-plays .ev-line').count()) + ' evidence lines');
-  check('the best thing and the biggest risk sit side by side, before the working',
-    await page.evaluate(() => {
-      const up = document.querySelector('#report-body .compat-up');
-      const risk = document.querySelector('#report-body .compat-risk');
-      const dims = document.querySelector('#report-body .section-card');
-      if (!up || !risk || !dims) return false;
-      const a = up.getBoundingClientRect(), b = risk.getBoundingClientRect();
-      return Math.abs(a.top - b.top) < 2 && a.right <= b.left && b.bottom < dims.getBoundingClientRect().top;
-    }));
-  check('the actions carry icons, the download first and the story image beside it',
-    (await page.locator('#view-report .compat-actions .btn .cta-icon').count()) === 4 &&
-      (await page.locator('#view-report .compat-actions .btn').first().getAttribute('id')) === 'export-compat-bottom' &&
-      (await page.locator('#view-report .compat-actions .btn').nth(1).getAttribute('id')) === 'share-compat-image');
-  check('and no button talks about scanning', !/scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
+  // The actions as the paid report's card tools: three tiles, an icon over a
+  // short label, side by side in one row.
+  const actionTiles = await page.evaluate(() => [...document.querySelectorAll('#view-report .compat-actions > *')].map(b => ({
+    id: b.id, cls: b.className, icon: Boolean(b.querySelector('svg')), label: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
+  })));
+  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Back to Compatibility',
+    actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
+      actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
+      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Back to Compatibility' &&
+      new Set(actionTiles.map(t => t.top)).size === 1, JSON.stringify(actionTiles));
+  check('and there is no "Check someone else" any more',
+    !/Check someone else|scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
   // The result as a story image: drawn at 1080 x 1920, carrying the score,
   // both names and the address. Read off the canvas the button would share.
   const compatImage = await page.evaluate(async () => {
@@ -9468,10 +9485,11 @@ try {
       /Want Jordan to see it too\?/.test(await page.locator('#compat-return').innerText()) &&
       /does not have this report/.test(await page.locator('#compat-return').innerText()),
     await page.locator('#compat-return').innerText());
-  check('the dimension scores are readable numbers, not empty',
-    (await page.locator('#report-body .section-card .trait-num').allInnerTexts())
-      .every(t => /^\d+$/.test(t.trim())));
   await shot('4-report');
+  await page.click('#compat-back');
+  await page.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
+  check('"Back to Compatibility" goes to My Compatibility, where this report is listed',
+    (await page.locator('#scan-history').innerText()).includes('Jordan'));
 
   // The report page is reached from the reader's own psyche page, and on a
   // phone the back button is the natural way to leave anything covering the
@@ -9482,7 +9500,8 @@ try {
   await page.goBack();
   await page.waitForLoadState('domcontentloaded');
   check('the back button returns from a compatibility report to the psyche page, not off the site',
-    await page.locator('#view-profile').isVisible() && !(await page.locator('#view-report').isVisible()));
+    await page.locator('#view-profile').isVisible() && !(await page.locator('#view-report').isVisible()) &&
+      !(await page.locator('#view-scan').isVisible()));
 
   // ---- how it works ----
   await page.click('[data-nav="about"]');
@@ -11036,7 +11055,7 @@ try {
           toolsFill: Math.abs(top('#profile-side .cx-tools').width - top('#profile-side .cx-home-hint').width) <= 2,
           oneBox: getComputedStyle(document.querySelector('#profile-top')).borderTopStyle === 'solid',
           noIntro: !shown('#profile-side .cx-home-intro'), noTapToOpen: !shown('#psyche-card-hint'),
-          tapHint: /^Tap your card to open it full screen, then tap any part to learn more\.$/
+          tapHint: /^Tap to open full screen$/
             .test(document.querySelector('#profile-side .cx-home-hint').innerText.replace(/^\W+/, '').trim()),
           spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });

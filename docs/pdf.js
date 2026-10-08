@@ -3274,10 +3274,10 @@
 
   /**
    * A comparison as a PDF, in the same order as the report page: the answer
-   * first (verdict, best thing, biggest risk, what they share), then the
-   * working (the five dimensions), then what it looks like (what works, what
-   * will rub, side by side), then what to do about it. Each block is kept
-   * whole on a page. Every heading comes from copy.js, as the profile's do.
+   * (verdict and what they share), the two types axis by axis, what it looks
+   * like (what works, what will rub, side by side), then what to do about it.
+   * Each block is kept whole on a page. Every heading comes from copy.js, as
+   * the profile's do.
    */
   function buildCompatibility(report, meta) {
     bindCopy();
@@ -3295,38 +3295,48 @@
 
     compatCover(doc, source, stamp);
 
-    // 1. The answer: the verdict as the lead, the best thing and the biggest
-    // risk side by side, and what they share.
+    // 1. The answer: the verdict as the lead, and what they share.
     if (source.verdict) {
       out.panel([{ text: source.verdict, style: { size: 11.2, color: INK }, leading: 16 }], { fill: WASH, bar: ACCENT });
     }
-    const one = text => (text ? [{ text, style: T_BODY, leading: 13.6 }] : []);
-    out.space(4);
-    out.pairedPanels(
-      { title: TEXT.compatUpside, color: GOOD, fill: GOOD_WASH, rows: one(source.biggestUpside) },
-      { title: TEXT.compatRisk, color: WARN, fill: WARN_WASH, rows: one(source.biggestRisk) });
     if ((source.sharedGround || []).length) {
       out.space(4);
       out.h3(TEXT.compatCommon);
       out.tags(source.sharedGround);
     }
 
-    // 2. The working: each dimension as a bar, its reason, and its evidence
-    // on one small line rather than a row of pills.
-    const dimensions = (source.dimensions || []).filter(d => d && d.name);
-    if (dimensions.length) {
+    // 2. The two types, two axes to a row: green where they share a letter,
+    // amber where they differ, each saying how much that axis counts.
+    const types = source.typeMatch || {};
+    const axes = (types.axes || []).filter(axis => axis && TEXT.compatTypeAxes[axis.axis]);
+    const axisPanel = axis => {
+      const names = TEXT.compatTypeAxes[axis.axis];
+      const word = letter => (names[letter] || letter) + ' (' + letter + ')';
+      return {
+        title: names.name + ' ' + axis.axis + '  ·  ' + (TEXT.compatWeight[axis.weight] || ''),
+        color: axis.same ? GOOD : WARN,
+        fill: axis.same ? GOOD_WASH : WARN_WASH,
+        rows: [
+          { text: labelA + '  ' + word(axis.a), style: T_TITLE, leading: 13.6 },
+          { text: labelB + '  ' + word(axis.b), style: T_TITLE, leading: 13.6 },
+          { text: axis.same ? TEXT.compatSame : TEXT.compatDiffer, style: { size: 7.8, bold: true, color: axis.same ? GOOD : WARN }, leading: 11, before: 2 },
+          axis.reading && { text: axis.reading, style: T_BODY, leading: 13.2, before: 3 },
+        ].filter(Boolean),
+      };
+    };
+    if (axes.length || types.summary) {
       out.keep(() => {
-        out.sectionTitle(TEXT.compatDimensions, TEXT.compatDimensionsSub);
-        dimension(dimensions[0]);
+        out.sectionTitle(TEXT.compatTypes, types.typeA && types.typeB ? labelA + ' ' + types.typeA + '  ·  ' + labelB + ' ' + types.typeB : '');
+        if (types.summary) out.body(types.summary, { size: 10.4, color: INK, leading: 14.6 });
+        if (axes.length) {
+          out.space(4);
+          out.pairedPanels(axisPanel(axes[0]), axes[1] ? axisPanel(axes[1]) : { title: '', rows: [] }, { whole: true });
+        }
       });
-      for (const item of dimensions.slice(1)) out.keep(() => dimension(item));
-    }
-    function dimension(item) {
-      out.bar(item.name, item.score);
-      if (item.reading) out.body(item.reading, { size: 9.6, color: INK, leading: 13.4 });
-      const evidence = (item.evidence || []).filter(Boolean);
-      if (evidence.length) out.body('Evidence: ' + evidence.join('  ·  '), { size: 7.9, italic: true, color: SOFT, leading: 11 });
-      out.space(6);
+      for (let i = 2; i < axes.length; i += 2) {
+        out.space(6);
+        out.pairedPanels(axisPanel(axes[i]), axes[i + 1] ? axisPanel(axes[i + 1]) : { title: '', rows: [] }, { whole: true });
+      }
     }
 
     // 3. What it looks like: what works and what will rub, side by side, each
@@ -3361,16 +3371,6 @@
     });
     if ((play.together || []).length) {
       out.panel(bullets(play.together, ACCENT), { label: TEXT.compatBoth, fill: WASH, bar: ACCENT });
-    }
-
-    // 5. Conversation starters, as the things to actually say.
-    if ((source.conversationStarters || []).length) {
-      out.keep(() => {
-        out.h3(TEXT.compatTalk);
-        out.panel(source.conversationStarters.filter(Boolean).map((line, i) => (
-          { text: '“' + line + '”', style: { size: 10, italic: true, color: INK }, leading: 14, before: i ? 6 : 0 })),
-        { fill: WHITE, bar: ACCENT_2 });
-      });
     }
 
     out.space(6);
