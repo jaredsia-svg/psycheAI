@@ -524,22 +524,40 @@
       out.owner = out.owner || trimText(name && (name.full_name || name), 80);
     },
     // Messenger and Instagram DMs share a format exactly. So does the privacy
-    // rule that goes with it: only the user's own messages are ever retained,
-    // and the other side is counted and then discarded, before anything leaves
-    // the browser. See summariseMessages in instagram.js.
+    // rule that goes with it: only the user's own messages are retained, each
+    // with the one message it answered, shortened and de-identified (ownSide
+    // in instagram.js); the rest of the other side is counted and discarded,
+    // before anything leaves the browser.
+    //
+    // A long conversation is split across message_1.json, message_2.json…;
+    // `thread_path` (or the title) says which one each file belongs to, and is
+    // turned into a bare number here — the digest samples per conversation —
+    // so nothing about who it was with is kept.
     messages(out, data) {
       const messages = Array.isArray(data && data.messages) ? data.messages : [];
       if (!messages.length) return;
+      const key = String((data && (data.thread_path || data.title)) || ('file' + out.counts.threads));
+      if (!out.threadIndex) Object.defineProperty(out, 'threadIndex', { value: new Map(), enumerable: false, writable: true });
+      if (!out.threadIndex.has(key)) out.threadIndex.set(key, out.threadIndex.size);
+      const thread = out.threadIndex.get(key);
       out.counts.threads++;
+      const list = [];
       for (const msg of messages) {
         const sender = trimText(msg && msg.sender_name, 80);
         out.counts.messages++;
-        const ts = Number(msg && msg.timestamp_ms) || 0;
-        noteSpan(out.span, ts > 1e11 ? Math.round(ts / 1000) : ts);
-        if (out.owner && sender === out.owner) {
-          keep(out.ownMessages, trimText(msg && msg.content, LIMITS.textChars), LIMITS.commentBuffer);
-        } else {
-          out.counts.received++;
+        const raw = Number(msg && msg.timestamp_ms) || 0;
+        const ts = raw > 1e11 ? Math.round(raw / 1000) : raw;
+        noteSpan(out.span, ts);
+        if (!(out.owner && sender === out.owner)) out.counts.received++;
+        const text = String(fixText((msg && msg.content) || '')).replace(/\s+/g, ' ').trim();
+        if (text) list.push({ sender, text, ts });
+      }
+      if (out.owner) {
+        const participants = (Array.isArray(data && data.participants) ? data.participants : [])
+          .map(p => trimText(p && p.name, 80)).filter(Boolean);
+        for (const own of root.PsycheInstagram.ownSide(list, out.owner, { blankOwnText: true, otherNames: participants.filter(n => n !== out.owner) })) {
+          if (out.ownMessages.length >= LIMITS.commentBuffer) break;
+          out.ownMessages.push(Object.assign(own, { thread, len: own.text.length, text: own.text.slice(0, LIMITS.textChars) }));
         }
       }
       out.kinds.messages = true;

@@ -161,9 +161,9 @@ At $0.75 / $3.75 per million tokens, worst case:
 | | free card | full premium report |
 |---|---|---|
 | output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 6,700 → $0.0050 | 37,600 → $0.0282 |
+| prompt plus schema | 6,700 → $0.0050 | 38,100 → $0.0286 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0521** (`FREE_COST_CAP` $0.053) | **$0.1503** (`COST_CAP` $0.151) |
+| **at most** | **$0.0521** (`FREE_COST_CAP` $0.053) | **$0.1507** (`COST_CAP` $0.151) |
 
 **The standard read fills its spare room with the reader's own words** (`buildFilled`). A reader with
 no Google or Facebook data, or a lighter account, used to land well under 80,000 and the room went
@@ -1193,15 +1193,16 @@ three are loaded, and a fourth starts a fresh set.
   the one sender in every chat loaded; or, in a one-to-one chat whose file WhatsApp named after the
   other person ("WhatsApp Chat with Alex"), the other sender; or a sender matching the reader's own
   name. Failing all three, the popout asks *"Which of these is you?"* with a button per sender.
-- **Only the reader's own words are kept.** Everyone else is counted and timed — who starts
-  conversations (after six hours' quiet), each side's median reply time, when the reader writes by
-  hour and weekday, message length, how often they ask questions — and their text is dropped as it
-  is read. Other people's names, and their first names, are replaced with "someone" inside the
-  reader's own messages, and chats are labelled c1–c3, never by who is in them.
+- **Only the reader's own words are kept**, each with the one message it answered (shortened and
+  de-identified — see "How messages are sampled"). Everyone else is otherwise counted and timed — who
+  starts conversations (after six hours' quiet), each side's median reply time, when the reader
+  writes by hour and weekday, message length, how often they ask questions — and their text is
+  dropped as it is read. Other people's names, and their first names, are replaced with "someone",
+  the reader's own name with `PsycheUser`, and chats are labelled c1–c3, never by who is in them.
 
 In the digest it is a `whatsapp` block — per-chat numbers and up to 200 of the reader's messages
-(600 in the premium read, within WhatsApp's 34,000-character share), tagged `[c1]`–`[c3]` — with its own `note` telling the model what it is, so
-no prompt change was needed. It is trimmed before anything from Instagram when the budget is
+(600 in the premium read), sampled per chat with each chat given at least a quarter, tagged
+`[c1]`–`[c3]` — with its own `note` telling the model what it is. It is trimmed before anything from Instagram when the budget is
 tight, `forModel` rebuilds it field by field on the server (so a client cannot slip names or
 anyone else's messages in), and the review has one switch for the lot — unticked, the whole block
 goes. *Evidence and method* and the data-sources list show it as its own row.
@@ -1946,7 +1947,7 @@ This is the part worth reading carefully.
 | The `.zip` archive itself | An **evidence digest**: activity counts, hour-of-day and day-of-week histograms, posting regularity, a sample of your own captions and comments, accounts you follow, and the topics Instagram itself inferred about you |
 | Every video — never opened | By default: about **14 of your own photographs**, downscaled, spread across your whole account history |
 | Your full long-form report | The compact **card** — the same profile as short phrases — when someone runs a comparison |
-| Direct messages, if you untick them in the pre-send review | By default: DM counts plus a sample of **your own** messages — never the other side of a conversation |
+| Direct messages, if you untick them in the pre-send review | By default: DM counts plus a sample of **your own** messages; about a third open with a short, anonymised line of the message they answered |
 
 The right column's own heading used to just say "Sent to be read" — accurate, but silent on *who*
 reads it, sitting directly beside a list a human never sees. It says "Sent to be read by AI model"
@@ -2193,7 +2194,7 @@ Google Takeout, when added — every one of these is a cap on an **aggregate**, 
 | Gemini Apps prompts | 80 |
 
 Facebook, when added: 200 posts, 150 comments, 300 friends sampled evenly, 80 repeated searches,
-and 200 of the reader's own Messenger messages — never the other side, exactly as Instagram DMs work.
+and 200 of the reader's own Messenger messages, sampled per conversation exactly as Instagram DMs are.
 
 **Two things about the budget that supplements exposed.**
 
@@ -3410,9 +3411,41 @@ promise "every photo except the few you agree to send" stays on the device, and 
 sent at all. A page describing what leaves a reader's machine cannot lag the code that decides it.
 
 **Direct messages are included by default**, because how someone writes to people who already know
-them is the most revealing text in the export. Only the user's own messages are ever sampled — the
-other side of every conversation is counted for the statistics and then discarded, before anything
-leaves the browser. The Direct messages row in the pre-send review turns the whole thing off.
+them is the most revealing text in the export. Only the user's own messages are sampled. The other
+side of every conversation is counted for the statistics and then discarded before anything leaves
+the browser — except that each of the reader's replies keeps the one message it answered, shortened to
+160 characters and de-identified where it is read (`ownSide` in `docs/instagram.js`: the reader's own
+name in any form becomes `PsycheUser`, every participant's name `someone`, links, emails and numbers
+are removed, and @handles become [P1]…), and about a third of the sampled lines show it. The Direct
+messages row in the pre-send review turns the whole thing off.
+
+**How messages are sampled** (`sampleConversations` in `docs/digest.js`, one sampler for Instagram,
+Messenger and WhatsApp):
+
+1. **Per conversation, a guaranteed minimum each.** Instagram and Messenger: the ten conversations the
+   reader writes in most, each at least 4% of the places, the rest by volume, none over a fifth.
+   WhatsApp: every chat (up to three) at least a quarter. Pooled, one busy group chat used to crowd out
+   the one-to-one chat that says most about closeness.
+2. **Spread across time.** Each conversation's span is cut into ten equal stretches, places shared by
+   the square root of what was written in each — a two-year chat is read across two years.
+3. **A mix of lengths.** In every stretch about half the places go to substantial messages (120+
+   characters), three tenths to ordinary ones and a fifth to short ones ("haha ok", "sorry!!"), which
+   carry tone and which the old longest-first rule never reached. The floor is now two characters.
+4. **The revealing ones first** within each length: openers (first message after six hours' quiet),
+   apologies, feelings and conflict, questions, and replies to a question.
+5. **Bursts as one.** Lines sent within two minutes, with nobody answering between, are joined with " / ".
+6. **No near-duplicates, nothing pasted.** "ok", "Ok!" and "okkk" count once per conversation. A message
+   over 1,200 characters, one over 280 that carries a link, or one marked forwarded is left out as
+   pasted or forwarded text; length counts for at most 280 characters when ranking, and a message is
+   shown to 400 characters at most.
+7. **What it answered**, as «them: …» at the start of about 35% of the lines — the ones where it
+   matters most (apologies, feelings, answers to a question). The prompt tells the model to read the
+   reply against it and never to attribute, quote or describe the other person from it.
+
+Lines are tagged `[t1]`… (Instagram), `[m1]`… (Messenger) and `[c1]`–`[c3]` (WhatsApp, matching the
+chat metrics), and `coverage.sampling` records how many lines carry context. When a digest is over its
+line the trim now thins each list evenly rather than cutting its end, which used to lose the newest
+year or the last conversations first.
 
 The archive is unzipped in the browser with the File API. The server proxies two model calls and
 stores nothing — your profile and reports live in this browser's local storage until you press

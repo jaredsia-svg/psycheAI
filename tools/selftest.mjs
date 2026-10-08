@@ -3631,9 +3631,10 @@ check('the sample arrives in chronological order',
   // between tags smaller than life, and the top-ten rule means the sample is
   // silent about everyone outside it.
   check('and the prompt describes the per-conversation sampling actually used',
-    /the ten conversations the user writes in most/.test(sys) &&
-    /no conversation exceeding a fifth of the sample/.test(sys) &&
-    /half the most recent and half the longest/.test(sys));
+    /the conversations the user writes in most/.test(sys) &&
+    /none over a fifth of the sample/.test(sys) &&
+    /spread across its whole span and across lengths/.test(sys) &&
+    /never attribute the quoted words to the user/.test(sys));
   check('and tells the model the tags are a finding rather than noise',
     /How somebody writes to one person versus another is a finding/.test(sys));
   check('and warns that the cap understates how large one conversation is',
@@ -3846,54 +3847,100 @@ check('the sample arrives in chronological order',
     JSON.stringify(again.directMessages.ownMessageSample) === JSON.stringify(sample));
 }
 
-// ---------- the two halves inside one conversation ----------
+// ---------- inside one conversation: time, length, what it says ----------
 //
-// Half the most recent, half the longest of what the recent half did not take.
-// On a fixture built so the two cannot be confused: length runs *against*
-// time, so the newest messages are the shortest and the longest are the
-// oldest. A rule that took the longest first would take the oldest twice and
-// the middle would show up in neither half.
+// One conversation, two years long, with every kind of message in it: the
+// sample is spread across its whole span, mixes long, ordinary and short
+// messages, and prefers the revealing ones within each length.
 {
   const DAY = 86400;
   const now = Math.floor(Date.parse('2026-06-01T00:00:00Z') / 1000);
   const ownTexts = [];
-  for (let i = 0; i < 1000; i++) {
-    // i = 0 is oldest and longest, i = 999 is newest and shortest.
-    ownTexts.push({
-      text: 'M' + String(i).padStart(3, '0') + ' ' + 'x'.repeat(45 + Math.floor((999 - i) / 2)),
-      ts: now - (999 - i) * DAY,
-      thread: 0,
-    });
+  for (let i = 0; i < 730; i++) {
+    const ts = now - (729 - i) * DAY;
+    // Every day: one long, one ordinary and one short message, hours apart.
+    ownTexts.push({ text: 'L' + i + ' ' + 'a thought that runs on for a while about the week and what it meant '.repeat(2), ts, thread: 0, gap: 3600, prevMine: false });
+    ownTexts.push({ text: 'M' + i + ' sounds good, see you at the usual place', ts: ts + 3 * 3600, thread: 0, gap: 3600, prevMine: false });
+    ownTexts.push({ text: 'S' + i + ' ok', ts: ts + 6 * 3600, thread: 0, gap: 3600, prevMine: false });
   }
-  // An unlimited budget: this is the sampler's rule under test, not the trim
-  // loop, which would otherwise shorten a thousand long messages to fit.
-  const built = Digest.build({
-    ...signals,
-    messages: {
-      total: 2000, threads: 1, groupThreads: 0, sent: 1000, received: 1000,
-      avgSentLength: 300, ownTexts,
-    },
-  }, { includeMessages: true, maxChars: 1e7 });
+  // A handful of revealing messages, otherwise ordinary.
+  ownTexts.push({ text: 'MSORRY sorry about last night, i was wrong', ts: now - 400 * DAY + 100, thread: 0, gap: 3600, prevMine: false });
+  const built = Digest.build({ ...signals, messages: { total: 3000, threads: 1, groupThreads: 0, sent: 2191, received: 800, avgSentLength: 60, ownTexts } },
+    { includeMessages: true, maxChars: 1e7 });
   const sample = built.directMessages.ownMessageSample;
-  const idx = sample.map(line => Number(/M(\d+) /.exec(line)[1]));
-  const half = Math.round(Digest.LIMITS.messages * Digest.LIMITS.messageRecentShare);
+  const body = line => line.replace(/^(\[[^\]]+\] )+/, '');
+  const days = sample.map(line => Number(/^[LMS](\d+) /.exec(body(line)) ? /^[LMS](\d+) /.exec(body(line))[1] : -1)).filter(d => d >= 0);
+  const kind = k => sample.filter(line => body(line).startsWith(k)).length;
+  check('one conversation on its own fills the whole sample, untagged',
+    sample.length === Digest.LIMITS.messages && sample.every(line => !/\[t\d+\]/.test(line)), String(sample.length));
+  check('spread across the whole span: every quarter of the two years is in it',
+    [0, 1, 2, 3].every(q => days.some(d => d >= q * 182 && d < (q + 1) * 182)) &&
+      days.filter(d => d >= 547).length < sample.length * 0.4,
+    JSON.stringify([0, 1, 2, 3].map(q => days.filter(d => d >= q * 182 && d < (q + 1) * 182).length)));
+  check('a mix of lengths: about half long, three tenths ordinary, a fifth short',
+    Math.abs(kind('L') / sample.length - 0.5) < 0.08 && Math.abs((kind('M')) / sample.length - 0.3) < 0.08 &&
+      Math.abs(kind('S') / sample.length - 0.2) < 0.08, JSON.stringify({ L: kind('L'), M: kind('M'), S: kind('S') }));
+  check('and the revealing message is chosen over the ordinary ones around it',
+    sample.some(line => /MSORRY/.test(line)));
+  check('the draw is deterministic',
+    JSON.stringify(Digest.build({ ...signals, messages: { total: 3000, threads: 1, groupThreads: 0, sent: 2191, received: 800, avgSentLength: 60, ownTexts } },
+      { includeMessages: true, maxChars: 1e7 }).directMessages.ownMessageSample) === JSON.stringify(sample));
+}
 
-  check('one conversation on its own fills the whole sample',
-    sample.length === Digest.LIMITS.messages, String(sample.length));
-  check('a single conversation is not tagged, since there is nothing to tell apart',
-    sample.every(line => !/\[t\d+\]/.test(line)), sample[0]);
-  check('half the places go to the most recent messages in it',
-    idx.filter(i => i >= 1000 - half).length === half,
-    idx.filter(i => i >= 1000 - half).length + ' of ' + half);
-  check('and half to the longest of what recency did not already take',
-    idx.filter(i => i < half).length === half,
-    idx.filter(i => i < half).length + ' of ' + half);
-  // The discriminating part. Everything between the two halves is both
-  // unremarkable in length and not recent, so nothing but a genuine two-rule
-  // split can leave it out.
-  check('and the middle of the conversation appears in neither half',
-    idx.every(i => i < half || i >= 1000 - half),
-    JSON.stringify(idx.filter(i => i >= half && i < 1000 - half).slice(0, 5)));
+// ---------- bursts, duplicates, pasted text, and what it answered ----------
+{
+  const t = 1780000000;
+  const S = Digest.sampleConversations;
+  const burst = S([
+    { text: 'omg', ts: t, thread: 0, gap: 7200, prevMine: false },
+    { text: 'did you see', ts: t + 20, thread: 0, gap: 20, prevMine: true },
+    { text: 'the email??', ts: t + 50, thread: 0, gap: 30, prevMine: true },
+    { text: 'later', ts: t + 4000, thread: 0, gap: 3950, prevMine: true },
+  ], { limit: 10 });
+  check('lines sent in one quick burst are one message, joined with " / "',
+    burst.some(line => /omg \/ did you see \/ the email\?\?/.test(line)) && burst.length === 2, JSON.stringify(burst));
+  const noBurst = S([
+    { text: 'omg', ts: t, thread: 0, gap: 7200, prevMine: false },
+    { text: 'did you see', ts: t + 20, thread: 0, gap: 10, prevMine: false },
+  ], { limit: 10 });
+  check('but not across a reply from the other side', noBurst.length === 2, JSON.stringify(noBurst));
+  const dupes = S(['ok', 'Ok!', 'okkkk', 'OK', 'fine'].map((text, i) => ({ text, ts: t + i * 9999, thread: 0 })), { limit: 10 });
+  check('near-identical short messages are one per conversation', dupes.length === 2, JSON.stringify(dupes));
+  const pasted = S([
+    { text: 'a long article pasted in. ' + 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(30), ts: t, thread: 0 },
+    { text: 'read this https://news.example.com/x ' + 'and the summary goes on and on about the piece. '.repeat(8), ts: t + 9999, thread: 0 },
+    { text: 'Forwarded many times: send this to ten friends', ts: t + 19999, thread: 0 },
+    { text: 'my own long message ' + 'with something to say about it all. '.repeat(20), ts: t + 29999, thread: 0 },
+  ], { limit: 10 });
+  check('pasted, forwarded and link-heavy long messages are left out',
+    pasted.length === 1 && /my own long message/.test(pasted[0]), JSON.stringify(pasted.map(x => x.slice(0, 40))));
+  check('and a long message of their own is clipped at the ceiling, 400 characters',
+    Digest.LIMITS.messageMaxChars === 400 && Digest.LIMITS.messagePasteChars === 1200 &&
+      pasted[0].replace(/^\[\d{4}\] /, '').length === 400 + 1 && pasted[0].endsWith('…'), String(pasted[0].length));
+  const replies = [];
+  for (let i = 0; i < 100; i++) {
+    replies.push({ text: 'reply number ' + i + ' with a few words in it', ts: t + i * 99999, thread: 0, gap: 600, prevMine: false,
+      ctx: i % 2 ? 'are you free on day ' + i + '?' : 'just saw this ' + i });
+  }
+  const answered = S(replies, { limit: 40 });
+  const quoted = answered.filter(line => /«them: /.test(line));
+  check('about a third of the lines show what they answered, «them: …», the questions first',
+    quoted.length === Math.round(40 * Digest.LIMITS.messageContextShare) && quoted.every(line => /\?»/.test(line)),
+    JSON.stringify(quoted.slice(0, 3)));
+}
+
+// ---------- WhatsApp: per chat, a quarter each at least ----------
+{
+  const t = 1780000000;
+  const chat = (name, n) => ({ chat: name, kind: 'one-to-one', members: 2, span: {}, counts: { messages: n * 2, sentByUser: n, receivedByUser: n },
+    ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with words', ts: t + i * 5000, gap: 4000, prevMine: false })) });
+  const digest = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000), chat('c2', 300), chat('c3', 80)] } } },
+    { includeMessages: false, maxChars: 1e7 });
+  const lines = digest.whatsapp.ownMessageSample;
+  const per = ['c1', 'c2', 'c3'].map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
+  check('WhatsApp: sampled per chat, every line tagged with its chat, a quarter of the places at least for each',
+    lines.length === Digest.LIMITS.waMessages && per.every(n => n >= Math.floor(Digest.LIMITS.waMessages * 0.25)) && per[0] > per[1],
+    JSON.stringify(per));
 }
 
 // ---------- the cap yields rather than starving the sample ----------
@@ -3935,53 +3982,29 @@ check('the sample arrives in chronological order',
 
 // ---------- the floor on a message ----------
 //
-// Not a size decision, and the numbers say so: 81 of 1,000 messages in a real
-// export came in under fifteen characters and they were 0.4% of the digest
-// between them, because short messages are short. It pays because the *cap*
-// binds — that same export offered 9,741 of the reader's own messages for
-// 1,000 places, so a slot spent on "Handsum" is a slot not spent on a
-// sentence. On an account with fewer messages than places for them it would
-// lose texture and gain nothing, which is worth knowing before raising it
-// further.
+// Two characters. It was forty, which kept the considered end of somebody's
+// writing and lost their ordinary voice; short messages now have a fifth of
+// every period's places on purpose, and the floor only removes what is not a
+// message at all.
 {
   const short = Digest.build({
     ...signals,
     messages: {
       total: 6, threads: 1, groupThreads: 0, sent: 6, received: 0, avgSentLength: 12,
       ownTexts: [
-        { text: 'Handsum', ts: 1700000000 },
-        { text: 'Hahahaha wtf', ts: 1700000001 },
-        { text: 'You going ah', ts: 1700000002 },
-        { text: 'this one is comfortably past the floor and then some more besides', ts: 1700000003 },
-        { text: 'and so is this second message, which runs on for a good while longer', ts: 1700000004 },
+        { text: 'k', ts: 1700000000 },
+        { text: 'Handsum', ts: 1700000400 },
+        { text: 'Hahahaha wtf', ts: 1700000800 },
+        { text: 'this one is comfortably long and then some more besides', ts: 1700001200 },
       ],
     },
   }, { includeMessages: true });
   const text = short.directMessages.ownMessageSample.join(' | ');
-  check('messages under the floor do not take a place in the sample',
-    !/Handsum|Hahahaha wtf|You going ah/.test(text), text);
-  // The floor is forty, not fifteen, and the difference is a judgement rather
-  // than a rounding: forty sits just above this reader's own mean sent length
-  // of 37 characters, so it keeps the considered end of their writing and
-  // drops most of the arranging. Pinned to the number rather than left to
-  // whatever the constant happens to say, because moving it silently changes
-  // which version of somebody the report describes.
-  check('and the floor is the considered one, just above a typical message',
-    Digest.LIMITS.messageChars === 40, String(Digest.LIMITS.messageChars));
-  check('a message of ordinary length for this person is below it',
-    Digest.LIMITS.messageChars > short.directMessages.averageSentLength,
-    Digest.LIMITS.messageChars + ' vs mean ' + short.directMessages.averageSentLength);
-  check('and the ones above it do', /comfortably past the floor/.test(text) &&
-    /second message, which runs on/.test(text), text);
-  // The statistic is measured over every message ever sent, not over the
-  // sample, so "this person writes briefly" survives the floor entirely.
+  check('short messages now take places too; only a single character does not',
+    /Handsum/.test(text) && /Hahahaha wtf/.test(text) && /comfortably long/.test(text) && !/(^|\| )k$/.test(text) &&
+      Digest.LIMITS.messageChars === 2, text);
   check('the fact that somebody writes briefly is still carried, in the average',
-    short.directMessages.averageSentLength === 12,
-    String(short.directMessages.averageSentLength));
-  // Captions have a floor of their own, lower than the message one and higher
-  // than the four characters every other list uses. Three separate numbers,
-  // and they must stay separate: a message is talk, a caption is a small
-  // public statement, and a comment on somebody else's post is neither.
+    short.directMessages.averageSentLength === 12, String(short.directMessages.averageSentLength));
   const shortCaps = Digest.build({
     ...signals,
     captions: [
@@ -3989,79 +4012,9 @@ check('the sample arrives in chronological order',
       { text: 'a caption with enough in it to be worth a place', ts: 1700000001 },
     ],
   }, { includeMessages: false });
-  check('the caption floor sits between the comment one and the message one',
-    Digest.LIMITS.captionChars === 30 &&
-    Digest.LIMITS.captionChars < Digest.LIMITS.messageChars,
-    Digest.LIMITS.captionChars + ' vs messages at ' + Digest.LIMITS.messageChars);
-  check('and it is applied, so a two-word caption does not take a place',
-    !JSON.stringify(shortCaps.samples.captions).includes('very jialat') &&
-    JSON.stringify(shortCaps.samples.captions).includes('worth a place'),
-    JSON.stringify(shortCaps.samples.captions));
-}
-
-// ---------- the ceiling on a message ----------
-//
-// A long message is truncated, not dropped: the opening 600 characters carry
-// the point and the rest is usually the same point continuing, so clipping it
-// costs less than losing the message. The number matters a second time over,
-// because the length a message is *measured* at is also what decides which
-// half it lands in, and those are not the same length once the ceiling bites.
-{
-  const DAY = 86400;
-  const now = Math.floor(Date.parse('2026-06-01T00:00:00Z') / 1000);
-  const ownTexts = [];
-  // One conversation, so the whole sample is the two halves of it. The newest
-  // 200 fill the recent half on their own, which leaves the longest half to be
-  // drawn entirely from the older messages below.
-  for (let i = 0; i < 200; i++) {
-    ownTexts.push({ text: 'R' + i + ' ' + 'r'.repeat(120), ts: now - i * DAY });
-  }
-  // Filler, then two oversized sets: S is barely over the ceiling and sits
-  // earlier in time, L is far over it and sits later. Together they are 240
-  // messages competing for the longest half's 90 places, which is what makes
-  // the check below discriminating — with 45 of each they would both fit and
-  // the measurement being tested would not matter.
-  for (let i = 0; i < 200; i++) {
-    ownTexts.push({ text: 'F' + i + ' ' + 'f'.repeat(150), ts: now - (400 + i) * DAY });
-  }
-  for (let i = 0; i < 120; i++) {
-    ownTexts.push({ text: 'S' + i + ' ' + 's'.repeat(620), ts: now - (2000 + i) * DAY });
-  }
-  for (let i = 0; i < 120; i++) {
-    ownTexts.push({
-      text: 'L' + i + ' ' + 'l'.repeat(1900) + ' ENDOFLONG',
-      ts: now - (1000 + i) * DAY,
-    });
-  }
-  const capped = Digest.build({
-    ...signals,
-    messages: {
-      total: 1280, threads: 1, groupThreads: 0, sent: 640, received: 640,
-      avgSentLength: 180, ownTexts,
-    },
-  }, { includeMessages: true, maxChars: 1e7 });
-  const bodies = capped.directMessages.ownMessageSample
-    .map(line => line.replace(/^\[\d{4}\] /, ''));
-  const longs = bodies.filter(b => /^L\d+ /.test(b));
-
-  check('the ceiling on one message is 600 characters',
-    Digest.LIMITS.messageMaxChars === 600, String(Digest.LIMITS.messageMaxChars));
-  check('a message past the ceiling is clipped rather than dropped',
-    longs.length > 0 && longs.every(b => b.length === 601 && b.endsWith('…')),
-    longs.length + ' kept, first is ' + (longs[0] || '').length + ' chars');
-  check('and the clipped tail is genuinely gone',
-    !bodies.some(b => b.includes('ENDOFLONG')));
-  // The discriminating one, and the reason the fixture has two oversized sets
-  // rather than one. Measured after clipping they are the same length, so the
-  // longest half fills with whichever the sort reaches first — the S set,
-  // being older and therefore earlier in the chronological order the sort is
-  // stable against — and the genuinely long messages lose their places to
-  // messages a third their size. Measured whole, L wins on its merits, which
-  // is what "longest" has to mean for the half to be worth having.
-  // The longest half has 125 places and L has 120 messages: measured whole,
-  // every L takes one; measured clipped, S would take them first.
-  check('the longest half ranks on the real length, not the clipped one',
-    longs.length === 120, longs.length + ' of 120');
+  check('captions keep their own floor of thirty',
+    Digest.LIMITS.captionChars === 30 && !JSON.stringify(shortCaps.samples.captions).includes('very jialat') &&
+      JSON.stringify(shortCaps.samples.captions).includes('worth a place'), JSON.stringify(shortCaps.samples.captions));
 }
 
 // Links in the reader's own messages. A shared ride-tracking link is not
@@ -4556,9 +4509,9 @@ const heavyMessages = Digest.build(heavyMessagesSignals, { includeMessages: true
 check('the DM cap is 270, drawn from the ten conversations they write in most',
   Digest.LIMITS.messages === 270 && Digest.LIMITS.messageTopThreads === 10,
   JSON.stringify([Digest.LIMITS.messages, Digest.LIMITS.messageTopThreads]));
-check('no conversation takes more than a fifth, and each is split down the middle',
-  Digest.LIMITS.messageThreadCap === 0.20 && Digest.LIMITS.messageRecentShare === 0.5,
-  JSON.stringify([Digest.LIMITS.messageThreadCap, Digest.LIMITS.messageRecentShare]));
+check('no conversation takes more than a fifth, and each is given a small share at least',
+  Digest.LIMITS.messageThreadCap === 0.20 && Digest.LIMITS.messageMinShare === 0.04,
+  JSON.stringify([Digest.LIMITS.messageThreadCap, Digest.LIMITS.messageMinShare]));
 check('a heavy account caps DMs at that limit',
   heavyMessages.directMessages.ownMessageSample.length === 270,
   heavyMessages.directMessages.ownMessageSample.length + ' messages');
@@ -7335,8 +7288,12 @@ check('the schema requires evidence on strengths and frictions',
   const sumText = JSON.stringify(summary);
   check('WhatsApp: only the reader\'s words are kept, with everyone else\'s names blanked out of them',
     summary.chats[0].ownMessages.map(m => m.text).join('|') === 'are you coming tonight, someone?|morning someone' &&
-      !/Ben|Kim|Ode|Lee|see you there|"yes"/.test(sumText) && summary.chats[0].kind === 'one-to-one' &&
+      !/Ben|Kim|Ode|Lee/.test(sumText) && summary.chats[0].kind === 'one-to-one' &&
       summary.chats[1].counts.sentByUser === 2 && summary.chats[1].counts.receivedByUser === 1, sumText.slice(0, 400));
+  check('WhatsApp: a reply keeps the one message it answered, de-identified; an opener keeps none',
+    !summary.chats[0].ownMessages[0].ctx && summary.chats[0].ownMessages[1].ctx === 'yes see you there' &&
+      summary.chats[0].ownMessages[1].prevMine === false && summary.chats[0].ownMessages[0].gap === null,
+    JSON.stringify(summary.chats[0].ownMessages));
   check('WhatsApp: who starts conversations and how fast each side answers are counted',
     summary.chats[0].conversationsStartedByUser === 2 && summary.chats[0].medianOthersReplyMinutes === 26 &&
       summary.chats[0].userHours[21] === 1 && summary.chats[0].userHours[8] === 1,
@@ -7357,7 +7314,7 @@ check('the schema requires evidence on strengths and frictions',
   const sent = Digest.forModel(tampered);
   check('WhatsApp: the server lets through only the fields it names, never names or anything added',
     sent.whatsapp && sent.whatsapp.chats.length === 2 && !/Ben Ode|smuggled|nope/.test(JSON.stringify(sent.whatsapp)) &&
-      sent.whatsapp.chats[0].userHours.length === 24 && /\[c2\] dinner on friday/.test(Digest.renderEvidence(sent)));
+      sent.whatsapp.chats[0].userHours.length === 24 && /\[c2\]:\ndinner on friday/.test(Digest.renderEvidence(sent)));
   const declined = Digest.omitWhatsApp(JSON.parse(JSON.stringify(merged)));
   check('WhatsApp: unticked at the review, the whole block goes',
     !declined.whatsapp && !declined.coverage.sources.includes('whatsapp') && !declined.coverage.sampling.whatsappMessages);

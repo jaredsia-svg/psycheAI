@@ -19,10 +19,13 @@
 //
 // The same two rules as the other supplements, and one more:
 //
-// **Only the reader's own words are kept.** Everyone else in the chat is
-// counted and timed — who starts conversations, how fast each side answers —
-// and their text is dropped as it is read. Nobody is named: chats are c1–c3,
-// and other people's names are blanked out of the reader's own messages.
+// **Only the reader's own words are kept**, each with the one message it
+// answered, shortened and de-identified (ownSide in instagram.js). Everyone
+// else in the chat is otherwise counted and timed — who starts
+// conversations, how fast each side answers — and their text is dropped as it
+// is read. Nobody is named: chats are c1–c3, other people's names are blanked
+// out of the reader's messages and the context alike, and the reader's own
+// name is taken out of the context.
 //
 // **The reader is found, not assumed.** The export does not say whose phone
 // it came from. The sender present in every chat loaded is the reader; failing
@@ -42,7 +45,9 @@
     // Own messages kept per chat for sampling, the most recent; the digest
     // samples again.
     ownPerChat: 4000,
-    textChars: 300,
+    // Held longer than digest.js shows (400), so it can tell a long pasted or
+    // forwarded message from one the reader wrote; `len` keeps the full length.
+    textChars: 600,
     fileBytes: 60 * 1024 * 1024,
     // A new conversation, for "who starts it", after this much quiet.
     newConversationHours: 6,
@@ -215,6 +220,8 @@
   }
 
   const escapeRe = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // instagram.js is loaded first, everywhere this runs.
+  const ownSide = (...args) => root.PsycheInstagram.ownSide(...args);
 
   /**
    * The chats, reduced for the digest once the reader is known. Everything
@@ -237,7 +244,6 @@
         const weekdays = new Array(7).fill(0);
         let sent = 0; let chars = 0; let questions = 0; let startedByUser = 0; let startedByOthers = 0;
         const userReplies = []; const othersReplies = [];
-        const own = [];
         let first = Infinity; let last = 0;
         messages.forEach((m, i) => {
           if (m.t < first) first = m.t;
@@ -259,8 +265,11 @@
           const text = m.text.replace(/\s+/g, ' ').trim();
           chars += text.length;
           if (text.includes('?')) questions++;
-          own.push({ text: (blank ? text.replace(blank, 'someone') : text).slice(0, LIMITS.textChars), ts: Math.floor(m.t / 1000) });
         });
+        // The reader's own messages, each with what it answered (ownSide).
+        const own = ownSide(messages.map(m => ({ sender: m.sender, text: m.text.replace(/\s+/g, ' ').trim(), ts: Math.floor(m.t / 1000) })),
+          owner, { blankOwnText: true, otherNames: others, extra: m => ({ len: m.text.length }) })
+          .map(o => Object.assign(o, { text: (blank ? o.text.replace(blank, 'someone') : o.text).slice(0, LIMITS.textChars) }));
         const iso = ms => (Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString().slice(0, 10) : null);
         return {
           chat: 'c' + (index + 1),

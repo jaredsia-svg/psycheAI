@@ -52,7 +52,7 @@
     // whole query.
     commentChars: 30,
     // Messages, drawn per conversation rather than from one pile — see
-    // sampleMessages for how the places are shared out and why.
+    // sampleConversations for how the places are shared out and why.
     // 250, raised from 180 when the weaker lists below were cut — topics to
     // twenty, ad interests out, liked captions to six with their hashtags
     // counted instead, video titles to ten — and the budget began measuring
@@ -74,39 +74,39 @@
     // purely proportional, a reader whose partner accounts for half their
     // messages would get a report about one relationship.
     messageThreadCap: 0.20,
-    // Within a conversation: this share the most recent, the rest the longest
-    // of what is left. Recency shows where the relationship is now, length
-    // shows where they actually said something in it.
-    messageRecentShare: 0.5,
-    // The floor a message must clear to take one of those 300 places — see
-    // sampleMessages for why this is a quality number and not a size one.
-    //
-    // Forty, raised from fifteen, and the trade is worth stating because it is
-    // not free. Against a real archive this sits just above the reader's own
-    // mean sent length of 37 characters, so it keeps the more considered end
-    // of their writing and drops most of the arranging. The pool is still far
-    // larger than the 300 places — thousands of messages clear it — so the cap
-    // goes on binding and the buckets go on choosing.
-    //
-    // What it buys: fewer places spent on "Ok seeya there at tomo!" and more
-    // on messages that carry a thought. What it costs: the sample leans to
-    // their more expansive messages rather than their most typical ones. Forty
-    // rather than fifty because it keeps the short-but-real ones — "I probably
-    // think can buy US stocks on dips!!" is 44 characters, an actual view — at
-    // the price of a few more arrangements. The counter-fact survives either
-    // way in `averageSentLength`, which is measured over every message they
-    // ever sent rather than over this sample, so a model reading both can see
-    // that they mostly write briefly.
-    messageChars: 40,
-    // And the ceiling on one message, past which it is truncated rather than
-    // dropped: the opening 600 characters of a long message carry the point,
-    // and the remainder is usually the same point continuing. 600 rather than
-    // the 2000 it briefly was, because a handful of very long messages were
-    // taking the space of several ordinary ones — p90 in a real export was 167
-    // characters and p95 was 213, so this cuts about 1% of messages and none
-    // of them at the start. Selection is made on the *full* length, so the
-    // longest bucket still means longest; only the text shown is clipped.
-    messageMaxChars: 600,
+    // At least this share of the places for every conversation drawn on
+    // (when it has that many), the rest in proportion to volume. Small here:
+    // ten conversations at 4% each still leaves most of the sample to follow
+    // the reader's actual social life. WhatsApp's three chats get a quarter
+    // each instead (waMinShare).
+    messageMinShare: 0.04,
+    // The floor a message must clear: two characters. It used to be forty,
+    // which kept "the more considered end" of somebody's writing — and lost
+    // the ordinary voice entirely: "haha ok", "sorry!!", "omw", the emoji,
+    // the tone of a quick reply. Those are now a fifth of every period's
+    // places on purpose (MESSAGE_MIX in sampleConversations), so the floor
+    // only removes what is not a message at all.
+    messageChars: 2,
+    // The ceiling on one message as shown, past which it is clipped. 400:
+    // p90 of a real export was 167 characters and p95 213, so this clips
+    // about 1% of messages and none of them near the start.
+    messageMaxChars: 400,
+    // Past this a message is not used at all: a 1,200-character message is
+    // almost always pasted or forwarded — an article, an announcement, a
+    // chain message — not something the reader wrote. One carrying a link is
+    // held to messageLinkChars for the same reason.
+    messagePasteChars: 1200,
+    messageLinkChars: 280,
+    // Time periods each conversation's places are spread over, so a two-year
+    // chat is read across the two years rather than mostly from its last month.
+    messagePeriods: 10,
+    // Lines sent within this many seconds of the reader's previous line, with
+    // nobody answering between, are one message: "omg" / "did you see" / "the
+    // email??" is one thought.
+    messageBurstSeconds: 120,
+    // The share of sampled lines shown with the message they answered
+    // («them: …»), chosen from the ones where that context matters most.
+    messageContextShare: 0.35,
     // Fifteen. Two hundred and forty was a list, not a ranking: past the top
     // dozen the counts flatten into a long tail of accounts liked once or
     // twice, which says nothing a follow count does not already say. Fifteen
@@ -214,9 +214,11 @@
     fbFriends: 300,
     fbSearches: 80,
     fbMessages: 200,
-    // The reader's own messages from up to three WhatsApp chats, all chats
-    // together, each tagged [c1]–[c3]. Trimmed before anything Instagram.
+    // The reader's own messages from up to three WhatsApp chats, sampled per
+    // chat like any other conversation and tagged [c1]–[c3]. Each chat is
+    // guaranteed a quarter of the places when it has that many.
     waMessages: 200,
+    waMinShare: 0.25,
     // Derived rather than typed, so the ceiling and the price cannot drift
     // apart. This was hardcoded at 600000, which is 49,516 chars *past* what
     // COST_CAP buys: a digest that actually filled it would have cost $0.5212
@@ -396,7 +398,9 @@
   // development and pressure-point fields and the prompt that ties them in.
   // Measured at 37,073. Sized for the larger of the two layouts, so switching
   // back to classic (34,277) never needs this changed.
-  const FIXED_INPUT_TOKENS = 37600;
+  // Raised to 38,100 when the messages gained their «them: …» context and the
+  // prompt began describing the per-conversation sampler. Measured at 37,851.
+  const FIXED_INPUT_TOKENS = 38100;
 
   // lib/gemini.js caps generation here, so this is the most output — visible
   // report plus thinking — that a single call can possibly bill for. Held to
@@ -652,8 +656,8 @@
   //                 at most $0.0693                    → DEEP_FREE_COST_CAP $0.070
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 37,600 prompt + 45,714 digest × $0.75/M = $0.0625
-  //                 at most $0.1675                    → DEEP_COST_CAP $0.168
+  //                 38,100 prompt + 45,714 digest × $0.75/M = $0.0629
+  //                 at most $0.1679                    → DEEP_COST_CAP $0.168
   //
   // $0.238 for the whole unlock at most, against a US$5 payment. Held by the
   // same selftest check as the standard caps.
@@ -780,7 +784,7 @@
     const seen = new Set();
     for (const item of texts) {
       const dated = Boolean(item) && typeof item === 'object';
-      // Measured whole, shown clipped — the same reason as in sampleMessages.
+      // Measured whole, shown clipped, as messages are.
       // Ranking on the clipped length would tie every caption past the ceiling
       // at the same value and hand the longest half to whichever the sort
       // reached first. `sampleTexts` still has that defect; captions no longer
@@ -923,121 +927,212 @@
 
   // ---------- messages, sampled per conversation ----------
   //
-  // How somebody writes to people close to them is mostly visible in ordinary
-  // messages — the register, the warmth, how much they explain themselves, how
-  // they open and close a conversation. Those are neither the newest nor the
-  // longest, so the old sampler could not see them at all. It saw the last
-  // fortnight and the essays.
+  // One sampler for every message source — Instagram DMs, Messenger and
+  // WhatsApp — because the question is the same for all three: how does this
+  // person write to the people close to them? That is mostly visible in
+  // ordinary messages — the register, the warmth, how much they explain
+  // themselves, how they open a conversation and how they answer one.
   //
-  // Per conversation, not from one pile. Three rules:
+  //   1. **Per conversation, a guaranteed minimum each.** The conversations
+  //      they write in most (ten for Instagram and Messenger, all three
+  //      WhatsApp chats), each given at least `minShare` of the places when it
+  //      has them, the rest in proportion to volume, no one taking more than
+  //      `threadCap`. Pooled, one busy group chat crowded out the one-to-one
+  //      chat that says most about closeness.
+  //   2. **Spread across time.** Each conversation's span is cut into
+  //      `periods` equal stretches and its places shared between them by the
+  //      square root of how much was written in each, so a two-year chat is
+  //      read across two years rather than from its last month.
+  //   3. **A mix of lengths.** In every stretch, half the places for
+  //      substantial messages (120+ characters), three tenths for ordinary
+  //      ones and a fifth for short ones — the "haha ok" and "sorry!!" that
+  //      carry tone and that a longest-first rule never reached.
+  //   4. **The revealing ones first.** Inside each length band: openers (the
+  //      first message after six hours' quiet — who reaches out), apologies,
+  //      feelings and conflict, and questions, before the rest.
+  //   5. **Bursts as one.** Lines sent within `burstSeconds` of each other
+  //      with nobody answering between are joined with " / ".
+  //   6. **No near-duplicates, and nothing pasted.** "ok", "Ok!", "okkk" are
+  //      one message per conversation; a message past `pasteChars`, a long
+  //      one carrying a link, or one marked forwarded is left out — it is
+  //      almost always an article, an announcement or a chain message.
+  //      Length counts for at most 280 characters when ranking, so a long
+  //      message does not win on length alone.
+  //   7. **What it answered.** About `contextShare` of the lines — the ones
+  //      where it matters most — open with the message they replied to,
+  //      «them: …», shortened and de-identified where it was read (ownSide in
+  //      instagram.js): the reader's own name, everyone's names, links,
+  //      addresses and numbers taken out.
   //
-  //   · **The ten conversations they use most**, and nothing else. Below that
-  //     is the one-off end of an inbox — a stranger, a courier, a group
-  //     somebody was added to and left. Real messages, but not evidence about
-  //     a relationship, and an archive holds hundreds of them.
-  //   · **Places shared out in proportion to volume, capped at a fifth each.**
-  //     Proportion is what makes the sample resemble the person's actual
-  //     social life; the cap is what stops one relationship becoming the whole
-  //     report.
-  //   · **Half the most recent, half the longest**, inside each conversation.
-  //     Recency shows where that relationship is now, length shows where they
-  //     actually said something in it.
-  //
-  // The previous shape split the archive into two eras and sampled each. That
-  // was an improvement on ranking everything at once, but it was still blind to
-  // who was being written to — and *who* is most of what a message means. A
-  // pooled sample cannot distinguish somebody who writes warmly from somebody
-  // who writes warmly to one person and curtly to everyone else, and those are
-  // different people. Threads make that visible; eras never could.
-  //
-  // Chronology survives inside a conversation rather than across the sample,
-  // which is the right trade now: reading one relationship in order says more
-  // than reading forty interleaved.
-  //
-  // Nothing here knows who anybody is. Threads arrive as integers from
-  // instagram.js and are relabelled by rank — t1 is the conversation they use
-  // most — so the sample carries the shape of their social life and none of
-  // its names.
+  // Deterministic throughout — every tie breaks on a hash of the text — since
+  // the result cache keys on the digest. Nothing here knows who anybody is:
+  // conversations arrive as numbers or c1–c3 and are labelled by rank.
+  const MESSAGE_SHORT = 25;
+  const MESSAGE_LONG = 120;
+  const MESSAGE_LENGTH_CREDIT = 280;
+  const MESSAGE_MIX = [50, 30, 20]; // long, medium, short
+  const OPENER_SECONDS = 6 * 3600;
+  const APOLOGY = /\b(sorry|soz|apologi[sz]e|my bad|forgive me|i was wrong)\b/i;
+  const FEELING = /\b(love|loved|miss(?:ed)? you|hate|angry|mad at|upset|sad|hurt|worried|worry|anxious|scared|afraid|stressed|lonely|proud|grateful|thankful|disappoint\w*|frustrat\w*|annoy\w*|jealous|cry|crying|cried|happy|excited|feel|feeling|felt|sick of|tired of|overwhelm\w*|argu\w*|fight|fought)\b/i;
+  // What Instagram and Messenger write in place of a message.
+  const MESSAGE_SYSTEM = /^(?:.{1,60} )?(?:sent an attachment|sent a (?:photo|video|voice message|gif|sticker|link|post|reel|story)|shared a (?:post|reel|story|link|video))\.?$|^(?:liked a message|reacted .{1,12} to your message)$|^(?:you )?(?:missed|started) (?:an? )?(?:audio|video|voice) call|^the (?:video|audio) (?:call|chat) ended|(?:named the group|changed the group|left the group)/i;
+  const FORWARDED = /^(?:forwarded(?: many times)?\b|fwd?:)/i;
+  const HAS_LINK = /\b(?:https?:\/\/|www\.)\S+/i;
 
-  function sampleMessages(texts, opts) {
-    const maxChars = opts.maxChars;
-    const floor = opts.minChars;
-    const cleaned = [];
-    const seen = new Set();
-    for (const item of texts) {
+  function normaliseMessage(text) {
+    return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '').replace(/(.)\1+/gu, '$1');
+  }
+
+  function messageScore(m) {
+    let score = 0;
+    if (m.opener) score += 2;
+    if (APOLOGY.test(m.text)) score += 2;
+    if (FEELING.test(m.text)) score += 2;
+    if (m.text.includes('?')) score += 1;
+    if (m.ctx && m.ctx.includes('?')) score += 1;
+    return score;
+  }
+
+  function sampleConversations(items, opts) {
+    const maxChars = opts.maxChars || LIMITS.messageMaxChars;
+    const floor = opts.minChars || LIMITS.messageChars;
+    const pasteChars = opts.pasteChars || LIMITS.messagePasteChars;
+    const linkChars = opts.linkChars || LIMITS.messageLinkChars;
+    const burst = opts.burstSeconds === undefined ? LIMITS.messageBurstSeconds : opts.burstSeconds;
+    const stats = opts.stats || {};
+    stats.pasted = 0;
+    stats.bursts = 0;
+
+    // Each conversation in order, its bursts joined.
+    const threads = new Map();
+    (items || []).forEach((item, index) => {
       const dated = Boolean(item) && typeof item === 'object';
-      // Measured whole, shown clipped, and the order matters. The longest half
-      // ranks on `len`, so measuring after the ceiling would give every message
-      // past it the same length as every other and collapse that half into
-      // whichever of the tied ones the sort reached first.
-      const full = trim(dated ? item.text : item, Infinity);
-      const value = full.length > maxChars ? full.slice(0, maxChars) + '…' : full;
-      if (full.length < floor || seen.has(value)) continue;
-      seen.add(value);
-      const ts = dated && Number.isFinite(item.ts) && item.ts > 0 ? item.ts : 0;
-      const year = dated ? yearOf(item.ts) : '';
-      // Everything undated and unthreaded lands in one conversation, which is
-      // what a hand-built fixture and a bare string list amount to. That case
-      // then behaves as one thread with no cap, rather than as 300 threads of
-      // one message each.
-      const thread = dated && Number.isFinite(item.thread) ? item.thread : 0;
-      cleaned.push({ ts, thread, len: full.length, year, text: value });
-    }
-    cleaned.sort((a, b) => a.ts - b.ts);
+      const raw = String(dated ? item.text : item || '').replace(/\s+/g, ' ').trim();
+      if (!raw || MESSAGE_SYSTEM.test(raw)) return;
+      const key = dated && item.thread !== undefined && item.thread !== null ? item.thread : 0;
+      if (!threads.has(key)) threads.set(key, []);
+      threads.get(key).push({
+        raw, index, ts: dated && Number.isFinite(item.ts) && item.ts > 0 ? item.ts : 0,
+        len: dated && Number.isFinite(item.len) ? Math.max(item.len, raw.length) : raw.length,
+        gap: dated && 'gap' in item ? item.gap : undefined,
+        prevMine: dated && 'prevMine' in item ? Boolean(item.prevMine) : undefined,
+        ctx: dated && item.ctx ? String(item.ctx) : '',
+      });
+    });
 
-    // Grouped, then ranked by how many *eligible* messages each holds rather
-    // than by raw volume. A conversation of four hundred one-word replies is
-    // not one this sample can draw on, and ranking it above a real
-    // correspondence would reserve places nothing could fill. Ties break on
-    // the older conversation, so the order is total and the draw stays
-    // deterministic — the result cache keys on the digest, and a sample that
-    // moved between rebuilds would charge the reader for their own retry.
-    const byThread = new Map();
-    for (const c of cleaned) {
-      if (!byThread.has(c.thread)) byThread.set(c.thread, []);
-      byThread.get(c.thread).push(c);
+    const units = new Map();
+    const seenLong = new Set();
+    for (const [key, list] of threads) {
+      list.sort((a, b) => a.ts - b.ts || a.index - b.index);
+      const merged = [];
+      for (const m of list) {
+        const last = merged[merged.length - 1];
+        const joined = last && burst > 0 && m.ts && last.lastTs && m.ts - last.lastTs <= burst &&
+          (m.prevMine === undefined ? true : m.prevMine) && last.raw.length + m.raw.length + 3 <= maxChars &&
+          m.len <= pasteChars && last.len <= pasteChars;
+        if (joined) {
+          last.raw += ' / ' + m.raw;
+          last.len += m.len + 3;
+          last.lastTs = m.ts;
+          last.parts++;
+          stats.bursts++;
+        } else {
+          merged.push(Object.assign({}, m, { lastTs: m.ts, parts: 1 }));
+        }
+      }
+      const seenShort = new Set();
+      const kept = [];
+      for (const m of merged) {
+        // Pasted, forwarded, or a link with an essay around it: not the
+        // reader's own writing.
+        if (m.len > pasteChars || FORWARDED.test(m.raw) || (HAS_LINK.test(m.raw) && m.len > linkChars)) { stats.pasted++; continue; }
+        const text = m.raw.replace(/\s*\b(?:https?:\/\/|www\.)\S+/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+        if (text.length < floor) continue;
+        const norm = normaliseMessage(text) || text;
+        if (norm.length < MESSAGE_SHORT) {
+          if (seenShort.has(norm)) continue;
+          seenShort.add(norm);
+        } else {
+          if (seenLong.has(norm)) continue;
+          seenLong.add(norm);
+        }
+        const shown = text.length > maxChars ? text.slice(0, maxChars) + '…' : text;
+        const unit = {
+          ts: m.ts, year: m.ts ? yearOf(m.ts) : '', text: shown, len: text.length, ctx: m.ctx,
+          opener: m.gap !== undefined && (m.gap === null || m.gap >= OPENER_SECONDS),
+          hash: stableHash(shown),
+        };
+        unit.score = messageScore(unit);
+        kept.push(unit);
+      }
+      if (kept.length) units.set(key, kept);
     }
-    const ranked = [...byThread.values()]
-      .sort((a, b) => b.length - a.length || a[0].ts - b[0].ts || a[0].text.localeCompare(b[0].text));
-    const top = ranked.slice(0, opts.topThreads);
-    if (opts.stats) {
-      opts.stats.threadsAvailable = ranked.length;
-      opts.stats.threadsUsed = top.length;
-    }
+
+    // The conversations, by how many usable messages each holds; ties to the
+    // older one, so the order is total.
+    const ranked = [...units.entries()].sort((a, b) => b[1].length - a[1].length ||
+      a[1][0].ts - b[1][0].ts || a[1][0].hash - b[1][0].hash);
+    const top = ranked.slice(0, opts.topThreads || ranked.length);
+    stats.threadsAvailable = ranked.length;
+    stats.threadsUsed = top.length;
     if (!top.length) return [];
 
-    const sizes = top.map(t => t.length);
+    const sizes = top.map(([, list]) => list.length);
     const pool = sizes.reduce((sum, n) => sum + n, 0);
     const total = Math.min(opts.limit, pool);
-    // The cap binds only when places are actually scarce, and it can never sit
-    // below an equal share: an archive with three conversations held to a fifth
-    // each would return three fifths of a sample and leave the rest unused.
-    const cap = pool <= opts.limit
-      ? total
-      : Math.max(Math.ceil(total / sizes.length), Math.floor(total * opts.threadCap));
-    const quota = allocatePlaces(sizes, total, cap);
+    const cap = pool <= opts.limit ? total
+      : Math.max(Math.ceil(total / sizes.length), Math.floor(total * (opts.threadCap || 1)));
+    // The guaranteed minimum first, then the rest by volume.
+    const least = sizes.map(n => Math.min(n, cap, Math.floor(total * (opts.minShare || 0))));
+    // The cap is on the whole quota, so this call gets what is left of it; and
+    // allocatePlaces lets it yield when smaller conversations run dry.
+    const rest = allocatePlaces(sizes, total - least.reduce((a, b) => a + b, 0), cap - Math.max(...least),
+      sizes.map((n, i) => n - least[i]));
+    const quota = least.map((n, i) => n + rest[i]);
 
-    const out = [];
-    const tagged = top.length > 1;
-    top.forEach((thread, rank) => {
+    const picked = [];
+    top.forEach(([key, list], rank) => {
       const want = quota[rank];
       if (want <= 0) return;
-      // The recent half first, then the longest of what it did not take, so
-      // the two are complementary rather than competing for the same messages.
-      // Taken off the end because each thread is already in chronological
-      // order — and guarded, because slice(-0) is the whole array rather than
-      // none of it, which would hand a thread with no recent share every
-      // message it has.
-      const recentCount = Math.min(want, Math.round(want * opts.recentShare));
-      const picked = new Set(recentCount > 0 ? thread.slice(-recentCount) : []);
-      for (const c of thread.filter(m => !picked.has(m)).sort((a, b) => b.len - a.len)
-        .slice(0, want - picked.size)) picked.add(c);
-      const label = tagged ? '[t' + (rank + 1) + '] ' : '';
-      for (const c of thread) {
-        if (picked.has(c)) out.push((c.year ? '[' + c.year + '] ' : '') + label + c.text);
-      }
+      // Periods of equal length across the conversation's span.
+      const dated = list.every(m => m.ts);
+      const first = dated ? list[0].ts : 0;
+      const span = dated ? list[list.length - 1].ts - first : 0;
+      const count = span > 0 ? Math.max(1, Math.min(opts.periods || LIMITS.messagePeriods, want)) : 1;
+      const periods = Array.from({ length: count }, () => []);
+      for (const m of list) periods[span > 0 ? Math.min(count - 1, Math.floor((m.ts - first) * count / (span + 1))) : 0].push(m);
+      const perPeriod = allocatePlaces(periods.map(p => Math.max(p.length ? 1 : 0, Math.round(Math.sqrt(p.length) * 100))),
+        want, want, periods.map(p => p.length));
+      const chosen = new Set();
+      periods.forEach((period, p) => {
+        const room = perPeriod[p];
+        if (room <= 0) return;
+        const bands = [
+          period.filter(m => m.len >= MESSAGE_LONG),
+          period.filter(m => m.len >= MESSAGE_SHORT && m.len < MESSAGE_LONG),
+          period.filter(m => m.len < MESSAGE_SHORT),
+        ];
+        const perBand = allocatePlaces(MESSAGE_MIX, room, room, bands.map(b => b.length));
+        bands.forEach((band, b) => {
+          band.slice().sort((x, y) => y.score - x.score ||
+            (b === 0 ? Math.min(y.len, MESSAGE_LENGTH_CREDIT) - Math.min(x.len, MESSAGE_LENGTH_CREDIT) : 0) ||
+            x.hash - y.hash).slice(0, perBand[b]).forEach(m => chosen.add(m));
+        });
+      });
+      for (const m of list) if (chosen.has(m)) picked.push(Object.assign(m, { rank, key }));
     });
-    return out;
+
+    // What it answered, for the lines where that matters most.
+    const withContext = picked.filter(m => m.ctx)
+      .sort((x, y) => y.score - x.score || x.hash - y.hash)
+      .slice(0, Math.round(picked.length * (opts.contextShare === undefined ? LIMITS.messageContextShare : opts.contextShare)));
+    const quoted = new Set(withContext);
+    stats.withContext = quoted.size;
+
+    const tagged = top.length > 1 || opts.alwaysTag;
+    return picked.map(m => (m.year ? '[' + m.year + '] ' : '') +
+      (tagged ? '[' + (opts.label ? opts.label(m.key, m.rank) : 't' + (m.rank + 1)) + '] ' : '') +
+      (quoted.has(m) ? '«them: ' + m.ctx + '» ' : '') + m.text);
   }
 
   /**
@@ -1385,7 +1480,7 @@
       { shown: digest.mostEngagedWith.length, available: countOf(signals.commentedOn) };
 
     if (opts.includeMessages && messages.total) {
-      // Filled by sampleMessages as it goes — how many conversations it drew
+      // Filled by sampleConversations as it goes — how many conversations it drew
       // from and how many it had to choose between. Read a few lines below,
       // once the object literal that triggers the call has been built.
       const dmStats = {};
@@ -1405,29 +1500,22 @@
         sentByUser: messages.sent,
         receivedByUser: messages.received,
         averageSentLength: messages.avgSentLength,
-        note: 'Only the user\'s own messages are sampled below. The other side of every conversation was counted and discarded. '
+        note: 'Only the user\'s own messages are sampled below, spread across each conversation\'s whole span and across short, ordinary and long messages. '
           + 'A [t1]…[t10] tag marks which conversation a message belongs to, ranked by how much the user writes in it — t1 is the one they use most. '
-          + 'The tags identify nobody; they are there so that how the user writes to one person can be told apart from how they write to another.',
+          + 'The tags identify nobody; they are there so that how the user writes to one person can be told apart from how they write to another. '
+          + 'A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst.',
         // Links stripped before sampling. A shared Grab ride-tracking link or
         // a maps URL is not something to reason about, and it costs the same
         // per character as a sentence does: 44 of 1,000 messages in a real
         // export carried one, at 6,400 characters between them. What surrounds
         // a link is the evidence, so the message is kept and the URL is not.
-        ownMessageSample: sampleMessages(
-          // Tolerant of both shapes: instagram.js now sends `{text, ts, thread}`,
-          // and a bare string is still what a hand-built fixture passes.
-          messages.ownTexts.map(m => (m && typeof m === 'object'
-            ? { ...m, text: stripLinks(m.text) }
-            : stripLinks(m))),
-          {
-            limit: LIMITS.messages,
-            topThreads: LIMITS.messageTopThreads,
-            threadCap: LIMITS.messageThreadCap,
-            recentShare: LIMITS.messageRecentShare,
-            maxChars: LIMITS.messageMaxChars,
-            minChars: LIMITS.messageChars,
-            stats: dmStats,
-          }),
+        ownMessageSample: sampleConversations(messages.ownTexts, {
+          limit: LIMITS.messages,
+          topThreads: LIMITS.messageTopThreads,
+          threadCap: LIMITS.messageThreadCap,
+          minShare: LIMITS.messageMinShare,
+          stats: dmStats,
+        }),
       };
       // `available` still counts every message they sent, so the fraction the
       // confidence guidance reads — "300 of 9,741" — keeps meaning what it
@@ -1440,6 +1528,7 @@
         available: messages.ownTexts.length,
         fromThreads: dmStats.threadsUsed || 0,
         ofThreads: dmStats.threadsAvailable || 0,
+        withContext: dmStats.withContext || 0,
       };
     }
 
@@ -1758,17 +1847,21 @@
 
     if (supplements.facebook && !digest.facebook) {
       const f = supplements.facebook;
+      const fbStats = {};
       digest.coverage.sources.push('facebook');
       digest.facebook = {
-        note: 'From a Facebook export. Only the user\'s own messages are sampled; the other side of ' +
-          'every conversation was counted and discarded.',
+        note: 'From a Facebook export. Only the user\'s own Messenger messages are sampled, per conversation, tagged [m1]… ' +
+          'by how much the user writes in each. A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst.',
         span: monthSpan(f.span),
         counts: f.counts,
         postSample: sampleTexts(f.posts, LIMITS.fbPosts, 240),
         commentSample: sampleTexts(f.comments, LIMITS.fbComments, 240),
         friends: sampleEvenly(f.friends, LIMITS.fbFriends),
         topSearches: topKeys(f.searchTerms, LIMITS.fbSearches, 4),
-        ownMessageSample: sampleTexts(f.ownMessages, LIMITS.fbMessages, 240),
+        ownMessageSample: sampleConversations(f.ownMessages, {
+          limit: LIMITS.fbMessages, topThreads: LIMITS.messageTopThreads, threadCap: LIMITS.messageThreadCap,
+          minShare: LIMITS.messageMinShare, label: (key, rank) => 'm' + (rank + 1), stats: fbStats,
+        }),
       };
       digest.coverage.sampling.facebookPosts = {
         shown: digest.facebook.postSample.length, available: f.counts.posts,
@@ -1776,6 +1869,12 @@
       digest.coverage.sampling.facebookFriends = {
         shown: digest.facebook.friends.length, available: f.counts.friends,
       };
+      if (digest.facebook.ownMessageSample.length) {
+        digest.coverage.sampling.facebookMessages = {
+          shown: digest.facebook.ownMessageSample.length, available: (f.ownMessages || []).length,
+          withContext: fbStats.withContext || 0,
+        };
+      }
     }
 
     // WhatsApp: up to three chats the reader exported one by one (see
@@ -1784,11 +1883,12 @@
     // the reader's own words are sampled across all of them. Nobody is named.
     if (supplements.whatsapp && !digest.whatsapp && Array.isArray(supplements.whatsapp.chats)) {
       const chats = supplements.whatsapp.chats.slice(0, 3);
+      const waStats = {};
       digest.coverage.sources.push('whatsapp');
       digest.whatsapp = {
         note: 'From WhatsApp chats the user exported themselves, one chat at a time. Each chat is counts and ' +
-          'timings; only the user\'s own messages are sampled, tagged [c1]–[c3] by chat. Other people\'s messages ' +
-          'were counted and timed, never kept, and nobody is named ("someone" stands in for a name). userHours and ' +
+          'timings; only the user\'s own messages are sampled, per chat, tagged [c1]–[c3]. Other people\'s messages ' +
+          'were counted and timed, and nobody is named ("someone" stands in for a name). A line may open with «them: …»: the message it replied to, from the other person, shortened and de-identified — context for reading the reply, never the user\'s own words. A " / " joins lines the user sent in one quick burst. userHours and ' +
           'userWeekdays count the user\'s own messages by the phone\'s local hour and by day, Sunday first.',
         chats: chats.map(c => {
           const out = Object.assign({}, c);
@@ -1796,12 +1896,15 @@
           out.span = monthSpan(c.span);
           return out;
         }),
-        ownMessageSample: sampleTexts(chats.flatMap(c => (c.ownMessages || []).map(m =>
-          ({ text: '[' + c.chat + '] ' + m.text, ts: m.ts }))), LIMITS.waMessages, 240),
+        ownMessageSample: sampleConversations(chats.flatMap(c => (c.ownMessages || []).map(m =>
+          Object.assign({}, m && typeof m === 'object' ? m : { text: m }, { thread: c.chat }))), {
+          limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, label: key => key, alwaysTag: true, stats: waStats,
+        }),
       };
       digest.coverage.sampling.whatsappMessages = {
         shown: digest.whatsapp.ownMessageSample.length,
         available: chats.reduce((sum, c) => sum + ((c.counts && c.counts.sentByUser) || 0), 0),
+        withContext: waStats.withContext || 0,
       };
     }
     return digest;
@@ -1913,7 +2016,7 @@
   // The tags a sampled line can open with: its year, its conversation, the
   // kind of post. Only these, so a caption that happens to begin "[sic]" is
   // never mistaken for one.
-  const LINE_TAGS = /^((?:\[(?:\d{4}|t\d{1,2}|post|story|reel)\] )+)/;
+  const LINE_TAGS = /^((?:\[(?:\d{4}|[tcm]\d{1,2}|post|story|reel)\] )+)/;
 
   /**
    * Lines written in order, the tags they share said once. A digest's lines
@@ -2082,8 +2185,10 @@
       const list = worst[1]();
       // A tenth at a time, so a digest a little over the line loses a little:
       // a quarter at a time took sixty messages off an account a few hundred
-      // characters over.
-      worst[2](list.slice(0, Math.max(floor, Math.min(list.length - 1, Math.floor(list.length * 0.9)))));
+      // characters over. Evenly through the list rather than off its end: the
+      // lists run oldest to newest (or by conversation), so cutting the end
+      // lost the newest year, or the last conversations, first.
+      worst[2](dropEvenly(list, list.length - Math.max(floor, Math.min(list.length - 1, Math.floor(list.length * 0.9)))));
       size = evidenceChars(digest);
     }
 
@@ -2223,6 +2328,7 @@
     youtubeChannels: d => d.google && d.google.topChannels,
     facebookPosts: d => d.facebook && d.facebook.postSample,
     facebookFriends: d => d.facebook && d.facebook.friends,
+    facebookMessages: d => d.facebook && d.facebook.ownMessageSample,
     whatsappMessages: d => d.whatsapp && d.whatsapp.ownMessageSample,
   };
   function restateShown(digest) {
@@ -2544,7 +2650,7 @@
 
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
-    SOURCE_SHARES, allocateShares, sourceSizes,
+    SOURCE_SHARES, allocateShares, sourceSizes, sampleConversations,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,

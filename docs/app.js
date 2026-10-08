@@ -3620,8 +3620,8 @@
         topicsCount + ' topics Instagram has already guessed you are interested in.'],
       ['review-dms', 'includeMessages', dmCount,
         'Direct messages', 'Direct messages — none found',
-        dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Only ' +
-          'your side of any conversation is ever included.' :
+        dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Some show a short, ' +
+          'anonymised line of the message they answered; nothing else from the other side is included.' :
           'This export did not include any direct messages to sample.'],
     ];
 
@@ -3681,7 +3681,7 @@
         ['review-fb-messages', 'includeFacebookMessages', fbMessages,
           'Facebook Messenger', 'Facebook Messenger — none found',
           fbMessages ? fbMessages + ' of your own messages sampled out of ' + fb.counts.messages +
-            ' total. Only your side of any conversation is ever included.' :
+            ' total. Some show a short, anonymised line of the message they answered; nothing else from the other side is included.' :
             'No Messenger history was found in this export.'],
       );
     }
@@ -3695,7 +3695,8 @@
       rows.push(['review-whatsapp', 'includeWhatsApp', chats,
         'WhatsApp chats', 'WhatsApp chats — none found',
         chats + (chats === 1 ? ' chat' : ' chats') + ': ' + waOwn + ' of your own messages, plus counts and timings. ' +
-          'Other people\u2019s messages were counted, never kept, and nobody is named.']);
+          'Some show a short, anonymised line of the message they answered; otherwise other people\u2019s messages ' +
+          'were only counted, and nobody is named.']);
     }
 
     // Every row is a real checkbox now — nothing here is "review only". Each

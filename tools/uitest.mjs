@@ -8110,8 +8110,8 @@ try {
   // The two most sensitive rows in the app say plainly what they contain.
   check('the Chrome row promises two numbers and no site name at all',
     /as two numbers\. No site name, page, address or time/.test(supplementedReview));
-  check('the Messenger row repeats the own-side-only rule',
-    /Only your side of any conversation is ever included[\s\S]*Facebook Messenger|Facebook Messenger[\s\S]*Only your side/.test(supplementedReview));
+  check('the Messenger row says only an anonymised line of the other side is included',
+    /Facebook Messenger[\s\S]*anonymised line of the message they answered; nothing else from the other side is included/.test(supplementedReview));
   await shot('1c-review-supplemented');
   await page.click('#review-send');
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
@@ -8793,8 +8793,11 @@ try {
       const preview = readFileSync(previewPath, 'utf8');
       check('what is sent carries the reader\'s own messages, tagged by chat',
         /\[c1\][^<]*hike on saturday/.test(preview) && /\[c2\][^<]*did you get home ok/.test(preview), preview.length);
-      check('and nobody else is named or quoted: their words are counted, never kept',
-        !/Mia|Zoe|Wong|Lim\b|count me in|coffee later/.test(preview) && /someone can you bring the map/.test(preview));
+      // Other people's words appear only as the «them: …» line a reply answered.
+      const outsideQuotes = preview.replace(/«them: [^»]*»/g, '');
+      check('and nobody else is named, and their words appear only as what a reply answered',
+        !/Mia|Zoe|Wong|Lim\b/.test(preview) && !/count me in|coffee later/.test(outsideQuotes) &&
+          /someone can you bring the map/.test(preview), preview.slice(0, 600));
       await waPage.keyboard.press('Escape');
     } finally {
       await waPage.close();

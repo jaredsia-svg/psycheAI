@@ -490,6 +490,72 @@
     },
   };
 
+  // ---------- the reader's side of one conversation ----------
+  //
+  // Shared by every message source — Instagram here, Messenger in
+  // supplement.js, WhatsApp in whatsapp.js — so the three hand digest.js the
+  // same shape: the reader's own messages in order, each with
+  //
+  //   gap       seconds since the message before it, from anyone (null for
+  //             the first): a long one makes it a conversation opener
+  //   prevMine  whether that message was the reader's too, so a burst of
+  //             lines sent in a row can be read as one
+  //   ctx       when it answers somebody else, the message it answers,
+  //             shortened and de-identified — the reader's own name, every
+  //             other participant's name, links, addresses and numbers
+  //             taken out — so a reply can be read as a reply
+  //
+  // The other side is otherwise dropped exactly as before: only the one
+  // message each of the reader's replies answers is kept, at most
+  // CONTEXT_CHARS of it, and digest.js then shows only some of those.
+  const CONTEXT_CHARS = 160;
+  const CONTEXT_WINDOW_SECONDS = 12 * 3600;
+  const reEscape = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  function nameBlanker(ownerNames, otherNames) {
+    const rules = [];
+    // The reader: the whole name and every part of it, however short — this
+    // text was written *to* them, and "thanks Li" names them.
+    const own = [...new Set((ownerNames || []).filter(Boolean).flatMap(n => [n, ...String(n).split(/\s+/)]))]
+      .filter(n => n.length >= 2 && !/^\+?[\d\s-]+$/.test(n)).sort((a, b) => b.length - a.length);
+    if (own.length) rules.push([new RegExp('(^|[^\\p{L}\\p{N}_])(' + own.map(reEscape).join('|') + ')(?![\\p{L}\\p{N}_])', 'giu'), '$1PsycheUser']);
+    const others = [...new Set((otherNames || []).filter(Boolean).flatMap(n => [n, String(n).split(/\s+/)[0]]))]
+      .filter(n => n.length >= 3 && !/^\+?[\d\s-]+$/.test(n)).sort((a, b) => b.length - a.length);
+    if (others.length) rules.push([new RegExp('(^|[^\\p{L}\\p{N}_])(' + others.map(reEscape).join('|') + ')(?![\\p{L}\\p{N}_])', 'giu'), '$1someone']);
+    return text => rules.reduce((out, [re, mark]) => out.replace(re, mark), text);
+  }
+  function deidentify(text, blank) {
+    let out = String(text || '').replace(/\s+/g, ' ').trim();
+    out = out.replace(/\b(?:https?:\/\/|www\.)\S+/gi, '[link]')
+      .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]')
+      .replace(/\+?\d[\d\s-]{6,}\d/g, '[number]');
+    out = blank(out);
+    return out.length > CONTEXT_CHARS ? out.slice(0, CONTEXT_CHARS - 1).trimEnd() + '…' : out;
+  }
+  /**
+   * The reader's own messages from one conversation, with gap, prevMine and
+   * ctx (above). `messages` is every text message in it as {sender, text, ts}
+   * in any order, ts in seconds; `owner` the reader's sender name.
+   */
+  function ownSide(messages, owner, options) {
+    const opts = options || {};
+    const ordered = messages.map((m, i) => ({ m, i }))
+      .sort((a, b) => (a.m.ts || 0) - (b.m.ts || 0) || a.i - b.i).map(x => x.m);
+    const others = [...new Set(ordered.map(m => m.sender).filter(name => name && name !== owner))];
+    const blank = nameBlanker([owner].concat(opts.ownerNames || []), others.concat(opts.otherNames || []));
+    const out = [];
+    ordered.forEach((m, i) => {
+      if (m.sender !== owner || !m.text) return;
+      const prev = ordered[i - 1];
+      const gap = prev && m.ts && prev.ts ? Math.max(0, m.ts - prev.ts) : null;
+      const prevMine = Boolean(prev && prev.sender === owner);
+      const ctx = prev && !prevMine && prev.text && gap !== null && gap <= CONTEXT_WINDOW_SECONDS
+        ? deidentify(prev.text, blank) : '';
+      const text = opts.blankOwnText ? blank(m.text) : m.text;
+      out.push(Object.assign({ text, ts: m.ts, gap, prevMine }, ctx ? { ctx } : null, opts.extra ? opts.extra(m) : null));
+    });
+    return out;
+  }
+
   // ---------- orchestration ----------
 
   function emptySignals() {
@@ -557,11 +623,17 @@
       else receivedCount++;
     }
     if (owner) {
+      // Dated, so digest.js can sample by time the way it does for captions,
+      // and threaded, so it can sample by conversation rather than from one
+      // undifferentiated pile — and each with what it answered (ownSide).
+      const byThread = new Map();
       for (const m of signals.messageTexts) {
-        // Dated, so digest.js can sample by time the way it does for captions,
-        // and threaded, so it can sample by conversation rather than from one
-        // undifferentiated pile.
-        if (m.sender === owner) ownTexts.push({ text: m.text, ts: m.ts, thread: m.thread });
+        if (!byThread.has(m.thread)) byThread.set(m.thread, []);
+        byThread.get(m.thread).push(m);
+      }
+      for (const [thread, list] of byThread) {
+        if (!list.some(m => m.sender === owner)) continue;
+        for (const own of ownSide(list, owner)) ownTexts.push(Object.assign(own, { thread }));
       }
     }
     // How many conversations they actually took part in, as opposed to how
@@ -700,5 +772,5 @@
     return signals;
   }
 
-  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS };
+  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide };
 })(typeof window !== 'undefined' ? window : globalThis);

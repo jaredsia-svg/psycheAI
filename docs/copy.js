@@ -654,7 +654,7 @@
     // The WhatsApp row: up to three chats, each exported on its own.
     whatsappRowEmpty: 'Load up to 3 exported chats (.zip or .txt), one or several at a time',
     whatsappRowSome: n => n + ' of 3 chats loaded — tap to add ' + (n >= 3 ? 'again (starts over)' : 'another'),
-    whatsappWhoAreYou: 'Which of these is you? Only your own messages are read.',
+    whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
     whatsappFull: 'Three chats is the most — these start a fresh set.',
     sourceLoaded: 'Loaded',
     sourceMissing: 'Not loaded',
@@ -1050,7 +1050,7 @@
       relationships: 'In relationships',
       dayToDay: 'Day to day',
       work: 'At work',
-      attachment: 'Attachment',
+      attachment: 'Attachment style',
       conflict: 'In conflict',
       rhythm: 'Rhythm',
       energy: 'Social energy & contact',

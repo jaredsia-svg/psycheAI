@@ -3778,7 +3778,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   color: var(--accent); background: var(--accent-soft);
 }
 /* The card's pattern lines: one size, bold, in ink. */
-.beyond-value { margin: 0; font-size: var(--b-text); font-weight: 700; line-height: 1.25; color: var(--ink); }
+.beyond-value { margin: 0; font-size: var(--b-text); font-weight: 400; line-height: 1.25; color: var(--ink); }
 .card .beyond-list { list-style: none; margin: 0; padding: 0; display: grid; gap: max(6px, calc(12px * var(--pcs))); }
 .card .beyond-list li { margin: 0; }
 .beyond-list li { display: flex; align-items: center; gap: max(8px, calc(16px * var(--pcs))); font-size: var(--b-text); line-height: 1.25; }
