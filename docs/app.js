@@ -592,6 +592,8 @@
     // portrait, shows its first two, which open on the same comparison.
     const blurb = splitSentences(cardBlurb(report)).slice(0, 2).join(' ');
     const emblem = Copy.emblemSvg(name, 'pc-emblem');
+    // A full scene in place of the medallion, where the character has one.
+    const art = Copy.characterArt(name, 'pc-art');
     // How firmly each letter was picked, in words: slight, moderate, clear.
     const strengthWord = strength => (strength
       ? '<span class="pc-sstrength pc-sstrength-' + esc(strength) + '">' + esc(strength) + '</span>' : '');
@@ -609,9 +611,9 @@
         (card.name ? '<span class="pc-sowner">' + esc(card.name) + '</span>' : '<span></span>') +
         (confidence ? '<span class="pc-sconf" title="' + esc(TEXT.cardConfidence) + '">' + storyRing(confidence) + '</span>' : '<span></span>') +
       '</div>' +
-      '<div class="pc-shero">' +
+      '<div class="pc-shero' + (art ? ' pc-has-art' : '') + '">' + art +
         '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
-        '<div class="pc-sname"><span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>' +
+        '<div class="pc-sname">' + (art ? '' : '<span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>') +
           '<div><h2>' + esc(name) + '</h2>' + (essence.franchise ? '<p class="pc-sfranchise">' + esc(essence.franchise) + '</p>' : '') +
           '</div></div>' +
         (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
@@ -663,6 +665,19 @@
    * just enough to fit — on screen and, since the clone carries the inline
    * style, in the exported image too.
    */
+  // The same card markup goes into more than one place (the page and its full
+  // screen copy), and a character's scene finds its gradients by id. Two
+  // copies would share them, and a browser that resolves the id to the copy
+  // in a closed dialog draws the art with nothing. Each inserted copy gets
+  // ids of its own.
+  let artCopies = 0;
+  function freshArtIds(root) {
+    if (!root) return;
+    for (const svg of root.querySelectorAll('svg.pc-art')) {
+      svg.innerHTML = svg.innerHTML.replace(/pc-art-[a-z0-9]+(?=-)/g, 'pc-art-c' + (++artCopies));
+    }
+  }
+
   function fitStoryContent(el) {
     const inner = el.querySelector('.pc-story-in');
     if (!inner) return;
@@ -2037,11 +2052,13 @@
       // mechanism that leaves the confidence card alone.
       const cardHtml = psycheCardHtml(report);
       $('#sample-psyche-card').innerHTML = cardHtml;
+      freshArtIds($('#sample-psyche-card'));
       // The same markup again for the full-screen copy, rather than moving the
       // one node between two parents: fitCard scales by writing a transform on
       // the element, and the preview and the full-screen view are scaled to
       // different boxes at the same time.
       $('#sample-psyche-card-full').innerHTML = cardHtml;
+      freshArtIds($('#sample-psyche-card-full'));
       $('#sample-card-section').hidden = !cardHtml;
       $('#sample-card-title').textContent = TEXT.cardSection;
       $('#sample-card-hint').textContent = TEXT.cardHint;
@@ -6102,7 +6119,9 @@
 
     const cardHtml = psycheCardHtml(report);
     $('#psyche-card').innerHTML = cardHtml;
+    freshArtIds($('#psyche-card'));
     $('#psyche-card-full').innerHTML = cardHtml;
+    freshArtIds($('#psyche-card-full'));
     // Hidden rather than left empty on a report too old or too thin to fill it,
     // so the page never opens on a blank frame with a "tap to expand" label
     // under it.

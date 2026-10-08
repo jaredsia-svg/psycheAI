@@ -10221,6 +10221,17 @@ try {
           type: Array.from(card.querySelectorAll('.pc-sletters b')).map(b => b.textContent).join(''),
           bigType: card.querySelectorAll('.pc-stype').length,
           emblem: card.querySelectorAll('.pc-smedal svg.pc-emblem path').length > 0,
+          character: (card.querySelector('.pc-sname h2') || {}).textContent || '',
+          art: card.querySelectorAll('.pc-shero.pc-has-art > svg.pc-art').length,
+          medal: card.querySelectorAll('.pc-smedal').length,
+          artGradientsResolve: (() => {
+            const svg = card.querySelector('svg.pc-art');
+            if (!svg) return false;
+            const ids = [...svg.querySelectorAll('[id]')].map(n => n.id);
+            const refs = [...svg.innerHTML.matchAll(/url\(#([^)]+)\)/g)].map(m => m[1]);
+            return refs.length > 0 && refs.every(ref => ids.includes(ref)) &&
+              ids.every(id => document.querySelectorAll('[id="' + id + '"]').length === 1);
+          })(),
           patternLines: card.querySelectorAll('.pc-spatterns .pc-sline').length,
           motives: Array.from(card.querySelectorAll('.pc-smotives b')).map(b => b.textContent),
           labels: Array.from(card.querySelectorAll('.pc-slab')).map(l => l.textContent),
@@ -10233,13 +10244,20 @@ try {
       });
       check('structured: the summary card is one 1080 x 1920 story, and everything on it fits',
         cardFace.story && cardFace.fitsInside, JSON.stringify(cardFace));
+      if (cardFace.character === 'Mulan') {
+        check('structured: the scene\'s gradients are its own, so a second copy of the card cannot borrow or break them',
+          cardFace.artGradientsResolve, JSON.stringify(cardFace.character));
+      }
       check('structured: the summary card names the three signature patterns, numbered',
         cardFace.patterns.length === 3 && /^1The quiet organiser/.test(cardFace.patterns[0]), JSON.stringify(cardFace));
       check('structured: the type as four letters with their strengths, no large code, no nickname, four traits as bars (extraversion is the E)',
         cardFace.type === 'ENFJ' && cardFace.bigType === 0 && !cardFace.nickname &&
         cardFace.bars.join() === '61,84,79,44', JSON.stringify(cardFace));
-      check('structured: the catalogue character drawn as its own emblem, and the patterns by name only',
-        cardFace.emblem && cardFace.patternLines === 0 &&
+      // A character with its own scene gets the scene in place of the
+      // medallion; every other catalogue character keeps its emblem.
+      check('structured: the catalogue character drawn as its own scene or emblem, and the patterns by name only',
+        (cardFace.character === 'Mulan' ? cardFace.art === 1 && cardFace.medal === 0 : cardFace.emblem) &&
+        cardFace.patternLines === 0 &&
         (await sp.locator('#profile-body .essence-icon.has-emblem svg').count()) === 1, JSON.stringify(cardFace));
       check('structured: what motivates them beside the patterns — the free card\'s three, in its order',
         cardFace.motives.join() === 'Care for your people,Achievement,Security', JSON.stringify(cardFace.motives));

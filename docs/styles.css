@@ -2792,6 +2792,15 @@ details.more[open] > summary::after { content: ' ▴'; }
     linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
 }
 .pc-sblurb { font-size: 27px; line-height: 1.45; }
+/* A character with its own scene: the art fills the right of the box and
+   bleeds off it, the words sit over its quiet left side, and the name and
+   headline keep clear of the bright moon. */
+.pc-shero.pc-has-art { position: relative; overflow: hidden; flex-shrink: 0; }
+.pc-art { position: absolute; top: 0; right: 0; width: 60%; height: 100%; pointer-events: none; }
+.pc-has-art .pc-skicker, .pc-has-art .pc-sname, .pc-has-art .pc-sheadline, .pc-has-art .pc-sblurb { position: relative; }
+.pc-has-art .pc-sname h2 { font-size: 80px; text-shadow: 0 4px 24px rgba(40, 8, 60, .35); }
+.pc-has-art .pc-sheadline { max-width: 54%; }
+.pc-has-art .pc-sblurb { max-width: 66%; text-shadow: 0 1px 10px rgba(40, 8, 60, .45); }
 .pc-spatterns li { align-items: flex-start; }
 .pc-spatterns li > div { display: flex; flex-direction: column; gap: 4px; }
 .pc-spatterns b { font-size: 31px; line-height: 1.2; }

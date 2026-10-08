@@ -4250,6 +4250,18 @@ app and it is the most intimate line in the report. And no code of any kind is d
 compatibility travels person to person as a link. All three are pinned by a check, since "we removed it" is the
 kind of claim that quietly stops being true.
 
+**A character can have a scene instead of a medallion.** `CHARACTER_ART` in `docs/copy.js` holds a
+full drawing for the purple box, so far only for Mulan: a glowing moon, a jian with its red tassel
+cutting across it, plum blossom, falling petals, and mountains with a pagoda. It is drawn from the
+symbols of the story rather than the character's likeness, which belongs to the studio. It fills the
+right 60% of the box and bleeds off it, fading in from the left so the name, headline and blurb sit
+over its quiet side and the dark mountains; the medallion is dropped for that character, the name is
+set larger, and the box no longer shrinks to fit (`flex-shrink: 0`), so the card scales instead of
+clipping the blurb. Every other catalogue character keeps its emblem. The scene finds its gradients
+by id, and the same card markup goes into the page and its full-screen copy, so each inserted copy
+gets ids of its own (`freshArtIds`): a shared id can resolve to the copy in a closed dialog and draw
+the art blank. A check holds every gradient reference to an id that exists once.
+
 ### Let us roast you
 
 Everything above it is written to be fair. This one is a roast — accurate without being kind: the
