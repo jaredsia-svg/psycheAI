@@ -3608,16 +3608,18 @@ women out of 28. Each character holds a temperament nobody else in the list does
 
 My Melody, Bubbles and Barbie were considered and left out: My Melody and Bubbles overlap Hello
 Kitty and Joy, and Barbie overlaps Judy Hopps and invites a read on looks the prompt rules out.
-**A woman gets a woman, a man gets a man, and anyone else one of the five who are neither.** Each
-entry in `CHARACTER_CATALOGUE` carries its side (`w`, `m`, `n`), and `CHARACTER_SIDE_RULE` tells the
-free card's call to judge, privately, whether the reader is most likely a woman or a man from how
-they present themselves in their own data — their name, pronouns in a bio, how they write about
-themselves, how friends address them — and choose only on that side; when it cannot tell with
-reasonable confidence, or they present as neither, it chooses among Baymax, WALL-E, Remy, Pikachu and
-Totoro. Then it finds the closest temperament on that side. The judgement is used for nothing else
+**A woman chooses among the twelve women and the five who are neither, a man among the twelve men
+and the five, and anyone the model cannot place among the five alone.** Each entry in
+`CHARACTER_CATALOGUE` carries its side (`w`, `m`, `n`), and `CHARACTER_SIDE_RULE` tells the free
+card's call to judge, privately, whether the reader is most likely a woman or a man from how they
+present themselves in their own data — their name, pronouns in a bio, how they write about
+themselves, how friends address them. A woman's choice is then the twelve women plus Baymax, WALL-E,
+Remy, Pikachu and Totoro; a man's the twelve men plus the same five; and when it cannot tell with
+reasonable confidence, or they present as neither, only those five. Then it finds the closest
+temperament among the seventeen (or five) open to them. The judgement is used for nothing else
 and **never written**: the rule says so, and the privacy rules (which forbid saying anything about
 anyone's gender) carve out only this private choice. The full report's prompt carries the shorter
-`CHARACTER_GENDER_RULE` (same sex, or a non-human character when unsure) for a report written without
+`CHARACTER_GENDER_RULE` (same sex or non-human, and only non-human when unsure) for a report written without
 a card to anchor to; with one, the card's character is pinned and nothing is chosen again. The rule
 adds about 250 tokens to the free prompt (`FREE_FIXED_INPUT_TOKENS` 6,700, `FREE_COST_CAP` $0.053 —
 about 0.02¢ a run in practice).

@@ -6118,13 +6118,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     globalThis.PsycheCopy.emblemSvg('Bruce Banner') === '' && /<svg[^>]*viewBox="0 0 48 48"/.test(globalThis.PsycheCopy.emblemSvg('Mulan')));
   check('the emblems are distinct drawings, one per character',
     new Set(Object.values(emblems)).size === Object.keys(emblems).length);
-  check('the card picks a character on the reader\'s likely side, and the neither group when unsure',
+  check('the card picks a character on the reader\'s likely side or the neither group, and only the neither group when unsure',
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
       prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu,Totoro' &&
       prompts.STRUCTURED_FREE_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) &&
       prompts.CHARACTER_SIDES.women.concat(prompts.CHARACTER_SIDES.men, prompts.CHARACTER_SIDES.neither)
         .every(name => prompts.CHARACTER_SIDE_RULE.includes(name)) &&
-      /If you cannot tell with reasonable confidence, or they present as neither, choose from: Baymax/.test(prompts.CHARACTER_SIDE_RULE),
+      /Either may also get one of the characters who are neither: Baymax/.test(prompts.CHARACTER_SIDE_RULE) &&
+      /If you cannot tell with reasonable confidence, or they present as neither, choose only from those five/.test(prompts.CHARACTER_SIDE_RULE),
     prompts.CHARACTER_SIDE_RULE.slice(0, 200));
   check('and never writes that judgement down: the rule says so, and the privacy rule allows only this private use',
     /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
