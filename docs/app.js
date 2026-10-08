@@ -63,6 +63,13 @@
     // ticked off, by a hash of the action's wording. Nothing but those hashes,
     // and it goes with Delete everything like the rest.
     plan: 'psycheai_plan',
+    // Someone else's card, from a compare link opened before this reader had
+    // one of their own. A friend who taps the link usually has no Instagram
+    // export yet, and Instagram takes hours to email one, so the invite has to
+    // outlive the tab: kept here for INVITE_DAYS and spent on the first
+    // profile this device makes. It was in sessionStorage, which a closed tab
+    // empties, and so lost almost every time.
+    invite: 'psycheai_invite',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -4264,10 +4271,11 @@
       flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
     }
 
-    const pending = sessionStorage.getItem('psycheai_pending');
-    if (pending) {
-      sessionStorage.removeItem('psycheai_pending');
-      if (await runMatch(pending)) return;
+    const invite = pendingInvite();
+    if (invite) {
+      store.remove(KEYS.invite);
+      refreshInvite();
+      if (await runMatch(invite.payload)) return;
     }
     renderProfile();
     show('profile');
@@ -8270,10 +8278,47 @@
     history.replaceState(null, '', location.pathname + location.search);
     if (state.profile && await runMatch(incoming)) return true;
 
-    sessionStorage.setItem('psycheai_pending', incoming);
-    showUploadError('Someone shared their PsycheAI code with you. Build your own profile and the comparison runs automatically.');
+    const card = await Card.decodeCard(incoming);
+    if (!card) {
+      showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
+      return true;
+    }
+    store.write(KEYS.invite, { payload: incoming, name: card.name, at: Date.now() });
+    show('welcome');
+    refreshInvite();
     return true;
   }
+
+  // How long a compare link waits for this reader's own card. Long enough to
+  // cover Instagram's slowest export and a weekend; short enough that a link
+  // nobody acted on does not greet them a season later.
+  const INVITE_DAYS = 14;
+
+  function pendingInvite() {
+    const invite = store.read(KEYS.invite, null);
+    if (!invite || typeof invite.payload !== 'string') return null;
+    if (!(Date.now() - Number(invite.at) < INVITE_DAYS * 86400000)) {
+      store.remove(KEYS.invite);
+      return null;
+    }
+    return invite;
+  }
+
+  function refreshInvite() {
+    const banner = $('#invite-banner');
+    if (!banner) return;
+    const invite = state.profile ? null : pendingInvite();
+    banner.hidden = !invite;
+    if (!invite) return;
+    $('#invite-title').textContent = TEXT.inviteTitle(invite.name);
+    $('#invite-text').textContent = TEXT.inviteText(INVITE_DAYS);
+  }
+
+  $('#invite-guide').addEventListener('click', showGuide);
+  $('#invite-forget').addEventListener('click', () => {
+    store.remove(KEYS.invite);
+    refreshInvite();
+  });
 
   window.addEventListener('hashchange', () => { consumeIncomingLink(); });
 
@@ -8396,6 +8441,7 @@
       return;
     }
     show('welcome');
+    refreshInvite();
   }
 
   // Coming back to the page is not always a page load.

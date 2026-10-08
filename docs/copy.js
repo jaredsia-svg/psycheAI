@@ -207,6 +207,12 @@
     cardSection: 'Psyche Card',
     // What goes with the card image when it is shared, where the app shared to
     // takes text too: the character, then where to get your own.
+    // The welcome page's banner for a compare link opened before the reader
+    // has a card of their own.
+    inviteTitle: (name) => (name ? name + ' wants' : 'Someone wants') + ' to see how you two compare',
+    inviteText: (days) => 'Make your free Psyche Card and the comparison runs straight after it, also free. ' +
+      'Instagram can take a few hours to email your data, so this invite waits on this device for ' +
+      days + ' days. Come back here when the email arrives.',
     cardShareText: (character) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
       'Find yours free, no questionnaire: https://psycheai.io',
     cardHint: 'Tap to open full screen',

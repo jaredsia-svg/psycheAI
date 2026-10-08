@@ -1650,6 +1650,14 @@ so it is built in rather than left to a plugin.
   share sheet's text is *I got <character> on my Psyche Card. Find yours free, no questionnaire:
   https://psycheai.io*. A card that travels is an invitation.
 
+- **A compare link waits for the friend who opens it.** Whoever taps someone's link usually has no
+  Instagram export yet, and Instagram takes hours to email one. The invite used to sit in
+  `sessionStorage` behind an error-coloured line and vanished with the tab. It is now kept on the device
+  (`psycheai_invite`, in `KEYS`, so *Delete everything* takes it) for fourteen days, shown at the top
+  of the welcome page as *Ava wants to see how you two compare*, with the steps to get the export and
+  a way to forget it, and spent on the first card the device makes, which goes straight into the
+  comparison.
+
 `npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.

@@ -1486,6 +1486,92 @@ try {
     }
   }
 
+  // ---- a friend's compare link, opened before they have a card ----
+  //
+  // The friend who taps a compare link almost never has an Instagram export
+  // yet, and Instagram takes hours to email one. The invite has to outlive the
+  // tab they open it in, greet them by the inviter's name, and be spent on the
+  // first card this device makes. It used to sit in sessionStorage, behind an
+  // error-coloured message, and was gone the moment the tab closed.
+  {
+    const invitePage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await invitePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      const sampleCard = await invitePage.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card));
+      const payload = await invitePage.evaluate(card =>
+        window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Ava Tan' })), sampleCard);
+      const banner = () => invitePage.evaluate(() => {
+        const node = document.querySelector('#invite-banner');
+        return { shown: !node.hidden && node.getBoundingClientRect().height > 0, text: node.innerText,
+          welcome: !document.querySelector('#view-welcome').hidden, hash: location.hash,
+          error: !document.querySelector('#upload-error').hidden };
+      });
+
+      await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
+      await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      const first = await banner();
+      check('a compare link opened with no card of your own greets you by the sender\'s name',
+        first.shown && first.welcome && /Ava Tan wants to see how you two compare/.test(first.text) && !first.error,
+        JSON.stringify(first));
+      check('and says the comparison is free and the invite waits through the export',
+        /free/i.test(first.text) && /few hours/.test(first.text) && /14 days/.test(first.text) && first.hash === '',
+        first.text);
+
+      // The tab is closed and the friend comes back hours later to a plain
+      // address, the way they would from Instagram's email.
+      await invitePage.goto('about:blank');
+      await invitePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+      await invitePage.waitForTimeout(200);
+      check('the invite is still there after the tab is closed and reopened',
+        (await banner()).shown && /Ava Tan/.test((await banner()).text));
+
+      // Older than the window: dropped, not shown.
+      await invitePage.evaluate(() => {
+        const invite = JSON.parse(localStorage.getItem('psycheai_invite'));
+        invite.at = Date.now() - 15 * 86400000;
+        localStorage.setItem('psycheai_invite', JSON.stringify(invite));
+      });
+      await invitePage.reload({ waitUntil: 'load' });
+      await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+      await invitePage.waitForTimeout(200);
+      check('an invite older than fourteen days is dropped rather than shown',
+        !(await banner()).shown && await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null));
+
+      await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
+      await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      await invitePage.click('#invite-forget');
+      check('"Forget this invite" removes it from the page and from the device',
+        !(await banner()).shown && await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null));
+
+      // And spent: the first card this device makes goes straight on to the
+      // comparison, which starts by asking what kind of relationship it is.
+      await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
+      await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      await invitePage.evaluate(() => localStorage.removeItem('psycheai_runs'));
+      await invitePage.click('#open-sources');
+      await invitePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [inviteChooser] = await Promise.all([
+        invitePage.waitForEvent('filechooser', { timeout: 15000 }),
+        invitePage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await inviteChooser.setFiles({ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await invitePage.waitForFunction(() => {
+        const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
+        return row && row.classList.contains('is-added');
+      }, null, { timeout: 30000 });
+      await continueFromDataSources(invitePage);
+      await answerReview(invitePage);
+      await invitePage.waitForSelector('#mode-dialog[open]', { timeout: 60000 });
+      check('the first card made on this device runs straight into the comparison with the sender',
+        /Ava Tan/.test(await invitePage.locator('#mode-dialog').innerText()) &&
+          await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null &&
+            Boolean(localStorage.getItem('psycheai_profile'))));
+    } finally {
+      await invitePage.close();
+    }
+  }
+
   // ---- the guides' "See a sample report" link ----
   //
   // The guide pages have no script, so their sample button is a plain link to

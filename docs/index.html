@@ -104,6 +104,17 @@
     </svg>
 
     <div class="hero-top">
+      <!-- A friend's compare link, waiting for this reader's own card. Filled in by
+           refreshInvite() in app.js; it stays until a profile spends it, it
+           expires, or the reader lets it go. -->
+      <div id="invite-banner" class="invite-banner no-print" role="status" hidden>
+        <p class="invite-title" id="invite-title"></p>
+        <p class="invite-text" id="invite-text"></p>
+        <div class="btn-row">
+          <button class="btn" id="invite-guide" type="button">Show me how</button>
+          <button class="btn btn-ghost" id="invite-forget" type="button">Forget this invite</button>
+        </div>
+      </div>
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
       <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
         all derived from your Instagram (and Google) data with no questionnaire required.</p>
