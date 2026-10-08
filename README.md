@@ -1346,7 +1346,7 @@ outline, and the card starts directly under the navigation.
 - **a header panel** — a soft purple-to-pink gradient, an eyebrow ("Compatibility · free, every
   time"), the title, one sentence on what comes back, three chips for the ways two people can be
   compared (as a couple, as family or friends, as colleagues), and the page's one picture: the
-  reader's initial overlapping a dashed "?" seat for whoever sends their link next, joined by a heart;
+  reader's initial overlapping a dashed "?" seat for whoever sends their link next, joined by a star;
 - **past results as rows**, not a table — an initial coloured by basis (rose for romantic, violet for
   family and friends, blue for work), the name, basis and date, the score as a small ring filled to
   it, and a chevron; the whole row opens the report. The old five-column table scrolled sideways on a
@@ -1355,6 +1355,16 @@ outline, and the card starts directly under the navigation.
   under an icon tile, their buttons aligned along the bottom;
 - **"What your link contains"** as a preview of what the other person receives: the name, card
   headline and interest tags in a tinted panel, with the note on what else rides along beneath it.
+
+**The card's top edge** now carries the same purple-to-pink line as every other section: the
+section had it all along, but the card fills its box edge to edge and was drawn over it, so the line
+is now layered above the card.
+
+**A wider page on laptops.** From 1200px wide the reading column grows from 820px to 940px (1000px
+for the full report, which shares the screen with its menu), and the root and body text step up from
+16px to 17px, so at 100% zoom the page no longer sits small in the middle of a large screen.
+`--page-w` on `:root` is the one width the container, the report's offset beside the menu and the
+menu's own position all read. Phones and tablets are unchanged.
 
 Past results still come first, above the two actions, for the reason they moved there: someone
 returning to the page is usually looking for a report they already ran.
