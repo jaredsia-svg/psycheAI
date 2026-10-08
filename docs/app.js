@@ -1782,7 +1782,7 @@
       '<span class="insight-preview-expand" aria-hidden="true">' + EXPAND_ICON + '</span></button>';
   }
   function galleryArrow(step, label) {
-    return '<button type="button" class="insight-gallery-nav" data-gallery-step="' + step + '" aria-label="' + esc(label) + '">' +
+    return '<button type="button" class="insight-deck-step" data-deck-step="' + step + '" aria-label="' + esc(label) + '">' +
       CHEVRON(step < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7') + '</button>';
   }
 
@@ -1806,15 +1806,17 @@
           '<li><span class="card-feature-icon" aria-hidden="true">' + esc(icon) + '</span>' +
           '<span><strong>' + esc(title) + '</strong></span></li>').join('') + '</ul>' +
       '</div>' +
-      // A gallery of sample cards, small, scrolled sideways, each a tap away
-      // from full screen. The first is the full sample's; the rest are added
-      // once sample-cards.json has loaded.
-      '<div class="insight-gallery-wrap">' +
-        galleryArrow(-1, I.galleryPrev) +
-        '<div class="insight-gallery" id="insight-gallery" role="group" aria-label="' + esc(I.galleryLabel) + '">' +
+      // A deck of sample cards: one at the front, a tap away from full
+      // screen, the next two stacked and fading behind it, and arrows and
+      // dots under it to bring the others forward. The first is the full
+      // sample's; the rest are added once sample-cards.json has loaded.
+      '<div class="insight-deck-wrap">' +
+        '<div class="insight-deck" id="insight-deck" role="group" aria-roledescription="carousel" aria-label="' + esc(I.galleryLabel) + '">' +
           insightSlot(0, 'insight-card-open', 'insight-card-preview', I.previewOpen) +
         '</div>' +
-        galleryArrow(1, I.galleryNext) +
+        '<div class="insight-deck-nav">' + galleryArrow(-1, I.galleryPrev) +
+          '<span class="insight-deck-dots" id="insight-deck-dots" aria-hidden="true"></span>' +
+          galleryArrow(1, I.galleryNext) + '</div>' +
       '</div>' +
     '</div>' +
     '<div class="insight-tier insight-premium premium-tier">' +
@@ -1897,7 +1899,7 @@
   }
 
   async function drawInsightPreview() {
-    const gallery = document.getElementById('insight-gallery');
+    const gallery = document.getElementById('insight-deck');
     if (!gallery) return;
     try {
       if (!insightCards.length) {
@@ -1908,7 +1910,7 @@
         if (!sample) return;
         insightCards = [sample].concat((more && Array.isArray(more.cards)) ? more.cards : []);
       }
-      const target = document.getElementById('insight-gallery');
+      const target = document.getElementById('insight-deck');
       if (!target) return;
       const I = Copy.STRUCTURED.insights;
       // The other cards' slots, once there is something to put in them.
@@ -1918,25 +1920,49 @@
       const cards = [...target.querySelectorAll('.insight-preview .psyche-card')];
       cards.forEach((el, i) => { el.innerHTML = psycheCardHtml(insightCards[i]); });
       // Fitted as soon as they are drawn, so the page never lays out a
-      // full-size card: 200px wide in the strip, or a little less where a
-      // phone leaves less. The stylesheet holds their space until then.
-      const width = Math.min(200, Math.max(150, (target.clientWidth || 200) * 0.62));
+      // full-size card: 230px wide, or less where a phone leaves less room
+      // beside the stack. The stylesheet holds their space until then.
+      const wrap = target.closest('.insight-deck-wrap');
+      const room = wrap && wrap.clientWidth ? wrap.clientWidth - 80 : 230;
+      const width = Math.max(150, Math.min(230, room));
       cards.forEach(el => fitCard(el, width, width * 1920 / 1080));
-      updateGalleryArrows();
+      target.style.setProperty('--deck-w', Math.round(width) + 'px');
+      target.style.setProperty('--deck-h', Math.round(width * 1920 / 1080) + 'px');
+      $('#insight-deck-dots').innerHTML = insightCards.map(() => '<i></i>').join('');
+      arrangeDeck();
     } catch (error) {
       // A card that will not draw leaves the list beside it to say what is on one.
     }
   }
 
-  /** The gallery's arrows fade out at the end they cannot scroll past. */
-  function updateGalleryArrows() {
-    const gallery = document.getElementById('insight-gallery');
-    if (!gallery) return;
-    const wrap = gallery.closest('.insight-gallery-wrap');
-    const max = gallery.scrollWidth - gallery.clientWidth;
-    wrap.classList.toggle('at-start', gallery.scrollLeft <= 2);
-    wrap.classList.toggle('at-end', gallery.scrollLeft >= max - 2);
-    wrap.classList.toggle('no-scroll', max <= 2);
+  /**
+   * Puts the deck's cards in their places around `deckIndex`: the front one,
+   * the next two stacked behind it, the one just passed slipping away to the
+   * left, and the rest out of sight behind. Only the front one can be
+   * pressed or reached by Tab.
+   */
+  let deckIndex = 0;
+  function arrangeDeck() {
+    const deck = document.getElementById('insight-deck');
+    if (!deck) return;
+    const slots = [...deck.querySelectorAll('.insight-preview')];
+    const count = slots.length;
+    slots.forEach((slot, i) => {
+      const pos = ((i - deckIndex) % count + count) % count;
+      slot.setAttribute('data-pos', pos < 3 ? String(pos) : pos === count - 1 ? 'prev' : 'rest');
+      slot.classList.toggle('is-front', pos === 0);
+      slot.tabIndex = pos === 0 ? 0 : -1;
+      slot.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');
+    });
+    const dots = document.querySelectorAll('#insight-deck-dots i');
+    dots.forEach((dot, i) => dot.classList.toggle('is-on', i === deckIndex));
+  }
+
+  function stepDeck(step) {
+    const count = document.querySelectorAll('#insight-deck .insight-preview').length;
+    if (count < 2) return;
+    deckIndex = ((deckIndex + step) % count + count) % count;
+    arrangeDeck();
   }
 
   /**
@@ -2821,30 +2847,45 @@
   document.addEventListener('click', event => {
     const sample = event.target.closest('#insight-sample');
     if (sample) { showSample(sample); return; }
-    const card = event.target.closest('#insight-gallery .insight-preview');
+    const card = event.target.closest('#insight-deck .insight-preview.is-front');
     if (card) { openInsightCard(Number(card.getAttribute('data-card')) || 0); return; }
-    // The gallery's arrows scroll it by about a card and a half.
-    const arrow = event.target.closest('.insight-gallery-nav');
-    if (arrow) {
-      const gallery = document.getElementById('insight-gallery');
-      const first = gallery && gallery.querySelector('.insight-preview');
-      const by = first ? first.getBoundingClientRect().width + 16 : 220;
-      if (gallery) gallery.scrollBy({ left: Number(arrow.getAttribute('data-gallery-step')) * by * 1.5, behavior: 'smooth' });
-      return;
-    }
+    // The deck's arrows bring the next or the previous card to the front.
+    const arrow = event.target.closest('.insight-deck-step');
+    if (arrow) { stepDeck(Number(arrow.getAttribute('data-deck-step'))); return; }
     // Full screen, the arrows either side step through the cards.
     const step = event.target.closest('.sample-card-nav');
     if (step) stepInsightCard(Number(step.getAttribute('data-step')));
   });
-  document.addEventListener('scroll', event => {
-    if (event.target && event.target.id === 'insight-gallery') updateGalleryArrows();
-  }, true);
-  window.addEventListener('resize', updateGalleryArrows);
+  // A swipe across the deck brings the next card forward, or the last one back.
+  {
+    let start = null;
+    document.addEventListener('touchstart', event => {
+      const t = event.touches[0];
+      start = event.touches.length === 1 && event.target.closest && event.target.closest('#insight-deck')
+        ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    document.addEventListener('touchend', event => {
+      if (!start) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.4) stepDeck(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
   // Full screen, the cards step left and right by keyboard, by a swipe, and
-  // by a sideways scroll on a trackpad or mouse.
+  // by a sideways scroll on a trackpad or mouse; on the page, the arrow keys
+  // step the deck while it has focus.
   document.addEventListener('keydown', event => {
-    if (event.key === 'ArrowRight') stepInsightCard(1);
-    else if (event.key === 'ArrowLeft') stepInsightCard(-1);
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const dialog = $('#sample-card-dialog');
+    if (dialog && dialog.open) { stepInsightCard(step); return; }
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.insight-deck-wrap')) {
+      stepDeck(step);
+      const front = document.querySelector('#insight-deck .insight-preview.is-front');
+      if (front && document.activeElement.closest('#insight-deck')) front.focus();
+    }
   });
   {
     const dialog = $('#sample-card-dialog');
@@ -2876,7 +2917,11 @@
         rested = now;
       }
     }, { passive: false });
-    dialog.addEventListener('close', () => dialog.classList.remove('is-gallery'));
+    dialog.addEventListener('close', () => {
+      // The deck is left with the card last looked at at its front.
+      if (dialog.classList.contains('is-gallery')) { deckIndex = insightIndex; arrangeDeck(); }
+      dialog.classList.remove('is-gallery');
+    });
   }
   $('#sample-close').addEventListener('click', closeSample);
 

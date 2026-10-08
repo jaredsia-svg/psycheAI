@@ -2188,6 +2188,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 /* Opened from the front page's gallery: arrows either side and a count at
    the top, and each card slides in from the side it was stepped towards. */
 .sample-card-nav, .sample-card-count { display: none; }
+.sample-card-nav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 .card-dialog.is-gallery .sample-card-nav {
   position: fixed; top: 50%; z-index: 3; transform: translateY(-50%);
   display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
@@ -2931,34 +2932,54 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(140deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg)), var(--bg));
   border: 1px solid var(--line);
 }
-/* Under the list, a strip of sample cards scrolled sideways: by swipe or
-   trackpad, or by the arrows either side where there is a pointer. It runs to
-   the tier's edges so a card cut off at the side says there is more. */
-.insight-free { grid-template-columns: minmax(0, 1fr); }
-.insight-gallery-wrap { position: relative; margin: 0 calc(-1 * clamp(1rem, 3vw, 1.4rem)); }
-.insight-gallery {
-  display: flex; gap: 20px; overflow-x: auto; overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory; scroll-padding: 0 clamp(1rem, 3vw, 1.4rem);
-  padding: 14px clamp(1rem, 3vw, 1.4rem) 20px; scrollbar-width: thin;
+/* Beside the list on a laptop, under it on a phone: a deck of sample cards,
+   the front one whole and the next two stacked behind it, tilted and fading,
+   with arrows and dots under it. Nothing scrolls, so there is no scrollbar. */
+@media (min-width: 760px) { .insight-free { grid-template-columns: minmax(0, 1fr) 320px; } }
+.insight-deck-wrap { display: flex; flex-direction: column; align-items: center; gap: .9rem; min-width: 0; }
+/* The stack fans out to the right; on the narrowest phones it is trimmed at
+   the tier's edge rather than pushing the page sideways. clip, not hidden,
+   so it never becomes a scroll box. */
+.insight-free { overflow-x: clip; }
+.insight-deck {
+  /* Before the cards are fitted, a size that already fits a small phone;
+     drawInsightPreview sets the real one. */
+  --deck-w: min(230px, calc(100vw - 160px)); --deck-h: calc(var(--deck-w) * 1.7778);
+  position: relative; width: calc(var(--deck-w) + 76px); height: calc(var(--deck-h) + 30px);
 }
-.insight-gallery .insight-preview { flex: none; margin: 0; scroll-snap-align: start; }
-/* The space a fitted card takes, held before the cards have loaded so the
-   page below does not jump when they arrive. */
-.insight-gallery .insight-preview-frame { width: 200px; height: 356px; }
-.insight-gallery .insight-preview:nth-child(even) .insight-preview-frame { transform: rotate(2deg); }
-.insight-gallery-nav {
-  position: absolute; top: 50%; z-index: 2; transform: translateY(-50%);
-  display: grid; place-items: center; width: 42px; height: 42px; padding: 0; cursor: pointer;
+.insight-deck .insight-preview {
+  position: absolute; left: 0; top: 8px; margin: 0;
+  /* Turned about the top left corner, so the stack fans out low and to the
+     right and never reaches far past the front card. */
+  transform-origin: 0 0;
+  transition: transform .42s cubic-bezier(.2, .8, .2, 1), opacity .42s ease, filter .42s ease;
+}
+.insight-deck .insight-preview-frame { width: var(--deck-w); height: var(--deck-h); }
+.insight-deck .insight-preview[data-pos="0"] { z-index: 5; }
+.insight-deck .insight-preview[data-pos="1"] {
+  z-index: 4; transform: translate(40px, 10px) rotate(3deg) scale(.95); opacity: .8; filter: saturate(.85) brightness(.97);
+}
+.insight-deck .insight-preview[data-pos="2"] {
+  z-index: 3; transform: translate(74px, 20px) rotate(6deg) scale(.9); opacity: .5; filter: saturate(.7) brightness(.95);
+}
+.insight-deck .insight-preview[data-pos="prev"] { z-index: 6; transform: translate(-80px, 16px) rotate(-8deg) scale(.94); opacity: 0; }
+.insight-deck .insight-preview[data-pos="rest"] { z-index: 1; transform: translate(74px, 20px) rotate(6deg) scale(.86); opacity: 0; }
+.insight-deck .insight-preview:not(.is-front) { pointer-events: none; cursor: default; }
+.insight-deck .insight-preview:not(.is-front) .insight-preview-expand { opacity: 0; }
+.insight-deck .insight-preview:not(.is-front) .insight-preview-frame { transform: none; }
+.insight-preview-expand { transition: opacity .3s ease; }
+.insight-deck-nav { display: flex; align-items: center; gap: .9rem; }
+.insight-deck-step {
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0; cursor: pointer;
   border-radius: 50%; border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink);
-  box-shadow: 0 8px 20px -10px rgba(60, 20, 90, .55); transition: opacity .2s ease;
+  box-shadow: 0 8px 20px -12px rgba(60, 20, 90, .55);
 }
-.insight-gallery-nav[data-gallery-step="-1"] { left: 6px; }
-.insight-gallery-nav[data-gallery-step="1"] { right: 6px; }
-.insight-gallery-nav svg, .sample-card-nav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.insight-gallery-wrap.at-start .insight-gallery-nav[data-gallery-step="-1"],
-.insight-gallery-wrap.at-end .insight-gallery-nav[data-gallery-step="1"],
-.insight-gallery-wrap.no-scroll .insight-gallery-nav { opacity: 0; pointer-events: none; }
-@media (hover: none) { .insight-gallery-nav { display: none; } }
+.insight-deck-step:hover, .insight-deck-step:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.insight-deck-step svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.insight-deck-dots { display: flex; gap: 6px; }
+.insight-deck-dots i { width: 7px; height: 7px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 28%, transparent); transition: width .3s ease, background .3s ease; }
+.insight-deck-dots i.is-on { width: 20px; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .insight-deck .insight-preview { transition: none; } }
 /* What is on the card: one white box, two columns by four rows at every
    width, each entry an icon and two lines, ruled apart rather than boxed. */
 .insight-card .card-features, .insight-card .insight-parts, .insight-card .insight-extras { padding-left: 0; }
