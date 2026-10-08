@@ -11211,7 +11211,7 @@ try {
         ['About this report', 'PART 1', 'CONNECTS TO', 'RAISED BY', 'Digital footprint', 'Sources read', 'BUILD', 'Belief']
           .filter(t => structuredPdf.includes(t)).join(', '));
       check('structured PDF: the running head carries the date, and the cover card is the story card\'s',
-        /Sample · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
+        /Emily Carter · October 4, 2026/.test(structuredPdf.replace(/\\267/g, '·')) &&
         structuredPdf.includes('VALUES & BELIEFS') && structuredPdf.includes('WHAT MOTIVATES YOU') &&
         structuredPdf.includes('1 Care for your people') && !structuredPdf.includes('Extraversion 52'),
         structuredPdf.slice(0, 600));

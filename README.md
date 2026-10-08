@@ -1672,6 +1672,10 @@ in exchange for something the reader has never seen. **See sample report** — i
 under the diagram — closes that gap: it renders `docs/sample.json` through the same `renderProfile`
 a real report goes through, so what appears is the actual layout rather than a picture of one.
 
+The sample card carries a person's name, **Emily Carter**, rather than the word "Sample": it is the card
+the welcome page and the promo video show, and a placeholder there read as unfinished. The dialog
+around it still says plainly that it is a sample.
+
 It is hand-written rather than taken from `lib/mock.js`. The mock says *"Mock reading for
 agreeableness. In a real run this is several sentences grounded in the actual export"* on purpose,
 which is exactly right for a fixture and useless as a shop window. It is also deliberately not

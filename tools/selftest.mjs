@@ -1446,8 +1446,11 @@ check('the sample report is honest about weaknesses, not an advert',
     confidence: sample.confidence.score,
     attachment: sample.card.attachment,
   }));
-check('the sample report is named as a sample rather than as a person',
-  sample.card.name === 'Sample', sample.card.name);
+// A person's name, as a real card carries, not the word "Sample": the card is
+// what the video and the welcome page show, and a placeholder there reads as
+// unfinished. The dialog around it already says plainly that it is a sample.
+check('the sample card carries a person\'s name, as a real one would',
+  /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(sample.card.name) && !/sample/i.test(sample.card.name), sample.card.name);
 
 // Three sections live in the paid schema only (see the PREMIUM_SCHEMA checks
 // further down), so none of them is part of the sample report. The sample

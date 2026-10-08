@@ -1815,7 +1815,7 @@
   function openInsightCard() {
     const dialog = $('#sample-card-dialog');
     if (!dialog || dialog.open || !insightSample) return;
-    const sample = Object.assign({}, insightSample, { card: Object.assign({}, insightSample.card, { name: 'Sample' }) });
+    const sample = insightSample;
     $('#sample-psyche-card-full').innerHTML = psycheCardHtml(sample);
     guideSampleCard(sample);
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -1832,8 +1832,7 @@
       }
       if (!insightSample || !document.getElementById('insight-card-preview')) return;
       const target = document.getElementById('insight-card-preview');
-      target.innerHTML = psycheCardHtml(Object.assign({}, insightSample,
-        { card: Object.assign({}, insightSample.card, { name: 'Sample' }) }));
+      target.innerHTML = psycheCardHtml(insightSample);
       // Laid out at full size first, then fitted to the tier it sits in: never
       // wider than 250px, or than the tier leaves on a phone.
       const tier = target.closest('.insight-free');
