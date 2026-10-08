@@ -3606,6 +3606,28 @@ women out of 28. Each character holds a temperament nobody else in the list does
 | Princess Peach | the gracious, composed leader and host who keeps everyone steady | | Link | Moana and Hiccup (quiet, brave explorer) |
 | Hello Kitty | the warm, gentle connector who shows care through small kindnesses | | | |
 
+**Each woman has a male counterpart of similar temperament**, which keeps the two sides of the
+catalogue covering the same ground:
+
+| Shared temperament | Woman | Man |
+|---|---|---|
+| The principled protector | Wonder Woman | Captain America |
+| The earnest, by-the-book go-getter | Judy Hopps | Buzz Lightyear |
+| A big force held under tight control | Elsa | Hulk |
+| The over-prepared planner | Hermione Granger | Batman |
+| The mischievous contrarian with a softer centre | Kuromi | Nick Wilde |
+| The explorer who leaves the family's map | Moana | Hiccup |
+| The relentless enthusiast | Joy | Po |
+| The ordinary, big-hearted hero juggling too much | Sailor Moon | Spider-Man |
+| The steady leader who holds the group together | Princess Peach | Woody |
+| The one who steps up for family | Mulan | Simba |
+| The restless creator | Rapunzel | Iron Man |
+| The homebody with a big heart for a small circle | Hello Kitty | Shrek |
+
+The five who are neither each hold a temperament of their own: Baymax the gentle caretaker, WALL-E
+the quiet romantic and collector, Remy the craftsman with taste, Pikachu the loyal live wire, Totoro
+the calm, steady presence.
+
 My Melody, Bubbles and Barbie were considered and left out: My Melody and Bubbles overlap Hello
 Kitty and Joy, and Barbie overlaps Judy Hopps and invites a read on looks the prompt rules out.
 **A woman chooses among the twelve women and the five who are neither, a man among the twelve men
@@ -3627,7 +3649,7 @@ about 0.02¢ a run in practice).
 Retired characters are no longer offered to the model but keep their scene and emblem
 (`RETIRED_CHARACTERS`), so a card written before they went still draws. The five new scenes follow
 the same rule as the rest — symbols, never likenesses: a spellbook over a castle of lit windows, a
-skull charm on a two-pointed hood under a crescent moon, a heart-shaped brooch over a city and its
+glossy pink skull under a black two-pointed jester cap with a devil's tail, a crescent moon between the points, a heart-shaped brooch over a city and its
 lattice tower, a gem-set crown above a pink-roofed castle, a red bow over a cottage on a hill of apples.
 
 Each signature pattern lists the sections it shows up in; the sections themselves no longer carry a

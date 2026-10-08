@@ -881,34 +881,49 @@ const SCENES = {
       '<g fill="#ffd27a" opacity=".35">' + [[322, 384], [376, 392], [436, 386], [482, 396]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="16" rx="2.5"/>').join('') + '</g>';
   },
 
-  // A pink skull charm on a two-pointed jester hood, under a lilac crescent
-  // moon, with little bats, hearts and a spade-tipped tail; a spiked gate below.
+  // A glossy pink skull under a black two-pointed jester cap, a devil's tail
+  // curling from behind it, under a small lilac crescent; little bats, hearts
+  // and sparkles on a plum night, a spiked fence along the hills.
   'Kuromi': () => {
-    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="486" cy="58" r="66" fill="#000"/></mask>');
-    const bat = (x, y, s) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 -2C3 -6 7 -6 9 -3C11 -8 17 -9 22 -5C18 -2 18 3 21 6C15 3 11 4 9 8C6 4 3 3 0 4C-3 3 -6 4 -9 8C-11 4 -15 3 -21 6C-18 3 -18 -2 -22 -5C-17 -9 -11 -8 -9 -3C-7 -6 -3 -6 0 -2Z" fill="#2a1240"/>';
-    const heart = (x, y, s, c) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 6C-8 0 -10 -4 -8 -7C-6 -10 -2 -9 0 -6C2 -9 6 -10 8 -7C10 -4 8 0 0 6Z" fill="' + c + '"/>';
-    return tint('#ff8fc8', '#22103a', 0.62) + stars(411, 40, 120, W, 0, 230, '#ffe0f4') +
-      '<circle cx="452" cy="86" r="74" fill="' + lin('moon', [[0, '#f6e6ff'], [1, '#c9a0ff']]) + '" mask="url(#{id}-cres)"/>' +
-      glow('g', 376, 214, 170, '#ff9ad2', 0.6) +
-      '<g transform="translate(376 214)">' +
-        '<path d="M-86 50C-96 -20 -60 -78 0 -82C60 -78 96 -20 86 50C60 64 -60 64 -86 50Z" fill="' + lin('hood', [[0, '#3a2454'], [1, '#160a26']]) + '" stroke="#fff" stroke-width="3"/>' +
-        '<path d="M-62 -48C-92 -80 -118 -96 -150 -104C-130 -74 -110 -50 -80 -22Z" fill="#22123a" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M62 -48C92 -80 118 -96 150 -104C130 -74 110 -50 80 -22Z" fill="#22123a" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-58 -50C-30 -64 30 -64 58 -50" stroke="#ff8fc8" stroke-width="3" fill="none" opacity=".6"/>' +
-        '<g transform="translate(0 -10)">' +
-          '<path d="M0 -34C-22 -34 -36 -20 -36 -2C-36 10 -30 18 -22 22V34H22V22C30 18 36 10 36 -2C36 -20 22 -34 0 -34Z" fill="' + lin('skull', [[0, '#ffc2e0'], [1, '#ff5fa8']]) + '" stroke="#fff" stroke-width="3"/>' +
-          '<ellipse cx="-14" cy="-2" rx="8" ry="10" fill="#2a1240"/><ellipse cx="14" cy="-2" rx="8" ry="10" fill="#2a1240"/>' +
-          '<circle cx="-11" cy="-6" r="2.4" fill="#fff"/><circle cx="17" cy="-6" r="2.4" fill="#fff"/>' +
-          '<path d="M0 10L-4 16H4Z" fill="#2a1240"/><path d="M-12 28V22M-4 30V22M4 30V22M12 28V22" stroke="#2a1240" stroke-width="2.4" stroke-linecap="round"/></g></g>' +
-      '<path d="M462 296C500 284 506 250 486 236" fill="none" stroke="#2a1240" stroke-width="7" stroke-linecap="round"/>' +
-      '<path d="M486 236L474 228L492 222L496 240Z" fill="#2a1240" transform="rotate(-10 486 236)"/>' +
-      [[268, 110, 1.1], [520, 180, 0.8], [300, 300, 0.7], [250, 200, 0.6], [470, 150, 0.6]].map(([x, y, s]) => bat(x, y, s)).join('') +
-      heart(282, 160, 1.4, '#ff5fa8') + heart(488, 300, 1.2, '#ffc2e0') + heart(236, 260, 1, '#ff8fc8') + heart(330, 70, 0.9, '#ffc2e0') +
-      sparkle(400, 60, 9, '#ffe0f4') + sparkle(250, 320, 7, '#ffe0f4') +
-      '<path d="M0 440V384C120 376 260 388 380 380S490 376 520 378V440Z" fill="#160a26"/>' +
-      '<g fill="#160a26">' + Array.from({ length: 16 }, (_, i) => 216 + i * 20).map(x =>
-        '<rect x="' + (x - 2.5) + '" y="334" width="5" height="54"/><path d="M' + (x - 6) + ' 336L' + x + ' 320L' + (x + 6) + ' 336Z"/>').join('') +
-        '<rect x="210" y="346" width="320" height="5"/><rect x="210" y="372" width="320" height="5"/></g>';
+    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="392" cy="34" r="36" fill="#000"/></mask>');
+    const pink = lin('pink', [[0, '#ffd6ea'], [0.55, '#ff8cc4'], [1, '#f0559c']], 0, 0, 0.4, 1);
+    const ink = lin('ink', [[0, '#3c2558'], [1, '#120820']], 0, 0, 0.6, 1);
+    const bat = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="#1a0c2c">' +
+      '<path d="M-6 -2C-12 -10 -24 -12 -30 -6C-24 -4 -22 2 -24 8C-18 4 -12 6 -8 10Z"/><path d="M6 -2C12 -10 24 -12 30 -6C24 -4 22 2 24 8C18 4 12 6 8 10Z"/>' +
+      '<circle r="8"/><path d="M-6 -6L-8 -14L-2 -8ZM6 -6L8 -14L2 -8Z"/><circle cx="-3" cy="-1" r="1.6" fill="#ff8cc4"/><circle cx="3" cy="-1" r="1.6" fill="#ff8cc4"/></g>';
+    const heart = (x, y, s, c) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 7C-9 1 -11 -4 -9 -7C-6 -11 -2 -10 0 -6C2 -10 6 -11 9 -7C11 -4 9 1 0 7Z" fill="' + c + '"/>';
+    const ear = side => {
+      const k = side;
+      return '<path d="M' + (-34 * k) + ' -40C' + (-58 * k) + ' -78 ' + (-88 * k) + ' -118 ' + (-128 * k) + ' -140C' + (-120 * k) + ' -118 ' +
+        (-112 * k) + ' -76 ' + (-88 * k) + ' -40C' + (-76 * k) + ' -22 ' + (-62 * k) + ' -14 ' + (-52 * k) + ' -10Z" fill="' + ink + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M' + (-46 * k) + ' -44C' + (-66 * k) + ' -76 ' + (-90 * k) + ' -106 ' + (-116 * k) + ' -128" stroke="#8a62b8" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>';
+    };
+    return tint('#ff9ad2', '#1c0c34', 0.64) + stars(411, 44, 120, W, 0, 250, '#ffe0f4') +
+      glow('mg', 372, 52, 70, '#f3dcff', 0.5) +
+      '<circle cx="372" cy="52" r="42" fill="' + lin('moon', [[0, '#fbf0ff'], [1, '#cfa8ff']]) + '" mask="url(#{id}-cres)"/>' +
+      glow('g', 372, 210, 180, '#ff9ad2', 0.62) +
+      '<path d="M400 266C456 290 500 258 484 220" fill="none" stroke="#1a0c2c" stroke-width="8" stroke-linecap="round"/>' +
+      '<path d="M484 220L470 214L476 196L490 208L502 200L498 218Z" fill="#1a0c2c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
+      '<g transform="translate(372 210) scale(1.02)">' + ear(1) + ear(-1) +
+        '<path d="M0 -50C-34 -50 -54 -28 -54 0C-54 18 -46 30 -34 36V48C-34 54 -28 58 -22 58H22C28 58 34 54 34 48V36C46 30 54 18 54 0C54 -28 34 -50 0 -50Z" fill="' + pink + '" stroke="#fff" stroke-width="3.5"/>' +
+        '<path d="M-54 -6C-56 -44 -30 -66 0 -66C30 -66 56 -44 54 -6C38 -22 -38 -22 -54 -6Z" fill="' + ink + '" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>' +
+        '<path d="M-40 -30C-28 -48 -14 -56 4 -58" stroke="#8a62b8" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>' +
+        '<ellipse cx="-20" cy="10" rx="13" ry="15" fill="#2a1240"/><ellipse cx="20" cy="10" rx="13" ry="15" fill="#2a1240"/>' +
+        '<circle cx="-15" cy="4" r="4.2" fill="#fff"/><circle cx="25" cy="4" r="4.2" fill="#fff"/><circle cx="-23" cy="16" r="2" fill="#fff" opacity=".7"/><circle cx="17" cy="16" r="2" fill="#fff" opacity=".7"/>' +
+        '<path d="M0 34C-3 29 -9 30 -8 34C-7 37 0 40 0 40C0 40 7 37 8 34C9 30 3 29 0 34Z" fill="#2a1240"/>' +
+        '<path d="M-20 46H20" stroke="#c43d82" stroke-width="2.4" stroke-linecap="round"/>' +
+        '<path d="M-12 46V56M-4 46V58M4 46V58M12 46V56" stroke="#c43d82" stroke-width="2.4" stroke-linecap="round"/>' +
+        '<path d="M-44 -2C-44 -10 -40 -16 -34 -18C-38 -10 -38 -2 -36 6Z" fill="#fff" opacity=".55"/>' +
+        '<ellipse cx="-34" cy="30" rx="8" ry="4" fill="#ff5f9a" opacity=".45"/><ellipse cx="34" cy="30" rx="8" ry="4" fill="#ff5f9a" opacity=".45"/></g>' +
+      [[250, 160, 1.05], [494, 130, 0.8], [262, 290, 0.7], [478, 304, 0.75], [452, 74, 0.6]].map(([x, y, sc]) => bat(x, y, sc)).join('') +
+      heart(300, 210, 1.5, '#ff5f9a') + heart(502, 160, 1.1, '#ffc2e0') + heart(238, 220, 0.9, '#ffc2e0') + heart(352, 100, 0.9, '#ff8cc4') + heart(470, 250, 0.8, '#ff8cc4') +
+      sparkle(500, 70, 10, '#ffe0f4') + sparkle(236, 100, 8, '#ffe0f4') + sparkle(320, 300, 6, '#ffe0f4') +
+      '<path d="M0 440V378C110 360 230 382 330 366S470 352 520 360V440Z" fill="#2a1446"/>' +
+      '<g fill="#160a26">' + Array.from({ length: 14 }, (_, i) => 252 + i * 20).map(x =>
+        '<rect x="' + (x - 2.5) + '" y="340" width="5" height="60"/><path d="M' + (x - 6) + ' 342C' + (x - 4) + ' 334 ' + (x - 2) + ' 330 ' + x + ' 322C' + (x + 2) + ' 330 ' + (x + 4) + ' 334 ' + (x + 6) + ' 342Z"/>').join('') +
+        '<rect x="246" y="352" width="290" height="5"/><rect x="246" y="378" width="290" height="5"/></g>' +
+      '<path d="M0 440V402C120 390 250 408 360 398S480 392 520 396V440Z" fill="#160a26"/>' +
+      '<g fill="#ff8cc4">' + [[290, 410], [350, 420], [430, 412], [500, 422]].map(([x, y]) => heart(x, y, 0.6, '#ff8cc4')).join('') + '</g>';
   },
 
   // A heart-shaped brooch with a crescent at its centre, ribbons streaming,
