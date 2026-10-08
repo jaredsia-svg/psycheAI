@@ -46,7 +46,7 @@
   const KEYS = {
     profile: 'psycheai_profile',
     digest: 'psycheai_digest',
-    // The deeper read's digest, built beside the standard one at upload and
+    // The premium read's digest, built beside the standard one at upload and
     // kept only on this device — see DEEP_LIMITS in docs/digest.js. Listed
     // here so Delete everything takes it with the rest.
     deepDigest: 'psycheai_digest_deep',
@@ -182,11 +182,11 @@
   }
 
   /**
-   * The deeper read's digest, built from the archive in memory with the same
+   * The premium read's digest, built from the archive in memory with the same
    * review choices as the standard one, and kept beside it. Free: it is built
-   * in the browser and sent only on an unlock that asks for it. A device with
-   * no room left for it simply goes without — the unlock then asks for the
-   * Instagram export again if a Deeper read is wanted.
+   * in the browser and sent only on an unlock. A device with no room left for
+   * it simply goes without — the unlock then widens the standard digest
+   * instead (premiumDigestFrom).
    */
   function saveDeepDigest(signals, decision) {
     let deep = null;
@@ -4016,15 +4016,6 @@
     // Every list below is built from the visible rows, so a hidden source can
     // neither be ticked, read, nor resolved.
     const buttons = dialog.querySelectorAll('.mode-option:not([hidden])');
-    // The premium unlock's Deeper read: offered only there, on unless the
-    // reader switched it off earlier in this unlock.
-    const deeper = $('#datasources-deeper');
-    deeper.hidden = !settings.deeper;
-    if (settings.deeper) {
-      $('#datasources-deeper-title').textContent = TEXT.deeperReadTitle;
-      $('#datasources-deeper-text').textContent = TEXT.deeperReadText;
-      $('#datasources-deeper-input').checked = settings.deeperOn === true;
-    }
     $('#datasources-card-note-text').textContent = TEXT.cardChangeNote;
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
     $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
@@ -4309,7 +4300,6 @@
         $('#datasources-continue').removeEventListener('click', done);
         $('#datasources-back').removeEventListener('click', goBack);
         dialog.removeEventListener('cancel', onNativeCancel);
-        if (!cancelled && settings.deeper) added.deeper = $('#datasources-deeper-input').checked;
         resolve(cancelled ? null : added);
       }, { once: true });
 
@@ -4445,10 +4435,15 @@
       return;
     }
 
+    // Once premium is unlocked the run this pays for writes the full report
+    // too, so what is reviewed and sent is the premium read, with each source
+    // given its share; the standard digest beside it takes the same decisions.
+    const premium = alreadyUnlocked ? premiumDigestFrom(extraSupplements, true) : null;
+
     let decision;
     try {
-      decision = await askReview(digest,
-        { paymentDue: alreadyUnlocked || mustPayForAnalysis() });
+      decision = await askReview(premium || digest,
+        { paymentDue: alreadyUnlocked || mustPayForAnalysis(), deep: Boolean(premium) });
     } catch (error) {
       // Stays on the report rather than calling showUploadError(): a failed
       // attempt to re-run must never read as having lost the report.
@@ -4475,10 +4470,15 @@
       // what would wipe the premiumAnalysis this same charge is about to
       // write — see the comment that used to sit where this branch is now.
       applyReviewDecision(digest, decision);
+      if (premium) {
+        applyReviewDecision(premium, decision);
+        premium.__standard = digest;
+        premium.__fresh = true;
+      }
       // Kept until the charge has bought something: a reader who cancels the
       // payment sheet and comes back finds Google and Facebook still loaded.
       // Cleared in runPremiumAnalysis once the run succeeds.
-      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', digest);
+      await openPremiumDialog($('#rerun-with-data'), 'rerunAll', premium || digest);
       return;
     }
 
@@ -7506,28 +7506,22 @@
    * The data step of the US$5 unlock: the same "Add or change your data"
    * popout the report page uses, listing every source with a tick for what is
    * already loaded, so a reader can add Facebook (or any source added later)
-   * before paying. Nothing changed and it hands back the digest the card was
-   * written from, and the payment sheet follows directly; something added or
-   * replaced goes through the review first, and the run it pays for rewrites
-   * the card as well. Back abandons the unlock (null).
+   * before paying. It hands back the premium read (premiumDigestFrom): with
+   * nothing changed, the one kept at upload, and the payment sheet follows
+   * directly; with something added or replaced, rebuilt and reviewed first,
+   * and the run it pays for rewrites the card as well. Back abandons the
+   * unlock (null).
    */
   async function collectDataForPremium() {
-    // Off by default; a reader who switches it on and comes back to this
-    // popout from the review finds it as they left it.
-    let deeperOn = false;
-    let notice = '';
     for (;;) {
       let collected;
       try {
-        collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb,
-          deeper: true, deeperOn, notice, cardNote: true });
+        collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb, cardNote: true });
       } catch (error) {
         flash('#profile-alert', (error && error.message) || 'Could not read that export.');
         return null;
       }
-      notice = '';
       if (!collected) return null;
-      deeperOn = collected.deeper === true;
       const fresh = key => typeof collected[key] === 'object';
       const anyFresh = ['instagram', 'google', 'facebook', 'whatsapp'].some(fresh);
       if (!anyFresh && !state.digest) {
@@ -7536,19 +7530,23 @@
         flash('#profile-alert', TEXT.rerunNeedsInstagram);
         return null;
       }
-      // Nothing new and the standard read: the report is written from the
-      // digest the card was, and nothing about the card changes.
-      if (!anyFresh && !deeperOn) return state.digest;
       // The same merge addDataAndRerun makes: a fresh Instagram read replaces
       // the signals wholesale, so supplements from this session are read off
       // the old object first.
       const priorSupplements = state.signals && state.signals.supplements;
       if (fresh('instagram')) state.signals = collected.instagram;
       repairOwnName().catch(() => {});
-      const extra = { google: fresh('google') ? collected.google : undefined, facebook: fresh('facebook') ? collected.facebook : undefined,
-        whatsapp: fresh('whatsapp') ? collected.whatsapp : undefined };
+      const extra = {
+        google: fresh('google') ? collected.google : undefined,
+        facebook: fresh('facebook') ? collected.facebook : undefined,
+        whatsapp: fresh('whatsapp') ? collected.whatsapp : undefined,
+      };
+      // Two digests come out of this. The standard one — what every later
+      // free run reads — takes any source added here; the premium read is
+      // what the full report is written from, with each source given its
+      // share (see "the premium read" in docs/digest.js).
       let digest = state.digest;
-      let deep = null;
+      let premium = null;
       try {
         if (anyFresh) {
           if (state.signals) {
@@ -7563,44 +7561,66 @@
             return null;
           }
         }
-        if (deeperOn) {
-          // From the archive when it is in memory; otherwise the deeper digest
-          // built at upload, with any source added here merged into it too.
-          if (state.signals) deep = Digest.build(state.signals, { includeMessages: true, deep: true });
-          else if (state.deepDigest) {
-            deep = JSON.parse(JSON.stringify(state.deepDigest));
-            if (extra.google || extra.facebook || extra.whatsapp) {
-              deep = Digest.addSupplements(deep, extra, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
-            }
-          } else {
-            // Uploaded before the deeper read existed, or the device had no
-            // room to keep it: the archive is needed once more.
-            notice = TEXT.deepNeedsInstagram;
-            continue;
-          }
-        }
+        premium = premiumDigestFrom(extra, anyFresh);
       } catch (error) {
+        // A stored digest too old or too odd to widen: with nothing new, the
+        // unlock still goes ahead on the standard digest as it is.
+        if (!anyFresh && state.digest) return state.digest;
         flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
         return null;
       }
-      // Payment is the next step whatever happens here: this review sits
-      // inside the unlock itself. A Deeper read is reviewed as itself — it is
-      // what will be sent.
-      const decision = await askReview(deep || digest, { paymentDue: true, deep: Boolean(deep) });
+      if (!premium) { flash('#profile-alert', TEXT.rerunNeedsInstagram); return null; }
+      // Nothing new: the payment sheet follows directly. What is sent is the
+      // premium read kept at upload, which was built under that upload's
+      // review, or the standard digest it was built beside.
+      if (!anyFresh) {
+        premium.__standard = state.digest;
+        return premium;
+      }
+      // Something added or replaced: reviewed as what will be sent. Payment is
+      // the next step whatever happens here: this review sits inside the
+      // unlock itself.
+      const decision = await askReview(premium, { paymentDue: true, deep: true });
       if (decision === REVIEW_BACK) continue;
       if (!decision) return null;
       if (digest !== state.digest) applyReviewDecision(digest, decision);
-      // Not cleared here: the payment sheet comes next, and a reader who
-      // cancels it and comes back must find what they loaded still loaded.
-      // runPremiumAnalysis clears it once the unlock has gone through.
-      if (!deep) return digest;
-      applyReviewDecision(deep, decision);
-      // Carried with it, so a successful unlock keeps the standard digest —
-      // the one every later free run reads — up to date with any source
-      // added here, while the deeper one is kept beside it.
-      deep.__standard = digest;
-      return deep;
+      applyReviewDecision(premium, decision);
+      // Carried with it, so a successful unlock keeps the standard digest
+      // up to date with any source added here, while the premium read is
+      // kept beside it. Not cleared here: the payment sheet comes next, and a
+      // reader who cancels it and comes back must find what they loaded
+      // still loaded; runPremiumAnalysis clears it once the unlock is through.
+      premium.__standard = digest;
+      premium.__fresh = true;
+      return premium;
     }
+  }
+
+  /**
+   * The digest the full premium report reads: up to 150,000 characters,
+   * shared between the sources (docs/digest.js, "the premium read").
+   *
+   * Rebuilt from the export in memory only when something was just added —
+   * a review follows that. Otherwise it is the premium read kept at upload,
+   * built under the decisions of that upload's review, or failing that the
+   * standard digest widened to the premium line. A source added here is
+   * merged in, a fresh copy replacing an older one, and takes its share.
+   */
+  function premiumDigestFrom(extra, rebuild) {
+    if (rebuild && state.signals) return Digest.build(state.signals, { includeMessages: true, deep: true });
+    const base = state.deepDigest || state.digest;
+    if (!base) return null;
+    const copy = JSON.parse(JSON.stringify(base));
+    const adding = {};
+    for (const [key, value] of Object.entries(extra || {})) {
+      if (!value) continue;
+      adding[key] = value;
+      delete copy[key];
+      if (copy.coverage && Array.isArray(copy.coverage.sources)) copy.coverage.sources = copy.coverage.sources.filter(s => s !== key);
+    }
+    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
+    out.__deep = true;
+    return out;
   }
 
   /** What a digest says about the data it was built from, to tell whether it changed. */
@@ -7692,17 +7712,19 @@
     // describing less evidence than the report written under it. This US$5
     // redraws the card from the new data as well rather than leaving that gap
     // and charging US$2 to close it.
-    const dataChanged = Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
-    // A Deeper read: the larger digest, sent under its own limit, redrawing
-    // the card from it as well (dataChanged is always true for one).
+    // The premium read (every unlock now) says itself whether data was added
+    // on the way: only then is the card redrawn from it. A standard digest —
+    // a resumed run, an older path — has changed when it is not the stored one.
     const deepRead = Boolean(paidDigest.__deep);
+    const dataChanged = deepRead ? Boolean(paidDigest.__fresh)
+      : Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
 
     startProgress();
     guardUnload(true);
     try {
       // One call for everything this purchase buys: the written report behind
       // the card, the roast, and the four premium sections, in one response.
-      premiumStatus(deepRead ? TEXT.premiumDeepReading : dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumGenerating);
+      premiumStatus(dataChanged ? TEXT.premiumRefreshingFree : TEXT.premiumGenerating);
       // The card the reader already has, for the server to sanitise and the
       // model to explain. None when the data changed: a card read from less
       // evidence is not one to hold a fuller report to.
@@ -7729,20 +7751,22 @@
       // Reads paidDigest, the snapshot taken before the await, rather than the
       // shared pendingPremiumDigest variable again: a reopened dialog resets
       // that, and reading it here would be one stray caller away from a null.
-      if (dataChanged && deepRead) {
-        // The deeper digest is kept beside the standard one, never in its
-        // place: every later free run and re-run reads the standard one, and
-        // the server would cut a deeper one back to its line anyway.
+      if (deepRead) {
+        // The premium read is kept beside the standard one, never in its
+        // place: every later free run reads the standard one, and the server
+        // would cut a premium one back to its line anyway.
         const standard = paidDigest.__standard;
         delete paidDigest.__standard;
+        delete paidDigest.__fresh;
         state.deepDigest = paidDigest;
         if (!store.write(KEYS.deepDigest, paidDigest)) { state.deepDigest = null; store.remove(KEYS.deepDigest); }
-        if (standard && standard !== state.digest) {
+        if (dataChanged && standard && standard !== state.digest) {
           state.digest = standard;
           writeDigest(standard);
         }
         pendingPremiumDigest = null;
-        recordRun();
+        // A new card was drawn only when data was added.
+        if (dataChanged) recordRun();
       } else if (dataChanged) {
         const added = paidDigest.__addedSupplements;
         delete paidDigest.__addedSupplements;

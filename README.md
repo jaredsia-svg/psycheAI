@@ -172,7 +172,7 @@ caption caps raised by what the room holds — two thirds to messages, a third t
 a list whose cap actually bound — then trimmed to the line. The places added are recorded as `__fill`
 (never sent), and the trim loop takes them back first, evenly across the list, before it would touch
 any other list: so a source merged in later pushes out the extra, never the source. Only when there is
-more than 1,500 characters of room, and never in the Deeper read, which keeps its own caps. Every run
+more than 1,500 characters of room, and never in the premium read, which keeps its own caps. Every run
 therefore reads close to the 80,000 line; the worst-case cost is unchanged, and the typical one rises by
 a fraction of a cent. The unit suite builds with `fill: false` unless a check asks for it, since most of
 its checks are about the sampling rules at their caps.
@@ -237,25 +237,49 @@ once `runPremiumAnalysis` succeeds, not when the data step ends, so a reader who
 reviews, and cancels at the payment sheet finds them still loaded when they open the unlock, or Add /
 change data, again.
 
-**The Deeper read** (`DEEP_LIMITS`, `withDepth`). At upload the browser builds a second digest from the
-same archive with every list wider — 450 captions, 650 messages from fifteen conversations (none over
-15%), 150 comments, 12 liked captions and 30 hashtags, 25 liked and saved accounts, 30 topics, 80
-channels, 25 titles, 80 YouTube and 100 Google searches, more Facebook — held to 190,000 characters,
-with the reader's review choices applied, and keeps it on the device as `psycheai_digest_deep`
-(`saveDeepDigest`; a device without room for it simply goes without). The free card never reads it.
-At the unlock the data popout offers **Deeper read, off until the reader ticks it**, as one small plain
-line above its buttons — "Deeper read – samples more of your data for a more detailed report" — with
-no box or colour of its own; a source added there is merged into both digests. It is reviewed as
-itself (the review's download shows the deep digest) with no notice of its own, and the payment sheet
-says nothing about it — it asks for agreement only when a source was added on the way, judged on the
-standard digest the deep one carries. The paid call sends `deep: true`; the server allows
-the larger digest only on a paid unlock that asks for it, and with no anchor card the card is redrawn
-from it before the full report. Afterwards the deep digest is kept beside the standard one, never in
-its place, so later free runs read the standard one. A reader who uploaded before this, or whose
-device had no room, is asked for the Instagram export once more or to switch it off. Ticked, both the
-card and the full report are regenerated from it, and the two calls are held to **$0.25 together** at
-their worst: $0.076 and $0.174 (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`). The output allowances are $0.135
-of that before any of the digest is read, which is why $0.25 buys 190,000 characters and not more.
+**The premium read** (`DEEP_LIMITS`, `SOURCE_SHARES`, `withDepth`). Every unlock writes the full
+report from a larger digest than the free card's — up to **150,000 characters**, shared between the
+sources — and there is no option for it any more (the "Deeper read" checkbox is gone; the code's names
+still say `deep`).
+
+*Why shares.* The free card's digest is filled by Instagram and Google at upload and lands near its
+80,000 on a real account. Facebook and WhatsApp are usually added at the unlock; merged into that full
+digest they were trimmed first and arrived as a few dozen lines. Now each source has its own room:
+
+| Source | Share of 150,000 | Why that much |
+|---|---|---|
+| Instagram | 66,000 (44%) | the primary record: own captions, comments and messages, likes, saves, years of timing |
+| WhatsApp | 34,000 (23%) | the reader's private conversational voice — what attachment, conflict and relationships most depend on; ~11,000 per chat |
+| Google | 25,000 (17%) | searches and watching: the unperformed self (a real Takeout often uses less, which the others then take) |
+| Facebook | 25,000 (17%) | an older life stage: posts, comments, Messenger |
+
+A source that is missing, or has less than its share, hands the rest on to the others in proportion
+to their shares (`allocateShares`, water-filling), so an Instagram-only reader still gets all 150,000
+for Instagram, and one without Google gives its 25,000 to the other three. Only a digest over its line
+is trimmed (`trimBySource`), and then each source only down to its own room — never one source to make
+space for another. The caps in `DEEP_LIMITS` are wide enough (450 captions, 650 messages, 100 channels,
+140 Google searches, 300 Facebook posts and messages, 600 WhatsApp messages…) that the shares, not the
+caps, decide the mix. The standard 80,000-character digest is unchanged and has no shares.
+
+*How it is built.* At upload the browser builds the premium digest beside the standard one, with the
+reader's review choices applied, and keeps it on the device as `psycheai_digest_deep` (a device
+without room simply goes without). At the unlock (`collectDataForPremium`, `premiumDigestFrom`):
+
+- **Nothing added:** the kept premium digest is sent as it is, the payment sheet follows directly,
+  and the card is **anchored, not redrawn** — the report explains the card the reader already has,
+  from more of the evidence. With no premium digest kept (an older upload), the standard digest is
+  widened to the premium line instead; the Instagram export is never asked for again.
+- **A source added or replaced:** the premium digest is rebuilt — from the export in memory, or by
+  merging the new source into the kept one (a fresh copy replacing an older one) — reviewed as what
+  will be sent, and the run redraws the card from it as well as writing the report. The standard
+  digest takes the same new source, so later free runs see it.
+- **The paid re-run** (Add / change data after unlocking) reviews and sends the premium read the same way.
+
+The paid call sends `deep: true`; the server allows the larger digest only on a paid unlock that asks
+for it, rebuilds it field by field and re-applies the shares if anything is over. Afterwards the
+premium digest is kept beside the standard one, never in its place. The two calls an unlock can make
+are held to **$0.234 together** at their worst: $0.068 for the card and $0.166 for the full report
+(`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`), against a US$5 payment.
 
 A selftest check holds both: `charBudget` at each cap must cover `DIGEST_CHARS`, so raising the
 digest, a prompt or an output cap past what its ceiling pays for fails there rather than on the bill.
@@ -1174,7 +1198,7 @@ three are loaded, and a fourth starts a fresh set.
   reader's own messages, and chats are labelled c1–c3, never by who is in them.
 
 In the digest it is a `whatsapp` block — per-chat numbers and up to 200 of the reader's messages
-(400 on a deeper read), tagged `[c1]`–`[c3]` — with its own `note` telling the model what it is, so
+(600 in the premium read, within WhatsApp's 34,000-character share), tagged `[c1]`–`[c3]` — with its own `note` telling the model what it is, so
 no prompt change was needed. It is trimmed before anything from Instagram when the budget is
 tight, `forModel` rebuilds it field by field on the server (so a client cannot slip names or
 anyone else's messages in), and the review has one switch for the lot — unticked, the whole block

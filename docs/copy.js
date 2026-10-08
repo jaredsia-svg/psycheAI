@@ -502,15 +502,8 @@
     // In the data popout, once a fresh export is loaded over an existing card.
     cardChangeNote: 'Updating your data sources may result in changes to your Psyche Card.',
     premiumSourcesTitle: 'Your data for the full report',
-    // The premium unlock's Deeper read: on by default, and the reader told in
-    // the popout, at the review and before paying that the card may change.
-    deeperReadTitle: 'Deeper read',
-    deeperReadText: 'samples more of your data for a more detailed report',
-    deepNeedsInstagram: 'Deeper read needs your Instagram export once more – load it above, or switch ' +
-      'Deeper read off to carry on with the data already loaded.',
-    // The review's downloadable copy only: what this file is.
-    deepReviewNote: 'This is your Deeper read: a larger sample of your data, which the full premium report is written from.',
-    premiumDeepReading: 'Reading your data in depth and writing your full report – this can take a few minutes.',
+    // The review's downloadable copy only, at the unlock: what this file is.
+    deepReviewNote: 'This is the larger sample of your data the full premium report is written from, shared between your sources.',
     premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
       'data makes a fuller report. Or carry on with what is already loaded.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
