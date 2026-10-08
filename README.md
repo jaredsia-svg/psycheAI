@@ -1131,6 +1131,41 @@ cards — never the consolidated block — was caught immediately: the sample-di
 `.paid-consolidated` and zero `.paid-card` elements failed, along with several checks downstream of it
 that could no longer find the element they depend on.
 
+### WhatsApp chats, up to three
+
+WhatsApp has no account-wide export — only **Export chat**, one conversation at a time: open the
+chat → ⋮ (or the contact's name on iPhone) → **More** → **Export chat** → **Without media**, and
+save the .zip it makes. Up to three of those can be loaded in the data popout (**WhatsApp chats**,
+the fourth row), which is reached from everywhere the other sources are: the free page's
+*Evidence and method* rows (which lead into the unlock, data first), the paid report's
+*Add / change data & re-run*, and **Unlock the full premium report** itself. A chat can be loaded
+as the .zip or the .txt inside it, one at a time or several together; the row says how many of the
+three are loaded, and a fourth starts a fresh set.
+
+`docs/whatsapp.js` reads them on the device:
+
+- **The format varies by phone and locale** — `[08/10/2026, 14:03:22] Name: …` on iOS,
+  `08/10/2026, 14:03 - Name: …` on Android, 12- or 24-hour, `/` `.` or `-` between date parts.
+  Day-first, month-first and year-first are settled per chat from the dates themselves; a message
+  over several lines is joined; system and media lines ("end-to-end encrypted", "image omitted",
+  "<Media omitted>", deleted messages) are dropped.
+- **The reader is found, not assumed**, because the export does not say whose phone it came from:
+  the one sender in every chat loaded; or, in a one-to-one chat whose file WhatsApp named after the
+  other person ("WhatsApp Chat with Alex"), the other sender; or a sender matching the reader's own
+  name. Failing all three, the popout asks *"Which of these is you?"* with a button per sender.
+- **Only the reader's own words are kept.** Everyone else is counted and timed — who starts
+  conversations (after six hours' quiet), each side's median reply time, when the reader writes by
+  hour and weekday, message length, how often they ask questions — and their text is dropped as it
+  is read. Other people's names, and their first names, are replaced with "someone" inside the
+  reader's own messages, and chats are labelled c1–c3, never by who is in them.
+
+In the digest it is a `whatsapp` block — per-chat numbers and up to 200 of the reader's messages
+(400 on a deeper read), tagged `[c1]`–`[c3]` — with its own `note` telling the model what it is, so
+no prompt change was needed. It is trimmed before anything from Instagram when the budget is
+tight, `forModel` rebuilds it field by field on the server (so a client cannot slip names or
+anyone else's messages in), and the review has one switch for the lot — unticked, the whole block
+goes. *Evidence and method* and the data-sources list show it as its own row.
+
 ### Google/Facebook data survives an Instagram replacement, for real
 
 The "Add / change data" popout lets a reader replace their Instagram export in place, and its own

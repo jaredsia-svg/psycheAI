@@ -1820,6 +1820,12 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .supplement-status.is-good { color: var(--good); background: var(--good-soft); font-weight: 600; }
 .supplement-status.is-bad { color: var(--warn); background: var(--warn-soft); }
+/* WhatsApp: which sender is the reader, asked only when the chats do not say. */
+.wa-who { margin: .6rem 0 0; padding: .75rem .9rem; border-radius: 12px; background: var(--accent-soft); }
+.wa-who[hidden] { display: none; }
+.wa-who-q { margin: 0 0 .5rem; font-size: .9rem; font-weight: 600; color: var(--ink); }
+.wa-who-list { display: flex; flex-wrap: wrap; gap: .4rem; }
+.wa-who-pick { padding: .35rem .8rem; font-size: .88rem; background: var(--bg-alt); }
 .mode-option:disabled .mode-icon,
 .mode-option:disabled strong { opacity: .45; }
 
@@ -3768,7 +3774,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .card .beyond-list { list-style: none; margin: 0; padding: 0; display: grid; gap: max(6px, calc(12px * var(--pcs))); }
 .card .beyond-list li { margin: 0; }
 .beyond-list li { display: flex; align-items: center; gap: max(8px, calc(16px * var(--pcs))); font-size: var(--b-text); line-height: 1.25; }
-.beyond-list b { font-weight: 700; }
+.beyond-list b { font-weight: 400; }
 /* The card's numerals, ticking strengths and marking watch-outs. */
 .beyond-mark {
   flex: none; display: inline-flex; align-items: center; justify-content: center;

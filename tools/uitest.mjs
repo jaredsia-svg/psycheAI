@@ -8269,14 +8269,15 @@ try {
   // button on the row itself any more. Adding or replacing a source lives
   // entirely behind "Add / change data & re-run analysis", which opens the
   // data-sources popout first and only reaches the review dialog after it.
-  check('Instagram is ticked and the other two show a cross, with no button on any row',
+  check('Instagram is ticked and the other three show a cross, with no button on any row',
     await page.evaluate(() => {
       const rows = [...document.querySelectorAll('.trust-sources .source-row')];
       const of = name => rows.find(r => r.querySelector('.source-name').textContent.includes(name));
-      return rows.length === 3 &&
+      return rows.length === 4 &&
         Boolean(of('Instagram').querySelector('.source-tick')) &&
         Boolean(of('Google').querySelector('.source-cross')) &&
         Boolean(of('Facebook').querySelector('.source-cross')) &&
+        Boolean(of('WhatsApp').querySelector('.source-cross')) &&
         rows.every(r => !r.querySelector('button'));
     }));
   check('the section is titled "Data sources"',
@@ -8295,7 +8296,7 @@ try {
   await openAllSections(page);
   check('the sources subsection and its button survive a reload',
     await page.locator('#rerun-with-data').isVisible() &&
-    (await page.locator('.trust-sources .source-row').count()) === 3);
+    (await page.locator('.trust-sources .source-row').count()) === 4);
 
   // ---- the digest going missing while the report survives ----
   //
@@ -8432,9 +8433,9 @@ try {
   page.off('filechooser', noteChooser);
   check('the button opens the data-sources popout, without asking for anything through a native picker yet',
     (await page.locator('#datasources-dialog').isVisible()) && !popoutPickerOpened);
-  check('all three sources are offered, Instagram included',
+  check('all four sources are offered, Instagram included, WhatsApp last',
     (await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option')]
-      .map(b => b.dataset.datasource).join(','))) === 'instagram,google,facebook');
+      .map(b => b.dataset.datasource).join(','))) === 'instagram,google,facebook,whatsapp');
   check('Instagram already shows loaded, and its row is still enabled — replacing it is allowed',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
@@ -8688,6 +8689,89 @@ try {
     !(await page.evaluate(() => document.querySelector('#datasources-dialog').open)) &&
     (await page.locator('#view-profile').isVisible()) &&
     analyseBodies.length === analysesBeforeReviewBack);
+
+  // ---- WhatsApp chats ----
+  //
+  // Up to three chats from WhatsApp's own Export chat, loaded through the same
+  // popout. Run on a page of its own, seeded with this page's report and
+  // digest, so what it loads cannot leak into the checks that follow.
+  {
+    const stored = await page.evaluate(() => ({
+      profile: localStorage.getItem('psycheai_profile'), digest: localStorage.getItem('psycheai_digest') }));
+    const waPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await waPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await waPage.evaluate(s => {
+        localStorage.setItem('psycheai_profile', s.profile);
+        localStorage.setItem('psycheai_digest', s.digest);
+      }, stored);
+      await waPage.reload({ waitUntil: 'load' });
+      await waPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      await openAllSections(waPage);
+      const group = [
+        '[01/09/2026, 19:02:11] Sam Rivera: who is in for the hike on saturday?',
+        '[01/09/2026, 19:05:40] Mia Wong: me!',
+        '[01/09/2026, 19:06:02] Zoe Lim: ‎image omitted',
+        '[01/09/2026, 19:07:30] Sam Rivera: great, Mia can you bring the map',
+        'and the snacks',
+        '[02/09/2026, 08:15:00] Zoe Lim: count me in',
+        '[03/09/2026, 22:40:00] Sam Rivera: leaving at 7 sharp, do not be late',
+      ].join('\n');
+      const pair = [
+        '9/4/26, 9:01 PM - Sam Rivera: did you get home ok?',
+        '9/4/26, 9:20 PM - Mia Wong: yes thanks',
+        '9/5/26, 7:45 AM - Mia Wong: coffee later?',
+        '9/5/26, 7:52 AM - Sam Rivera: always. 10?',
+      ].join('\n');
+      await openDataSourcesPopout(waPage);
+      check('the data popout offers WhatsApp chats, up to three',
+        await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').isVisible() &&
+          /up to 3/i.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()));
+      const [first] = await Promise.all([
+        waPage.waitForEvent('filechooser', { timeout: 15000 }),
+        waPage.click('#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
+      ]);
+      await first.setFiles({ name: 'chat.txt', mimeType: 'text/plain', buffer: Buffer.from(group) });
+      await waPage.waitForSelector('#datasources-who:not([hidden])', { timeout: 15000 });
+      const asked = await waPage.locator('#datasources-who-list button').allInnerTexts();
+      check('a chat that does not say who the reader is asks, listing its senders',
+        asked.length === 3 && ['Sam Rivera', 'Mia Wong', 'Zoe Lim'].every(n => asked.includes(n)), asked.join(', '));
+      await waPage.click('#datasources-who-list button:text-is("Sam Rivera")');
+      await waPage.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="whatsapp"]')
+        .classList.contains('is-added'), null, { timeout: 15000 });
+      check('once answered, the chat is loaded and the row counts it',
+        /1 of 3 chats loaded/.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()));
+      const [second] = await Promise.all([
+        waPage.waitForEvent('filechooser', { timeout: 15000 }),
+        waPage.click('#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
+      ]);
+      await second.setFiles({ name: 'WhatsApp Chat with Mia Wong.txt', mimeType: 'text/plain', buffer: Buffer.from(pair) });
+      await waPage.waitForFunction(() => /2 of 3 chats loaded/.test(
+        document.querySelector('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText), null, { timeout: 15000 });
+      check('a second chat, an Android one named for the other person, is added without asking',
+        await waPage.evaluate(() => document.querySelector('#datasources-who').hidden));
+      await continueFromDataSources(waPage);
+      await waPage.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+      check('the review lists the WhatsApp chats as their own switch, on',
+        await waPage.locator('#review-whatsapp').isChecked() &&
+          /2 chats/.test(await waPage.locator('#review-list').innerText()));
+      const [download] = await Promise.all([
+        waPage.waitForEvent('download', { timeout: 20000 }),
+        waPage.click('#review-download'),
+      ]);
+      const previewPath = join(shotDir, 'digest-preview-whatsapp.html');
+      mkdirSync(shotDir, { recursive: true });
+      await download.saveAs(previewPath);
+      const preview = readFileSync(previewPath, 'utf8');
+      check('what is sent carries the reader\'s own messages, tagged by chat',
+        /\[c1\][^<]*hike on saturday/.test(preview) && /\[c2\][^<]*did you get home ok/.test(preview), preview.length);
+      check('and nobody else is named or quoted: their words are counted, never kept',
+        !/Mia|Zoe|Wong|Lim\b|count me in|coffee later/.test(preview) && /someone can you bring the map/.test(preview));
+      await waPage.keyboard.press('Escape');
+    } finally {
+      await waPage.close();
+    }
+  }
 
   // ---- replacing Instagram itself ----
   //
@@ -10982,7 +11066,7 @@ try {
             /Evidence and method/.test(method.textContent) && /Confidence/.test(method.textContent),
           trust: document.querySelectorAll('#rerun-with-data').length +
             (/How much to trust this/.test(document.querySelector('#view-profile').textContent) ? 1 : 0),
-          sources: Boolean(method && method.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 3 &&
+          sources: Boolean(method && method.querySelectorAll('.sources-read .source-read[data-flow="unlock"]').length === 4 &&
             !method.querySelector('.trust-sources, #free-add-data')),
           // What is on screen, not the attribute: the row's own display once overrode it.
           download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display !== 'none',

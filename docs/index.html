@@ -1066,14 +1066,31 @@
         </span>
       </span>
     </button>
+    <!-- Up to three chats, each from WhatsApp's own Export chat. Only the
+         reader's messages are read; see docs/whatsapp.js. -->
+    <button class="mode-option" data-datasource="whatsapp" type="button">
+      <span class="mode-icon">💬</span>
+      <span class="mode-body"><strong>WhatsApp chats <span class="mode-tag">(up to 3)</span></strong>
+        <span class="muted">Load up to 3 exported chats (.zip or .txt), one or several at a time</span>
+        <span class="mode-progress" hidden>
+          <span class="progress slim"><span class="progress-bar"></span></span>
+          <span class="mode-progress-label muted"></span>
+        </span>
+      </span>
+    </button>
   </div>
   <p class="supplement-status" id="datasources-status" hidden></p>
+  <!-- Asked only when the chats do not say which sender is the reader. -->
+  <div class="wa-who" id="datasources-who" hidden>
+    <p class="wa-who-q" id="datasources-who-q"></p>
+    <div class="wa-who-list" id="datasources-who-list"></div>
+  </div>
   <!-- Shown only once a fresh Instagram export is actually picked — see the
        reasoning at the call site in app.js for why previously loaded Google
        or Facebook data cannot always be carried forward automatically onto a
        replaced Instagram export. -->
-  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google and
-    Facebook data fresh too — reload them here as well if you want them included in this run.</p>
+  <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google,
+    Facebook and WhatsApp data fresh too — reload them here as well if you want them included in this run.</p>
   <!-- Shown once a fresh export is loaded over an existing card (report page
        and premium unlock, never a first upload). Words: Copy cardChangeNote. -->
   <p class="card-change-note" id="datasources-card-note" hidden><span aria-hidden="true">ℹ️</span>
@@ -1093,6 +1110,10 @@
       <div class="help-facebook" data-help="facebook">
         <h3>Facebook</h3>
         <ol data-howto="facebook"></ol>
+      </div>
+      <div class="help-whatsapp" data-help="whatsapp">
+        <h3>WhatsApp chats</h3>
+        <ol data-howto="whatsapp"></ol>
       </div>
       <!-- Written steps are enough for somebody who has done this before; the
            reader who is lost wants to see the screens. Same walkthrough the
@@ -1115,7 +1136,7 @@
     <span class="btn-spacer"></span>
     <button class="btn" id="datasources-continue" type="button">Continue</button>
   </div>
-  <input type="file" id="datasources-input" accept=".zip,application/zip" multiple hidden>
+  <input type="file" id="datasources-input" accept=".zip,application/zip,.txt,text/plain" multiple hidden>
 </dialog>
 
 <!-- The last stop before anything leaves the device. Its content is built
@@ -1282,9 +1303,18 @@
       <span class="ui-label">JSON</span>. Your posts, comments, friends and messages are what’s read.</li>
 </template>
 
+<template id="howto-whatsapp">
+  <li>In WhatsApp, open the chat → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
+      <span class="ui-label">More</span> → <span class="ui-label">Export chat</span>.</li>
+  <li>Choose <span class="ui-label">Without media</span> and save the file it makes (a .zip) to your
+      phone or computer. Load it here — up to three chats, one at a time or together.</li>
+  <li>Only your own messages are read. Everyone else’s are counted and timed, never kept, and nobody is named.</li>
+</template>
+
 <script src="zip.js"></script>
 <script src="instagram.js"></script>
 <script src="supplement.js"></script>
+<script src="whatsapp.js"></script>
 <script src="digest.js"></script>
 <script src="card.js"></script>
 <script src="prices.js"></script>

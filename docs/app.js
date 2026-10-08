@@ -2562,6 +2562,7 @@
     if (state.signals || digest) loaded.push('Instagram');
     if ((digest && digest.google) || supplements.google) loaded.push('Google');
     if ((digest && digest.facebook) || supplements.facebook) loaded.push('Facebook');
+    if ((digest && digest.whatsapp) || supplements.whatsapp) loaded.push('WhatsApp');
     note.hidden = loaded.length === 0;
     note.textContent = loaded.length
       ? loaded.join(' and ') + TEXT.startLoadedSuffix
@@ -2621,7 +2622,8 @@
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
           typeof collected.google === 'object' ? { google: collected.google } : null,
-          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
+          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null,
+          typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
       }
 
       let digest;
@@ -2636,6 +2638,7 @@
         const extra = {};
         if (typeof collected.google === 'object') extra.google = collected.google;
         if (typeof collected.facebook === 'object') extra.facebook = collected.facebook;
+        if (typeof collected.whatsapp === 'object') extra.whatsapp = collected.whatsapp;
         // The handle so the supplement's own text can be scrubbed too — see
         // redactOwnHandle. Undefined when the archive is gone, which is the
         // gap that function documents rather than one worth reopening the
@@ -3507,6 +3510,7 @@
     if (!decision.includeFacebookPosts) Digest.omitFacebookPosts(target);
     if (!decision.includeFacebookConnections) Digest.omitFacebookConnections(target);
     if (!decision.includeFacebookMessages) Digest.omitFacebookMessages(target);
+    if (!decision.includeWhatsApp) Digest.omitWhatsApp(target);
     return target;
   }
 
@@ -3699,6 +3703,18 @@
             ' total. Only your side of any conversation is ever included.' :
             'No Messenger history was found in this export.'],
       );
+    }
+
+    // WhatsApp: one switch for the lot — every number in it is about the
+    // reader's private chats, so it goes whole or not at all.
+    const wa = digest.whatsapp;
+    if (wa) {
+      const chats = (wa.chats || []).length;
+      const waOwn = (wa.ownMessageSample || []).length;
+      rows.push(['review-whatsapp', 'includeWhatsApp', chats,
+        'WhatsApp chats', 'WhatsApp chats — none found',
+        chats + (chats === 1 ? ' chat' : ' chats') + ': ' + waOwn + ' of your own messages, plus counts and timings. ' +
+          'Other people\u2019s messages were counted, never kept, and nobody is named.']);
     }
 
     // Every row is a real checkbox now — nothing here is "review only". Each
@@ -3967,7 +3983,7 @@
     // page still offers all three, so Facebook stays reachable for anybody who
     // wants it, one screen later. Hidden rather than removed from the markup:
     // one dialog, two audiences.
-    const offered = settings.sources || ['instagram', 'google', 'facebook'];
+    const offered = settings.sources || ['instagram', 'google', 'facebook', 'whatsapp'];
     // The download instructions follow the rows. A reader on the welcome page
     // is offered Instagram and Google, so being walked through a Facebook
     // export they cannot load from here is noise; a reader on the report page
@@ -4027,7 +4043,32 @@
       instagram: pendingDataSourceReads.instagram || Boolean(digest || state.signals) || undefined,
       google: pendingDataSourceReads.google || Boolean(digest && digest.google) || undefined,
       facebook: pendingDataSourceReads.facebook || Boolean(digest && digest.facebook) || undefined,
+      whatsapp: pendingDataSourceReads.whatsapp || Boolean(digest && digest.whatsapp) || undefined,
     };
+    // The WhatsApp row says how many of its three chats are loaded.
+    const waCount = () => (pendingDataSourceReads.whatsappChats || []).length ||
+      (digest && digest.whatsapp && (digest.whatsapp.chats || []).length) || 0;
+    const showWhatsAppCount = () => {
+      const line = rowOf('whatsapp') && rowOf('whatsapp').querySelector('.mode-body > .muted');
+      if (line) line.textContent = waCount() ? TEXT.whatsappRowSome(waCount()) : TEXT.whatsappRowEmpty;
+    };
+    // Asked only when the chats do not say which sender is the reader:
+    // resolves the name picked, or null if the popout closes first.
+    const askWho = candidates => new Promise(done => {
+      const box = $('#datasources-who');
+      const list = $('#datasources-who-list');
+      $('#datasources-who-q').textContent = TEXT.whatsappWhoAreYou;
+      list.replaceChildren(...candidates.map(name => {
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'btn btn-ghost wa-who-pick';
+        pick.textContent = name;
+        pick.addEventListener('click', () => { box.hidden = true; done(name); });
+        return pick;
+      }));
+      box.hidden = false;
+      dialog.addEventListener('close', () => { box.hidden = true; done(null); }, { once: true });
+    });
     let pending = '';
     let busy = false;
     let cancelled = false;
@@ -4132,11 +4173,12 @@
       // Recomputed on every call rather than fixed the moment Instagram is
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
-      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook'));
+      $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook') || isStale('whatsapp'));
       // Over an existing card, any export read in (now or carried from an
       // earlier visit) means the card is written again from new data.
       $('#datasources-card-note').hidden = !(settings.cardNote &&
-        ['instagram', 'google', 'facebook'].some(source => typeof added[source] === 'object'));
+        ['instagram', 'google', 'facebook', 'whatsapp'].some(source => typeof added[source] === 'object'));
+      showWhatsAppCount();
     };
 
     return new Promise(resolve => {
@@ -4149,7 +4191,9 @@
       };
 
       const read = async () => {
-        const files = Array.from(input.files || []).filter(f => /\.zip$/i.test(f.name));
+        // A WhatsApp chat may arrive as the .txt on its own; everything else is a .zip.
+        const files = Array.from(input.files || []).filter(f =>
+          (pending === 'whatsapp' ? /\.(zip|txt)$/i : /\.zip$/i).test(f.name));
         input.value = '';
         if (!pending || !files.length) return;
         const source = pending;
@@ -4170,6 +4214,32 @@
             // a trip to wherever they saved the file; a Back press means "not
             // right now", not "discard that".
             pendingDataSourceReads.instagram = added.instagram;
+          } else if (source === 'whatsapp') {
+            const fresh = await window.PsycheWhatsApp.readChats(files, {
+              onProgress: p => setSourceProgress(source, p.phase === 'done' ? 100
+                : Math.round(10 + (p.total ? p.done / p.total : 0) * 85), p.label),
+            });
+            // Up to three chats, added to what is loaded; a fourth starts a fresh set.
+            const held = pendingDataSourceReads.whatsappChats || [];
+            const startOver = held.length + fresh.length > 3 && held.length >= 3;
+            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, 3);
+            const hints = [ownDisplayName(), state.profile && state.profile.card && state.profile.card.name].filter(Boolean);
+            let owner = window.PsycheWhatsApp.resolveOwner(chats, hints).owner;
+            if (!owner) {
+              setSourceProgress(source, null, '');
+              owner = await askWho(window.PsycheWhatsApp.resolveOwner(chats, hints).candidates);
+              if (!owner) { setBusy(false); return; }
+            }
+            added.whatsapp = window.PsycheWhatsApp.summarise(chats, owner);
+            pendingDataSourceReads.whatsapp = added.whatsapp;
+            pendingDataSourceReads.whatsappChats = chats;
+            if (startOver) {
+              setBusy(false);
+              setSourceProgress(source, null, '');
+              say(TEXT.whatsappFull, '');
+              markAdded();
+              return;
+            }
           } else {
             const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
             added[source] = await reader(files, {
@@ -4314,12 +4384,14 @@
       if (state.signals) {
         state.signals.supplements = Object.assign({}, priorSupplements,
           typeof collected.google === 'object' ? { google: collected.google } : null,
-          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null);
+          typeof collected.facebook === 'object' ? { facebook: collected.facebook } : null,
+          typeof collected.whatsapp === 'object' ? { whatsapp: collected.whatsapp } : null);
       }
 
       const outcome = await rerunWithAdditionalData({
         google: typeof collected.google === 'object' ? collected.google : undefined,
         facebook: typeof collected.facebook === 'object' ? collected.facebook : undefined,
+        whatsapp: typeof collected.whatsapp === 'object' ? collected.whatsapp : undefined,
       });
       // Anything other than Back is terminal: the run happened, the payment
       // was declined, the reader pressed Escape, or something failed and has
@@ -4708,6 +4780,7 @@
       { icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
       { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
+      { icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
     ].map(row =>
       '<li class="source-row"><span class="source-name">' + esc(row.icon) + ' ' + esc(row.label) + '</span>' +
       (row.loaded
@@ -4724,6 +4797,7 @@
       { loaded: Boolean(digest) },
       { loaded: Boolean(digest && digest.google) },
       { loaded: Boolean(digest && digest.facebook) },
+      { loaded: Boolean(digest && digest.whatsapp) },
     ];
     const rowsHtml = sourceRowsHtml();
     const anyMissing = rows.some(row => !row.loaded);
@@ -5439,7 +5513,7 @@
    */
   function countedInFull(digest) {
     const by = countedBySource(digest);
-    return by.instagram.concat(by.google, by.facebook);
+    return by.instagram.concat(by.google, by.facebook, by.whatsapp);
   }
 
   /** The same lines, kept apart by the source they were read from. */
@@ -5448,7 +5522,8 @@
     const items = [];
     const google = [];
     const facebook = [];
-    if (!digest) return { instagram: items, google, facebook };
+    const whatsapp = [];
+    if (!digest) return { instagram: items, google, facebook, whatsapp };
     // Totals are rounded to read at a glance — 9,741 is "9.7k", 637 is "~600"
     // — while what was actually read stays exact.
     const num = value => roughCount(value);
@@ -5488,7 +5563,9 @@
     }
     const fbPosts = read('facebookPosts');
     if (fbPosts) facebook.push(R.facebookPosts(fbPosts.shown, fbPosts.of));
-    return { instagram: items, google, facebook };
+    const wa = read('whatsappMessages');
+    if (digest.whatsapp) whatsapp.push(R.whatsapp((digest.whatsapp.chats || []).length, wa ? wa.shown : '0', wa ? wa.of : '0'));
+    return { instagram: items, google, facebook, whatsapp };
   }
 
   /** A total to the nearest hundred: under 100 as it is, then "~600", then "9.7k". */
@@ -5533,6 +5610,7 @@
       { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
       { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { key: 'facebook', icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
+      { key: 'whatsapp', icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
     ];
     const note = !paid ? S.sourcesFreeNote
       : TEXT.analysisPriceNoteUnlocked;
@@ -5983,6 +6061,8 @@
       pattern: patterns[0] ? patterns[0].name : '',
       motive: motives[0] ? S.motivators[motives[0]].label : '',
       motives: motives.map(key => S.motivators[key].label),
+      // What each one means, from the app's own copy rather than the model.
+      motiveMeanings: motives.map(key => S.motivators[key].meaning),
       chosen: ((report.mbti || {}).letters || []).map(l => l && l.choice).filter(Boolean),
       type: (report.mbti || {}).type || '',
       letters: ((report.mbti || {}).letters || []).filter(l => l && l.choice && l.strength)
@@ -6571,7 +6651,8 @@
       })(),
       sources: [TEXT.sourceInstagram]
         .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
-        .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : []),
+        .concat(state.digest && state.digest.facebook ? [TEXT.sourceFacebook] : [])
+        .concat(state.digest && state.digest.whatsapp ? [TEXT.sourceWhatsApp] : []),
       // What the evidence page's "Read from" lists, the same as the page's.
       counted: countedInFull(state.digest),
     });
@@ -7445,7 +7526,7 @@
       if (!collected) return null;
       deeperOn = collected.deeper === true;
       const fresh = key => typeof collected[key] === 'object';
-      const anyFresh = ['instagram', 'google', 'facebook'].some(fresh);
+      const anyFresh = ['instagram', 'google', 'facebook', 'whatsapp'].some(fresh);
       if (!anyFresh && !state.digest) {
         // Nothing to write the full report from: the Instagram export has
         // gone from this device and was not loaded again.
@@ -7461,14 +7542,16 @@
       const priorSupplements = state.signals && state.signals.supplements;
       if (fresh('instagram')) state.signals = collected.instagram;
       repairOwnName().catch(() => {});
-      const extra = { google: fresh('google') ? collected.google : undefined, facebook: fresh('facebook') ? collected.facebook : undefined };
+      const extra = { google: fresh('google') ? collected.google : undefined, facebook: fresh('facebook') ? collected.facebook : undefined,
+        whatsapp: fresh('whatsapp') ? collected.whatsapp : undefined };
       let digest = state.digest;
       let deep = null;
       try {
         if (anyFresh) {
           if (state.signals) {
             state.signals.supplements = Object.assign({}, priorSupplements,
-              extra.google ? { google: extra.google } : null, extra.facebook ? { facebook: extra.facebook } : null);
+              extra.google ? { google: extra.google } : null, extra.facebook ? { facebook: extra.facebook } : null,
+              extra.whatsapp ? { whatsapp: extra.whatsapp } : null);
             digest = Digest.build(state.signals, { includeMessages: true });
           } else if (state.digest) {
             digest = Digest.addSupplements(JSON.parse(JSON.stringify(state.digest)), extra, { ownHandle: ownHandle(), ownName: ownDisplayName() });
@@ -7483,7 +7566,7 @@
           if (state.signals) deep = Digest.build(state.signals, { includeMessages: true, deep: true });
           else if (state.deepDigest) {
             deep = JSON.parse(JSON.stringify(state.deepDigest));
-            if (extra.google || extra.facebook) {
+            if (extra.google || extra.facebook || extra.whatsapp) {
               deep = Digest.addSupplements(deep, extra, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
             }
           } else {
@@ -7521,7 +7604,8 @@
   function digestFingerprint(digest) {
     if (!digest) return '';
     return JSON.stringify([digest.coverage || null, digest.counts || null,
-      digest.google ? digest.google.counts || true : null, digest.facebook ? digest.facebook.counts || true : null]);
+      digest.google ? digest.google.counts || true : null, digest.facebook ? digest.facebook.counts || true : null,
+      digest.whatsapp ? (digest.whatsapp.chats || []).map(c => c.counts) : null]);
   }
 
   /**

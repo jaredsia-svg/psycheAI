@@ -28,7 +28,7 @@ const check = (label, ok, detail) => {
 
 // copy.js is here so the suite can hold the client's vocabulary against the
 // server's — the working-relationship list exists in both and must not drift.
-for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'digest.js', 'card.js', 'copy.js']) {
+for (const file of ['zip.js', 'instagram.js', 'supplement.js', 'whatsapp.js', 'digest.js', 'card.js', 'copy.js']) {
   runInThisContext(readFileSync(join(docs, file), 'utf8'), { filename: file });
 }
 
@@ -6118,6 +6118,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     globalThis.PsycheCopy.emblemSvg('Bruce Banner') === '' && /<svg[^>]*viewBox="0 0 48 48"/.test(globalThis.PsycheCopy.emblemSvg('Mulan')));
   check('the emblems are distinct drawings, one per character',
     new Set(Object.values(emblems)).size === Object.keys(emblems).length);
+  {
+    const motivesItem = globalThis.PsycheCopy.STRUCTURED.cardGuide.items.find(item => item.key === 'motives');
+    const said = motivesItem.yours({ motives: ['Stimulation', 'Security'], motiveMeanings: ['Novelty, challenge and excitement', 'Safety and stability'] });
+    check('the card guide explains each top motivator in brackets, in the app\'s own words',
+      said === 'Your top three, strongest first: Stimulation (novelty, challenge and excitement), Security (safety and stability).' &&
+        Object.values(globalThis.PsycheCopy.STRUCTURED.motivators).every(m => m.meaning && m.meaning.length < 45), said);
+  }
   check('the card picks a character on the reader\'s likely side or the neither group, and only the neither group when unsure',
     prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
       prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu,Totoro' &&
@@ -7234,6 +7241,74 @@ check('the schema requires evidence on strengths and frictions',
     Object.entries(got.stats.days || {}).every(([day, totals]) => /^\d{4}-\d{2}-\d{2}$/.test(day) &&
       Object.entries(totals).every(([key, value]) => /^[a-z_]+(:[a-zA-Z0-9-]+)*(:[a-z_]+)?$/.test(key) && Number.isInteger(value))),
     JSON.stringify(got.stats.days));
+}
+
+// ---------- WhatsApp chats ----------
+//
+// docs/whatsapp.js reads WhatsApp's Export chat files, works out which sender
+// is the reader, and keeps only the reader's words; docs/digest.js carries
+// the result as `whatsapp`, and forModel lets through only the fields it
+// names.
+{
+  const WA = globalThis.PsycheWhatsApp;
+  const chatOf = (text, title) => {
+    const messages = WA.settleDates(WA.parseLines(text))
+      .filter(m => m.text.trim() && !/omitted|end-to-end encrypted|^‎/i.test(m.text.trim()));
+    const counts = new Map();
+    for (const m of messages) counts.set(m.sender, (counts.get(m.sender) || 0) + 1);
+    return { title: title || '', participants: [...counts].map(([name, count]) => ({ name, count })).sort((x, y) => y.count - x.count), messages };
+  };
+  const ios = '[13/08/2026, 21:04:10] Jo Park: are you coming tonight, Ben?\n[13/08/2026, 21:30:00] Ben Ode: yes\nsee you there\n' +
+    '[13/08/2026, 21:31:00] Ben Ode: ‎image omitted\n[14/08/2026, 08:00:00] Jo Park: morning Ben';
+  const android = '8/14/26, 2:03 PM - Messages and calls are end-to-end encrypted. No one outside of this chat can read them.\n' +
+    '8/14/26, 2:03 PM - Jo Park: dinner on friday?\n8/14/26, 2:10 PM - Kim Lee: yes\n8/14/26, 11:59 PM - Kim Lee: <Media omitted>\n' +
+    '8/15/26, 12:01 AM - Jo Park: booked for 8';
+  const c1 = chatOf(ios, 'Ben Ode');
+  const c2 = chatOf(android, '');
+  check('WhatsApp: iOS and Android lines, 24- and 12-hour, a message over two lines, system and media lines dropped',
+    c1.messages.length === 3 && c1.messages[1].text === 'yes see you there' &&
+      new Date(c1.messages[0].t).getUTCHours() === 21 &&
+      c2.messages.length === 3 && new Date(c2.messages[2].t).getUTCHours() === 0 &&
+      new Date(c2.messages[0].t).getUTCMonth() === 7 && new Date(c2.messages[0].t).getUTCDate() === 14,
+    JSON.stringify(c2.messages.map(m => [new Date(m.t).toISOString(), m.sender, m.text])));
+  check('WhatsApp: the reader is the sender in every chat, or the one a chat named for the other person is not',
+    WA.resolveOwner([c1, c2], []).owner === 'Jo Park' && WA.resolveOwner([c1], []).owner === 'Jo Park' &&
+      WA.resolveOwner([c2], ['Jo Park']).owner === 'Jo Park' && WA.resolveOwner([c2], ['Jo']).owner === 'Jo Park' &&
+      WA.resolveOwner([c2], []).owner === null && WA.resolveOwner([c2], []).candidates.join() === 'Jo Park,Kim Lee',
+    JSON.stringify(WA.resolveOwner([c2], [])));
+  check('WhatsApp: a file named "WhatsApp Chat with …" gives the other person',
+    WA.titleFromFileName('WhatsApp Chat with Ben Ode.txt') === 'Ben Ode' &&
+      WA.titleFromFileName('WhatsApp Chat - Ben Ode.zip') === 'Ben Ode' && WA.titleFromFileName('_chat.txt') === '');
+  const summary = WA.summarise([c1, c2], 'Jo Park');
+  const sumText = JSON.stringify(summary);
+  check('WhatsApp: only the reader\'s words are kept, with everyone else\'s names blanked out of them',
+    summary.chats[0].ownMessages.map(m => m.text).join('|') === 'are you coming tonight, someone?|morning someone' &&
+      !/Ben|Kim|Ode|Lee|see you there|"yes"/.test(sumText) && summary.chats[0].kind === 'one-to-one' &&
+      summary.chats[1].counts.sentByUser === 2 && summary.chats[1].counts.receivedByUser === 1, sumText.slice(0, 400));
+  check('WhatsApp: who starts conversations and how fast each side answers are counted',
+    summary.chats[0].conversationsStartedByUser === 2 && summary.chats[0].medianOthersReplyMinutes === 26 &&
+      summary.chats[0].userHours[21] === 1 && summary.chats[0].userHours[8] === 1,
+    JSON.stringify(summary.chats[0]));
+
+  const base = JSON.parse(JSON.stringify(heavyWithDms));
+  const merged = Digest.addSupplements(base, { whatsapp: summary });
+  check('WhatsApp: merged into the digest as its own block, tagged by chat, inside the budget',
+    merged.whatsapp && merged.whatsapp.chats.length === 2 && merged.coverage.sources.includes('whatsapp') &&
+      merged.whatsapp.ownMessageSample.some(line => /\[c1\] are you coming tonight/.test(line)) &&
+      !('ownMessages' in merged.whatsapp.chats[0]) && Digest.evidenceChars(merged) <= Digest.DIGEST_CHARS &&
+      merged.coverage.sampling.whatsappMessages.available === 4,
+    JSON.stringify(merged.whatsapp).slice(0, 300));
+  const tampered = JSON.parse(JSON.stringify(merged));
+  tampered.whatsapp.chats[0].participants = ['Ben Ode'];
+  tampered.whatsapp.chats[0].ownMessages = [{ text: 'smuggled' }];
+  tampered.whatsapp.extra = 'nope';
+  const sent = Digest.forModel(tampered);
+  check('WhatsApp: the server lets through only the fields it names, never names or anything added',
+    sent.whatsapp && sent.whatsapp.chats.length === 2 && !/Ben Ode|smuggled|nope/.test(JSON.stringify(sent.whatsapp)) &&
+      sent.whatsapp.chats[0].userHours.length === 24 && /\[c2\] dinner on friday/.test(Digest.renderEvidence(sent)));
+  const declined = Digest.omitWhatsApp(JSON.parse(JSON.stringify(merged)));
+  check('WhatsApp: unticked at the review, the whole block goes',
+    !declined.whatsapp && !declined.coverage.sources.includes('whatsapp') && !declined.coverage.sampling.whatsappMessages);
 }
 
 // ---------- one payment, one generation at a time ----------

@@ -651,6 +651,12 @@
     sourceInstagram: 'Instagram',
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
+    sourceWhatsApp: 'WhatsApp chats',
+    // The WhatsApp row: up to three chats, each exported on its own.
+    whatsappRowEmpty: 'Load up to 3 exported chats (.zip or .txt), one or several at a time',
+    whatsappRowSome: n => n + ' of 3 chats loaded — tap to add ' + (n >= 3 ? 'again (starts over)' : 'another'),
+    whatsappWhoAreYou: 'Which of these is you? Only your own messages are read.',
+    whatsappFull: 'Three chats is the most — these start a fresh set.',
     sourceLoaded: 'Loaded',
     sourceMissing: 'Not loaded',
     rerunAnalysis: 'Add / change data & re-run analysis',
@@ -716,7 +722,7 @@
     // Only shown once a fresh Instagram export is actually picked — see the
     // reasoning at the call site in app.js for why this cannot always be
     // carried forward automatically.
-    dataSourcesInstagramReplaceNote: 'Replacing Instagram starts your Google and Facebook data fresh ' +
+    dataSourcesInstagramReplaceNote: 'Replacing Instagram starts your Google, Facebook and WhatsApp data fresh ' +
       'too — reload them here as well if you want them included in this run.',
     dataSourcesContinue: 'Continue',
     dataSourcesBack: 'Back',
@@ -992,7 +998,11 @@
           yours: f => 'Number 1, "' + f.pattern + '", explains the most about you.' },
         { key: 'motives', icon: '🧲', title: 'What motivates you', when: f => f.motive,
           about: 'Based on Shalom Schwartz\'s ten basic human values, studied in more than 80 countries – everyone holds all ten, in a different order. Your top values explain what feels worth your effort, and why some choices drain you.',
-          yours: f => 'Your top three, strongest first: ' + f.motives.join(', ') + '.' },
+          // Each with what it means in brackets — fixed wording from
+          // STRUCTURED.motivators, never the model's.
+          yours: f => 'Your top three, strongest first: ' + f.motives.map((label, i) =>
+            label + (f.motiveMeanings && f.motiveMeanings[i] ? ' (' + f.motiveMeanings[i].charAt(0).toLowerCase() +
+              f.motiveMeanings[i].slice(1) + ')' : '')).join(', ') + '.' },
         { key: 'type', icon: '🧭', title: 'MBTI', when: f => f.type,
           about: 'The Myers–Briggs type sorts four everyday preferences into four letters. Popular rather than clinically validated, it helps explain what energises you, what tires you, and why others see things differently.',
           letters: [
@@ -1092,6 +1102,7 @@
       googleSearches: (shown, of, total) => 'Top ' + shown + ' of ' + of + ' distinct Google searches read' + (total ? ' (' + total + ' in all)' : ''),
       youtubeSearches: (shown, of) => 'Top ' + shown + ' of ' + of + ' distinct YouTube searches read',
       facebookPosts: (shown, of) => shown + ' of ' + of + ' Facebook posts read',
+      whatsapp: (chats, shown, of) => chats + (chats === 1 ? ' chat' : ' chats') + ' · ' + shown + ' of your ' + of + ' messages read',
       years: n => n + ' years', months: n => n + ' months',
     },
 

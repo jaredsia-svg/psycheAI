@@ -214,6 +214,9 @@
     fbFriends: 300,
     fbSearches: 80,
     fbMessages: 200,
+    // The reader's own messages from up to three WhatsApp chats, all chats
+    // together, each tagged [c1]–[c3]. Trimmed before anything Instagram.
+    waMessages: 200,
     // Derived rather than typed, so the ceiling and the price cannot drift
     // apart. This was hardcoded at 600000, which is 49,516 chars *past* what
     // COST_CAP buys: a digest that actually filled it would have cost $0.5212
@@ -534,7 +537,7 @@
     messages: 650, messageTopThreads: 15, messageThreadCap: 0.15,
     likedAuthors: 25, savedAuthors: 25, topics: 30,
     youtubeChannels: 80, youtubeTitles: 25, youtubeSearches: 80, googleSearchTerms: 100,
-    fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100,
+    fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 400,
     totalChars: DEEP_DIGEST_CHARS, maxListItems: 800,
   };
   /** Runs `fn` with the deeper read's limits in place when `deep`, and puts them back. */
@@ -1500,6 +1503,7 @@
       digest.directMessages && digest.directMessages.ownMessageSample,
       digest.facebook && digest.facebook.postSample, digest.facebook && digest.facebook.commentSample,
       digest.facebook && digest.facebook.ownMessageSample,
+      digest.whatsapp && digest.whatsapp.ownMessageSample,
     ];
     for (const list of lists) {
       if (!Array.isArray(list)) continue;
@@ -1769,6 +1773,33 @@
         shown: digest.facebook.friends.length, available: f.counts.friends,
       };
     }
+
+    // WhatsApp: up to three chats the reader exported one by one (see
+    // docs/whatsapp.js). Each chat is counts and timings — who starts
+    // conversations, how fast each side answers, when the reader writes — and
+    // the reader's own words are sampled across all of them. Nobody is named.
+    if (supplements.whatsapp && !digest.whatsapp && Array.isArray(supplements.whatsapp.chats)) {
+      const chats = supplements.whatsapp.chats.slice(0, 3);
+      digest.coverage.sources.push('whatsapp');
+      digest.whatsapp = {
+        note: 'From WhatsApp chats the user exported themselves, one chat at a time. Each chat is counts and ' +
+          'timings; only the user\'s own messages are sampled, tagged [c1]–[c3] by chat. Other people\'s messages ' +
+          'were counted and timed, never kept, and nobody is named ("someone" stands in for a name). userHours and ' +
+          'userWeekdays count the user\'s own messages by the phone\'s local hour and by day, Sunday first.',
+        chats: chats.map(c => {
+          const out = Object.assign({}, c);
+          delete out.ownMessages;
+          out.span = monthSpan(c.span);
+          return out;
+        }),
+        ownMessageSample: sampleTexts(chats.flatMap(c => (c.ownMessages || []).map(m =>
+          ({ text: '[' + c.chat + '] ' + m.text, ts: m.ts }))), LIMITS.waMessages, 240),
+      };
+      digest.coverage.sampling.whatsappMessages = {
+        shown: digest.whatsapp.ownMessageSample.length,
+        available: chats.reduce((sum, c) => sum + ((c.counts && c.counts.sentByUser) || 0), 0),
+      };
+    }
     return digest;
   }
 
@@ -1833,6 +1864,7 @@
     'google.topChannels', 'google.videoTitleSample', 'google.topYoutubeSearches', 'google.topGoogleSearches',
     'facebook.postSample', 'facebook.commentSample', 'facebook.friends', 'facebook.topSearches',
     'facebook.ownMessageSample',
+    'whatsapp.ownMessageSample',
   ];
 
   function evidenceLine(item) {
@@ -1963,6 +1995,7 @@
       ['fbFriends', () => digest.facebook && digest.facebook.friends, v => { digest.facebook.friends = v; }],
       ['fbTopSearches', () => digest.facebook && digest.facebook.topSearches, v => { digest.facebook.topSearches = v; }],
       ['fbOwnMessages', () => digest.facebook && digest.facebook.ownMessageSample, v => { digest.facebook.ownMessageSample = v; }],
+      ['waOwnMessages', () => digest.whatsapp && digest.whatsapp.ownMessageSample, v => { digest.whatsapp.ownMessageSample = v; }],
     ];
     // forModel passes lower floors: it only ever trims a request that is over
     // the line, which no honest digest is, so how far it can cut matters more
@@ -2080,6 +2113,7 @@
     youtubeChannels: d => d.google && d.google.topChannels,
     facebookPosts: d => d.facebook && d.facebook.postSample,
     facebookFriends: d => d.facebook && d.facebook.friends,
+    whatsappMessages: d => d.whatsapp && d.whatsapp.ownMessageSample,
   };
   function restateShown(digest) {
     const sampling = digest.coverage && digest.coverage.sampling;
@@ -2211,6 +2245,33 @@
         friends: listOf(f.friends),
         topSearches: listOf(f.topSearches),
         ownMessageSample: listOf(f.ownMessageSample),
+      };
+    }
+    // Field by field, like the rest: a chat is numbers and two short words,
+    // and anything else a client puts in one is dropped here.
+    const w = plain(d.whatsapp);
+    if (w) {
+      const num = v => (Number.isFinite(Number(v)) ? Number(v) : null);
+      const nums = (list, n) => (Array.isArray(list) ? list.slice(0, n).map(v => num(v) || 0) : []);
+      out.whatsapp = {
+        note: w.note,
+        chats: listOf(w.chats).slice(0, 3).filter(c => c && typeof c === 'object').map(c => ({
+          chat: String(c.chat || '').slice(0, 3),
+          kind: c.kind === 'group' ? 'group' : 'one-to-one',
+          members: num(c.members),
+          span: monthSpan(plain(c.span) || {}),
+          counts: { messages: num(c.counts && c.counts.messages), sentByUser: num(c.counts && c.counts.sentByUser),
+            receivedByUser: num(c.counts && c.counts.receivedByUser) },
+          userHours: nums(c.userHours, 24),
+          userWeekdays: nums(c.userWeekdays, 7),
+          conversationsStartedByUser: num(c.conversationsStartedByUser),
+          conversationsStartedByOthers: num(c.conversationsStartedByOthers),
+          medianUserReplyMinutes: num(c.medianUserReplyMinutes),
+          medianOthersReplyMinutes: num(c.medianOthersReplyMinutes),
+          averageSentLength: num(c.averageSentLength),
+          userQuestionShare: num(c.userQuestionShare),
+        })),
+        ownMessageSample: listOf(w.ownMessageSample),
       };
     }
     const digest = clampStrings(out, 0);
@@ -2359,6 +2420,18 @@
     return digest;
   }
 
+  // The reader unticked WhatsApp at the review: the whole block goes, counts
+  // and all, since every number in it is about their private chats.
+  function omitWhatsApp(digest) {
+    if (!digest.whatsapp) return digest;
+    delete digest.whatsapp;
+    if (digest.coverage) {
+      if (Array.isArray(digest.coverage.sources)) digest.coverage.sources = digest.coverage.sources.filter(s => s !== 'whatsapp');
+      if (digest.coverage.sampling) delete digest.coverage.sampling.whatsappMessages;
+    }
+    return digest;
+  }
+
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
@@ -2366,6 +2439,6 @@
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,
     omitTopics,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome,
-    omitFacebookPosts, omitFacebookConnections, omitFacebookMessages,
+    omitFacebookPosts, omitFacebookConnections, omitFacebookMessages, omitWhatsApp,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
