@@ -8186,6 +8186,10 @@
     if (!banner) return;
     const invite = state.profile ? null : pendingInvite();
     banner.hidden = !invite;
+    // The banner already says to get the export and offers the steps, so the
+    // hero's own "request your data first" line would say it twice.
+    const request = $('.hero-request');
+    if (request) request.hidden = Boolean(invite);
     if (!invite) return;
     $('#invite-title').textContent = TEXT.inviteTitle(invite.name);
     $('#invite-text').textContent = TEXT.inviteText(invite.name);

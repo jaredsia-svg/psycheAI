@@ -1516,6 +1516,8 @@ try {
       check('and says what to do, and that the analysis with them is free and follows on its own',
         /Download your Instagram data and make your free Psyche Card\. The compatibility analysis with Ava Tan runs straight after it, also free\./
           .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
+      check('the hero\'s own "request your data first" line steps aside, since the banner says it',
+        await invitePage.evaluate(() => document.querySelector('.hero-request').hidden));
       check('with a way to the steps and no button to throw the invite away',
         await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-forget').count()) === 0);
 
