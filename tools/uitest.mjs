@@ -7056,10 +7056,10 @@ try {
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
-    'Your types together', 'What you share', 'What works', 'What will rub',
+    'What you share', 'What works', 'What will rub',
     'Your compatibility results']);
 
-  check('every section title is defined in copy.js', sharing.inCopy === 15, JSON.stringify(sharing));
+  check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
   check('the page does not re-type any section title',
     sharing.retypedInApp.length === 0, sharing.retypedInApp.join(' | '));
   check('the PDF does not re-type any section title',
@@ -9335,33 +9335,19 @@ try {
   // how it plays out, and what to do. The sections that made it long and
   // repetitive — the five scored dimensions, the upside and risk, the
   // conversation starters — are gone from the page.
-  check('the report is four blocks: the answer, the types, how it plays out, what to do',
-    (await page.locator('#report-body > .card').count()) === 4 &&
+  check('the report is three blocks: the answer, how it plays out, what to do',
+    (await page.locator('#report-body > .card').count()) === 3 &&
       (await page.locator('#report-body .compat-lead .compat-common').count()) === 1 &&
-      (await page.locator('#report-body .compat-types').count()) === 1 &&
       (await page.locator('#report-body .compat-plays').count()) === 1 &&
       (await page.locator('#report-body .compat-playbook').count()) === 1,
     String(await page.locator('#report-body > .card').count()) + ' cards');
   check('with no dimensions, no upside and risk, and nothing to talk about',
     !/Where it holds and where it does not|Biggest upside|Biggest risk|Things to actually talk about/.test(reportText) &&
       (await page.locator('#report-body .trait-block, #report-body .compat-short, #report-body .talk-list').count()) === 0);
-  // The types, axis by axis: the letters from the two cards, E/I and S/N
-  // marked as mattering most, each with what it means for these two.
-  const typeAxes = await page.evaluate(() => [...document.querySelectorAll('#report-body .type-axis')].map(axis => ({
-    name: axis.querySelector('.type-axis-name').textContent,
-    weight: axis.querySelector('.type-weight').textContent,
-    letters: [...axis.querySelectorAll('.type-letter')].map(l => l.textContent).join(''),
-    match: axis.querySelector('.type-match .visually-hidden').textContent,
-    sign: axis.querySelector('.type-match [aria-hidden]').textContent,
-    reading: (axis.querySelector('.type-reading') || {}).textContent || '',
-  })));
-  const myType = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.mbti);
-  check('the types section reads all four axes, E/I and S/N as mattering most',
-    typeAxes.length === 4 && typeAxes.map(a => a.weight).join(',') === 'Matters most,Matters most,Matters less,Matters less' &&
-      /^Energy E\/I/.test(typeAxes[0].name) && /^Attention S\/N/.test(typeAxes[1].name), JSON.stringify(typeAxes));
-  check('with each person\'s letter from their card, whether they share it, and what it means for them',
-    typeAxes.every((axis, i) => axis.letters === myType[i] + myType[i] && axis.match === 'Same' && axis.sign === '=' && /Jordan/.test(axis.reading)) &&
-      /Ale\u00e7/.test(await page.locator('#report-body .type-pair').innerText()), JSON.stringify(typeAxes));
+  // The types are weighed in the score and the writing, not given a section.
+  check('and no separate types section',
+    (await page.locator('#report-body .compat-types, #report-body .type-axis').count()) === 0 &&
+      !/Your types together/.test(reportText));
   // The five focus areas for the stance still steer what is written: the
   // mock titles its strengths with them.
   check('what it says is about the focus areas for the stance chosen',
@@ -9428,8 +9414,6 @@ try {
     ['both names on the cover', 'Ale\xe7 & Jordan'],
     ['the basis it answered', 'Professional / work'],
     ['which side of it', 'I am the superior of Jordan'],
-    ['the types section', 'Your types together'],
-    ['an axis and its weight', 'Matters most'],
     ['a focus area for the stance', 'Briefing and direction'],
     ['what works', 'What works'],
     ['what will rub', 'What will rub'],
@@ -9442,7 +9426,7 @@ try {
   check('the comparison PDF does not print the peer focus areas for a manager',
     !compatDrawn.includes('Load balance'));
   check('nor the sections taken out of the page',
-    !['Where it holds and where it does not', 'Biggest upside', 'Biggest risk', 'Things to actually talk about']
+    !['Where it holds and where it does not', 'Biggest upside', 'Biggest risk', 'Things to actually talk about', 'Your types together']
       .some(t => compatDrawn.includes(t)));
   check('the comparison PDF stamps which model ran it',
     /Analysed by mock on/.test(compatDrawn));

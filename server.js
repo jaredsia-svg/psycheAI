@@ -892,9 +892,6 @@ async function handleCompatibility(request, response) {
       // Recorded only once the model came back, as the free card's is.
       budget.record('compatibility');
       stats.count('compatibility');
-      // The type section's letters come from the two cards, not from the
-      // model — see settleTypeMatch.
-      if (result && result.data) result.data.typeMatch = prompts.settleTypeMatch(result.data.typeMatch, a, b);
       return result;
     },
   });

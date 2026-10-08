@@ -1067,38 +1067,6 @@ textarea { resize: vertical; }
 .compat-common { margin: .9rem 0 0; }
 .compat-common h3 { margin: 0 0 .45rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
 @media (max-width: 540px) { .compat-common .tags { justify-content: center; } }
-/* The two types, axis by axis: each person's letter, whether they share it,
-   and how much that axis counts. Same is green, different is amber; the two
-   axes that matter most carry a filled weight label. */
-.type-pair { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem .6rem; margin: 0 0 .7rem; }
-.type-badge { padding: .25rem .65rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 800; letter-spacing: .06em; font-size: .95rem; }
-.type-badge-b { background: var(--accent-2); }
-.type-pair-name { font-weight: 650; }
-.type-pair-and { color: var(--ink-soft); font-weight: 700; margin: 0 .2rem; }
-.type-summary { margin: 0 0 1rem; font-size: 1.02rem; line-height: 1.55; color: var(--ink); }
-.type-axes { display: grid; gap: .8rem; }
-@media (min-width: 720px) { .type-axes { grid-template-columns: 1fr 1fr; } }
-.type-axis { padding: .85rem 1rem; border-radius: 14px; border: 1px solid var(--line); border-top: 4px solid var(--good); background: var(--good-soft); }
-.type-axis.is-diff { border-top-color: var(--warn); background: var(--warn-soft); }
-.type-axis-head { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; margin-bottom: .55rem; }
-.type-axis-name { font-weight: 750; }
-.type-axis-code { font-weight: 600; font-size: .8rem; color: var(--ink-soft); margin-left: .2rem; }
-.type-weight { flex: none; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-  padding: .15rem .5rem; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); background: var(--bg-alt); }
-.weight-most .type-weight { background: var(--accent); border-color: var(--accent); color: #fff; }
-.type-axis-letters { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: .5rem; }
-.type-person { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: .5rem; align-items: center; min-width: 0; }
-.type-person:last-child { justify-items: end; text-align: right; grid-template-columns: 1fr auto; }
-.type-person:last-child .type-letter { grid-column: 2; grid-row: 1 / span 2; }
-.type-person:last-child .type-word, .type-person:last-child .type-who { grid-column: 1; }
-.type-letter { grid-row: 1 / span 2; width: 2.1rem; height: 2.1rem; border-radius: 50%; display: grid; place-items: center;
-  font-weight: 800; font-size: 1.05rem; background: var(--bg-alt); color: var(--accent); border: 2px solid currentColor; }
-.type-person:last-child .type-letter { color: var(--accent-2); }
-.type-word { font-weight: 650; font-size: .88rem; line-height: 1.2; }
-.type-who { font-size: .74rem; color: var(--ink-soft); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.type-match { font-size: 1.35rem; font-weight: 800; line-height: 1; color: var(--good); }
-.is-diff .type-match { color: var(--warn); }
-.type-reading { margin: .65rem 0 0; line-height: 1.5; font-size: .92rem; }
 /* Evidence: one small line under what it supports. */
 .ev-line { margin: .3rem 0 0; font-size: .78rem; font-style: italic; color: var(--ink-soft); line-height: 1.45; }
 .partner-items .ev-line { padding: 0; }

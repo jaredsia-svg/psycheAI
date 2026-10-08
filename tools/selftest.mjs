@@ -6488,15 +6488,13 @@ check('compatibility names both people',
 check('compatibility gives each person their own advice',
   compat.howToPartner.forA.length > 0 && compat.howToPartner.forB.length > 0);
 
-// The report is four blocks — the answer, the types, how it plays out, what
-// to do — and the sections that made it long and repetitive are gone from the
-// schema, so the model is not asked to write them at all.
-check('the compatibility schema no longer asks for dimensions, an upside and risk, or conversation starters',
-  ['dimensions', 'biggestUpside', 'biggestRisk', 'conversationStarters']
+// The report is three blocks — the answer, how it plays out, what to do —
+// and the sections that made it long and repetitive are gone from the
+// schema, so the model is not asked to write them at all. The types are
+// weighed in the score and the writing, not given a section of their own.
+check('the compatibility schema asks for no dimensions, upside and risk, starters or type section',
+  ['dimensions', 'biggestUpside', 'biggestRisk', 'conversationStarters', 'typeMatch']
     .every(key => !(key in prompts.COMPATIBILITY_SCHEMA.properties)));
-check('it asks for the two types axis by axis instead',
-  JSON.stringify(prompts.COMPATIBILITY_SCHEMA.properties.typeMatch.properties.axes.items.properties.axis.enum) ===
-    JSON.stringify(['E/I', 'S/N', 'T/F', 'J/P']));
 // E/I and S/N decide most between two people; T/F and J/P less.
 check('E/I and S/N are weighted as mattering most, T/F and J/P less',
   prompts.TYPE_AXES.map(axis => axis.axis + ':' + axis.weight).join(',') === 'E/I:most,S/N:most,T/F:less,J/P:less');
@@ -6504,22 +6502,9 @@ check('the prompt explains why each axis matters, and to use the Big Five as the
   /E\/I matters most/.test(prompts.COMPATIBILITY_SYSTEM) && /S\/N matters as much/.test(prompts.COMPATIBILITY_SYSTEM) &&
     /T\/F matters less/.test(prompts.COMPATIBILITY_SYSTEM) && /J\/P matters least/.test(prompts.COMPATIBILITY_SYSTEM) &&
     /extraversion for E\/I, openness for S\/N, agreeableness for T\/F, conscientiousness for J\/P/.test(prompts.COMPATIBILITY_SYSTEM));
-{
-  // The letters are written in from the cards, not trusted from the model;
-  // each axis gets its weight and its reading, matched by axis not position.
-  const settled = prompts.settleTypeMatch({
-    summary: 'S.', axes: [{ axis: 'J/P', reading: 'jp' }, { axis: 'E/I', reading: 'ei' }, { axis: 'S/N', reading: 'sn' }],
-  }, { mbti: 'ENFP' }, { mbti: 'ISFJ' });
-  check('settled types take the letters from the cards and match readings by axis',
-    settled.typeA === 'ENFP' && settled.typeB === 'ISFJ' && settled.axes.length === 4 &&
-      settled.axes.map(x => x.axis + x.a + x.b + (x.same ? '=' : '≠') + x.weight + ':' + x.reading).join('|') ===
-        'E/IEI≠most:ei|S/NNS≠most:sn|T/FFF=less:|J/PPJ≠less:jp', JSON.stringify(settled.axes));
-  check('with a type missing or uncertain there are no axes, and the summary stands',
-    prompts.settleTypeMatch({ summary: 'S.' }, { mbti: 'Uncertain' }, { mbti: 'ISFJ' }).axes.length === 0 &&
-      prompts.settleTypeMatch({ summary: 'S.' }, { mbti: 'Uncertain' }, { mbti: 'ISFJ' }).summary === 'S.' &&
-      prompts.settleTypeMatch(undefined, {}, {}).axes.length === 0);
-}
-check('the mock reads every axis', compat.typeMatch.axes.length === 4 && compat.typeMatch.summary.length > 0);
+check('and to weigh the types in the score and writing, in a sentence or two, not a section of their own',
+  /do not give them a section of their own/.test(prompts.COMPATIBILITY_SYSTEM) &&
+    /one or two sentences at most/.test(prompts.COMPATIBILITY_SYSTEM));
 {
   const named = Object.values(prompts.COMPATIBILITY_MODES).flatMap(m => m.dimensions);
   const repeated = [...new Set(named.filter((d, i) => named.indexOf(d) !== i))];

@@ -4674,7 +4674,7 @@ the PDF, which has no link panel or buttons after its own confidence section for
 
 ## Compatibility
 
-**The report is four blocks, on the page and in the PDF.** It had grown long and repetitive — five
+**The report is three blocks, on the page and in the PDF.** It had grown long and repetitive — five
 scored dimensions, a biggest upside and a biggest risk that restated the verdict, and conversation
 starters — and all of that is gone, from the schema as well as the page, so the model is not asked to
 write it. What is left:
@@ -4682,12 +4682,9 @@ write it. What is left:
 1. **The answer**: the score as a ring, the band in words, a verdict of two or three sentences under
    60 words whose first sentence is the sharpest true thing about the pair, and *What you share* as
    tags inside the same card.
-2. **Your types together** (`typeMatch`): both MBTI types, one sentence on what they are like
-   together, and the four axes as panels — each person's letter in words, = or ≠ between them (green
-   or amber panel), how much the axis counts, and one sentence on what it means for these two.
-3. **How it plays out**: two or three things that work and two or three that will rub, each with its
+2. **How it plays out**: two or three things that work and two or three that will rub, each with its
    evidence on one small line.
-4. **The playbook**: three things for each person, two for both.
+3. **The playbook**: three things for each person, two for both.
 
 **How the types are weighed.** Until now the model was handed a mechanical line ("ENFP vs ISTJ —
 shares 1 of 4 axes") and nothing about what it meant. `TYPE_AXES` in `lib/prompts.js` now says, and
@@ -4702,10 +4699,10 @@ and the derived facts say, per axis, whether each person's letter is *a lean*, *
 two leans either side of the line are closer than their letters suggest. Sharing E/I and S/N lifts
 the score; splitting both lowers it unless the scores show the gaps are small.
 
-The letters on the page are not the model's: `settleTypeMatch` writes them in on the server from the
-two cards, attaches each axis's weight, and matches the model's readings to axes by name. With either
-type missing or uncertain there are no axes, and the summary is written from the Big Five. A report
-saved before this has no type section and shows none.
+**The types have no section of their own.** A *Your types together* section, axis by axis, was tried
+and taken out again: it made the report longer for something better said in passing. The model weighs
+the types in the score and in what it writes, and says what they mean for these two in one or two
+sentences at most, wherever it lands hardest — the verdict, a strength or a friction.
 
 The five focus areas per basis and stance (*Briefing and direction*, *Whether problems reach you*… for
 a manager) still go to the model, as what matters most on that basis, rather than as five scored
@@ -4713,9 +4710,8 @@ sections.
 
 **The page's actions** are the paid report's card tools: three tiles, an icon over a short label —
 **Download PDF**, **Share result** and **Back to Compatibility** (to My Compatibility, where the report
-is listed). The download at the top and *Check someone else* are gone. The PDF has the same four blocks:
-the cover, the verdict and what they share, the types as two rows of paired panels, then how it plays
-out and the playbook. Every block is kept whole on a page, and two people with the same name are told
+is listed). The download at the top and *Check someone else* are gone. The PDF has the same three blocks:
+the cover, the verdict and what they share, then how it plays out and the playbook. Every block is kept whole on a page, and two people with the same name are told
 apart as "(you)" and "(them)" (`pairLabels`).
 
 The prompt still says each thing once (a piece of evidence quoted once in the whole report; shared

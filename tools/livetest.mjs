@@ -279,10 +279,6 @@ if (runFree) {
     Number.isInteger(compat.score) && compat.score >= 0 && compat.score <= 100 &&
     typeof compat.band === 'string' && compat.band.length > 0,
     compat.score + ' (' + compat.band + ')');
-  check('the two types are read axis by axis',
-    Boolean(compat.typeMatch) && typeof compat.typeMatch.summary === 'string' && compat.typeMatch.summary.length > 0 &&
-    (compat.typeMatch.axes || []).length === 4 && compat.typeMatch.axes.every(axis => (axis.reading || '').length > 10),
-    JSON.stringify((compat.typeMatch || {}).axes || []).slice(0, 200));
   check('every strength and friction is evidenced',
     (compat.strengths || []).concat(compat.frictions || []).every(point => (point.evidence || []).length > 0));
   check('each person gets their own advice',

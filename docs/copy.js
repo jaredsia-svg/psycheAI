@@ -746,19 +746,6 @@
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
     compatCommon: 'What you share',
-    // The two MBTI types, axis by axis. Each axis by what it decides, its two
-    // letters in words, and how much it counts between two people (see
-    // TYPE_AXES in lib/prompts.js).
-    compatTypes: 'Your types together',
-    compatTypeAxes: {
-      'E/I': { name: 'Energy', E: 'Extravert', I: 'Introvert' },
-      'S/N': { name: 'Attention', S: 'Sensing', N: 'Intuitive' },
-      'T/F': { name: 'Decisions', T: 'Thinking', F: 'Feeling' },
-      'J/P': { name: 'Structure', J: 'Judging', P: 'Perceiving' },
-    },
-    compatWeight: { most: 'Matters most', less: 'Matters less' },
-    compatSame: 'Same',
-    compatDiffer: 'Different',
     // Over What works and What will rub, which sit side by side under it.
     compatHowItPlays: 'How it plays out',
     compatWorks: 'What works',

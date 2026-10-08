@@ -8098,12 +8098,11 @@
     $('#compat-return-title').textContent = TEXT.compatReturnTitle(otherName);
     $('#compat-return-text').textContent = TEXT.compatReturnText(otherName);
 
-    // Four blocks, the same order as the PDF: the answer (score, verdict and
-    // what they share), the two types axis by axis, what it looks like day to
-    // day, and what each of them should do about it.
+    // Three blocks, the same order as the PDF: the answer (score, verdict and
+    // what they share), what it looks like day to day, and what each of them
+    // should do about it.
     const [labelA, labelB] = window.PsychePDF ? window.PsychePDF.pairLabels(myName, otherName) : [myName, otherName];
     let html = scoreCard(report);
-    html += typesCard(report.typeMatch, labelA, labelB);
 
     // What works and what will rub, side by side in the profile's own two
     // columns, each point with its evidence on one small line.
@@ -8133,40 +8132,6 @@
     if (report.caveats) html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
     setHtml($('#report-body'), html);
-  }
-
-  // The two types, axis by axis: what the axis decides, each person's letter,
-  // whether they share it, how much it counts, and what it means for them.
-  // A report made before this section existed has none, and shows none.
-  function typesCard(typeMatch, labelA, labelB) {
-    const types = typeMatch || {};
-    const axes = (types.axes || []).filter(axis => axis && axis.axis && TEXT.compatTypeAxes[axis.axis]);
-    if (!axes.length && !types.summary) return '';
-    const person = (label, letter, names) =>
-      '<span class="type-person"><span class="type-letter">' + esc(letter) + '</span>' +
-      '<span class="type-word">' + esc(names[letter] || letter) + '</span><span class="type-who">' + esc(label) + '</span></span>';
-    return '<div class="card section-card compat-types"><h2>' + esc(TEXT.compatTypes) + '</h2>' +
-      (types.typeA && types.typeB
-        ? '<p class="type-pair"><span class="type-badge">' + esc(types.typeA) + '</span><span class="type-pair-name">' + esc(labelA) +
-          '</span><span class="type-pair-and" aria-hidden="true">&amp;</span><span class="type-badge type-badge-b">' + esc(types.typeB) +
-          '</span><span class="type-pair-name">' + esc(labelB) + '</span></p>'
-        : '') +
-      (types.summary ? '<p class="type-summary">' + esc(types.summary) + '</p>' : '') +
-      (axes.length ? '<div class="type-axes">' + axes.map(axis => {
-        const names = TEXT.compatTypeAxes[axis.axis];
-        return '<div class="type-axis ' + (axis.same ? 'is-same' : 'is-diff') + ' weight-' + esc(axis.weight) + '">' +
-          '<div class="type-axis-head"><span class="type-axis-name">' + esc(names.name) + ' <span class="type-axis-code">' + esc(axis.axis) + '</span></span>' +
-          '<span class="type-weight">' + esc(TEXT.compatWeight[axis.weight] || '') + '</span></div>' +
-          '<div class="type-axis-letters">' + person(labelA, axis.a, names) +
-          // A sign rather than the word, so a long letter name has the room on
-          // a phone; the word is there for a screen reader, and the panel's
-          // own green or amber says the same thing.
-          '<span class="type-match" title="' + esc(axis.same ? TEXT.compatSame : TEXT.compatDiffer) + '"><span aria-hidden="true">' +
-            (axis.same ? '=' : '≠') + '</span><span class="visually-hidden">' + esc(axis.same ? TEXT.compatSame : TEXT.compatDiffer) + '</span></span>' +
-          person(labelB, axis.b, names) + '</div>' +
-          (axis.reading ? '<p class="type-reading">' + esc(axis.reading) + '</p>' : '') + '</div>';
-      }).join('') + '</div>' : '') +
-      '</div>';
   }
 
   // The score, the band in words, the verdict, and what the two share: the

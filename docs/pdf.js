@@ -3274,8 +3274,8 @@
 
   /**
    * A comparison as a PDF, in the same order as the report page: the answer
-   * (verdict and what they share), the two types axis by axis, what it looks
-   * like (what works, what will rub, side by side), then what to do about it.
+   * (verdict and what they share), what it looks like (what works, what will
+   * rub, side by side), then what to do about it.
    * Each block is kept whole on a page. Every heading comes from copy.js, as
    * the profile's do.
    */
@@ -3305,41 +3305,7 @@
       out.tags(source.sharedGround);
     }
 
-    // 2. The two types, two axes to a row: green where they share a letter,
-    // amber where they differ, each saying how much that axis counts.
-    const types = source.typeMatch || {};
-    const axes = (types.axes || []).filter(axis => axis && TEXT.compatTypeAxes[axis.axis]);
-    const axisPanel = axis => {
-      const names = TEXT.compatTypeAxes[axis.axis];
-      const word = letter => (names[letter] || letter) + ' (' + letter + ')';
-      return {
-        title: names.name + ' ' + axis.axis + '  ·  ' + (TEXT.compatWeight[axis.weight] || ''),
-        color: axis.same ? GOOD : WARN,
-        fill: axis.same ? GOOD_WASH : WARN_WASH,
-        rows: [
-          { text: labelA + '  ' + word(axis.a), style: T_TITLE, leading: 13.6 },
-          { text: labelB + '  ' + word(axis.b), style: T_TITLE, leading: 13.6 },
-          { text: axis.same ? TEXT.compatSame : TEXT.compatDiffer, style: { size: 7.8, bold: true, color: axis.same ? GOOD : WARN }, leading: 11, before: 2 },
-          axis.reading && { text: axis.reading, style: T_BODY, leading: 13.2, before: 3 },
-        ].filter(Boolean),
-      };
-    };
-    if (axes.length || types.summary) {
-      out.keep(() => {
-        out.sectionTitle(TEXT.compatTypes, types.typeA && types.typeB ? labelA + ' ' + types.typeA + '  ·  ' + labelB + ' ' + types.typeB : '');
-        if (types.summary) out.body(types.summary, { size: 10.4, color: INK, leading: 14.6 });
-        if (axes.length) {
-          out.space(4);
-          out.pairedPanels(axisPanel(axes[0]), axes[1] ? axisPanel(axes[1]) : { title: '', rows: [] }, { whole: true });
-        }
-      });
-      for (let i = 2; i < axes.length; i += 2) {
-        out.space(6);
-        out.pairedPanels(axisPanel(axes[i]), axes[i + 1] ? axisPanel(axes[i + 1]) : { title: '', rows: [] }, { whole: true });
-      }
-    }
-
-    // 3. What it looks like: what works and what will rub, side by side, each
+    // 2. What it looks like: what works and what will rub, side by side, each
     // point with its evidence in small type under it.
     const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
       { text: item.title, style: T_TITLE, leading: 14, before: i ? 10 : 0 },
@@ -3358,7 +3324,7 @@
       });
     }
 
-    // 4. What to do about it: one column each, then what they do together.
+    // 3. What to do about it: one column each, then what they do together.
     const bullets = (list, color) => (list || []).filter(Boolean)
       .map((line, i) => ({ text: line, style: T_BODY, leading: 13.4, bullet: color, before: i ? 5 : 0 }));
     const play = source.howToPartner || {};
