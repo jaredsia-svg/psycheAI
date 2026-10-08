@@ -1658,6 +1658,9 @@ so it is built in rather than left to a plugin.
   a way to forget it, and spent on the first card the device makes, which goes straight into the
   comparison.
 
+The plan this serves (audiences, loops, content, channels, launch calendar, measurement, risks) is
+in [`marketing/PLAN.md`](marketing/PLAN.md).
+
 `npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
