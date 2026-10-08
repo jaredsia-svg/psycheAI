@@ -5003,8 +5003,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 80000 && DIG === 80000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card costs at most 5.2 cents',
-    Digest.FREE_COST_CAP === 0.052 && freeWorst <= 0.052 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card costs at most 5.3 cents',
+    Digest.FREE_COST_CAP === 0.053 && freeWorst <= 0.053 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 15.1 cents',
     Digest.COST_CAP === 0.151 && fullWorst <= 0.151 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
@@ -6118,6 +6118,20 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     globalThis.PsycheCopy.emblemSvg('Bruce Banner') === '' && /<svg[^>]*viewBox="0 0 48 48"/.test(globalThis.PsycheCopy.emblemSvg('Mulan')));
   check('the emblems are distinct drawings, one per character',
     new Set(Object.values(emblems)).size === Object.keys(emblems).length);
+  check('the card picks a character on the reader\'s likely side, and the neither group when unsure',
+    prompts.CHARACTER_SIDES.women.length === 12 && prompts.CHARACTER_SIDES.men.length === 12 &&
+      prompts.CHARACTER_SIDES.neither.join() === 'Baymax,WALL-E,Remy,Pikachu,Totoro' &&
+      prompts.STRUCTURED_FREE_SYSTEM.includes(prompts.CHARACTER_SIDE_RULE) &&
+      prompts.CHARACTER_SIDES.women.concat(prompts.CHARACTER_SIDES.men, prompts.CHARACTER_SIDES.neither)
+        .every(name => prompts.CHARACTER_SIDE_RULE.includes(name)) &&
+      /If you cannot tell with reasonable confidence, or they present as neither, choose from: Baymax/.test(prompts.CHARACTER_SIDE_RULE),
+    prompts.CHARACTER_SIDE_RULE.slice(0, 200));
+  check('and never writes that judgement down: the rule says so, and the privacy rule allows only this private use',
+    /never state, hint at or explain it anywhere you write/.test(prompts.CHARACTER_SIDE_RULE) &&
+      /Gender only decides which characters to choose among, and is never written/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+      /privately choosing the character's side \(see \*\*essence\*\*\), never written/.test(prompts.FULL_SYSTEM) &&
+      prompts.FULL_SYSTEM.includes(prompts.CHARACTER_GENDER_RULE) &&
+      !/never on their gender|never on looks, gender/.test(prompts.FULL_SYSTEM + prompts.STRUCTURED_FREE_SYSTEM + prompts.CLASSIC_FREE_SYSTEM));
   check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
     ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',
       'Sailor Moon', 'Princess Peach', 'Hello Kitty'].every(name => prompts.CHARACTER_NAMES.includes(name)) &&

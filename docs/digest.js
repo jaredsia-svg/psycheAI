@@ -595,8 +595,8 @@
   // the model thinks for all of it, against a digest at its full 80,000.
   //
   //   free card     8,000 out  × $3.75/M = $0.0300
-  //                  6,300 prompt + 22,857 digest × $0.75/M = $0.0219
-  //                 at most $0.0519                    → FREE_COST_CAP $0.052
+  //                  6,700 prompt + 22,857 digest × $0.75/M = $0.0222
+  //                 at most $0.0522                    → FREE_COST_CAP $0.053
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
@@ -614,13 +614,16 @@
   // $0.052 since the card got a prompt of its own: 13,137 tokens of the full
   // report's prompt became about 2,300 written for this call, and the card
   // schema stopped asking for ten fields it already had answers to.
-  const FREE_COST_CAP = 0.052;
+  // $0.053 once the card's prompt gained the character-side rule.
+  const FREE_COST_CAP = 0.053;
   const FREE_MAX_OUTPUT_TOKENS = 8000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117
   // once the card gained its conflict style and work costs (5,678 before; it
   // was 16,655 while the card's prompt was the full report's, cut down).
-  const FREE_FIXED_INPUT_TOKENS = 6300;
+  // Raised to 6,700 for the rule that picks the character's side of the
+  // catalogue (CHARACTER_SIDE_RULE in lib/prompts.js). Measured at 6,553.
+  const FREE_FIXED_INPUT_TOKENS = 6700;
 
   // ---------- what a deeper read can cost, at most ----------
   //
@@ -629,8 +632,8 @@
   // it, and the two together are held to $0.25:
   //
   //   card          8,000 out  × $3.75/M = $0.0300
-  //                  6,300 prompt + 54,286 digest × $0.75/M = $0.0454
-  //                 at most $0.0754                    → DEEP_FREE_COST_CAP $0.076
+  //                  6,700 prompt + 54,286 digest × $0.75/M = $0.0457
+  //                 at most $0.0757                    → DEEP_FREE_COST_CAP $0.076
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 37,600 prompt + 54,286 digest × $0.75/M = $0.0689

@@ -161,9 +161,9 @@ At $0.75 / $3.75 per million tokens, worst case:
 | | free card | full premium report |
 |---|---|---|
 | output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 6,300 → $0.0047 | 37,600 → $0.0282 |
+| prompt plus schema | 6,700 → $0.0050 | 37,600 → $0.0282 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0518** (`FREE_COST_CAP` $0.052) | **$0.1503** (`COST_CAP` $0.151) |
+| **at most** | **$0.0521** (`FREE_COST_CAP` $0.053) | **$0.1503** (`COST_CAP` $0.151) |
 
 **The standard read fills its spare room with the reader's own words** (`buildFilled`). A reader with
 no Google or Facebook data, or a lighter account, used to land well under 80,000 and the room went
@@ -849,7 +849,7 @@ the effort the reduction had traded away.
 
 **What that leaves.** At the old S$1.99 price this was thin; at **US$5** it is not. Stripe takes about
 3.4% plus a fixed fee of roughly US$0.40, so net is about **US$4.4** per unlock — against a paid call
-capped at US$0.151 (`COST_CAP`) and a free card capped at US$0.052. The figures below were worked at the
+capped at US$0.151 (`COST_CAP`) and a free card capped at US$0.053. The figures below were worked at the
 old price, against a Sonnet 5 call, and are kept for the record:
 
 - **Typical run: ~$0.20, about 19% of net.** Healthy, and lower than Opus's own 31% was.
@@ -3596,11 +3596,7 @@ art or logo. A report from before the catalogue keeps its emoji. The summary car
 down just enough to fit, rather than clipped.
 
 **The catalogue is balanced: twelve women, twelve men, five who are neither.** It started with seven
-women out of 28, so the closest honest fit for most temperaments was a man by default. The choice is
-still made on temperament, drive and how someone treats people — never on gender, which the prompt
-forbids and the app never knows — so a woman can be Remy, Totoro or Spider-Man and a man can be
-Moana or Hermione; the balance only means each temperament has a close fit on both sides. Each
-character holds a temperament nobody else in the list does:
+women out of 28. Each character holds a temperament nobody else in the list does:
 
 | Added | Temperament it brings | | Retired | Overlapped with |
 |---|---|---|---|---|
@@ -3612,6 +3608,20 @@ character holds a temperament nobody else in the list does:
 
 My Melody, Bubbles and Barbie were considered and left out: My Melody and Bubbles overlap Hello
 Kitty and Joy, and Barbie overlaps Judy Hopps and invites a read on looks the prompt rules out.
+**A woman gets a woman, a man gets a man, and anyone else one of the five who are neither.** Each
+entry in `CHARACTER_CATALOGUE` carries its side (`w`, `m`, `n`), and `CHARACTER_SIDE_RULE` tells the
+free card's call to judge, privately, whether the reader is most likely a woman or a man from how
+they present themselves in their own data — their name, pronouns in a bio, how they write about
+themselves, how friends address them — and choose only on that side; when it cannot tell with
+reasonable confidence, or they present as neither, it chooses among Baymax, WALL-E, Remy, Pikachu and
+Totoro. Then it finds the closest temperament on that side. The judgement is used for nothing else
+and **never written**: the rule says so, and the privacy rules (which forbid saying anything about
+anyone's gender) carve out only this private choice. The full report's prompt carries the shorter
+`CHARACTER_GENDER_RULE` (same sex, or a non-human character when unsure) for a report written without
+a card to anchor to; with one, the card's character is pinned and nothing is chosen again. The rule
+adds about 250 tokens to the free prompt (`FREE_FIXED_INPUT_TOKENS` 6,700, `FREE_COST_CAP` $0.053 —
+about 0.02¢ a run in practice).
+
 Retired characters are no longer offered to the model but keep their scene and emblem
 (`RETIRED_CHARACTERS`), so a card written before they went still draws. The five new scenes follow
 the same rule as the rest — symbols, never likenesses: a spellbook over a castle of lit windows, a
