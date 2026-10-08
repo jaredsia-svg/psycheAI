@@ -3762,7 +3762,7 @@ nav dropping back to a bar over the report. **A free report has no nav** and no 
 (`.cta-row .btn[hidden]`). The card
 fills three fifths of the column, edge to edge, and the panel beside it the rest, the two the same height.
 Until the reader points at a part of the card, the panel rests on its title, "Your Psyche Card", the
-card's own three actions across its width — Enlarge, Download, Share, each an icon over a word — a line on
+card's three actions across its width — Download, Share, Compatibility, each an icon over a word — a line on
 what the card is, and how to learn more ("Hover over any part of your card…", "Tap…" on a touch screen).
 **A full report opens the same way**: the card and this panel above 00 Overview, with the part nav down
 the left column on a wide screen and the page's actions under it — the thumbnail that used to sit above
@@ -3815,9 +3815,9 @@ label wraps, the three stay the same height. **On a phone the part nav is one th
 (`--header-h`, measured on load and resize): the name of the part being read — "Overview", "What drives
 you", set by `markStructured()` as the reader scrolls — then the six numerals, sized so the longest name
 fits whole on a 390px screen. **On a phone the Psyche Card sits in one white box**, read top to bottom:
-"Your Psyche Card", the card, "Tap any part of your card…", then Enlarge, Download and Share across the
-box — the panel's own boxes dissolve (`display: contents`) so their pieces can be ordered around the
-card, and the one-line introduction and "Tap to open full screen" go. **On a phone the card is explained
+"Your Psyche Card", the card, a **Tap to open full screen** button (`.cx-open-full`, in place of the
+hint line), then Download, Share and Compatibility across the box — the panel's own boxes dissolve
+(`display: contents`) so their pieces can be ordered around the card, and the one-line introduction goes. **On a phone the card is explained
 full screen, not on the page** (`explainsFullScreen()`: the structured layout under 720px wide): tapping
 the card anywhere opens it full screen, and the hint under it says so — "Tap your card to open it full
 screen, then tap any part to learn more." — now just *Tap to open full screen*. Full screen there has no Download or Share; in their place
@@ -3834,8 +3834,9 @@ off it, on whichever side has more room — just under "Who you are most like", 
 languages — scrolling if it must, and covering the part only when the screen leaves less than a third
 of its height free. Its cross, or a tap off the
 card, puts it away; only with no explanation showing does a tap off the card close full screen. On a
-laptop the card never opens full screen when clicked — only Enlarge opens it, and full screen there
-keeps Download and Share and explains nothing; "Tap to open full screen" is gone. **Download and Share beside the card** draw the image from the card on the page when the full
+laptop the parts that pop out show the help cursor and a click explains them; **everywhere else on the
+card the cursor is a zoom-in and a click opens it full screen**. Full screen in the structured layout,
+laptop or phone, has **no Download or Share** (`.card-dialog.no-tools`) — they sit beside the card. **Download and Share beside the card** draw the image from the card on the page when the full
 screen view is closed (`cardImageBlob()`); they used to read the closed dialog's copy, which has no size,
 and failed without a word. **00 in the nav goes to the top of the page**: part 00 begins with the Psyche
 Card. **"Delete everything" asks first** in a warning sheet of its own (`#delete-dialog`) rather than the
@@ -4975,9 +4976,9 @@ The profile page ends in three parts, in this order: the report, then the action
 fineprint naming the model and the time it ran. The action row holds three buttons — **Download full
 report**, **Test compatibility** and **Delete everything** — all housekeeping rather than part of the
 document, so they close the page rather than sitting inside it. In the structured layout **Test
-compatibility moves under "Your Psyche Card"**, a full-width button below Enlarge, Download and Share
-(`.cx-compat`, which clicks `#test-compat-open`) — on a paid report a thin one (`.is-thin`), and the
-action row keeps Download full report and Delete everything (a free report: Delete everything only).
+compatibility becomes the third of the card's buttons**, after Download and Share, labelled
+**Compatibility** (`.cx-tool[data-act="compat"]`, which clicks `#test-compat-open`; the long bar under the
+buttons is gone), and the action row keeps Download full report and Delete everything (a free report: Delete everything only).
 The phone's row lays out a column per visible action. The **sample dialog's** title bar is a slim strip
 (`#sample-dialog .sample-dialog-head`), and its part nav sticks flush to the top of the scrolling body
 (`top: -1rem`, over the body's padding). The **payment sheet**

@@ -974,14 +974,14 @@
         introPaid: 'Read the report below for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
-        // On a phone the card is too small to explain in place: it opens full screen first.
+        // On a phone the card is too small to explain in place: this button,
+        // under it, opens it full screen first.
         phone: 'Tap to open full screen',
       },
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',
-      tools: { enlarge: 'Enlarge', download: 'Download', share: 'Share' },
-      compat: 'Test compatibility',
-      toolTips: { enlarge: 'Open your card full screen', download: 'Save your card as an image', share: 'Share your card' },
+      tools: { download: 'Download', share: 'Share', compat: 'Compatibility' },
+      toolTips: { download: 'Save your card as an image', share: 'Share your card', compat: 'Test your compatibility with someone' },
       labels: { yours: 'Yours', sample: 'On this card' },
       // Under the sample's card, full screen.
       sampleTip: { hover: 'Hover over any part of the card to learn more', tap: 'Tap any part to learn more' },

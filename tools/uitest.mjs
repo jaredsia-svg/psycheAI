@@ -10854,15 +10854,12 @@ try {
           return { two: buttons.length === 2, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
             sameSize: boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1 && Math.abs(b.height - boxes[0].height) <= 1),
             across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
-            thinCompat: (() => {
-              const compat = document.querySelector('#profile-side .cx-compat.is-thin');
-              const tools = document.querySelector('#profile-side .cx-tools');
-              return Boolean(compat && tools && (tools.compareDocumentPosition(compat) & Node.DOCUMENT_POSITION_FOLLOWING));
-            })(),
+            thinCompat: !document.querySelector('#profile-side .cx-compat') &&
+              Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="compat"]')),
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone a full report\'s two actions sit side by side across the screen, each an icon over its label, and Test compatibility is a thin button under the card\'s tools',
+        check('structured: on a phone a full report\'s two actions sit side by side across the screen, each an icon over its label, and Compatibility is one of the card\'s tools',
           phoneActions.two && phoneActions.oneRow && phoneActions.sameSize && phoneActions.across && phoneActions.iconAbove &&
             phoneActions.labels === 'Download full report|Delete everything' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
@@ -11145,15 +11142,14 @@ try {
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
-      check('structured: a free report\'s Test compatibility sits under the card\'s three tools, Delete stays in the action row',
+      check('structured: a free report\'s Compatibility is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
         await sp.evaluate(() => {
-          const button = document.querySelector('#profile-side .cx-compat');
-          const tools = document.querySelector('#profile-side .cx-tools');
-          return Boolean(button && tools && (tools.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)) &&
+          const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
+          return tools.length === 3 && tools[2].dataset.act === 'compat' && !document.querySelector('#profile-side .cx-compat') &&
             getComputedStyle(document.querySelector('#test-compat-open')).display === 'none' &&
             getComputedStyle(document.querySelector('#delete-profile')).display !== 'none';
         }));
-      await sp.click('#profile-side .cx-compat');
+      await sp.click('#profile-side .cx-tool[data-act="compat"]');
       await sp.waitForSelector('#compat-dialog[open]', { timeout: 10000 });
       check('structured: and it opens the compatibility popout', await sp.locator('#compat-dialog').isVisible());
       await sp.click('#compat-dialog-close');
@@ -11212,14 +11208,51 @@ try {
       check('structured: and the panel empties again when the pointer leaves the card',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden &&
           !document.querySelector('#psyche-card').classList.contains('pc-guiding')));
-      // The card itself never opens full screen on a laptop either: only Enlarge.
-      await sp.click('#psyche-card-open', { position: { x: 20, y: 20 } });
+      // On a laptop a part that pops out keeps the ordinary cursor and a click
+      // on it explains it; anywhere else the cursor zooms in and a click opens
+      // the card full screen.
+      const cursors = await sp.evaluate(() => ({
+        slot: getComputedStyle(document.querySelector('#psyche-card-open')).cursor,
+        card: getComputedStyle(document.querySelector('#psyche-card')).cursor,
+        part: getComputedStyle(document.querySelector('#psyche-card [data-cx="motives"]')).cursor,
+      }));
+      check('structured: the card shows a zoom-in cursor, except over the parts that pop out',
+        cursors.slot === 'zoom-in' && cursors.card === 'zoom-in' && cursors.part === 'help', JSON.stringify(cursors));
       await sp.click('#psyche-card [data-cx="motives"]');
       await sp.waitForTimeout(250);
-      check('structured: clicking the card, anywhere on it, does not open it full screen; no "Tap to open full screen"',
+      check('structured: clicking a part explains it rather than opening the card; no "Tap to open full screen"',
         !(await sp.evaluate(() => document.querySelector('#card-dialog').open)) &&
-        !(await sp.locator('#psyche-card-hint').isVisible()));
+        !(await sp.locator('#psyche-card-hint').isVisible()) && !(await sp.locator('#profile-side .cx-open-full').isVisible()));
       await sp.mouse.move(2, 2);
+      const blank = await sp.evaluate(() => {
+        // A point on the card that is not one of its explained parts.
+        const card = document.querySelector('#psyche-card').getBoundingClientRect();
+        for (let y = card.top + 4; y < card.bottom; y += 6) {
+          for (let x = card.left + 4; x < card.right; x += 6) {
+            const hit = document.elementFromPoint(x, y);
+            if (hit && hit.closest('#psyche-card') && !hit.closest('[data-cx]')) return { x, y };
+          }
+        }
+        return null;
+      });
+      await sp.mouse.click(blank.x, blank.y);
+      await sp.waitForTimeout(300);
+      check('structured: clicking the card anywhere else opens it full screen',
+        await sp.evaluate(() => document.querySelector('#card-dialog').open), JSON.stringify(blank));
+      check('structured: on a laptop, full screen has no Download or Share and explains nothing',
+        !(await sp.locator('#card-download').isVisible()) && !(await sp.locator('#card-share').isVisible()) &&
+        !(await sp.locator('#card-dialog-tip').isVisible()));
+      await sp.keyboard.press('Escape');
+      await sp.waitForTimeout(200);
+      // Beside the card: Download, Share, Compatibility, each label whole on one line.
+      const toolRow = await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-tool')].map(b => {
+        const label = b.querySelector('span');
+        return { act: b.dataset.act, label: label.textContent, fits: label.scrollWidth <= label.clientWidth + 1 &&
+          label.getBoundingClientRect().height < 20 && label.getBoundingClientRect().width <= b.getBoundingClientRect().width };
+      }));
+      check('structured: the three buttons beside the card are Download, Share and Compatibility, each label fitting',
+        toolRow.map(t => t.act + ':' + t.label).join('|') === 'download:Download|share:Share|compat:Compatibility' &&
+          toolRow.every(t => t.fits) && !(await sp.locator('#profile-side .cx-compat').count()), JSON.stringify(toolRow));
       // Download beside the card saves the card as an image.
       const [cardImage] = await Promise.all([
         sp.waitForEvent('download', { timeout: 15000 }),
@@ -11234,15 +11267,6 @@ try {
       ]);
       check('structured: Share hands the card over too — as a download where sharing files is not supported',
         /\.png$/.test(shared.suggestedFilename()), shared.suggestedFilename());
-      await sp.click('#profile-side .cx-tool[data-act="enlarge"]');
-      await sp.waitForTimeout(300);
-      check('structured: the panel\'s Enlarge opens the card full screen',
-        await sp.evaluate(() => document.querySelector('#card-dialog').open));
-      check('structured: on a laptop, full screen keeps Download and Share and explains nothing',
-        (await sp.locator('#card-download').isVisible()) && (await sp.locator('#card-share').isVisible()) &&
-        !(await sp.locator('#card-dialog-tip').isVisible()));
-      await sp.keyboard.press('Escape');
-      await sp.waitForTimeout(200);
       await sp.setViewportSize({ width: 390, height: 844 });
       await sp.waitForTimeout(300);
       // On a phone pointing at the card explains nothing in place: the card is
@@ -11254,20 +11278,23 @@ try {
       check('structured: on a phone pointing at the card explains nothing in place',
         await sp.evaluate(() => document.querySelector('#profile-side .cx-pop').hidden));
       await sp.mouse.move(2, 2);
-      // On a phone: one white box — the title, the card, how to learn more,
-      // then the three actions — with no intro line and no "Tap to open".
+      // On a phone: one white box — the title, the card, the "Tap to open
+      // full screen" button, then the three actions — with no intro line.
       const phoneBox = await sp.evaluate(() => {
         const top = el => document.querySelector(el).getBoundingClientRect();
         const card = top('#psyche-card-section');
         const shown = el => getComputedStyle(document.querySelector(el)).display !== 'none';
         return { titleAbove: top('#profile-side .cx-home-title').bottom <= card.top,
-          hintBelow: top('#profile-side .cx-home-hint').top >= card.bottom - 1,
-          toolsBelowHint: top('#profile-side .cx-tools').top >= top('#profile-side .cx-home-hint').bottom - 1,
-          toolsFill: Math.abs(top('#profile-side .cx-tools').width - top('#profile-side .cx-home-hint').width) <= 2,
+          hintBelow: top('#profile-side .cx-open-full').top >= card.bottom - 1,
+          toolsBelowHint: top('#profile-side .cx-tools').top >= top('#profile-side .cx-open-full').bottom - 1,
+          toolsFill: Math.abs(top('#profile-side .cx-tools').width - top('#profile-side .cx-open-full').width) <= 2,
           oneBox: getComputedStyle(document.querySelector('#profile-top')).borderTopStyle === 'solid',
           noIntro: !shown('#profile-side .cx-home-intro'), noTapToOpen: !shown('#psyche-card-hint'),
-          tapHint: /^Tap to open full screen$/
-            .test(document.querySelector('#profile-side .cx-home-hint').innerText.replace(/^\W+/, '').trim()),
+          noHintLine: !shown('#profile-side .cx-home-hint'),
+          tapButton: document.querySelector('#profile-side .cx-open-full').tagName === 'BUTTON' &&
+            document.querySelector('#profile-side .cx-open-full').innerText.trim() === 'Tap to open full screen',
+          labelsFit: [...document.querySelectorAll('#profile-side .cx-tool span')].every(l => l.scrollWidth <= l.clientWidth + 1 &&
+            l.getBoundingClientRect().height < 20),
           spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
       });
       check('structured: on a phone the card sits in one box: title, card, how to learn more, then the three actions',
@@ -11337,9 +11364,9 @@ try {
       await sp.waitForTimeout(250);
       check('structured: and the next tap off the card closes it',
         !(await sp.evaluate(() => document.querySelector('#card-dialog').open)));
-      await sp.click('#profile-side .cx-tool[data-act="enlarge"]');
+      await sp.click('#profile-side .cx-open-full');
       await sp.waitForTimeout(300);
-      check('structured: Enlarge opens it the same way', await sp.evaluate(() => document.querySelector('#card-dialog').open &&
+      check('structured: the "Tap to open full screen" button opens it the same way', await sp.evaluate(() => document.querySelector('#card-dialog').open &&
         document.querySelector('#card-dialog').classList.contains('is-guided')));
       await sp.keyboard.press('Escape');
       await sp.waitForTimeout(200);

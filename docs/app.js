@@ -5985,7 +5985,9 @@
    * Beside a free report's card: empty until the reader points at a part of
    * the card, when that part's meaning pops out level with it — what it is,
    * the reader's own reading, and why it is worth knowing. Above it, the
-   * card's own three actions: enlarge, download, share.
+   * card's three actions: download, share, compatibility. Enlarging is the
+   * card's own: a click on it anywhere a part is not explained, or on a
+   * phone the "Tap to open full screen" button under it.
    */
   function cardGuideHtml(report, paid) {
     const G = Copy.STRUCTURED.cardGuide;
@@ -5997,22 +5999,19 @@
       '<div class="cx-home">' +
         '<h2 class="cx-home-title">' + esc(G.home.title) + '</h2>' +
         '<div class="cx-tools">' +
-          tool('enlarge', '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>') +
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
+          tool('compat', '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>') +
         '</div>' +
-        // The compatibility test sits with the card, under its three tools —
-        // a thin line of a button on a paid report, where the report below
-        // is what the page is for.
-        ('<button type="button" class="cx-compat' + (paid ? ' is-thin' : '') + '">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span>' + esc(G.compat) + '</span></button>') +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
         '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
-          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span><span class="cx-hint-phone">' + esc(G.home.phone) +
-          '</span></span></p>' +
+          '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
+        // On a phone, in the hint's place: a button that opens the card full screen.
+        '<button type="button" class="cx-open-full">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg><span>' + esc(G.home.phone) + '</span></button>' +
       '</div>' +
       '<div class="cx-stage">' +
         '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
@@ -6317,24 +6316,24 @@
     // puts the explanation away.
     const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
     if (openPop && !event.target.closest('.cx-pop') && !event.target.closest('#psyche-card [data-cx]')) explainCardPart(null);
-    if (event.target.closest('.cx-compat')) { $('#test-compat-open').click(); return; }
+    if (event.target.closest('.cx-open-full')) { openPsycheCard(); return; }
     const tool = event.target.closest('.cx-tool');
     if (tool) {
       const act = tool.getAttribute('data-act');
-      if (act === 'enlarge') openPsycheCard();
+      if (act === 'compat') $('#test-compat-open').click();
       else if (act === 'download') downloadCardImage({ currentTarget: tool });
       else if (act === 'share') shareCardImage({ currentTarget: tool });
       return;
     }
     if (event.target.closest('.cx-close')) { explainCardPart(null); return; }
-    // The card itself never opens full screen — Enlarge does — and a click
-    // or tap on one of its parts explains that part.
+    // A click or tap on one of the card's parts explains that part; anywhere
+    // else on the card (the zoom-in cursor) opens it full screen.
     if (!event.target.closest('#psyche-card-open') || !$('#view-profile').classList.contains('profile-structured')) return;
     const part = event.target.closest('#psyche-card [data-cx]');
     event.preventDefault();
     event.stopPropagation();
-    if (explainsFullScreen()) openPsycheCard();
-    else if (part) explainCardPart(part.getAttribute('data-cx'));
+    if (explainsFullScreen() || !part) openPsycheCard();
+    else explainCardPart(part.getAttribute('data-cx'));
   }, true);
 
   // Confidence closes the report rather than opening it: read after the
@@ -6457,7 +6456,7 @@
     }
     // A free report has only the card, which has its own download.
     $('#export-pdf-bottom').hidden = structured && !explained;
-    // Either way its compatibility test sits under the card's tools (.cx-compat).
+    // Either way its compatibility test is one of the card's tools.
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
@@ -7255,6 +7254,9 @@
     // share, a line saying to tap, and the ring pulsing until a part is tapped.
     const guided = explainsFullScreen();
     dialog.classList.toggle('is-guided', guided);
+    // Download and share sit beside the card on the page, so full screen is
+    // the card alone, on a laptop as well as a phone.
+    dialog.classList.toggle('no-tools', $('#view-profile').classList.contains('profile-structured'));
     $('#card-dialog-tip').textContent = guided ? Copy.STRUCTURED.cardGuide.fullTip : '';
     explainFullCardPart(null);
     $('#psyche-card-full').classList.toggle('pc-hint', guided);

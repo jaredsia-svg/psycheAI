@@ -3362,9 +3362,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-structured #psyche-card-section::before { z-index: 2; }
 #view-profile.profile-structured .psyche-card-slot { margin: 0; }
 #view-profile.profile-structured #psyche-card { box-shadow: none; }
-/* Enlarge is the way to full screen, so the card says nothing about tapping it. */
+/* The panel beside the card says how to use it, so the card itself says nothing.
+   A click anywhere a part is not explained opens it full screen: a zoom-in
+   cursor there, and the help cursor over the parts that pop out (below). */
 #view-profile.profile-structured .psyche-card-hint { display: none; }
-#view-profile.profile-structured .psyche-card-slot { cursor: default; }
+#view-profile.profile-structured .psyche-card-slot { cursor: zoom-in; }
 .cx-status { margin: .5rem 0 0; font-size: .8rem; color: #b3261e; }
 /* Delete everything: a warning sheet, the red action on the right. */
 .delete-dialog { max-width: 26rem; text-align: center; }
@@ -3443,9 +3445,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-home-hint .cx-hint-tap, .cx-home-hint .cx-hint-phone { display: none; }
 @media (hover: none) { .cx-home-hint .cx-hint-tap { display: inline; } .cx-home-hint .cx-hint-hover { display: none; } }
 /* On a phone the card opens full screen first, and is explained there. */
+/* On a phone the hint gives way to a button that does it. */
+.cx-open-full { display: none; }
 @media (max-width: 719px) {
-  .cx-home-hint .cx-hint-phone { display: inline; }
-  .cx-home-hint .cx-hint-hover, .cx-home-hint .cx-hint-tap { display: none; }
+  .cx-home-hint { display: none !important; }
+  .cx-open-full {
+    display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%;
+    padding: .7rem .8rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+    background: var(--accent-soft); font: inherit; font-size: .9rem; font-weight: 700; color: var(--accent); cursor: pointer;
+  }
+  .cx-open-full svg { width: 18px; height: 18px; flex: none; }
+  .cx-open-full:active { transform: translateY(1px); }
 }
 .cx-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
 .cx-tool {
@@ -3458,20 +3468,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-tool:hover, .cx-tool:focus-visible {
   border-color: var(--accent); color: var(--accent); transform: translateY(-2px);
   box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
-}
-/* A free report's compatibility test, under the card's three tools. */
-.cx-compat {
-  display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; margin-top: .45rem;
-  padding: .6rem .8rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  background: var(--accent-soft); font: inherit; font-size: .86rem; font-weight: 700; color: var(--accent); cursor: pointer;
-  transition: border-color .2s, transform .2s, box-shadow .2s;
-}
-.cx-compat svg { width: 18px; height: 18px; }
-/* On a paid report, a thin line of a button: the report below is the page's business. */
-.cx-compat.is-thin { padding: .32rem .7rem; margin-top: .4rem; border-radius: 10px; font-size: .78rem; gap: .4rem; }
-.cx-compat.is-thin svg { width: 15px; height: 15px; }
-.cx-compat:hover, .cx-compat:focus-visible {
-  border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(123, 63, 160, .14); outline: none;
 }
 .cx-stage { flex: 1; min-height: 14rem; }
 /* The pop is placed against the whole panel, so it can come level with the
@@ -3525,8 +3521,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* On a phone the card and its panel become one white box, read top to
    bottom: the title, the card, how to learn more, then the three actions.
    The panel's own boxes dissolve (display: contents) so their pieces can be
-   ordered around the card; the one-line introduction and "Tap to open full
-   screen" go — Enlarge is the way to full screen here. */
+   ordered around the card; the one-line introduction goes, and "Tap to open
+   full screen" is a button under the card. */
 @media (max-width: 719px) {
   #view-profile.profile-structured .profile-top {
     display: flex; flex-direction: column; align-items: stretch; gap: .8rem; position: relative; overflow: hidden;
@@ -3549,8 +3545,8 @@ details.more[open] > summary::after { content: ' ▴'; }
   .cx-home-title { order: 1; margin: 0; text-align: center; }
   .cx-home-intro { display: none; }
   .cx-home-hint { order: 3; justify-content: center; text-align: left; }
+  .cx-open-full { order: 3; }
   .cx-tools { order: 4; }
-  .cx-compat { order: 4; }
   .cx-stage { order: 5; }
 }
 /* On a phone the explanation rises from the foot of the screen instead. */
@@ -3576,7 +3572,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .card-dialog.is-guided .card-dialog-close { top: 6px; margin-top: 0; right: 4px; }
 .card-dialog.is-guided .pc-story-in { justify-content: space-between; }
 .card-dialog.is-guided .pc-sfoot { margin-top: 0; }
-.card-dialog.is-guided .card-dialog-actions { display: none; }
+.card-dialog.is-guided .card-dialog-actions, .card-dialog.no-tools .card-dialog-actions { display: none; }
 .card-dialog.is-guided .card-dialog-tip {
   display: flex; align-items: center; justify-content: center; min-height: 44px; margin: 0; padding: 0 52px;
   white-space: nowrap; color: #fff; font-size: clamp(.8rem, 3.8vw, .95rem); font-weight: 600; letter-spacing: .01em; text-align: center;
