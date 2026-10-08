@@ -1550,9 +1550,9 @@ const attachProps = prompts.PREMIUM_SCHEMA.properties.attachment.properties;
   // the attribute live in different places and nothing else connects them —
   // dropping `multiple` would leave the copy lying with nothing to notice it.
   //
-  // The archive inputs only. #qr-file takes one photograph of a QR code and is
-  // right not to be multiple, so the filter is on what the input accepts
-  // rather than on it being a file input at all.
+  // The archive inputs only, filtered on what the input accepts rather than on
+  // it being a file input at all, so any other kind of picker added later is
+  // not held to a promise made about archives.
   const zipInputs = (markup.match(/<input type="file"[^>]*>/g) || [])
     .filter(tag => /accept="\.zip/.test(tag));
   check('and every archive picker behind that promise accepts multiple files',
@@ -6435,7 +6435,7 @@ check('card trims an over-long summary', bloated.summary.length <= Card.CAPS.sum
 check('card caps list length', bloated.interests.length === Card.CAPS.lists.interests);
 check('card caps phrase length', bloated.interests.every(p => p.length <= Card.CAPS.phrase));
 const bloatedPayload = await Card.encodeCard(bloated);
-check('a trimmed card still fits a QR code', bloatedPayload.length <= Card.COMFORTABLE_PAYLOAD, bloatedPayload.length + ' chars');
+check('a trimmed card still fits the link budget', bloatedPayload.length <= Card.COMFORTABLE_PAYLOAD, bloatedPayload.length + ' chars');
 
 // The caps only mean anything if the worst card they permit still scans. K4
 // widened nearly every field, so this fills all of them to the brim with
@@ -6470,7 +6470,7 @@ for (const [key, count] of Object.entries(CAPS.lists)) {
   stuffed[key] = Array.from({ length: count }, () => noise(CAPS.phrase));
 }
 const stuffedPayload = await Card.encodeCard(stuffed);
-check('a card filled to every cap still fits a QR code',
+check('a card filled to every cap still fits the link budget',
   stuffedPayload.length <= Card.COMFORTABLE_PAYLOAD,
   stuffedPayload.length + ' of ' + Card.COMFORTABLE_PAYLOAD + ' chars');
 

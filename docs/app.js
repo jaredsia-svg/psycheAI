@@ -1,4 +1,4 @@
-// PsycheAI SPA: upload → digest → model → profile → QR → scan → compatibility.
+// PsycheAI SPA: upload → digest → model → profile → link → compatibility.
 // All state lives in localStorage; the server holds nothing.
 (function () {
   'use strict';
@@ -63,7 +63,7 @@
     // ticked off, by a hash of the action's wording. Nothing but those hashes,
     // and it goes with Delete everything like the rest.
     plan: 'psycheai_plan',
-    // Someone else's card, from a compare link opened before this reader had
+    // Someone else's card, from a compatibility link opened before this reader had
     // one of their own. A friend who taps the link usually has no Instagram
     // export yet, and Instagram takes hours to email one, so the invite has to
     // outlive the tab: kept here for INVITE_DAYS and spent on the first
@@ -827,17 +827,17 @@
     if (toggle) toggle.setAttribute('aria-expanded', String(open));
   }
 
-  // What the QR code actually carries — the compact card, not the full
-  // report. Lives on the scan page rather than the profile page: it is about
-  // the code someone is about to share or has just shared, which is the
-  // context the scan page is for.
-  function qrContentsBlock(card) {
+  // What the compatibility link actually carries — the compact card, not the
+  // full report. Lives on the compatibility page rather than the profile
+  // page: it is about the link someone is about to send or has just sent,
+  // which is the context that page is for.
+  function linkContentsBlock(card) {
     if (!card) return '';
     return '<div class="card section-card">' +
-      sectionHead('🔗', esc(TEXT.qr), esc(TEXT.qrSub)) +
+      sectionHead('🔗', esc(TEXT.linkContents), esc(TEXT.linkContentsSub)) +
       '<p><strong>' + esc(card.headline) + '</strong></p><p>' + esc(card.summary) + '</p>' +
       tags(card.interests) +
-      '<p class="fineprint">' + esc(TEXT.qrFineprint) + '</p></div>';
+      '<p class="fineprint">' + esc(TEXT.linkContentsFineprint) + '</p></div>';
   }
 
   // ---------- mental wellness ----------
@@ -1699,8 +1699,14 @@
   function revealRoast(cover, bonus) {
     const card = cover.closest('.bonus-card');
     const body = card.querySelector('.bonus-body');
+    // Sharing is offered on the reader's own roast only, never the sample's.
+    const own = !card.closest('#sample-body');
     setHtml(body, bonusBodyHtml(bonus) +
-      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button>');
+      '<div class="btn-row bonus-actions">' +
+      (own ? '<button class="btn bonus-share" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span class="cta-label">' +
+        esc(TEXT.roastShare) + '</span></button>' : '') +
+      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>' +
+      (own ? '<p class="fineprint link-status bonus-share-status" role="status"></p>' : ''));
     body.hidden = false;
     cover.hidden = true;
     // Read in the page's own colours once opened; grey only while covered.
@@ -1933,7 +1939,6 @@
   }
 
   function show(view) {
-    if (view !== 'scan') stopCamera();
     // Arriving at a home view gives back the entry pushed for whichever
     // secondary view preceded it — a nav link, a fresh scan's result, anything
     // other than the Back press the entry exists for. Left in place, a later
@@ -2217,7 +2222,7 @@
     const nav = event.target.closest('[data-nav]');
     if (!nav) return;
     event.preventDefault();
-    // "Scan your partner or friend" lives inside #compat-dialog now — without
+    // "Got their link?" lives inside #compat-dialog now — without
     // this, navigating away leaves the dialog (and its backdrop) open on top
     // of the view it just switched to.
     const openDialog = nav.closest('dialog[open]');
@@ -2724,6 +2729,11 @@
     }
     const hide = event.target.closest('.bonus-hide');
     if (hide) hideRoast(hide);
+    const share = event.target.closest('.bonus-share');
+    if (share && state.profile && state.profile.report && state.profile.report.bonus) {
+      shareStoryImage(roastImageCanvas(state.profile.report.bonus), 'PsycheAI roast.png',
+        TEXT.roastShareText, share.closest('.bonus-card').querySelector('.bonus-share-status'));
+    }
   });
 
   // The part nav: jump to a part — opening it if the reader had shut it — in
@@ -4420,43 +4430,6 @@
     return location.origin + location.pathname + '#p=' + payload;
   }
 
-  // Version 23 is a landmine. jsQR's own version table has the wrong alignment
-  // centre for it (see the note in vendor/jsqr.js), so a version 23 code is
-  // unreadable by every scanner carrying that upstream bug — which, until this
-  // repo patched its copy, included us. Our decoder is fixed, but codes get
-  // scanned by whatever app the other person happens to have, so it is worth
-  // four extra modules to step over the version entirely.
-  function qrOptions(url, width, margin) {
-    const options = {
-      width, margin, errorCorrectionLevel: 'L',
-      color: { dark: '#000000', light: '#ffffff' },
-    };
-    try {
-      if (window.QRCode.create(url, { errorCorrectionLevel: 'L' }).version === 23) options.version = 24;
-    } catch (error) { /* fall back to whatever the encoder picks */ }
-    return options;
-  }
-
-  // Both the profile page and the scan page show this person's own QR code, so
-  // painting it is one function rather than two copies of the same try/catch.
-  // The card is ~680 characters, so this lands around 89 modules across.
-  // Backing the canvas at 3x its display size keeps module edges crisp on a
-  // high-DPI phone, which is the difference between a camera resolving them
-  // and seeing grey mush. A wider quiet zone helps the locator too.
-  function paintQrCanvas(selector) {
-    const profile = state.profile;
-    const canvas = $(selector);
-    if (!profile || !canvas) return;
-    try {
-      const url = profileUrl(profile.payload);
-      window.QRCode.toCanvas(canvas, url, qrOptions(url, 900, 3));
-      // qrcode.js writes its width as an inline style; drop it so the
-      // stylesheet decides the display size, print rules included.
-      canvas.style.removeProperty('width');
-      canvas.style.removeProperty('height');
-    } catch (error) { /* canvas unavailable — the link still works */ }
-  }
-
   /**
    * The report's sections as HTML, from the report alone.
    *
@@ -6081,8 +6054,6 @@
         { year: 'numeric', month: 'long', day: 'numeric' }) +
       ' · ' + Math.round(report.confidence.score) + '/100 confidence';
 
-    paintQrCanvas('#qr-canvas');
-
     const cardHtml = psycheCardHtml(report);
     $('#psyche-card').innerHTML = cardHtml;
     $('#psyche-card-full').innerHTML = cardHtml;
@@ -6167,32 +6138,71 @@
     if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
   });
 
-  // The profile page and the scan page both offer this person's own link, so
-  // one handler serves both buttons.
-  function copyMyLink(button) {
+  // Compatibility travels as a link and nothing else. The compact card rides
+  // in the fragment (#p=…), which a browser never sends to a server, so the
+  // link is the data rather than a pointer to it. It used to be a QR code as
+  // well, but a code that dense needed a camera at close range, was unreadable
+  // off a screenshot in a Story, and only ever opened this same link.
+  //
+  // "Send my link" hands the share sheet a ready-written message, so what
+  // arrives in WhatsApp or a DM says what it is rather than being a bare,
+  // very long address. Without a share sheet (most desktops) the same message
+  // goes to the clipboard.
+  function compatMessage() {
+    return TEXT.compatShareText(profileUrl(state.profile.payload));
+  }
+
+  function writeClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+    return Promise.reject(new Error('no clipboard'));
+  }
+
+  function linkStatus(target, message) {
+    const status = typeof target === 'string' ? $(target) : target;
+    if (!status) return;
+    status.textContent = message;
+    clearTimeout(status._clear);
+    status._clear = setTimeout(() => { status.textContent = ''; }, 6000);
+  }
+
+  async function sendMyLink(statusSelector) {
+    if (!state.profile) return;
+    const text = compatMessage();
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        return;
+      } catch (error) {
+        // Backed out of the sheet themselves: nothing to fall back from.
+        if (error && error.name === 'AbortError') return;
+      }
+    }
+    writeClipboard(text).then(
+      () => linkStatus(statusSelector, TEXT.linkMessageCopied),
+      () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+
+  // The bare link, for anyone who would rather write their own message.
+  function copyMyLink(button, statusSelector) {
     const url = profileUrl(state.profile.payload);
-    const label = button.textContent;
-    const done = () => { button.textContent = 'Copied ✓'; setTimeout(() => { button.textContent = label; }, 2000); };
-    if (navigator.clipboard) navigator.clipboard.writeText(url).then(done, () => window.prompt('Copy this link:', url));
-    else window.prompt('Copy this link:', url);
+    writeClipboard(url).then(() => {
+      const label = button.textContent;
+      button.textContent = 'Copied ✓';
+      setTimeout(() => { button.textContent = label; }, 2000);
+      linkStatus(statusSelector, TEXT.linkCopied);
+    }, () => window.prompt(TEXT.linkCopyPrompt, url));
   }
-  $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link')));
-  $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan')));
-
-  // A file someone else will scan needs more room than the on-screen code: it
-  // gets viewed at whatever size a photo app picks, and if that is 300px wide
-  // the modules are back down to three pixels and nothing reads it. So the
-  // export is rendered fresh at 1600px with the full four-module quiet zone
-  // rather than reusing the display canvas.
-  const EXPORT_PX = 1600;
-
-  function renderExportCanvas(url) {
-    return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      window.QRCode.toCanvas(canvas, url, qrOptions(url, EXPORT_PX, 4),
-        error => (error ? reject(error) : resolve(canvas)));
-    });
-  }
+  $('#share-link').addEventListener('click', () => sendMyLink('#share-link-status'));
+  $('#share-link-scan').addEventListener('click', () => sendMyLink('#share-link-scan-status'));
+  $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
+  $('#share-compat-image').addEventListener('click', () => {
+    const last = state.lastReport;
+    if (!last) return;
+    shareStoryImage(compatImageCanvas(last), 'PsycheAI compatibility.png',
+      TEXT.compatResultShareText(Math.round(Number(last.report.score) || 0)), '#compat-share-status');
+  });
+  $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
+  $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
 
   // The mark, stroked from the same SVG path data the nav and the PDF use —
   // Path2D parses the arcs itself, so unlike the PDF writer this needs no
@@ -6221,95 +6231,6 @@
   }
 
   const LABEL_FONT_STACK = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
-  // Room for the mark, the wordmark and the name below the code. Appended
-  // below the code rather than drawn over any part of it, so the module grid
-  // the decoder depends on is untouched by any of this.
-  const LABEL_HEIGHT = 240;
-
-  /** The exported QR, with a caption strip added underneath: the brand and
-   * the person's name, so a file someone saved or forwarded still says whose
-   * it is once it is a few shares removed from this page. */
-  function renderLabelledExport(url, name) {
-    return renderExportCanvas(url).then(qr => {
-      const canvas = document.createElement('canvas');
-      canvas.width = qr.width;
-      canvas.height = qr.height + LABEL_HEIGHT;
-      const context = canvas.getContext('2d');
-      context.fillStyle = '#ffffff';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(qr, 0, 0);
-
-      context.strokeStyle = '#e7dfec';
-      context.lineWidth = 2;
-      context.beginPath();
-      context.moveTo(120, qr.height + 26);
-      context.lineTo(canvas.width - 120, qr.height + 26);
-      context.stroke();
-
-      const markSize = 50;
-      const wordmark = 'PSYCHEAI';
-      context.textBaseline = 'middle';
-      context.font = '700 28px ' + LABEL_FONT_STACK;
-      const wordWidth = context.measureText(wordmark).width;
-      const gap = 14;
-      const rowY = qr.height + 96;
-      const rowLeft = (canvas.width - (markSize + gap + wordWidth)) / 2;
-      drawBrandMark(context, rowLeft, rowY - markSize / 2, markSize);
-      context.fillStyle = '#7b3fa0';
-      context.textAlign = 'left';
-      context.fillText(wordmark, rowLeft + markSize + gap, rowY);
-
-      // A long name shrinks to fit rather than running off the strip — the
-      // card caps a name at 24 characters, but this also protects against
-      // whatever the model actually returned.
-      const maxNameWidth = canvas.width - 160;
-      let nameSize = 58;
-      context.textAlign = 'center';
-      while (nameSize > 30) {
-        context.font = '700 ' + nameSize + 'px ' + LABEL_FONT_STACK;
-        if (context.measureText(name).width <= maxNameWidth) break;
-        nameSize -= 2;
-      }
-      context.fillStyle = '#241a2e';
-      context.fillText(name, canvas.width / 2, qr.height + 190);
-
-      return canvas;
-    });
-  }
-
-  // The profile page and the scan page both offer this person's own download,
-  // so one handler serves both buttons.
-  async function downloadMyQr(button) {
-    const label = button.textContent;
-    const profile = state.profile;
-    const displayName = profile.card.name || 'PsycheAI user';
-    const fileName = 'psycheai-' + (profile.card.name || 'me').toLowerCase().replace(/\W+/g, '-');
-    try {
-      const canvas = await renderLabelledExport(profileUrl(profile.payload), displayName);
-      // 0.95 is well clear of the point where JPEG ringing touches a module —
-      // at 1600px each one is about 17 pixels across.
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.95));
-      if (!blob) throw new Error('Could not encode the image.');
-
-      // A Blob URL rather than a data URL, and the anchor in the document:
-      // Firefox ignores a click on a detached anchor, and Safari will not
-      // honour "download" on a large data: URL.
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.download = fileName + '.jpg';
-      link.href = href;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 10000);
-    } catch (error) {
-      button.textContent = 'Could not save — use the link';
-      setTimeout(() => { button.textContent = label; }, 3000);
-    }
-  }
-  $('#download-qr').addEventListener('click', () => downloadMyQr($('#download-qr')));
-  $('#download-qr-scan').addEventListener('click', () => downloadMyQr($('#download-qr-scan')));
-
   // The report is typeset into a PDF here rather than handed to the browser's
   // print dialog. Print-to-PDF gave the user no say over page size, margins or
   // whether backgrounds were included, put the browser's own header on every
@@ -6635,6 +6556,251 @@
     setTimeout(() => URL.revokeObjectURL(href), 10000);
   }
 
+  // ---------- story images: the roast and the compatibility result ----------
+  //
+  // Drawn straight onto a canvas at 1080 x 1920, the size of a phone story,
+  // rather than captured from the page: each is a poster, not a copy of a
+  // section. Every one carries the address, because an image is the one
+  // thing shared that cannot carry a link.
+  const STORY_IMAGE_W = 1080;
+  const STORY_IMAGE_H = 1920;
+  const STORY_INK = '#2a1238';
+  const STORY_PURPLE = '#7b3fa0';
+
+  function storyFont(weight, size, italic) {
+    const family = getComputedStyle(document.body).fontFamily || LABEL_FONT_STACK;
+    return (italic ? 'italic ' : '') + weight + ' ' + size + 'px ' + family;
+  }
+
+  // Greedy word wrap; a single word wider than the line is left to overflow
+  // rather than broken mid-word.
+  function wrapCanvasText(context, text, maxWidth) {
+    const lines = [];
+    for (const paragraph of String(text).split(/\n+/)) {
+      let line = '';
+      for (const word of paragraph.split(/\s+/).filter(Boolean)) {
+        const next = line ? line + ' ' + word : word;
+        if (line && context.measureText(next).width > maxWidth) { lines.push(line); line = word; }
+        else line = next;
+      }
+      if (line) lines.push(line);
+    }
+    return lines;
+  }
+
+  // The largest size, stepping down from `from`, at which `text` fits the box.
+  function fitCanvasText(context, text, box, from, to, weight, italic) {
+    for (let size = from; size >= to; size -= 2) {
+      context.font = storyFont(weight, size, italic);
+      const lines = wrapCanvasText(context, text, box.width);
+      if (lines.length * size * 1.3 <= box.height) return { size, lines };
+    }
+    context.font = storyFont(weight, to, italic);
+    return { size: to, lines: wrapCanvasText(context, text, box.width) };
+  }
+
+  function drawCanvasLines(context, fit, x, y, align) {
+    context.textAlign = align || 'left';
+    context.textBaseline = 'top';
+    fit.lines.forEach((line, index) => context.fillText(line, x, y + index * fit.size * 1.3));
+    return y + fit.lines.length * fit.size * 1.3;
+  }
+
+  function roundedRect(context, x, y, width, height, radius) {
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.arcTo(x + width, y, x + width, y + height, radius);
+    context.arcTo(x + width, y + height, x, y + height, radius);
+    context.arcTo(x, y + height, x, y, radius);
+    context.arcTo(x, y, x + width, y, radius);
+    context.closePath();
+  }
+
+  // The page's light gradient, the mark and the wordmark at the top, and the
+  // address in a pill at the foot.
+  function storyCanvas(footer) {
+    const canvas = document.createElement('canvas');
+    canvas.width = STORY_IMAGE_W;
+    canvas.height = STORY_IMAGE_H;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fdf7fc';
+    context.fillRect(0, 0, STORY_IMAGE_W, STORY_IMAGE_H);
+    for (const [x, y, r, colour] of [[160, 220, 900, 'rgba(232, 196, 255, .55)'], [960, 1700, 900, 'rgba(255, 200, 222, .55)']]) {
+      const glow = context.createRadialGradient(x, y, 0, x, y, r);
+      glow.addColorStop(0, colour);
+      glow.addColorStop(1, 'rgba(253, 247, 252, 0)');
+      context.fillStyle = glow;
+      context.fillRect(0, 0, STORY_IMAGE_W, STORY_IMAGE_H);
+    }
+    context.font = storyFont(800, 46);
+    const word = 'PsycheAI';
+    const markSize = 72;
+    const rowWidth = markSize + 18 + context.measureText(word).width;
+    const left = (STORY_IMAGE_W - rowWidth) / 2;
+    drawBrandMark(context, left, 120, markSize);
+    context.fillStyle = STORY_PURPLE;
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillText(word, left + markSize + 18, 120 + markSize / 2);
+
+    context.font = storyFont(800, 40);
+    const pillWidth = context.measureText(footer).width + 96;
+    const pillLeft = (STORY_IMAGE_W - pillWidth) / 2;
+    const pill = context.createLinearGradient(pillLeft, 0, pillLeft + pillWidth, 0);
+    pill.addColorStop(0, '#ff7eb3');
+    pill.addColorStop(1, '#8a3fd0');
+    context.fillStyle = pill;
+    roundedRect(context, pillLeft, 1700, pillWidth, 104, 52);
+    context.fill();
+    context.fillStyle = '#ffffff';
+    context.textAlign = 'center';
+    context.fillText(footer, STORY_IMAGE_W / 2, 1752);
+    return { canvas, context };
+  }
+
+  // The opening of the roast, a sentence or two: what would be quoted, not
+  // the whole of it, which runs to paragraphs and turns personal further in.
+  function roastExcerpt(text) {
+    const sentences = String(text || '').replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+(\s|$)/g) || [String(text || '')];
+    let out = '';
+    for (const sentence of sentences) {
+      if (out && (out + sentence).length > 260) break;
+      out += sentence;
+      if (out.length > 120 && /[.!?]\s*$/.test(out) && sentences.indexOf(sentence) >= 1) break;
+    }
+    return out.trim().length > 320 ? out.trim().slice(0, 317).replace(/\s+\S*$/, '') + '…' : out.trim();
+  }
+
+  function roastImageCanvas(bonus) {
+    const { canvas, context } = storyCanvas(TEXT.roastImageFooter);
+    context.fillStyle = STORY_INK;
+    const lead = fitCanvasText(context, TEXT.roastImageLead, { width: 900, height: 230 }, 76, 56, 850);
+    let y = drawCanvasLines(context, lead, STORY_IMAGE_W / 2, 330, 'center');
+    // The quote in a white panel, so it reads as something said.
+    const quote = fitCanvasText(context, '“' + roastExcerpt(bonus.harsh) + '”', { width: 820, height: 900 }, 64, 40, 650, true);
+    const panelHeight = quote.lines.length * quote.size * 1.3 + 140;
+    const panelTop = Math.max(y + 60, 560 + (900 - panelHeight) / 3);
+    context.fillStyle = 'rgba(255, 255, 255, .92)';
+    context.shadowColor = 'rgba(90, 40, 120, .18)';
+    context.shadowBlur = 50;
+    context.shadowOffsetY = 18;
+    roundedRect(context, 80, panelTop, 920, panelHeight, 44);
+    context.fill();
+    context.shadowColor = 'transparent';
+    context.fillStyle = STORY_INK;
+    context.font = storyFont(650, quote.size, true);
+    drawCanvasLines(context, quote, 130, panelTop + 70, 'left');
+    context.fillStyle = STORY_PURPLE;
+    context.font = storyFont(700, 36);
+    context.textAlign = 'center';
+    context.textBaseline = 'top';
+    context.fillText(TEXT.roastImageCredit, STORY_IMAGE_W / 2, panelTop + panelHeight + 48);
+    return canvas;
+  }
+
+  function compatImageCanvas(last) {
+    const { report, myName, otherName, mode } = last;
+    const { canvas, context } = storyCanvas(TEXT.compatImageFooter);
+    const value = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
+    context.fillStyle = STORY_PURPLE;
+    context.font = storyFont(700, 40);
+    context.textAlign = 'center';
+    context.textBaseline = 'top';
+    context.fillText(TEXT.compatImageLead(MODE_LABELS[mode] || ''), STORY_IMAGE_W / 2, 300);
+    context.fillStyle = STORY_INK;
+    const names = fitCanvasText(context, myName + ' & ' + otherName, { width: 920, height: 200 }, 88, 52, 850);
+    drawCanvasLines(context, names, STORY_IMAGE_W / 2, 370, 'center');
+
+    // The score ring: the same gradient as the page's, drawn as an arc.
+    const cx = STORY_IMAGE_W / 2;
+    const cy = 860;
+    const radius = 230;
+    context.lineCap = 'round';
+    context.lineWidth = 44;
+    context.strokeStyle = 'rgba(123, 63, 160, .12)';
+    context.beginPath();
+    context.arc(cx, cy, radius, 0, Math.PI * 2);
+    context.stroke();
+    if (value) {
+      const ring = context.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
+      ring.addColorStop(0, '#ff7a45');
+      ring.addColorStop(0.5, '#e0457b');
+      ring.addColorStop(1, '#8a3fd0');
+      context.strokeStyle = ring;
+      context.beginPath();
+      context.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * value / 100);
+      context.stroke();
+    }
+    context.fillStyle = STORY_INK;
+    context.textBaseline = 'middle';
+    context.font = storyFont(850, 190);
+    context.fillText(String(value), cx, cy - 10);
+    context.fillStyle = '#6b3f8f';
+    context.font = storyFont(700, 44);
+    context.fillText('/ 100', cx, cy + 115);
+
+    let y = 1150;
+    if (report.band) {
+      context.fillStyle = STORY_INK;
+      const band = fitCanvasText(context, report.band, { width: 900, height: 140 }, 64, 44, 800);
+      y = drawCanvasLines(context, band, cx, y, 'center') + 40;
+    }
+    // What they have in common, as tags, wrapped across at most three rows.
+    const tagsToDraw = (report.sharedGround || []).slice(0, 4);
+    if (tagsToDraw.length) {
+      context.fillStyle = '#6b3f8f';
+      context.font = storyFont(700, 32);
+      context.textAlign = 'center';
+      context.textBaseline = 'top';
+      context.fillText(TEXT.compatImageShared.toUpperCase(), STORY_IMAGE_W / 2, y + 10);
+      y += 70;
+    }
+    context.font = storyFont(650, 34);
+    context.textBaseline = 'middle';
+    let rowItems = [];
+    const rows = [];
+    let rowWidth = 0;
+    for (const tag of tagsToDraw) {
+      const width = Math.min(900, context.measureText(tag).width + 60);
+      if (rowItems.length && rowWidth + 20 + width > 920) { rows.push([rowItems, rowWidth]); rowItems = []; rowWidth = 0; }
+      rowItems.push([tag, width]);
+      rowWidth += (rowItems.length > 1 ? 20 : 0) + width;
+    }
+    if (rowItems.length) rows.push([rowItems, rowWidth]);
+    for (const [items, width] of rows.slice(0, 3)) {
+      let x = (STORY_IMAGE_W - width) / 2;
+      for (const [tag, tagWidth] of items) {
+        context.fillStyle = 'rgba(123, 63, 160, .12)';
+        roundedRect(context, x, y, tagWidth, 76, 38);
+        context.fill();
+        context.fillStyle = STORY_PURPLE;
+        context.textAlign = 'center';
+        context.fillText(tag, x + tagWidth / 2, y + 38, tagWidth - 40);
+        x += tagWidth + 20;
+      }
+      y += 96;
+    }
+    return canvas;
+  }
+
+  // Share sheet with the image where the browser can take a file; a download
+  // everywhere else.
+  async function shareStoryImage(canvas, fileName, text, statusSelector) {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) { linkStatus(statusSelector, TEXT.cardImageError); return; }
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], text });
+        return;
+      } catch (error) {
+        if (error && error.name === 'AbortError') return;
+      }
+    }
+    triggerDownload(blob, fileName);
+    linkStatus(statusSelector, TEXT.storyImageSaved);
+  }
+
   // Shared by both icon buttons: neither carries visible text of its own any
   // more for a failure to borrow, so an error from either one shows up here
   // instead of inside the button.
@@ -6755,12 +6921,8 @@
   measureHeader();
   window.addEventListener('resize', measureHeader);
 
-  // The QR code and its actions were an always-visible panel on the profile
-  // page; they are a popout now, opened on demand from beside the download
-  // button. paintQrCanvas is still filled by renderProfile regardless of
-  // whether the dialog is open — drawing to a canvas does not need the
-  // element to be visible — so the dialog always opens with a code that is
-  // already current.
+  // Sending this person's compatibility link is a popout, opened on demand
+  // from beside the download button.
   $('#test-compat-open').addEventListener('click', () => {
     const dialog = $('#compat-dialog');
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -6776,8 +6938,8 @@
   // Apple Pay and Google Pay both come from the one integration point —
   // Stripe decides at mount time which wallet, if either, this browser and
   // device actually offer, rather than the app choosing between two buttons
-  // of its own. Stripe.js is the one script in this app not vendored under
-  // docs/vendor/: Stripe does not support a pinned local copy, since the file
+  // of its own. Stripe.js is the one third-party script in this app, and it is
+  // not vendored: Stripe does not support a pinned local copy, since the file
   // at this URL carries its own fraud-detection updates. Loaded lazily, on
   // the first real (non-mock) Unlock press, rather than paid for by every
   // visitor whether or not they ever reach this section.
@@ -7612,164 +7774,12 @@
     window.scrollTo(0, 0);
   });
 
-  // ══════════════ 3. scanning ══════════════
+  // ══════════════ 3. compatibility links ══════════════
   //
-  // The card is dense — roughly 87 modules across — so the whole game is
-  // pixels per module. At the display size that is about three, and jsQR wants
-  // more than that once a lens and a screen's own pixel grid are in the way.
-  // Hence: ask the camera for real resolution, and never give up after a
-  // single decode attempt.
-
-  let cameraStream = null;
-  let scanTimer = null;
-
-  const scratch = document.createElement('canvas');
-
-  /** Draws a source into the scratch canvas and hands back its pixels. */
-  function rasterise(source, width, height, crop) {
-    if (!width || !height) return null;
-    scratch.width = width;
-    scratch.height = height;
-    const context = scratch.getContext('2d', { willReadFrequently: true });
-    if (crop) context.drawImage(source, crop.x, crop.y, crop.w, crop.h, 0, 0, width, height);
-    else context.drawImage(source, 0, 0, width, height);
-    return context.getImageData(0, 0, width, height);
-  }
-
-  // Some browsers cap how much canvas backing store a page may hold and, past
-  // that, silently hand back a blank one instead of failing. Telling that apart
-  // from "no code here" makes the difference between a useful error and a
-  // baffling one.
-  //
-  // This is a heuristic, so it may only ever *label* a failure — never decide
-  // whether to attempt one. An earlier version returned before calling jsQR
-  // when it thought a draw was blank, and a false positive then skipped the
-  // only renderings that could have read the code.
-  //
-  // Sampling is spread over many more pixels than before, on a stride coprime
-  // with the row width so it cannot line up with the module grid, and it
-  // compares a luminance range rather than exact equality.
-  function looksBlank(pixels) {
-    const data = pixels.data;
-    const total = data.length / 4;
-    if (!total) return true;
-    const wanted = Math.min(total, 4000);
-    let stride = Math.max(1, Math.floor(total / wanted));
-    // Nudge to an odd stride that shares no factor with the row width, so the
-    // samples walk across columns instead of marching down one.
-    while (stride > 1 && gcd(stride, pixels.width) !== 1) stride++;
-
-    let low = 255;
-    let high = 0;
-    for (let p = 0; p < total; p += stride) {
-      const i = p * 4;
-      const luma = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
-      if (luma < low) low = luma;
-      if (luma > high) high = luma;
-      if (high - low > 12) return false;
-    }
-    return true;
-  }
-
-  function gcd(a, b) {
-    while (b) { const t = a % b; a = b; b = t; }
-    return a;
-  }
-
-  // jsQR does its own binarisation, but a global threshold rescues images it
-  // gives up on: JPEG-softened edges, a grey screenshot background, a photo
-  // taken under warm light.
-  function threshold(pixels) {
-    const data = pixels.data;
-    let total = 0;
-    let count = 0;
-    const step = Math.max(4, Math.floor(data.length / 4 / 5000) * 4);
-    for (let i = 0; i < data.length; i += step) {
-      total += (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
-      count++;
-    }
-    const cut = count ? total / count : 128;
-    const copy = new Uint8ClampedArray(data);
-    for (let i = 0; i < copy.length; i += 4) {
-      const value = (copy[i] * 3 + copy[i + 1] * 6 + copy[i + 2]) / 10 > cut ? 255 : 0;
-      copy[i] = copy[i + 1] = copy[i + 2] = value;
-      copy[i + 3] = 255;
-    }
-    return { data: copy, width: pixels.width, height: pixels.height };
-  }
-
-  function readPixels(pixels) {
-    for (const candidate of [pixels, threshold(pixels)]) {
-      const found = window.jsQR(candidate.data, candidate.width, candidate.height,
-        { inversionAttempts: 'attemptBoth' });
-      if (found && found.data) return found.data;
-    }
-    return null;
-  }
-
-  /** One decode attempt: draw at a size, then read it two ways. */
-  function decodeAt(source, width, height, crop) {
-    const pixels = rasterise(source, width, height, crop);
-    if (!pixels) return null;
-    // Always attempt the read. The blank check only annotates a failure.
-    const found = readPixels(pixels);
-    if (!found && looksBlank(pixels)) decodeStill.blankDraws++;
-    return found;
-  }
-
-  /**
-   * Reads a still image every way worth trying, cheapest first.
-   *
-   * Whole-image renderings at a few sizes catch the ordinary case — jsQR
-   * locates a code best when the modules are a few pixels across, so a
-   * 12-megapixel photo often fails at native size and reads instantly at
-   * 1600px. If none of those land, the code is probably a small part of a
-   * bigger picture: a screenshot of a chat, a photo of a laptop screen across
-   * the room. So the image is then walked as a grid of overlapping tiles, each
-   * rendered large, which is the same thing as zooming in on each region.
-   */
-  function decodeStill(source, naturalWidth, naturalHeight, onProgress) {
-    const report = onProgress || function () {};
-    const longest = Math.max(naturalWidth, naturalHeight);
-    decodeStill.attempts = 0;
-    decodeStill.blankDraws = 0;
-
-    const attempt = (width, height, crop) => {
-      decodeStill.attempts++;
-      report(decodeStill.attempts);
-      return decodeAt(source, width, height, crop);
-    };
-
-    const tried = new Set();
-    for (const target of [1600, 1100, 2400, 800, 600, longest]) {
-      const scale = Math.min(1, target / longest);
-      const width = Math.max(1, Math.round(naturalWidth * scale));
-      const height = Math.max(1, Math.round(naturalHeight * scale));
-      const key = width + 'x' + height;
-      if (tried.has(key)) continue;
-      tried.add(key);
-      const found = attempt(width, height);
-      if (found) return found;
-    }
-
-    // Overlapping thirds, each blown up to 1200px. Overlap matters: a code
-    // straddling a tile boundary would be cut in half by a clean grid.
-    const tileW = Math.round(naturalWidth / 2);
-    const tileH = Math.round(naturalHeight / 2);
-    const stepX = Math.round(naturalWidth / 4);
-    const stepY = Math.round(naturalHeight / 4);
-    for (let row = 0; row <= 2; row++) {
-      for (let column = 0; column <= 2; column++) {
-        const x = Math.min(column * stepX, Math.max(0, naturalWidth - tileW));
-        const y = Math.min(row * stepY, Math.max(0, naturalHeight - tileH));
-        const scale = Math.min(2, 1200 / Math.max(tileW, tileH));
-        const found = attempt(Math.round(tileW * scale), Math.round(tileH * scale),
-          { x, y, w: tileW, h: tileH });
-        if (found) return found;
-      }
-    }
-    return null;
-  }
+  // Someone's link normally arrives by being tapped, and consumeIncomingLink
+  // takes it from there. The compatibility page is for everything else: past
+  // results, a link that arrived some other way to paste, and this person's
+  // own link to send.
 
   function renderScan() {
     flash('#scan-alert', '');
@@ -7779,155 +7789,15 @@
     const who = state.profile && state.profile.card && state.profile.card.name;
     $('#scan-title').textContent = who ? who + '\u2019s Compatibility' : 'Your compatibility';
     $('#paste-input').value = '';
-    $('#scan-status').textContent = '';
-    $('#camera-holder').hidden = true;
     const history = store.read(KEYS.history, []);
     setHtml($('#scan-history'), history.length
       ? '<div class="card"><h2>' + esc(TEXT.scanHistory) + '</h2>' + historyTable(history) + '</div>' : '');
-    paintQrCanvas('#qr-canvas-scan');
-    $('#qr-contents').innerHTML = qrContentsBlock(state.profile && state.profile.card);
+    $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
   }
-
-  function stopCamera() {
-    if (scanTimer) { cancelAnimationFrame(scanTimer); scanTimer = null; }
-    if (cameraStream) {
-      for (const track of cameraStream.getTracks()) track.stop();
-      cameraStream = null;
-    }
-    const holder = $('#camera-holder');
-    if (holder) holder.hidden = true;
-  }
-
-  $('#start-camera').addEventListener('click', async () => {
-    flash('#scan-alert', '');
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      flash('#scan-alert', 'This browser will not give the page a camera. Paste their link instead.');
-      return;
-    }
-    // The default stream is often 640x480, which puts this code at about one
-    // and a half pixels per module — unreadable. Ask for real resolution and
-    // fall back only if the device refuses.
-    const wanted = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      },
-    };
-    try {
-      cameraStream = await navigator.mediaDevices.getUserMedia(wanted);
-    } catch (error) {
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      } catch (fallbackError) {
-        flash('#scan-alert', 'Camera access was refused. Camera scanning also needs HTTPS or localhost. You can paste their link instead.');
-        return;
-      }
-    }
-    const video = $('#scan-video');
-    video.srcObject = cameraStream;
-    video.setAttribute('playsinline', 'true');
-    await video.play();
-    $('#camera-holder').hidden = false;
-    $('#scan-status').textContent =
-      'Looking for a code — fill as much of the frame with it as you can, and hold steady.';
-    tick();
-  });
-
-  let zoomPass = false;
-
-  function tick() {
-    const video = $('#scan-video');
-    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
-      const width = video.videoWidth;
-      const height = video.videoHeight;
-
-      // Full frame every tick; a zoomed middle every other tick, which is what
-      // finds a code held too far away. Alternating keeps the frame rate up.
-      let found = decodeAt(video, width, height);
-      if (!found && (zoomPass = !zoomPass)) {
-        const cropW = Math.round(width * 0.55);
-        const cropH = Math.round(height * 0.55);
-        found = decodeAt(video, cropW, cropH, {
-          x: Math.round((width - cropW) / 2),
-          y: Math.round((height - cropH) / 2),
-          w: cropW,
-          h: cropH,
-        });
-      }
-
-      if (found) {
-        stopCamera();
-        runMatch(found).then(ok => {
-          if (!ok) {
-            flash('#scan-alert', 'That QR code is not a PsycheAI profile.');
-            $('#scan-status').textContent = '';
-          }
-        });
-        return;
-      }
-    }
-    scanTimer = requestAnimationFrame(tick);
-  }
-
-  $('#upload-qr').addEventListener('click', () => $('#qr-file').click());
-  $('#qr-file').addEventListener('change', async () => {
-    const file = $('#qr-file').files[0];
-    if (!file) return;
-    flash('#scan-alert', '');
-    $('#scan-status').textContent = 'Reading that image…';
-
-    let source = null;
-    try {
-      // from-image honours EXIF rotation, so a portrait photo is not decoded
-      // sideways. Not every browser supports the option, hence the retry.
-      source = await createImageBitmap(file, { imageOrientation: 'from-image' })
-        .catch(() => createImageBitmap(file));
-    } catch (error) {
-      $('#scan-status').textContent = '';
-      const heic = /\.(heic|heif)$/i.test(file.name) || /hei[cf]/i.test(file.type);
-      flash('#scan-alert', heic
-        ? 'That is an Apple HEIC image, which this browser cannot open. Share it as a JPEG, take a ' +
-          'screenshot of it, or paste their link below.'
-        : 'Could not open that image (' + (file.type || 'unknown type') + '). A JPEG or PNG works ' +
-          'best — or paste their link below.');
-      return;
-    }
-
-    const dimensions = source.width + '×' + source.height;
-    // The tiling pass can take a second or two on a big photo, so say so.
-    let found = null;
-    try {
-      found = decodeStill(source, source.width, source.height, attempts => {
-        $('#scan-status').textContent = 'Reading that image… (' + attempts + ')';
-      });
-    } finally {
-      source.close();
-      $('#scan-status').textContent = '';
-    }
-
-    if (!found) {
-      // The counts are here on purpose: they are the only thing that makes a
-      // report of this actionable, and blank draws mean the browser refused to
-      // rasterise rather than the code being absent.
-      const detail = dimensions + ', ' + decodeStill.attempts + ' attempts' +
-        (decodeStill.blankDraws ? ', ' + decodeStill.blankDraws + ' blank' : '');
-      flash('#scan-alert', decodeStill.blankDraws >= decodeStill.attempts
-        ? 'This browser would not open an image that big (' + detail + '). Try a smaller copy, or ' +
-          'paste their link below.'
-        : 'No QR code found in that image (' + detail + '). The surest fix is to paste their link ' +
-          'instead — the box below takes it. If you would rather use the picture, crop it so the ' +
-          'code fills most of the frame and include the white border around it.');
-      return;
-    }
-    if (!(await runMatch(found))) {
-      flash('#scan-alert', 'That is a QR code, but not a PsycheAI profile.');
-    }
-  });
 
   $('#paste-go').addEventListener('click', async () => {
     if (!(await runMatch($('#paste-input').value))) {
-      flash('#scan-alert', 'That is not a PsycheAI profile code. Copy the whole link they sent you.');
+      flash('#scan-alert', 'That is not a PsycheAI link. Copy the whole link they sent you.');
     }
   });
 
@@ -8155,6 +8025,9 @@
       esc(TEXT.compatOneQuestion);
     // Kept for the PDF, which is built from whatever was last rendered.
     state.lastReport = { report, otherName, myName, mode, stance, when };
+    $('#compat-return').hidden = !state.profile;
+    $('#compat-return-title').textContent = TEXT.compatReturnTitle(otherName);
+    $('#compat-return-text').textContent = TEXT.compatReturnText(otherName);
 
     // The same order as the PDF: the answer first (score and verdict, the best
     // thing and the biggest risk, what they share), then the working, then
@@ -8288,7 +8161,7 @@
     return true;
   }
 
-  // How long a compare link waits for this reader's own card. Long enough to
+  // How long a compatibility link waits for this reader's own card. Long enough to
   // cover Instagram's slowest export and a weekend; short enough that a link
   // nobody acted on does not greet them a season later.
   const INVITE_DAYS = 14;
@@ -8310,14 +8183,10 @@
     banner.hidden = !invite;
     if (!invite) return;
     $('#invite-title').textContent = TEXT.inviteTitle(invite.name);
-    $('#invite-text').textContent = TEXT.inviteText(INVITE_DAYS);
+    $('#invite-text').textContent = TEXT.inviteText(invite.name);
   }
 
   $('#invite-guide').addEventListener('click', showGuide);
-  $('#invite-forget').addEventListener('click', () => {
-    store.remove(KEYS.invite);
-    refreshInvite();
-  });
 
   window.addEventListener('hashchange', () => { consumeIncomingLink(); });
 

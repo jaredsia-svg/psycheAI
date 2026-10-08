@@ -104,15 +104,14 @@
     </svg>
 
     <div class="hero-top">
-      <!-- A friend's compare link, waiting for this reader's own card. Filled in by
-           refreshInvite() in app.js; it stays until a profile spends it, it
-           expires, or the reader lets it go. -->
+      <!-- A friend's compatibility link, waiting for this reader's own card.
+           Filled in by refreshInvite() in app.js; it stays until a profile
+           spends it or it expires. -->
       <div id="invite-banner" class="invite-banner no-print" role="status" hidden>
         <p class="invite-title" id="invite-title"></p>
         <p class="invite-text" id="invite-text"></p>
         <div class="btn-row">
           <button class="btn" id="invite-guide" type="button">Show me how</button>
-          <button class="btn btn-ghost" id="invite-forget" type="button">Forget this invite</button>
         </div>
       </div>
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
@@ -165,7 +164,7 @@
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Test compatibility</h3>
-      <p>Build better relationships with your partner, family, friends or colleagues by scanning their QR code. Free.</p></div>
+      <p>Build better relationships with your partner, family, friends or colleagues by sending them your link. Free.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -428,20 +427,18 @@
 
   <dialog id="compat-dialog" class="mode-dialog compat-dialog" aria-labelledby="compat-dialog-title">
     <button class="compat-dialog-close" id="compat-dialog-close" type="button" aria-label="Close">✕</button>
-    <div class="qr-panel">
-      <h2 class="qr-title" id="compat-dialog-title">Test your compatibility</h2>
-      <div class="qr-holder">
-        <canvas id="qr-canvas" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
+    <!-- Compatibility travels as a link: the compact card rides in the part of
+         the address after #, which a browser never sends to a server. -->
+    <div class="link-panel">
+      <h2 class="link-title" id="compat-dialog-title">Test your compatibility</h2>
+      <p class="muted">Send your link to a partner, friend, family member or colleague. When they
+        open it and make their free Psyche Card, they see how compatible you both are. Free.</p>
+      <div class="btn-row">
+        <button class="btn" id="share-link" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
+        <button class="btn btn-ghost" id="copy-link" type="button">Copy link</button>
+        <button class="btn btn-ghost" data-nav="scan" type="button">Got their link? →</button>
       </div>
-      <div class="qr-actions">
-        <p class="muted">Let someone scan this QR code or send them your QR code / link to understand
-          how compatible you both are.</p>
-        <div class="btn-row">
-          <button class="btn" id="copy-link">Copy my link</button>
-          <button class="btn btn-ghost" id="download-qr">Download QR Code</button>
-          <button class="btn btn-ghost" data-nav="scan">Scan your partner or friend →</button>
-        </div>
-      </div>
+      <p class="fineprint link-status" id="share-link-status" role="status"></p>
     </div>
   </dialog>
 
@@ -505,7 +502,7 @@
 <section id="view-scan" class="view" hidden>
   <header class="page-head">
     <h1 id="scan-title">Your compatibility</h1>
-    <p class="muted">Scan someone's PsycheAI code to see how you fit — as a <strong>couple</strong>,
+    <p class="muted">Open someone's PsycheAI link to see how you fit — as a <strong>couple</strong>,
       as <strong>family or friends</strong>, or as <strong>colleagues</strong>. You get a score, the
       five things behind it, what works, what will grate, and what each of you could do
       differently. Free, every time.</p>
@@ -514,39 +511,27 @@
 
   <div id="scan-history"></div>
 
-  <div class="card">
+  <div class="card paste-card">
     <h2>Test your compatibility</h2>
-    <div class="btn-row">
-      <button class="btn" id="start-camera">Use camera</button>
-      <button class="btn btn-ghost" id="upload-qr">Upload QR code</button>
-      <input type="file" id="qr-file" accept="image/*" hidden>
-    </div>
-    <div id="camera-holder" hidden>
-      <video id="scan-video" playsinline muted></video>
-      <canvas id="scan-canvas" hidden></canvas>
-    </div>
-    <p id="scan-status" class="muted"></p>
-    <hr>
-    <label class="field">Or paste their link or code
-      <input type="text" id="paste-input" placeholder="https://…/#p=… or the raw code">
+    <p class="muted">Tapping someone's link opens it here by itself. If it came some other way,
+      paste it.</p>
+    <label class="field">Their link
+      <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
     </label>
-    <button class="btn" id="paste-go">Analyze</button>
+    <button class="btn" id="paste-go">Check compatibility</button>
   </div>
 
-  <div class="qr-panel card">
-    <h2 class="qr-title">My QR code</h2>
-    <div class="qr-holder">
-      <canvas id="qr-canvas-scan" width="300" height="300" aria-label="Your PsycheAI QR code"></canvas>
+  <div class="link-panel card">
+    <h2 class="link-title">Send my link</h2>
+    <p class="muted">The analysis runs on the side of whoever opens the link. Send yours so they can
+      see how compatible you both are, and ask them to send theirs back.</p>
+    <div class="btn-row">
+      <button class="btn" id="share-link-scan" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
+      <button class="btn btn-ghost" id="copy-link-scan" type="button">Copy link</button>
     </div>
-    <div class="qr-actions">
-      <p class="muted">This is yours — share the link or the code so someone can scan you back.</p>
-      <div class="btn-row">
-        <button class="btn" id="copy-link-scan">Copy my link</button>
-        <button class="btn btn-ghost" id="download-qr-scan">Download QR Code</button>
-      </div>
-    </div>
+    <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
   </div>
-  <div id="qr-contents"></div>
+  <div id="link-contents"></div>
 </section>
 
 <!-- ══════════════ report ══════════════ -->
@@ -565,13 +550,28 @@
 
   <div id="report-body"></div>
 
-  <!-- Three actions with icons, in the profile page's style: the download
-       filled, the two ways on outlined. -->
+  <!-- The analysis runs on the side of whoever opened the link, so the other
+       person does not have this report. One press sends them this reader's
+       own link, and they get theirs. -->
+  <div class="card link-panel compat-return no-print" id="compat-return">
+    <h2 class="link-title" id="compat-return-title"></h2>
+    <p class="muted" id="compat-return-text"></p>
+    <div class="btn-row">
+      <button class="btn" id="share-link-report" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
+    </div>
+    <p class="fineprint link-status" id="share-link-report-status" role="status"></p>
+  </div>
+
+  <!-- Four actions with icons, in the profile page's style: the download and
+       the story image filled, the two ways on outlined. The image is for a
+       story, so it carries the address rather than a link. -->
   <div class="cta-row compat-actions no-print">
     <button class="btn" id="export-compat-bottom"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download PDF</span></button>
-    <button class="btn btn-outline" data-nav="scan"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 12h10"/></svg><span class="cta-label">Scan someone else</span></button>
+    <button class="btn" id="share-compat-image" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span class="cta-label">Share result</span></button>
+    <button class="btn btn-outline" data-nav="scan"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 0 0-7.07-7.07L11.5 5.5"/><path d="M14 10a5 5 0 0 0-7.07 0L4.1 12.83a5 5 0 0 0 7.07 7.07l1.33-1.33"/></svg><span class="cta-label">Check someone else</span></button>
     <button class="btn btn-outline" data-nav="profile"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back to my profile</span></button>
   </div>
+  <p class="fineprint link-status compat-share-status no-print" id="compat-share-status" role="status"></p>
 </section>
 
 <!-- ══════════════ about ══════════════ -->
@@ -658,9 +658,11 @@
       US$5. You see the price before you pay.</p>
 
     <h3>How does the compatibility feature work?</h3>
-    <p>Each reader has a QR code summarising their PsycheAI results. The other person scans it,
-      chooses a romantic, family/friends or work basis, and gets a report, free. The QR code carries the
-      data itself — it is not a link to a file on a server.</p>
+    <p>Each reader has a personal link that carries a summary of their PsycheAI results. Send it to
+      someone; once they open it and make their own Psyche Card, they choose a romantic,
+      family/friends or work basis and get a report, free. The link carries the data itself, in the
+      part after the # that a browser never sends to a server — it is not a link to a file on a
+      server.</p>
 
 
     <!-- Written by renderAbout() on every boot: which provider this particular
@@ -721,7 +723,7 @@
      into and step back out of, not somewhere to be, and it must never leave
      the reader wondering whether the report they are reading is theirs. The
      body is filled with the same section HTML a real report renders — the
-     download, delete and QR panels live outside that, so they are
+     download, delete and compatibility-link panels live outside that, so they are
      absent here by construction rather than by hiding them one by one. -->
 <!-- The walkthrough behind "See illustration" in the how-to card. Same
      dialog shape as the sample report — head, scrolling body, one cross —
@@ -1204,7 +1206,7 @@
     <button class="btn btn-ghost" id="mode-cancel" type="button">Cancel</button>
   </div>
   <p class="fineprint">One basis per run — the report covers the one you pick, in full, rather than
-    three at once. Scan again to compare on another.</p>
+    three at once. Paste their link again to compare on another.</p>
 </dialog>
 
 <footer class="footer">
@@ -1260,8 +1262,6 @@
       <span class="ui-label">JSON</span>. Your posts, comments, friends and messages are what’s read.</li>
 </template>
 
-<script src="vendor/qrcode.js"></script>
-<script src="vendor/jsqr.js"></script>
 <script src="zip.js"></script>
 <script src="instagram.js"></script>
 <script src="supplement.js"></script>

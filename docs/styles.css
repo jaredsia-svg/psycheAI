@@ -789,7 +789,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 
-/* A friend's compare invite: good news, so in the accent rather than the
+/* A friend's compatibility invite: good news, so in the accent rather than the
    warning colour every .alert uses. */
 .invite-banner {
   position: relative; margin: 0 0 1.2rem; padding: .9rem 1.1rem; border-radius: 14px;
@@ -1006,25 +1006,18 @@ textarea { resize: vertical; }
 
 /* ---------- profile ---------- */
 
-.qr-panel { display: grid; grid-template-columns: auto 1fr; gap: 0 1.4rem; align-items: start; }
-/* The heading sits above both columns rather than beside the code. */
-.qr-title { grid-column: 1 / -1; margin-bottom: 1rem; }
-.qr-holder { text-align: center; }
-/* The card payload is a few hundred characters, so the code has many more
-   modules than a short URL — it needs the size to stay scannable. */
-/* Backed at 900px and displayed at this size, so module edges stay crisp on a
-   high-DPI screen — the code has to survive being photographed off a phone. */
-/* Any canvas in a QR panel, not just the profile page's — the scan page shows
-   this person's own code too, in a second .qr-holder. */
-.qr-holder canvas { width: 300px; max-width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; background: #fff; }
+/* Sending this person's compatibility link: in the profile page's popout and
+   on the compatibility page. */
+.link-title { margin-bottom: .5rem; }
+.link-panel .btn-row { margin: 1rem 0 0; }
+.link-panel .btn .cta-icon { width: 1.05em; height: 1.05em; margin-right: .45rem; flex: none; }
+.link-panel .btn:has(.cta-icon) { display: inline-flex; align-items: center; }
+.link-status { min-height: 1.2em; margin: .6rem 0 0; }
+.link-status:empty { margin: 0; min-height: 0; }
 .facts { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .3rem .9rem; margin: 0; }
 .facts dt { color: var(--ink-soft); font-size: .88rem; }
 .facts dd { margin: 0; }
 .note { margin: .5rem 0 0; padding: .5rem .9rem; border-left: 3px solid var(--line); color: var(--ink-soft); font-size: .92rem; }
-
-/* ---------- scanning ---------- */
-
-#scan-video { width: 100%; max-height: 60vh; border-radius: 12px; background: #000; margin: .8rem 0; }
 
 /* ---------- report ---------- */
 
@@ -1100,9 +1093,14 @@ textarea { resize: vertical; }
 .talk-list li::before { content: '\201C'; }
 .talk-list li::after { content: '\201D'; }
 /* The actions, the profile page's way: icon and label, equal width on a phone. */
+.compat-share-status { text-align: center; }
+.compat-return { margin-top: 1.4rem; }
+.bonus-actions { align-items: center; }
+.bonus-actions .btn { display: inline-flex; align-items: center; }
+.bonus-actions .cta-icon { width: 1.05em; height: 1.05em; margin-right: .45rem; }
 .compat-actions .btn { display: inline-flex; align-items: center; gap: .45rem; }
 @media (max-width: 540px) {
-  .compat-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+  .compat-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; }
   .compat-actions .btn {
     flex-direction: column; justify-content: flex-start; gap: .35rem; min-width: 0; margin: 0;
     padding: .7rem .35rem .6rem; border-radius: 14px; font-size: .74rem; line-height: 1.2; text-align: center; white-space: normal;
@@ -1606,7 +1604,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    in-flow position for anything that measured it while scrolled, which is
    what the reader actually saw as the page jumping under the dialog. */
 .compat-dialog { width: min(38rem, calc(100vw - 2rem)); }
-.compat-dialog .qr-title { padding-right: 2.2rem; }
+.compat-dialog .link-title { padding-right: 2.2rem; }
 .compat-dialog-close {
   position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;
   border-radius: 50%; border: 1px solid var(--line); background: var(--bg);
@@ -1882,22 +1880,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   }
   .card:last-of-type { border-bottom: 0; }
   .section-card::before { display: none; }
-  .qr-panel { margin-top: 4mm; }
-  /* The compatibility QR code is a popout on screen now, closed by default —
-     but Ctrl+P should still carry it the way it always did, so printing
-     forces it back into the page rather than leaving a gap where it used to
-     be. The UA stylesheet hides a <dialog> without [open] at the element
-     level; #compat-dialog here outranks that on specificity alone, but
-     !important keeps it that way regardless of load order. Restyled with the
-     same divider .card gave every other printed section, since .card itself
-     was dropped from this element on screen to avoid boxing it twice inside
-     the dialog's own border. */
-  #compat-dialog {
-    display: block !important; position: static; width: auto; max-height: none;
-    box-shadow: none; border: 0; border-top: 1.5pt solid var(--accent);
-    border-radius: 0; padding: 3.5mm 0 5mm; margin: 0 0 4mm; background: transparent;
-    color: inherit;
-  }
   .compat-dialog-close { display: none; }
 
   .card-head { gap: .5rem; margin-bottom: 3mm; align-items: center; }
@@ -1918,7 +1900,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   #view-profile, #view-profile * { font-size: 10pt; }
   #view-profile .letterhead-name { font-size: 24pt; }
   #view-profile .letterhead-word { font-size: 13pt; }
-  #view-profile .card-head h2, #view-profile .qr-title { font-size: 14pt; }
+  #view-profile .card-head h2 { font-size: 14pt; }
   #view-profile .essence-noun { font-size: 14pt; }
   /* Not type — a glyph and a letter tile, sized to their boxes. */
   #view-profile .axis-letter { font-size: 11pt; }
@@ -1962,11 +1944,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .points dd { break-before: avoid; page-break-before: avoid; }
   .love-blurb, .card-sub { break-after: avoid; page-break-after: avoid; }
 
-  /* ---- the code ---- */
-
-  .qr-panel { grid-template-columns: auto 1fr; gap: 0 6mm; align-items: center; break-inside: avoid; }
-  .qr-title { grid-column: 1 / -1; }
-  #qr-canvas { width: 150px; max-width: none; }
 }
 
 /* A4 with a generous outer margin, so the letterhead has room to breathe and
@@ -1976,9 +1953,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 /* ---------- responsive ---------- */
 
 @media (max-width: 620px) {
-  .qr-panel { grid-template-columns: 1fr; gap: .9rem; }
-  .qr-holder { justify-self: center; }
-  .qr-title { margin-bottom: 0; }
   .trait-row { grid-template-columns: 1fr 2.5rem; grid-template-areas: "label num" "bar bar"; }
   .trait-label { grid-area: label; }
   .trait-num { grid-area: num; }

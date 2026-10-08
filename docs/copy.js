@@ -135,7 +135,7 @@
   ];
 
   // The orbit mark, exactly as the nav and the printed letterhead draw it. The
-  // PDF strokes these same paths and the QR label's canvas parses them with
+  // PDF strokes these same paths and the share images' canvas parses them with
   // Path2D, so the logo is one shape in four places rather than a drawing that
   // has to be kept in step with a picture. A UI check compares this against the
   // `d` attributes in index.html.
@@ -209,10 +209,9 @@
     // takes text too: the character, then where to get your own.
     // The welcome page's banner for a compare link opened before the reader
     // has a card of their own.
-    inviteTitle: (name) => (name ? name + ' wants' : 'Someone wants') + ' to see how you two compare',
-    inviteText: (days) => 'Make your free Psyche Card and the comparison runs straight after it, also free. ' +
-      'Instagram can take a few hours to email your data, so this invite waits on this device for ' +
-      days + ' days. Come back here when the email arrives.',
+    inviteTitle: (name) => (name || 'Someone') + ' wants to see how compatible you both are',
+    inviteText: (name) => 'Download your Instagram data and make your free Psyche Card. The compatibility ' +
+      'analysis with ' + (name || 'them') + ' runs straight after it, also free.',
     cardShareText: (character) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
       'Find yours free, no questionnaire: https://psycheai.io',
     cardHint: 'Tap to open full screen',
@@ -341,12 +340,36 @@
     // the comment on the wellness schema in lib/prompts.js.
     wellnessCaveat: 'A read of patterns in how you use social media, not of your mental health – it is not a diagnosis and cannot see your circumstances. If anything here weighs on you, talk to a GP or a qualified professional.',
 
-    qr: 'What your QR code contains',
-    qrSub: 'Only this — the compact card the other person’s report is built from.',
-    qrFineprint: 'Plus your Big Five scores and what each one means for you, MBTI and Enneagram, ' +
+    linkContents: 'What your link contains',
+    linkContentsSub: 'Only this — the compact card the other person’s report is built from.',
+    linkContentsFineprint: 'Plus your Big Five scores and what each one means for you, MBTI and Enneagram, ' +
       'values, beliefs, relationship and career strengths and weaknesses with a line on each, ' +
       'your attachment guess and the reasoning under it, your love languages, and your rhythm and ' +
       'energy — all as short phrases.',
+
+    // What "Send my link" puts in the share sheet, or on the clipboard where
+    // there is none. Written in the sender's own voice, since they send it.
+    compatShareText: (url) => 'Let’s see how compatible we are! Make your free Psyche Card and our ' +
+      'compatibility analysis runs straight after, also free: ' + url,
+    compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
+    compatReturnText: (name) => 'The analysis runs on the side of whoever opens the link, so ' + name +
+      ' does not have this report. Send them your link and they get their own, free.',
+    // The roast and compatibility story images, and what goes with them.
+    roastShare: 'Share this roast',
+    roastImageLead: 'I let AI read my Instagram. It said:',
+    roastImageCredit: 'My PsycheAI roast',
+    roastImageFooter: 'Get roasted free · psycheai.io',
+    roastShareText: 'I let AI read my Instagram and it roasted me. Get yours free: https://psycheai.io',
+    compatShareImage: 'Share result',
+    compatImageLead: (mode) => (mode ? mode + ' compatibility' : 'Compatibility'),
+    compatImageFooter: 'Test yours free · psycheai.io',
+    compatImageShared: 'What we share',
+    compatResultShareText: (score) => 'We got ' + score + '/100 on PsycheAI. How compatible are you two? ' +
+      'Free, no questionnaire: https://psycheai.io',
+    storyImageSaved: 'Image saved. Post it to your story.',
+    linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
+    linkCopied: 'Link copied.',
+    linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
     matchWith: 'With',
@@ -935,7 +958,7 @@
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
       compatTitle: 'Compatibility, free',
-      compatBlurb: 'Scan a friend\'s, partner\'s or colleague\'s QR code and see how you two fit — on whichever basis you choose.',
+      compatBlurb: 'Send a friend, partner or colleague your link and see how compatible you both are — on whichever basis you choose.',
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.

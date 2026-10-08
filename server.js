@@ -982,8 +982,8 @@ const CSP = [
   // its own document governed by img-src.
   "style-src 'self'",
   // data: for the SVG the psyche-card image is built from, blob: for every
-  // object URL the app hands to a download link — the PDF, the card image,
-  // the QR code.
+  // object URL the app hands to a download link — the PDF and the share
+  // images.
   "img-src 'self' data: blob:",
   "font-src 'self'",
   // The app's own routes, and Stripe's API for the payment sheet.
@@ -1017,8 +1017,10 @@ function applySecurityHeaders(request, response) {
   // question — an injected script under a strict CSP still inherits whatever
   // the page is permitted to touch.
   //
-  // Two grants, both real: the camera, for scanning a QR code, and the
-  // Payment Request API behind Apple Pay and Google Pay. `payment` names
+  // One grant, and a real one: the Payment Request API behind Apple Pay and
+  // Google Pay. The camera was granted too while compatibility codes were
+  // scanned in the page; they travel as links now, so it is refused like
+  // everything else. `payment` names
   // js.stripe.com as well as self, because the wallet sheet is opened from
   // inside Stripe's own iframe rather than from our page — granting only
   // `self` there would leave the sheet unable to open, which is exactly the
@@ -1032,7 +1034,7 @@ function applySecurityHeaders(request, response) {
     'ambient-light-sensor=()',
     'autoplay=()',
     'battery=()',
-    'camera=(self)',
+    'camera=()',
     'display-capture=()',
     'encrypted-media=()',
     'geolocation=()',

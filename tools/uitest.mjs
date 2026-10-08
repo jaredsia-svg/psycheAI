@@ -1486,9 +1486,9 @@ try {
     }
   }
 
-  // ---- a friend's compare link, opened before they have a card ----
+  // ---- a friend's compatibility link, opened before they have a card ----
   //
-  // The friend who taps a compare link almost never has an Instagram export
+  // The friend who taps a compatibility link almost never has an Instagram export
   // yet, and Instagram takes hours to email one. The invite has to outlive the
   // tab they open it in, greet them by the inviter's name, and be spent on the
   // first card this device makes. It used to sit in sessionStorage, behind an
@@ -1510,12 +1510,14 @@ try {
       await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
       await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
       const first = await banner();
-      check('a compare link opened with no card of your own greets you by the sender\'s name',
-        first.shown && first.welcome && /Ava Tan wants to see how you two compare/.test(first.text) && !first.error,
+      check('a compatibility link opened with no card of your own greets you by the sender\'s name',
+        first.shown && first.welcome && /Ava Tan wants to see how compatible you both are/.test(first.text) && !first.error,
         JSON.stringify(first));
-      check('and says the comparison is free and the invite waits through the export',
-        /free/i.test(first.text) && /few hours/.test(first.text) && /14 days/.test(first.text) && first.hash === '',
-        first.text);
+      check('and says what to do, and that the analysis with them is free and follows on its own',
+        /Download your Instagram data and make your free Psyche Card\. The compatibility analysis with Ava Tan runs straight after it, also free\./
+          .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
+      check('with a way to the steps and no button to throw the invite away',
+        await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-forget').count()) === 0);
 
       // The tab is closed and the friend comes back hours later to a plain
       // address, the way they would from Instagram's email.
@@ -1536,12 +1538,6 @@ try {
       await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
       await invitePage.waitForTimeout(200);
       check('an invite older than fourteen days is dropped rather than shown',
-        !(await banner()).shown && await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null));
-
-      await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
-      await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
-      await invitePage.click('#invite-forget');
-      check('"Forget this invite" removes it from the page and from the device',
         !(await banner()).shown && await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null));
 
       // And spent: the first card this device makes goes straight on to the
@@ -2984,7 +2980,7 @@ try {
     .replace(/\s+/g, ' ').trim();
   check('step four leads with the relationship, not the mechanism',
     /^build better relationships/i.test(stepFour), stepFour);
-  check('step four says how a comparison starts', /scanning their QR code/i.test(stepFour), stepFour);
+  check('step four says how a comparison starts', /sending them your link/i.test(stepFour), stepFour);
   // The card sells relationships rather than reciting the mode labels, but it
   // still has to cover every basis the picker will offer. Binding it to
   // MODE_LABELS means adding a fourth basis fails here — the word for it is
@@ -3267,7 +3263,7 @@ try {
   for (const [what, selector] of [
     ['a download button', '#export-pdf-bottom'],
     ['a delete button', '#delete-profile'],
-    ['the QR compatibility panel', '.qr-panel'],
+    ['the compatibility-link panel', '.link-panel'],
   ]) {
     check('the sample does not offer ' + what,
       (await page.locator('#view-profile ' + selector.split(', ').join(', #view-profile ')).count()) > 0 &&
@@ -4563,9 +4559,9 @@ try {
     }));
   // Three deliberate omissions, each for its own reason — the studio name
   // invites checking the costume, attachment is the most intimate line in the
-  // report and this is the most shareable surface, and the QR is redundant on
-  // the reader's own page where one already sits below.
-  check('it drops the franchise, the attachment style and the QR code',
+  // report and this is the most shareable surface, and the card carries no
+  // code of any kind: compatibility travels as a link.
+  check('it drops the franchise and the attachment style, and draws no code',
     !/Marvel|Pixar|Disney/i.test(cardText) && !/attachment/i.test(cardText) &&
     (await page.locator('#psyche-card canvas').count()) === 0,
     cardText.replace(/\s+/g, ' ').slice(0, 160));
@@ -4872,7 +4868,7 @@ try {
     await page.evaluate(() =>
       /gradient/.test(getComputedStyle(document.querySelector('#test-compat-open')).backgroundImage)));
 
-  // The QR panel is a popout now, opened from beside the download button —
+  // The link panel is a popout, opened from beside the download button —
   // everything below reads text or geometry from inside it, so the dialog has
   // to actually be open first: a closed <dialog> is display:none, and
   // innerText/getBoundingClientRect both read as empty/zero through that.
@@ -4891,19 +4887,46 @@ try {
   check('the compatibility popout opens', await page.locator('#compat-dialog').isVisible());
   await shot('2b-compat-dialog');
   check('the share panel no longer explains the storage model',
-    !/There is no account and no database/.test(await page.locator('#view-profile .qr-actions').innerText()));
-  check('the share heading sits above the QR code, not beside it', await page.evaluate(() => {
-    const title = document.querySelector('#view-profile .qr-title');
-    const code = document.querySelector('#qr-canvas');
-    return title.getBoundingClientRect().bottom <= code.getBoundingClientRect().top;
-  }));
-  check('the caption under the QR code is gone',
-    (await page.locator('.qr-caption').count()) === 0);
+    !/There is no account and no database/.test(await page.locator('#compat-dialog').innerText()));
+  // Compatibility travels as a link only. The QR code it also used to be was
+  // dense enough to need a camera at close range and could not be read off a
+  // screenshot, and all it ever did was open this same link.
+  check('there is no QR code any more, only the link to send or copy',
+    (await page.locator('#compat-dialog canvas').count()) === 0 &&
+      (await page.locator('#download-qr, #qr-canvas').count()) === 0 &&
+      await page.locator('#share-link').isVisible() && await page.locator('#copy-link').isVisible());
   check('the share panel is framed as testing compatibility',
-    (await page.locator('#view-profile .qr-title').innerText()) === 'Test your compatibility',
-    await page.locator('#view-profile .qr-title').innerText());
-  check('it says what scanning is for',
-    /how compatible you both are/.test(await page.locator('#view-profile .qr-actions').innerText()));
+    (await page.locator('#compat-dialog .link-title').innerText()) === 'Test your compatibility',
+    await page.locator('#compat-dialog .link-title').innerText());
+  check('it says what the link is for',
+    /how compatible you both are/.test(await page.locator('#compat-dialog').innerText()));
+  const myLink = await page.evaluate(() =>
+    location.origin + location.pathname + '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
+  // With a share sheet, the message goes to it: written in the sender's own
+  // voice, and carrying the link.
+  await page.evaluate(() => {
+    window.__shared = null;
+    navigator.share = data => { window.__shared = data; return Promise.resolve(); };
+  });
+  await page.click('#share-link');
+  const sharedData = await page.evaluate(() => window.__shared);
+  check('"Send my link" opens the share sheet with a ready-written message carrying the link',
+    Boolean(sharedData) && /^Let’s see how compatible we are! Make your free Psyche Card/.test(sharedData.text) &&
+      sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
+  // Without one, as on most desktops, the same message goes to the clipboard.
+  await page.evaluate(() => {
+    navigator.share = undefined;
+    window.__copied = null;
+    navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
+  });
+  await page.click('#share-link');
+  check('and with no share sheet, the same message is copied and the page says so',
+    (await page.evaluate(() => window.__copied)) === sharedData.text &&
+      /copied/i.test(await page.locator('#share-link-status').innerText()),
+    await page.locator('#share-link-status').innerText());
+  await page.click('#copy-link');
+  check('"Copy link" copies the bare link',
+    (await page.evaluate(() => window.__copied)) === myLink);
   await page.click('#compat-dialog-close');
   check('the compatibility popout closes', !(await page.locator('#compat-dialog').isVisible()));
   check('closing it leaves the reader where they were, not snapped back to the top',
@@ -5241,6 +5264,25 @@ try {
   await page.click('#profile-body .bonus-reveal');
   check('opening it a second time reveals the writing again, proving the gate is not a one-shot',
     /uncharitable reading/i.test(await page.locator('#profile-body .bonus-card').innerText()));
+  // Once read, the roast can go out as a story image: its opening lines in a
+  // panel, at 1080 x 1920, with the address on it and in the caption.
+  const roastImage = await page.evaluate(async () => {
+    window.__storyShare = null;
+    const before = { canShare: navigator.canShare, share: navigator.share };
+    navigator.canShare = () => true;
+    navigator.share = data => { window.__storyShare = data; return Promise.resolve(); };
+    document.querySelector('#profile-body .bonus-share').click();
+    for (let i = 0; i < 50 && !window.__storyShare; i++) await new Promise(r => setTimeout(r, 100));
+    navigator.canShare = before.canShare;
+    navigator.share = before.share;
+    const data = window.__storyShare;
+    if (!data) return null;
+    const bitmap = await createImageBitmap(data.files[0]);
+    return { width: bitmap.width, height: bitmap.height, type: data.files[0].type, text: data.text };
+  });
+  check('"Share this roast" hands the share sheet a 1080 x 1920 image and a caption with the address',
+    Boolean(roastImage) && roastImage.width === 1080 && roastImage.height === 1920 && roastImage.type === 'image/png' &&
+      /roasted me/.test(roastImage.text) && /https:\/\/psycheai\.io/.test(roastImage.text), JSON.stringify(roastImage));
   await page.click('#profile-body .bonus-hide');
 
   await clickClear(page, '#profile-body .premium-unlock');
@@ -6965,7 +7007,7 @@ try {
       pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
     };
   }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'In relationships', 'At work',
-    'Your digital footprint', 'What your QR code contains', 'Your matches',
+    'Your digital footprint', 'What your link contains', 'Your matches',
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
@@ -7080,14 +7122,7 @@ try {
   check('navigation is dropped when printing', !(await page.locator('.nav').isVisible()));
   check('the export buttons are not printed', !(await page.locator('#export-pdf-bottom').isVisible()));
   check('the report itself is printed', await page.locator('#profile-body').isVisible());
-  check('the QR code is printed', await page.locator('#qr-canvas').isVisible());
-  check('the QR code is sized for paper rather than for screen',
-    (await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width)) === '150px',
-    await page.evaluate(() => getComputedStyle(document.querySelector('#qr-canvas')).width));
-  check('the QR code stays square on paper', await page.evaluate(() => {
-    const box = document.querySelector('#qr-canvas').getBoundingClientRect();
-    return Math.abs(box.width - box.height) < 2;
-  }));
+  check('the compatibility-link popout is not printed', !(await page.locator('#compat-dialog').isVisible()));
   check('the page is not printed on a dark background', await page.evaluate(() => {
     const bg = getComputedStyle(document.body).backgroundColor;
     return bg === 'rgb(255, 255, 255)';
@@ -7148,7 +7183,7 @@ try {
   // parts. Headings and the two glyphs are the deliberate exceptions.
   const sizes = await page.evaluate(() => {
     const allowed = new Set(['letterhead-name', 'letterhead-word', 'essence-noun',
-      'axis-letter', 'essence-icon', 'love-icon', 'qr-title']);
+      'axis-letter', 'essence-icon', 'love-icon']);
     const odd = {};
     for (const node of document.querySelectorAll('#view-profile *')) {
       if (!node.textContent.trim() || node.children.length) continue;
@@ -7168,23 +7203,12 @@ try {
   check('relationship and career use point lists', (await page.locator('.points').count()) >= 4);
   check('no raw undefined in the profile', !/\bundefined\b/.test(profileText));
 
-  // ---- QR ----
-  // The character-count fineprint under the QR code is gone from the popout
-  // now, but the underlying scannability guarantee it used to report on is
-  // still real and still worth holding — read straight from the stored
-  // profile rather than from UI copy that no longer exists.
+  // ---- the link ----
+  // Read straight from the stored profile: the payload that rides in the
+  // compatibility link stays short enough to paste through a chat app intact.
   const payloadLength = await page.evaluate(() =>
     JSON.parse(localStorage.getItem('psycheai_profile')).payload.length);
-  check('QR payload is small enough to scan', payloadLength > 0 && payloadLength < 1800, payloadLength);
-
-  const darkPixels = await page.evaluate(() => {
-    const canvas = document.querySelector('#qr-canvas');
-    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-    let dark = 0;
-    for (let i = 0; i < data.length; i += 4) if (data[i] < 128) dark++;
-    return dark;
-  });
-  check('QR code actually rendered', darkPixels > 500, darkPixels + ' dark pixels');
+  check('the link payload stays within its budget', payloadLength > 0 && payloadLength < 1800, payloadLength);
 
   // ---- the digest that was sent ----
   const digest = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_digest')));
@@ -9339,9 +9363,33 @@ try {
       const a = up.getBoundingClientRect(), b = risk.getBoundingClientRect();
       return Math.abs(a.top - b.top) < 2 && a.right <= b.left && b.bottom < dims.getBoundingClientRect().top;
     }));
-  check('the actions carry icons, the download first',
-    (await page.locator('#view-report .compat-actions .btn .cta-icon').count()) === 3 &&
-      (await page.locator('#view-report .compat-actions .btn').first().getAttribute('id')) === 'export-compat-bottom');
+  check('the actions carry icons, the download first and the story image beside it',
+    (await page.locator('#view-report .compat-actions .btn .cta-icon').count()) === 4 &&
+      (await page.locator('#view-report .compat-actions .btn').first().getAttribute('id')) === 'export-compat-bottom' &&
+      (await page.locator('#view-report .compat-actions .btn').nth(1).getAttribute('id')) === 'share-compat-image');
+  check('and no button talks about scanning', !/scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
+  // The result as a story image: drawn at 1080 x 1920, carrying the score,
+  // both names and the address. Read off the canvas the button would share.
+  const compatImage = await page.evaluate(async () => {
+    window.__storyShare = null;
+    navigator.canShare = () => true;
+    navigator.share = data => { window.__storyShare = data; return Promise.resolve(); };
+    document.querySelector('#share-compat-image').click();
+    for (let i = 0; i < 50 && !window.__storyShare; i++) await new Promise(r => setTimeout(r, 100));
+    const data = window.__storyShare;
+    if (!data) return null;
+    const bitmap = await createImageBitmap(data.files[0]);
+    return { name: data.files[0].name, type: data.files[0].type, width: bitmap.width, height: bitmap.height, text: data.text };
+  });
+  check('"Share result" hands the share sheet a 1080 x 1920 story image with a line carrying the address',
+    Boolean(compatImage) && compatImage.width === 1080 && compatImage.height === 1920 &&
+      compatImage.type === 'image/png' && /\/100 on PsycheAI/.test(compatImage.text) &&
+      /https:\/\/psycheai\.io/.test(compatImage.text), JSON.stringify(compatImage));
+  check('the report offers to send the other person this reader\'s link, so they get theirs',
+    await page.locator('#compat-return').isVisible() &&
+      /Want Jordan to see it too\?/.test(await page.locator('#compat-return').innerText()) &&
+      /does not have this report/.test(await page.locator('#compat-return').innerText()),
+    await page.locator('#compat-return').innerText());
   check('the dimension scores are readable numbers, not empty',
     (await page.locator('#report-body .section-card .trait-num').allInnerTexts())
       .every(t => /^\d+$/.test(t.trim())));
@@ -9495,7 +9543,7 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
 
-  check('the compatibility answer says what the QR code actually is',
+  check('the compatibility answer says what the link actually is',
     /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
     /family\/friends/i.test(about) &&
     /not a link to a file on a server/i.test(about));
@@ -9602,328 +9650,30 @@ try {
   await page.click('#paste-go');
   check('a foreign code is rejected cleanly', await page.locator('#scan-alert').isVisible());
 
-  // ---- the code has to actually be scannable ----
-  //
-  // The card is dense enough that pixels-per-module is the whole ballgame: at
-  // the old 300px backing a 640x480 camera frame saw about 1.5px per module
-  // and never decoded. Render the real code, shrink it the way a lens would,
-  // and check the decoder still reads it.
-  const scanTest = await page.evaluate(async () => {
-    const payload = JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    const url = location.origin + location.pathname + '#p=' + payload;
-
-    const source = document.createElement('canvas');
-    await new Promise((resolve, reject) => {
-      window.QRCode.toCanvas(source, url,
-        { width: 900, margin: 3, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' } },
-        error => (error ? reject(error) : resolve()));
-    });
-
-    // Modules across, taken from the encoder rather than counted off the
-    // pixels. The old version of this scanned the middle row for its shortest
-    // run of one colour and divided the width by it, which is only correct when
-    // that row happens to contain an isolated single module and nothing gets
-    // antialiased — a one-pixel transitional run halves the estimate and the
-    // check fails on a code that is bit-for-bit the size it always was. It fired
-    // exactly that way on a payload whose length had not changed at all.
-    const modules = window.QRCode.create(url, { errorCorrectionLevel: 'L' }).modules.size;
-
-    // Redraw at a series of widths and see where decoding gives out.
-    const readAt = width => {
-      const scaled = document.createElement('canvas');
-      scaled.width = width;
-      scaled.height = Math.round(source.height * (width / source.width));
-      const c = scaled.getContext('2d', { willReadFrequently: true });
-      c.drawImage(source, 0, 0, scaled.width, scaled.height);
-      const px = c.getImageData(0, 0, scaled.width, scaled.height);
-      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-      return Boolean(hit && hit.data === url);
-    };
-
-    // Closer to what actually happens: the code sits in the middle of a camera
-    // frame of a given resolution, filling a bit over half its height. At 480p
-    // — a common default stream — the old 300px backing did not decode.
-    const inFrame = frameHeight => {
-      const frameWidth = Math.round(frameHeight * 4 / 3);
-      const codePx = Math.round(frameHeight * 0.55);
-      const frame = document.createElement('canvas');
-      frame.width = frameWidth;
-      frame.height = frameHeight;
-      const c = frame.getContext('2d', { willReadFrequently: true });
-      c.fillStyle = '#888888';
-      c.fillRect(0, 0, frameWidth, frameHeight);
-      c.drawImage(source, (frameWidth - codePx) / 2, (frameHeight - codePx) / 2, codePx, codePx);
-      const px = c.getImageData(0, 0, frameWidth, frameHeight);
-      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-      return Boolean(hit && hit.data === url);
-    };
-
-    return {
-      modules, payloadLen: payload.length,
-      at900: readAt(900), at450: readAt(450), at300: readAt(300),
-      frame480: inFrame(480), frame720: inFrame(720),
-    };
-  });
-
-  // Exact, from the encoder — the point is that the code has not silently grown
-  // a version or two, and a version is four modules, so the band is roughly
-  // three either side of the 89 this payload actually produces. The payload
-  // length rides along in the detail because it is the thing that decides the
-  // version: if this ever fails, that number says at once whether the card grew
-  // or whether something about the encoding changed underneath it.
-  check('the QR stays around ninety modules across',
-    scanTest.modules >= 77 && scanTest.modules <= 101,
-    scanTest.modules + ' modules, payload ' + scanTest.payloadLen + ' chars');
-  check('the code decodes at full backing size', scanTest.at900, JSON.stringify(scanTest));
-  check('the code still decodes at half size', scanTest.at450, JSON.stringify(scanTest));
-  check('the code survives being shrunk to 300px', scanTest.at300, JSON.stringify(scanTest));
-  check('the code reads inside a 480p camera frame', scanTest.frame480, JSON.stringify(scanTest));
-  check('the code reads inside a 720p camera frame', scanTest.frame720, JSON.stringify(scanTest));
-
-  // The camera has to ask for resolution rather than take the default stream.
-  check('the camera asks for a high-resolution stream', await page.evaluate(async () => {
-    const source = await fetch('app.js').then(r => r.text());
-    return /width: \{ ideal: 1920 \}/.test(source) && /getUserMedia\(\{ video: true \}\)/.test(source);
-  }));
-  check('a still is decoded at more than one size, then tiled', await page.evaluate(async () => {
-    const source = await fetch('app.js').then(r => r.text());
-    return /\[1600, 1100, 2400, 800, 600, longest\]/.test(source) &&
-      /Overlapping thirds/.test(source);
-  }));
-  // qrcode.js rounds the backing down to a whole number of module pixels, so
-  // 900 comes back as 899 — the assertion is "roughly 3x the display size".
-  check('the rendered canvas is backed well above its display size', await page.evaluate(() => {
-    const canvas = document.querySelector('#qr-canvas');
-    return canvas.width >= 850 && canvas.width >= parseFloat(getComputedStyle(canvas).width) * 2.5;
-  }), await page.evaluate(() => {
-    const canvas = document.querySelector('#qr-canvas');
-    return canvas.width + ' backing / ' + getComputedStyle(canvas).width + ' display';
-  }));
-  check('the QR generator no longer pins its own display size', await page.evaluate(() =>
-    !document.querySelector('#qr-canvas').style.width));
-
-  // ---- the downloaded image ----
-  //
-  // The exported file is what someone else actually scans, so take the real
-  // download and decode it rather than trusting the encoder.
-  await page.click('[data-nav="profile"]');
-  await page.waitForSelector('#view-profile:not([hidden])');
-  await openAllSections(page);
-  await page.click('#test-compat-open');
-  const download = await Promise.all([
-    page.waitForEvent('download', { timeout: 20000 }),
-    page.click('#download-qr'),
-  ]).then(([event]) => event);
-
-  check('the download is offered as a .jpg', download.suggestedFilename().endsWith('.jpg'),
-    download.suggestedFilename());
-
-  const savedTo = join(shotDir, 'downloaded-code.jpg');
-  mkdirSync(shotDir, { recursive: true });
-  await download.saveAs(savedTo);
-  const saved = readFileSync(savedTo);
-  check('the saved file really is a JPEG',
-    saved[0] === 0xff && saved[1] === 0xd8 && saved[2] === 0xff,
-    saved.subarray(0, 3).toString('hex'));
-
-  const exported = await page.evaluate(async bytes => {
-    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const c = canvas.getContext('2d', { willReadFrequently: true });
-    c.drawImage(bitmap, 0, 0);
-
-    const url = location.origin + location.pathname + '#p=' +
-      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    const readAt = width => {
-      const scaled = document.createElement('canvas');
-      scaled.width = width;
-      scaled.height = Math.round(bitmap.height * (width / bitmap.width));
-      const ctx = scaled.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(canvas, 0, 0, scaled.width, scaled.height);
-      const px = ctx.getImageData(0, 0, scaled.width, scaled.height);
-      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-      return Boolean(hit && hit.data === url);
-    };
-    return { width: bitmap.width, native: readAt(bitmap.width), at600: readAt(600), at400: readAt(400) };
-  }, Array.from(saved));
-
-  check('the exported code is rendered larger than the on-screen one',
-    exported.width >= 1500, exported.width + 'px');
-  check('the exported code decodes at full size', exported.native, JSON.stringify(exported));
-  check('the exported code still decodes viewed at 600px', exported.at600, JSON.stringify(exported));
-  check('the exported code still decodes viewed at 400px', exported.at400, JSON.stringify(exported));
-
-  // ---- the label under the downloaded code ----
-  //
-  // A file that gets saved or forwarded loses all context, so a caption travels
-  // with it: the brand mark, "PsycheAI", and the person's name, on a strip
-  // appended below the code. It is a rasterised JPEG, so the checks are pixel
-  // measurements against the file that was actually saved, not against markup.
-  const label = await page.evaluate(async bytes => {
-    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(bitmap, 0, 0);
-
-    // The QR itself is square, so the label strip is whatever height beyond
-    // that square was added.
-    const stripHeight = bitmap.height - bitmap.width;
-    const isDarkish = (x, y) => {
-      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
-      return (r + g + b) / 3 < 235;
-    };
-    const rowHasInk = y => {
-      for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, y)) return true;
-      return false;
-    };
-    // A margin near each long edge of the strip that ought to stay blank,
-    // proving the shrink-to-fit logic kept the name off the border.
-    const marginHasInk = y => {
-      for (let x = 0; x < 30; x++) if (isDarkish(x, y)) return true;
-      for (let x = bitmap.width - 30; x < bitmap.width; x++) if (isDarkish(x, y)) return true;
-      return false;
-    };
-
-    const dividerY = Math.round(bitmap.width + stripHeight * 0.11);
-    const wordmarkY = Math.round(bitmap.width + stripHeight * 0.40);
-    const nameY = Math.round(bitmap.width + stripHeight * 0.79);
-
-    return {
-      width: bitmap.width, height: bitmap.height, stripHeight,
-      dividerHasInk: rowHasInk(dividerY),
-      wordmarkRowHasInk: rowHasInk(wordmarkY),
-      nameRowHasInk: rowHasInk(nameY),
-      nameRowMarginClear: !marginHasInk(nameY),
-      qrRowStillBlackAndWhite: (() => {
-        // Sanity check the sampling itself: a row inside the QR should be a mix
-        // of black and white, not the near-white a broken measurement would see.
-        const y = Math.round(bitmap.width * 0.5);
-        let dark = 0;
-        for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, y)) dark++;
-        return dark > 20;
-      })(),
-    };
-  }, Array.from(saved));
-
-  check('a label strip is appended below the QR, not drawn over it',
-    label.stripHeight > 150 && label.stripHeight < 350, JSON.stringify(label));
-  check('sampling the QR itself finds real modules, so the method is sound',
-    label.qrRowStillBlackAndWhite, JSON.stringify(label));
-  check('there is a divider between the code and the label',
-    label.dividerHasInk, JSON.stringify(label));
-  check('the brand mark and wordmark are drawn in the label',
-    label.wordmarkRowHasInk, JSON.stringify(label));
-  check('the person\'s name is drawn in the label',
-    label.nameRowHasInk, JSON.stringify(label));
-  check('the name stays clear of the strip\'s edges',
-    label.nameRowMarginClear, JSON.stringify(label));
-
-  // Card.shape caps a name at 24 characters, but downloadMyQr reads
-  // profile.card.name as stored, uncapped — a profile saved under an older
-  // schema, or edited by hand, could carry something longer. At the label's
-  // starting size a name this long measures past 1900px against a 1440px
-  // budget, so this is a real overflow, not a token one: confirms the label
-  // shrinks to fit rather than running off the strip. The mutation is undone
-  // afterward and the page reloaded again, so nothing later in the suite
-  // inherits this fake name.
-  const originalProfileJson = await page.evaluate(() => localStorage.getItem('psycheai_profile'));
-  await page.evaluate(() => {
-    const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
-    stored.card.name = 'Maximilian Alexander Wentworth-Blackwood the Third of Somewhere';
-    localStorage.setItem('psycheai_profile', JSON.stringify(stored));
-  });
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
-  await openAllSections(page);
-  await page.click('#test-compat-open');
-  const [longDownload] = await Promise.all([
-    page.waitForEvent('download', { timeout: 20000 }),
-    page.click('#download-qr'),
-  ]);
-  const longPath = join(shotDir, 'downloaded-code-long-name.jpg');
-  await longDownload.saveAs(longPath);
-  const longNameLabel = await page.evaluate(async raw => {
-    const blob = new Blob([new Uint8Array(raw)], { type: 'image/jpeg' });
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(bitmap, 0, 0);
-    const stripHeight = bitmap.height - bitmap.width;
-    const isDarkish = (x, y) => {
-      const [r, g, b] = ctx.getImageData(x, y, 1, 1).data;
-      return (r + g + b) / 3 < 235;
-    };
-    const marginHasInk = y => {
-      for (let x = 0; x < 20; x++) if (isDarkish(x, y)) return true;
-      for (let x = bitmap.width - 20; x < bitmap.width; x++) if (isDarkish(x, y)) return true;
-      return false;
-    };
-    const nameY = Math.round(bitmap.width + stripHeight * 0.79);
-    let dark = 0;
-    for (let x = 0; x < bitmap.width; x += 4) if (isDarkish(x, nameY)) dark++;
-    return { hasInk: dark > 5, marginClear: !marginHasInk(nameY) };
-  }, Array.from(readFileSync(longPath)));
-
-  check('a name at the length cap still draws inside the strip',
-    longNameLabel.hasInk, JSON.stringify(longNameLabel));
-  check('a name at the length cap still shrinks clear of the edges',
-    longNameLabel.marginClear, JSON.stringify(longNameLabel));
-
-  await page.evaluate(json => localStorage.setItem('psycheai_profile', json), originalProfileJson);
-  await page.reload({ waitUntil: 'load' });
-  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
-  await openAllSections(page);
-
-  // The round trip that was actually broken: download the code, then upload
-  // that exact file back through the real handler. Decoding the bytes in the
-  // page was not enough — it skipped the handler, where the bug lived.
-  await page.click('[data-nav="scan"]');
-  await page.waitForSelector('#view-scan:not([hidden])');
-  await page.setInputFiles('#qr-file', { name: 'psycheai.jpg', mimeType: 'image/jpeg', buffer: saved });
-  const roundTrip = await Promise.race([
-    page.waitForSelector('#mode-dialog[open]', { timeout: 30000 }).then(() => 'read'),
-    page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 })
-      .then(() => page.locator('#scan-alert').innerText()),
-  ]).catch(() => 'timed out');
-  check('the downloaded file uploads and reads straight back',
-    roundTrip === 'read', String(roundTrip).slice(0, 110));
-  if (roundTrip === 'read') {
-    await page.click('#mode-cancel');
-    await page.waitForSelector('#mode-dialog', { state: 'hidden' });
-  }
-
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
   check('the compatibility page is titled for whoever this device belongs to',
     (await page.locator('#scan-title').innerText()) === 'Ale\u00e7\u2019s Compatibility',
     await page.locator('#scan-title').innerText());
-  check('the intro names all three things a code can be compared on',
+  check('the intro names all three things a link can be compared on',
     /couple/i.test(scanText) && /family or friends/i.test(scanText) && /colleagues/i.test(scanText),
     scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
     /score/i.test(scanText) && /what will grate/i.test(scanText), scanText.slice(0, 500));
-  check('the scanning box says what it is for', await page.evaluate(() => {
+  check('the paste box says what it is for', await page.evaluate(() => {
     const box = [...document.querySelectorAll('#view-scan .card')]
       .find(card => card.querySelector('#paste-go'));
     const heading = box && box.querySelector('h2');
     return Boolean(heading) && heading.textContent.trim() === 'Test your compatibility';
   }));
-  check('the analyse button says what it does',
-    (await page.locator('#paste-go').innerText()) === 'Analyze',
+  check('the button says what it does',
+    (await page.locator('#paste-go').innerText()) === 'Check compatibility',
     await page.locator('#paste-go').innerText());
-  check('the camera and upload buttons are short, not instructions',
-    (await page.locator('#start-camera').innerText()) === 'Use camera' &&
-    (await page.locator('#upload-qr').innerText()) === 'Upload QR code',
-    (await page.locator('#start-camera').innerText()) + ' | ' + (await page.locator('#upload-qr').innerText()));
-  check('the how-to sentence under the scanning box is gone',
+  check('no camera, no picture upload, no code: only a link to paste',
+    (await page.locator('#start-camera, #upload-qr, #qr-file, #scan-video, #view-scan canvas').count()) === 0 &&
+      /^https:\/\/psycheai\.io\/#p=/.test(await page.locator('#paste-input').getAttribute('placeholder')) &&
+      !/scan/i.test(scanText.replace(/Your compatibility results/, '')));
+  check('the how-to sentence under the paste box is gone',
     !/fill the frame with it/.test(scanText) && !/pasting the\s+link is always the sure thing/.test(scanText),
     scanText.slice(0, 500));
   check('the top intro is the short version, not the old two-paragraph one',
@@ -9932,7 +9682,7 @@ try {
 
   // Past results come before the box that makes new ones: someone returning to
   // this page is far more often looking for a report they already ran.
-  check('past results sit above the scanning box', await page.evaluate(() => {
+  check('past results sit above the paste box', await page.evaluate(() => {
     const history = document.querySelector('#scan-history');
     const box = [...document.querySelectorAll('#view-scan .card')]
       .find(card => card.querySelector('#paste-go'));
@@ -9941,123 +9691,67 @@ try {
   }));
   check('and are rendered, not just positioned',
     /Your compatibility results/.test(scanText), scanText.slice(0, 400));
-  check('past results still sit above the scanning box on screen', await page.evaluate(() => {
+  check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
     const box = [...document.querySelectorAll('#view-scan .card')]
       .find(card => card.querySelector('#paste-go')).getBoundingClientRect();
     return history.bottom <= box.top + 1;
   }));
 
-  // ---- this person's own code, from the scan page ----
+  // ---- this person's own link, from the compatibility page ----
   //
-  // Someone who came here to scan someone else's code is the person most
-  // likely to be asked "what's yours?" in the same conversation, so the scan
-  // page carries a second copy of the code and its two actions — the same
-  // panel the profile page uses, reused rather than rebuilt.
-  check('the scan page has its own QR panel', await page.locator('#view-scan .qr-panel').count() === 1);
-  check('it is titled for what it is',
-    (await page.locator('#view-scan .qr-title').innerText()) === 'My QR code',
-    await page.locator('#view-scan .qr-title').innerText());
-  check('the code sits on the left of its two buttons', await page.evaluate(() => {
-    const code = document.querySelector('#qr-canvas-scan').getBoundingClientRect();
-    const actions = document.querySelector('#view-scan .qr-actions').getBoundingClientRect();
-    return code.right <= actions.left;
-  }));
-  // Being left of the buttons is necessary but not sufficient: a canvas sized
-  // by its 900px backing store rather than the page's display rule still sits
-  // "on the left", just enormous, and pushes the whole card wider than the
-  // viewport. The backing/display split is the same one #qr-canvas already
-  // relies on — this is that same CSS rule reaching the second canvas.
-  check('the scan page\'s code is displayed at the same size as the profile page\'s',
-    await page.evaluate(() =>
-      getComputedStyle(document.querySelector('#qr-canvas-scan')).width ===
-      getComputedStyle(document.querySelector('#qr-canvas')).width),
-    await page.evaluate(() => ({
-      scan: getComputedStyle(document.querySelector('#qr-canvas-scan')).width,
-      profile: getComputedStyle(document.querySelector('#qr-canvas')).width,
-    })).then(JSON.stringify));
-  check('the scan page\'s panel does not overflow the viewport',
-    await page.evaluate(() =>
-      document.querySelector('#view-scan .qr-panel').getBoundingClientRect().right <= window.innerWidth + 1));
-
-  const scanQrMatches = await page.evaluate(async () => {
-    const canvas = document.querySelector('#qr-canvas-scan');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const px = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-    const url = location.origin + location.pathname + '#p=' +
-      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    return Boolean(hit) && hit.data === url;
-  });
-  check('the scan page draws this person\'s actual code, not a placeholder',
-    scanQrMatches);
-
-  // Copying, from the scan page's own button.
+  // Whoever opened someone's link is the person most likely to be asked
+  // "what's yours?" in the same conversation, so the page carries the same
+  // two actions as the profile page's popout.
+  check('the compatibility page has its own send-my-link panel',
+    (await page.locator('#view-scan .link-panel').count()) === 1 &&
+      (await page.locator('#view-scan .link-title').innerText()) === 'Send my link',
+    await page.locator('#view-scan .link-title').innerText());
+  check('and it says the analysis runs on the side of whoever opens it',
+    /runs on the side of whoever opens the link/.test(await page.locator('#view-scan .link-panel').innerText()));
+  const ownLink = await page.evaluate(() =>
+    location.origin + location.pathname + '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
   await page.evaluate(() => {
+    navigator.share = undefined;
     window.__copied = null;
     navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
   });
   await page.click('#copy-link-scan');
-  const copiedFromScan = await page.evaluate(() => window.__copied);
-  const expectedLink = await page.evaluate(() =>
-    location.origin + location.pathname + '#p=' +
-    JSON.parse(localStorage.getItem('psycheai_profile')).payload);
-  check('"Copy my link" on the scan page copies this person\'s actual link',
-    copiedFromScan === expectedLink, JSON.stringify({ copiedFromScan, expectedLink }));
+  check('"Copy link" on the compatibility page copies this person\'s actual link',
+    (await page.evaluate(() => window.__copied)) === ownLink);
   check('the button confirms the copy', (await page.locator('#copy-link-scan').innerText()) === 'Copied ✓',
     await page.locator('#copy-link-scan').innerText());
+  await page.click('#share-link-scan');
+  check('"Send my link" there sends the same ready-written message',
+    /^Let’s see how compatible we are!/.test(await page.evaluate(() => window.__copied)) &&
+      (await page.evaluate(() => window.__copied)).endsWith(ownLink) &&
+      /copied/i.test(await page.locator('#share-link-scan-status').innerText()));
+  check('the panel does not overflow the viewport',
+    await page.evaluate(() =>
+      document.querySelector('#view-scan .link-panel').getBoundingClientRect().right <= window.innerWidth + 1));
 
-  // Downloading, from the scan page's own button — the same labelled export,
-  // reached a second way.
-  const [scanDownload] = await Promise.all([
-    page.waitForEvent('download', { timeout: 20000 }),
-    page.click('#download-qr-scan'),
-  ]);
-  check('the scan page\'s download button offers the same kind of file',
-    scanDownload.suggestedFilename().endsWith('.jpg'), scanDownload.suggestedFilename());
-  const scanSavedTo = join(shotDir, 'downloaded-code-from-scan.jpg');
-  await scanDownload.saveAs(scanSavedTo);
-  const scanSaved = readFileSync(scanSavedTo);
-  const scanExportReads = await page.evaluate(async bytes => {
-    const blob = new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
-    const bitmap = await createImageBitmap(blob);
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(bitmap, 0, 0);
-    const px = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-    const url = location.origin + location.pathname + '#p=' +
-      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    return { taller: bitmap.height > bitmap.width, reads: Boolean(hit) && hit.data === url };
-  }, Array.from(scanSaved));
-  check('the file downloaded from the scan page is labelled and reads back',
-    scanExportReads.taller && scanExportReads.reads, JSON.stringify(scanExportReads));
-
-  // "What your QR code contains" used to live on the profile page; it moved
-  // here, since it is about the code someone is looking at or about to send
-  // from this page, not about the report itself.
-  check('the QR-contents section is on the scan page',
-    (await page.locator('#qr-contents .card-head h2').innerText()).trim() === 'What your QR code contains',
-    await page.locator('#qr-contents .card-head h2').innerText());
+  // "What your link contains": about the link someone is about to send from
+  // this page, not about the report itself.
+  check('the link-contents section is on the compatibility page',
+    (await page.locator('#link-contents .card-head h2').innerText()).trim() === 'What your link contains',
+    await page.locator('#link-contents .card-head h2').innerText());
   check('it explains only the card is shared, not the full report',
-    /the compact card/i.test(await page.locator('#qr-contents .card-sub').innerText()));
-  check('it shows the card headline and summary that are actually in the code',
+    /the compact card/i.test(await page.locator('#link-contents .card-sub').innerText()));
+  check('it shows the card headline and summary that are actually in the link',
     await page.evaluate(() => {
       const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
-      const text = document.querySelector('#qr-contents').innerText;
+      const text = document.querySelector('#link-contents').innerText;
       return text.includes(card.headline) && text.includes(card.summary);
     }));
   check('it lists the card\'s interests as tags',
-    (await page.locator('#qr-contents .tag').count()) >= 1);
-  check('it sits below the QR panel, not above it', await page.evaluate(() => {
-    const panel = document.querySelector('#view-scan .qr-panel').getBoundingClientRect();
-    const contents = document.querySelector('#qr-contents').getBoundingClientRect();
+    (await page.locator('#link-contents .tag').count()) >= 1);
+  check('it sits below the link panel, not above it', await page.evaluate(() => {
+    const panel = document.querySelector('#view-scan .link-panel').getBoundingClientRect();
+    const contents = document.querySelector('#link-contents').getBoundingClientRect();
     return contents.top >= panel.bottom;
   }));
 
-  // renderScan() overwrites #qr-contents rather than appending to it; leaving
+  // renderScan() overwrites #link-contents rather than appending to it; leaving
   // the page and coming back is the real way to prove a second render does
   // not stack a second copy underneath the first.
   await page.click('[data-nav="profile"]');
@@ -10065,231 +9759,8 @@ try {
   await openAllSections(page);
   await page.click('[data-nav="scan"]');
   await page.waitForSelector('#view-scan:not([hidden])');
-  check('the QR-contents section does not stack up across repeat visits',
-    (await page.locator('#qr-contents .card-head h2').count()) === 1);
-
-  // The blank-draw heuristic may only label a failure, never skip a decode: a
-  // false positive there is exactly what broke the round trip above.
-  check('a full-frame code is never written off as a blank draw', await page.evaluate(async () => {
-    const source = await fetch('app.js').then(r => r.text());
-    return /Always attempt the read/.test(source) &&
-      /if \(!found && looksBlank\(pixels\)\) decodeStill\.blankDraws\+\+;/.test(source);
-  }));
-
-  // The heuristic itself has to stop mistaking a QR for an empty canvas. The
-  // original sampled ~300 pixels on a stride that could line up with the module
-  // grid and see nothing but white — it called this very code blank at 600px.
-  const blankCheck = await page.evaluate(async () => {
-    const url = location.origin + location.pathname + '#p=' +
-      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    const code = await new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      window.QRCode.toCanvas(canvas, url, {
-        width: 1600, margin: 4, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' },
-      }, error => (error ? reject(error) : resolve(canvas)));
-    });
-    const bitmap = await createImageBitmap(await new Promise(r => code.toBlob(r, 'image/jpeg', 0.95)));
-
-    const naive = data => {
-      const step = Math.max(4, Math.floor(data.length / 4 / 300) * 4);
-      for (let i = 0; i < data.length; i += step) if (data[i] !== data[0]) return false;
-      return true;
-    };
-    const gcd = (a, b) => { while (b) { const t = a % b; a = b; b = t; } return a; };
-    const robust = pixels => {
-      const data = pixels.data;
-      const total = data.length / 4;
-      let stride = Math.max(1, Math.floor(total / Math.min(total, 4000)));
-      while (stride > 1 && gcd(stride, pixels.width) !== 1) stride++;
-      let low = 255, high = 0;
-      for (let q = 0; q < total; q += stride) {
-        const i = q * 4;
-        const luma = (data[i] * 3 + data[i + 1] * 6 + data[i + 2]) / 10;
-        if (luma < low) low = luma;
-        if (luma > high) high = luma;
-        if (high - low > 12) return false;
-      }
-      return true;
-    };
-
-    const out = { naiveFalsePositives: 0, robustFalsePositives: 0, reads: 0, sizes: [] };
-    for (const size of [1600, 1100, 800, 600]) {
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const c = canvas.getContext('2d', { willReadFrequently: true });
-      c.drawImage(bitmap, 0, 0, size, size);
-      const pixels = c.getImageData(0, 0, size, size);
-      const hit = window.jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
-      const readable = Boolean(hit && hit.data === url);
-      if (readable) out.reads++;
-      if (readable && naive(pixels.data)) { out.naiveFalsePositives++; out.sizes.push(size); }
-      if (readable && robust(pixels)) out.robustFalsePositives++;
-    }
-    return out;
-  });
-
-  check('every ladder size of the real code is readable', blankCheck.reads === 4, JSON.stringify(blankCheck));
-  check('the blank check no longer mistakes a QR for an empty canvas',
-    blankCheck.robustFalsePositives === 0, JSON.stringify(blankCheck));
-  check('the naive check it replaced did mistake one, so this is a real guard',
-    blankCheck.naiveFalsePositives > 0, JSON.stringify(blankCheck));
-
-  // ---- the version 23 landmine ----
-  //
-  // A downloaded code kept coming back "No QR code found" on a pristine
-  // 1600x1600 file, every rendering, no blank draws. It was not density, scale,
-  // JPEG quality or the mask: jsQR's version table gave version 23's fourth
-  // alignment centre as 74 where the spec says 78, so the decoder probed 4
-  // modules off, never locked onto the sampling grid, and could not read ANY
-  // version 23 symbol. Version 23 is roughly a 1350-1470 character payload, so
-  // whether someone's code scanned came down to how long their text was.
-  //
-  // Every version spaces its centres evenly after the first gap, so that
-  // invariant catches this whole class of typo across all 40 versions at once.
-  const table = await page.evaluate(async () => {
-    const source = await fetch('vendor/jsqr.js').then(r => r.text());
-    const found = [...source.matchAll(/alignmentPatternCenters:\s*\[([^\]]*)\]/g)]
-      .map(m => m[1].split(',').map(t => Number(t.trim())).filter(n => !Number.isNaN(n)));
-    const uneven = [];
-    found.forEach((centres, index) => {
-      if (centres.length < 3) return;
-      const steps = centres.slice(2).map((n, k) => n - centres[k + 1]);
-      if (!steps.every(s => s === steps[0])) uneven.push({ version: index + 1, centres });
-    });
-    return { versions: found.length, v23: found[22], uneven };
-  });
-
-  check('the decoder knows all 40 QR versions', table.versions === 40, String(table.versions));
-  check('version 23 alignment centres match the spec',
-    String(table.v23) === '6,30,54,78,102', String(table.v23));
-  check('no version spaces its alignment centres unevenly',
-    table.uneven.length === 0, JSON.stringify(table.uneven));
-
-  // And the functional half: a payload landing on version 23 has to survive the
-  // whole trip, since that is what the user actually did.
-  const v23 = await page.evaluate(async () => {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-    let payload = 'K3';
-    let x = 2;
-    while (payload.length < 1440) {
-      x = (x * 1103515245 + 12345) & 0x7fffffff;
-      payload += alphabet[x % alphabet.length];
-    }
-    const url = location.origin + location.pathname + '#p=' + payload;
-    const natural = window.QRCode.create(url, { errorCorrectionLevel: 'L' }).version;
-
-    const readAt = (canvas, size) => {
-      const c = document.createElement('canvas');
-      c.width = size;
-      c.height = size;
-      const g = c.getContext('2d', { willReadFrequently: true });
-      g.drawImage(canvas, 0, 0, size, size);
-      const px = g.getImageData(0, 0, size, size);
-      const hit = window.jsQR(px.data, px.width, px.height, { inversionAttempts: 'attemptBoth' });
-      return Boolean(hit && hit.data === url);
-    };
-
-    // As the encoder would pick it, to prove the decoder patch alone is enough.
-    const asIs = await new Promise((resolve, reject) => {
-      const el = document.createElement('canvas');
-      window.QRCode.toCanvas(el, url, {
-        width: 1600, margin: 4, errorCorrectionLevel: 'L',
-        color: { dark: '#000000', light: '#ffffff' },
-      }, e => (e ? reject(e) : resolve(el)));
-    });
-    return { natural, readsAt1600: readAt(asIs, 1600), readsAt1100: readAt(asIs, 1100) };
-  });
-
-  check('a 1440-character payload really does land on version 23', v23.natural === 23, String(v23.natural));
-  check('a version 23 code now reads at full size', v23.readsAt1600, JSON.stringify(v23));
-  check('a version 23 code now reads downscaled', v23.readsAt1100, JSON.stringify(v23));
-
-  // Belt and braces: our own codes step over version 23, because they get
-  // scanned by whatever app the other person has, bug and all.
-  check('the app never emits a version 23 code', await page.evaluate(async () => {
-    const source = await fetch('app.js').then(r => r.text());
-    if (!/\.version === 23\) options\.version = 24;/.test(source)) return false;
-    // Both the on-screen code and the download must go through that helper.
-    return (source.match(/qrOptions\(/g) || []).length >= 3;
-  }));
-
-  // ---- uploading a picture of a code ----
-  //
-  // The reported failure was a downloaded code sent to someone else and
-  // uploaded on their phone. What arrives is rarely the pristine file: it is a
-  // screenshot of a chat, recompressed, with the code a small off-centre part
-  // of a much larger image. Build those and put them through the real handler.
-  const composites = await page.evaluate(async () => {
-    const url = location.origin + location.pathname + '#p=' +
-      JSON.parse(localStorage.getItem('psycheai_profile')).payload;
-    const code = await new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      window.QRCode.toCanvas(canvas, url, {
-        width: 1600, margin: 4, errorCorrectionLevel: 'L', color: { dark: '#000000', light: '#ffffff' },
-      }, error => (error ? reject(error) : resolve(canvas)));
-    });
-    // label, width, height, code size as a fraction of the short edge, quality
-    const cases = [
-      ['a phone screenshot with the code at 30%', 1170, 2532, 0.30, 0.8],
-      ['a laptop screenshot with the code at 25%', 2560, 1440, 0.25, 0.8],
-      ['a recompressed 800px copy', 800, 800, 0.40, 0.6],
-    ];
-    return cases.map(([label, width, height, fraction, quality]) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const c = canvas.getContext('2d');
-      c.fillStyle = '#e9e9ee';
-      c.fillRect(0, 0, width, height);
-      c.fillStyle = '#333333';
-      c.fillRect(0, 0, width, Math.round(height * 0.08));
-      const size = Math.round(Math.min(width, height) * fraction);
-      // Off-centre on purpose: a single centre crop would miss it.
-      c.drawImage(code, Math.round(width * 0.15), Math.round(height * 0.2), size, size);
-      return { label, dataUrl: canvas.toDataURL('image/jpeg', quality) };
-    });
-  });
-
-  for (const composite of composites) {
-    const buffer = Buffer.from(composite.dataUrl.split(',')[1], 'base64');
-    await page.click('[data-nav="scan"]');
-    await page.waitForSelector('#view-scan:not([hidden])');
-    await page.setInputFiles('#qr-file', { name: 'code.jpg', mimeType: 'image/jpeg', buffer });
-    const outcome = await Promise.race([
-      page.waitForSelector('#mode-dialog[open]', { timeout: 30000 }).then(() => 'read'),
-      page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 })
-        .then(() => page.locator('#scan-alert').innerText()),
-    ]).catch(() => 'timed out');
-    check('an uploaded photo reads: ' + composite.label, outcome === 'read', String(outcome).slice(0, 90));
-    if (outcome === 'read') {
-      await page.click('#mode-cancel');
-      await page.waitForSelector('#mode-dialog', { state: 'hidden' });
-    }
-  }
-
-  // A failure has to be diagnosable, so the message carries the dimensions and
-  // how many renderings were tried.
-  await page.click('[data-nav="scan"]');
-  await page.waitForSelector('#view-scan:not([hidden])');
-  const noise = await page.evaluate(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 900;
-    canvas.height = 600;
-    const c = canvas.getContext('2d');
-    c.fillStyle = '#cccccc';
-    c.fillRect(0, 0, 900, 600);
-    return canvas.toDataURL('image/jpeg', 0.8);
-  });
-  await page.setInputFiles('#qr-file',
-    { name: 'nope.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(noise.split(',')[1], 'base64') });
-  await page.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 });
-  const failureText = await page.locator('#scan-alert').innerText();
-  check('a failed read reports the image size', /900×600/.test(failureText), failureText.slice(0, 90));
-  check('a failed read reports how many attempts were made',
-    /\d+ attempts/.test(failureText), failureText.slice(0, 90));
-  check('a failed read points at the link box',
-    /paste their link/i.test(failureText), failureText.slice(0, 90));
+  check('the link-contents section does not stack up across repeat visits',
+    (await page.locator('#link-contents .card-head h2').count()) === 1);
 
   // ---- deep link ----
   // A pasted link is the third way into the comparison, and it has to ask

@@ -1,10 +1,15 @@
-// Packs the shareable half of a profile into a QR code.
+// Packs the shareable half of a profile into a compatibility link (#p=…).
 //
 // The full report is prose and far too big to encode, so the model also
 // produces a compact `card` — the same profile reduced to short labelled
 // phrases. That card is what travels: it is trimmed to hard limits, deflated,
-// and base64url-encoded, which gets a rich profile down to something a phone
-// camera can read off a screen.
+// and base64url-encoded into the link's fragment, which a browser never sends
+// to a server.
+//
+// The budgets below were measured when the card also travelled as a QR code,
+// which needed it far tighter than a link does. They stand: a shorter link
+// survives being pasted through chat apps intact, and the caps are also what
+// keeps the compatibility prompt fed with substance rather than lists.
 //
 // The card is also exactly what the compatibility call receives, so whatever
 // is dropped here is invisible to the other person's report.

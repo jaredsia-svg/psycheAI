@@ -9,9 +9,9 @@ each, a behavioural read of how you actually use Instagram, your interests, beli
 your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
 PDF when you are done.
 
-That profile is tagged to a **QR code**. Scan someone else's, choose whether you are asking as
-**partners**, **family or friends**, or **colleagues** — and if colleagues, who reports to whom —
-and the model assesses how the two of you would work together on that basis, with a playbook aimed
+That profile comes with a personal **compatibility link**. Send it to someone; once they open it and
+make their own card, they choose whether they are asking as **partners**, **family or friends**, or
+**colleagues** — and if colleagues, who reports to whom — and the model assesses how the two of you would work together on that basis, with a playbook aimed
 at each of you about the other.
 
 ## Running it
@@ -86,7 +86,7 @@ here is the *gate*, not the ability to ever ask again.
 **The free tier costs at most about US$0.05 a run**, and it gets there by changing what the free run is
 rather than how hard the model thinks about it. A free run returns the **summary card** — the
 character, the MBTI type and its four letters, the enneagram, the five Big Five scores and bands, the
-interests, values, beliefs and love languages, the four-sentence highlights, and the shareable QR
+interests, values, beliefs and love languages, the four-sentence highlights, and the shareable
 card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
 sections are the **US$5 unlock: the full premium report**, written by **one** model call.
 
@@ -208,7 +208,7 @@ twice in a real digest, so it was left as it is.
 
 **The name comes back on the device.** Everything the model returns says "PsycheUser" where the reader
 is meant (the server sets the card's name to it outright), so the app gives the real name back before
-anything is stored, shown, put in a QR code or printed (`withOwnName`): the card, the page's "…'s
+anything is stored, shown, put in a compatibility link or printed (`withOwnName`): the card, the page's "…'s
 psyche", the PDF header and any stray mention in the writing. Every way a card can arrive does this —
 the free card, a paid report that writes a new card because a source was added on the way to paying
 (which used to miss it), and a page that rejoins a job after the first was closed, which reads the name
@@ -846,40 +846,38 @@ heavy run at Sonnet's list rate (down from ~$0.22 when this call ran on Opus) is
 unlock. Trimming what the paid call receives is the only real saving available, and it would need its
 own budget rather than reusing the free report's.
 
-### Making the code scannable
+### Compatibility is a link, not a QR code
 
-A whole profile is a lot of data for a QR code — about 630 characters, which comes out around **87
-modules across**. Everything about scanning reliability follows from pixels per module, and there are
-two places to lose them.
+Compatibility used to travel two ways: a link, and a QR code of the same link with a camera scanner
+and an image upload to read one. The code is gone. A whole card is a dense code, around 87 modules
+across, so it needed a camera at close range and a carefully backed canvas to scan at all; it could
+not be read off a screenshot posted to a Story, which is where people actually share; and all it
+ever did was open the same link a tap opens. Removing it took out two vendored libraries
+(`qrcode.js`, `jsqr.js`, the second patched for a version-23 bug of its own), the camera permission
+in `Permissions-Policy`, and several hundred lines of decoding, tiling and labelling code.
 
-The canvas is backed at **900px and displayed at 300**, so module edges stay sharp on a high-DPI
-screen instead of being upscaled into grey mush that a lens then has to guess at. And the camera is
-asked for **1920×1080**; the default stream is often 640×480, which puts this code at about a
-pixel and a half per module and simply never decodes. A simulated 480p frame with the code filling
-55% of its height is a UI check, and it fails against the old 300px backing.
+Nor is the link printed on the Psyche Card. An image cannot carry a link anyone can tap, and a code
+on a card posted to a Story would hand the compact card, Big Five scores and all, to everyone who
+saw it, so anyone could run a comparison against someone who never sent it to them. The card carries
+the address instead (`psycheai.io`), and the link goes person to person.
 
-The downloadable image is rendered fresh at **1600px with a four-module quiet zone** rather than
-reusing the display canvas, because a saved file gets viewed at whatever size a photo app picks — at
-300px wide it is back to three pixels per module and unreadable. It is written as a JPEG at quality
-0.95 through a Blob URL: a detached anchor click is ignored by Firefox, and Safari will not honour
-`download` on a large `data:` URL. Lossless would be marginally more robust in principle, but at 17
-pixels per module JPEG artefacts are nowhere near a module edge — the suite takes the real download
-and decodes it at 1600, 600 and 400px.
+**Send my link** hands the share sheet a message written in the sender's voice: *"Let's see how
+compatible we are! Make your free Psyche Card and our compatibility analysis runs straight after,
+also free: <link>"*. Where there is no share sheet (most desktops) the same message goes to the
+clipboard and a line under the buttons says so. **Copy link** copies the bare link. Both sit in the
+profile page's popout and on **My Compatibility**, which also takes a pasted link for one that
+arrived some other way. The link carries the card in the fragment (`#p=…`), which a browser never
+sends to a server.
 
-The download carries a label, because a saved or forwarded file loses all context otherwise: a
-strip is appended *below* the code — never over it, so the module grid is untouched — with the
-brand mark, "PSYCHEAI", and the person's name. The mark is stroked from the same SVG path data the
-nav and the PDF use, via `Path2D`. A name shrinks to fit rather than running off the strip —
-`Card.shape` caps a name at 24 characters, but the download reads `profile.card.name` as stored,
-uncapped, so a profile saved under an older schema could carry something longer. The suite forces a
-name that measures past 1900px against the strip's 1440px budget and checks the rendered pixels
-clear the margin, having first confirmed a version without the shrink logic does not.
+The analysis runs on the side of whoever opens the link, so the sender does not get the report. The
+compatibility report therefore ends with **Want Ava to see it too?** and a **Send my link** button,
+so the other person gets their own — the loop closes both ways.
 
 ### The mark
 
 `BRAND_MARK` in `docs/copy.js` is the logo, and it is drawn in **six** places from that one
 definition: the nav's inline SVG, the welcome hero's watermark, the profile page's own watermark, the
-print letterhead's, the PDF's vector operators, and the QR download's label strip via `Path2D`. A UI
+print letterhead's, the PDF's vector operators, and the roast and compatibility story images via `Path2D`. A UI
 check compares the shared paths against the `d` attributes in `index.html`, so an inline copy cannot
 drift — extended rather than folded in when the profile page got its own copy, so a mismatch there
 names itself instead of reading as a fault in one of the others.
@@ -1288,77 +1286,15 @@ Checked against a reader's actual position — scrolled to the dropzone before t
 place anyone dropping a file would be — rather than from the top, where the check would pass either
 way.
 
-The profile page and the scan page both show this person's own code and offer the same two actions,
-so painting the canvas, copying the link and building the download are each one function bound to
-two buttons rather than duplicated. The CSS constraining the canvas's *display* size (independent of
-its backing store, which is what keeps it sharp) is written against `.qr-holder canvas` for the same
-reason — scoped to the single `#qr-canvas` ID, the scan page's copy rendered at its full 900px
-backing size and broke the layout. That regression shipped once during development with the checks
-in place, because the first version only asserted the code sat left of its buttons, which held even
-while the canvas was three times too large; the fix added a check that the two canvases compute to
-the same display width.
+The profile page's popout and the compatibility page both offer this person's own link and the same
+two actions, so sending and copying are each one function bound to both pairs of buttons.
 
-"What your QR code contains" — the card headline, summary and interest tags, plus a note on what
-else rides along as short phrases — used to sit on the profile page. It moved to the bottom of the
-scan page instead, right under the code itself: it is about the code someone is looking at or about
-to send from that page, not about the report. `qrContentsBlock()` in `docs/app.js` builds it and
-`renderScan()` repaints it on every visit, rather than appending, so leaving the page and coming
-back does not stack a second copy underneath the first.
-
-Stills are the hardest case, because what someone actually uploads is rarely the pristine file — it
-is a screenshot of a chat, recompressed, with the code a small off-centre part of a much bigger
-picture. So `decodeStill` works through, cheapest first:
-
-1. The whole image at 1600, 1100, 2400, 800, 600px and native size. jsQR locates a code best when
-   the modules are a few pixels across, so a 12-megapixel photo often fails at native and reads
-   instantly at 1600.
-2. Failing that, **nine overlapping tiles** — halves stepped by quarters — each blown up to 1200px.
-   This is what finds a code at 25% of a laptop screenshot. The overlap matters: a clean grid would
-   cut a code straddling a boundary in half, and a single centre crop misses anything off-centre.
-
-Every rendering is read twice, once as drawn and once through a global luminance threshold, which
-rescues JPEG-softened edges and grey screenshot backgrounds. Both paths try inverted as well as
-normal. The camera loop alternates a full frame with a zoomed middle, which catches a code held too
-far away.
-
-A blank draw is told apart from a missing code: iOS Safari silently returns an unrendered canvas once
-a page holds too much backing store, so a uniform result is reported as "this browser would not open
-an image that big" rather than "no code found". And a failure message carries the image dimensions
-and the number of renderings tried, because without those a bug report of this is unactionable.
-
-That failure message is what caught a real bug: a laptop-downloaded JPEG, re-uploaded on the same
-machine, reported "1600×1600, 13 attempts, 4 blank" — every one of the four whole-image attempts
-(the only renderings capable of decoding a full-frame code; each of the nine tiles holds only a
-quarter of it) had been written off as blank and never even reached jsQR. The blank check sampled a
-fixed stride of roughly 300 pixels, and on a plain, tightly-cropped QR code that stride could land
-exactly on the repeating module grid — walking straight down a column of white (or black) modules and
-seeing no variation at all. It was also gating the read: a `looksBlank() === true` result returned
-before `jsQR` was ever called, on the very attempts most likely to succeed. The fix samples up to
-4000 pixels on a stride forced coprime with the canvas width (so it cannot alias onto the grid), checks
-a luminance *range* rather than exact equality, and — the part that actually mattered — the blank
-check no longer gates anything. `jsQR` always runs first; `looksBlank` is consulted only afterward,
-to label an already-failed attempt. The suite now downloads the real exported file and re-uploads it
-through the actual file input, and separately proves the old stride did produce a false "blank" on the
-real code while the new one never does.
-
-The suite puts real composites through the actual file input — a phone screenshot with the code at
-30%, a 2560×1440 laptop screenshot at 25%, a recompressed 800px copy — and asserts each reads.
-
-Underneath all of that sat a bug none of it could fix: **jsQR cannot read a version 23 QR code.** Its
-version table gives version 23's fourth alignment centre as 74, where ISO/IEC 18004 says 78 — almost
-certainly a copy of version 22's row above, which legitimately contains 74. Every version spaces its
-centres evenly, and 54 → 74 → 102 does not. Four modules off is enough that the decoder never locks
-onto the sampling grid, so such a code is unreadable at *any* size, scale, mask or quality. Version 23
-is roughly a 1350–1470 character payload, which is squarely in range for a real profile, so whether
-someone's code scanned at all came down to how long their text happened to be — a pristine
-1600×1600 download failing every rendering with no blank draws.
-
-`vendor/jsqr.js` is patched, which also rescues codes generated before the fix. On top of that the app
-steps over version 23 when encoding: our codes get scanned by whatever app the other person has, and
-anything built on unpatched jsQR carries the same bug, so it is worth four extra modules to avoid the
-version. The guard against a repeat is the invariant rather than the single number — a check asserts
-no version in the table spaces its centres unevenly, which would have caught this typo, and would
-catch its siblings across all 40 versions.
+"What your link contains" — the card headline, summary and interest tags, plus a note on what else
+rides along as short phrases — sits at the bottom of the compatibility page, under **Send my link**:
+it is about the link someone is about to send from that page, not about the report.
+`linkContentsBlock()` in `docs/app.js` builds it and `renderScan()` repaints it on every visit,
+rather than appending, so leaving the page and coming back does not stack a second copy underneath
+the first.
 
 ### Choosing a provider and model
 
@@ -1475,7 +1411,7 @@ its own regression check.
 
 ## The compatibility read is free
 
-Scanning someone's QR code and asking how you two get on is free. It was briefly a paid product,
+Opening someone's link and asking how you two get on is free. It was briefly a paid product,
 priced level with the premium unlock; it is free again so that the feature that brings a second
 person to the app costs them nothing to try.
 
@@ -1650,13 +1586,22 @@ so it is built in rather than left to a plugin.
   share sheet's text is *I got <character> on my Psyche Card. Find yours free, no questionnaire:
   https://psycheai.io*. A card that travels is an invitation.
 
-- **A compare link waits for the friend who opens it.** Whoever taps someone's link usually has no
-  Instagram export yet, and Instagram takes hours to email one. The invite used to sit in
+- **A compatibility link waits for the friend who opens it.** Whoever taps someone's link usually has
+  no Instagram export yet, and Instagram takes hours to email one. The invite used to sit in
   `sessionStorage` behind an error-coloured line and vanished with the tab. It is now kept on the device
   (`psycheai_invite`, in `KEYS`, so *Delete everything* takes it) for fourteen days, shown at the top
-  of the welcome page as *Ava wants to see how you two compare*, with the steps to get the export and
-  a way to forget it, and spent on the first card the device makes, which goes straight into the
-  comparison.
+  of the welcome page — *Ava Tan wants to see how compatible you both are. Download your Instagram data
+  and make your free Psyche Card. The compatibility analysis with Ava Tan runs straight after it, also
+  free.* — with **Show me how** for the export steps, and spent on the first card the device makes,
+  which goes straight into the compatibility analysis. There is no button to throw it away; it
+  expires on its own.
+- **The roast as a story image.** Once the roast is read, **Share this roast** draws its opening
+  sentence or two in a panel on a 1080×1920 image — *I let AI read my Instagram. It said:* above,
+  *Get roasted free · psycheai.io* at the foot — and hands it to the share sheet with *"I let AI read
+  my Instagram and it roasted me. Get yours free: https://psycheai.io"*. Only the opening goes: the
+  rest runs to paragraphs and turns personal further in. The sample's roast has no share button.
+- **The Psyche Card is already story-sized.** The structured layout's card is a 1080×1920 canvas on
+  screen and in the export, with the address in its footer, so it goes to a Story as it is.
 
 The plan this serves (audiences, loops, content, channels, launch calendar, measurement, risks) is
 in [`marketing/PLAN.md`](marketing/PLAN.md).
@@ -1694,7 +1639,7 @@ any other route pops it again, or the reader's next Back press does nothing and 
 keeps the two paths from chasing each other, since a close triggered by `popstate` must not call
 `history.back()` a second time.
 
-What it deliberately does not carry: the download buttons, **Delete everything**, and the QR
+What it deliberately does not carry: the download buttons, **Delete everything**, and the
 compatibility panel. Those all live outside `#profile-body` in `index.html`, so building only the
 report sections excludes them by construction rather than by a list of things to hide that someone
 has to remember to update. One of them is worse than clutter on a stranger's report — delete would
@@ -1755,7 +1700,7 @@ code has to keep:
   summary reaches the model *directly*, bypassing any relay at all, since that would misrepresent
   `server.js`, which really is a relay. That negative is what the checks hold — see below.
 - **There is no store to breach.** No sign-up, no password, no user table, no database. The report
-  lives in `localStorage` and is never uploaded; the QR card is self-contained, so there is no record
+  lives in `localStorage` and is never uploaded; the shared card is self-contained, so there is no record
   behind it to look up.
 
 Both privacy sections are written for an adult with no technical background: no jargon, and no
@@ -4059,7 +4004,7 @@ whoever edits this next. The renderers fall back to the old location so a report
 move still shows it.
 
 The card's own `attachment` and `attachmentWhy` fields are a separate, compressed thing and were not
-touched — those are what travels in the QR code, and a check asserts they survived the move.
+touched — those are what travels in the compatibility link, and a check asserts they survived the move.
 
 ### Career assessment
 
@@ -4155,7 +4100,7 @@ produced, and there was nothing there to guard with a media query.
 Inside the card, headed by the lockup on the left and whose card it is on the right. The wordmark used
 to sit alone at the foot, which named the product but not the person; on a card meant to be shown to
 somebody else the name is the more useful half. The mark is the same path data the nav, the PDF and
-the QR label draw, so the logo is one shape in five places rather than a picture to keep in step.
+the story images draw, so the logo is one shape in five places rather than a picture to keep in step.
 
 **Full screen offers it as a PNG.** The card is DOM and the reader wants an image, so it is
 rasterised through an SVG `<foreignObject>` — the one route a browser offers without shipping a
@@ -4243,8 +4188,8 @@ with it: 116 lines testing something that is no longer drawn.
 **Three things are deliberately left off**, each for its own reason. The franchise ("Marvel", "Pixar")
 goes because the comparison is to a character's temperament and naming the studio invites the reader
 to check the costume instead. Attachment style goes because this is the most shareable surface in the
-app and it is the most intimate line in the report. The QR code goes because this is the reader's own
-page, where one already sits below. All three are pinned by a check, since "we removed it" is the
+app and it is the most intimate line in the report. And no code of any kind is drawn on it:
+compatibility travels person to person as a link. All three are pinned by a check, since "we removed it" is the
 kind of claim that quietly stops being true.
 
 ### Let us roast you
@@ -4563,12 +4508,14 @@ prompt guidance grew `PROFILE_SYSTEM` + `PROFILE_SCHEMA` to roughly 16,584 real 
 schema would have put the free call over its own reserve. The new figure restores the ~200-token
 headroom the reserve is meant to carry.
 
-## The QR code
+## The compatibility link
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short
 labelled phrases. `docs/card.js` trims it to hard limits, packs it, deflate-compresses it and
-base64url-encodes it, which gets a rich profile down to **roughly 680 characters**: dense, but
-scannable off a phone screen. There is nothing to look up and no account to create.
+base64url-encodes it into the link's fragment, which gets a rich profile down to **roughly 680
+characters**. There is nothing to look up and no account to create. The budgets below were measured
+when the card also travelled as a QR code, which needed it far tighter than a link does; they stand,
+because a shorter link survives being pasted through chat apps intact.
 
 The card is also exactly what the compatibility call receives, so whatever is trimmed is invisible to
 the other person's report — and your long-form report never leaves your device.
@@ -4629,16 +4576,13 @@ pointing to a professional; the payment-recovery lines are one sentence each; an
 is one line plus the illustration link. An empty wallet slot (no Apple Pay or Google Pay, or mock
 mode) collapses rather than leaving a band under the title.
 
-**Test compatibility** opens a popout carrying the QR code, the copy-link and download-QR buttons, and
-the link to the scan page — the same content a whole panel used to hold in the page flow itself,
+**Test compatibility** opens a popout carrying **Send my link**, **Copy link** and **Got their link? →**
+(to the compatibility page) — once a QR code, a copy-link and a download-QR button, and before that the same content a whole panel used to hold in the page flow itself,
 always taking up a slab of the page between the report and the buttons whether or not anyone wanted
 it. It is a `<dialog>` now, closed by a cross in its own top-right corner or by clicking outside it,
 and opened only when the reader actually wants to test something — the compatibility panel used to
 open the page before that, which asked someone to hand out their code before reading a word of what
-was in it. Ctrl+P still carries the code onto the printed page regardless: the download route
-(`pdf.js`) never touched this panel either way, but a closed `<dialog>` is `display: none` by default,
-so `#compat-dialog` is forced back to `display: block` under `@media print` — otherwise the printed
-page would have a gap where the code used to be.
+was in it. It is no longer printed: with no code in it there is nothing on it for paper.
 
 Three things changed once this actually shipped and got used. The character-count fineprint under the
 QR code (`#payload-size`, "Shareable card: N characters…") is gone — a number nobody asked for and a
@@ -4669,7 +4613,7 @@ their observation point for what was actually sent (the digest size, the image c
 opt-out), so removing it is a test change as much as a code one. The "analysed by" line used to sit inside the report body, right after
 confidence — it now has its own fixed element after the buttons, since it is a record of the run
 rather than a finding and stays true regardless of what else gets added above it. It is unchanged in
-the PDF, which has no QR panel or buttons after its own confidence section for it to be pushed past.
+the PDF, which has no link panel or buttons after its own confidence section for it to be pushed past.
 
 ## Compatibility
 
@@ -4694,16 +4638,14 @@ the same name "<name> A" and "<name> B" consistently. The verdict is under 80 wo
 reading is one sentence.
 
 **My Compatibility** is titled for whoever the device belongs to, and opens with one short sentence
-on what a comparison is for: scan someone's code and get a score, the five things behind it, what
+on what a comparison is for: open someone's link and get a score, the five things behind it, what
 works, what will grate, and what each of you could do differently — as a couple, as family or
 friends, or as colleagues. It was two paragraphs; the second one restated the picker that appears
 moments later, so it was cut rather than trimmed.
 
-The scanning box itself carries no instructions any more, just its heading and the three ways in:
-camera, upload, paste. **Use my camera** and **Upload a photo of a code** became **Use camera** and
-**Upload QR code** — short enough to read as labels rather than sentences — and the "fill the frame
-with it" paragraph under them is gone, since the box's own controls say what it does. The button
-that starts a comparison reads **Analyze**.
+The box for a link that arrived some other way is one line, a field and **Check compatibility**: a
+tapped link opens the comparison by itself, so pasting is the fallback. Below it, **Send my link**
+and **Copy link**, then what the link contains.
 
 Past results sit *above* the box that makes new ones. Someone returning to that page is far more
 often looking for a report they already ran than starting another.
@@ -4715,7 +4657,7 @@ request was to change the live page, and match history is a record of what this 
 rather than part of the model's read on the person, so the two are free to differ here without
 breaking the rule that the page and the PDF have to agree on what the *report* says.
 
-Reading someone's code opens a picker before anything is sent: **Romantic**, **Family / Friends**,
+Opening someone's link opens a picker before anything is sent: **Romantic**, **Family / Friends**,
 or **Professional / work**. The report answers that question and only that one.
 
 This is a deliberate change from scoring several at once. A reader who picked "professional" does not
@@ -4800,14 +4742,20 @@ refuses to ask the model twice for anything derivable, on the grounds that a sec
 disagree with the first; this is the same rule applied to the second call.
 
 The result is a score, an honest verdict, what works, what will rub, and a playbook addressed to each
-person individually about the other. Scan again to compare on a different basis — the picker appears
-on every read, whether it came from the camera, a photo of a code, a pasted link or a shared URL.
+person individually about the other. Paste their link again to compare on a different basis — the
+picker appears on every read, whether the link was tapped or pasted.
+
+**Share result** draws the result as a 1080×1920 story image — the basis, both names, the score ring,
+the band and up to four things they share, with *Test yours free · psycheai.io* at the foot — and
+hands it to the share sheet with the line *"We got 58/100 on PsycheAI. How compatible are you two?
+Free, no questionnaire: https://psycheai.io"*, or downloads it where there is no sheet. It is drawn
+on a canvas rather than captured from the page, so it is a poster, not a copy of a section.
 
 ## Tests
 
 ```bash
 npm test           # 986 checks: synthesises a real ZIP export and runs
-                   # unzip → parse → digest → card → QR → decode; proves the
+                   # unzip → parse → digest → card → link → decode; proves the
                    # digest caps and budget hold on a heavy account; checks the
                    # image selector spans the timeline and drops what it should;
                    # validates both prompt schemas against the structured-output
@@ -4822,10 +4770,6 @@ npm run test:ui    # 1191 checks: drives the real UI in Chromium against a
                    # JPEGs, are not the originals, and vanish on opt-out — an
                    # opt-out now made in the pre-send review dialog, checked
                    # against the real request body rather than UI state alone.
-                   # Includes the scan ladder the card's size budget is set
-                   # against: the code is redrawn at 450px and 300px and sat
-                   # inside 480p and 720p camera frames, and has to decode in
-                   # every one
 npm run test:live  # three real model calls: the free report and a
                    # compatibility read on whichever provider is configured,
                    # then the paid analysis on whichever engine
@@ -4869,15 +4813,14 @@ runs casually, which is exactly the argument for keeping it honest.
 ```
 docs/                 the browser app — no build step
   index.html          app shell
-  app.js              upload, profile report, QR, scanner, compatibility report
+  app.js              upload, profile report, sharing, compatibility report
   zip.js              ZIP reader (ZIP64-aware, inflates only the JSON entries)
   instagram.js        export parser → normalised signals
   digest.js           signals → the bounded evidence digest that gets sent
-  card.js             shareable card ⇄ compressed QR payload
+  card.js             shareable card ⇄ compressed link payload
   copy.js             every string the page and the PDF both show, written once
   pdf.js              writes the downloadable report — a small PDF writer, no library
   llm.js              client for the two server endpoints
-  vendor/             qrcode (generation) · jsQR (scanning)
 lib/
   prompts.js          both system prompts and both output schemas, provider-neutral
   provider.js         picks Gemini, Claude, Grok or mock from the environment
