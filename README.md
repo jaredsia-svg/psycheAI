@@ -1573,14 +1573,22 @@ so it is built in rather than left to a plugin.
   and iMessage show nothing for a relative one. `node promo/og.mjs` draws it from the brand mark and
   the sample Psyche Card, with the home-screen icons beside it (`icon-192`, `icon-512`,
   `apple-touch-icon`) that `docs/manifest.webmanifest` names.
-- **Three guides**, static pages with no script, each answering one thing people search for:
+- **Four guides**, static pages with no script, each answering one thing people search for:
   [`/instagram-personality-test`](docs/instagram-personality-test.html),
-  [`/compatibility-test`](docs/compatibility-test.html) and
-  [`/mbti-test-no-questions`](docs/mbti-test-no-questions.html). Each has its own canonical address,
+  [`/compatibility-test`](docs/compatibility-test.html),
+  [`/mbti-test-no-questions`](docs/mbti-test-no-questions.html) and
+  [`/download-instagram-data`](docs/download-instagram-data.html). The last is the app's own
+  illustrated export guide (`#guide-dialog`) as a public page — the same seven screenshots and the
+  three settings that matter — because "how to download Instagram data" is searched far more than
+  anything about personality, and every reader of it is one step from a card. Each has its own canonical address,
   an FAQ, and two buttons: into the app, and `/#sample`, which opens the sample report directly and
   tidies the address back to `/`. The server serves `/name` as `name.html` when that page exists,
   and nothing else; anything else is still a 404. The MBTI guide carries the trademark notice.
 - **`robots.txt` and `sitemap.xml`** list the front page and the guides and keep `/api/` out.
+- **Request the export first.** The export takes Instagram hours to send, so under the front page's
+  two buttons a line says *New here? Request your Instagram data first. It takes 30 seconds, and
+  Instagram emails it to you, usually within a few hours.* with **Show me how** opening the guide.
+  `/#sample` also opens the sample when the hash changes on a page already open, not only on load.
 - **Everything shared carries the address.** The Psyche Card's footer reads *psycheai.io · your
   personality, read from your own data*, on screen, in the shared image and in the PDF, and the
   share sheet's text is *I got <character> on my Psyche Card. Find yours free, no questionnaire:

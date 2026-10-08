@@ -324,6 +324,9 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    .btn-row's own `margin: .8rem 0`, which is defined further down this file at
    the same specificity and would otherwise win on order alone. */
 .hero .hero-actions { margin-bottom: 0; }
+.hero-request { margin: .9rem 0 0; max-width: 34rem; font-size: .9rem; color: var(--ink-soft); }
+.hero-request strong { color: var(--ink); font-weight: 650; }
+.hero-request .link-btn { font-size: inherit; font-weight: 600; }
 
 /* The two hero actions stay on one row on a phone. Left to wrap they stack,
    which pushes the privacy badge and everything under it a button's height
@@ -3479,6 +3482,9 @@ details.more[open] > summary::after { content: ' ▴'; }
 .guide .card h2 { margin-top: 0; }
 .card ol.guide-steps { list-style: decimal; padding-left: 1.3rem; line-height: 1.55; }
 .card ol.guide-steps li { margin-bottom: .5rem; padding-left: .2rem; }
+/* The download guide's illustrated steps carry their own numbers, as in the app. */
+.card ol.guide-steps.guide-illustrated { list-style: none; padding-left: 0; }
+.card ol.guide-steps.guide-illustrated > li { margin-bottom: 0; padding-left: 0; }
 .guide-faq h3 { margin: 1rem 0 .3rem; font-size: 1rem; }
 .guide-faq p { margin: 0; color: var(--ink-soft); line-height: 1.55; }
 .guide-cta { text-align: center; padding: 1.6rem 1rem 2rem; border-radius: 22px; background: var(--accent-soft); margin: 1.5rem 0 2rem; }

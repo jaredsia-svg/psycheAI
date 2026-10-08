@@ -1581,6 +1581,30 @@ try {
         [...document.querySelectorAll('a.btn')].map(a => a.getAttribute('href')));
       check('a guide links to the app and to its sample', links.includes('/') && links.includes('/#sample'),
         JSON.stringify(links));
+      // The export guide: the app's own screenshots, numbered steps, and the
+      // three settings, at a clean address.
+      await guidePage.goto('http://localhost:' + PORT + '/download-instagram-data', { waitUntil: 'load' });
+      const exportGuide = await guidePage.evaluate(async () => {
+        const images = [...document.querySelectorAll('.guide-shot img')];
+        await Promise.all(images.map(img => img.decode().catch(() => null)));
+        return { images: images.length, loaded: images.every(img => img.naturalWidth > 0),
+          steps: document.querySelectorAll('ol.guide-illustrated > li.guide-step').length,
+          numbers: [...document.querySelectorAll('.guide-num')].map(n => n.textContent).join(''),
+          listStyle: getComputedStyle(document.querySelector('ol.guide-illustrated')).listStyleType,
+          text: document.body.innerText };
+      });
+      check('the export guide shows the app\'s seven screenshots, loaded, under four numbered steps',
+        exportGuide.images === 7 && exportGuide.loaded && exportGuide.steps === 4 &&
+          exportGuide.numbers === '1234' && exportGuide.listStyle === 'none', JSON.stringify({ ...exportGuide, text: undefined }));
+      check('and names the settings that matter, JSON above all',
+        /JSON, not HTML/.test(exportGuide.text) && /All time/.test(exportGuide.text) && /Lower quality/.test(exportGuide.text));
+      await guidePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await guidePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
+      check('the front page tells a new reader to request their data first',
+        /New here\? Request your Instagram data first\./.test(await guidePage.locator('.hero-request').innerText()));
+      await guidePage.click('#hero-request');
+      await guidePage.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+      check('and "Show me how" opens the illustrated guide', await guidePage.evaluate(() => document.querySelector('#guide-dialog').open));
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
       check('/#sample opens the sample report straight away, and tidies the address',

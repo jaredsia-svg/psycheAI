@@ -8187,8 +8187,21 @@
   }
 
   $('#invite-guide').addEventListener('click', showGuide);
+  $('#hero-request').addEventListener('click', showGuide);
 
-  window.addEventListener('hashchange', () => { consumeIncomingLink(); });
+  // The guides' "See a sample report" link (/#sample): open the sample over
+  // whatever page this visitor would otherwise land on. On arrival, and when
+  // the hash changes on a page already open, which does not reload it.
+  function openSampleFromHash() {
+    if (location.hash !== '#sample') return;
+    history.replaceState(null, '', location.pathname + location.search);
+    setTimeout(() => showSample(), 0);
+  }
+
+  window.addEventListener('hashchange', () => {
+    consumeIncomingLink();
+    openSampleFromHash();
+  });
 
   /**
    * Offers to collect a purchase whose result never arrived.
@@ -8288,12 +8301,7 @@
     drawInsightPreview();
 
     if (await consumeIncomingLink()) return;
-    // The guides' "See a sample report" link (/#sample): open the sample over
-    // whatever page this visitor would otherwise land on.
-    if (location.hash === '#sample') {
-      history.replaceState(null, '', location.pathname + location.search);
-      setTimeout(() => showSample(), 0);
-    }
+    openSampleFromHash();
     // Before the report below, because a job still running is newer than
     // whatever is stored: a reader who re-ran their analysis and closed the
     // app would otherwise be shown the previous report and left to work out

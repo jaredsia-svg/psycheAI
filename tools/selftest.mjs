@@ -6777,7 +6777,7 @@ check('the schema requires evidence on strengths and frictions',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page and the three guides', paths.length === 4, JSON.stringify(paths));
+  check('the sitemap lists the front page and the four guides', paths.length === 5, JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
     paths.every(path => got[path].status === 200 && got[path].canonical === 'https://psycheai.io' + path),
     JSON.stringify(got));
