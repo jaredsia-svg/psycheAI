@@ -5730,7 +5730,7 @@
       const rows = (Array.isArray(items) ? items : []).filter(Boolean);
       if (!rows.length) return '';
       return '<div class="beyond-line"><p class="beyond-label">' + esc(label) + '</p><ul class="beyond-list beyond-' + kind + '">' +
-        rows.map(item => '<li><span aria-hidden="true">' + (kind === 'good' ? '✓' : '!') + '</span>' + esc(item) + '</li>').join('') + '</ul></div>';
+        rows.map(item => '<li><span class="beyond-mark" aria-hidden="true">' + (kind === 'good' ? '✓' : '!') + '</span><b>' + esc(item) + '</b></li>').join('') + '</ul></div>';
     };
     const columns = [
       ['💞', B.relationships, line(B.attachment, card.attachment) + line(B.conflict, card.conflictStyle) +
@@ -5743,7 +5743,7 @@
     return '<section class="card section-card beyond-card screen-only" aria-labelledby="beyond-title">' +
       '<h2 id="beyond-title">' + esc(B.title) + '</h2><p class="beyond-sub">' + esc(B.sub) + '</p>' +
       '<div class="beyond-grid">' + columns.map(([icon, title, body]) =>
-        '<div class="beyond-col"><h3><span aria-hidden="true">' + icon + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
+        '<div class="beyond-col"><h3><span class="beyond-icon" aria-hidden="true">' + icon + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
       '</div><p class="beyond-foot">' + esc(B.foot) + ' <span aria-hidden="true">↓</span></p></section>';
   }
 
@@ -6678,6 +6678,11 @@
       const fill = $('#view-profile').classList.contains('profile-structured');
       fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
       layoutSideActions();
+      // The card's scale as drawn, for "Beyond your card" under it, which sets
+      // its type and panels in the card's own sizes times this — so the two
+      // read as one object at whatever size the card lands.
+      const drawn = $('#psyche-card').getBoundingClientRect().width;
+      if (drawn) $('#view-profile').style.setProperty('--pcs', (drawn / CARD_W).toFixed(4));
     }
     const dialog = $('#card-dialog');
     if (dialog && dialog.open && dialog.classList.contains('is-guided')) fitGuidedCard(dialog, $('#psyche-card-full'));

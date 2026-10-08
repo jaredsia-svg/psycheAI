@@ -3715,30 +3715,70 @@ details.more[open] > summary::after { content: ' ▴'; }
 
 /* "Beyond your card", under a free card and above the unlock box: the card's
    other lines in three columns — relationships, day to day, work — that stack
-   on a phone. Short rows, ticks for strengths and a mark for watch-outs, in
-   the card's own register. */
+   on a phone. Set in the card's own register: its background, its panels,
+   its uppercase labels with an icon in a soft circle, its bold lines, its
+   pills and its footer, each at the card's size in card pixels times --pcs —
+   the card's scale as drawn, set by layoutPsycheCard — so the panel reads
+   at the same size as the card above it. A floor under each keeps it
+   readable where the card is a small thumbnail, on a phone. */
+.beyond-card {
+  --pcs: .5;
+  --b-text: max(12.5px, calc(27px * var(--pcs)));
+  --b-lab: max(10.5px, calc(24px * var(--pcs)));
+  --b-small: max(9.5px, calc(21px * var(--pcs)));
+  --b-dot: max(19px, calc(42px * var(--pcs)));
+  --b-gap: max(8px, calc(20px * var(--pcs)));
+  background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
+  padding: max(16px, calc(48px * var(--pcs))) max(14px, calc(52px * var(--pcs)));
+  border-radius: max(16px, calc(44px * var(--pcs)));
+}
 .beyond-card h2 { margin: 0; font-size: 1.25rem; }
-.beyond-sub { margin: .3rem 0 1rem; color: var(--ink-soft); font-size: .92rem; }
-.beyond-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.beyond-sub { margin: .25rem 0 max(12px, calc(26px * var(--pcs))); color: var(--ink-soft); font-size: .92rem; }
+.beyond-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--b-gap); }
 @media (max-width: 759px) { .beyond-grid { grid-template-columns: minmax(0, 1fr); } }
 .beyond-col {
-  padding: .9rem 1rem; border-radius: 16px; border: 1px solid var(--line);
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 55%, var(--bg-alt)), var(--bg-alt));
+  background: var(--bg-alt); border: 1px solid var(--line); min-width: 0;
+  border-radius: max(13px, calc(28px * var(--pcs)));
+  padding: max(11px, calc(22px * var(--pcs))) max(13px, calc(28px * var(--pcs)));
 }
-.beyond-col h3 { display: flex; align-items: center; gap: .45rem; margin: 0 0 .55rem; font-size: 1rem; }
-.beyond-line + .beyond-line { margin-top: .7rem; }
+.beyond-col h3 {
+  display: flex; align-items: center; gap: max(6px, calc(12px * var(--pcs)));
+  margin: 0 0 max(8px, calc(14px * var(--pcs)));
+  font-size: var(--b-lab); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700;
+}
+.beyond-icon {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: var(--b-dot); height: var(--b-dot); border-radius: 999px; background: var(--accent-soft);
+  font-size: max(10.5px, calc(23px * var(--pcs))); letter-spacing: 0;
+}
+.beyond-line + .beyond-line { margin-top: max(9px, calc(18px * var(--pcs))); }
 .beyond-label {
-  margin: 0 0 .15rem; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--ink-soft);
+  display: flex; align-items: center; flex-wrap: wrap; gap: max(5px, calc(10px * var(--pcs)));
+  margin: 0 0 max(4px, calc(8px * var(--pcs)));
+  font-size: var(--b-small); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
 }
+/* The card's MBTI strength pill. */
 .beyond-tag {
-  display: inline-block; margin-left: .3rem; padding: .05rem .45rem; border-radius: 999px;
-  font-size: .62rem; letter-spacing: .06em; background: var(--accent-soft); color: var(--accent);
+  font-size: var(--b-small); font-weight: 700; letter-spacing: .02em; text-transform: lowercase;
+  padding: max(1px, calc(3px * var(--pcs))) max(6px, calc(13px * var(--pcs))); border-radius: 999px;
+  color: var(--accent); background: var(--accent-soft);
 }
-.beyond-value { margin: 0; font-weight: 600; line-height: 1.35; }
-.beyond-list { list-style: none; margin: 0; padding: 0; }
-.beyond-list li { display: flex; gap: .45rem; align-items: baseline; font-weight: 600; line-height: 1.35; margin: .15rem 0; }
-.beyond-list li span { flex: none; width: 1em; text-align: center; font-weight: 800; }
-.beyond-good li span { color: var(--good); }
-.beyond-warn li span { color: var(--warn); }
-.beyond-foot { margin: .9rem 0 0; font-size: .88rem; color: var(--ink-soft); }
+/* The card's pattern lines: one size, bold, in ink. */
+.beyond-value { margin: 0; font-size: var(--b-text); font-weight: 700; line-height: 1.25; color: var(--ink); }
+.card .beyond-list { list-style: none; margin: 0; padding: 0; display: grid; gap: max(6px, calc(12px * var(--pcs))); }
+.card .beyond-list li { margin: 0; }
+.beyond-list li { display: flex; align-items: center; gap: max(8px, calc(16px * var(--pcs))); font-size: var(--b-text); line-height: 1.25; }
+.beyond-list b { font-weight: 700; }
+/* The card's numerals, ticking strengths and marking watch-outs. */
+.beyond-mark {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: max(20px, calc(44px * var(--pcs))); height: max(20px, calc(44px * var(--pcs))); border-radius: 999px;
+  font-size: max(10.5px, calc(23.5px * var(--pcs))); font-weight: 800;
+}
+.beyond-good .beyond-mark { background: var(--accent-soft); color: var(--accent); }
+.beyond-warn .beyond-mark { background: color-mix(in srgb, var(--accent-2) 16%, var(--bg-alt)); color: var(--accent-2); }
+/* The card's footer line. */
+.beyond-foot {
+  margin: max(12px, calc(26px * var(--pcs))) 0 0; text-align: center;
+  font-size: max(10px, calc(21.5px * var(--pcs))); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
+}

@@ -4810,6 +4810,14 @@ stacked on a phone, under the line *"A few more things your data says. These als
 compatibility link."* and over *"The full report explains each of these with the evidence behind
 it."* It reads the card the link carries, so what the reader sees is what is shared.
 
+**It is drawn as part of the card.** The panel uses the card's own background, white panels with the
+same border and corner, uppercase letter-spaced panel labels with the emoji in a soft circle, bold
+ink lines for each value, the MBTI strength pill for *tentative*, the card's round numerals for ✓ and
+!, and its spaced uppercase footer. Every size is the card's own (in its 1080-pixel units) times
+`--pcs`, the scale the card is actually drawn at, which `layoutPsycheCard()` measures and sets on
+`#view-profile` — so on a laptop the panel's text is exactly the card's text size. On a phone, where
+the card is a small thumbnail, each size has a floor (12.5px for lines) so the panel stays readable.
+
 ### What the card carries, and what that cost
 
 The card used to hold about a tenth of the report, and specifically the wrong tenth. The
