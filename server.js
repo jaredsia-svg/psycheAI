@@ -698,7 +698,10 @@ async function handleCreatePaymentIntent(request, response) {
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
   const label = product === 'analysis' ? 'PsycheAI — additional analysis' : 'PsycheAI — full premium report';
-  sendJson(response, 200, await payments.createPaymentIntent(label, product));
+  // The currency the page showed its price in, from the shared table; an
+  // unknown one is charged in USD.
+  const currency = body && typeof body.currency === 'string' ? body.currency : '';
+  sendJson(response, 200, await payments.createPaymentIntent(label, product, currency));
 }
 
 // The paid analysis — the roast. Gated on a fresh check with Stripe rather

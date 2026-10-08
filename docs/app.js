@@ -16,6 +16,31 @@
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
   const axisLabel = Copy.axisLabel;
+  // Prices in the reader's own currency where docs/prices.js has one — a
+  // rounded local price in the major markets, USD everywhere else. The copy is
+  // written in USD; each "US$5" and "US$2" in it becomes the local price once,
+  // here, before anything is drawn, and the payment is taken in the same
+  // currency (the server charges only the table's amount for it).
+  const Prices = window.PsychePrices;
+  const CURRENCY = Prices.currencyFor(Prices.guessCountry());
+  (function localisePrices() {
+    if (CURRENCY === Prices.DEFAULT_CURRENCY) return;
+    const unlock = Prices.label(CURRENCY, 'unlock');
+    const analysis = Prices.label(CURRENCY, 'analysis');
+    const swap = text => text.replace(/US\$5\b/g, unlock).replace(/US\$2\b/g, analysis);
+    const walk = node => {
+      for (const key of Object.keys(node)) {
+        const value = node[key];
+        if (typeof value === 'string') node[key] = swap(value);
+        else if (value && typeof value === 'object') walk(value);
+      }
+    };
+    walk(Copy.TEXT);
+    walk(Copy.STRUCTURED);
+    document.querySelectorAll('[data-price]').forEach(node => {
+      node.textContent = Prices.label(CURRENCY, node.getAttribute('data-price'));
+    });
+  })();
 
   const $ = sel => document.querySelector(sel);
   const KEYS = {
@@ -910,7 +935,8 @@
   // it was the wrong thing to bury. The markup is the same callout it always
   // was, lifted into a card of its own; the style itself still leads the
   // heading, since that is the part a reader is looking for.
-  function attachmentBodyHtml(attachment) {
+  function attachmentBodyHtml(source) {
+    const attachment = gentleAttachmentOf(source);
     return '<div class="callout"><h3>' + esc(TEXT.attachmentPrefix) + esc(attachment.style) + '</h3>' +
       // What the style is good at, directly under the name of it. Deliberately
       // first: the four names carry a lot of received meaning, and a reader who
@@ -5145,7 +5171,9 @@
    * named pulls it part of the way over.
    */
   function attachmentPlace(style) {
-    const text = String(style || '').toLowerCase().replace(/fearful[\s-]*avoidant/g, 'fearful');
+    const text = String(style || '').toLowerCase().replace(/fearful[\s-]*avoidant/g, 'fearful')
+      // A mix of the two sits in their shared corner.
+      .replace(/anxious and avoidant mix/g, 'fearful');
     const centres = { secure: [28, 28], anxious: [28, 72], avoidant: [72, 28], fearful: [72, 72] };
     const found = Object.keys(centres).map(key => ({ key, at: text.indexOf(key) }))
       .filter(row => row.at >= 0).sort((a, b) => a.at - b.at);
@@ -5280,8 +5308,9 @@
    * where it gets hard, how they give and want care, and who suits them —
    * three sections, a page apart, that kept restating each other.
    */
-  function relationshipsStructuredBody(relationship, attachment, idealPartner) {
+  function relationshipsStructuredBody(relationship, source, idealPartner) {
     const S = Copy.STRUCTURED;
+    const attachment = source ? gentleAttachmentOf(source) : source;
     // Love languages first: the most concrete thing here, and the one a reader
     // is most likely to act on tomorrow.
     let html = loveLanguageBlock(relationship.loveLanguages, { caveat: false, blurbs: false });
@@ -5688,7 +5717,7 @@
     if (!card || typeof card !== 'object') return '';
     const B = Copy.STRUCTURED.beyond;
     const line = (label, value) => {
-      const raw = String(value || '').trim();
+      const raw = Copy.gentleAttachment(String(value || '').trim());
       if (!raw) return '';
       const tentative = /\(tentative\)\s*$/i.test(raw);
       const text = raw.replace(/\s*\(tentative\)\s*$/i, '');
@@ -5715,6 +5744,15 @@
       '<div class="beyond-grid">' + columns.map(([icon, title, body]) =>
         '<div class="beyond-col"><h3><span aria-hidden="true">' + icon + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
       '</div><p class="beyond-foot">' + esc(B.foot) + ' <span aria-hidden="true">↓</span></p></section>';
+  }
+
+  /** The attachment read with the app's gentler names put in, field by field. */
+  function gentleAttachmentOf(attachment) {
+    const out = Object.assign({}, attachment);
+    for (const key of ['style', 'styleTone', 'why', 'conflict', 'caveat']) {
+      if (typeof out[key] === 'string') out[key] = Copy.gentleAttachment(out[key]);
+    }
+    return out;
   }
 
   function reportSectionsHtml(report, options) {
@@ -7874,7 +7912,7 @@
       // the one place a ticket the server did not recognise still reached the
       // reader as "reload the page and try again". A rate limit or a real
       // failure still arrives here as itself; the catch below shows it.
-      const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind });
+      const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
       if (!intent) throw new Error(TEXT.premiumNotConfigured);
 
       if (intent.mock) {

@@ -323,32 +323,11 @@
     <p class="letterhead-meta" id="letterhead-meta"></p>
   </header>
 
-  <!-- Echoes the welcome hero rather than the plain .page-head every other
-       internal page uses: same warm gradient wash, same watermark mark bled
-       behind the text, so a reader landing here after the upload still feels
-       like the same product instead of stepping onto a bare utility screen.
-       Its own class rather than a second .hero-mark, deliberately — the
-       "one shared mark, four places" check that holds the nav, letterhead
-       and welcome-hero copies together counts every .hero-mark node in the
-       document, and a fifth one with the same class would inflate that count
-       rather than being covered by it. It gets the identical shape and the
-       same treatment through a shared selector in the stylesheet instead. -->
-  <header class="hero profile-hero screen-only">
-    <svg class="profile-hero-mark" viewBox="0 0 140 140" fill="none" stroke-width="3"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="profile-hero-mark-gradient" x1="0" y1="0" x2="1" y2="1">
-          <stop class="hero-mark-from" offset="0"/>
-          <stop class="hero-mark-to" offset="1"/>
-        </linearGradient>
-      </defs>
-      <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
-      <path d="M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z"/>
-      <path d="M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z"/>
-      <circle cx="70" cy="70" r="11" stroke="none"/>
-    </svg>
-    <h1 id="profile-title">Your psyche</h1>
-  </header>
+  <!-- The page opens on the Psyche Card itself, which already names its
+       owner at the top. The "<name>'s psyche" banner that sat above it said the
+       same thing a card's height higher, so it is kept for screen readers only:
+       the page still has its one h1 and its name. -->
+  <h1 class="visually-hidden" id="profile-title">Your psyche</h1>
 
   <!-- The card at a glance, above the written report. Built from the same
        report object the sections below render, rendered as real elements rather
@@ -667,9 +646,9 @@
 
     <h3>What does it cost?</h3>
     <p>Your first Psyche Card is free, and so is every compatibility report. Running your Psyche
-      Card again is US$2. The full premium report — every section explained, plus your wellbeing,
+      Card again is <span data-price="analysis">US$2</span>. The full premium report — every section explained, plus your wellbeing,
       attachment style, ideal partner, career coaching, development plan and a secret bonus section — is a single
-      US$5. You see the price before you pay.</p>
+      <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
 
     <h3>How does the compatibility feature work?</h3>
     <p>Each reader has a personal link that carries a summary of their PsycheAI results. Send it to
@@ -1292,6 +1271,7 @@
 <script src="supplement.js"></script>
 <script src="digest.js"></script>
 <script src="card.js"></script>
+<script src="prices.js"></script>
 <script src="character-art.js"></script>
 <script src="copy.js"></script>
 <script src="pdf.js"></script>

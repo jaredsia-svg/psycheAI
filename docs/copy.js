@@ -888,7 +888,9 @@
     // One marker per interest for where it is heading, keyed by trajectory.
     trendIcons: { structural: '◆', stable: '●', rising: '↗', declining: '↘', dormant: '⏸', phasic: '◐' },
     attachMapLabel: 'Attachment leaning on the anxiety and avoidance dimensions',
-    attachQuadrants: { secure: 'Secure', anxious: 'Anxious', avoidant: 'Avoidant', fearful: 'Fearful-avoidant' },
+    // The corner where high anxiety meets high avoidance is a mix of the two,
+    // and is labelled so: the app never names a reader fearful-avoidant.
+    attachQuadrants: { secure: 'Secure', anxious: 'Anxious', avoidant: 'Avoidant', fearful: 'Mixed' },
     attachAxes: { anxiety: 'Anxiety', avoidance: 'Avoidance' },
     attachMapNote: 'Approximate: a leaning, not a measurement.',
     touchNote: 'Physical touch cannot be verified from online data, so PsycheAI never ranks it unless your own words make it clear.',
@@ -1200,9 +1202,20 @@
       EMBLEM_PATHS[key] + '</svg>';
   }
 
+  // The app never calls a reader fearful-avoidant (or disorganised): the
+  // names land as a verdict, and an export cannot support one. The prompts
+  // ask for secure, anxious or avoidant, and a mix as two leanings; this
+  // softens the label wherever a report — an old one included — still has it.
+  function gentleAttachment(text) {
+    return String(text == null ? '' : text)
+      .replace(/\b(fearful[\s-]*avoidant|disorgani[sz]ed)([\s-]*(leaning|attachment|style))?/gi, (match, name) =>
+        (/^[A-Z]/.test(match) ? 'A' : 'a') + 'nxious and avoidant mix')
+      .replace(/\ban anxious and avoidant mix\b/g, 'an anxious and avoidant mix');
+  }
+
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
-    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt,
+    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, gentleAttachment,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

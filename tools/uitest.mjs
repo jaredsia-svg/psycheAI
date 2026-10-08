@@ -681,6 +681,63 @@ try {
     }
   }
 
+  // ---- local prices ----
+  //
+  // A reader in Singapore sees S$7 and S$3, and the payment it starts is asked
+  // for in SGD — the page and the charge read the same table (docs/prices.js),
+  // and the server answers with the table's amount for that currency. A
+  // browser whose time zone names no market in the table stays in US dollars,
+  // which every other check in this file already sees.
+  {
+    const sgPage = await browser.newPage({ viewport: { width: 1100, height: 900 }, timezoneId: 'Asia/Singapore' });
+    try {
+      await sgPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await sgPage.waitForTimeout(300);
+      const sample = await sgPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await sgPage.evaluate(report => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report, card: report.card, payload: 'x', model: 'mock',
+          createdAt: new Date().toISOString(),
+        }));
+        localStorage.setItem('psycheai_digest', JSON.stringify({
+          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
+          google: { activity: [] },
+        }));
+      }, sample);
+      await sgPage.reload();
+      await sgPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const shown = await sgPage.evaluate(() => ({
+        tiers: [...document.querySelectorAll('.premium-tier-price')].map(node => node.textContent.trim()),
+        faq: [...document.querySelectorAll('[data-price]')].map(node => node.dataset.price + '=' + node.textContent.trim()),
+        dollars: /US\$\d/.test(document.body.innerText),
+      }));
+      check('a reader in Singapore is shown the premium report at S$7',
+        shown.tiers.length > 0 && shown.tiers.every(text => /^S\$7\b/.test(text)), shown.tiers.join(' | '));
+      check('and the FAQ quotes the same local prices',
+        shown.faq.includes('unlock=S$7') && shown.faq.includes('analysis=S$3'), shown.faq.join(' | '));
+      check('with no US-dollar price left anywhere on the page', !shown.dollars);
+
+      let asked = null;
+      let answered = null;
+      sgPage.on('response', async response => {
+        if (!/api\/create-payment-intent/.test(response.url())) return;
+        asked = response.request().postDataJSON();
+        answered = await response.json().catch(() => null);
+      });
+      const unlock = sgPage.locator('.premium-unlock').first();
+      await unlock.scrollIntoViewIfNeeded();
+      await unlock.click();
+      await skipPremiumDataOffer(sgPage);
+      await sgPage.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 }).catch(() => {});
+      check('and the payment it starts is asked for in SGD',
+        asked && asked.currency === 'sgd', JSON.stringify(asked));
+      check('which the server prices from the table, S$7.00, not from anything the page sent',
+        answered && answered.currency === 'sgd' && answered.amount === 700, JSON.stringify(answered));
+    } finally {
+      await sgPage.close();
+    }
+  }
+
   // ---- a response that never finished arriving ----
   //
   // A generating request commits its 200 before the work starts and writes a
@@ -4254,19 +4311,6 @@ try {
   // below render, so a check that it *has* the fields is really a check that
   // the two cannot drift apart.
   const cardText = await page.locator('#psyche-card').innerText();
-  // The download button used to sit under the title; with it gone, the margin
-  // below the h1 plus the hero's own were holding open an empty row above the
-  // first card. Measured as the real distance between the two: 43px now, 70px
-  // with the old margin restored, so the threshold sits between the two with
-  // room either side rather than on top of the failing value.
-  check('no empty row is left between the title and the first section',
-    await page.evaluate(() => {
-      const title = document.querySelector('#profile-title').getBoundingClientRect();
-      const first = document.querySelector('#psyche-card-section').getBoundingClientRect();
-      return first.top - title.bottom;
-    }) < 58, await page.evaluate(() => Math.round(
-      document.querySelector('#psyche-card-section').getBoundingClientRect().top -
-      document.querySelector('#profile-title').getBoundingClientRect().bottom) + 'px'));
   check('the card lives in a named section of its own',
     await page.evaluate(() => {
       const section = document.querySelector('#psyche-card-section');
@@ -4885,72 +4929,16 @@ try {
   await page.setViewportSize({ width: 1440, height: 860 });
   await page.waitForTimeout(150);
 
-  // The profile page's own top band, styled to match the welcome hero rather
-  // than the plain .page-head every other internal page gets — same gradient
-  // wash, same watermark mark bled behind the text.
-  check('the profile header shares the hero class, not the plain page-head',
+  // The page opens on the card: the banner that named the reader above it is
+  // gone from sight, kept as the page's h1 for screen readers.
+  check('the profile page opens on the card, its title kept for screen readers only',
     await page.evaluate(() => {
-      const head = document.querySelector('#view-profile .profile-hero');
-      return Boolean(head) && head.classList.contains('hero') &&
-        document.querySelectorAll('#view-profile .page-head').length === 0;
+      const title = document.querySelector('#profile-title');
+      const nav = document.querySelector('.nav').getBoundingClientRect();
+      const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
+      return title.tagName === 'H1' && title.classList.contains('visually-hidden') && title.getBoundingClientRect().height <= 1 &&
+        !document.querySelector('#view-profile .profile-hero') && card.top - nav.bottom < 60;
     }));
-  check('it carries the same two-radial-gradient wash the welcome hero uses',
-    await page.evaluate(() => {
-      const head = document.querySelector('#view-profile .profile-hero');
-      if (!head) return false;
-      const bg = getComputedStyle(head).backgroundImage;
-      return (bg.match(/radial-gradient/g) || []).length === 2;
-    }));
-  check('the watermark mark is drawn behind the title, faint and bled to the edge',
-    await page.evaluate(() => {
-      const mark = document.querySelector('#view-profile .profile-hero-mark');
-      if (!mark) return false;
-      const cs = getComputedStyle(mark);
-      return cs.position === 'absolute' && parseFloat(cs.opacity) < 0.3 &&
-        mark.getAttribute('aria-hidden') === 'true';
-    }));
-  // The check above holds regardless of whether the mark's own sizing and
-  // paint rules are missing entirely — position/opacity/aria-hidden all come
-  // from the rule it shares with .hero-mark, so a fault that deletes only
-  // .profile-hero-mark's own block (its right offset, width and gradient
-  // stroke) passes it vacuously. This is the part that actually distinguishes
-  // "styled like the welcome hero" from "present but blank": really bled past
-  // the band's own right edge, sized to something on screen, and actually
-  // painted with the gradient rather than left with no stroke at all.
-  check('the mark bleeds past the band\'s right edge and is stroked with its own gradient',
-    await page.evaluate(() => {
-      const head = document.querySelector('#view-profile .profile-hero');
-      const mark = document.querySelector('#view-profile .profile-hero-mark');
-      if (!head || !mark) return false;
-      const headBox = head.getBoundingClientRect();
-      const markBox = mark.getBoundingClientRect();
-      const cs = getComputedStyle(mark);
-      return markBox.width > 40 &&
-        markBox.right > headBox.right - 40 &&
-        /url\("?#profile-hero-mark-gradient"?\)/.test(cs.stroke);
-    }),
-    await page.evaluate(() => {
-      const mark = document.querySelector('#view-profile .profile-hero-mark');
-      return mark ? JSON.stringify({
-        width: mark.getBoundingClientRect().width, stroke: getComputedStyle(mark).stroke,
-      }) : 'no mark';
-    }));
-  // The same "one shared mark, four places" claim the nav/letterhead/hero
-  // check already holds — extended to the fifth copy rather than folded into
-  // that check's own fetch-and-parse, so a failure here names itself instead
-  // of reading as a mismatch in one of the original three.
-  check('the profile watermark is the same shape as the brand mark everywhere else',
-    await page.evaluate(() => {
-      const paths = [...document.querySelectorAll('#view-profile .profile-hero-mark path')]
-        .map(p => p.getAttribute('d'));
-      return JSON.stringify(paths) === JSON.stringify(window.PsycheCopy.BRAND_MARK.paths) &&
-        document.querySelectorAll('#view-profile .profile-hero-mark circle').length === 1;
-    }));
-  // A fifth `.hero-mark`-classed node would inflate the count the original
-  // check holds at exactly one, which is why this element uses its own class
-  // — proven here rather than assumed.
-  check('the profile watermark does not double-count as a second .hero-mark',
-    (await page.locator('.hero-mark').count()) <= 1);
   await shot('2-profile');
   if (shots) await page.locator('#profile-body .bonus-card').screenshot({ path: join(shotDir, '2a-premium-crop.png') });
   if (shots) await page.locator('#profile-body .wellness-card').screenshot({ path: join(shotDir, '2d-wellness-crop.png') });
@@ -4967,19 +4955,6 @@ try {
   // The one-line summary under the title is gone.
   check('there is no sub-headline under the profile title',
     (await page.locator('#profile-sub').count()) === 0);
-  // The header carries the title and nothing else now. The download used to sit
-  // here as well as at the foot, which put the exit before the thing being
-  // exited — the one at the bottom is where somebody who has read the report
-  // actually is.
-  check('the profile header is the mark and the title, with no button row',
-    await page.evaluate(() => {
-      const head = document.querySelector('#view-profile .profile-hero');
-      return Boolean(head) && head.children.length === 2 &&
-        head.children[0].tagName === 'svg' &&
-        head.children[1].id === 'profile-title' &&
-        !head.querySelector('button');
-    }));
-
   check('the shareable-card character count note is gone',
     (await page.locator('#payload-size').count()) === 0);
   check('"Test compatibility" carries the same gradient as the other primary actions, not the ghost style',

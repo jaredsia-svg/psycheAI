@@ -491,6 +491,16 @@
   let TRAIT_LABELS = null;
   let MODE_LABELS = null;
 
+  // The attachment read with the app's gentler names put in (see
+  // Copy.gentleAttachment): the PDF never calls a reader fearful-avoidant either.
+  function gentleAttachmentOf(attachment) {
+    const out = Object.assign({}, attachment);
+    for (const key of ['style', 'styleTone', 'why', 'conflict', 'caveat']) {
+      if (typeof out[key] === 'string') out[key] = Copy.gentleAttachment(out[key]);
+    }
+    return out;
+  }
+
   function bindCopy() {
     Copy = root.PsycheCopy;
     TEXT = Copy.TEXT;
@@ -1504,7 +1514,8 @@
     },
   }, {
     key: 'attachment',
-    render(out, attachment, opts) {
+    render(out, source, opts) {
+      const attachment = gentleAttachmentOf(source);
       out.sectionTitle(TEXT.attachment, (opts && opts.sub) || TEXT.attachmentSub);
       out.h3(TEXT.attachmentPrefix + (attachment.style || ''));
       if (attachment.why) out.body(attachment.why, { size: 9.9, leading: 14.4 });
@@ -2917,7 +2928,7 @@
     // 03: how you connect and work.
     out.part(S.parts.connect, numeral('connect'));
     const relationship = source.relationship || {};
-    const attachment = unlocked.attachment;
+    const attachment = unlocked.attachment ? gentleAttachmentOf(unlocked.attachment) : unlocked.attachment;
     const idealPartner = unlocked.idealPartner;
     // Love languages first, then attachment, what they bring and where it
     // gets hard, and who suits them — one section, as on the page, each part

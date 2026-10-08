@@ -791,6 +791,40 @@ check('premium works from a GEMINI_API_KEY alone, since Gemini is the default pr
     JSON.stringify(money.cross) === JSON.stringify(['refused', 'refused']), JSON.stringify(money.cross));
 }
 
+// Local prices: a reader pays the rounded local price where docs/prices.js
+// lists their currency, USD anywhere else, and a payment is held to the
+// table's amount for the currency it was paid in.
+{
+  const local = execFileSync(process.execPath,
+    ['-e', 'const s = require("' + join(root, 'lib', 'stripe.js') + '");' +
+      '(async () => {' +
+      '  const sg = await s.createPaymentIntent(null, "unlock", "sgd");' +
+      '  const jp = await s.createPaymentIntent(null, "analysis", "JPY");' +
+      '  const odd = await s.createPaymentIntent(null, "unlock", "xyz");' +
+      '  const out = { sg: [sg.amount, sg.currency], jp: [jp.amount, jp.currency], odd: [odd.amount, odd.currency] };' +
+      '  out.sgVerified = await s.verifyPaid(sg.id, "unlock").then(() => true, () => false);' +
+      '  out.sgAsAnalysis = await s.verifyPaid(sg.id, "analysis").then(() => true, () => false);' +
+      '  process.stdout.write(JSON.stringify(out));' +
+      '})();'],
+    { env: { PATH: process.env.PATH, PSYCHEAI_MOCK: '1' } });
+  const got = JSON.parse(local.toString());
+  check('a local currency is charged at the table\'s price for it, and an unknown one in USD',
+    got.sg.join() === '700,sgd' && got.jp.join() === '300,jpy' && got.odd.join() === '500,usd', JSON.stringify(got));
+  check('and a local payment verifies for its own product only',
+    got.sgVerified === true && got.sgAsAnalysis === false, JSON.stringify(got));
+  const sandbox = {};
+  runInThisContext('(function (window) {' + readFileSync(join(root, 'docs', 'prices.js'), 'utf8') + '})')(sandbox);
+  const P = sandbox.PsychePrices;
+  check('the page reads the country from the time zone, then the language, and prices it',
+    P.guessCountry({ timeZone: 'Asia/Singapore', languages: ['en-US'] }) === 'SG' &&
+    P.guessCountry({ timeZone: 'Australia/Sydney' }) === 'AU' &&
+    P.guessCountry({ timeZone: 'America/Los_Angeles' }) === 'US' &&
+    P.guessCountry({ timeZone: 'Etc/UTC', languages: ['en-GB'] }) === 'GB' &&
+    P.currencyFor('DE') === 'eur' && P.currencyFor('IN') === 'usd' && P.currencyFor('') === 'usd' &&
+    P.label('sgd', 'unlock') === 'S$7' && P.label('gbp', 'analysis') === '£1.50' &&
+    P.label('jpy', 'unlock') === '¥800' && P.label('hkd', 'unlock') === 'HK$39' && P.label('usd', 'unlock') === 'US$5');
+}
+
 // The ledger separates them too, so the same id spent on one still has its
 // own allowance on the other rather than sharing one pool.
 {
@@ -6199,7 +6233,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('attachment is read from conduct, and what they watch about it is interest, not style',
     /never from what they read about it/.test(full) && /show an \*interest\*/.test(full) &&
     /never the trace the style rests on/.test(full));
-  check('thin or mixed evidence takes the cautious read, and fearful-avoidant needs both halves in conduct',
+  check('thin or mixed evidence takes the cautious read, and a mixed read needs both halves in conduct',
     /take the more cautious read/.test(full) && /needs both halves visible in what they do/.test(full) &&
     /leans secure, with avoidant defences under stress/.test(full));
   check('the attachment schema says the same',
@@ -7425,11 +7459,20 @@ check('the schema requires evidence on strengths and frictions',
   // and talk to a partner about it, where an invented phrase leaves them
   // holding nothing. The severity the ban was aimed at is now handled by tone
   // instead of by omission, which the checks below are what hold in place.
-  check('the prompt names the standard attachment styles',
-    /fearful-avoidant/i.test(both) && /\bavoidant\b/i.test(both) &&
-    /\banxious\b/i.test(both) && /\bsecure\b/i.test(both),
-    'named: ' + ['fearful-avoidant', 'avoidant', 'anxious', 'secure']
-      .filter(label => new RegExp('\\b' + label + '\\b', 'i').test(both)).join(', '));
+  check('the prompt names three attachment styles, and never lets the model call anyone fearful-avoidant',
+    /\bavoidant\b/i.test(both) && /\banxious\b/i.test(both) && /\bsecure\b/i.test(both) &&
+    /Never name fearful-avoidant or disorganised/.test(both) && /Never write fearful-avoidant or disorganised/.test(both) &&
+    !/standard four/i.test(both));
+  {
+    // And the page softens the name wherever an old report still has it.
+    const sandbox = { window: {} };
+    runInThisContext('(function (window) {' + readFileSync(join(root, 'docs', 'copy.js'), 'utf8') + '})')(sandbox.window);
+    const gentle = sandbox.window.PsycheCopy.gentleAttachment;
+    check('an old report\'s fearful-avoidant reads as an anxious and avoidant mix, and nothing else changes',
+      gentle('Fearful-avoidant leaning: wants closeness') === 'Anxious and avoidant mix: wants closeness' &&
+      gentle('leans secure (tentative)') === 'leans secure (tentative)' && !/fearful/i.test(gentle('a disorganised, fearful avoidant style')),
+      gentle('a disorganised, fearful avoidant style'));
+  }
   // As leanings rather than categories, which is the whole of what the ban was
   // really protecting: the difference between describing how somebody has been
   // behaving and declaring what they are.
@@ -7445,7 +7488,7 @@ check('the schema requires evidence on strengths and frictions',
   check('the attachment section is told to lead with what the style is good at',
     /styleTone/.test(JSON.stringify(prompts.PREMIUM_SCHEMA)) &&
     /good at/i.test(both) && /strengths/i.test(both));
-  check('and that fearful-avoidant in particular is not written as a defect',
+  check('and that a mix of anxious and avoidant in particular is not written as a defect',
     /survivable/i.test(both) && /not a broken one/i.test(both));
   check('and that secure is not framed as the one the others failed to win',
     /not a prize/i.test(both));
