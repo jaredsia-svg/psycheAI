@@ -6799,6 +6799,59 @@ check('the schema requires evidence on strengths and frictions',
   check('and a guide that does not exist is still a 404', got['/no-such-guide'].status === 404);
 }
 
+// ---------- one address: *.onrender.com redirects to psycheai.io ----------
+//
+// Render serves the site at its own subdomain as well as at the custom
+// domain, which search engines can index as a second copy. With the setting
+// on, pages at an onrender.com address move to the same path on psycheai.io;
+// /api/ stays put for a tab already open there; localhost is never moved;
+// and without the setting nothing moves at all.
+{
+  const port = 8939;
+  const script = `
+    const { spawn } = require('node:child_process');
+    const http = require('node:http');
+    const start = env => spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+      env: { ...process.env, PSYCHEAI_MOCK: '1', ...env }, stdio: 'ignore' });
+    const get = (port, path, host, method) => new Promise(resolve => {
+      const req = http.request({ port, path, method: method || 'GET', headers: { Host: host } }, res => {
+        res.resume(); resolve({ status: res.statusCode, location: res.headers.location || null });
+      });
+      req.on('error', () => resolve({ status: 0 }));
+      req.end();
+    });
+    const wait = async port => { for (let i = 0; i < 100; i++) { if ((await get(port, '/api/status', 'localhost')).status) return; await new Promise(r => setTimeout(r, 100)); } };
+    (async () => {
+      const on = start({ PORT: '${port}', PSYCHEAI_CANONICAL_HOST: 'psycheai.io' });
+      const off = start({ PORT: '${port + 1}', PSYCHEAI_CANONICAL_HOST: '' });
+      await wait(${port}); await wait(${port + 1});
+      const out = {
+        page: await get(${port}, '/compatibility-test?via=ava', 'psycheai-x.onrender.com'),
+        root: await get(${port}, '/', 'psycheai-x.onrender.com:443'),
+        api: await get(${port}, '/api/status', 'psycheai-x.onrender.com'),
+        post: await get(${port}, '/', 'psycheai-x.onrender.com', 'POST'),
+        canonical: await get(${port}, '/', 'psycheai.io'),
+        local: await get(${port}, '/', 'localhost'),
+        unset: await get(${port + 1}, '/', 'psycheai-x.onrender.com'),
+      };
+      on.kill(); off.kill();
+      process.stdout.write(JSON.stringify(out));
+    })().catch(error => process.stdout.write(JSON.stringify({ crashed: error.message })));
+  `;
+  let got = {};
+  try { got = JSON.parse(execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 30000 })); }
+  catch (error) { got = { crashed: error.message }; }
+  check('redirect: the subprocess ran', !got.crashed, got.crashed);
+  check('redirect: a page at onrender.com moves permanently to the same path on psycheai.io',
+    got.page.status === 301 && got.page.location === 'https://psycheai.io/compatibility-test?via=ava' &&
+      got.root.status === 301 && got.root.location === 'https://psycheai.io/', JSON.stringify([got.page, got.root]));
+  check('redirect: the API at the old address is left alone, and so is anything but a read',
+    got.api.status === 200 && got.post.status !== 301, JSON.stringify([got.api, got.post]));
+  check('redirect: psycheai.io itself and localhost are served, not moved',
+    got.canonical.status === 200 && got.local.status === 200, JSON.stringify([got.canonical, got.local]));
+  check('redirect: with the setting unset nothing moves', got.unset.status === 200, JSON.stringify(got.unset));
+}
+
 // ---------- daily totals, campaign codes and creator codes ----------
 //
 // lib/stats.js counts finished work as daily totals, with nothing that

@@ -1123,12 +1123,37 @@ function applySecurityHeaders(request, response) {
   }
 }
 
+// One address for the site. Render also serves it at <service>.onrender.com,
+// which search engines can find and index as a second copy. With
+// PSYCHEAI_CANONICAL_HOST set (psycheai.io), a page asked for at an
+// *.onrender.com address is sent to the same path there with a permanent
+// redirect. Pages only: /api/ is left alone, so a tab already open on the old
+// address can still collect a report it is waiting for. Unset, nothing is
+// redirected. Matched on the onrender.com suffix rather than on "anything
+// but the canonical host", so localhost and the test suite are never moved.
+const CANONICAL_HOST = String(process.env.PSYCHEAI_CANONICAL_HOST || '').trim().toLowerCase();
+function canonicalRedirect(request) {
+  if (!CANONICAL_HOST || (request.method !== 'GET' && request.method !== 'HEAD')) return null;
+  const host = String(request.headers.host || '').toLowerCase().split(':')[0];
+  if (!host.endsWith('.onrender.com') || host === CANONICAL_HOST) return null;
+  const target = String(request.url || '/');
+  if (!target.startsWith('/') || target.startsWith('//') || target.startsWith('/api/')) return null;
+  return 'https://' + CANONICAL_HOST + target;
+}
+
 const server = http.createServer((request, response) => {
   // Before anything branches, so no route can be added that forgets them.
   // setHeader rather than passing them to each writeHead: they survive into
   // whatever the handler eventually writes, including the 404 and 403 paths
   // in serveStatic and every sendJson refusal above.
   applySecurityHeaders(request, response);
+
+  const moved = canonicalRedirect(request);
+  if (moved) {
+    response.writeHead(301, { Location: moved, 'Cache-Control': 'public, max-age=86400' });
+    response.end();
+    return;
+  }
 
   // Parsing the request line is the first thing that can throw, and until this
   // guard existed a throw here ended the process.
@@ -1289,6 +1314,6 @@ if (require.main === module) {
 // and driving it through a real socket would make the test about timing
 // rather than about the function.
 module.exports = {
-  premiumEngine, isValidPromoCode, server, sendJsonWhileWorking,
+  premiumEngine, isValidPromoCode, server, sendJsonWhileWorking, canonicalRedirect,
   API_GUARDS, NONCE_HEADER, CSP,
 };

@@ -1319,6 +1319,7 @@ the first.
 | `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 | `PSYCHEAI_PROMO_CODES` | Creator codes, comma-separated, each `CODE[:cap[:last day]]` — e.g. `AVA50:50:2026-12-31,BEN:20`. A cap counts distinct reports; the last day is inclusive, UTC. See [Counting what works](#counting-what-works-without-counting-anyone). |
+| `PSYCHEAI_CANONICAL_HOST` | The site's one address, e.g. `psycheai.io`. Set, a page requested at any `*.onrender.com` address gets a 301 to the same path there, so search engines index one copy; `/api/` is left alone so a tab already open on the old address can still collect its report. Unset ⇒ nothing is redirected. Browser storage is per address, so a card saved on the old address stays there. |
 | `PSYCHEAI_STATS_TOKEN` | Bearer token for `GET /api/stats`, the daily totals and how much of each creator code is left. Unset ⇒ the route 404s. |
 
 Model IDs change often on every provider, so the defaults above will go stale. List what your key
