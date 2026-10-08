@@ -1131,6 +1131,14 @@ cards — never the consolidated block — was caught immediately: the sample-di
 `.paid-consolidated` and zero `.paid-card` elements failed, along with several checks downstream of it
 that could no longer find the element they depend on.
 
+### Three scenes redrawn: Baymax, Pikachu, Kuromi
+
+**Baymax** is now the big white robot himself — round body, small head with the two dots joined
+by a line, the red heart with its cross on his chest — in front of the city's bridge at dusk.
+**Pikachu** has a Poké Ball at the centre, a lightning bolt cracking behind it, sparks, and a
+grassy hill. **Kuromi** is a pink skull on a black heart with little bat wings and a devil's tail,
+under a lilac crescent moon, with bats, hearts and a spiked fence along the hills.
+
 ### WhatsApp chats, up to three
 
 WhatsApp has no account-wide export — only **Export chat**, one conversation at a time: open the
@@ -3684,7 +3692,7 @@ about 0.02¢ a run in practice).
 Retired characters are no longer offered to the model but keep their scene and emblem
 (`RETIRED_CHARACTERS`), so a card written before they went still draws. The five new scenes follow
 the same rule as the rest — symbols, never likenesses: a spellbook over a castle of lit windows, a
-glossy pink skull under a black two-pointed jester cap with a devil's tail, a crescent moon between the points, a heart-shaped brooch over a city and its
+pink skull on a black bat-winged heart with a devil's tail under a crescent moon, a heart-shaped brooch over a city and its
 lattice tower, a gem-set crown above a pink-roofed castle, a red bow over a cottage on a hill of apples.
 
 Each signature pattern lists the sections it shows up in; the sections themselves no longer carry a

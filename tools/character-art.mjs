@@ -283,17 +283,28 @@ const SCENES = {
       sparkle(476, 70, 10) + sparkle(270, 120, 7);
   },
 
-  // A heart that glows like a beacon over a bridge across the bay.
-  'Baymax': () =>
-    tint('#8fd8ff', '#c45aa0', 0.5) + glow('g', 370, 140, 160, '#ffd1e1', 0.8) +
-    '<g fill="none" stroke="#fff" stroke-width="2" opacity=".5">' +
-      [0, 60, 120, 180, 240, 300].map(a => '<path d="M370 140m0 -112l24 14v28l-24 14l-24 -14v-28z" transform="rotate(' + a + ' 370 140)"/>').join('') + '</g>' +
-    '<path d="M370 226S286 174 286 116a42 42 0 0 1 84 -14a42 42 0 0 1 84 14c0 58 -84 110 -84 110z" fill="' + lin('heart', [[0, '#ff8aa8'], [1, '#e3264f']]) + '" stroke="#fff" stroke-width="5"/>' +
-    '<path d="M370 106v52M344 132h52" stroke="#fff" stroke-width="12" stroke-linecap="round"/>' +
-    '<g fill="#2a1240"><rect x="244" y="250" width="12" height="150"/><rect x="434" y="250" width="12" height="150"/><path d="M150 360h370v10H150z"/></g>' +
-    '<path d="M250 254C300 340 390 340 440 254M150 300C190 330 230 330 250 300M440 300C470 330 500 330 520 310" fill="none" stroke="#2a1240" stroke-width="4"/>' +
-    '<path d="M260 270v90M280 296v64M300 316v44M320 330v30M380 330v30M400 316v44M420 296v64" stroke="#2a1240" stroke-width="2"/>' +
-    skyline(61, 130, W, 440, 20, 60, '#1c0f3a', '#ffd27a') + sparkle(470, 60, 11) + sparkle(270, 64, 8),
+  // The big white healthcare robot, soft and round, the red heart with its
+  // cross on his chest, in front of the city's bridge at dusk.
+  'Baymax': () => {
+    const white = lin('body', [[0, '#ffffff'], [0.7, '#eef0f8'], [1, '#c9cde0']], 0, 0, 1, 1);
+    return tint('#8fd8ff', '#c45aa0', 0.5) + glow('g', 380, 200, 190, '#ffe1ec', 0.8) +
+      '<g fill="#2a1240" opacity=".75"><rect x="214" y="230" width="12" height="170"/><rect x="500" y="230" width="12" height="170"/><path d="M130 360h390v10H130z"/></g>' +
+      '<path d="M220 234C270 330 450 330 506 234M130 300C170 330 200 330 220 300" fill="none" stroke="#2a1240" stroke-width="4" opacity=".75"/>' +
+      skyline(61, 130, W, 440, 20, 60, '#1c0f3a', '#ffd27a') +
+      '<g transform="translate(380 0)">' +
+        '<ellipse cx="0" cy="414" rx="120" ry="14" fill="#1c0f3a" opacity=".35"/>' +
+        '<path d="M-38 372C-40 396 -36 412 -22 412C-6 412 -4 396 -6 372ZM6 372C4 396 6 412 22 412C36 412 40 396 38 372Z" fill="' + white + '" stroke="#b8bdd4" stroke-width="2"/>' +
+        '<path d="M-92 200C-130 230 -138 300 -112 336C-100 350 -84 344 -84 326C-90 290 -82 250 -66 224Z" fill="' + white + '" stroke="#b8bdd4" stroke-width="2"/>' +
+        '<path d="M92 200C130 230 138 300 112 336C100 350 84 344 84 326C90 290 82 250 66 224Z" fill="' + white + '" stroke="#b8bdd4" stroke-width="2"/>' +
+        '<path d="M0 150C-62 150 -104 196 -104 266C-104 340 -60 386 0 386C60 386 104 340 104 266C104 196 62 150 0 150Z" fill="' + white + '" stroke="#b8bdd4" stroke-width="2.5"/>' +
+        '<path d="M-70 200C-80 230 -82 270 -70 300" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" opacity=".8"/>' +
+        '<ellipse cx="0" cy="112" rx="50" ry="38" fill="' + white + '" stroke="#b8bdd4" stroke-width="2.5"/>' +
+        '<path d="M-20 112H20" stroke="#1a1028" stroke-width="3.5"/><circle cx="-22" cy="112" r="8" fill="#1a1028"/><circle cx="22" cy="112" r="8" fill="#1a1028"/>' +
+        '<g transform="translate(34 212) scale(.42)">' +
+          '<path d="M0 86S-84 34 -84 -24a42 42 0 0 1 84 -14a42 42 0 0 1 84 14c0 58 -84 110 -84 110z" fill="' + lin('heart', [[0, '#ff8aa8'], [1, '#e3264f']]) + '" stroke="#fff" stroke-width="6"/>' +
+          '<path d="M0 -34v52M-26 -8h52" stroke="#fff" stroke-width="13" stroke-linecap="round"/></g></g>' +
+      sparkle(476, 70, 11) + sparkle(262, 80, 8) + sparkle(492, 300, 7);
+  },
 
   // A cowboy boot with its spur, a lasso round it and a sheriff's star, over desert mesas at sundown.
   'Woody': () => {
@@ -656,15 +667,30 @@ const SCENES = {
       skyline(172, 130, W, 440, 80, 230, '#0a0820', '#ffd27a', true);
   },
 
-  // A lightning bolt splitting a storm, sparks crackling off it.
-  'Pikachu': () =>
-    tint('#ffd23c', '#3a2a8f', 0.5) +
-    '<g fill="#3a2a6a" opacity=".55"><ellipse cx="300" cy="40" rx="110" ry="40"/><ellipse cx="440" cy="30" rx="120" ry="44"/><ellipse cx="380" cy="70" rx="90" ry="30"/></g>' +
-    glow('g', 380, 190, 180, '#fff3a0', 0.85) +
-    '<path d="M400 30L300 210H372L330 380L470 170H392L440 30Z" fill="' + lin('bolt', [[0, '#fffbe0'], [1, '#ffd23c']]) + '" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>' +
-    '<g fill="none" stroke="#fff3a0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M260 120l-24 20h18l-20 26"/><path d="M490 240l-20 16h14l-16 22"/><path d="M250 300l-18 14h12l-14 18"/></g>' +
-    scatter(182, 18, (x, y) => '<circle cx="' + x + '" cy="' + y + '" r="3" fill="#fff8c4"/>', 260, 500, 100, 340) +
-    ground('M120 440V404C220 390 320 410 420 396S500 392 520 396V440Z', '#2a1a5a'),
+  // A Poké Ball centre stage, a lightning bolt cracking behind it, sparks
+  // flying, on a grassy hill under a stormy sky.
+  'Pikachu': () => {
+    const red = lin('red', [[0, '#ff6a5a'], [1, '#d01a2a']]);
+    const white = lin('white', [[0, '#ffffff'], [1, '#dde0ea']]);
+    return tint('#ffd23c', '#3a2a8f', 0.5) +
+      '<g fill="#3a2a6a" opacity=".55"><ellipse cx="300" cy="40" rx="110" ry="40"/><ellipse cx="440" cy="30" rx="120" ry="44"/><ellipse cx="380" cy="70" rx="90" ry="30"/></g>' +
+      glow('g', 384, 210, 190, '#fff3a0', 0.85) +
+      '<path d="M470 20L396 150H446L414 270L520 112H462L500 20Z" fill="' + lin('bolt', [[0, '#fffbe0'], [1, '#ffd23c']]) + '" stroke="#fff" stroke-width="5" stroke-linejoin="round" opacity=".95"/>' +
+      '<path d="M300 40L262 112H288L270 168L330 86H300L322 40Z" fill="#fff3a0" stroke="#fff" stroke-width="3" stroke-linejoin="round" opacity=".8"/>' +
+      '<g transform="translate(380 222)">' +
+        '<circle r="92" fill="#1a1028" opacity=".25" transform="translate(6 8)"/>' +
+        '<path d="M-90 0A90 90 0 0 1 90 0Z" fill="' + red + '"/>' +
+        '<path d="M-90 0A90 90 0 0 0 90 0Z" fill="' + white + '"/>' +
+        '<circle r="90" fill="none" stroke="#1a1028" stroke-width="7"/>' +
+        '<path d="M-90 0H90" stroke="#1a1028" stroke-width="14"/>' +
+        '<circle r="28" fill="#1a1028"/><circle r="19" fill="' + white + '" stroke="#1a1028" stroke-width="3"/><circle r="9" fill="#fff" stroke="#c9cde0" stroke-width="2"/>' +
+        '<path d="M-58 -52C-40 -70 -14 -78 10 -76" stroke="#fff" stroke-width="9" fill="none" stroke-linecap="round" opacity=".55"/></g>' +
+      '<g fill="none" stroke="#fff3a0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M262 214l-22 18h16l-18 24"/><path d="M500 250l-18 14h12l-14 20"/><path d="M256 320l-16 12h10l-12 16"/></g>' +
+      scatter(182, 16, (x, y) => '<circle cx="' + x + '" cy="' + y + '" r="3" fill="#fff8c4"/>', 250, 510, 100, 340) +
+      '<path d="M0 440V356C110 340 230 362 330 350S470 336 520 342V440Z" fill="#5ab04a"/>' +
+      '<path d="M0 440V392C120 378 250 400 360 388S480 382 520 386V440Z" fill="#2f7d3a"/>' +
+      '<g stroke="#2f7d3a" stroke-width="3" stroke-linecap="round">' + [250, 286, 450, 492].map(x => '<path d="M' + x + ' 352l-4 -12M' + (x + 6) + ' 352l2 -14M' + (x + 12) + ' 352l6 -10"/>').join('') + '</g>';
+  },
 
   // A spotted mushroom on rolling hills, coins glinting in the sky.
   'Mario': () =>
@@ -881,49 +907,47 @@ const SCENES = {
       '<g fill="#ffd27a" opacity=".35">' + [[322, 384], [376, 392], [436, 386], [482, 396]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="16" rx="2.5"/>').join('') + '</g>';
   },
 
-  // A glossy pink skull under a black two-pointed jester cap, a devil's tail
-  // curling from behind it, under a small lilac crescent; little bats, hearts
-  // and sparkles on a plum night, a spiked fence along the hills.
+  // A black heart with little bat wings and a pink skull at its centre,
+  // under a lilac crescent moon; bats, hearts and sparkles on a plum night,
+  // a spiked fence along the hills.
   'Kuromi': () => {
-    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="392" cy="34" r="36" fill="#000"/></mask>');
+    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="486" cy="44" r="46" fill="#000"/></mask>');
     const pink = lin('pink', [[0, '#ffd6ea'], [0.55, '#ff8cc4'], [1, '#f0559c']], 0, 0, 0.4, 1);
-    const ink = lin('ink', [[0, '#3c2558'], [1, '#120820']], 0, 0, 0.6, 1);
+    const ink = lin('ink', [[0, '#46295e'], [1, '#120820']], 0, 0, 0.5, 1);
     const bat = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')" fill="#1a0c2c">' +
       '<path d="M-6 -2C-12 -10 -24 -12 -30 -6C-24 -4 -22 2 -24 8C-18 4 -12 6 -8 10Z"/><path d="M6 -2C12 -10 24 -12 30 -6C24 -4 22 2 24 8C18 4 12 6 8 10Z"/>' +
       '<circle r="8"/><path d="M-6 -6L-8 -14L-2 -8ZM6 -6L8 -14L2 -8Z"/><circle cx="-3" cy="-1" r="1.6" fill="#ff8cc4"/><circle cx="3" cy="-1" r="1.6" fill="#ff8cc4"/></g>';
     const heart = (x, y, s, c) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 7C-9 1 -11 -4 -9 -7C-6 -11 -2 -10 0 -6C2 -10 6 -11 9 -7C11 -4 9 1 0 7Z" fill="' + c + '"/>';
-    const ear = side => {
-      const k = side;
-      return '<path d="M' + (-34 * k) + ' -40C' + (-58 * k) + ' -78 ' + (-88 * k) + ' -118 ' + (-128 * k) + ' -140C' + (-120 * k) + ' -118 ' +
-        (-112 * k) + ' -76 ' + (-88 * k) + ' -40C' + (-76 * k) + ' -22 ' + (-62 * k) + ' -14 ' + (-52 * k) + ' -10Z" fill="' + ink + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M' + (-46 * k) + ' -44C' + (-66 * k) + ' -76 ' + (-90 * k) + ' -106 ' + (-116 * k) + ' -128" stroke="#8a62b8" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/>';
-    };
+    const wing = k => '<path d="M' + (78 * k) + ' -40C' + (120 * k) + ' -86 ' + (170 * k) + ' -80 ' + (184 * k) + ' -50C' + (164 * k) + ' -50 ' +
+      (160 * k) + ' -36 ' + (166 * k) + ' -20C' + (146 * k) + ' -26 ' + (134 * k) + ' -14 ' + (136 * k) + ' 2C' + (116 * k) + ' -6 ' +
+      (100 * k) + ' 0 ' + (92 * k) + ' 14Z" fill="' + ink + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+      '<path d="M' + (96 * k) + ' -34C' + (124 * k) + ' -56 ' + (148 * k) + ' -60 ' + (170 * k) + ' -52" stroke="#8a62b8" stroke-width="2.5" fill="none" opacity=".7"/>';
     return tint('#ff9ad2', '#1c0c34', 0.64) + stars(411, 44, 120, W, 0, 250, '#ffe0f4') +
-      glow('mg', 372, 52, 70, '#f3dcff', 0.5) +
-      '<circle cx="372" cy="52" r="42" fill="' + lin('moon', [[0, '#fbf0ff'], [1, '#cfa8ff']]) + '" mask="url(#{id}-cres)"/>' +
-      glow('g', 372, 210, 180, '#ff9ad2', 0.62) +
-      '<path d="M400 266C456 290 500 258 484 220" fill="none" stroke="#1a0c2c" stroke-width="8" stroke-linecap="round"/>' +
-      '<path d="M484 220L470 214L476 196L490 208L502 200L498 218Z" fill="#1a0c2c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
-      '<g transform="translate(372 210) scale(1.02)">' + ear(1) + ear(-1) +
-        '<path d="M0 -50C-34 -50 -54 -28 -54 0C-54 18 -46 30 -34 36V48C-34 54 -28 58 -22 58H22C28 58 34 54 34 48V36C46 30 54 18 54 0C54 -28 34 -50 0 -50Z" fill="' + pink + '" stroke="#fff" stroke-width="3.5"/>' +
-        '<path d="M-54 -6C-56 -44 -30 -66 0 -66C30 -66 56 -44 54 -6C38 -22 -38 -22 -54 -6Z" fill="' + ink + '" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"/>' +
-        '<path d="M-40 -30C-28 -48 -14 -56 4 -58" stroke="#8a62b8" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"/>' +
-        '<ellipse cx="-20" cy="10" rx="13" ry="15" fill="#2a1240"/><ellipse cx="20" cy="10" rx="13" ry="15" fill="#2a1240"/>' +
-        '<circle cx="-15" cy="4" r="4.2" fill="#fff"/><circle cx="25" cy="4" r="4.2" fill="#fff"/><circle cx="-23" cy="16" r="2" fill="#fff" opacity=".7"/><circle cx="17" cy="16" r="2" fill="#fff" opacity=".7"/>' +
-        '<path d="M0 34C-3 29 -9 30 -8 34C-7 37 0 40 0 40C0 40 7 37 8 34C9 30 3 29 0 34Z" fill="#2a1240"/>' +
-        '<path d="M-20 46H20" stroke="#c43d82" stroke-width="2.4" stroke-linecap="round"/>' +
-        '<path d="M-12 46V56M-4 46V58M4 46V58M12 46V56" stroke="#c43d82" stroke-width="2.4" stroke-linecap="round"/>' +
-        '<path d="M-44 -2C-44 -10 -40 -16 -34 -18C-38 -10 -38 -2 -36 6Z" fill="#fff" opacity=".55"/>' +
-        '<ellipse cx="-34" cy="30" rx="8" ry="4" fill="#ff5f9a" opacity=".45"/><ellipse cx="34" cy="30" rx="8" ry="4" fill="#ff5f9a" opacity=".45"/></g>' +
-      [[250, 160, 1.05], [494, 130, 0.8], [262, 290, 0.7], [478, 304, 0.75], [452, 74, 0.6]].map(([x, y, sc]) => bat(x, y, sc)).join('') +
-      heart(300, 210, 1.5, '#ff5f9a') + heart(502, 160, 1.1, '#ffc2e0') + heart(238, 220, 0.9, '#ffc2e0') + heart(352, 100, 0.9, '#ff8cc4') + heart(470, 250, 0.8, '#ff8cc4') +
-      sparkle(500, 70, 10, '#ffe0f4') + sparkle(236, 100, 8, '#ffe0f4') + sparkle(320, 300, 6, '#ffe0f4') +
+      glow('mg', 460, 70, 80, '#f3dcff', 0.45) +
+      '<circle cx="460" cy="70" r="50" fill="' + lin('moon', [[0, '#fbf0ff'], [1, '#cfa8ff']]) + '" mask="url(#{id}-cres)"/>' +
+      glow('g', 362, 196, 180, '#ff9ad2', 0.62) +
+      '<g transform="translate(362 196) scale(.8)">' + wing(1) + wing(-1) +
+        '<path d="M0 110C-60 70 -112 30 -112 -26C-112 -70 -80 -98 -46 -98C-24 -98 -8 -86 0 -68C8 -86 24 -98 46 -98C80 -98 112 -70 112 -26C112 30 60 70 0 110Z" fill="' + ink + '" stroke="#fff" stroke-width="4"/>' +
+        '<path d="M-84 -50C-78 -74 -58 -86 -40 -84" stroke="#8a62b8" stroke-width="5" fill="none" stroke-linecap="round" opacity=".8"/>' +
+        '<g transform="translate(0 -6)">' +
+          '<path d="M0 -50C-32 -50 -50 -30 -50 -4C-50 12 -42 24 -32 30V42C-32 48 -26 52 -20 52H20C26 52 32 48 32 42V30C42 24 50 12 50 -4C50 -30 32 -50 0 -50Z" fill="' + pink + '" stroke="#fff" stroke-width="3"/>' +
+          '<ellipse cx="-18" cy="-2" rx="12" ry="14" fill="#2a1240"/><ellipse cx="18" cy="-2" rx="12" ry="14" fill="#2a1240"/>' +
+          '<circle cx="-14" cy="-8" r="3.8" fill="#fff"/><circle cx="22" cy="-8" r="3.8" fill="#fff"/>' +
+          '<path d="M0 20C-3 15 -8 16 -7 20C-6 23 0 26 0 26C0 26 6 23 7 20C8 16 3 15 0 20Z" fill="#2a1240"/>' +
+          '<path d="M-18 38H18M-10 38V48M-2 38V50M6 38V50M14 38V48" stroke="#c43d82" stroke-width="2.4" stroke-linecap="round"/>' +
+          '<path d="M-38 -14C-38 -26 -30 -36 -20 -40C-28 -30 -30 -20 -30 -10Z" fill="#fff" opacity=".55"/>' +
+          '<path d="M-8 -56L0 -66L8 -56L4 -50H-4Z" fill="#ff5f9a" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></g>' +
+      '<path d="M362 282C370 312 410 322 430 304" fill="none" stroke="#1a0c2c" stroke-width="6" stroke-linecap="round"/>' +
+      '<path d="M430 304L422 292L440 290L442 306Z" fill="#1a0c2c" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>' +
+      [[256, 120, 1], [496, 150, 0.8], [262, 290, 0.7], [486, 300, 0.75], [330, 50, 0.6]].map(([x, y, sc]) => bat(x, y, sc)).join('') +
+      heart(300, 200, 1.4, '#ff5f9a') + heart(510, 200, 1.1, '#ffc2e0') + heart(236, 220, 0.9, '#ffc2e0') + heart(400, 40, 0.9, '#ff8cc4') +
+      sparkle(500, 120, 9, '#ffe0f4') + sparkle(236, 90, 8, '#ffe0f4') + sparkle(320, 320, 6, '#ffe0f4') +
       '<path d="M0 440V378C110 360 230 382 330 366S470 352 520 360V440Z" fill="#2a1446"/>' +
       '<g fill="#160a26">' + Array.from({ length: 14 }, (_, i) => 252 + i * 20).map(x =>
-        '<rect x="' + (x - 2.5) + '" y="340" width="5" height="60"/><path d="M' + (x - 6) + ' 342C' + (x - 4) + ' 334 ' + (x - 2) + ' 330 ' + x + ' 322C' + (x + 2) + ' 330 ' + (x + 4) + ' 334 ' + (x + 6) + ' 342Z"/>').join('') +
-        '<rect x="246" y="352" width="290" height="5"/><rect x="246" y="378" width="290" height="5"/></g>' +
-      '<path d="M0 440V402C120 390 250 408 360 398S480 392 520 396V440Z" fill="#160a26"/>' +
-      '<g fill="#ff8cc4">' + [[290, 410], [350, 420], [430, 412], [500, 422]].map(([x, y]) => heart(x, y, 0.6, '#ff8cc4')).join('') + '</g>';
+        '<rect x="' + (x - 2.5) + '" y="348" width="5" height="54"/><path d="M' + (x - 6) + ' 350C' + (x - 4) + ' 342 ' + (x - 2) + ' 338 ' + x + ' 330C' + (x + 2) + ' 338 ' + (x + 4) + ' 342 ' + (x + 6) + ' 350Z"/>').join('') +
+        '<rect x="246" y="360" width="290" height="5"/><rect x="246" y="384" width="290" height="5"/></g>' +
+      '<path d="M0 440V404C120 392 250 410 360 400S480 394 520 398V440Z" fill="#160a26"/>' +
+      [[290, 416], [350, 424], [430, 418], [500, 426]].map(([x, y]) => heart(x, y, 0.6, '#ff8cc4')).join('');
   },
 
   // A heart-shaped brooch with a crescent at its centre, ribbons streaming,
