@@ -5032,6 +5032,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const cardConfig = sentConfig;
     await gemini.analyseFull({ profile: {} }, null);
     const fullConfig = sentConfig;
+    await gemini.analyseCompatibility({ name: 'A', bigFive: {} }, { name: 'B', bigFive: {} }, 'romantic').catch(() => null);
+    const compatConfig = sentConfig;
     sentConfig = cardConfig;
     process.env.GEMINI_API_KEY = keyBefore;
     if (keyBefore === undefined) delete process.env.GEMINI_API_KEY;
@@ -5046,6 +5048,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       fullConfig.maxOutputTokens === gemini.FULL_MAX_OUTPUT_TOKENS &&
       fullConfig.thinkingConfig.thinkingLevel === 'MEDIUM',
       JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
+    // Compatibility is free, so it carries its own small cap and thinks at
+    // MINIMAL: before this it inherited the full report's 18,000-token cap and
+    // MEDIUM thinking, about 2 cents a call and up to 7 at worst.
+    check('the compatibility call sends its own small cap and MINIMAL thinking, under the trimmed prompt',
+      Boolean(compatConfig) && compatConfig.maxOutputTokens === gemini.COMPAT_MAX_OUTPUT_TOKENS &&
+      gemini.COMPAT_MAX_OUTPUT_TOKENS <= 3000 && compatConfig.thinkingConfig.thinkingLevel === 'MINIMAL' &&
+      compatConfig.systemInstruction === prompts.COMPATIBILITY_SYSTEM && prompts.COMPATIBILITY_SYSTEM.length < 5500,
+      JSON.stringify(compatConfig && { max: compatConfig.maxOutputTokens, thinking: compatConfig.thinkingConfig,
+        prompt: prompts.COMPATIBILITY_SYSTEM.length }));
     // The overrides exist for tools/compare.mjs. Production passes nothing,
     // and nothing must be what it gets: MEDIUM thinking on the default model.
     check('compare\'s overrides reach the request, and production keeps MEDIUM without them',

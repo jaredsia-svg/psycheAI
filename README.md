@@ -1328,6 +1328,7 @@ the first.
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
+| `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the compatibility call alone: `MINIMAL` (default), `LOW`, `MEDIUM` or `HIGH`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
 | `PSYCHEAI_REPORT_LAYOUT` | `structured` (default) or `classic`. Which report the unlock writes and the page and PDF draw — see [The structured report](#the-structured-report-four-parts-one-thread). Set `classic` to go back to the previous format with no deploy: the prompt, the schema, the page and the PDF all switch together. An unrecognised value is logged and treated as `structured`. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
@@ -1369,6 +1370,34 @@ are both bigger than that. A larger cap does not help, because the thinking grow
 that stops on its own does: on the same measurements `MEDIUM` thought about 2,500 tokens and `LOW`
 about 1,400. **So both calls think at `MEDIUM`**, on `gemini-3.8-flash`. `PSYCHEAI_GEMINI_THINKING`
 changes the level with no deploy; measure a change with `npm run compare` first. A cut-off call is now recorded in `npm run usage`, with its cost.
+
+### What a compatibility costs
+
+Compatibility is free to the reader, so its call is held small on all three counts that bill it
+(`lib/gemini.js`, `analyseCompatibility`):
+
+- **Its own output cap, 2,500 tokens** (`COMPAT_MAX_OUTPUT_TOKENS`). It used to inherit the full
+  report's 18,000, so a call that thought for long could bill about 7¢. The answer is about 1,000
+  tokens at its longest.
+- **`MINIMAL` thinking** (`PSYCHEAI_COMPAT_THINKING`). It reasons over two short cards and facts
+  already worked out (`derivedFacts`), not a digest; at `MEDIUM` the thinking was about 2,500 tokens,
+  two thirds of the cost.
+- **A shorter system prompt**, 4,830 characters from 9,826, every rule kept. It is under Gemini's
+  caching floor, so it is billed in full on every call.
+
+At $0.75 / $3.75 per million tokens: input about 2,700–3,400 tokens (prompt, the 3k-character answer
+schema, two cards and the derived facts) is about 0.2–0.26¢; output about 800–1,100 tokens is about
+0.3–0.4¢. So **about 0.5–0.65¢ a compatibility**, and **at most about 1.2¢** with both cards at every
+length limit and the output at its cap — down from about 2¢ typical and 7¢ worst. A repeat of the same
+pair on the same basis is answered from memory and costs nothing; a different basis is a new call.
+These are estimates from sizes; `npm run usage` has the real figures once there is traffic, and if it
+shows compatibility calls ending on `MAX_TOKENS`, raise the cap.
+
+The link carries the same card for a free reader as for a paid one: the free analysis writes every
+field in it, including the ones the visible card does not show (attachment, rhythm, energy, work
+style, relationship and career strengths, the summary) — short phrases written for this comparison,
+not the full report's explanations of them. Only the Enneagram is absent, since the free analysis
+does not produce one.
 
 Two ways to move between them, and the first needs no deploy:
 
