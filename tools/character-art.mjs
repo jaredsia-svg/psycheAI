@@ -162,14 +162,21 @@ const SCENES = {
       sparkle(476, 150, 9) + sparkle(250, 60, 7);
   },
 
-  // A lion on the jutting rock, its head raised to a great rising sun.
+  // A lion seated at the tip of the jutting rock, its mane against a great rising sun.
   'Simba': () => {
-    let mane = '';
-    for (let i = 0; i <= 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      const m = a - Math.PI / 16;
-      const p = [n(-78 + 28 * Math.cos(a)), n(-72 + 30 * Math.sin(a))];
-      mane += i ? 'Q' + n(-78 + 40 * Math.cos(m)) + ' ' + n(-72 + 42 * Math.sin(m)) + ' ' + p[0] + ' ' + p[1] : 'M' + p[0] + ' ' + p[1];
+    const r = rng(311);
+    const tuft = (deg, len, w) => {
+      const a = (deg * Math.PI) / 180;
+      const [dx, dy] = [Math.cos(a), Math.sin(a)];
+      const [bx, by] = [-16 + dx * 30, -110 + dy * 30];
+      return '<path d="M' + n(bx - dy * w) + ' ' + n(by + dx * w) +
+        'Q' + n(bx + dx * len * 0.6 - dy * w * 0.9) + ' ' + n(by + dy * len * 0.6 + dx * w * 0.9) + ' ' + n(bx + dx * len) + ' ' + n(by + dy * len + 4) +
+        'Q' + n(bx + dx * len * 0.55 + dy * w * 0.7) + ' ' + n(by + dy * len * 0.55 - dx * w * 0.7) + ' ' + n(bx + dy * w) + ' ' + n(by - dx * w) + 'Z"/>';
+    };
+    let mane = '<circle cx="-16" cy="-110" r="40"/>';
+    for (let i = 0; i < 22; i++) {
+      const deg = -140 + i * 13 + (r() - 0.5) * 6;
+      mane += tuft(deg, 18 + r() * 10 + (deg > 60 ? 12 : 0), 12 + r() * 4);
     }
     return tint('#ffb24a', '#7a2e7a', 0.55) +
       '<g fill="' + lin('rays', [[0, '#ffe7a0', 0.8], [1, '#ffb24a', 0]]) + '">' +
@@ -182,11 +189,12 @@ const SCENES = {
         '<path d="M520 300H360C344 302 330 308 322 316L304 320C300 324 304 328 312 328L360 334L520 346Z"/><path d="M400 336L430 372H520V340Z"/>' +
         '<path d="M206 372V318" stroke="#2b0d2f" stroke-width="5"/><path d="M206 318C184 316 168 306 158 296C184 300 198 296 206 292C214 296 230 300 256 296C246 306 230 316 206 318Z"/>' +
         '<path d="M300 372l4-14 3 14M318 370l3-12 3 12M150 374l4-14 3 14" stroke="#2b0d2f" stroke-width="2"/>' +
-        '<g transform="translate(436 300) scale(.84)">' +
-          '<path d="M96 -40C116 -40 126 -30 128 -16" fill="none" stroke="#2b0d2f" stroke-width="6" stroke-linecap="round"/><ellipse cx="129" cy="-11" rx="6" ry="9"/>' +
-          '<path d="M-122 -76C-122 -86 -114 -94 -104 -96L-100 -104L-94 -96C-84 -96 -74 -90 -66 -80C-60 -66 -50 -58 -36 -58C-10 -62 30 -62 56 -58C78 -54 94 -46 98 -34C102 -22 100 -10 96 0L84 0C84 -8 82 -14 78 -18C72 -12 68 -6 68 0L56 0C58 -10 58 -20 56 -26C30 -22 0 -22 -24 -26C-26 -16 -28 -8 -26 0L-38 0C-40 -10 -42 -20 -46 -28C-50 -18 -52 -8 -52 0L-64 0C-64 -16 -64 -34 -70 -46C-80 -56 -90 -64 -98 -66C-108 -68 -116 -70 -122 -76Z"/>' +
-          '<path d="' + mane + 'Z"/>' +
-          '<path d="M-96 -96C-108 -98 -120 -92 -126 -82L-130 -74C-128 -68 -120 -66 -112 -68L-104 -64C-96 -62 -90 -66 -88 -72Z"/><circle cx="-88" cy="-100" r="6"/></g></g>' +
+        '<g transform="translate(446 300) scale(.95)">' +
+          '<path d="M64 -4C84 0 96 -6 100 -18" fill="none" stroke="#2b0d2f" stroke-width="5" stroke-linecap="round"/><ellipse cx="101" cy="-23" rx="5" ry="8" transform="rotate(20 101 -23)"/>' +
+          '<path d="M-58 0C-60 -5 -56 -9 -48 -9H-44C-42 -30 -40 -52 -42 -70C-42 -80 -38 -90 -30 -96L10 -100C30 -90 44 -74 56 -58C70 -42 76 -24 72 -10C70 -2 64 0 56 0Z"/>' +
+          '<ellipse cx="-12" cy="-4" rx="18" ry="5"/>' + mane +
+          '<circle cx="-34" cy="-142" r="7"/>' +
+          '<path d="M-28 -142C-44 -146 -58 -138 -64 -128L-72 -120C-77 -114 -75 -105 -68 -101C-62 -97 -52 -95 -42 -97C-32 -99 -26 -108 -26 -120Z"/></g></g>' +
       '<path d="M360 300H520" stroke="#ffd27a" stroke-width="2" opacity=".5"/>' + sparkle(270, 150, 9);
   },
 
@@ -221,54 +229,58 @@ const SCENES = {
       blooms.map(flower).join('') + sparkle(480, 290, 8);
   },
 
-  // A badge wearing a rabbit's long ears over a sunrise city, a carrot pen at its side.
+  // A rabbit officer on a rooftop at dusk, rim-lit red and blue, looking out over a city of many climates.
   'Judy Hopps': () => {
-    const earFill = lin('ear', [[0, '#eee8fb'], [1, '#9a90c4']]);
-    const ear = (x, a) => '<g transform="translate(' + x + ' 128) rotate(' + a + ') scale(.82)"><path d="M0 0C-24 -40 -26 -112 0 -150C26 -112 24 -40 0 0Z" fill="' + earFill + '" stroke="#fff" stroke-width="4"/>' +
-      '<path d="M0 -16C-12 -46 -12 -104 0 -130C12 -104 12 -46 0 -16Z" fill="#ffb0c8"/></g>';
-    return tint('#7fd8ff', '#3a2a8f', 0.5) + glow('sun', 370, 180, 190, '#ffe7a8', 0.65) +
-      skyline(41, 130, W, 440, 40, 150, '#2a1a5a', '#ffe9a6') +
-      ear(334, -16) + ear(408, 14) +
-      '<g transform="translate(370 214) scale(.92)"><path d="M0 -104L84 -72V-4C84 54 46 90 0 112C-46 90 -84 54 -84 -4V-72Z" fill="' + lin('gold', [[0, '#fff0b0'], [1, '#e1a12e']]) + '" stroke="#fff" stroke-width="4"/>' +
-        '<path d="M0 -86L66 -60V-4C66 44 34 74 0 92C-34 74 -66 44 -66 -4V-60Z" fill="none" stroke="#b97a1f" stroke-width="3"/>' +
-        '<path d="M0 -42L12 -16L40 -12L19 7L25 35L0 21L-25 35L-19 7L-40 -12L-12 -16Z" fill="#fff8dc" stroke="#b97a1f" stroke-width="3"/>' +
-        '<path d="M-56 52H56" stroke="#b97a1f" stroke-width="3" opacity=".6"/></g>' +
-      '<g transform="translate(474 300) rotate(28)">' +
-        '<path d="M0 -50C10 -50 15 -40 13 -30L4 50C2 56 -2 56 -4 50L-13 -30C-15 -40 -10 -50 0 -50Z" fill="' + lin('carrot', [[0, '#ffb04a'], [1, '#e8642c']], 0, 0, 1, 0) + '" stroke="#fff" stroke-width="3"/>' +
-        '<path d="M-10 -20h8M2 -2h8M-8 18h7" stroke="#b8481a" stroke-width="2.4" stroke-linecap="round"/>' +
-        '<path d="M0 -50C-6 -64 -16 -70 -24 -68M0 -50C2 -66 2 -74 -2 -82M0 -50C8 -62 18 -66 24 -62" fill="none" stroke="#6fd06a" stroke-width="5" stroke-linecap="round"/></g>' +
-      sparkle(470, 66, 13) + sparkle(270, 90, 9) +
-      glow('red', 200, 300, 44, '#ff4d6d', 0.55) + glow('blue', 250, 300, 44, '#4da3ff', 0.55);
+    const bunny = 'M-26 0C-30 -6 -22 -8 -10 -8H10C16 -8 16 0 10 0Z' +
+      'M-12 -8C-16 -30 -18 -60 -14 -84C-10 -96 6 -98 14 -88C20 -70 20 -40 16 -20C14 -12 12 -8 10 -8Z' +
+      'M-4 -86C-14 -78 -20 -66 -20 -56C-18 -52 -14 -54 -14 -58C-12 -66 -6 -74 2 -80Z' +
+      'M-4 -96C-16 -96 -26 -104 -28 -114C-30 -122 -24 -130 -14 -134C-2 -138 10 -132 14 -122C16 -112 10 -100 -4 -96Z' +
+      'M-6 -132C-12 -160 -10 -186 -2 -200C6 -184 6 -158 4 -132Z' +
+      'M4 -130C6 -156 14 -180 26 -192C28 -172 20 -150 12 -128Z' +
+      'M14 -36A8 8 0 1 0 30 -36A8 8 0 1 0 14 -36Z';
+    return tint('#5ac8d8', '#ff6fa8', 0.55) + stars(41, 16, 120, W, 0, 90) +
+      glow('sun', 330, 310, 200, '#ffd9a0', 0.75) + '<circle cx="330" cy="318" r="50" fill="#ffe7b8" opacity=".9"/>' +
+      skyline(43, 130, W, 372, 50, 170, '#7a5aa8', '#ffe9a6') +
+      '<g fill="#5a3a8a"><path d="M300 372V130L308 104L316 130V372Z"/><path d="M286 372V180H330V372Z"/></g>' +
+      '<circle cx="308" cy="100" r="4" fill="#ff6f7f"/>' + glow('beacon', 308, 100, 16, '#ff6f7f', 0.7) +
+      '<path d="M170 372A64 64 0 0 1 298 372Z" fill="' + lin('dome', [[0, '#d8f4ff', 0.85], [1, '#7fb8e8', 0.6]]) + '" stroke="#fff" stroke-width="2"/>' +
+      '<path d="M234 308V372M200 318C214 340 220 356 222 372M268 318C254 340 248 356 246 372M178 346H290" stroke="#fff" stroke-width="1.6" fill="none" opacity=".7"/>' +
+      '<g fill="#2a5a4a"><ellipse cx="500" cy="300" rx="40" ry="34"/><ellipse cx="470" cy="320" rx="30" ry="24"/><rect x="496" y="320" width="8" height="52"/></g>' +
+      skyline(44, 130, W, 400, 20, 60, '#3a2266', '#ffd27a') +
+      ground('M0 440V400H340V378H520V440Z', '#1a1035') +
+      '<path d="M340 378H520" stroke="#ffb0c8" stroke-width="2" opacity=".6"/>' +
+      glow('red', 360, 330, 90, '#ff4d6d', 0.55) + glow('blue', 500, 330, 90, '#4da3ff', 0.55) +
+      '<g transform="translate(430 378) scale(1.02)">' +
+        '<path d="' + bunny + '" fill="none" stroke="' + lin('rim', [[0, '#ff6f8a'], [1, '#6fb8ff']], 0, 0, 1, 0) + '" stroke-width="6" stroke-linejoin="round"/>' +
+        '<path d="' + bunny + '" fill="#1a1035"/>' +
+        '<path d="M-1 -136C-5 -160 -4 -180 -1 -192" stroke="#ffb0c8" stroke-width="3" fill="none" opacity=".4" stroke-linecap="round"/>' +
+        '<circle cx="-17" cy="-118" r="2.6" fill="#b48cff"/><circle cx="-28" cy="-113" r="2" fill="#ffb0c8"/>' +
+        '<path d="M-8 -74l6 2.6v5c0 4.4-2.6 7-6 8.6c-3.4-1.6-6-4.2-6-8.6v-5z" fill="#ffd23c"/></g>' +
+      sparkle(416, 300, 7) + sparkle(470, 70, 11) + sparkle(260, 120, 7);
   },
 
-  // A sly fox in shirt and tie, half-lidded, against the city's neon dusk.
+  // A fox sitting on a rooftop ledge under the moon, tie loose, one sly green eye, the city's neon below.
   'Nick Wilde': () => {
-    const fur = lin('fur', [[0, '#ffb062'], [1, '#d9541f']]);
-    const eye = s => '<path d="M' + (-60 * s) + ' -22C' + (-50 * s) + ' -34 ' + (-30 * s) + ' -36 ' + (-18 * s) + ' -24C' + (-30 * s) + ' -12 ' + (-50 * s) + ' -12 ' + (-60 * s) + ' -22Z" fill="#a8ec8a"/>' +
-      '<ellipse cx="' + (-36 * s) + '" cy="-22" rx="3.6" ry="8" fill="#12301a"/>' +
-      '<path d="M' + (-62 * s) + ' -21C' + (-50 * s) + ' -35 ' + (-30 * s) + ' -37 ' + (-16 * s) + ' -24C' + (-30 * s) + ' -25 ' + (-48 * s) + ' -26 ' + (-62 * s) + ' -21Z" fill="#e8642c"/>' +
-      '<path d="M' + (-60 * s) + ' -24C' + (-46 * s) + ' -27 ' + (-30 * s) + ' -27 ' + (-18 * s) + ' -23" stroke="#5a1a0a" stroke-width="3.5" fill="none" stroke-linecap="round"/>';
-    return tint('#3a2a8f', '#c4508f', 0.55) + stars(51, 26, 120, W, 0, 160) +
-      '<path d="M260 50a38 38 0 1 0 40 50a30 30 0 1 1-40-50z" fill="#fff1c4" opacity=".9"/>' +
-      glow('g', 384, 180, 170, '#ff9a5c', 0.55) +
-      skyline(52, 130, W, 440, 40, 130, '#1a1035', '#7ff0e6') +
-      '<rect x="160" y="340" width="64" height="16" rx="8" fill="none" stroke="#ff6fb5" stroke-width="3"/><rect x="240" y="318" width="40" height="12" rx="6" fill="none" stroke="#7ff0e6" stroke-width="3"/>' +
-      '<g transform="translate(384 150) scale(.92)">' +
-        '<path d="M-96 108L0 156L96 108L124 310H-124Z" fill="' + lin('shirt', [[0, '#8fe09a'], [1, '#3f8f5a']]) + '"/>' +
-        '<g fill="#2f6b45" opacity=".45"><circle cx="-70" cy="200" r="8"/><circle cx="-40" cy="250" r="8"/><circle cx="64" cy="190" r="8"/><circle cx="80" cy="260" r="8"/><circle cx="-90" cy="280" r="8"/></g>' +
-        '<path d="M-64 100L-6 152L-34 176ZM64 100L6 152L34 176Z" fill="#c8f6cc"/>' +
-        '<path d="M-12 150H12L18 256L0 280L-18 256Z" fill="#3a4ab0"/><path d="M-13 184L15 172M-15 216L17 202M-17 248L18 234" stroke="#ffd27a" stroke-width="4"/>' +
-        '<path d="M-74 -40L-98 -132L-26 -78ZM74 -40L98 -132L26 -78Z" fill="' + fur + '"/>' +
-        '<path d="M-70 -56L-88 -116L-42 -80ZM70 -56L88 -116L42 -80Z" fill="#7a2a1a" opacity=".55"/>' +
-        '<path d="M-98 -132L-90 -100L-84 -112ZM98 -132L90 -100L84 -112Z" fill="#3a1208"/>' +
-        '<path d="M-100 -30C-94 -82 -42 -96 0 -96C42 -96 94 -82 100 -30C104 12 74 36 48 56L0 104L-48 56C-74 36 -104 12 -100 -30Z" fill="' + fur + '"/>' +
-        '<path d="M-100 -14C-74 12 -46 22 -24 26C-14 40 -8 70 0 96C8 70 14 40 24 26C46 22 74 12 100 -14C94 28 58 60 0 110C-58 60 -94 28 -100 -14Z" fill="#fff4e4"/>' +
-        '<path d="M-22 -94L0 -44L22 -94Z" fill="#b8401a" opacity=".3"/>' +
-        eye(1) + eye(-1) +
-        '<path d="M-66 -42L-22 -38M22 -40L66 -52" stroke="#7a2a1a" stroke-width="4.5" stroke-linecap="round"/>' +
-        '<ellipse cx="0" cy="98" rx="13" ry="9" fill="#2a1240"/><path d="M-4 94a5 3 0 0 1 8 0" fill="#fff" opacity=".5"/>' +
-        '<path d="M2 108C8 118 22 120 34 110" stroke="#2a1240" stroke-width="3.5" fill="none" stroke-linecap="round"/></g>' +
-      sparkle(476, 60, 10);
+    const fox = 'M-62 -112C-56 -116 -48 -120 -42 -126L-38 -162L-26 -136L-12 -162L-8 -126C-4 -120 -2 -110 0 -100C10 -80 30 -60 38 -36C44 -18 42 -6 36 0H-44C-48 0 -48 -6 -42 -6L-36 -8C-36 -30 -38 -54 -36 -72C-36 -82 -38 -92 -44 -98L-50 -102C-54 -104 -58 -108 -62 -112Z' +
+      'M30 -2C20 8 -20 8 -50 4C-66 2 -76 -6 -78 -14C-70 -10 -56 -10 -44 -12C-20 -14 10 -16 30 -18Z';
+    return tint('#2a2a8f', '#c4508f', 0.6) + stars(51, 34, 120, W, 0, 200) +
+      glow('moon', 400, 214, 150, '#ffe9c4', 0.55) +
+      '<circle cx="400" cy="214" r="80" fill="' + rad('mface', [[0, '#fffaf0'], [1, '#ffd9a8']], 0.4, 0.35) + '"/>' +
+      '<g fill="#e8c8a0" opacity=".45"><circle cx="372" cy="190" r="10"/><circle cx="430" cy="240" r="7"/><circle cx="420" cy="180" r="4"/></g>' +
+      skyline(52, 130, W, 440, 40, 150, '#1a1035', '#7ff0e6') +
+      '<g fill="none" stroke-width="3"><rect x="160" y="300" width="70" height="18" rx="9" stroke="#ff6fb5"/><rect x="240" y="276" width="44" height="14" rx="7" stroke="#7ff0e6"/><path d="M180 260h30" stroke="#ffe36e"/></g>' +
+      glow('neon', 200, 300, 60, '#ff6fb5', 0.4) +
+      ground('M0 440V400H330V380H520V440Z', '#120a24') +
+      '<path d="M330 380H520" stroke="#ff9a5c" stroke-width="2" opacity=".6"/>' +
+      '<g transform="translate(432 380) scale(1.15)">' +
+        '<path d="' + fox + '" fill="none" stroke="#ff9a5c" stroke-width="4" stroke-linejoin="round" stroke-opacity=".9"/>' +
+        '<path d="' + fox + '" fill="#140a28"/>' +
+        '<path d="M-78 -14C-76 -6 -66 2 -54 4C-58 -2 -60 -8 -60 -11C-68 -10 -74 -11 -78 -14Z" fill="#fff1e0"/>' +
+        '<path d="M-36 -146L-30 -134L-38 -130ZM-14 -146L-20 -134L-12 -130Z" fill="#ff9a5c" opacity=".55"/>' +
+        '<path d="M-42 -98L-36 -96L-37 -74L-40 -68L-44 -74Z" fill="#4a6aff"/><path d="M-43 -90l6-2M-43 -80l6-2" stroke="#ffd27a" stroke-width="2"/>' +
+        '<path d="M-50 -120C-47 -124 -41 -124 -38 -121C-41 -118 -47 -118 -50 -120Z" fill="#a8ec8a"/>' +
+        '<path d="M-51 -121C-47 -124 -41 -124 -37 -122" stroke="#140a28" stroke-width="1.6" fill="none"/></g>' +
+      sparkle(476, 70, 10) + sparkle(270, 120, 7);
   },
 
   // A heart that glows like a beacon over a bridge across the bay.
@@ -388,7 +400,7 @@ const SCENES = {
       sparkle(220, 100, 9);
   },
 
-  // A glowing golden memory over shelves of coloured ones, and the control desk below.
+  // A glowing golden memory over shelves of coloured ones, above the curve of the control desk.
   'Joy': () => {
     const cols = ['#ffe36e', '#7fd8ff', '#ff6f7f', '#8ff0a0', '#c49bff'];
     const r = rng(231);
@@ -400,20 +412,38 @@ const SCENES = {
         shelves += '<circle cx="' + x + '" cy="' + y + '" r="11.5" fill="' + c + '" stroke="#fff" stroke-width="1.5"/><circle cx="' + (x - 3) + '" cy="' + (y - 4) + '" r="3.2" fill="#fff" opacity=".75"/>';
       }
     }
+    // The desk's top runs along this curve; its buttons are set along it.
+    const edge = [[0, 404], [150, 368], [340, 340], [520, 344]];
+    let keys = '';
+    [0.42, 0.5, 0.58, 0.82, 0.9].forEach((t, i) => {
+      const [x, y] = bez(...edge, t);
+      const c = cols[i % cols.length];
+      keys += '<ellipse cx="' + x + '" cy="' + n(y + 8) + '" rx="16" ry="6.5" fill="' + c + '" opacity=".35"/>' +
+        '<ellipse cx="' + x + '" cy="' + n(y + 6) + '" rx="11" ry="4.6" fill="' + c + '" stroke="#fff" stroke-width="1.4"/>';
+    });
+    [0.46, 0.54, 0.86].forEach(t => {
+      const [x, y] = bez(...edge, t);
+      keys += '<rect x="' + n(x - 7) + '" y="' + n(y + 14) + '" width="14" height="3" rx="1.5" fill="#fff" opacity=".7"/>';
+    });
+    const [lx, ly] = bez(...edge, 0.7);
     return tint('#ffd56e', '#7a3aa0', 0.5) + glow('back', 400, 130, 220, '#fff3c4', 0.5) + shelves +
-      glow('core', 344, 196, 140, '#fff3a6', 0.95) +
-      '<circle cx="344" cy="196" r="64" fill="' + rad('orb', [[0, '#fffbe0'], [0.55, '#ffe36e'], [1, '#f0a020']], 0.4, 0.35) + '" stroke="#fff" stroke-width="5"/>' +
-      '<path d="M314 206c8-30 50-34 60-4s-28 32-38 12 12-24 22-12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
-      '<path d="M310 168a44 44 0 0 1 30 -22" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".9"/>' +
-      ground('M0 440V352C120 330 260 318 380 322S480 332 520 336V440Z', lin('desk', [[0, '#8a5ac0'], [1, '#2a1050']])) +
-      '<path d="M150 344C260 324 380 318 520 334" stroke="#e9d6ff" stroke-width="4" fill="none" opacity=".7"/>' +
-      '<path d="M300 344L284 298" stroke="#e9e4ff" stroke-width="6" stroke-linecap="round"/><circle cx="282" cy="294" r="11" fill="#ff6f7f" stroke="#fff" stroke-width="3"/>' +
-      [[210, 366, '#ffe36e'], [236, 360, '#7fd8ff'], [330, 356, '#8ff0a0'], [356, 356, '#ff6f7f'], [382, 356, '#c49bff'], [500, 362, '#ffe36e']]
-        .map(([x, y, c]) => '<circle cx="' + x + '" cy="' + y + '" r="8" fill="' + c + '" stroke="#fff" stroke-width="2"/>').join('') +
-      '<rect x="404" y="350" width="80" height="36" rx="6" fill="#1a1035" stroke="#e9d6ff" stroke-width="2"/>' +
-      '<path d="M410 370l10-8 10 12 10-16 10 14 10-6 14 4" fill="none" stroke="#ffe36e" stroke-width="2.6" stroke-linejoin="round"/>' +
-      '<g fill="#e9d6ff" opacity=".6"><rect x="200" y="392" width="60" height="6" rx="3"/><rect x="300" y="390" width="90" height="6" rx="3"/></g>' +
-      sparkle(250, 230, 10) + sparkle(480, 280, 9) + sparkle(420, 250, 6);
+      glow('core', 344, 186, 140, '#fff3a6', 0.95) +
+      '<circle cx="344" cy="186" r="64" fill="' + rad('orb', [[0, '#fffbe0'], [0.55, '#ffe36e'], [1, '#f0a020']], 0.4, 0.35) + '" stroke="#fff" stroke-width="5"/>' +
+      '<path d="M314 196c8-30 50-34 60-4s-28 32-38 12 12-24 22-12" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".8"/>' +
+      '<path d="M310 158a44 44 0 0 1 30 -22" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" opacity=".9"/>' +
+      '<path d="M0 404C150 368 340 340 520 344V372C340 368 160 392 0 428Z" fill="' + lin('desktop', [[0, '#f4e8ff'], [1, '#b89ae0']]) + '"/>' +
+      '<path d="M0 428C160 392 340 368 520 372V440H0Z" fill="' + lin('deskfront', [[0, '#6a3aa0'], [1, '#2a1050']]) + '"/>' +
+      '<path d="M0 404C150 368 340 340 520 344" stroke="#fff" stroke-width="3" fill="none"/>' +
+      '<path d="M0 428C160 392 340 368 520 372" stroke="#ffe36e" stroke-width="2" fill="none" opacity=".7"/>' +
+      '<ellipse cx="344" cy="356" rx="60" ry="6" fill="#fff3a6" opacity=".5"/>' +
+      keys +
+      '<ellipse cx="' + lx + '" cy="' + n(ly + 8) + '" rx="16" ry="6" fill="#3a2a5a"/>' +
+      '<path d="M' + lx + ' ' + n(ly + 6) + 'L' + n(lx - 10) + ' ' + n(ly - 40) + '" stroke="#e9e4ff" stroke-width="6" stroke-linecap="round"/>' +
+      glow('knob', n(lx - 10), n(ly - 44), 26, '#ff6f7f', 0.7) +
+      '<circle cx="' + n(lx - 10) + '" cy="' + n(ly - 44) + '" r="11" fill="' + rad('knobf', [[0, '#ffb0b8'], [1, '#e8344a']], 0.4, 0.35) + '" stroke="#fff" stroke-width="2.4"/>' +
+      '<g fill="#e9d6ff" opacity=".55"><rect x="250" y="408" width="70" height="5" rx="2.5"/><rect x="360" y="400" width="110" height="5" rx="2.5"/></g>' +
+      '<g fill="#ffe36e"><circle cx="276" cy="410.5" r="4.5"/><circle cx="430" cy="402.5" r="4.5"/></g>' +
+      sparkle(250, 220, 10) + sparkle(480, 280, 9) + sparkle(420, 250, 6);
   },
 
   // A red and gold armoured robot flying up over the city, thrusters blazing.
@@ -526,24 +556,35 @@ const SCENES = {
       .map(([x, y, s, a]) => '<path d="M' + (x - s) + ' ' + y + 'l' + n(s * 0.7) + ' ' + (-s) + 'l' + n(s * 1.2) + ' ' + n(s * 0.3) + 'l' + n(s * 0.4) + ' ' + n(s * 1.2) + 'l' + n(-s) + ' ' + n(s * 0.6) + 'z" fill="#4a2a6a" stroke="#8fff6f" stroke-width="2" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>').join('') +
     ground('M120 440V400H520V440Z', '#1f0a2a'),
 
-  // A black panther stalking along a ledge under a purple moon, eyes glowing.
+  // A panther's face, fierce and still, traced in silver and lit violet in front of the moon.
   'Black Panther': () => {
     const leaf = (x, y, h, a) => '<path d="M' + x + ' ' + y + 'C' + (x - 30) + ' ' + (y - h * 0.6) + ' ' + (x - 10) + ' ' + (y - h) + ' ' + x + ' ' + (y - h) + 'C' + (x + 10) + ' ' + (y - h) + ' ' + (x + 30) + ' ' + (y - h * 0.6) + ' ' + x + ' ' + y + 'Z" transform="rotate(' + a + ' ' + x + ' ' + y + ')"/>';
-    const cat = 'M-118 -40C-118 -50 -110 -58 -100 -60L-96 -70L-90 -61C-80 -62 -70 -60 -62 -54C-40 -62 -10 -66 20 -64C50 -62 76 -58 92 -46C104 -38 108 -24 104 -12C102 -6 96 -2 92 0L80 0C82 -8 80 -16 74 -22C66 -14 60 -6 60 0L48 0C50 -10 52 -20 50 -28C30 -24 0 -24 -20 -28C-24 -18 -26 -8 -24 0L-36 0C-38 -10 -40 -20 -44 -30C-48 -20 -52 -10 -52 0L-64 0C-64 -14 -62 -26 -66 -34C-76 -32 -86 -30 -96 -30C-106 -30 -114 -32 -118 -40Z' +
-      'M100 -40C130 -44 150 -30 156 -10C158 -2 152 0 150 -6C144 -24 128 -32 104 -30Z';
-    return tint('#2a1a5a', '#8a2ab0', 0.6) + stars(141, 34, 120, W, 0, 200) +
-      glow('mglow', 404, 176, 160, '#d7a6ff', 0.6) + '<circle cx="404" cy="176" r="86" fill="' + lin('mdisc', [[0, '#f3e4ff'], [1, '#b98cff']]) + '"/>' +
-      '<g fill="#c9a6ff" opacity=".35"><circle cx="380" cy="150" r="12"/><circle cx="430" cy="200" r="8"/><circle cx="420" cy="140" r="5"/></g>' +
-      '<g stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".55" fill="none"><path d="M262 40C276 70 286 100 290 130M282 34C296 64 306 94 310 124M302 30C316 60 326 90 330 120"/></g>' +
-      '<g fill="#140826">' + [[160, 440, 80, -30], [220, 440, 100, -10], [500, 360, 120, 24], [520, 300, 90, 40], [470, 370, 70, 10]].map(([x, y, h, a]) => leaf(x, y, h, a)).join('') + '</g>' +
-      '<path d="M0 440V400C100 390 180 370 240 362C300 352 400 356 520 350V440Z" fill="#140826"/>' +
-      '<path d="M240 362C300 352 400 356 520 350" stroke="#c9a6ff" stroke-width="2" opacity=".5" fill="none"/>' +
-      '<g transform="translate(372 358) scale(1.15)">' +
-        '<path d="' + cat + '" fill="#0c0618" stroke="#c9a6ff" stroke-width="2.2" stroke-opacity=".85" stroke-linejoin="round"/>' +
-        '<path d="M-110 -47C-107 -51 -100 -51 -97 -47C-100 -44 -107 -44 -110 -47Z" fill="#ffe36e"/>' +
-        '<path d="M-74 -54C-70 -42 -66 -36 -60 -32" stroke="#e9e4ff" stroke-width="2" fill="none"/>' +
-        '<path d="M-72 -46l-4 6 6-2ZM-68 -38l-3 6 6-3Z" fill="#e9e4ff"/></g>' +
-      sparkle(480, 60, 10) + sparkle(250, 200, 7);
+    const head = 'M-70 -78C-82 -96 -96 -98 -100 -84C-104 -70 -96 -56 -88 -50C-96 -30 -100 -6 -94 16C-88 40 -60 66 -30 80C-18 88 18 88 30 80C60 66 88 40 94 16C100 -6 96 -30 88 -50C96 -56 104 -70 100 -84C96 -98 82 -96 70 -78C46 -92 -46 -92 -70 -78Z';
+    const eye = s => '<path d="M' + (-64 * s) + ' -14C' + (-52 * s) + ' -30 ' + (-30 * s) + ' -30 ' + (-16 * s) + ' -12C' + (-32 * s) + ' -6 ' + (-52 * s) + ' -4 ' + (-64 * s) + ' -14Z" fill="' + eyeFill + '"/>' +
+      '<ellipse cx="' + (-38 * s) + '" cy="-14" rx="3" ry="8" fill="#140826"/>';
+    const eyeFill = lin('eye', [[0, '#fff3a0'], [1, '#ffb83c']]);
+    return tint('#2a1a5a', '#8a2ab0', 0.6) + stars(141, 40, 120, W, 0, 260) +
+      glow('mglow', 380, 170, 190, '#d7a6ff', 0.6) + '<circle cx="380" cy="170" r="118" fill="' + lin('mdisc', [[0, '#f3e4ff'], [1, '#a77cf0']]) + '"/>' +
+      '<g fill="#c9a6ff" opacity=".35"><circle cx="330" cy="110" r="14"/><circle cx="450" cy="220" r="10"/><circle cx="440" cy="100" r="6"/></g>' +
+      '<g fill="#140826">' + [[160, 440, 80, -30], [220, 440, 110, -10], [500, 440, 130, 24], [520, 380, 90, 40], [460, 440, 80, 10], [300, 440, 70, 16]].map(([x, y, h, a]) => leaf(x, y, h, a)).join('') + '</g>' +
+      ground('M0 440V404C120 394 260 410 380 400S490 394 520 398V440Z', '#140826') +
+      '<g transform="translate(380 186) scale(1.06)">' +
+        '<path d="M-60 96C-30 118 30 118 60 96" fill="none" stroke="#e9e4ff" stroke-width="3"/>' +
+        '<g fill="#e9e4ff">' + [-48, -28, -8, 12, 32].map(x => '<path d="M' + (x - 2) + ' ' + n(104 + (Math.abs(x + 2) < 20 ? 6 : 2)) + 'l6 0l-3 14z"/>').join('') + '</g>' +
+        '<path d="' + head + '" fill="' + rad('fur', [[0, '#2e1c50'], [1, '#08040f']], 0.5, 0.4) + '" stroke="#c9a6ff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-92 -80C-92 -72 -88 -64 -82 -60L-72 -74ZM92 -80C92 -72 88 -64 82 -60L72 -74Z" fill="#5a3a8a"/>' +
+        '<g fill="none" stroke="#c9b8ff" stroke-width="2" stroke-linecap="round" opacity=".85">' +
+          '<path d="M-16 -12C-12 -40 -10 -58 -8 -78M16 -12C12 -40 10 -58 8 -78"/>' +
+          '<path d="M-8 -40L-12 20M8 -40L12 20"/>' +
+          '<path d="M-84 -40L-60 -2L-40 40M84 -40L60 -2L40 40"/>' +
+          '<path d="M-70 -64L-36 -40L-16 -12M70 -64L36 -40L16 -12"/>' +
+          '<path d="M-90 10L-56 30L-30 64M90 10L56 30L30 64"/></g>' +
+        eye(1) + eye(-1) +
+        '<path d="M-16 22H16L0 40Z" fill="#c9a6ff"/>' +
+        '<path d="M0 40V52M0 52C-10 62-24 62-32 54M0 52C10 62 24 62 32 54" fill="none" stroke="#c9a6ff" stroke-width="2.4" stroke-linecap="round"/>' +
+        '<g fill="#c9a6ff" opacity=".7"><circle cx="-24" cy="46" r="1.8"/><circle cx="-32" cy="42" r="1.8"/><circle cx="-28" cy="52" r="1.8"/><circle cx="24" cy="46" r="1.8"/><circle cx="32" cy="42" r="1.8"/><circle cx="28" cy="52" r="1.8"/></g></g>' +
+      glow('eyes', 380, 172, 90, '#ffd27a', 0.18) +
+      sparkle(490, 60, 10) + sparkle(264, 96, 8);
   },
 
   // Rings of light turning around an open eye.
@@ -564,25 +605,43 @@ const SCENES = {
       ground('M120 440V396C220 380 320 404 420 388S500 384 520 388V440Z', '#2a0d40');
   },
 
-  // A golden headband with its red star, the lasso coiled below, over temple columns.
+  // A golden headband with a faceted red star, before a sword and a glowing lasso, over a cliffside temple at sunset.
   'Wonder Woman': () => {
-    const gold = lin('gold', [[0, '#fff3b0'], [1, '#d4922c']]);
-    return tint('#ffcf5a', '#b0303a', 0.5) + stars(161, 30, 120, W, 0, 200) +
-      '<g fill="#fff3c4" opacity=".25">' + [-60, -36, -12, 12, 36, 60].map(a => '<path d="M372 150L356 -40H388Z" transform="rotate(' + a + ' 372 150)"/>').join('') + '</g>' +
-      glow('g', 372, 160, 190, '#ffe39a', 0.85) +
-      '<g fill="none" stroke-width="8" stroke-linecap="round"><ellipse cx="384" cy="296" rx="112" ry="24" stroke="#d4922c"/><ellipse cx="388" cy="284" rx="96" ry="20" stroke="#f0bf4a"/><ellipse cx="392" cy="272" rx="80" ry="16" stroke="#ffe39a"/></g>' +
-      '<path d="M274 300C250 330 262 360 300 372" fill="none" stroke="#f0bf4a" stroke-width="7" stroke-linecap="round"/>' +
-      glow('lasso', 390, 284, 120, '#fff3b0', 0.45) +
-      '<g transform="translate(374 170) scale(1.08)">' +
-        '<path d="M-130 30C-70 -6 70 -6 130 30L126 50C70 18 -70 18 -126 50Z" fill="' + gold + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-118 38C-60 10 60 10 118 38" stroke="#b97a1f" stroke-width="2" fill="none"/>' +
-        '<path d="M-46 14L0 -70L46 14C26 8 -26 8 -46 14Z" fill="' + gold + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
-        '<path d="M-30 6L0 -48L30 6" stroke="#b97a1f" stroke-width="2" fill="none"/>' +
-        '<g transform="translate(0 -16)"><path d="' + starPath(5, 22, 9) + '" fill="' + lin('ruby', [[0, '#ff6a6a'], [1, '#b0182f']]) + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></g></g>' +
-      '<g fill="#3a0f2a"><path d="M300 338h220v12H300zM306 326h208l-14-12H320z"/>' +
-        [320, 360, 400, 440, 480].map(x => '<rect x="' + x + '" y="350" width="18" height="70"/>').join('') +
-        '<path d="M0 440V414H520V440Z"/></g>' +
-      sparkle(480, 70, 13) + sparkle(260, 100, 9) + sparkle(300, 200, 6);
+    const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f0c050'], [1, '#b8781e']]);
+    let ruby = '';
+    for (let i = 0; i < 10; i++) {
+      const p = j => {
+        const a = ((j % 10) * 36 - 90) * Math.PI / 180;
+        const rr = j % 2 ? 9 : 23;
+        return n(rr * Math.cos(a)) + ' ' + n(rr * Math.sin(a));
+      };
+      ruby += '<path d="M0 0L' + p(i) + 'L' + p(i + 1) + 'Z" fill="' + (i % 2 ? '#ff7a84' : '#b0142c') + '"/>';
+    }
+    return tint('#ffb84a', '#a3203a', 0.55) + stars(161, 24, 120, W, 0, 150) +
+      '<g fill="#fff3c4" opacity=".22">' + [-60, -36, -12, 12, 36, 60].map(a => '<path d="M380 176L364 -40H396Z" transform="rotate(' + a + ' 380 176)"/>').join('') + '</g>' +
+      glow('g', 380, 180, 200, '#ffe39a', 0.85) +
+      '<path d="M0 440V380C120 372 260 386 380 380S490 376 520 378V440Z" fill="' + lin('sea', [[0, '#ff9a6a', 0.7], [1, '#5a1a3a']]) + '"/>' +
+      '<g fill="#3a0f2a"><path d="M300 440L322 410H520V440Z"/><path d="M318 410H520V404H326ZM326 404H520V398H334Z"/>' +
+        [342, 372, 402, 432, 462, 492].map(x => '<rect x="' + x + '" y="348" width="13" height="50"/>').join('') +
+        '<path d="M330 338H520V348H330Z"/><path d="M322 338L428 310L534 338Z"/></g>' +
+      '<g transform="translate(380 180) rotate(40)">' +
+        '<path d="M-7 -150L0 -172L7 -150V60H-7Z" fill="' + lin('blade', [[0, '#ffffff'], [1, '#a8b0c8']], 0, 0, 1, 0) + '" stroke="#fff" stroke-width="2"/>' +
+        '<path d="M0 -150V56" stroke="#8a94b0" stroke-width="1.6"/>' +
+        '<path d="M-36 60H36L30 70H-30Z" fill="' + gold + '" stroke="#fff" stroke-width="2"/>' +
+        '<rect x="-5" y="70" width="10" height="42" fill="#5a2a1a"/><path d="M-5 78h10M-5 88h10M-5 98h10" stroke="#c98a4a" stroke-width="2"/>' +
+        '<circle cy="118" r="8" fill="' + gold + '" stroke="#fff" stroke-width="2"/></g>' +
+      '<g transform="rotate(-12 380 182)" fill="none">' +
+        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#fff3b0" stroke-width="20" opacity=".22"/>' +
+        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#f0bf4a" stroke-width="6"/>' +
+        '<ellipse cx="380" cy="182" rx="150" ry="52" stroke="#fff8d8" stroke-width="2.4" stroke-dasharray="7 7"/></g>' +
+      '<g transform="translate(380 176) scale(1.1)">' +
+        '<path d="M-120 26C-60 -8 60 -8 120 26L114 46C58 16 -58 16 -114 46Z" fill="' + gold + '" stroke="#7a4a10" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M-114 30C-58 0 58 0 114 30" stroke="#fffbe0" stroke-width="2.4" fill="none"/>' +
+        '<path d="M-110 40C-56 12 56 12 110 40" stroke="#9a6014" stroke-width="2" fill="none" opacity=".7"/>' +
+        '<path d="M-50 12L0 -64L50 12C30 6 -30 6 -50 12Z" fill="' + gold + '" stroke="#7a4a10" stroke-width="2" stroke-linejoin="round"/>' +
+        '<path d="M-36 8L0 -46L36 8" stroke="#9a6014" stroke-width="2" fill="none"/><path d="M-44 10L0 -58" stroke="#fffbe0" stroke-width="2" fill="none"/>' +
+        '<g transform="translate(0 -14)"><circle r="28" fill="#ff4d5a" opacity=".25"/>' + ruby + '<path d="' + starPath(5, 23, 9) + '" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></g></g>' +
+      sparkle(480, 64, 13) + sparkle(270, 96, 9) + sparkle(470, 270, 7);
   },
 
   // A full moon over a gothic skyline, a flock of bats crossing it.
@@ -711,31 +770,36 @@ const SCENES = {
     scatter(212, 12, (x, y, r) => '<ellipse cx="' + x + '" cy="' + y + '" rx="6" ry="3.6" fill="#ffc6da" transform="rotate(' + n(r() * 180) + ' ' + x + ' ' + y + ')"/>', 220, 510, 20, 340) +
     ground('M120 440V384C220 370 320 392 420 378S500 372 520 376V440Z', '#2a1430'),
 
-  // A black dragon with a red tail fin and a rider on its back, gliding through a sunset.
+  // A black dragon with a red tail fin sweeping across a full moon through storm clouds, a blue blast ahead of it.
   'Hiccup': () => {
-    const hide = lin('hide', [[0, '#2e2e44'], [1, '#0a0a14']]);
-    return tint('#ff8a5c', '#2a2a6a', 0.55) + stars(221, 24, 120, W, 0, 110) +
-      glow('sun', 330, 280, 200, '#ffc27a', 0.8) + '<circle cx="330" cy="290" r="54" fill="#ffe0a6"/>' +
-      '<g fill="#ffb0a0" opacity=".55"><ellipse cx="260" cy="250" rx="90" ry="14"/><ellipse cx="460" cy="230" rx="80" ry="12"/><ellipse cx="400" cy="300" rx="120" ry="12"/></g>' +
-      '<g fill="#c46a9a" opacity=".45"><ellipse cx="300" cy="120" rx="80" ry="16"/><ellipse cx="480" cy="150" rx="70" ry="14"/></g>' +
-      '<g fill="#1a1035"><path d="M200 440V330L214 316L230 330V440Z"/><path d="M440 440V300L460 280L482 300V440Z"/><path d="M488 440V340L504 326L520 340V440Z"/></g>' +
-      ground('M0 440V398C120 388 260 406 380 396S490 390 520 394V440Z', '#0c1a3a') +
-      '<path d="M150 414c30-6 60 6 90 0s60-6 90 0 60 6 90 0 60-6 90 0" fill="none" stroke="#ffc27a" stroke-width="2" opacity=".5"/>' +
-      '<g transform="translate(392 196) rotate(-10) scale(.95)">' +
-        '<path d="M10 -14C24 -54 56 -92 116 -120C108 -96 112 -84 128 -76C116 -64 108 -50 112 -36C92 -30 62 -14 40 -6Z" fill="#16162a"/>' +
-        '<path d="M96 -2C130 10 136 50 110 74C96 86 70 88 50 84L52 76C70 78 90 74 100 62C116 44 112 20 92 10Z" fill="' + hide + '"/>' +
-        '<path d="M54 74L22 60L32 84Z" fill="#0a0a14"/><path d="M54 84L24 102L38 78Z" fill="#d8283a" stroke="#ff8a8a" stroke-width="1.5"/>' +
-        '<path d="M-64 -6C-40 -24 20 -28 64 -16C84 -10 98 -2 108 4C96 14 80 16 60 16C20 22 -40 18 -64 8Z" fill="' + hide + '"/>' +
-        '<path d="M-20 12L-30 34L-18 32L-8 14ZM50 12L52 36L62 32L64 14Z" fill="#0a0a14"/>' +
-        '<path d="M-60 -6C-78 -16 -96 -22 -114 -20C-136 -18 -150 -6 -148 8C-146 20 -130 24 -112 22C-94 20 -78 14 -60 8Z" fill="' + hide + '"/>' +
-        '<path d="M-100 -18L-82 -44L-86 -14ZM-110 -19L-104 -48L-96 -17ZM-90 -14L-66 -30L-74 -8Z" fill="#16162a"/>' +
-        '<path d="M-132 -6C-126 -15 -112 -15 -106 -6C-112 1 -126 1 -132 -6Z" fill="#9ff05a"/><ellipse cx="-119" cy="-6" rx="1.8" ry="5" fill="#0a0a14"/>' +
-        '<path d="M-146 10C-134 14 -122 14 -110 12" stroke="#4a4a6a" stroke-width="1.6" fill="none"/>' +
-        '<path d="M-36 -20l6-10 4 10ZM-6 -25l6-10 4 10ZM24 -24l6-9 4 9ZM112 10l7-6 2 9ZM124 30l8-3-1 9Z" fill="#0a0a14"/>' +
-        '<g fill="#0a0a14"><circle cx="-42" cy="-42" r="6"/><path d="M-48 -36H-36L-32 -18H-52Z"/><path d="M-36 -32L-24 -24" stroke="#0a0a14" stroke-width="3"/></g>' +
-        '<path d="M-24 -16C-34 -60 -24 -112 18 -152C26 -122 44 -112 64 -110C60 -90 70 -76 86 -70C74 -54 60 -36 32 -18Z" fill="' + hide + '" stroke="#ff9a6a" stroke-width="1.5" stroke-opacity=".6"/>' +
-        '<path d="M0 -20L18 -150M8 -20L62 -108M16 -18L84 -70" stroke="#4a4a6a" stroke-width="2.5" fill="none"/></g>' +
-      sparkle(476, 70, 10) + sparkle(250, 160, 7);
+    const wing = 'M-12 -40C-40 -58 -66 -70 -92 -68C-120 -66 -150 -56 -176 -44Q-152 -30 -150 0Q-130 2 -110 16Q-86 6 -60 20Q-36 6 -14 14Z';
+    const ribs = '<path d="M-92 -68L-150 0M-92 -68L-110 16M-92 -68L-60 20M-92 -68L-176 -44" stroke="#2a3a5a" stroke-width="2" fill="none"/>';
+    const body = 'M0 -102C14 -102 22 -92 22 -80C22 -72 16 -66 12 -62C18 -42 22 -20 20 0C18 20 12 40 8 60C8 100 4 140 0 180C-4 140 -8 100 -8 60C-12 40 -18 20 -20 0C-22 -20 -18 -42 -12 -62C-16 -66 -22 -72 -22 -80C-22 -92 -14 -102 0 -102Z' +
+      'M20 -84L40 -78L20 -70ZM16 -74L36 -60L14 -64ZM-20 -84L-40 -78L-20 -70ZM-16 -74L-36 -60L-14 -64Z' +
+      'M-16 36L-32 58L-18 54ZM16 36L32 58L18 54Z' +
+      'M-4 108L-16 118L-4 120ZM4 108L16 118L4 120Z' +
+      'M-2 148L-40 170L-2 180Z';
+    const cloud = (x, y, rx, ry, fill, o) => '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + fill + '" opacity="' + o + '"/><path d="M' + (x - rx * 0.7) + ' ' + n(y - ry * 0.7) + 'Q' + x + ' ' + n(y - ry * 1.1) + ' ' + (x + rx * 0.7) + ' ' + n(y - ry * 0.7) + '" stroke="#dfe8ff" stroke-width="2" fill="none" opacity="' + n(o * 0.6) + '"/>';
+    return tint('#1a2a5a', '#3a2a6a', 0.7) + stars(221, 50, 120, W, 0, 260) +
+      glow('moonglow', 380, 190, 200, '#cfe0ff', 0.55) +
+      '<circle cx="380" cy="190" r="120" fill="' + rad('moon', [[0, '#ffffff'], [1, '#c8d6f0']], 0.4, 0.35) + '"/>' +
+      '<g fill="#a8b8d8" opacity=".35"><circle cx="340" cy="150" r="18"/><circle cx="420" cy="230" r="12"/><circle cx="430" cy="140" r="7"/></g>' +
+      cloud(300, 300, 190, 16, '#4a5a8a', 0.8) + cloud(470, 120, 110, 12, '#5a6a9a', 0.7) + cloud(330, 330, 150, 10, '#3a4a7a', 0.7) +
+      '<g transform="translate(392 196) rotate(32) scale(.86)">' +
+        '<path d="M0 -100L0 -230" stroke="#7fb8ff" stroke-width="22" stroke-linecap="round" opacity=".25"/>' +
+        '<path d="M0 -104L0 -214" stroke="#cfe8ff" stroke-width="7" stroke-linecap="round"/>' +
+        '<circle cy="-222" r="16" fill="' + rad('blast', [[0, '#ffffff'], [0.5, '#9fc8ff', 0.9], [1, '#7a6aff', 0]]) + '"/>' +
+        '<g fill="#0a0e1c" stroke="#9fb8e8" stroke-width="2" stroke-opacity=".55">' +
+          '<path d="' + wing + '"/><path d="' + wing + '" transform="scale(-1 1)"/>' +
+          '<path d="' + body + '"/></g>' +
+        ribs + '<g transform="scale(-1 1)">' + ribs + '</g>' +
+        '<path d="M2 148L40 170L2 180Z" fill="#d8283a" stroke="#ff8a8a" stroke-width="1.5"/>' +
+        '<path d="M-10 -88C-6 -84 -2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/><path d="M10 -88C6 -84 2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/></g>' +
+      cloud(240, 372, 200, 14, '#2a3360', 0.85) + cloud(470, 386, 120, 10, '#232a55', 0.85) +
+      '<g fill="#0c1230"><path d="M200 440V340L214 326L230 340V440Z"/><path d="M450 440V320L468 304L486 320V440Z"/></g>' +
+      ground('M0 440V404C120 396 260 410 380 402S490 398 520 400V440Z', '#0a1028') +
+      '<path d="M200 418c30-6 60 6 90 0s60-6 90 0 60 6 90 0" fill="none" stroke="#cfe0ff" stroke-width="2" opacity=".4"/>' +
+      sparkle(488, 60, 9) + sparkle(250, 90, 7);
   },
 };
 
