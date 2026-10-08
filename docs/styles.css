@@ -1098,6 +1098,149 @@ textarea { resize: vertical; }
 .score-pill.s-c { background: var(--warn); }
 .score-pill.s-d { background: var(--danger); }
 
+/* ---------- My Compatibility ---------- */
+
+/* The header: a soft gradient panel with the page's one picture — this
+   reader's initial, an open seat for whoever sends their link next, and a
+   heart where the two overlap — then the title, what comes back, and the
+   three ways two people can be compared. */
+.scan-hero {
+  position: relative; overflow: hidden;
+  margin: 0 0 1.4rem; padding: 2rem 2rem 1.7rem;
+  border-radius: 24px; border: 1px solid var(--line);
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(209, 71, 122, .16), transparent 55%),
+    radial-gradient(90% 120% at 0% 100%, rgba(123, 63, 160, .14), transparent 60%),
+    var(--bg-alt);
+  box-shadow: var(--shadow);
+}
+.scan-hero::after {
+  content: ''; position: absolute; right: -60px; bottom: -80px; width: 240px; height: 240px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(123, 63, 160, .10), transparent 70%); pointer-events: none;
+}
+.scan-pair { position: absolute; top: 1.9rem; right: 2rem; width: 150px; height: 84px; }
+.scan-face {
+  position: absolute; top: 0; width: 84px; height: 84px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 2rem; font-weight: 800; line-height: 1;
+}
+.scan-me {
+  left: 0; z-index: 1; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 10px 24px rgba(123, 63, 160, .28);
+}
+.scan-them {
+  right: 0; color: var(--accent);
+  background: var(--bg-alt); border: 2px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.scan-spark {
+  position: absolute; z-index: 2; left: 50%; bottom: -6px; transform: translateX(-50%);
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg-alt); color: var(--accent-2); box-shadow: 0 4px 12px rgba(36, 26, 46, .14);
+}
+.scan-spark svg { width: 18px; height: 18px; }
+.scan-eyebrow {
+  display: inline-block; margin: 0 0 .7rem; padding: .22rem .7rem; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+}
+.scan-hero h1 {
+  margin: 0 0 .55rem; padding-right: 150px;
+  font-size: clamp(1.8rem, 4.2vw, 2.5rem); line-height: 1.12; letter-spacing: -.02em;
+}
+.scan-lede { margin: 0; max-width: 36rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.6; }
+.scan-modes { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 0; padding: 0; position: relative; z-index: 1; }
+.scan-modes li {
+  display: inline-flex; align-items: center; gap: .4rem; margin: 0;
+  padding: .38rem .8rem .38rem .65rem; border-radius: 999px;
+  background: var(--bg-alt); border: 1px solid var(--line);
+  font-size: .86rem; font-weight: 600; color: var(--ink);
+}
+.scan-modes svg { width: 17px; height: 17px; color: var(--accent-2); flex: none; }
+.scan-modes li:nth-child(2) svg { color: var(--accent); }
+.scan-modes li:nth-child(3) svg { color: #3b6fb6; }
+
+/* Past results: one row each, the whole row the link to that report. */
+.scan-results-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+.scan-results-head h2 { margin: 0; }
+.scan-count {
+  min-width: 1.7rem; padding: .05rem .5rem; border-radius: 999px; text-align: center;
+  background: var(--accent-soft); color: var(--accent); font-size: .8rem; font-weight: 700;
+}
+.card .match-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.card .match-list li { margin: 0; }
+.match-row {
+  display: flex; align-items: center; gap: .85rem; padding: .7rem .8rem .7rem .7rem;
+  border-radius: 14px; border: 1px solid var(--line); background: var(--bg);
+  color: var(--ink); text-decoration: none;
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.match-row:hover, .match-row:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: 0 6px 18px rgba(123, 63, 160, .12); transform: translateY(-1px);
+}
+.match-face {
+  flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; color: #fff; background: linear-gradient(135deg, #d1477a, #f08c6c);
+}
+.match-face.m-platonic { background: linear-gradient(135deg, #7b3fa0, #b26fd8); }
+.match-face.m-professional { background: linear-gradient(135deg, #3b6fb6, #5fa6c9); }
+.match-who { flex: 1; min-width: 0; display: grid; }
+.match-who strong { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-meta { font-size: .82rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-score {
+  --pct: 0; flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--accent-2), var(--accent) calc(var(--pct) * 1%), var(--accent-soft) 0);
+}
+.match-score span {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--bg); font-size: .9rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.match-go { flex: none; width: 18px; height: 18px; color: var(--ink-soft); }
+
+/* Checking someone's link and sending your own: side by side where there is
+   room, each under an icon of its own. */
+.scan-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.scan-actions .card { margin: 0; display: flex; flex-direction: column; }
+.scan-action h2 { margin: .75rem 0 .35rem; font-size: 1.2rem; }
+.scan-action > p.muted { margin: 0 0 .9rem; font-size: .93rem; line-height: 1.55; }
+.scan-action-icon {
+  width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 6px 16px rgba(123, 63, 160, .22);
+}
+.scan-action-icon-2 { background: linear-gradient(135deg, var(--accent-2), #f08c6c); box-shadow: 0 6px 16px rgba(209, 71, 122, .22); }
+.scan-action-icon svg { width: 22px; height: 22px; }
+.paste-card .field { margin-top: auto; }
+.paste-card #paste-go, .scan-actions .link-panel .btn-row { margin-top: .8rem; }
+.paste-card #paste-go { align-self: flex-start; }
+.scan-actions .link-panel .btn-row { margin-top: auto; padding-top: .2rem; }
+
+/* What the link carries, as a little preview of what the other person gets. */
+.link-preview {
+  margin: .2rem 0 .9rem; padding: .9rem 1rem; border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 10%, var(--bg-alt)));
+  border: 1px solid var(--line);
+}
+.link-preview-name { margin: 0; font-size: .76rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.link-preview-name:empty { display: none; }
+.link-preview-headline { margin: .15rem 0 .6rem; font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
+.link-preview .tag-row { margin: 0; }
+.link-preview .tag { background: var(--bg-alt); }
+.link-contents-card .fineprint { margin: 0; }
+
+@media (max-width: 560px) {
+  .scan-hero { padding: 1.4rem 1.2rem 1.3rem; border-radius: 20px; }
+  .scan-pair { position: relative; top: auto; right: auto; width: 116px; height: 64px; margin: 0 0 .9rem; }
+  .scan-face { width: 64px; height: 64px; font-size: 1.5rem; }
+  .scan-spark { width: 28px; height: 28px; bottom: -6px; }
+  .scan-spark svg { width: 15px; height: 15px; }
+  .scan-hero h1 { padding-right: 0; }
+  .scan-lede { font-size: .97rem; }
+  .scan-modes li { font-size: .82rem; }
+  .match-row { gap: .7rem; padding: .6rem .65rem; }
+  .match-meta { white-space: normal; }
+}
+
 /* ---------- tables ---------- */
 
 .table-scroll { overflow-x: auto; }

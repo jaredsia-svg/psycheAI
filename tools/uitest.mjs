@@ -9808,6 +9808,22 @@ try {
       .find(card => card.querySelector('#paste-go')).getBoundingClientRect();
     return history.bottom <= box.top + 1;
   }));
+  // A row per result, the whole row the link, with its score drawn as a ring
+  // filled to that score — the --pct a strict CSP only lets through as a
+  // data attribute applied afterwards.
+  check('each past result is one row that opens it, its score drawn as a filled ring',
+    await page.evaluate(() => {
+      const rows = [...document.querySelectorAll('#scan-history .match-row[data-report]')];
+      return rows.length >= 1 && rows.every(row => {
+        const ring = row.querySelector('.match-score');
+        return ring && ring.style.getPropertyValue('--pct') === ring.textContent.trim() &&
+          row.getBoundingClientRect().right <= window.innerWidth + 1;
+      });
+    }));
+  check('the header carries this reader\'s initial beside an open seat for the next link',
+    (await page.locator('#scan-initial').innerText()) === 'A' &&
+      (await page.locator('.scan-hero .scan-modes li').count()) === 3,
+    await page.locator('#scan-initial').innerText());
 
   // ---- this person's own link, from the compatibility page ----
   //

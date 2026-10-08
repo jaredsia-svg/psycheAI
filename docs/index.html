@@ -492,36 +492,52 @@
 
 <!-- ══════════════ scan ══════════════ -->
 <section id="view-scan" class="view" hidden>
-  <header class="page-head">
+  <!-- The page's header: who it belongs to, the three ways two people can be
+       compared, and what comes back. The pair of circles is the page's one
+       picture — this reader, and whoever sends their link next. -->
+  <header class="scan-hero">
+    <div class="scan-pair" aria-hidden="true">
+      <span class="scan-face scan-me" id="scan-initial">Y</span>
+      <span class="scan-face scan-them">?</span>
+      <span class="scan-spark"><svg viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 21s-7.5-4.6-9.6-9.4C.9 8.2 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.6.8-1.4 2.3-2.6 4.4-2.6 3.6 0 5.7 3.7 4.2 7.1C19.5 16.4 12 21 12 21z"/></svg></span>
+    </div>
+    <p class="scan-eyebrow">Compatibility · free, every time</p>
     <h1 id="scan-title">Your compatibility</h1>
-    <p class="muted">Open someone's PsycheAI link to see how you fit — as a <strong>couple</strong>,
-      as <strong>family or friends</strong>, or as <strong>colleagues</strong>. You get a score, the
-      five things behind it, what works, what will grate, and what each of you could do
-      differently. Free, every time.</p>
+    <p class="scan-lede">Open someone's PsycheAI link to see how you fit. You get a score, the five things
+      behind it, what works, what will grate, and what each of you could do differently.</p>
+    <ul class="scan-modes">
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 20s-7-4.3-8.9-8.8C1.7 7.9 3.7 4.5 7 4.5c2 0 3.3 1.1 5 3 1.7-1.9 3-3 5-3 3.3 0 5.3 3.4 3.9 6.7C19 15.7 12 20 12 20z"/></svg>As a couple</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2c3 .2 5.5 2.6 5.5 5.8"/></svg>As family or friends</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5"/><path d="M3 13h18"/></svg>As colleagues</li>
+    </ul>
   </header>
   <div id="scan-alert" class="alert" hidden></div>
 
   <div id="scan-history"></div>
 
-  <div class="card paste-card">
-    <h2>Test your compatibility</h2>
-    <p class="muted">Tapping someone's link opens it here by itself. If it came some other way,
-      paste it.</p>
-    <label class="field">Their link
-      <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
-    </label>
-    <button class="btn" id="paste-go">Check compatibility</button>
-  </div>
-
-  <div class="link-panel card">
-    <h2 class="link-title">Send my link</h2>
-    <p class="muted">The analysis runs on the side of whoever opens the link. Send yours so they can
-      see how compatible you both are, and ask them to send theirs back.</p>
-    <div class="btn-row">
-      <button class="btn" id="share-link-scan" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
-      <button class="btn btn-ghost" id="copy-link-scan" type="button">Copy link</button>
+  <div class="scan-actions">
+    <div class="card paste-card scan-action">
+      <span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
+      <h2>Test your compatibility</h2>
+      <p class="muted">Tapping someone's link opens it here by itself. If it came some other way,
+        paste it.</p>
+      <label class="field">Their link
+        <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
+      </label>
+      <button class="btn" id="paste-go">Check compatibility</button>
     </div>
-    <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
+
+    <div class="link-panel card scan-action">
+      <span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
+      <h2 class="link-title">Send my link</h2>
+      <p class="muted">The analysis runs on the side of whoever opens the link. Send yours so they can
+        see how compatible you both are, and ask them to send theirs back.</p>
+      <div class="btn-row">
+        <button class="btn" id="share-link-scan" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
+        <button class="btn btn-ghost" id="copy-link-scan" type="button">Copy link</button>
+      </div>
+      <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
+    </div>
   </div>
   <div id="link-contents"></div>
 </section>

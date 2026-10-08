@@ -410,15 +410,43 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
-**The currency is USD: US$5 for the full premium report, US$2 for another Psyche Card, and
-compatibility reports free.** `CURRENCY`, `UNLOCK_PRICE_CENTS` (500) and `ANALYSIS_PRICE_CENTS` (200)
-in `lib/stripe.js` are one decision: the cents are cents *of `CURRENCY`*, so changing one without the
-others silently reprices the unlock. `verifyPaid` checks both against the retrieved PaymentIntent, so
-500 cents of the wrong currency is refused rather than unlocking the report for whichever currency
-happened to be cheapest that day. A selftest check pins each direction. A Stripe account outside the US
-(`STRIPE_ACCOUNT_COUNTRY`, default `SG`) can charge in USD and settles in its own currency; a
-country/currency mismatch surfaces as an error at PaymentIntent creation rather than silently at
-capture.
+**Prices are in the reader's own currency in the major markets, US dollars everywhere else.**
+One table, `docs/prices.js`, is read by both sides — the page shows its prices from it and
+`lib/stripe.js` charges and verifies only amounts from it:
+
+| Market | Currency | Full premium report | Another Psyche Card |
+|---|---|---|---|
+| everywhere not listed | USD | US$5 | US$2 |
+| Singapore | SGD | S$7 | S$3 |
+| United Kingdom | GBP | £4 | £1.50 |
+| Eurozone | EUR | €5 | €2 |
+| Australia | AUD | A$8 | A$3 |
+| Canada | CAD | C$7 | C$3 |
+| New Zealand | NZD | NZ$9 | NZ$3.50 |
+| Hong Kong | HKD | HK$39 | HK$15 |
+| Japan | JPY | ¥800 | ¥300 |
+| Switzerland, Liechtenstein | CHF | CHF 5 | CHF 2 |
+| Malaysia | MYR | RM22 | RM9 |
+
+Compatibility reports stay free everywhere. The page guesses the reader's country from the browser's
+time zone (which follows the device), then from its language's region, and `localisePrices()` in
+`docs/app.js` rewrites every quoted `US$5` / `US$2` in the copy and the FAQ to the local label. The
+payment request names the currency; the server takes the amount from the table for that currency and
+product — never from the client — and an unknown currency is charged in USD. `verifyPaid` holds a
+PaymentIntent to the table's amount *for the currency it was paid in*, so 300 SGD cents (the S$3
+card) is refused for the S$7 report, and a currency the table does not list is refused outright.
+Because the guess is the browser's, a reader can move their clock to pay a different market's price;
+the table is rounded equivalents, so the most that buys is a few cents either way.
+
+**To change a price**, edit its row in `docs/prices.js` (amounts are in the currency's minor unit —
+cents, pence — except JPY, which has none) and deploy. **To add a market**, add its currency row and
+its country codes to `COUNTRY_CURRENCY` (and its time zones to `ZONE_COUNTRY` if they are not
+already there). Nothing in Stripe needs setting up: a Singapore account (`STRIPE_ACCOUNT_COUNTRY`,
+default `SG`) accepts all of these currencies on the same PaymentIntent API and converts them to SGD
+on payout, at Stripe's conversion fee. There are no Render environment variables involved.
+`tools/selftest.mjs` pins the table, the guess and both verification directions;
+`tools/uitest.mjs` opens the page in `Asia/Singapore` and checks it shows S$7, its FAQ says S$7 and S$3,
+no `US$` is left anywhere, and the payment it starts comes back as 700 SGD cents.
 
 **The paid call runs on a fixed provider of its own, regardless of which one the free report used.**
 `server.js`'s `premiumEngine()` picks its engine from `PSYCHEAI_PREMIUM_PROVIDER` (default `gemini`),
@@ -1305,6 +1333,31 @@ from what they had just done. `showUploadError()` now runs `show()` and `flash()
 Checked against a reader's actual position — scrolled to the dropzone before the upload, the same
 place anyone dropping a file would be — rather than from the top, where the check would pass either
 way.
+
+### My Psyche opens on the card; My Compatibility gets a real header
+
+**My Psyche has no page header.** The Psyche Card carries the reader's name at its top, so a
+"Jared's psyche" heading above it said the same thing twice and pushed the card down a screen on a
+phone. The title stays in the markup as a visually hidden `<h1>` for screen readers and the document
+outline, and the card starts directly under the navigation.
+
+**My Compatibility** was four plain white boxes and a table. It is now:
+
+- **a header panel** — a soft purple-to-pink gradient, an eyebrow ("Compatibility · free, every
+  time"), the title, one sentence on what comes back, three chips for the ways two people can be
+  compared (as a couple, as family or friends, as colleagues), and the page's one picture: the
+  reader's initial overlapping a dashed "?" seat for whoever sends their link next, joined by a heart;
+- **past results as rows**, not a table — an initial coloured by basis (rose for romantic, violet for
+  family and friends, blue for work), the name, basis and date, the score as a small ring filled to
+  it, and a chevron; the whole row opens the report. The old five-column table scrolled sideways on a
+  phone and cut the date off;
+- **"Test your compatibility" and "Send my link" side by side** on a laptop (stacked on a phone), each
+  under an icon tile, their buttons aligned along the bottom;
+- **"What your link contains"** as a preview of what the other person receives: the name, card
+  headline and interest tags in a tinted panel, with the note on what else rides along beneath it.
+
+Past results still come first, above the two actions, for the reason they moved there: someone
+returning to the page is usually looking for a report they already ran.
 
 The profile page's popout and the compatibility page both offer this person's own link and the same
 two actions, so sending and copying are each one function bound to both pairs of buttons.
@@ -3914,6 +3967,17 @@ Then Big Five with per-trait evidence; interests, beliefs and values; relationsh
 strengths and weaknesses — the **attachment** guess shows its working, naming the behavioural traces
 it rests on, the style it rejected, and what it means in practice for them and for a partner, since
 a named style with no reasoning is worthless and slightly harmful.
+
+**Three names, not four.** The attachment read uses *secure*, *anxious* or *avoidant*, and a read
+that genuinely leans both ways is called **an anxious and avoidant mix**, naming the two leanings,
+never "fearful-avoidant" or "disorganised". Those two labels read as a diagnosis, are the harshest
+thing a reader could be told about how they love, and are the least supportable from what someone
+watches — and what a reader follows, watches or saves *about* attachment is explicitly not evidence
+of their own style (someone binge-watching fearful-avoidant explainers is far more likely to be
+trying to understand a partner or an ex). The card schema, the premium schema and `PREMIUM_SYSTEM`
+all say so. Reports generated before the change are softened on display: `Copy.gentleAttachment()`
+rewrites the old labels in the web report, the "Beyond your card" panel and the PDF, and the
+attachment map's fourth corner is labelled "Mixed".
 
 **Love languages** are given twice over, for receiving and for giving, because most people do not
 match on the two. Each language is ranked `primary` / `secondary` / `minor` and carries both its

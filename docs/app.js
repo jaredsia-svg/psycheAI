@@ -865,10 +865,11 @@
   // which is the context that page is for.
   function linkContentsBlock(card) {
     if (!card) return '';
-    return '<div class="card section-card">' +
+    return '<div class="card section-card link-contents-card">' +
       sectionHead('🔗', esc(TEXT.linkContents), esc(TEXT.linkContentsSub)) +
-      '<p><strong>' + esc(card.headline) + '</strong></p>' +
-      tags(card.interests) +
+      '<div class="link-preview"><p class="link-preview-name">' + esc(card.name || '') + '</p>' +
+      '<p class="link-preview-headline">' + esc(card.headline) + '</p>' +
+      tags(card.interests) + '</div>' +
       '<p class="fineprint">' + esc(TEXT.linkContentsFineprint) + '</p></div>';
   }
 
@@ -6399,18 +6400,30 @@
     renderAnalysedBy(profile);
   }
 
-  function historyTable(history) {
-    return '<div class="table-scroll"><table class="match-table"><thead><tr>' +
-      '<th>' + esc(TEXT.matchWith) + '</th><th>' + esc(TEXT.matchBasis) + '</th><th>' + esc(TEXT.matchScore) + '</th><th>' + esc(TEXT.matchWhen) + '</th><th></th></tr></thead><tbody>' +
+  // Past results as a list rather than a table: a row each, the whole row the
+  // link. A five-column table scrolled sideways on a phone and cut the date
+  // off; this keeps who, on what basis, when and the score on one line at any
+  // width, with the score drawn as the same ring the report opens on.
+  function historyList(history) {
+    const when = value => {
+      const date = new Date(value);
+      return isNaN(date) ? '' : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+    return '<ul class="match-list">' +
       history.map((entry, index) => {
         const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
-        return '<tr><td>' + esc(entry.withName) + '</td>' +
-          '<td class="muted">' + esc(MODE_LABELS[mode] || mode) + '</td>' +
-          '<td>' + scorePill(entry.report.score) + '</td>' +
-          '<td class="muted">' + esc(new Date(entry.when).toLocaleDateString()) + '</td>' +
-          '<td><a href="#" data-report="' + index + '">Open →</a></td></tr>';
+        const name = String(entry.withName || '?');
+        const score = Math.max(0, Math.min(100, Math.round(Number(entry.report && entry.report.score) || 0)));
+        return '<li><a href="#" class="match-row" data-report="' + index + '">' +
+          '<span class="match-face m-' + esc(mode) + '" aria-hidden="true">' + esc(name.trim().charAt(0).toUpperCase() || '?') + '</span>' +
+          '<span class="match-who"><strong>' + esc(name) + '</strong>' +
+          '<span class="match-meta">' + esc(MODE_LABELS[mode] || mode) + ' · ' + esc(when(entry.when)) + '</span></span>' +
+          '<span class="match-score" data-pct="' + score + '"><span>' + score + '</span></span>' +
+          '<span class="visually-hidden">' + 'Open report' + '</span>' +
+          '<svg class="match-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>' +
+          '</a></li>';
       }).join('') +
-      '</tbody></table></div>';
+      '</ul>';
   }
 
   function scorePill(score) {
@@ -8107,10 +8120,12 @@
     // generic title in the markup stays the fallback.
     const who = state.profile && state.profile.card && state.profile.card.name;
     $('#scan-title').textContent = who ? who + '\u2019s Compatibility' : 'Your compatibility';
+    $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
     const history = store.read(KEYS.history, []);
     setHtml($('#scan-history'), history.length
-      ? '<div class="card"><h2>' + esc(TEXT.scanHistory) + '</h2>' + historyTable(history) + '</div>' : '');
+      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.scanHistory) + '</h2>' +
+        '<span class="scan-count">' + history.length + '</span></div>' + historyList(history) + '</div>' : '');
     $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
   }
 
