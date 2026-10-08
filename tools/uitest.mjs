@@ -355,8 +355,10 @@ try {
   check('the headline is the new one',
     /The personality analysis\s+you didn't know you needed/.test(
       await page.locator('#view-welcome h1').innerText()));
-  check('the tab title matches the headline',
-    (await page.title()).includes("the personality analysis you didn't know you needed"));
+  // The tab title is also the search result's headline, so it says what
+  // people search for rather than repeating the page's tagline.
+  check('the tab title names the app and what people search for',
+    /^PsycheAI — free personality test from your Instagram data/.test(await page.title()));
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
   check('the status endpoint reports which provider is active',
@@ -1481,6 +1483,29 @@ try {
         await resumePage.evaluate(() => localStorage.getItem('psycheai_pending') === null));
     } finally {
       await resumePage.close();
+    }
+  }
+
+  // ---- the guides' "See a sample report" link ----
+  //
+  // The guide pages have no script, so their sample button is a plain link to
+  // /#sample. Arriving that way opens the sample at once, and the address is
+  // tidied back to / so a reload or a copied link does not reopen it.
+  {
+    const guidePage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await guidePage.goto('http://localhost:' + PORT + '/compatibility-test', { waitUntil: 'load' });
+      const links = await guidePage.evaluate(() =>
+        [...document.querySelectorAll('a.btn')].map(a => a.getAttribute('href')));
+      check('a guide links to the app and to its sample', links.includes('/') && links.includes('/#sample'),
+        JSON.stringify(links));
+      await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
+      await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+      check('/#sample opens the sample report straight away, and tidies the address',
+        await guidePage.evaluate(() => location.hash === '' &&
+          document.querySelector('#sample-sections').textContent.length > 200));
+    } finally {
+      await guidePage.close();
     }
   }
 
@@ -9297,7 +9322,7 @@ try {
   // itself — a read of its own code, not of anybody's data. stat and
   // createReadStream are the front page video's: it is streamed in ranges
   // rather than read whole, still a read of the site's own files.
-  const readOnly = ['fs.readFile', 'fs.readFileSync', 'fs.stat', 'fs.createReadStream'];
+  const readOnly = ['fs.readFile', 'fs.readFileSync', 'fs.existsSync', 'fs.stat', 'fs.createReadStream'];
   check('the claim that nothing is written to disk holds in server.js',
     (serverSource.match(/fs\.\w+/g) || []).every(call => readOnly.includes(call)) &&
     (serverSource.match(/fs\.readFileSync/g) || []).length === 1,

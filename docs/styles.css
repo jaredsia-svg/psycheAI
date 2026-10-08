@@ -3481,3 +3481,23 @@ details.more[open] > summary::after { content: ' ▴'; }
 .unlock-secret-icon { font-size: 1.9rem; line-height: 1; }
 .unlock-secret strong { font-size: 1rem; color: var(--accent); }
 .unlock-secret span:last-child { font-size: .84rem; line-height: 1.45; color: var(--ink-soft); max-width: 22rem; }
+
+/* ---- the guides (/instagram-personality-test and its siblings) ----
+   Static pages for search: the site's nav, hero band, cards and buttons, and
+   a closing call to start. */
+.guide-page .container { max-width: 760px; }
+.guide-hero { padding-bottom: 1.6rem; }
+/* The front page's hero is two columns for its video; a guide's is one. */
+@media (min-width: 720px) { .guide-hero { display: block; } }
+.guide .btn { display: inline-flex; text-decoration: none; }
+.guide-hero h1 { margin: 0 0 .6rem; }
+.guide-hero .btn-row { margin: 1rem 0 0; }
+.guide .card h2 { margin-top: 0; }
+.card ol.guide-steps { list-style: decimal; padding-left: 1.3rem; line-height: 1.55; }
+.card ol.guide-steps li { margin-bottom: .5rem; padding-left: .2rem; }
+.guide-faq h3 { margin: 1rem 0 .3rem; font-size: 1rem; }
+.guide-faq p { margin: 0; color: var(--ink-soft); line-height: 1.55; }
+.guide-cta { text-align: center; padding: 1.6rem 1rem 2rem; border-radius: 22px; background: var(--accent-soft); margin: 1.5rem 0 2rem; }
+.guide-cta h2 { margin: 0 0 .4rem; }
+.guide-cta p { margin: .3rem 0; }
+.footer-guides { margin: .4rem 0 0; font-size: .8rem; }

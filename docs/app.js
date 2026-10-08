@@ -6673,7 +6673,9 @@
       const file = new File([blob], name, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: TEXT.cardSection });
+          const character = state.profile && state.profile.report && state.profile.report.essence &&
+            state.profile.report.essence.character;
+          await navigator.share({ files: [file], title: TEXT.cardSection, text: TEXT.cardShareText(character) });
           return;
         } catch (error) {
           // The reader opened the share sheet and backed out themselves —
@@ -8373,6 +8375,12 @@
     drawInsightPreview();
 
     if (await consumeIncomingLink()) return;
+    // The guides' "See a sample report" link (/#sample): open the sample over
+    // whatever page this visitor would otherwise land on.
+    if (location.hash === '#sample') {
+      history.replaceState(null, '', location.pathname + location.search);
+      setTimeout(() => showSample(), 0);
+    }
     // Before the report below, because a job still running is newer than
     // whatever is stored: a reader who re-ran their analysis and closed the
     // app would otherwise be shown the previous report and left to work out

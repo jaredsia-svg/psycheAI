@@ -1624,6 +1624,36 @@ The blocking form still works and is still tested, because during a rollout a br
 already-loaded `docs/llm.js` and a freshly-deployed server are the same reader, mid-analysis, and a
 response shape the page cannot parse would break them.
 
+## Being found, and being shared
+
+The site lives at **psycheai.io**. What a search engine or a pasted link sees is part of the product,
+so it is built in rather than left to a plugin.
+
+- **The front page's head** (`docs/index.html`) has a title written for search (*free personality
+  test from your Instagram data — MBTI, Big Five, love languages*), a description, one canonical
+  address, Open Graph and Twitter tags, and a JSON-LD block describing the app and its two prices.
+  The JSON-LD is a data block, never executed, so the `script-src 'self'` policy is untouched.
+- **The link preview** is `docs/media/og-card.png`, 1200×630, at an absolute address — WhatsApp, X
+  and iMessage show nothing for a relative one. `node promo/og.mjs` draws it from the brand mark and
+  the sample Psyche Card, with the home-screen icons beside it (`icon-192`, `icon-512`,
+  `apple-touch-icon`) that `docs/manifest.webmanifest` names.
+- **Three guides**, static pages with no script, each answering one thing people search for:
+  [`/instagram-personality-test`](docs/instagram-personality-test.html),
+  [`/compatibility-test`](docs/compatibility-test.html) and
+  [`/mbti-test-no-questions`](docs/mbti-test-no-questions.html). Each has its own canonical address,
+  an FAQ, and two buttons: into the app, and `/#sample`, which opens the sample report directly and
+  tidies the address back to `/`. The server serves `/name` as `name.html` when that page exists,
+  and nothing else; anything else is still a 404. The MBTI guide carries the trademark notice.
+- **`robots.txt` and `sitemap.xml`** list the front page and the guides and keep `/api/` out.
+- **Everything shared carries the address.** The Psyche Card's footer reads *psycheai.io · your
+  personality, read from your own data*, on screen, in the shared image and in the PDF, and the
+  share sheet's text is *I got <character> on my Psyche Card. Find yours free, no questionnaire:
+  https://psycheai.io*. A card that travels is an invitation.
+
+`npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
+disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
+follows a guide's sample link into the open sample.
+
 ## The sample report
 
 The welcome page asks for a 400MB download from Instagram and an email that takes hours to arrive,

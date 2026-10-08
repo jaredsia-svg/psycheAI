@@ -6730,6 +6730,60 @@ check('the schema requires evidence on strengths and frictions',
     JSON.stringify(got.poster));
 }
 
+// ---------- search and link previews ----------
+//
+// What a search engine or a pasted link sees: one canonical address, a share
+// image at an absolute URL (relative ones show nothing in WhatsApp or X), a
+// robots file pointing at a sitemap, and every address in the sitemap actually
+// served, the guides at their clean addresses.
+{
+  const index = readFileSync(join(root, 'docs', 'index.html'), 'utf8');
+  check('the front page names its one canonical address',
+    /<link rel="canonical" href="https:\/\/psycheai\.io\/">/.test(index));
+  check('and a share image at an absolute address, with its size',
+    /<meta property="og:image" content="https:\/\/psycheai\.io\/media\/og-card\.png">/.test(index) &&
+      /og:image:width" content="1200"/.test(index) && /twitter:card" content="summary_large_image"/.test(index));
+  check('the share image and app icons exist',
+    ['og-card.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']
+      .every(name => statSync(join(root, 'docs', 'media', name)).size > 1000));
+  const ld = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(index);
+  let ldOk = false;
+  try { ldOk = Boolean(ld) && JSON.parse(ld[1])['@graph'].some(n => n['@type'] === 'WebApplication'); } catch (e) { ldOk = false; }
+  check('the structured data is valid JSON describing the app', ldOk);
+  const sitemap = readFileSync(join(root, 'docs', 'sitemap.xml'), 'utf8');
+  const paths = [...sitemap.matchAll(/<loc>https:\/\/psycheai\.io(\/[^<]*)<\/loc>/g)].map(m => m[1]);
+  check('robots.txt points at the sitemap',
+    /Sitemap: https:\/\/psycheai\.io\/sitemap\.xml/.test(readFileSync(join(root, 'docs', 'robots.txt'), 'utf8')));
+  const port = 8933;
+  const child = execFileSync(process.execPath,
+    ['-e', `
+      const { spawn } = require('node:child_process');
+      const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+        env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1' }, stdio: 'ignore',
+      });
+      setTimeout(async () => {
+        const out = {};
+        for (const path of ${JSON.stringify(['/robots.txt', '/sitemap.xml', '/manifest.webmanifest', '/no-such-guide'])}.concat(${JSON.stringify(paths)})) {
+          const r = await fetch('http://localhost:${port}' + path);
+          const body = await r.text();
+          out[path] = { status: r.status, type: r.headers.get('content-type'), canonical: (/rel="canonical" href="([^"]+)"/.exec(body) || [])[1] || null };
+        }
+        server.kill();
+        process.stdout.write(JSON.stringify(out));
+      }, 900);
+    `],
+    { env: { PATH: process.env.PATH }, timeout: 20000 });
+  const got = JSON.parse(child.toString());
+  check('the sitemap lists the front page and the three guides', paths.length === 4, JSON.stringify(paths));
+  check('every address in the sitemap is served, each naming itself as canonical',
+    paths.every(path => got[path].status === 200 && got[path].canonical === 'https://psycheai.io' + path),
+    JSON.stringify(got));
+  check('robots, sitemap and manifest are served with their own types',
+    /^text\/plain/.test(got['/robots.txt'].type) && /xml/.test(got['/sitemap.xml'].type) &&
+      /manifest\+json/.test(got['/manifest.webmanifest'].type), JSON.stringify(got));
+  check('and a guide that does not exist is still a 404', got['/no-such-guide'].status === 404);
+}
+
 // ---------- one payment, one generation at a time ----------
 //
 // canUse reads the ledger, the caller spends minutes generating, and only then

@@ -3,8 +3,56 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PsycheAI — the personality analysis you didn't know you needed</title>
-<meta name="description" content="Upload your Instagram data export and a language model writes you a detailed personality profile. Scan someone's QR code to compare on a romantic, family/friends or professional basis.">
+<title>PsycheAI — free personality test from your Instagram data (MBTI, Big Five, love languages)</title>
+<meta name="description" content="No questionnaire. PsycheAI reads your own Instagram, Google and Facebook data and gives you a free Psyche Card: your MBTI, Big Five, love languages and the character you're most like.">
+<!-- One address for everything: psycheai.io, whichever host served the page. -->
+<link rel="canonical" href="https://psycheai.io/">
+<meta name="theme-color" content="#7b3fa0">
+<!-- What a pasted link shows in WhatsApp, iMessage, Instagram DMs, X, LinkedIn
+     and Slack — including the compatibility links people send each other.
+     Drawn by promo/og.mjs. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PsycheAI">
+<meta property="og:url" content="https://psycheai.io/">
+<meta property="og:title" content="PsycheAI — your personality, read from your Instagram">
+<meta property="og:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Your first Psyche Card is free.">
+<meta property="og:image" content="https://psycheai.io/media/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A sample Psyche Card: most like Mulan, with MBTI, Big Five, values, interests and love languages">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PsycheAI — your personality, read from your Instagram">
+<meta name="twitter:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Free.">
+<meta name="twitter:image" content="https://psycheai.io/media/og-card.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="media/apple-touch-icon.png">
+<!-- Structured data for search: what the site is, what it costs, and the FAQ.
+     A data block, never executed, so the page's script-src policy does not apply. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "PsycheAI",
+      "url": "https://psycheai.io/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any (web browser)",
+      "description": "A personality analysis read from your own Instagram, Google and Facebook data exports, with no questionnaire: MBTI, Big Five, love languages, values, interests and the character you are most like, plus compatibility reports with friends, partners and colleagues.",
+      "offers": [
+        { "@type": "Offer", "name": "Psyche Card", "price": "0", "priceCurrency": "USD" },
+        { "@type": "Offer", "name": "Full premium report", "price": "5", "priceCurrency": "USD" }
+      ]
+    },
+    {
+      "@type": "Organization",
+      "name": "PsycheAI",
+      "url": "https://psycheai.io/",
+      "logo": "https://psycheai.io/media/icon-512.png"
+    }
+  ]
+}
+</script>
 <link rel="stylesheet" href="styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
 </head>
@@ -1154,6 +1202,10 @@
   <p>PsycheAI · <a href="#" data-nav="about">FAQ</a> ·
     <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">Source
       code on GitHub</a></p>
+  <!-- The guides, for search engines to find and for anyone who wants the
+       longer explanation. -->
+  <p class="footer-guides"><a href="/instagram-personality-test">Instagram personality test</a> ·
+    <a href="/compatibility-test">Compatibility test</a> · <a href="/mbti-test-no-questions">MBTI test without questions</a></p>
   <!-- Filled from /api/status by renderBuild() in app.js: which commit this
        page is running, so a report of a problem can name it. -->
   <p class="footer-version" id="footer-version" hidden></p>

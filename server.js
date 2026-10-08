@@ -111,6 +111,9 @@ const TYPES = {
   '.jpeg': 'image/jpeg',
   '.ico': 'image/x-icon',
   '.mp4': 'video/mp4',
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
 // ---------- helpers ----------
@@ -836,7 +839,13 @@ async function handleCompatibility(request, response) {
 }
 
 function serveStatic(requestedPath, request, response) {
-  const target = path.join(ROOT, requestedPath === '/' ? 'index.html' : requestedPath);
+  // The guides are linked and indexed without their extension
+  // (/instagram-personality-test), so a path with no extension that names an
+  // .html page beside it is that page.
+  let route = requestedPath;
+  if (route !== '/' && !path.extname(route) && /^\/[a-z0-9-]+$/.test(route) &&
+      fs.existsSync(path.join(ROOT, route + '.html'))) route += '.html';
+  const target = path.join(ROOT, route === '/' ? 'index.html' : route);
 
   // Never serve anything outside docs/, whatever the traversal attempt.
   const resolved = path.resolve(target);

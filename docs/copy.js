@@ -205,6 +205,10 @@
     // reason the section titles do — they are the same words in a second place,
     // and a check in the UI suite fails if app.js types any of them itself.
     cardSection: 'Psyche Card',
+    // What goes with the card image when it is shared, where the app shared to
+    // takes text too: the character, then where to get your own.
+    cardShareText: (character) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
+      'Find yours free, no questionnaire: https://psycheai.io',
     cardHint: 'Tap to open full screen',
     // Download sits on the left, share on the right — the order a reader
     // meets them reading left to right. Each carries a small visible label
@@ -938,7 +942,7 @@
       trait: 'Strongest trait',
       confidence: 'Confidence',
     },
-    pdfCardFoot: 'PsycheAI · your personality, read from your own data',
+    pdfCardFoot: 'psycheai.io · your personality, read from your own data',
     deleteText: 'This removes your Psyche Card, your full report, your evidence summary and every saved ' +
       'compatibility report from this browser. It cannot be undone.',
     deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
@@ -1012,7 +1016,8 @@
     },
     cardStandFor: 'Values & Beliefs',
     cardInto: 'Interests',
-    cardFooter: 'psycheai · your personality, read from your own data',
+    // Every card that is shared says where to get one: the address, not just the name.
+    cardFooter: 'psycheai.io · your personality, read from your own data',
     cardTraitShort: { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
       agreeableness: 'Agreeable', neuroticism: 'Sensitivity' },
     cardStrength: { slight: 'slight', moderate: 'moderate', clear: 'clear' },
