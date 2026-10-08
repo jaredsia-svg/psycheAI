@@ -776,9 +776,43 @@ const SCENES = {
     const ribs = '<path d="M-92 -68L-150 0M-92 -68L-110 16M-92 -68L-60 20M-92 -68L-176 -44" stroke="#2a3a5a" stroke-width="2" fill="none"/>';
     const body = 'M0 -102C14 -102 22 -92 22 -80C22 -72 16 -66 12 -62C18 -42 22 -20 20 0C18 20 12 40 8 60C8 100 4 140 0 180C-4 140 -8 100 -8 60C-12 40 -18 20 -20 0C-22 -20 -18 -42 -12 -62C-16 -66 -22 -72 -22 -80C-22 -92 -14 -102 0 -102Z' +
       'M20 -84L40 -78L20 -70ZM16 -74L36 -60L14 -64ZM-20 -84L-40 -78L-20 -70ZM-16 -74L-36 -60L-14 -64Z' +
-      'M-16 36L-32 58L-18 54ZM16 36L32 58L18 54Z' +
-      'M-4 108L-16 118L-4 120ZM4 108L16 118L4 120Z' +
-      'M-2 148L-40 170L-2 180Z';
+      'M-16 36L-32 58L-18 54ZM16 36L32 58L18 54Z';
+    // The tail: a ribbon that tapers along an S-curve, spines down its middle,
+    // a pair of small fins halfway and the two swept tail fins at its end,
+    // the right one red.
+    const curve = [[0, 52], [14, 104], [-34, 140], [-16, 204]];
+    const along = t => {
+      const p = bez(...curve, t);
+      const q = bez(...curve, Math.min(1, t + 0.01));
+      const r = bez(...curve, Math.max(0, t - 0.01));
+      const len = Math.hypot(q[0] - r[0], q[1] - r[1]) || 1;
+      const d = [(q[0] - r[0]) / len, (q[1] - r[1]) / len];
+      return { p, d, nrm: [-d[1], d[0]] };
+    };
+    const at = (o, a, b) => n(o.p[0] + o.nrm[0] * a + o.d[0] * b) + ' ' + n(o.p[1] + o.nrm[1] * a + o.d[1] * b);
+    const steps = 28;
+    const left = [];
+    const right = [];
+    for (let i = 0; i <= steps; i++) {
+      const o = along(i / steps);
+      const w = 11 * (1 - i / steps) + 2;
+      left.push(at(o, w, 0));
+      right.unshift(at(o, -w, 0));
+    }
+    const tailPath = 'M' + left.join('L') + 'L' + right.join('L') + 'Z';
+    const fin = (t, side, span, back) => {
+      const o = along(t);
+      return 'M' + at(o, 0, -4) + 'Q' + at(o, side * span * 0.6, -back * 0.3) + ' ' + at(o, side * span, back * 0.55) +
+        'Q' + at(o, side * span * 0.62, back * 0.5) + ' ' + at(o, side * span * 0.5, back * 0.85) +
+        'Q' + at(o, side * span * 0.3, back * 0.62) + ' ' + at(o, 0, back) + 'Z';
+    };
+    let spines = '';
+    for (const t of [0.12, 0.24, 0.36, 0.62, 0.74]) {
+      const o = along(t);
+      spines += 'M' + at(o, -2.6, 0) + 'L' + at(o, 0, 9) + 'L' + at(o, 2.6, 0) + 'Z';
+    }
+    const tail = '<path d="' + tailPath + '"/><path d="' + fin(0.48, 1, 16, 14) + fin(0.48, -1, 16, 14) + fin(0.9, 1, 36, 26) + spines + '"/>';
+    const redFin = '<path d="' + fin(0.9, -1, 36, 26) + '" fill="#d8283a" stroke="#ff8a8a" stroke-width="1.5"/>';
     const cloud = (x, y, rx, ry, fill, o) => '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" fill="' + fill + '" opacity="' + o + '"/><path d="M' + (x - rx * 0.7) + ' ' + n(y - ry * 0.7) + 'Q' + x + ' ' + n(y - ry * 1.1) + ' ' + (x + rx * 0.7) + ' ' + n(y - ry * 0.7) + '" stroke="#dfe8ff" stroke-width="2" fill="none" opacity="' + n(o * 0.6) + '"/>';
     return tint('#1a2a5a', '#3a2a6a', 0.7) + stars(221, 50, 120, W, 0, 260) +
       glow('moonglow', 380, 190, 200, '#cfe0ff', 0.55) +
@@ -791,9 +825,9 @@ const SCENES = {
         '<circle cy="-222" r="16" fill="' + rad('blast', [[0, '#ffffff'], [0.5, '#9fc8ff', 0.9], [1, '#7a6aff', 0]]) + '"/>' +
         '<g fill="#0a0e1c" stroke="#9fb8e8" stroke-width="2" stroke-opacity=".55">' +
           '<path d="' + wing + '"/><path d="' + wing + '" transform="scale(-1 1)"/>' +
-          '<path d="' + body + '"/></g>' +
+          tail + '<path d="' + body + '"/></g>' +
         ribs + '<g transform="scale(-1 1)">' + ribs + '</g>' +
-        '<path d="M2 148L40 170L2 180Z" fill="#d8283a" stroke="#ff8a8a" stroke-width="1.5"/>' +
+        redFin +
         '<path d="M-10 -88C-6 -84 -2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/><path d="M10 -88C6 -84 2 -84 0 -86" stroke="#9ff05a" stroke-width="2" fill="none"/></g>' +
       cloud(240, 372, 200, 14, '#2a3360', 0.85) + cloud(470, 386, 120, 10, '#232a55', 0.85) +
       '<g fill="#0c1230"><path d="M200 440V340L214 326L230 340V440Z"/><path d="M450 440V320L468 304L486 320V440Z"/></g>' +

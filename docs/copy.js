@@ -937,6 +937,12 @@
         ['💝', 'Love languages'],
       ],
       previewOpen: 'Open the sample Psyche Card full screen',
+      // The gallery of sample cards beside it, and the arrows that step
+      // through them on the page and full screen.
+      previewOpenNamed: 'Open {name}\'s sample Psyche Card full screen',
+      galleryLabel: 'Sample Psyche Cards',
+      galleryPrev: 'Previous card',
+      galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'The full premium report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',

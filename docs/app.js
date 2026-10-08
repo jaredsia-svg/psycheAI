@@ -1772,6 +1772,20 @@
    * part and section names are the report's own, so a rename there is a
    * rename here.
    */
+  const EXPAND_ICON = '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
+  const CHEVRON = d => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
+  /** One card in the welcome page's gallery: a button, a small card, an expand mark. */
+  function insightSlot(index, buttonId, cardId, label) {
+    return '<button type="button" class="insight-preview" data-card="' + index + '"' + (buttonId ? ' id="' + buttonId + '"' : '') +
+      ' aria-label="' + esc(label) + '">' +
+      '<span class="insight-preview-frame"><span class="psyche-card"' + (cardId ? ' id="' + cardId + '"' : '') + '></span></span>' +
+      '<span class="insight-preview-expand" aria-hidden="true">' + EXPAND_ICON + '</span></button>';
+  }
+  function galleryArrow(step, label) {
+    return '<button type="button" class="insight-gallery-nav" data-gallery-step="' + step + '" aria-label="' + esc(label) + '">' +
+      CHEVRON(step < 0 ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7') + '</button>';
+  }
+
   function insightsHtml() {
     const S = Copy.STRUCTURED;
     const I = S.insights;
@@ -1792,12 +1806,16 @@
           '<li><span class="card-feature-icon" aria-hidden="true">' + esc(icon) + '</span>' +
           '<span><strong>' + esc(title) + '</strong></span></li>').join('') + '</ul>' +
       '</div>' +
-      // The card itself, small, and a tap away from full screen.
-      '<button type="button" class="insight-preview" id="insight-card-open" aria-label="' + esc(I.previewOpen) + '">' +
-        '<span class="insight-preview-frame"><span class="psyche-card" id="insight-card-preview"></span></span>' +
-        '<span class="insight-preview-expand" aria-hidden="true">' +
-          '<svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span>' +
-      '</button>' +
+      // A gallery of sample cards, small, scrolled sideways, each a tap away
+      // from full screen. The first is the full sample's; the rest are added
+      // once sample-cards.json has loaded.
+      '<div class="insight-gallery-wrap">' +
+        galleryArrow(-1, I.galleryPrev) +
+        '<div class="insight-gallery" id="insight-gallery" role="group" aria-label="' + esc(I.galleryLabel) + '">' +
+          insightSlot(0, 'insight-card-open', 'insight-card-preview', I.previewOpen) +
+        '</div>' +
+        galleryArrow(1, I.galleryNext) +
+      '</div>' +
     '</div>' +
     '<div class="insight-tier insight-premium premium-tier">' +
       '<div class="premium-tier-head">' +
@@ -1831,41 +1849,94 @@
    * reader sees and should not have a block of it arrive after a round trip.
    * The sample card beside it is drawn once the sample has loaded.
    */
-  let insightSample = null;
+  // The full sample first, then the other sample cards, in gallery order.
+  let insightCards = [];
+  let insightIndex = 0;
   function mountInsights() {
     for (const slot of document.querySelectorAll('[data-insights]')) setHtml(slot, insightsHtml());
     drawInsightPreview();
   }
 
-  /** The welcome page's sample card, full screen, in the sample's own card dialog. */
-  function openInsightCard() {
+  /** One of the welcome page's sample cards, full screen, in the sample's own card dialog. */
+  function openInsightCard(index = 0) {
     const dialog = $('#sample-card-dialog');
-    if (!dialog || dialog.open || !insightSample) return;
-    const sample = insightSample;
-    $('#sample-psyche-card-full').innerHTML = psycheCardHtml(sample);
-    guideSampleCard(sample);
+    if (!dialog || dialog.open || !insightCards[index]) return;
+    dialog.classList.toggle('is-gallery', insightCards.length > 1);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
+    showInsightCard(index);
+  }
+
+  /**
+   * Puts card `index` in the full-screen view, sliding it in from the side
+   * it was stepped towards. The ends wrap round, so stepping never stops.
+   */
+  function showInsightCard(index, step = 0) {
+    const count = insightCards.length;
+    if (!count) return;
+    insightIndex = ((index % count) + count) % count;
+    const full = $('#sample-psyche-card-full');
+    full.innerHTML = psycheCardHtml(insightCards[insightIndex]);
+    freshArtIds(full);
+    guideSampleCard(insightCards[insightIndex]);
+    const counter = $('#sample-card-count');
+    if (counter) counter.textContent = (insightIndex + 1) + ' / ' + count;
     layoutPsycheCard();
+    const frame = full.closest('.card-dialog-frame');
+    if (frame && step) {
+      frame.classList.remove('is-slide-next', 'is-slide-prev');
+      void frame.offsetWidth;
+      frame.classList.add(step > 0 ? 'is-slide-next' : 'is-slide-prev');
+    }
+  }
+
+  function stepInsightCard(step) {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || !dialog.open || !dialog.classList.contains('is-gallery')) return;
+    showInsightCard(insightIndex + step, step);
   }
 
   async function drawInsightPreview() {
-    const el = document.getElementById('insight-card-preview');
-    if (!el) return;
+    const gallery = document.getElementById('insight-gallery');
+    if (!gallery) return;
     try {
-      if (!insightSample) {
-        insightSample = await fetch('sample.json').then(response => (response.ok ? response.json() : null));
+      if (!insightCards.length) {
+        const [sample, more] = await Promise.all([
+          fetch('sample.json').then(response => (response.ok ? response.json() : null)),
+          fetch('sample-cards.json').then(response => (response.ok ? response.json() : null)).catch(() => null),
+        ]);
+        if (!sample) return;
+        insightCards = [sample].concat((more && Array.isArray(more.cards)) ? more.cards : []);
       }
-      if (!insightSample || !document.getElementById('insight-card-preview')) return;
-      const target = document.getElementById('insight-card-preview');
-      target.innerHTML = psycheCardHtml(insightSample);
-      // Laid out at full size first, then fitted to the tier it sits in: never
-      // wider than 250px, or than the tier leaves on a phone.
-      const tier = target.closest('.insight-free');
-      requestAnimationFrame(() => fitCard(target, Math.min(250, tier ? tier.clientWidth - 48 : 250), 450));
+      const target = document.getElementById('insight-gallery');
+      if (!target) return;
+      const I = Copy.STRUCTURED.insights;
+      // The other cards' slots, once there is something to put in them.
+      target.querySelectorAll('.insight-preview:not(#insight-card-open)').forEach(node => node.remove());
+      target.insertAdjacentHTML('beforeend', insightCards.slice(1).map((report, i) =>
+        insightSlot(i + 1, '', '', I.previewOpenNamed.replace('{name}', (report.card && report.card.name) || ''))).join(''));
+      const cards = [...target.querySelectorAll('.insight-preview .psyche-card')];
+      cards.forEach((el, i) => { el.innerHTML = psycheCardHtml(insightCards[i]); });
+      // Fitted as soon as they are drawn, so the page never lays out a
+      // full-size card: 200px wide in the strip, or a little less where a
+      // phone leaves less. The stylesheet holds their space until then.
+      const width = Math.min(200, Math.max(150, (target.clientWidth || 200) * 0.62));
+      cards.forEach(el => fitCard(el, width, width * 1920 / 1080));
+      updateGalleryArrows();
     } catch (error) {
       // A card that will not draw leaves the list beside it to say what is on one.
     }
+  }
+
+  /** The gallery's arrows fade out at the end they cannot scroll past. */
+  function updateGalleryArrows() {
+    const gallery = document.getElementById('insight-gallery');
+    if (!gallery) return;
+    const wrap = gallery.closest('.insight-gallery-wrap');
+    const max = gallery.scrollWidth - gallery.clientWidth;
+    wrap.classList.toggle('at-start', gallery.scrollLeft <= 2);
+    wrap.classList.toggle('at-end', gallery.scrollLeft >= max - 2);
+    wrap.classList.toggle('no-scroll', max <= 2);
   }
 
   /**
@@ -2750,9 +2821,63 @@
   document.addEventListener('click', event => {
     const sample = event.target.closest('#insight-sample');
     if (sample) { showSample(sample); return; }
-    const card = event.target.closest('#insight-card-open');
-    if (card) openInsightCard();
+    const card = event.target.closest('#insight-gallery .insight-preview');
+    if (card) { openInsightCard(Number(card.getAttribute('data-card')) || 0); return; }
+    // The gallery's arrows scroll it by about a card and a half.
+    const arrow = event.target.closest('.insight-gallery-nav');
+    if (arrow) {
+      const gallery = document.getElementById('insight-gallery');
+      const first = gallery && gallery.querySelector('.insight-preview');
+      const by = first ? first.getBoundingClientRect().width + 16 : 220;
+      if (gallery) gallery.scrollBy({ left: Number(arrow.getAttribute('data-gallery-step')) * by * 1.5, behavior: 'smooth' });
+      return;
+    }
+    // Full screen, the arrows either side step through the cards.
+    const step = event.target.closest('.sample-card-nav');
+    if (step) stepInsightCard(Number(step.getAttribute('data-step')));
   });
+  document.addEventListener('scroll', event => {
+    if (event.target && event.target.id === 'insight-gallery') updateGalleryArrows();
+  }, true);
+  window.addEventListener('resize', updateGalleryArrows);
+  // Full screen, the cards step left and right by keyboard, by a swipe, and
+  // by a sideways scroll on a trackpad or mouse.
+  document.addEventListener('keydown', event => {
+    if (event.key === 'ArrowRight') stepInsightCard(1);
+    else if (event.key === 'ArrowLeft') stepInsightCard(-1);
+  });
+  {
+    const dialog = $('#sample-card-dialog');
+    let start = null;
+    dialog.addEventListener('touchstart', event => {
+      const t = event.touches[0];
+      start = event.touches.length === 1 ? { x: t.clientX, y: t.clientY } : null;
+    }, { passive: true });
+    dialog.addEventListener('touchend', event => {
+      if (!start || !dialog.classList.contains('is-gallery')) return;
+      const t = event.changedTouches[0];
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      start = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.4) stepInsightCard(dx < 0 ? 1 : -1);
+    }, { passive: true });
+    let swept = 0;
+    let rested = 0;
+    dialog.addEventListener('wheel', event => {
+      if (!dialog.classList.contains('is-gallery') || Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      const now = Date.now();
+      // One step per gesture: a trackpad's sideways flick sends dozens of events.
+      if (now - rested < 450) return;
+      swept += event.deltaX;
+      if (Math.abs(swept) > 60) {
+        stepInsightCard(swept > 0 ? 1 : -1);
+        swept = 0;
+        rested = now;
+      }
+    }, { passive: false });
+    dialog.addEventListener('close', () => dialog.classList.remove('is-gallery'));
+  }
   $('#sample-close').addEventListener('click', closeSample);
 
   // Delegated, because the cover is written by innerHTML. The sample renders
@@ -6006,7 +6131,8 @@
     }
     // The same for the sample's card, full screen.
     const sample = $('#sample-card-dialog');
-    if (sample && sample.open && sampleGuideState && event.target.closest('#sample-card-dialog')) {
+    if (sample && sample.open && sampleGuideState && event.target.closest('#sample-card-dialog') &&
+        !event.target.closest('.sample-card-nav')) {
       const pop = sample.querySelector('.cx-pop');
       const part = event.target.closest('#sample-psyche-card-full [data-cx]');
       if (part) explainSampleCardPart(part.getAttribute('data-cx'));
@@ -6463,8 +6589,12 @@
       // Above the line saying how to learn more, when it shows.
       const tip = $('#sample-card-tip');
       const tipSpace = tip && tip.offsetHeight ? tip.offsetHeight + 16 : 0;
+      // And clear of the gallery's count at the top, top and bottom alike,
+      // since the card is centred; and of its arrows at the sides.
+      const gallery = sampleFull.classList.contains('is-gallery');
       fitCard($('#sample-psyche-card-full'),
-        window.innerWidth * 0.94, window.innerHeight * 0.96 - tipSpace, 'screen');
+        window.innerWidth * 0.94 - (gallery && window.innerWidth >= 720 ? 140 : 0),
+        window.innerHeight * 0.96 - tipSpace - (gallery ? 104 : 0), 'screen');
       if (sampleGuideState) explainSampleCardPart(null);
     }
   }
@@ -6950,6 +7080,7 @@
   $('#sample-card-open').addEventListener('click', () => {
     const dialog = $('#sample-card-dialog');
     if (!dialog || dialog.open) return;
+    dialog.classList.remove('is-gallery');
     guideSampleCard(sampleReport);
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');

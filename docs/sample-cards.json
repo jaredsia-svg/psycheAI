@@ -1,0 +1,135 @@
+{
+  "_comment": "The other sample Psyche Cards in the front page's gallery, after the full sample in sample.json. Card fields only: each is drawn by psycheCardHtml() and explained by cardGuideFor(), and neither reads anything else. Made-up people, written the way a real card reads.",
+  "cards": [
+    {
+      "card": { "name": "Ethan Tan", "confidence": 82, "headline": "Quick-witted helper who shows up first and explains later" },
+      "confidence": { "score": 82, "level": "high" },
+      "essence": { "character": "Spider-Man", "franchise": "Marvel", "icon": "🕸️" },
+      "cardHighlights": "Like him, you are the one who notices somebody needs a hand and is already there before anyone asks: sixty-odd posts of fixing, lifting and covering shifts for friends, almost none about yourself. The jokes come fastest when the stakes are highest, which keeps the room light and keeps the weight you are carrying out of view.",
+      "patterns": [
+        { "id": "p1", "name": "First to help, last to mention it" },
+        { "id": "p2", "name": "Humour as a pressure valve" },
+        { "id": "p3", "name": "Two lives, kept in separate boxes" }
+      ],
+      "topMotivators": ["benevolence", "stimulation", "self-direction"],
+      "mbti": { "type": "ENFP", "letters": [
+        { "axis": "E/I", "choice": "E", "strength": "moderate" },
+        { "axis": "N/S", "choice": "N", "strength": "clear" },
+        { "axis": "T/F", "choice": "F", "strength": "slight" },
+        { "axis": "J/P", "choice": "P", "strength": "moderate" }
+      ] },
+      "bigFive": { "openness": { "score": 81 }, "conscientiousness": { "score": 58 }, "extraversion": { "score": 64 }, "agreeableness": { "score": 76 }, "neuroticism": { "score": 52 } },
+      "values": [{ "value": "Responsibility" }, { "value": "Loyalty" }, { "value": "Curiosity" }],
+      "beliefs": [{ "belief": "Ability comes with a duty" }],
+      "interests": [{ "name": "Street photography" }, { "name": "Bouldering" }, { "name": "Science videos" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Words of affirmation" }, { "language": "Quality time" }],
+        "giving": [{ "language": "Acts of service" }, { "language": "Words of affirmation" }]
+      } }
+    },
+    {
+      "card": { "name": "Olivia Bennett", "confidence": 84, "headline": "Restless explorer with a strong pull back to her people" },
+      "confidence": { "score": 84, "level": "high" },
+      "essence": { "character": "Moana", "franchise": "Disney", "icon": "🌊" },
+      "cardHighlights": "Like her, you go further than the people around you expected and then come home to tell them about it: eleven trips in three years, and every one ends on a family table. You argue with tradition out loud and keep it anyway, which is the resemblance — not the boat.",
+      "patterns": [
+        { "id": "p1", "name": "Goes past the reef" },
+        { "id": "p2", "name": "Roots you keep returning to" },
+        { "id": "p3", "name": "Decides, then tells everyone" }
+      ],
+      "topMotivators": ["self-direction", "stimulation", "tradition"],
+      "mbti": { "type": "ENFJ", "letters": [
+        { "axis": "E/I", "choice": "E", "strength": "clear" },
+        { "axis": "N/S", "choice": "N", "strength": "moderate" },
+        { "axis": "T/F", "choice": "F", "strength": "moderate" },
+        { "axis": "J/P", "choice": "J", "strength": "slight" }
+      ] },
+      "bigFive": { "openness": { "score": 88 }, "conscientiousness": { "score": 63 }, "extraversion": { "score": 74 }, "agreeableness": { "score": 69 }, "neuroticism": { "score": 38 } },
+      "values": [{ "value": "Courage" }, { "value": "Family" }, { "value": "Independence" }],
+      "beliefs": [{ "belief": "Where you come from shows you where to go" }],
+      "interests": [{ "name": "Sailing" }, { "name": "Travel" }, { "name": "Island music" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Quality time" }, { "language": "Physical touch" }],
+        "giving": [{ "language": "Quality time" }, { "language": "Acts of service" }]
+      } }
+    },
+    {
+      "card": { "name": "Ryan Walker", "confidence": 79, "headline": "Inventive outsider who wins people over slowly" },
+      "confidence": { "score": 79, "level": "high" },
+      "essence": { "character": "Hiccup", "franchise": "DreamWorks", "icon": "🔥" },
+      "cardHighlights": "Like him, you solve the problem nobody else thought was a problem, usually by building something: a workshop's worth of half-finished projects and the one that worked. You would rather understand the thing everyone is afraid of than fight it, and the friends you keep are the ones who came round to that.",
+      "patterns": [
+        { "id": "p1", "name": "Builds the answer" },
+        { "id": "p2", "name": "Understands before judging" },
+        { "id": "p3", "name": "Small circle, deep trust" }
+      ],
+      "topMotivators": ["self-direction", "universalism", "achievement"],
+      "mbti": { "type": "INTP", "letters": [
+        { "axis": "E/I", "choice": "I", "strength": "moderate" },
+        { "axis": "N/S", "choice": "N", "strength": "clear" },
+        { "axis": "T/F", "choice": "T", "strength": "slight" },
+        { "axis": "J/P", "choice": "P", "strength": "moderate" }
+      ] },
+      "bigFive": { "openness": { "score": 90 }, "conscientiousness": { "score": 55 }, "extraversion": { "score": 34 }, "agreeableness": { "score": 72 }, "neuroticism": { "score": 57 } },
+      "values": [{ "value": "Ingenuity" }, { "value": "Empathy" }, { "value": "Loyalty" }],
+      "beliefs": [{ "belief": "Different is not dangerous" }],
+      "interests": [{ "name": "3D printing" }, { "name": "Mountain biking" }, { "name": "Sketching" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Quality time" }, { "language": "Words of affirmation" }],
+        "giving": [{ "language": "Receiving gifts" }, { "language": "Acts of service" }]
+      } }
+    },
+    {
+      "card": { "name": "Hana Sato", "confidence": 88, "headline": "Bright energiser who keeps the mood up on purpose" },
+      "confidence": { "score": 88, "level": "high" },
+      "essence": { "character": "Joy", "franchise": "Pixar", "icon": "☀️" },
+      "cardHighlights": "Like her, you run the room's mood like a job: birthdays planned weeks out, the group chat kept warm, and four years of posts that are almost all highlights. The resemblance is in the effort it takes — you work hard at bright, and the quieter days are the ones that never get posted.",
+      "patterns": [
+        { "id": "p1", "name": "Keeps everyone's spirits up" },
+        { "id": "p2", "name": "Plans the fun properly" },
+        { "id": "p3", "name": "Posts the highs, keeps the lows" }
+      ],
+      "topMotivators": ["hedonism", "benevolence", "achievement"],
+      "mbti": { "type": "ESFJ", "letters": [
+        { "axis": "E/I", "choice": "E", "strength": "clear" },
+        { "axis": "N/S", "choice": "S", "strength": "slight" },
+        { "axis": "T/F", "choice": "F", "strength": "clear" },
+        { "axis": "J/P", "choice": "J", "strength": "moderate" }
+      ] },
+      "bigFive": { "openness": { "score": 70 }, "conscientiousness": { "score": 77 }, "extraversion": { "score": 86 }, "agreeableness": { "score": 83 }, "neuroticism": { "score": 41 } },
+      "values": [{ "value": "Optimism" }, { "value": "Friendship" }, { "value": "Generosity" }],
+      "beliefs": [{ "belief": "A good day can be made" }],
+      "interests": [{ "name": "Dance classes" }, { "name": "Baking" }, { "name": "Festivals" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Words of affirmation" }, { "language": "Receiving gifts" }],
+        "giving": [{ "language": "Receiving gifts" }, { "language": "Quality time" }]
+      } }
+    },
+    {
+      "card": { "name": "Kenji Nakamura", "confidence": 81, "headline": "Calm, steady presence people feel safe around" },
+      "confidence": { "score": 81, "level": "high" },
+      "essence": { "character": "Totoro", "franchise": "Studio Ghibli", "icon": "🍃" },
+      "cardHighlights": "Like him, you say little and are there when it counts: a slow, unhurried account of forests, rain and long walks, and friends who tag you when they need somebody steady. You are at your best outdoors and unbothered by the clock, and the people around you calm down without quite knowing why.",
+      "patterns": [
+        { "id": "p1", "name": "Quiet, steady shelter" },
+        { "id": "p2", "name": "At home in nature" },
+        { "id": "p3", "name": "Unhurried by design" }
+      ],
+      "topMotivators": ["universalism", "security", "benevolence"],
+      "mbti": { "type": "ISFP", "letters": [
+        { "axis": "E/I", "choice": "I", "strength": "clear" },
+        { "axis": "N/S", "choice": "S", "strength": "moderate" },
+        { "axis": "T/F", "choice": "F", "strength": "moderate" },
+        { "axis": "J/P", "choice": "P", "strength": "slight" }
+      ] },
+      "bigFive": { "openness": { "score": 73 }, "conscientiousness": { "score": 62 }, "extraversion": { "score": 28 }, "agreeableness": { "score": 85 }, "neuroticism": { "score": 26 } },
+      "values": [{ "value": "Harmony" }, { "value": "Patience" }, { "value": "Kindness" }],
+      "beliefs": [{ "belief": "Slow is not the same as late" }],
+      "interests": [{ "name": "Hiking" }, { "name": "Gardening" }, { "name": "Film photography" }],
+      "relationship": { "loveLanguages": {
+        "receiving": [{ "language": "Quality time" }, { "language": "Physical touch" }],
+        "giving": [{ "language": "Acts of service" }, { "language": "Quality time" }]
+      } }
+    }
+  ]
+}

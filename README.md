@@ -913,9 +913,20 @@ them to match, so the next rename fails rather than half-lands.
 `docs/app.js` into the `[data-insights]` slot. The free tier is the summary card: the eight things on
 it, by the card's own labels (the first as "Your character / superhero", short enough for a phone's
 column), as one white box of two columns and four rows (`.card-features`, the
-same four by two on a phone), beside a real card drawn from `sample.json` (`drawInsightPreview`). The
-card is a button (`#insight-card-open`): clicking it shows the whole card full screen in the sample card
-dialog (`openInsightCard()`), with no caption under it. The
+same four by two on a phone), and under it a **gallery of six sample cards** in a strip that scrolls
+sideways (`#insight-gallery`, `drawInsightPreview`): the full sample's own card from `sample.json`
+(Emily Carter, Mulan) first, then five from `docs/sample-cards.json` — Ethan Tan (Spider-Man), Olivia
+Bennett (Moana), Ryan Walker (Hiccup), Hana Sato (Joy) and Kenji Nakamura (Totoro), made-up people
+with American and Asian names, women for the female characters and men for the male ones. That file
+holds only what a card reads, and a self-test holds each entry to it and the six to different people
+and characters. The strip snaps card by card, scrolls by swipe or trackpad, and has arrows at its
+sides where there is a pointer, faded at the end it cannot pass; its space is held before the cards
+load, so the page below never jumps. Each card is a button: clicking one shows it full screen in the
+sample card dialog (`openInsightCard(index)`), with the same tap-to-explain guide, a "3 / 6" count at
+the top and arrows either side. Full screen the cards step left and right (`stepInsightCard`) by those
+arrows, the arrow keys, a swipe, or a sideways scroll on a trackpad, sliding in from the side stepped
+towards and wrapping round at the ends. The sample report's own card opens in the same dialog without
+them. The
 premium tier is the full report by its four numbered parts — named from `Copy.STRUCTURED.parts`, with
 each part's sections as chips from the report's own titles (Part 1 leads with **Your character** and
 **Your signature patterns**, as the report itself does) — its price (`premiumPriceLabel`) and what

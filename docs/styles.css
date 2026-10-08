@@ -2185,6 +2185,27 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   background: rgba(255, 255, 255, .1); color: rgba(255, 255, 255, .78); font-size: 1rem; line-height: 1; cursor: pointer;
 }
 .sample-card-close:hover, .sample-card-close:focus-visible { background: rgba(255, 255, 255, .24); color: #fff; outline: none; }
+/* Opened from the front page's gallery: arrows either side and a count at
+   the top, and each card slides in from the side it was stepped towards. */
+.sample-card-nav, .sample-card-count { display: none; }
+.card-dialog.is-gallery .sample-card-nav {
+  position: fixed; top: 50%; z-index: 3; transform: translateY(-50%);
+  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; cursor: pointer;
+  border-radius: 50%; border: 1px solid rgba(255, 255, 255, .3); background: rgba(20, 10, 40, .5); color: #fff;
+}
+.card-dialog.is-gallery .sample-card-nav:hover, .card-dialog.is-gallery .sample-card-nav:focus-visible { background: rgba(255, 255, 255, .24); outline: none; }
+.sample-card-prev { left: max(10px, env(safe-area-inset-left)); }
+.sample-card-next { right: max(10px, env(safe-area-inset-right)); }
+.card-dialog.is-gallery .sample-card-count {
+  position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; z-index: 3; transform: translateX(-50%);
+  display: block; margin: 0; padding: .25rem .75rem; border-radius: 999px;
+  background: rgba(20, 10, 40, .5); color: rgba(255, 255, 255, .9); font-size: .85rem; font-weight: 700;
+}
+.card-dialog-frame.is-slide-next { animation: card-slide-next .32s ease; }
+.card-dialog-frame.is-slide-prev { animation: card-slide-prev .32s ease; }
+@keyframes card-slide-next { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
+@keyframes card-slide-prev { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .card-dialog-frame.is-slide-next, .card-dialog-frame.is-slide-prev { animation: none; } }
 
 .pc-lab-icon { font-size: 24px; line-height: 1; flex: none; }
 .pc-love { list-style: none; padding-left: 0; }
@@ -2910,7 +2931,34 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: linear-gradient(140deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg)), var(--bg));
   border: 1px solid var(--line);
 }
-@media (min-width: 760px) { .insight-free { grid-template-columns: 1fr 250px; } }
+/* Under the list, a strip of sample cards scrolled sideways: by swipe or
+   trackpad, or by the arrows either side where there is a pointer. It runs to
+   the tier's edges so a card cut off at the side says there is more. */
+.insight-free { grid-template-columns: minmax(0, 1fr); }
+.insight-gallery-wrap { position: relative; margin: 0 calc(-1 * clamp(1rem, 3vw, 1.4rem)); }
+.insight-gallery {
+  display: flex; gap: 20px; overflow-x: auto; overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory; scroll-padding: 0 clamp(1rem, 3vw, 1.4rem);
+  padding: 14px clamp(1rem, 3vw, 1.4rem) 20px; scrollbar-width: thin;
+}
+.insight-gallery .insight-preview { flex: none; margin: 0; scroll-snap-align: start; }
+/* The space a fitted card takes, held before the cards have loaded so the
+   page below does not jump when they arrive. */
+.insight-gallery .insight-preview-frame { width: 200px; height: 356px; }
+.insight-gallery .insight-preview:nth-child(even) .insight-preview-frame { transform: rotate(2deg); }
+.insight-gallery-nav {
+  position: absolute; top: 50%; z-index: 2; transform: translateY(-50%);
+  display: grid; place-items: center; width: 42px; height: 42px; padding: 0; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--bg-alt); color: var(--ink);
+  box-shadow: 0 8px 20px -10px rgba(60, 20, 90, .55); transition: opacity .2s ease;
+}
+.insight-gallery-nav[data-gallery-step="-1"] { left: 6px; }
+.insight-gallery-nav[data-gallery-step="1"] { right: 6px; }
+.insight-gallery-nav svg, .sample-card-nav svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.insight-gallery-wrap.at-start .insight-gallery-nav[data-gallery-step="-1"],
+.insight-gallery-wrap.at-end .insight-gallery-nav[data-gallery-step="1"],
+.insight-gallery-wrap.no-scroll .insight-gallery-nav { opacity: 0; pointer-events: none; }
+@media (hover: none) { .insight-gallery-nav { display: none; } }
 /* What is on the card: one white box, two columns by four rows at every
    width, each entry an icon and two lines, ruled apart rather than boxed. */
 .insight-card .card-features, .insight-card .insight-parts, .insight-card .insight-extras { padding-left: 0; }

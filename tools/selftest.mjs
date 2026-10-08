@@ -6825,6 +6825,40 @@ check('the schema requires evidence on strengths and frictions',
     !/Disney|Pixar|Marvel|Nintendo|DreamWorks|Ghibli|Pok[eé]mon/i.test(JSON.stringify(art)));
 }
 
+// ---------- the front page's gallery of sample cards ----------
+//
+// docs/sample-cards.json holds the cards after the full sample's in the
+// gallery. Each is drawn by the same psycheCardHtml, so each needs what the
+// card reads: a catalogue character under its own franchise, a person's name
+// nobody else in the gallery has, three patterns, three known motivators,
+// four type letters, the Big Five, and both sides of the love languages.
+{
+  const gallery = JSON.parse(readFileSync(join(root, 'docs', 'sample-cards.json'), 'utf8')).cards || [];
+  const catalogue = new Map(prompts.CHARACTER_CATALOGUE);
+  const motives = ['self-direction', 'stimulation', 'hedonism', 'achievement', 'power', 'security', 'conformity', 'tradition', 'benevolence', 'universalism'];
+  const languages = ['Words of affirmation', 'Acts of service', 'Quality time', 'Receiving gifts', 'Physical touch'];
+  const faults = gallery.flatMap((c, i) => {
+    const at = '#' + (i + 1) + ' ';
+    const out = [];
+    const character = c.essence && c.essence.character;
+    if (!catalogue.has(character) || catalogue.get(character) !== c.essence.franchise) out.push(at + 'character ' + character);
+    if (!c.card || !/^\S+ \S+/.test(c.card.name || '') || !c.card.headline || !(c.card.confidence > 0)) out.push(at + 'card');
+    if (!c.cardHighlights) out.push(at + 'highlights');
+    if ((c.patterns || []).map(p => p.id).join() !== 'p1,p2,p3') out.push(at + 'patterns');
+    if ((c.topMotivators || []).length !== 3 || !c.topMotivators.every(m => motives.includes(m))) out.push(at + 'motivators');
+    if (((c.mbti && c.mbti.letters) || []).map(l => l.axis).join() !== 'E/I,N/S,T/F,J/P') out.push(at + 'type letters');
+    if (!['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism'].every(t => c.bigFive && c.bigFive[t] && c.bigFive[t].score >= 0)) out.push(at + 'Big Five');
+    const love = (c.relationship && c.relationship.loveLanguages) || {};
+    if (![love.receiving, love.giving].every(side => side && side.length && side.every(l => languages.includes(l.language)))) out.push(at + 'love languages');
+    return out;
+  });
+  check('the gallery\'s sample cards each have what a card reads', gallery.length === 5 && faults.length === 0, faults.join(', '));
+  const names = [sample.card.name].concat(gallery.map(c => c.card && c.card.name));
+  const characters = [sample.essence.character].concat(gallery.map(c => c.essence && c.essence.character));
+  check('and no two in the gallery share a person or a character',
+    new Set(names).size === names.length && new Set(characters).size === characters.length, names.concat(characters).join(', '));
+}
+
 // ---------- one address: *.onrender.com redirects to psycheai.io ----------
 //
 // Render serves the site at its own subdomain as well as at the custom

@@ -898,6 +898,14 @@
   <!-- A faint cross in the screen's top right corner: on a phone there is no
        Escape key and little outside the card to tap. -->
   <button class="sample-card-close" id="sample-card-dialog-close" type="button" aria-label="Close">✕</button>
+  <!-- Opened from the front page's gallery, the cards step left and right:
+       these arrows, the arrow keys, a swipe or a sideways scroll (app.js,
+       stepInsightCard). Hidden for the sample report's own card. -->
+  <button class="sample-card-nav sample-card-prev" type="button" data-step="-1" aria-label="Previous card">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <button class="sample-card-nav sample-card-next" type="button" data-step="1" aria-label="Next card">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  <p class="sample-card-count" id="sample-card-count" aria-live="polite"></p>
   <div class="cx-pop card-dialog-pop" role="status" aria-live="polite" hidden>
     <span class="cx-arrow" aria-hidden="true"></span>
     <button type="button" class="cx-close" aria-label="Close">✕</button>

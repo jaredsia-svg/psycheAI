@@ -2925,7 +2925,7 @@ try {
       const box = document.querySelector('.insight-free .card-features');
       const items = [...box.children].map(li => li.getBoundingClientRect());
       const bg = getComputedStyle(box).backgroundColor;
-      return { cardBeside: card.left >= list.right - 1, partRows: new Set(parts).size,
+      return { cardBelow: card.top >= list.bottom - 1, partRows: new Set(parts).size,
         boxes: document.querySelectorAll('.insight-free .card-features').length,
         filled: !/rgba\(0, 0, 0, 0\)|transparent/.test(bg),
         featureRows: new Set(items.map(r => Math.round(r.top))).size,
@@ -2935,16 +2935,61 @@ try {
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('on a laptop the card sits beside its list and the parts run two by two',
-    tierLayout[1100].cardBeside && tierLayout[1100].partRows === 2, JSON.stringify(tierLayout[1100]));
+  check('on a laptop the gallery of cards runs under its list and the parts run two by two',
+    tierLayout[1100].cardBelow && tierLayout[1100].partRows === 2, JSON.stringify(tierLayout[1100]));
   for (const width of [1100, 390]) {
     const t = tierLayout[width];
     check('at ' + width + 'px the eight things on the card are one filled box, four rows of two',
       t.boxes === 1 && t.filled && t.featureRows === 4 && t.featureCols === 2 && t.inBox, JSON.stringify(t));
   }
   check('on a phone they stack, with nothing running off the side',
-    !tierLayout[390].cardBeside && tierLayout[390].partRows === 4 && tierLayout[390].spill <= 1,
+    tierLayout[390].cardBelow && tierLayout[390].partRows === 4 && tierLayout[390].spill <= 1,
     JSON.stringify(tierLayout[390]));
+  // The gallery: the full sample's card and five more, each a different
+  // character and person, in a strip that scrolls sideways without the page
+  // doing so; full screen, the cards step left and right and wrap round.
+  {
+    await page.waitForFunction(() => [...document.querySelectorAll('#insight-gallery .insight-preview .psyche-card')].filter(c => c.children.length).length >= 6,
+      null, { timeout: 15000 }).catch(() => null);
+    const gallery = await page.evaluate(() => {
+      const g = document.querySelector('#insight-gallery');
+      const cards = [...g.querySelectorAll('.insight-preview')];
+      return {
+        count: cards.length,
+        // Either layout: the story card's names, or the classic card's.
+        characters: new Set(cards.map(c => (c.querySelector('.pc-sname h2, .pc-name h2') || {}).textContent)).size,
+        names: cards.map(c => (c.querySelector('.pc-sowner, .pc-owner') || {}).textContent),
+        art: cards.every(c => !c.querySelector('.pc-story-in') || c.querySelector('svg.pc-art')),
+        scrolls: g.scrollWidth > g.clientWidth + 50,
+        labels: cards.slice(1).every(c => {
+          const owner = c.querySelector('.pc-sowner, .pc-owner');
+          return owner && c.getAttribute('aria-label').includes(owner.textContent);
+        }),
+        spill: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    check('the front page shows a gallery of six sample cards, each its own character and person, with its scene',
+      gallery.count === 6 && gallery.characters === 6 && new Set(gallery.names).size === 6 && gallery.art && gallery.labels,
+      JSON.stringify(gallery));
+    check('and the strip scrolls sideways without the page doing so', gallery.scrolls && gallery.spill <= 1, JSON.stringify(gallery));
+    await page.locator('#insight-gallery .insight-preview[data-card="5"]').scrollIntoViewIfNeeded();
+    await page.click('#insight-gallery .insight-preview[data-card="5"]');
+    await page.waitForSelector('#sample-card-dialog[open].is-gallery', { timeout: 5000 }).catch(() => {});
+    const at = () => page.evaluate(() => {
+      const h = document.querySelector('#sample-psyche-card-full .pc-sname h2, #sample-psyche-card-full .pc-name h2');
+      return document.querySelector('#sample-card-count').textContent + ' ' + (h ? h.textContent : '?');
+    });
+    const opened = await at();
+    await page.keyboard.press('ArrowRight');
+    const wrapped = await at();
+    await page.click('.sample-card-prev');
+    const back = await at();
+    check('a gallery card opens full screen, and steps left and right through the rest, wrapping round',
+      /^6 \/ 6 /.test(opened) && /^1 \/ 6 Mulan/.test(wrapped) && back === opened, [opened, wrapped, back].join(' | '));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  }
+
   // ---- the dark theme is a theme, not a hope ----
   //
   // Nothing here ever rendered in dark mode before, which is how a filled
