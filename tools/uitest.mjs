@@ -260,7 +260,8 @@ async function answerReview(page, options) {
 
 // Deliberately not a plausible production value: a reader of this file
 // should never be able to mistake it for one that works anywhere real.
-const UITEST_PROMO = 'uitest-promo-not-a-real-code';
+// Capitals, as every promo code is: the field makes anything typed capitals.
+const UITEST_PROMO = 'UITEST-PROMO-NOT-A-REAL-CODE';
 
 const USAGE_STORE = join(tmpdir(), 'psycheai-uitest-usage.jsonl');
 try { rmSync(USAGE_STORE); } catch (error) { /* not there yet */ }
@@ -713,16 +714,30 @@ try {
       await unlock.click();
       await skipPremiumDataOffer(halfPage);
       await halfPage.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
-      await halfPage.fill('#premium-promo-input', 'uihalf');
+      const priceRows = () => halfPage.$$eval('#premium-price .premium-price-row', rows => rows.map(row =>
+        [row.querySelector('dt').textContent.trim(), row.querySelector('dd').textContent.trim(), Boolean(row.querySelector('s'))]));
+      const fullPrice = await priceRows();
+      check('the unlock sheet states the price of the report',
+        await halfPage.isVisible('#premium-price') && JSON.stringify(fullPrice) === JSON.stringify([['Price', 'US$5', false]]),
+        JSON.stringify(fullPrice));
+      if (process.env.UITEST_SHOTS) await halfPage.locator('#premium-dialog').screenshot({ path: process.env.UITEST_SHOTS + '/promo-before.png' });
+      await halfPage.fill('#premium-promo-input', 'ui half!');
+      check('the promo field takes capitals only: lower case is made capitals, anything else dropped',
+        (await halfPage.inputValue('#premium-promo-input')) === 'UIHALF', await halfPage.inputValue('#premium-promo-input'));
       await halfPage.click('#premium-promo-apply');
       await halfPage.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
         .catch(() => {});
       const said = await halfPage.locator('#premium-status').innerText();
       const discounted = intents.find(entry => entry.asked && entry.asked.promoCode);
-      check('a half-price code re-prices the unlock sheet and says what is left to pay',
-        /UIHALF: 50% off\. Pay US\$2\.50 to unlock\./.test(said) &&
+      check('a half-price code re-prices the unlock sheet and says so',
+        /UIHALF applied: 50% off\./.test(said) &&
           discounted && discounted.got && discounted.got.amount === 250 && discounted.got.discount.percent === 50 &&
           analyses.length === 0, said + ' ' + JSON.stringify(discounted && discounted.got));
+      const netPrice = await priceRows();
+      check('and the sheet shows the original price, the discount and the net price',
+        JSON.stringify(netPrice) === JSON.stringify([['Price', 'US$5', true], ['Promo UIHALF (50% off)', '−US$2.50', false],
+          ['You pay', 'US$2.50', false]]), JSON.stringify(netPrice));
+      if (process.env.UITEST_SHOTS) await halfPage.locator('#premium-dialog').screenshot({ path: process.env.UITEST_SHOTS + '/promo-after.png' });
       await halfPage.click('#premium-mock-pay');
       await halfPage.waitForFunction(() => document.querySelector('#premium-dialog') && !document.querySelector('#premium-dialog').open,
         null, { timeout: 60000 }).catch(() => {});

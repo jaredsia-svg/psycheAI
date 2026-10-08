@@ -693,6 +693,9 @@
 <dialog id="premium-dialog" class="mode-dialog premium-dialog" aria-labelledby="premium-dialog-title" tabindex="-1">
   <h2 id="premium-dialog-title"></h2>
   <p class="muted" id="premium-dialog-blurb"></p>
+  <!-- The price, and with a discount code the price, the discount and what
+       is left to pay — see renderPremiumPrice. -->
+  <dl class="premium-price" id="premium-price" hidden></dl>
   <div id="premium-payment-request-button"></div>
   <!-- Sits here, above the card fallback, rather than in its long-standing
        spot after #premium-progress: the "no wallet" message is what the card
@@ -714,7 +717,7 @@
   <div class="premium-promo">
     <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
     <div class="premium-promo-row">
-      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false">
+      <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false" autocapitalize="characters" pattern="[A-Z0-9\-]*" maxlength="32">
       <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
     </div>
   </div>

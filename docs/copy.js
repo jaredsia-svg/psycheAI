@@ -604,7 +604,12 @@
     premiumPromoPlaceholder: 'Promo code',
     premiumPromoApply: 'Apply',
     // A discount code, accepted: what it took off and what is left to pay.
-    premiumPromoDiscount: (code, percent, price) => code + ': ' + percent + '% off. Pay ' + price + ' to unlock.',
+    premiumPromoDiscount: (code, percent) => 'Promo code ' + code + ' applied: ' + percent + '% off.',
+    // The price on the payment sheet: the full price, and with a discount
+    // code the discount and what is left to pay.
+    premiumPriceFull: 'Price',
+    premiumPriceDiscount: (code, percent) => 'Promo ' + code + ' (' + percent + '% off)',
+    premiumPriceNet: 'You pay',
 
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +

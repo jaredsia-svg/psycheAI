@@ -7995,6 +7995,7 @@
     $('#premium-promo-input').disabled = false;
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
+    renderPremiumPrice(kind, CURRENCY, null);
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
@@ -8016,6 +8017,8 @@
     const receipt = kind === 'unlock' ? unlockReceipt() : null;
     if (receipt && hasUnfetchedUnlock()) {
       $('#premium-dialog-title').textContent = TEXT.premiumResumeTitle;
+      // Already paid: there is no price to state.
+      $('#premium-price').hidden = true;
       $('#premium-dialog-blurb').textContent = TEXT.premiumResumeBlurb;
       $('#premium-dialog-blurb').hidden = false;
       const resume = $('#premium-retry');
@@ -8047,6 +8050,31 @@
     } finally {
       if (button) button.disabled = false;
     }
+  }
+
+  /**
+   * The price at the top of the payment sheet. Without a discount, the one
+   * line: the product's price. With a discount code, the full price struck
+   * through, the discount the code takes off, and the price left to pay — the
+   * amount of the cheaper PaymentIntent, which is what is actually charged.
+   * Not shown for compatibility, which is free.
+   */
+  function renderPremiumPrice(product, currency, discount) {
+    const box = $('#premium-price');
+    if (product !== 'unlock' && product !== 'analysis') { box.hidden = true; box.innerHTML = ''; return; }
+    const row = (term, value, cls) => '<div class="premium-price-row' + (cls ? ' ' + cls : '') + '"><dt>' + esc(term) +
+      '</dt><dd>' + value + '</dd></div>';
+    const full = Prices.label(currency, product);
+    if (!discount) {
+      box.innerHTML = row(TEXT.premiumPriceFull, esc(full), 'is-total');
+    } else {
+      const fullMinor = Prices.amount(currency, product);
+      const off = Math.max(0, fullMinor - discount.amount);
+      box.innerHTML = row(TEXT.premiumPriceFull, '<s>' + esc(full) + '</s>') +
+        row(TEXT.premiumPriceDiscount(discount.code, discount.percent), '−' + esc(Prices.label(currency, product, off)), 'is-discount') +
+        row(TEXT.premiumPriceNet, esc(Prices.label(currency, product, discount.amount)), 'is-total');
+    }
+    box.hidden = false;
   }
 
   /**
@@ -8166,14 +8194,25 @@
       apply.disabled = false;
     }
     if (answer && answer.discount) {
-      premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent,
-        Prices.label(answer.currency, 'unlock', answer.amount)), 'good');
+      renderPremiumPrice('unlock', answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
+      premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent), 'good');
       await mountIntent(answer, dialog);
       return;
     }
     onPaymentAuthorised({ promoCode: code }, dialog);
   }
   $('#premium-promo-apply').addEventListener('click', applyPromoCode);
+  // Promo codes are capitals, digits and hyphens only: a lower-case letter is
+  // made a capital as it is typed or pasted, and anything else is dropped.
+  $('#premium-promo-input').addEventListener('input', event => {
+    const input = event.target;
+    const clean = input.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    if (clean !== input.value) {
+      const at = input.selectionStart;
+      input.value = clean;
+      if (typeof at === 'number') input.setSelectionRange(Math.min(at, clean.length), Math.min(at, clean.length));
+    }
+  });
   $('#premium-promo-input').addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); applyPromoCode(); }
   });

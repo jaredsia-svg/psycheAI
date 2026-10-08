@@ -1859,8 +1859,13 @@ discount into free reports.
 - **In the unlock sheet**, Apply asks `/api/create-payment-intent` about the code first. A 100% code
   comes back as `{ free: true }` and unlocks as before; a refused one says why on the sheet; a
   discount comes back as a new PaymentIntent for what is left of the *local* price (50% of US$5 is
-  US$2.50, of S$7 is S$3.50, of £4 is £2), the sheet says *HALF: 50% off. Pay US$2.50 to unlock.*,
-  and the wallet button, card form or mock button are re-mounted for that amount.
+  US$2.50, of S$7 is S$3.50, of £4 is £2), the sheet's price box changes from *Price US$5* to the
+  original price struck through, *Promo HALF (50% off) −US$2.50* and *You pay US$2.50*
+  (`renderPremiumPrice`), says *Promo code HALF applied: 50% off.*, and the wallet button, card form
+  or mock button are re-mounted for that amount.
+- **Codes are capitals.** The promo field turns lower case into capitals as it is typed or pasted and
+  drops anything that is not a letter, digit or hyphen. Write codes in capitals in
+  `PSYCHEAI_PROMO_CODES`; the server still matches them case-insensitively.
 - **The server writes the code and its percentage onto the PaymentIntent** (Stripe `metadata`).
   `verifyPaid` holds a payment to the discounted price only when that metadata is there, and only
   this server can write it — a client cannot claim a discount, and a half-price payment presented

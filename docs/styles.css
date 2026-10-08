@@ -1685,7 +1685,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .premium-card-error { margin: .5rem 0 0; font-size: .85rem; color: var(--danger); }
 #premium-card-pay { margin: .8rem 0 0; }
-.premium-status { margin: .5rem 0 0; font-size: .9rem; }
+.premium-status { margin: .5rem 0 .75rem; font-size: .9rem; }
 .premium-status.is-bad { color: var(--danger); }
 .premium-status.is-good { color: var(--good); }
 
@@ -1707,7 +1707,16 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 }
 .premium-promo-label { display: block; font-size: .85rem; color: var(--ink-soft); margin-bottom: .4rem; }
 .premium-promo-row { display: flex; gap: .5rem; }
-.premium-promo-input { flex: 1; min-width: 0; }
+.premium-promo-input { flex: 1; min-width: 0; text-transform: uppercase; }
+.premium-price { margin: .75rem 0 1rem; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: 12px; }
+.premium-price-row { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin: .15rem 0; }
+.premium-price-row dt { color: var(--ink-soft); font-size: .92rem; }
+.premium-price-row dd { margin: 0; font-variant-numeric: tabular-nums; }
+.premium-price-row s { color: var(--ink-soft); }
+.premium-price-row.is-discount dd { color: var(--good); }
+.premium-price-row.is-total dt { color: var(--ink); font-weight: 600; }
+.premium-price-row.is-total dd { font-weight: 700; font-size: 1.1rem; }
+.premium-price-row.is-discount + .is-total { margin-top: .4rem; padding-top: .45rem; border-top: 1px solid var(--line); }
 .premium-promo-row .btn { flex: none; margin: 0; }
 /* The dialog itself is given `tabindex="-1"` and focused programmatically
    (docs/app.js's openPremiumDialog) so opening it does not land focus on the
