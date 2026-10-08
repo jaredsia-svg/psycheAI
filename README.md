@@ -4628,6 +4628,26 @@ the PDF, which has no QR panel or buttons after its own confidence section for i
 
 ## Compatibility
 
+**The report, on the page and in the PDF, gives the answer before the working.** One order for both:
+the score as a ring with the band in words and the verdict beside it; **Biggest upside** and **Biggest
+risk** side by side (green and amber); the common ground as chips; the five dimensions, each a bar, one
+sentence of reasoning and its evidence on one small italic line rather than a row of chips; **How it
+plays out**, What works and What will rub in the profile's own two green/amber columns; the playbook as
+a column per person and a "Both of you" panel; and the conversation starters set as quotes. The PDF
+cover carries the names, the basis, the band and the score ring in the band, and the verdict leads page
+one. Every block is kept whole on a page (`keep`, and the paired panels with `whole`) so no point is
+split across a break; the section reserve is lowered (`titleReserve`) so page one is not left half
+empty. Two people with the same name are told apart as "(you)" and "(them)" wherever the report names
+them side by side (`pairLabels`, shared by both renderings). The page's actions carry icons in the
+profile's style, Download first, and on a phone they sit as three equal tiles.
+
+The prompt was tightened against what a real report did: it now says each thing once (the verdict,
+the upside and the risk in different words; a piece of evidence quoted once in the whole report;
+common ground not the strengths retitled), never talks about the data ("their exact catalogued tags
+do not match verbatim in the system ledger"), quotes a phrase only whole, and calls two people with
+the same name "<name> A" and "<name> B" consistently. The verdict is under 80 words and a dimension's
+reading is one sentence.
+
 **My Compatibility** is titled for whoever the device belongs to, and opens with one short sentence
 on what a comparison is for: scan someone's code and get a score, the five things behind it, what
 works, what will grate, and what each of you could do differently — as a couple, as family or

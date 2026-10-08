@@ -719,6 +719,8 @@
     compatUpside: 'Biggest upside',
     compatRisk: 'Biggest risk',
     compatCommon: 'Common ground',
+    // Over What works and What will rub, which sit side by side under it.
+    compatHowItPlays: 'How it plays out',
     compatWorks: 'What works',
     compatRubs: 'What will rub',
     compatBoth: 'Both of you',

@@ -492,20 +492,26 @@
 
 <!-- ══════════════ report ══════════════ -->
 <section id="view-report" class="view" hidden>
-  <header class="page-head screen-only">
-    <h1 id="report-title">Your compatibility report</h1>
-    <div class="btn-row no-print">
-      <button class="btn" id="export-compat-top">Download report</button>
+  <!-- The pair in the same band the profile page opens with, the basis as a
+       pill under the names, and the download beside them. -->
+  <header class="hero profile-hero compat-head screen-only">
+    <div class="compat-head-row">
+      <div>
+        <h1 id="report-title">Your compatibility report</h1>
+        <p class="muted" id="report-sub"></p>
+      </div>
+      <button class="btn compat-download no-print" id="export-compat-top" aria-label="Download PDF"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download PDF</span></button>
     </div>
   </header>
-  <p class="muted" id="report-sub"></p>
 
   <div id="report-body"></div>
 
-  <div class="cta-row">
-    <button class="btn" id="export-compat-bottom">Download report</button>
-    <button class="btn btn-ghost" data-nav="scan">Scan someone else</button>
-    <button class="btn btn-ghost" data-nav="profile">Back to my profile</button>
+  <!-- Three actions with icons, in the profile page's style: the download
+       filled, the two ways on outlined. -->
+  <div class="cta-row compat-actions no-print">
+    <button class="btn" id="export-compat-bottom"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download PDF</span></button>
+    <button class="btn btn-outline" data-nav="scan"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 12h10"/></svg><span class="cta-label">Scan someone else</span></button>
+    <button class="btn btn-outline" data-nav="profile"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back to my profile</span></button>
   </div>
 </section>
 

@@ -8147,28 +8147,54 @@
     // Kept for the PDF, which is built from whatever was last rendered.
     state.lastReport = { report, otherName, myName, mode, stance, when };
 
+    // The same order as the PDF: the answer first (score and verdict, the best
+    // thing and the biggest risk, what they share), then the working, then
+    // what it looks like, then what to do about it.
+    const [labelA, labelB] = window.PsychePDF ? window.PsychePDF.pairLabels(myName, otherName) : [myName, otherName];
     let html = scoreCard(MODE_LABELS[mode], report);
+    html += '<div class="compat-short">' +
+      (report.biggestUpside ? '<div class="compat-side compat-up"><h3><span class="partner-badge" aria-hidden="true">↑</span>' +
+        esc(TEXT.compatUpside) + '</h3><p>' + esc(report.biggestUpside) + '</p></div>' : '') +
+      (report.biggestRisk ? '<div class="compat-side compat-risk"><h3><span class="partner-badge" aria-hidden="true">!</span>' +
+        esc(TEXT.compatRisk) + '</h3><p>' + esc(report.biggestRisk) + '</p></div>' : '') +
+      '</div>';
+    if ((report.sharedGround || []).length) {
+      html += '<div class="compat-common"><h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(report.sharedGround) + '</div>';
+    }
     html += dimensionsCard(report);
 
-    html += '<div class="card"><h2>' + esc(TEXT.compatShort) + '</h2>' +
-      '<h3>' + esc(TEXT.compatUpside) + '</h3><p>' + esc(report.biggestUpside) + '</p>' +
-      '<h3>' + esc(TEXT.compatRisk) + '</h3><p>' + esc(report.biggestRisk) + '</p>' +
-      (report.sharedGround && report.sharedGround.length
-        ? '<h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(report.sharedGround) : '') +
-      '</div>';
-
-    html += '<div class="card good"><h2>' + esc(TEXT.compatWorks) + '</h2>' + points(report.strengths) + '</div>' +
-      '<div class="card warn"><h2>' + esc(TEXT.compatRubs) + '</h2>' + points(report.frictions) + '</div>' +
-      '<div class="card"><h2>' + esc(playbookHeading(mode, stance, otherName)) + '</h2><div class="playbook">' +
-      '<div><h3>' + esc(TEXT.compatFor + myName) + '</h3>' + list(report.howToPartner.forA, 'ticks') + '</div>' +
-      '<div><h3>' + esc(TEXT.compatFor + otherName) + '</h3>' + list(report.howToPartner.forB, 'ticks') + '</div>' +
-      '</div><h3>' + esc(TEXT.compatBoth) + '</h3>' + list(report.howToPartner.together, 'ticks') + '</div>';
-
-    if ((report.conversationStarters || []).length) {
-      html += '<div class="card"><h2>' + esc(TEXT.compatTalk) + '</h2>' + list(report.conversationStarters) + '</div>';
+    // What works and what will rub, side by side in the profile's own two
+    // columns, each point with its evidence on one small line.
+    const plays = (items, kind, title) => {
+      const rows = (items || []).filter(item => item && item.title);
+      if (!rows.length) return '';
+      return '<div class="partner-col partner-' + kind + '"><h4 class="partner-col-head"><span class="partner-badge" aria-hidden="true">' +
+        (kind === 'need' ? '✓' : '!') + '</span>' + esc(title) + '</h4><ol class="partner-items">' + rows.map(item =>
+        '<li><strong>' + esc(item.title) + '</strong>' + (item.detail ? '<span>' + esc(item.detail) + '</span>' : '') +
+          evidenceLine(item.evidence) + '</li>').join('') + '</ol></div>';
+    };
+    const playsHtml = plays(report.strengths, 'need', TEXT.compatWorks) + plays(report.frictions, 'careful', TEXT.compatRubs);
+    if (playsHtml) {
+      html += '<div class="card section-card compat-plays"><h2>' + esc(TEXT.compatHowItPlays) + '</h2>' +
+        '<div class="partner-grid">' + playsHtml + '</div></div>';
     }
 
-    html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
+    const play = report.howToPartner || {};
+    html += '<div class="card section-card compat-playbook"><h2>' + esc(playbookHeading(mode, stance, otherName)) + '</h2>' +
+      '<div class="playbook">' +
+      '<div class="play-col play-a"><h3>' + esc(TEXT.compatFor + labelA) + '</h3>' + list(play.forA, 'ticks') + '</div>' +
+      '<div class="play-col play-b"><h3>' + esc(TEXT.compatFor + labelB) + '</h3>' + list(play.forB, 'ticks') + '</div>' +
+      '</div>' +
+      ((play.together || []).length ? '<div class="play-both"><h3>' + esc(TEXT.compatBoth) + '</h3>' + list(play.together, 'ticks') + '</div>' : '') +
+      '</div>';
+
+    if ((report.conversationStarters || []).length) {
+      html += '<div class="card section-card compat-talk"><h2>' + esc(TEXT.compatTalk) + '</h2>' +
+        '<ul class="talk-list">' + report.conversationStarters.filter(Boolean).map(line => '<li>' + esc(line) + '</li>').join('') +
+        '</ul></div>';
+    }
+
+    if (report.caveats) html += '<p class="fineprint">' + esc(report.caveats) + '</p>';
 
     setHtml($('#report-body'), html);
   }
@@ -8184,18 +8210,27 @@
       '<p class="card-sub">' + esc(TEXT.compatDimensionsSub) + '</p>' +
       items.map(item => bar(item.name, item.score,
         (item.reading ? '<p class="trait-reading">' + esc(item.reading) + '</p>' : '') +
-        evidence(item.evidence))).join('') +
+        evidenceLine(item.evidence, 'trait-evidence'))).join('') +
       '</div>';
   }
 
+  // The score, the band in words and the verdict: the answer, before the
+  // working. The basis is the header's pill, so it is not said again here.
   function scoreCard(label, report) {
     const value = Math.round(Number(report.score) || 0);
     const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
-    return '<div class="card score-card score-single tier-' + tier + '">' +
+    return '<div class="card score-card score-single compat-lead tier-' + tier + '">' +
       '<div class="ring" data-pct="' + value + '"><span>' + value + '</span></div>' +
-      '<div><h2>' + esc(label + TEXT.compatSuffix) + '</h2>' +
-      '<p class="band">' + esc(report.band) + '</p>' +
-      '<p>' + esc(report.verdict) + '</p></div></div>';
+      '<div>' + (report.band ? '<p class="band compat-band">' + esc(report.band) + '</p>' : '') +
+      '<p class="compat-verdict">' + esc(report.verdict) + '</p></div></div>';
+  }
+
+  // Evidence as one small line under what it supports, rather than a row of
+  // chips: it backs the claim up without competing with it.
+  function evidenceLine(items, className) {
+    const values = (items || []).filter(Boolean);
+    if (!values.length) return '';
+    return '<p class="ev-line' + (className ? ' ' + className : '') + '">' + values.map(esc).join(' · ') + '</p>';
   }
 
   // ══════════════ 5. server status & boot ══════════════

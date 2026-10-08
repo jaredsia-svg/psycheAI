@@ -9079,7 +9079,9 @@ try {
     compatBodies[compatBodies.length - 1]);
   check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
   check('report shows one score, for one basis', (await page.locator('.ring').count()) === 1);
-  check('report is labelled with the basis chosen', /Professional \/ work/.test(reportText));
+  // The basis is the header's pill, not repeated in the body under it.
+  check('report is labelled with the basis chosen',
+    /Professional \/ work/.test(await page.locator('#report-sub').innerText()));
   check('report does not cover the bases that were not asked for',
     !/Romantic/.test(reportText) && !/Platonic/.test(reportText), reportText.slice(0, 200));
   // The heading belongs to the stance, not the basis: "How to work with each
@@ -9197,7 +9199,8 @@ try {
     ['which side of it', 'I am the superior of Jordan'],
     ['the dimensions section', 'Where it holds and where it does not'],
     ['a dimension chosen for the stance', 'Briefing and direction'],
-    ['the short version', 'The short version'],
+    ['the best thing about the pair', 'Biggest upside'],
+    ['and the biggest risk', 'Biggest risk'],
     ['what works', 'What works'],
     ['what will rub', 'What will rub'],
     ['the playbook heading for the stance', 'How to manage Jordan'],
@@ -9212,9 +9215,22 @@ try {
   check('the comparison PDF stamps which model ran it',
     /Analysed by mock on/.test(compatDrawn));
 
+  // One small line under each point now, rather than a row of chips.
   check('strengths and frictions cite their evidence too',
-    (await page.locator('#report-body .points .ev').count()) >= 6,
-    String(await page.locator('#report-body .points .ev').count()) + ' evidence chips');
+    (await page.locator('#report-body .compat-plays .ev-line').count()) >= 3,
+    String(await page.locator('#report-body .compat-plays .ev-line').count()) + ' evidence lines');
+  check('the best thing and the biggest risk sit side by side, before the working',
+    await page.evaluate(() => {
+      const up = document.querySelector('#report-body .compat-up');
+      const risk = document.querySelector('#report-body .compat-risk');
+      const dims = document.querySelector('#report-body .section-card');
+      if (!up || !risk || !dims) return false;
+      const a = up.getBoundingClientRect(), b = risk.getBoundingClientRect();
+      return Math.abs(a.top - b.top) < 2 && a.right <= b.left && b.bottom < dims.getBoundingClientRect().top;
+    }));
+  check('the actions carry icons, the download first',
+    (await page.locator('#view-report .compat-actions .btn .cta-icon').count()) === 3 &&
+      (await page.locator('#view-report .compat-actions .btn').first().getAttribute('id')) === 'export-compat-bottom');
   check('the dimension scores are readable numbers, not empty',
     (await page.locator('#report-body .section-card .trait-num').allInnerTexts())
       .every(t => /^\d+$/.test(t.trim())));
@@ -10203,7 +10219,7 @@ try {
     (await page.locator('#report-body').innerText()).includes('Jordan'));
   check('the basis chosen for a link is the one reported',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
-    /Family \/ Friends/.test(await page.locator('#report-body').innerText()));
+    /Family \/ Friends/.test(await page.locator('#report-sub').innerText()));
   check('a non-work basis is not asked who reports to whom',
     JSON.parse(compatBodies[compatBodies.length - 1]).stance === null,
     compatBodies[compatBodies.length - 1]);

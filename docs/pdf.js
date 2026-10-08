@@ -3182,14 +3182,53 @@
   // ---------- the compatibility report ----------
 
   /**
-   * The cover for a comparison. Same band and lockup as the profile's, but the
-   * subject is a pair rather than a person, and the number that belongs in the
-   * band is the score rather than a confidence figure.
+   * What each person is called where the report names them side by side. Two
+   * people with the same name (someone comparing two of their own cards, or two
+   * friends called Jared) would otherwise get two "For Jared Sia" headings with
+   * no way to tell which is which.
+   */
+  function pairLabels(a, b) {
+    const same = String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    return same ? [a + ' (you)', b + ' (them)'] : [a, b];
+  }
+
+  /**
+   * The score on the cover: a ring filled clockwise from the top to the score,
+   * the number in its middle. Drawn as a filled wedge with the middle punched
+   * back out in the band's colour, which needs nothing but fills.
+   */
+  function scoreRing(doc, cx, cy, value, behind) {
+    const r = 44;
+    const hole = 34;
+    doc.circle(cx, cy, r, [0.69, 0.53, 0.80]);
+    if (value > 0) {
+      const steps = Math.max(2, Math.round(72 * value / 100));
+      const ops = [num(cx) + ' ' + num(PAGE.height - cy) + ' m'];
+      for (let i = 0; i <= steps; i++) {
+        const angle = -Math.PI / 2 + (Math.PI * 2 * value / 100) * i / steps;
+        ops.push(num(cx + r * Math.cos(angle)) + ' ' + num(PAGE.height - (cy + r * Math.sin(angle))) + ' l');
+      }
+      doc.setFill(WHITE);
+      for (const op of ops) doc.op(op);
+      doc.op('h f');
+    }
+    doc.circle(cx, cy, hole, behind);
+    const text = toWinAnsi(String(value));
+    const style = { size: 25, bold: true, color: WHITE };
+    doc.draw(text, cx - measure(text, 25, true) / 2, cy + 6, style);
+    const of = toWinAnsi('/100');
+    doc.draw(of, cx - measure(of, 7.5, true) / 2, cy + 17, { size: 7.5, bold: true, color: WHITE });
+  }
+
+  /**
+   * The cover: the pair, the basis, the band in words and the score as a ring,
+   * all in the band — then the verdict under it as the lead, so the first page
+   * says the answer before it shows the working.
    */
   function compatCover(doc, report, meta) {
     doc.newPage({ bare: true, top: 0 });
     doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
-    const bandHeight = 176;
+    const bandHeight = 196;
     doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
     doc.setFill(ACCENT_2);
     doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
@@ -3200,36 +3239,45 @@
     doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
     doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
 
+    const score = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
+    const ringX = PAGE.width - MARGIN - 48;
+    scoreRing(doc, ringX, 104, score, ACCENT);
+
+    // Names and the basis, kept clear of the ring.
+    const textWidth = ringX - 64 - MARGIN;
     const title = meta.a + ' & ' + meta.b;
-    const titleStyle = { size: 27, bold: true, color: WHITE };
+    const titleStyle = { size: 25, bold: true, color: WHITE };
     let y = 96;
-    for (const line of wrap(toWinAnsi(title), COLUMN - 20, titleStyle)) {
+    for (const line of wrap(toWinAnsi(title), textWidth, titleStyle).slice(0, 2)) {
       doc.draw(line, MARGIN, y, titleStyle);
-      y += 31;
+      y += 29;
     }
     // The basis, and for a work run the side of it, because "Professional /
     // work" alone does not say whether the reader manages this person.
     const basis = [meta.modeLabel, meta.stanceLabel].filter(Boolean).join('  ·  ');
     if (basis) {
-      const style = { size: 11.5, italic: true, color: WHITE };
-      for (const line of wrap(toWinAnsi(basis), COLUMN - 30, style).slice(0, 2)) {
-        doc.draw(line, MARGIN, y + 2, style);
-        y += 15;
+      const style = { size: 11, italic: true, color: WHITE };
+      for (const line of wrap(toWinAnsi(basis), textWidth, style).slice(0, 2)) {
+        doc.draw(line, MARGIN, y + 1, style);
+        y += 14;
       }
     }
-
-    const score = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
-    const stamp = ['Generated ' + (meta.date || ''), report.band, score + '/100']
-      .filter(Boolean).join('  ·  ');
-    doc.draw(toWinAnsi(stamp), MARGIN, bandHeight + 26, { size: 8.8, color: SOFT });
-    doc.y = bandHeight + 40;
+    if (report.band) {
+      const band = toWinAnsi(String(report.band));
+      const w = measure(band, 10, true) + 20;
+      doc.roundRect(MARGIN, y + 8, w, 20, 10, WHITE);
+      doc.draw(band, MARGIN + 10, y + 22, { size: 10, bold: true, color: ACCENT });
+    }
+    doc.draw(toWinAnsi('Generated ' + (meta.date || '')), MARGIN, bandHeight + 22, { size: 8.4, color: SOFT });
+    doc.y = bandHeight + 34;
   }
 
   /**
-   * A comparison as a PDF, section for section with what the report page shows
-   * and in the same order. Every heading comes from copy.js for the same
-   * reason the profile's do: two renderings of one document that drift the
-   * moment the strings are written twice.
+   * A comparison as a PDF, in the same order as the report page: the answer
+   * first (verdict, best thing, biggest risk, what they share), then the
+   * working (the five dimensions), then what it looks like (what works, what
+   * will rub, side by side), then what to do about it. Each block is kept
+   * whole on a page. Every heading comes from copy.js, as the profile's do.
    */
   function buildCompatibility(report, meta) {
     bindCopy();
@@ -3237,76 +3285,95 @@
     const stamp = meta || {};
     const a = stamp.a || 'You';
     const b = stamp.b || 'Them';
+    const [labelA, labelB] = pairLabels(a, b);
     const doc = new Doc();
     const out = new Report(doc, { name: a + ' & ' + b });
+    // Every section here opens with a block kept whole with its title (keep),
+    // so the title's own reserve only has to cover the title: the profile's
+    // larger one left half of page one empty under the common ground.
+    out.titleReserve = 120;
 
     compatCover(doc, source, stamp);
 
-    // 1. The verdict, under the score the cover already carries.
-    out.sectionTitle((stamp.modeLabel || '') + TEXT.compatSuffix, source.band);
-    if (source.verdict) out.body(source.verdict);
-
-    // 2. Where it holds and where it does not — the same bars the Big Five
-    // uses on the profile side, for the same reason.
-    const dimensions = (source.dimensions || []).filter(d => d && d.name);
-    if (dimensions.length) {
-      out.sectionTitle(TEXT.compatDimensions, TEXT.compatDimensionsSub);
-      for (const item of dimensions) {
-        out.bar(item.name, item.score);
-        if (item.reading) out.body(item.reading, { size: 9.8, color: SOFT, leading: 14 });
-        out.tags(item.evidence);
-      }
+    // 1. The answer: the verdict as the lead, the best thing and the biggest
+    // risk side by side, and what they share.
+    if (source.verdict) {
+      out.panel([{ text: source.verdict, style: { size: 11.2, color: INK }, leading: 16 }], { fill: WASH, bar: ACCENT });
     }
-
-    // 3. The short version.
-    out.sectionTitle(TEXT.compatShort);
-    if (source.biggestUpside) { out.h3(TEXT.compatUpside, GOOD); out.body(source.biggestUpside); }
-    if (source.biggestRisk) { out.h3(TEXT.compatRisk, WARN); out.body(source.biggestRisk); }
+    const one = text => (text ? [{ text, style: T_BODY, leading: 13.6 }] : []);
+    out.space(4);
+    out.pairedPanels(
+      { title: TEXT.compatUpside, color: GOOD, fill: GOOD_WASH, rows: one(source.biggestUpside) },
+      { title: TEXT.compatRisk, color: WARN, fill: WARN_WASH, rows: one(source.biggestRisk) });
     if ((source.sharedGround || []).length) {
+      out.space(4);
       out.h3(TEXT.compatCommon);
       out.tags(source.sharedGround);
     }
 
-    // 4 and 5. What works, what will rub — each claim with its evidence, which
-    // is the whole point of the citation field.
-    for (const [title, items, colour] of [
-      [TEXT.compatWorks, source.strengths, GOOD],
-      [TEXT.compatRubs, source.frictions, WARN],
-    ]) {
-      out.sectionTitle(title);
-      const list = (items || []).filter(Boolean);
-      if (!list.length) { out.muted(TEXT.pointsEmpty); continue; }
-      for (const item of list) {
-        out.point(item.title, item.detail);
-        out.tags(item.evidence, { x: MARGIN + 10, width: COLUMN - 10, size: 8.5 });
-      }
-      // Referenced so the colour is not an unused binding if the loop changes.
-      void colour;
+    // 2. The working: each dimension as a bar, its reason, and its evidence
+    // on one small line rather than a row of pills.
+    const dimensions = (source.dimensions || []).filter(d => d && d.name);
+    if (dimensions.length) {
+      out.keep(() => {
+        out.sectionTitle(TEXT.compatDimensions, TEXT.compatDimensionsSub);
+        dimension(dimensions[0]);
+      });
+      for (const item of dimensions.slice(1)) out.keep(() => dimension(item));
+    }
+    function dimension(item) {
+      out.bar(item.name, item.score);
+      if (item.reading) out.body(item.reading, { size: 9.6, color: INK, leading: 13.4 });
+      const evidence = (item.evidence || []).filter(Boolean);
+      if (evidence.length) out.body('Evidence: ' + evidence.join('  ·  '), { size: 7.9, italic: true, color: SOFT, leading: 11 });
+      out.space(6);
     }
 
-    // 6. The playbook, whose heading belongs to the stance rather than the
-    // basis on a work run.
+    // 3. What it looks like: what works and what will rub, side by side, each
+    // point with its evidence in small type under it.
+    const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
+      { text: item.title, style: T_TITLE, leading: 14, before: i ? 10 : 0 },
+      item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
+      (item.evidence || []).filter(Boolean).length &&
+        { text: (item.evidence || []).filter(Boolean).join('  ·  '), style: { size: 7.6, italic: true, color: SOFT }, leading: 10.4, before: 3 },
+    ]).filter(Boolean);
+    if ((source.strengths || []).length || (source.frictions || []).length) {
+      out.keep(() => {
+        out.sectionTitle(TEXT.compatHowItPlays);
+        out.pairedPanels(
+          { title: TEXT.compatWorks, color: GOOD, fill: GOOD_WASH, rows: pointRows(source.strengths) },
+          { title: TEXT.compatRubs, color: WARN, fill: WARN_WASH, rows: pointRows(source.frictions) },
+          // Whole: split, one side runs on alone overleaf beside an empty column.
+          { whole: true });
+      });
+    }
+
+    // 4. What to do about it: one column each, then what they do together.
+    const bullets = (list, color) => (list || []).filter(Boolean)
+      .map((line, i) => ({ text: line, style: T_BODY, leading: 13.4, bullet: color, before: i ? 5 : 0 }));
     const play = source.howToPartner || {};
-    out.sectionTitle(stamp.heading || '');
-    if ((play.forA || []).length) {
-      out.h3(TEXT.compatFor + a);
-      for (const line of play.forA) out.bullet(line);
-    }
-    if ((play.forB || []).length) {
-      out.h3(TEXT.compatFor + b);
-      for (const line of play.forB) out.bullet(line);
-    }
+    out.keep(() => {
+      out.sectionTitle(stamp.heading || '');
+      out.pairedPanels(
+        { title: TEXT.compatFor + labelA, color: ACCENT, fill: WHITE, rows: bullets(play.forA, ACCENT) },
+        { title: TEXT.compatFor + labelB, color: ACCENT_2, fill: WHITE, rows: bullets(play.forB, ACCENT_2) },
+        { whole: true });
+    });
     if ((play.together || []).length) {
-      out.h3(TEXT.compatBoth);
-      for (const line of play.together) out.bullet(line);
+      out.panel(bullets(play.together, ACCENT), { label: TEXT.compatBoth, fill: WASH, bar: ACCENT });
     }
 
-    // 7. Conversation starters.
+    // 5. Conversation starters, as the things to actually say.
     if ((source.conversationStarters || []).length) {
-      out.sectionTitle(TEXT.compatTalk);
-      for (const line of source.conversationStarters) out.bullet(line);
+      out.keep(() => {
+        out.h3(TEXT.compatTalk);
+        out.panel(source.conversationStarters.filter(Boolean).map((line, i) => (
+          { text: '“' + line + '”', style: { size: 10, italic: true, color: INK }, leading: 14, before: i ? 6 : 0 })),
+        { fill: WHITE, bar: ACCENT_2 });
+      });
     }
 
+    out.space(6);
     if (source.caveats) out.fineprint(source.caveats);
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
 
@@ -3378,5 +3445,5 @@
     return new Blob([bytes], { type: 'application/pdf' });
   }
 
-  root.PsychePDF = { build, buildCompatibility, toWinAnsi, measure };
+  root.PsychePDF = { build, buildCompatibility, pairLabels, toWinAnsi, measure };
 })(typeof window !== 'undefined' ? window : globalThis);
