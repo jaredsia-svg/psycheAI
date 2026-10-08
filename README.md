@@ -1589,9 +1589,19 @@ so it is built in rather than left to a plugin.
   tidies the address back to `/`. The server serves `/name` as `name.html` when that page exists,
   and nothing else; anything else is still a 404. The MBTI guide carries the trademark notice.
 - **`robots.txt` and `sitemap.xml`** list the front page and the guides and keep `/api/` out.
-- **Request the export first.** The export takes Instagram hours to send, so under the front page's
-  two buttons a line says *New here? Request your Instagram data first. It takes 30 seconds, and
-  Instagram emails it to you, usually within a few hours.* with **Show me how** opening the guide.
+- **Request the export first.** The export takes Instagram hours to send, so the hero's second button
+  is **Request data**, which goes to the steps card, titled *Request your Instagram data first* with
+  *It takes 30 seconds. Instagram then emails you the file, usually within a few hours.* under it.
+  The illustrated guide it opens is titled *Request your Instagram data*.
+- **The logo goes to the main page.** For a reader with a card, `data-nav="main"` shows the main page
+  (not `home`, which is also where Back lands and so has to stay their card). There the steps card
+  and the Start here card are hidden (`#view-welcome.is-returning`): they already have data. Request
+  data opens the illustrated guide instead of scrolling to a card that is not there, an upload error
+  brings the Start here card back so the message is seen, and the sample card is re-fitted on
+  arrival, since the page was hidden when it was first drawn. For them the main page is an excursion,
+  like the FAQ, so Back returns to their card. Closing the guide, the sample or the expanded video
+  gives back its own history entry through `popOwnEntry()`, and the popstate that causes is passed
+  over rather than read as Back — before, closing the guide on the FAQ sent the reader to their card.
   `/#sample` also opens the sample when the hash changes on a page already open, not only on load.
 - **Everything shared carries the address.** The Psyche Card's footer reads *psycheai.io · your
   personality, read from your own data*, on screen, in the shared image and in the PDF, and the

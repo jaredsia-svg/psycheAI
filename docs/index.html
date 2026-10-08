@@ -59,7 +59,7 @@
 <body>
 
 <nav class="nav">
-  <a class="brand" href="#" data-nav="home">
+  <a class="brand" href="#" data-nav="main">
     <svg class="brand-mark" viewBox="0 0 140 140" fill="none" stroke="currentColor" stroke-width="3"
          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z"/>
@@ -119,14 +119,10 @@
         all derived from your Instagram (and Google) data with no questionnaire required.</p>
       <div class="btn-row hero-actions">
         <button class="btn" id="hero-sample" type="button">See sample report</button>
-        <button class="btn btn-outline" id="hero-start" type="button">Analyse my data</button>
+        <!-- The export takes Instagram hours to send, so the first thing a new
+             reader can usefully do is ask for it: this goes to the steps. -->
+        <button class="btn btn-outline" id="hero-start" type="button">Request data</button>
       </div>
-      <!-- The export takes Instagram hours to send, so the first thing a new
-           reader can usefully do is ask for it. The line says so before
-           anything else does, and opens the same illustrated guide. -->
-      <p class="hero-request"><strong>New here? Request your Instagram data first.</strong> It takes
-        30 seconds, and Instagram emails it to you, usually within a few hours.
-        <button class="link-btn" id="hero-request" type="button">Show me how</button></p>
     </div>
 
     <!-- The promo video, built by promo/ (npm run promo). Muted, so it may play
@@ -196,7 +192,10 @@
 
   <div class="card help help-card">
     <div class="help-head">
-      <h2>How do I get my Instagram data?</h2>
+      <div>
+        <h2>Request your Instagram data first</h2>
+        <p class="help-lede">It takes 30 seconds. Instagram then emails you the file, usually within a few hours.</p>
+      </div>
       <!-- The steps below stay: they are short, scannable, and enough for
            somebody who has done this before. This opens the same journey in
            pictures — every screen captured, every tap ringed on it — for the
@@ -760,7 +759,7 @@
      never opens this never downloads the 250KB. -->
 <dialog id="guide-dialog" class="sample-dialog guide-dialog" aria-labelledby="guide-dialog-title">
   <header class="sample-dialog-head">
-    <h2 id="guide-dialog-title">How do I get my Instagram data?</h2>
+    <h2 id="guide-dialog-title">Request your Instagram data</h2>
     <button class="sample-close" id="guide-close" type="button" aria-label="Close the guide">
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor"

@@ -1516,8 +1516,6 @@ try {
       check('and says what to do, and that the analysis with them is free and follows on its own',
         /Download your Instagram data and make your free Psyche Card\. The compatibility analysis with Ava Tan runs straight after it, also free\./
           .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
-      check('the hero\'s own "request your data first" line steps aside, since the banner says it',
-        await invitePage.evaluate(() => document.querySelector('.hero-request').hidden));
       check('with a way to the steps and no button to throw the invite away',
         await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-forget').count()) === 0);
 
@@ -1617,11 +1615,15 @@ try {
         /JSON, not HTML/.test(exportGuide.text) && /All time/.test(exportGuide.text) && /Lower quality/.test(exportGuide.text));
       await guidePage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await guidePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
-      check('the front page tells a new reader to request their data first',
-        /New here\? Request your Instagram data first\./.test(await guidePage.locator('.hero-request').innerText()));
-      await guidePage.click('#hero-request');
-      await guidePage.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
-      check('and "Show me how" opens the illustrated guide', await guidePage.evaluate(() => document.querySelector('#guide-dialog').open));
+      // Requesting the export comes first, because it takes Instagram hours:
+      // the hero's second button says so, and the steps card is titled for it.
+      check('the hero\'s second button is "Request data", and there is no separate "New here?" line',
+        (await guidePage.locator('#hero-start').innerText()).trim() === 'Request data' &&
+          (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
+      check('the steps card is titled "Request your Instagram data first" and says it takes 30 seconds',
+        (await guidePage.locator('.help-card h2').innerText()).trim() === 'Request your Instagram data first' &&
+          /It takes 30 seconds/.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
+          !/How do I get my Instagram data/.test(await guidePage.locator('#view-welcome').innerText()));
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
       check('/#sample opens the sample report straight away, and tidies the address',
@@ -1792,7 +1794,7 @@ try {
   check('the optional sources live inside the Instagram instructions card, after its steps',
     await page.evaluate(() => {
       const igCard = [...document.querySelectorAll('#view-welcome .card')]
-        .find(c => /How do I get my Instagram data/.test(c.textContent));
+        .find(c => /Request your Instagram data first/.test(c.textContent));
       const optional = document.querySelector('.optional-card');
       const steps = igCard && igCard.querySelector('ol');
       if (!igCard || !optional || !steps) return false;
@@ -7336,17 +7338,50 @@ try {
   check('the carried-over profile still renders',
     await page.locator('#view-profile').isVisible());
 
-  // The sample's buttons live on the welcome page, and a reader who already
-  // has a profile never sees that page: boot() and go('home') both send them
-  // straight to their report. So "sample overwrites a real profile" is not a
-  // state the UI can reach, and driving it from script would be testing a
-  // route no reader has. What is asserted instead is the fact that makes it
-  // impossible — the sample writes nothing — plus this, so that the day
-  // somebody adds a way back to the landing page, the gap is visible.
-  check('a reader with a profile cannot reach the sample buttons',
-    (await page.locator('#view-welcome').isHidden()) &&
-    (await page.locator('#hero-sample').isHidden()),
-    'welcome hidden: ' + (await page.locator('#view-welcome').isHidden()));
+  // A reader with a card still lands on it — boot() and go('home') both send
+  // them there — but the logo now takes them to the main page. There the
+  // steps for getting data and the Start here card are gone (they have
+  // data), "Request data" opens the illustrated guide instead of scrolling to
+  // a card that is not there, the sample still opens and writes nothing, and
+  // Back returns to their card rather than leaving the site.
+  check('a reader with a card still lands on it', await page.locator('#view-profile').isVisible());
+  const storedBefore = await page.evaluate(() => localStorage.getItem('psycheai_profile'));
+  await page.click('.nav .brand');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+  check('the PsycheAI logo takes a reader with a card to the main page',
+    await page.locator('#hero-sample').isVisible() && !(await page.locator('#view-profile').isVisible()));
+  await page.waitForTimeout(400);
+  check('the sample card there is fitted to its box, not left at full size off the page',
+    await page.evaluate(() => {
+      const card = document.querySelector('#insight-card-preview');
+      const tier = card && card.closest('.insight-free');
+      if (!card || !tier) return false;
+      const a = card.getBoundingClientRect();
+      const b = tier.getBoundingClientRect();
+      // 250px fitted, a little more as drawn: the card sits at a slight tilt.
+      return a.width > 0 && a.width <= 300 && a.right <= b.right + 1 &&
+        document.documentElement.scrollWidth <= window.innerWidth + 1;
+    }));
+  check('where the data steps and the Start here card are not shown to them',
+    await page.evaluate(() => document.querySelector('#view-welcome').classList.contains('is-returning')) &&
+      !(await page.locator('#view-welcome .help-card').isVisible()) &&
+      !(await page.locator('#view-welcome .upload-card').isVisible()));
+  await page.click('#hero-start');
+  await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
+  check('and "Request data" opens the illustrated guide instead',
+    await page.evaluate(() => document.querySelector('#guide-dialog').open));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
+  await page.click('#hero-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
+  await page.click('#sample-close');
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
+  check('the sample opened from there leaves the reader\'s own card untouched',
+    (await page.evaluate(() => localStorage.getItem('psycheai_profile'))) === storedBefore);
+  await page.goBack();
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  check('Back from the main page returns to the reader\'s card, not off the site',
+    await page.locator('#view-profile').isVisible() && !(await page.locator('#view-welcome').isVisible()));
 
   // ---- the wrong archive is turned away, not quietly analysed ----
   //
@@ -9087,6 +9122,8 @@ try {
   ]);
   check('an unusable archive is refused rather than charged for',
     badOutcome === 'refused', badOutcome);
+  check('and the refusal is on screen, even for a reader who already has a card',
+    await page.locator('#upload-error').isVisible() && await page.locator('#view-welcome .upload-card').isVisible());
   check('and nothing was sent for it either', analyseBodies.length === beforeBadUpload);
   if (await page.locator('#premium-dialog[open]').count()) {
     await page.evaluate(() => document.querySelector('#premium-dialog').close());

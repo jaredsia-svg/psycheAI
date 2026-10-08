@@ -1951,7 +1951,12 @@
     // state and jump to a home view unannounced. See navHistoryEntry's own
     // declaration for why the entry exists at all, and the popstate listener
     // below for the other half of this same guard.
-    if (navHistoryEntry && HOME_VIEWS.includes(view) && !closingNavFromHistory) {
+    // The main page is a home view for someone starting out, and an excursion
+    // like the FAQ for a reader who already has a card: they reached it from
+    // the logo, and Back should take them to their card rather than off the
+    // site.
+    const secondary = SECONDARY_VIEWS.includes(view) || (view === 'welcome' && Boolean(state.profile));
+    if (navHistoryEntry && HOME_VIEWS.includes(view) && !secondary && !closingNavFromHistory) {
       navHistoryEntry = false;
       history.back();
     }
@@ -1965,7 +1970,15 @@
     // underneath it — a failed run, a deleted profile, a fresh session. Kept
     // truthful on arrival rather than only at boot, since arriving is when it
     // is read.
-    if (view === 'welcome') refreshStartHere();
+    if (view === 'welcome') {
+      refreshStartHere();
+      $('#view-welcome').classList.toggle('is-returning', Boolean(state.profile));
+      // The sample card is fitted to the width of its tier, and a reader who
+      // landed on their own card had this page hidden when it was first drawn —
+      // it measured nothing and was left at full size. Fitted again now that
+      // the page is on screen.
+      drawInsightPreview();
+    }
     window.scrollTo(0, 0);
     // One entry covers a whole excursion into any of the secondary views, not
     // one per view — moving between them (about → scan, or scan → its own
@@ -1973,7 +1986,7 @@
     // navHistoryEntry already being false, which is also what stops this from
     // re-firing on every one of the several show() calls a single scan →
     // working → report sequence makes.
-    if (SECONDARY_VIEWS.includes(view) && !navHistoryEntry) {
+    if (secondary && !navHistoryEntry) {
       history.pushState({ psycheaiNav: true }, '');
       navHistoryEntry = true;
     }
@@ -2066,7 +2079,7 @@
   sampleDialog().addEventListener('close', () => {
     // Esc and the cross both land here. Drop the entry we pushed so the
     // reader's next Back goes where it would have gone before they looked.
-    if (sampleHistoryEntry && !closingFromHistory) history.back();
+    if (sampleHistoryEntry && !closingFromHistory) popOwnEntry();
     sampleHistoryEntry = false;
     // Emptied rather than left in place. A closed dialog is still in the
     // document, so a whole second report's worth of markup would sit there
@@ -2125,7 +2138,7 @@
     // pushed for it, unless this close *came* from a Back press, in which case
     // the entry is already gone and popping again would take the reader off a
     // page they were not trying to leave.
-    if (guideHistoryEntry && !closingGuideFromHistory) history.back();
+    if (guideHistoryEntry && !closingGuideFromHistory) popOwnEntry();
     guideHistoryEntry = false;
   });
 
@@ -2154,7 +2167,21 @@
 
   let closingGuideFromHistory = false;
 
+  // A dialog closed by Esc or its cross gives back the history entry it
+  // pushed, and that history.back() arrives here as a popstate like any Back
+  // press. It is not one: the dialog is already shut, so the handler below
+  // would fall through and treat it as leaving whatever page sits underneath —
+  // closing the guide on the FAQ, or on the main page reached from the logo,
+  // sent the reader to their card. Counted, so each of those pops is passed
+  // over exactly once.
+  let ownPops = 0;
+  function popOwnEntry() {
+    ownPops += 1;
+    history.back();
+  }
+
   window.addEventListener('popstate', () => {
+    if (ownPops > 0) { ownPops -= 1; return; }
     // The hero video, expanded over the page on a phone, is the topmost thing
     // there can be: Back closes it first, as it would any phone video player.
     if (collapseHeroVideo && collapseHeroVideo(true)) return;
@@ -2211,6 +2238,10 @@
   function go(target) {
     closeSample();
     if (target === 'home') { return state.profile ? go('profile') : show('welcome'); }
+    // The logo: the main page, whether or not this reader has a card yet.
+    // 'home' cannot do this — it is also where Back lands, which for a reader
+    // with a card has to be their card.
+    if (target === 'main') return show('welcome');
     if (target === 'profile') {
       if (!state.profile) return show('welcome');
       renderProfile(); show('profile'); return;
@@ -2362,6 +2393,10 @@
 
   function showUploadError(message, opts) {
     show('welcome');
+    // The message lives in the Start here card, which a reader who already has
+    // a card does not otherwise see on this page (.is-returning). Something
+    // they loaded has just failed, so the card comes back with it.
+    $('#view-welcome').classList.remove('is-returning');
     // Before the message, so the card behind it already reads "your data is
     // still here" by the time the reader looks up from the error. A failed
     // analysis loses nothing — the digest was written to storage before the
@@ -2509,7 +2544,11 @@
     }
   }
 
+  // "Request data": to the steps for getting the export. A reader who already
+  // has a card has no steps card on this page (see .is-returning), so for them
+  // it opens the illustrated guide instead.
   $('#hero-start').addEventListener('click', () => {
+    if (state.profile) { showGuide(); return; }
     show('welcome');
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
@@ -2584,7 +2623,7 @@
     collapseHeroVideo = fromHistory => {
       if (!expanded()) return false;
       setExpanded(false);
-      if (expandedEntry && !fromHistory) history.back();
+      if (expandedEntry && !fromHistory) popOwnEntry();
       expandedEntry = false;
       return true;
     };
@@ -8186,10 +8225,6 @@
     if (!banner) return;
     const invite = state.profile ? null : pendingInvite();
     banner.hidden = !invite;
-    // The banner already says to get the export and offers the steps, so the
-    // hero's own "request your data first" line would say it twice.
-    const request = $('.hero-request');
-    if (request) request.hidden = Boolean(invite);
     if (!invite) return;
     $('#invite-title').textContent = TEXT.inviteTitle(invite.name);
     $('#invite-text').textContent = TEXT.inviteText(invite.name);
@@ -8236,7 +8271,6 @@
     if (pendingInvite()) out.invite = true;
     return out;
   }
-  $('#hero-request').addEventListener('click', showGuide);
 
   // The guides' "See a sample report" link (/#sample): open the sample over
   // whatever page this visitor would otherwise land on. On arrival, and when

@@ -324,9 +324,9 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    .btn-row's own `margin: .8rem 0`, which is defined further down this file at
    the same specificity and would otherwise win on order alone. */
 .hero .hero-actions { margin-bottom: 0; }
-.hero-request { margin: .9rem 0 0; max-width: 34rem; font-size: .9rem; color: var(--ink-soft); }
-.hero-request strong { color: var(--ink); font-weight: 650; }
-.hero-request .link-btn { font-size: inherit; font-weight: 600; }
+/* A reader who already has a card, back on the main page from the logo: the
+   steps for getting data and the upload card are for someone starting out. */
+#view-welcome.is-returning .help-card, #view-welcome.is-returning .upload-card { display: none; }
 
 /* The two hero actions stay on one row on a phone. Left to wrap they stack,
    which pushes the privacy badge and everything under it a button's height
@@ -510,10 +510,12 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    under it on a phone, where a heading and a button side by side would leave
    both cramped. */
 .help-head {
-  display: flex; flex-wrap: wrap; align-items: baseline;
+  display: flex; flex-wrap: wrap; align-items: center;
   gap: .6rem 1rem; margin-bottom: .2rem;
 }
 .help-head h2 { margin: 0; flex: 1 1 auto; }
+.help-head > div { flex: 1 1 16rem; }
+.help-lede { margin: .3rem 0 0; color: var(--ink-soft); font-size: .92rem; }
 .help-guide-open { flex: none; padding: .45rem .9rem; font-size: .9rem; }
 
 .guide-steps { list-style: none; margin: 0; padding: 0; }
