@@ -4060,6 +4060,25 @@ try {
     beyond.columns === 3 && beyond.beforeUnlock && beyond.saysLink, JSON.stringify(beyond));
   check('with every line and list the link carries, and the guesses tagged tentative rather than worded so',
     beyond.lines && beyond.lists && beyond.tentative >= 2, JSON.stringify(beyond));
+  // "See sample report" at the head of the unlock block: what the unlock buys,
+  // to look at first. The same sample the front page opens.
+  check('the unlock block carries "See sample report" at the far end of its head',
+    await page.evaluate(() => {
+      const head = document.querySelector('#profile-body .full-report-locked .premium-tier-head');
+      const button = head && head.querySelector('.tier-sample');
+      if (!button) return false;
+      const b = button.getBoundingClientRect();
+      const h = head.getBoundingClientRect();
+      const title = head.querySelector('h3').getBoundingClientRect();
+      // On the title's line, at the right — not stretched across the block.
+      return button.textContent.trim() === 'See sample report' && h.right - b.right < 4 &&
+        b.width < h.width / 2 && b.top < title.bottom && b.bottom > title.top;
+    }));
+  await page.click('#profile-body .full-report-locked .tier-sample');
+  await page.waitForSelector('#sample-dialog[open]', { timeout: 15000 });
+  check('and it opens the sample report', await page.locator('#sample-dialog').isVisible());
+  await page.click('#sample-close');
+  await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, null, { timeout: 15000 });
   check('the roast is not on a free page at all', freeState.roast === 0);
   check('the block names every explanation and every premium section the unlock opens',
     JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));

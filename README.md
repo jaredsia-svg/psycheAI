@@ -1131,6 +1131,12 @@ cards — never the consolidated block — was caught immediately: the sample-di
 `.paid-consolidated` and zero `.paid-card` elements failed, along with several checks downstream of it
 that could no longer find the element they depend on.
 
+### "See sample report" on the unlock block
+
+The free page's **Unlock the full premium report** block carries **See sample report** at the far
+end of its head, opening the same sample report the front page does — what the unlock buys, to look
+at before paying for it. On a phone it drops under the title, right-aligned.
+
 ### Three scenes redrawn: Baymax, Pikachu, Kuromi
 
 **Baymax** is now the big white robot himself — round body, small head with the two dots joined

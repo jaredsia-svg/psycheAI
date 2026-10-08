@@ -1674,6 +1674,9 @@
       '<div class="premium-tier-head">' +
       '<span class="mode-badge">' + esc(TEXT.premiumBadge) + '</span>' +
       '<h3>' + esc(TEXT.fullReportTitle) + '</h3>' +
+      // The sample report, at the head's far end: what the unlock buys, to
+      // look at before paying for it.
+      '<button class="btn btn-outline tier-sample" type="button">' + esc(TEXT.fullReportSample) + '</button>' +
       '</div>' +
       '<p class="premium-tier-blurb">' + esc(TEXT.fullReportBlurb) + '</p>' +
       // One list: the explanations and the four premium sections are one
@@ -2862,7 +2865,7 @@
   }
   // Drawn with the insights block, after this runs, so the clicks are delegated.
   document.addEventListener('click', event => {
-    const sample = event.target.closest('#insight-sample');
+    const sample = event.target.closest('#insight-sample, .tier-sample');
     if (sample) { showSample(sample); return; }
     const card = event.target.closest('#insight-deck .insight-preview.is-front');
     if (card) { openInsightCard(Number(card.getAttribute('data-card')) || 0); return; }

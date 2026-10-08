@@ -436,6 +436,7 @@
     premiumTierBlurb: 'Your Psyche Card is free. The full premium report explains every part of it, and adds four more sections:',
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
+    fullReportSample: 'See sample report',
     fullReportTitle: 'Unlock the full premium report',
     // One list, one offer: the explanations behind the card and the four
     // sections it does not touch, read as the single report they are bought as.

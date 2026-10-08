@@ -424,6 +424,9 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   display: flex; align-items: center; gap: .55rem; flex-wrap: wrap;
 }
 .premium-tier-head h3 { margin: 0; font-size: 1.02rem; flex: 1 1 auto; }
+/* "See sample report" on the unlock block's head, at its far end. */
+.tier-sample, .paid-consolidated .premium-tier-head .tier-sample { flex: none; width: auto; margin: 0 0 0 auto; padding: .38rem .9rem; font-size: .86rem; min-height: 0; }
+@media (max-width: 480px) { .paid-consolidated .premium-tier-head .tier-sample { padding: .3rem .7rem; font-size: .8rem; } }
 .premium-tier-price {
   flex: none; font-size: 1.05rem; font-weight: 700; color: var(--accent);
   white-space: nowrap;
