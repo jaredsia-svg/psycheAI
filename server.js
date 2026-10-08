@@ -22,6 +22,8 @@ const privacy = require('./lib/privacy');
 const rateLimit = require('./lib/ratelimit');
 const nonces = require('./lib/nonce');
 const version = require('./lib/version');
+const stats = require('./lib/stats');
+const promo = require('./lib/promo');
 // Read once: the build does not change while the process runs.
 const BUILD = version.describe();
 // Required directly rather than reached through provider.active: the paid
@@ -87,11 +89,27 @@ const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
 // falling back to something guessable. An operator who wants the backdoor
 // sets a random value in the environment; an operator who forgets gets no
 // backdoor, which is the safe direction to fail in.
-const PROMO_CODE = String(process.env.PSYCHEAI_PROMO_CODE || '').trim();
-function isValidPromoCode(code) {
-  if (!PROMO_CODE) return false;
-  return typeof code === 'string' && code.trim().length > 0 &&
-    code.trim().toLowerCase() === PROMO_CODE.toLowerCase();
+//
+// Beside it, PSYCHEAI_PROMO_CODES holds creator codes, each with a cap and an
+// optional last day — see lib/promo.js. Neither kind has a default.
+//
+// A code is checked against what it would unlock (the digest), so a creator
+// code at its cap still answers a retry for a report it already paid for.
+function isValidPromoCode(code, key) {
+  return promo.check(code, key).ok;
+}
+function promoRefusal(code, key) {
+  const checked = promo.check(code, key);
+  return checked.ok ? null : checked.reason;
+}
+
+// Once a report has actually been written on a code: a creator code spends a
+// use (once per distinct report), and the redemption is counted.
+function promoRedeemed(code, key) {
+  const checked = promo.check(code, key);
+  if (!checked.ok) return;
+  if (checked.creator && promo.redeem(code, key)) stats.count('promo:' + checked.code);
+  if (!checked.creator) stats.count('promo:master');
 }
 
 // The digest is bounded client-side, but never trust that from the server.
@@ -456,10 +474,16 @@ async function handleAnalyse(request, response) {
     return;
   }
 
-  if (promoCode && !isValidPromoCode(promoCode)) {
-    sendJson(response, 402, { error: 'That code is not valid.' });
+  const promoProblem = promoCode ? promoRefusal(promoCode, body.digest) : null;
+  if (promoProblem) {
+    sendJson(response, 402, { error: promoProblem });
     return;
   }
+  // Where the reader came from, as two plain facts for the day's totals (see
+  // lib/stats.js): the campaign code in the address they arrived on, if any,
+  // and whether a friend's compatibility link was waiting for this card.
+  const via = stats.cleanVia(body.via);
+  const fromInvite = body.invite === true;
   if (paymentIntentId && !promoCode) {
     if (!payments.hasKey()) {
       sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
@@ -598,6 +622,13 @@ async function handleAnalyse(request, response) {
       } else {
         budget.record(kind);
       }
+      // The day's totals, counted once per report actually written.
+      const made = full ? 'full_report' : paying ? 'card_paid' : 'card';
+      stats.count(made);
+      if (via) stats.count('via:' + via + (made === 'card' ? '' : ':' + made));
+      if (fromInvite && made === 'card') stats.count('card_from_invite');
+      if (promoCode) promoRedeemed(promoCode, body.digest);
+
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
       // writes one anyway.
@@ -695,8 +726,9 @@ async function handlePremiumAnalysis(request, response) {
   const background = wantsBackground(body);
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   if (promoCode) {
-    if (!isValidPromoCode(promoCode)) {
-      sendJson(response, 402, { error: 'That code is not valid.' });
+    const promoProblem = promoRefusal(promoCode, body.digest);
+    if (promoProblem) {
+      sendJson(response, 402, { error: promoProblem });
       return;
     }
     const engine = requirePremiumEngine(response);
@@ -710,7 +742,12 @@ async function handlePremiumAnalysis(request, response) {
       background,
       kind: 'premium',
       key: body.digest,
-      produce: () => engine.analysePremium(body.digest),
+      produce: async () => {
+        const result = await engine.analysePremium(body.digest);
+        stats.count('premium_sections');
+        promoRedeemed(promoCode, body.digest);
+        return result;
+      },
     });
     return;
   }
@@ -764,9 +801,30 @@ async function handlePremiumAnalysis(request, response) {
       const result = await engine.analysePremium(body.digest);
       usage.record('premium', result, true);
       paymentLedger.recordUse(paymentIntentId, 'premium');
+      stats.count('premium_sections');
       return scrubbed(result, body.digest, 'premium');
     },
   });
+}
+
+// The day's totals (lib/stats.js), for whoever runs this server, behind
+// PSYCHEAI_STATS_TOKEN. Without the token set the route does not exist, the
+// same as the address list below. Creator codes are listed with how much of
+// each cap has gone.
+const STATS_TOKEN = String(process.env.PSYCHEAI_STATS_TOKEN || '').trim();
+function handleStats(request, response, url) {
+  if (!STATS_TOKEN) {
+    sendJson(response, 404, { error: 'No such endpoint.' });
+    return;
+  }
+  const header = request.headers['authorization'] || '';
+  const given = Buffer.from(header.replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '', 'utf8');
+  const want = Buffer.from(STATS_TOKEN, 'utf8');
+  if (given.length !== want.length || !require('node:crypto').timingSafeEqual(given, want)) {
+    sendJson(response, 401, { error: 'Not authorised.' });
+    return;
+  }
+  sendJson(response, 200, { days: stats.snapshot(), promoCodes: promo.describe() });
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -833,6 +891,7 @@ async function handleCompatibility(request, response) {
       usage.record('compatibility', result, false);
       // Recorded only once the model came back, as the free card's is.
       budget.record('compatibility');
+      stats.count('compatibility');
       return result;
     },
   });
@@ -1123,6 +1182,7 @@ function routeRequest(route, url, request, response) {
             : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
               : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
                 : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
+                  : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)
                   : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                     : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                       : null;
@@ -1210,6 +1270,14 @@ if (require.main === module) {
     else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
     else console.log('  Not configured. ' + status.hint);
   });
+  // A deploy stops this process with SIGTERM. Today's totals go to the log
+  // first, so they are not lost with the memory they were kept in.
+  for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+      stats.flush();
+      process.exit(0);
+    });
+  }
 }
 
 // `server` is exported unlistened — requiring this file never binds a port

@@ -1542,8 +1542,19 @@ try {
 
       // And spent: the first card this device makes goes straight on to the
       // comparison, which starts by asking what kind of relationship it is.
-      await invitePage.goto('http://localhost:' + PORT + '/#p=' + payload, { waitUntil: 'load' });
+      // Arriving on a creator's link as well: ?via= is read, kept on the
+      // device, and taken out of the address before anything else happens.
+      await invitePage.goto('http://localhost:' + PORT + '/?via=Ava-Tan#p=' + payload, { waitUntil: 'load' });
       await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      check('a campaign code in the address is kept on the device and taken out of the address',
+        await invitePage.evaluate(() => location.search === '' &&
+          JSON.parse(localStorage.getItem('psycheai_via') || '{}').code === 'ava-tan'));
+      const analyseBodies = [];
+      invitePage.on('request', request => {
+        if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) {
+          try { analyseBodies.push(JSON.parse(request.postData() || '{}')); } catch (error) { /* not JSON */ }
+        }
+      });
       await invitePage.evaluate(() => localStorage.removeItem('psycheai_runs'));
       await invitePage.click('#open-sources');
       await invitePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
@@ -1559,6 +1570,10 @@ try {
       await continueFromDataSources(invitePage);
       await answerReview(invitePage);
       await invitePage.waitForSelector('#mode-dialog[open]', { timeout: 60000 });
+      check('the analysis carries the campaign code and says an invite was waiting, and nothing else extra',
+        analyseBodies.length > 0 && analyseBodies[0].via === 'ava-tan' && analyseBodies[0].invite === true &&
+          Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite'].includes(key)).length === 0,
+        JSON.stringify(analyseBodies.map(body => Object.keys(body))));
       check('the first card made on this device runs straight into the comparison with the sender',
         /Ava Tan/.test(await invitePage.locator('#mode-dialog').innerText()) &&
           await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null &&
@@ -9459,6 +9474,7 @@ try {
       'What data leaves this device?',
       'Can the digest be linked back to me?',
       'Can anyone else access my data?',
+      'Does PsycheAI count anything?',
       'Can I verify this?',
       'How accurate is it?',
       'What does it cost?',
@@ -9567,6 +9583,11 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
 
+  // The daily totals are disclosed in full: what is counted, and that visits
+  // and anything identifying are not.
+  check('the FAQ says exactly what is counted, and that visits and identities are not',
+    /Only totals for each day/.test(about) && /\?via=/.test(about) && /Visits are not counted/.test(about) &&
+      /identifies you, your device or anything you uploaded/.test(about));
   check('the compatibility answer says what the link actually is',
     /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
     /family\/friends/i.test(about) &&

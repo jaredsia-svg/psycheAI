@@ -396,7 +396,9 @@ export STRIPE_PUBLISHABLE_KEY=pk_...   # sent to the browser, safe to expose
 export STRIPE_ACCOUNT_COUNTRY=SG       # optional — the merchant's country, not the buyer's
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
 export ANTHROPIC_API_KEY=...           # the paid call always runs on Claude — see below
-export PSYCHEAI_PROMO_CODE=...         # optional — overrides the default promo code; see below
+export PSYCHEAI_PROMO_CODE=...         # optional — the operator's one uncapped code; see below
+export PSYCHEAI_PROMO_CODES=AVA50:50:2026-12-31   # optional — creator codes, CODE[:cap[:last day]]
+export PSYCHEAI_STATS_TOKEN=...        # optional — unlocks GET /api/stats, the daily totals
 npm start
 ```
 
@@ -1316,6 +1318,8 @@ the first.
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
 | `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
+| `PSYCHEAI_PROMO_CODES` | Creator codes, comma-separated, each `CODE[:cap[:last day]]` — e.g. `AVA50:50:2026-12-31,BEN:20`. A cap counts distinct reports; the last day is inclusive, UTC. See [Counting what works](#counting-what-works-without-counting-anyone). |
+| `PSYCHEAI_STATS_TOKEN` | Bearer token for `GET /api/stats`, the daily totals and how much of each creator code is left. Unset ⇒ the route 404s. |
 
 Model IDs change often on every provider, so the defaults above will go stale. List what your key
 can actually reach:
@@ -1617,6 +1621,41 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 `npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
+
+## Counting what works, without counting anyone
+
+The site promises no analytics, no trackers and no cookies, and that no one can see that you
+visited. That rules out the usual way of knowing which post, creator or campaign worked. What it
+leaves is counting the work the server already does, as totals.
+
+**`lib/stats.js`** keeps, per UTC day: free cards (`card`), paid re-runs (`card_paid`), full reports
+(`full_report`), compatibility reports (`compatibility`), cards made while a friend's compatibility
+link was waiting (`card_from_invite`), cards and reports from a campaign link (`via:<code>`,
+`via:<code>:full_report`), and promo redemptions (`promo:<CODE>`). Each is counted once per report
+actually written: the result cache answers a repeat of the same digest without generating, so a
+retry is not a second card. There is no IP, device, digest or time finer than the day anywhere in
+it, and visits are not counted at all. The last 31 days are kept in memory; each day's totals are
+written to the log as one line when the day turns and when a deploy stops the process
+(`stats 2026-11-11 {"card":41,"compatibility":12,"via:ava":9}`), so they survive a restart in the
+host's logs. `GET /api/stats` with `Authorization: Bearer $PSYCHEAI_STATS_TOKEN` returns them.
+
+**`?via=<code>`** is how a creator's link is told apart: `psycheai.io/?via=ava`. The page reads it
+on arrival, keeps it on the device for 14 days (`psycheai_via`, in `KEYS`, so *Delete everything*
+takes it) because the export takes hours and the card is made on a later visit, takes it out of the
+address so it is not passed on, and sends it beside the digest with the analysis — never in the
+cache key. The server accepts only short lower-case codes of letters, digits and dashes, and drops
+anything else rather than counting it.
+
+**Creator codes** (`lib/promo.js`, `PSYCHEAI_PROMO_CODES`) are promo codes a creator can hand out:
+each has a cap — the number of different reports it can unlock — and optionally a last day. The
+single `PSYCHEAI_PROMO_CODE` still works, uncapped, for the operator; it could never be given out,
+because whoever it leaked to had unlimited free reports. A code at its cap still answers a retry for
+a report it already unlocked (it remembers SHA-256 hashes of what it unlocked, never the digests)
+and refuses a new one with *That code has been used up.*; past its last day it says *That code has
+expired.* The counts are in memory like everything else here, so a restart starts them again: set
+caps with that in mind, and the end date bounds it.
+
+The FAQ says all of this under **Does PsycheAI count anything?**, and a UI check holds it to that.
 
 ## The sample report
 

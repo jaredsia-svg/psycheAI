@@ -70,6 +70,11 @@
     // profile this device makes. It was in sessionStorage, which a closed tab
     // empties, and so lost almost every time.
     invite: 'psycheai_invite',
+    // The campaign code in the address this reader arrived on (?via=ava), if
+    // any, kept for VIA_DAYS so it survives the wait for an export. Sent with
+    // the analysis and counted by the server as a daily total, never stored
+    // there with anything else. See lib/stats.js.
+    via: 'psycheai_via',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -4218,7 +4223,7 @@
     // the server already has an answer to.
     lastAttempt = { digest, auth };
     try {
-      const result = await LLM.analyseProfile(sent, auth || undefined,
+      const result = await LLM.analyseProfile(sent, withAttribution(auth),
         { onJob: key => rememberJob(key, 'analysis', auth) });
       await adoptProfile(result);
     } catch (error) {
@@ -7289,7 +7294,7 @@
       // that still lacks the source they just added; the popout shows it
       // unticked and asks for it again. That is worse than the unbroken path
       // and better than losing the report.
-      const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), request,
+      const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), withAttribution(request),
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
 
       // The extra data is kept only now, because only now has it bought
@@ -8187,6 +8192,46 @@
   }
 
   $('#invite-guide').addEventListener('click', showGuide);
+
+  // A creator's or campaign's link carries ?via=<code>. Read once on arrival,
+  // kept on this device for VIA_DAYS (the export takes hours, and the card is
+  // made on a later visit), and taken out of the address so it is not passed
+  // on when this page is shared. The server counts it as a daily total and
+  // nothing more; the FAQ says so.
+  const VIA_DAYS = 14;
+  const VIA_PATTERN = /^[a-z0-9][a-z0-9-]{0,23}$/;
+  (function captureVia() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('via')) return;
+      const via = String(params.get('via') || '').trim().toLowerCase();
+      if (VIA_PATTERN.test(via)) store.write(KEYS.via, { code: via, at: Date.now() });
+      params.delete('via');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage or no history: nothing is counted */ }
+  })();
+
+  function viaCode() {
+    const via = store.read(KEYS.via, null);
+    if (!via || typeof via.code !== 'string' || !VIA_PATTERN.test(via.code)) return '';
+    if (!(Date.now() - Number(via.at) < VIA_DAYS * 86400000)) {
+      store.remove(KEYS.via);
+      return '';
+    }
+    return via.code;
+  }
+
+  // What goes beside the digest for the day's totals: the campaign code, and
+  // whether a friend's compatibility link is waiting for this card. Neither
+  // is part of the cache key, which is the digest alone.
+  function withAttribution(auth) {
+    const out = Object.assign({}, auth || {});
+    const via = viaCode();
+    if (via) out.via = via;
+    if (pendingInvite()) out.invite = true;
+    return out;
+  }
   $('#hero-request').addEventListener('click', showGuide);
 
   // The guides' "See a sample report" link (/#sample): open the sample over

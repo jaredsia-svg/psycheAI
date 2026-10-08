@@ -6787,6 +6787,152 @@ check('the schema requires evidence on strengths and frictions',
   check('and a guide that does not exist is still a 404', got['/no-such-guide'].status === 404);
 }
 
+// ---------- daily totals, campaign codes and creator codes ----------
+//
+// lib/stats.js counts finished work as daily totals, with nothing that
+// identifies anyone; lib/promo.js gives creator codes a cap and an end date.
+// The modules first, then a real server: the same request twice is one card,
+// a code at its cap still answers its own retry and refuses anything new, an
+// expired code is refused, and the totals are behind a token.
+{
+  const stats = await import('../lib/stats.js').then(m => m.default);
+  const promoCodes = await import('../lib/promo.js').then(m => m.default);
+  stats._reset();
+  let now = new Date('2026-11-11T10:00:00Z');
+  stats._setClock(() => now);
+  const logged = [];
+  const realLog = console.log;
+  console.log = line => logged.push(String(line));
+  try {
+    stats.count('card');
+    stats.count('card');
+    stats.count('via:ava');
+    now = new Date('2026-11-12T00:00:01Z');
+    stats.count('card');
+  } finally {
+    console.log = realLog;
+  }
+  const snap = stats.snapshot();
+  check('stats: a day\'s totals are kept per day and written to the log as one line when the day turns',
+    snap['2026-11-11'].card === 2 && snap['2026-11-11']['via:ava'] === 1 && snap['2026-11-12'].card === 1 &&
+      logged.length === 1 && logged[0] === 'stats 2026-11-11 {"card":2,"via:ava":1}', JSON.stringify({ snap, logged }));
+  for (let day = 0; day < 40; day++) {
+    now = new Date(Date.UTC(2026, 11, 1 + day, 12));
+    console.log = () => {};
+    try { stats.count('card'); } finally { console.log = realLog; }
+  }
+  check('stats: only the last ' + stats.KEEP_DAYS + ' days are kept', Object.keys(stats.snapshot()).length === stats.KEEP_DAYS,
+    Object.keys(stats.snapshot()).length);
+  check('stats: a campaign code is short, lower case, letters, digits and dashes, or nothing',
+    stats.cleanVia(' Ava ') === 'ava' && stats.cleanVia('ben-2') === 'ben-2' && stats.cleanVia('<script>') === '' &&
+      stats.cleanVia('a'.repeat(30)) === '' && stats.cleanVia(undefined) === '');
+  stats._setClock(null);
+  stats._reset();
+
+  promoCodes.configure({ PSYCHEAI_PROMO_CODE: 'master-x', PSYCHEAI_PROMO_CODES: 'AVA50:2:2099-12-31, old:5:2000-01-01, bad code, none:0, open' });
+  const d1 = { n: 1 };
+  const d2 = { n: 2 };
+  const d3 = { n: 3 };
+  const first = promoCodes.check('ava50', d1);
+  promoCodes.redeem('ava50', d1);
+  promoCodes.redeem('ava50', d1);
+  promoCodes.redeem('AVA50', d2);
+  check('promo: a creator code works in any case and spends one use per distinct report',
+    first.ok && first.creator && first.code === 'AVA50' &&
+      promoCodes.describe().find(c => c.code === 'AVA50').used === 2, JSON.stringify(promoCodes.describe()));
+  check('promo: at its cap it still answers a report it already unlocked, and refuses a new one',
+    promoCodes.check('AVA50', d1).ok && promoCodes.check('AVA50', d2).ok &&
+      promoCodes.check('AVA50', d3).reason === 'That code has been used up.');
+  check('promo: past its last day a code is refused as expired',
+    promoCodes.check('old', d1).reason === 'That code has expired.');
+  check('promo: malformed entries are ignored, a code with no cap is unlimited, and the master code has no cap',
+    !promoCodes.check('bad code', d1).ok && !promoCodes.check('none', d1).ok && promoCodes.check('open', d3).ok &&
+      promoCodes.check('MASTER-X', d3).ok && !promoCodes.check('MASTER-X', d3).creator &&
+      promoCodes.describe().map(c => c.code).join(',') === 'AVA50,OLD,OPEN');
+  promoCodes.configure({});
+  check('promo: with nothing configured, no code works', !promoCodes.check('AVA50', d1).ok && !promoCodes.enabled());
+  promoCodes.configure(process.env);
+
+  const port = 8938;
+  const token = 'selftest-stats-' + process.pid;
+  const script = `
+    const { spawn } = require('node:child_process');
+    const { tmpdir } = require('node:os');
+    const { join } = require('node:path');
+    const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+      env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '',
+        PSYCHEAI_PROMO_CODES: 'AVA:2:2099-12-31,OLD:5:2000-01-01', PSYCHEAI_STATS_TOKEN: '${token}',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-stats-budget-${process.pid}.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-stats-usage-${process.pid}.jsonl') },
+      stdio: 'ignore',
+    });
+    const base = 'http://localhost:${port}';
+    const post = async body => {
+      const ticket = (await (await fetch(base + '/api/nonce')).json()).nonce;
+      const response = await fetch(base + '/api/analyse', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': ticket },
+        body: JSON.stringify(body),
+      });
+      let json = null;
+      try { json = await response.json(); } catch (error) { /* left null */ }
+      return { status: response.status, error: json && json.error };
+    };
+    (async () => {
+      for (let i = 0; i < 100; i++) {
+        try { await fetch(base + '/api/status'); break; } catch (error) { await new Promise(r => setTimeout(r, 100)); }
+      }
+      const digest = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
+      const variant = n => Object.assign({}, digest, { samples: Object.assign({}, digest.samples,
+        { captions: digest.samples.captions.concat(['variant ' + n]) }) });
+      const out = {};
+      out.card = await post({ digest, via: 'Ava', invite: true });
+      out.again = await post({ digest, via: 'Ava', invite: true });
+      out.junkVia = await post({ digest: variant(9), via: '<b>x</b>' });
+      out.unlock1 = await post({ digest: variant(1), product: 'unlock', promoCode: 'ava', via: 'ava' });
+      out.unlock2 = await post({ digest: variant(2), product: 'unlock', promoCode: 'AVA' });
+      out.unlock3 = await post({ digest: variant(3), product: 'unlock', promoCode: 'ava' });
+      out.retry1 = await post({ digest: variant(1), product: 'unlock', promoCode: 'ava' });
+      out.expired = await post({ digest: variant(4), product: 'unlock', promoCode: 'old' });
+      out.noToken = (await fetch(base + '/api/stats')).status;
+      out.wrongToken = (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer nope' } })).status;
+      out.stats = await (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer ${token}' } })).json();
+      server.kill();
+      process.stdout.write(JSON.stringify(out));
+    })().catch(error => { server.kill(); process.stdout.write(JSON.stringify({ crashed: error.message })); });
+  `;
+  let got = {};
+  try {
+    got = JSON.parse(execFileSync(process.execPath, ['-e', script],
+      { encoding: 'utf8', timeout: 30000, input: JSON.stringify(heavyWithDms) }));
+  } catch (error) {
+    got = { crashed: error.message };
+  }
+  check('stats routes: the subprocess ran', !got.crashed, got.crashed);
+  const today = got.stats && got.stats.days ? Object.values(got.stats.days).pop() || {} : {};
+  check('stats routes: a free card is counted once, however many times the same digest is asked for',
+    got.card && got.card.status === 200 && got.again && got.again.status === 200 && today.card === 2,
+    JSON.stringify(today));
+  check('stats routes: its campaign code and the waiting invite are counted beside it; junk is not',
+    today['via:ava'] === 1 && today.card_from_invite === 1 &&
+      !Object.keys(today).some(key => /<|x</.test(key)), JSON.stringify(today));
+  check('stats routes: a creator code unlocks up to its cap, and each redemption is counted',
+    got.unlock1.status === 200 && got.unlock2.status === 200 && today.full_report === 2 && today['promo:AVA'] === 2 &&
+      today['via:ava:full_report'] === 1, JSON.stringify({ today, u1: got.unlock1, u2: got.unlock2 }));
+  check('stats routes: past its cap a new report is refused with a reason, and its own retry is not',
+    got.unlock3.status === 402 && got.unlock3.error === 'That code has been used up.' && got.retry1.status === 200,
+    JSON.stringify({ u3: got.unlock3, retry: got.retry1 }));
+  check('stats routes: an expired code is refused as expired',
+    got.expired.status === 402 && got.expired.error === 'That code has expired.', JSON.stringify(got.expired));
+  check('stats routes: the totals need the token, and say how much of each code is left',
+    got.noToken === 401 && got.wrongToken === 401 && Array.isArray(got.stats.promoCodes) &&
+      got.stats.promoCodes.find(c => c.code === 'AVA').used === 2 && got.stats.promoCodes.find(c => c.code === 'AVA').cap === 2,
+    JSON.stringify({ noToken: got.noToken, codes: got.stats && got.stats.promoCodes }));
+  check('stats routes: nothing in the totals identifies anyone — names of things and counts only',
+    Object.entries(got.stats.days || {}).every(([day, totals]) => /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+      Object.entries(totals).every(([key, value]) => /^[a-z_]+(:[a-zA-Z0-9-]+)*(:[a-z_]+)?$/.test(key) && Number.isInteger(value))),
+    JSON.stringify(got.stats.days));
+}
+
 // ---------- one payment, one generation at a time ----------
 //
 // canUse reads the ledger, the caller spends minutes generating, and only then
