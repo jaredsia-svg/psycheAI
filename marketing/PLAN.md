@@ -389,12 +389,18 @@ Ranked by impact on growth per day of work.
 | 9 | "Guess your character" while waiting | Fills the wait; a wrong guess is shareable | Medium |
 | 10 | Group compare / friend ranking | A TikTok format of its own | Large |
 
-**Done tonight:**
+**Done:**
 
-- SEO head tags, preview image and icons, three guides, robots.txt and sitemap.xml, clean URLs,
-  `/#sample`;
+- SEO head tags, preview image and icons, robots.txt and sitemap.xml, clean URLs, `/#sample`;
 - the address and share caption on every card;
-- the compare invite that survives the export wait.
+- the compatibility invite that survives the export wait;
+- 1: the default Psyche Card was already 1080×1920, Story-sized;
+- 2: "Send my link" with a ready-written message; the QR code removed, so compatibility is link-only;
+- 3: "Share result" draws the compatibility result as a Story image;
+- 4: creator codes, `PSYCHEAI_PROMO_CODES=CODE:cap:last-day`;
+- 5: `/download-instagram-data`, and "New here? Request your Instagram data first" on the front page;
+- 6: daily totals and `?via=` campaign counts, disclosed in the FAQ, at `GET /api/stats`;
+- 8: "Share this roast" draws the roast's opening as a Story image.
 
 ---
 
