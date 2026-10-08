@@ -2935,35 +2935,38 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* Beside the list on a laptop, under it on a phone: a deck of sample cards,
    the front one whole and the next two stacked behind it, tilted and fading,
    with arrows and dots under it. Nothing scrolls, so there is no scrollbar. */
-@media (min-width: 760px) { .insight-free { grid-template-columns: minmax(0, 1fr) 320px; } }
+@media (min-width: 760px) { .insight-free { grid-template-columns: minmax(0, 1fr) 310px; } }
 .insight-deck-wrap { display: flex; flex-direction: column; align-items: center; gap: .9rem; min-width: 0; }
-/* The stack fans out to the right; on the narrowest phones it is trimmed at
-   the tier's edge rather than pushing the page sideways. clip, not hidden,
-   so it never becomes a scroll box. */
+/* The stack peeks out either side of the front card; on the narrowest phones
+   it is trimmed at the tier's edge rather than pushing the page sideways.
+   clip, not hidden, so it never becomes a scroll box. */
 .insight-free { overflow-x: clip; }
 .insight-deck {
   /* Before the cards are fitted, a size that already fits a small phone;
-     drawInsightPreview sets the real one. */
-  --deck-w: min(230px, calc(100vw - 160px)); --deck-h: calc(var(--deck-w) * 1.7778);
-  position: relative; width: calc(var(--deck-w) + 76px); height: calc(var(--deck-h) + 30px);
+     drawInsightPreview sets the real one, as large as the column allows. */
+  --peek: 22px; --deck-w: min(300px, calc(100vw - 120px)); --deck-h: calc(var(--deck-w) * 1.7778);
+  position: relative; width: calc(var(--deck-w) + 2 * var(--peek)); height: calc(var(--deck-h) + 24px);
 }
+/* Every card sits centred; the one after the front peeks out on the right,
+   the one before it on the left, smaller, tilted and faded, and the rest
+   wait out of sight behind the middle. */
 .insight-deck .insight-preview {
-  position: absolute; left: 0; top: 8px; margin: 0;
-  /* Turned about the top left corner, so the stack fans out low and to the
-     right and never reaches far past the front card. */
-  transform-origin: 0 0;
-  transition: transform .42s cubic-bezier(.2, .8, .2, 1), opacity .42s ease, filter .42s ease;
+  position: absolute; left: var(--peek); top: 12px; margin: 0; transform-origin: 50% 50%;
+  transition: transform .45s cubic-bezier(.2, .8, .2, 1), opacity .45s ease, filter .45s ease;
 }
-.insight-deck .insight-preview-frame { width: var(--deck-w); height: var(--deck-h); }
+.insight-deck .insight-preview-frame { width: var(--deck-w); height: var(--deck-h); transform: none; }
+.insight-deck .insight-preview.is-front:hover .insight-preview-frame,
+.insight-deck .insight-preview.is-front:focus-visible .insight-preview-frame { transform: translateY(-3px); }
 .insight-deck .insight-preview[data-pos="0"] { z-index: 5; }
 .insight-deck .insight-preview[data-pos="1"] {
-  z-index: 4; transform: translate(40px, 10px) rotate(3deg) scale(.95); opacity: .8; filter: saturate(.85) brightness(.97);
+  z-index: 4; opacity: .6; filter: saturate(.8);
+  transform: translateX(calc(var(--peek) + var(--deck-w) * .06)) rotate(4deg) scale(.88);
 }
-.insight-deck .insight-preview[data-pos="2"] {
-  z-index: 3; transform: translate(74px, 20px) rotate(6deg) scale(.9); opacity: .5; filter: saturate(.7) brightness(.95);
+.insight-deck .insight-preview[data-pos="prev"] {
+  z-index: 4; opacity: .6; filter: saturate(.8);
+  transform: translateX(calc(-1 * (var(--peek) + var(--deck-w) * .06))) rotate(-4deg) scale(.88);
 }
-.insight-deck .insight-preview[data-pos="prev"] { z-index: 6; transform: translate(-80px, 16px) rotate(-8deg) scale(.94); opacity: 0; }
-.insight-deck .insight-preview[data-pos="rest"] { z-index: 1; transform: translate(74px, 20px) rotate(6deg) scale(.86); opacity: 0; }
+.insight-deck .insight-preview[data-pos="rest"] { z-index: 1; opacity: 0; transform: scale(.8); }
 .insight-deck .insight-preview:not(.is-front) { pointer-events: none; cursor: default; }
 .insight-deck .insight-preview:not(.is-front) .insight-preview-expand { opacity: 0; }
 .insight-deck .insight-preview:not(.is-front) .insight-preview-frame { transform: none; }

@@ -919,10 +919,13 @@ cards** (`#insight-deck`, `drawInsightPreview`, `arrangeDeck`): the full sample'
 (Spider-Man), Olivia Bennett (Moana), Ryan Walker (Hiccup), Hana Sato (Joy) and Kenji Nakamura
 (Totoro), made-up people with American and Asian names, women for the female characters and men for
 the male ones. That file holds only what a card reads, and a self-test holds each entry to it and the
-six to different people and characters. The front card is whole; the next two are stacked behind it,
-fanned to the right, tilted and fading, and the one just passed slips away to the left. Arrows and dots
+six to different people and characters. The front card is centred over the arrows and as large as
+its column allows (up to 320px wide); the next card peeks out behind it on the right and the previous
+one on the left, smaller, tilted and faded, into the gap and padding beside the column rather than
+taking width from the front card. Stepping forward moves the front card to the left and brings the
+right one forward. Arrows and dots
 under the deck (and a swipe, or the arrow keys while it has focus) bring the next or previous card to
-the front, wrapping round. Nothing in it scrolls, so no scrollbar shows; the stack is trimmed at the
+the front, wrapping round. Nothing in it scrolls, so no scrollbar shows; the side cards are trimmed at the
 tier's edge on the narrowest phones (`overflow-x: clip`), and its space is held before the cards load
 so the page never jumps. The front card is a button with the enlarge mark on it: pressing it shows the
 card full screen in the sample card dialog (`openInsightCard(index)`), with the same tap-to-explain

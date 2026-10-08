@@ -1923,9 +1923,14 @@
       // full-size card: 230px wide, or less where a phone leaves less room
       // beside the stack. The stylesheet holds their space until then.
       const wrap = target.closest('.insight-deck-wrap');
-      const room = wrap && wrap.clientWidth ? wrap.clientWidth - 80 : 230;
-      const width = Math.max(150, Math.min(230, room));
+      const room = wrap && wrap.clientWidth ? wrap.clientWidth : 300;
+      // As wide as the column allows, up to 320px: the cards either side
+      // peek out into the gap beside the column and the tier's padding,
+      // rather than taking width from the card in front.
+      const peek = room < 340 ? 18 : 24;
+      const width = Math.max(150, Math.min(320, room - 2 * peek + 28));
       cards.forEach(el => fitCard(el, width, width * 1920 / 1080));
+      target.style.setProperty('--peek', peek + 'px');
       target.style.setProperty('--deck-w', Math.round(width) + 'px');
       target.style.setProperty('--deck-h', Math.round(width * 1920 / 1080) + 'px');
       $('#insight-deck-dots').innerHTML = insightCards.map(() => '<i></i>').join('');
@@ -1936,9 +1941,9 @@
   }
 
   /**
-   * Puts the deck's cards in their places around `deckIndex`: the front one,
-   * the next two stacked behind it, the one just passed slipping away to the
-   * left, and the rest out of sight behind. Only the front one can be
+   * Puts the deck's cards in their places around `deckIndex`: the front one
+   * centred, the next peeking out behind it on the right and the previous on
+   * the left, and the rest out of sight behind. Only the front one can be
    * pressed or reached by Tab.
    */
   let deckIndex = 0;
@@ -1949,7 +1954,7 @@
     const count = slots.length;
     slots.forEach((slot, i) => {
       const pos = ((i - deckIndex) % count + count) % count;
-      slot.setAttribute('data-pos', pos < 3 ? String(pos) : pos === count - 1 ? 'prev' : 'rest');
+      slot.setAttribute('data-pos', pos === 0 ? '0' : pos === 1 ? '1' : pos === count - 1 ? 'prev' : 'rest');
       slot.classList.toggle('is-front', pos === 0);
       slot.tabIndex = pos === 0 ? 0 : -1;
       slot.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');

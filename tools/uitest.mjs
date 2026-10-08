@@ -2961,9 +2961,21 @@ try {
         names: cards.map(c => (c.querySelector('.pc-sowner, .pc-owner') || {}).textContent),
         art: cards.every(c => !c.querySelector('.pc-story-in') || c.querySelector('svg.pc-art')),
         // A deck, not a strip: nothing in it scrolls, so no scrollbar shows.
-        scrolls: ['auto', 'scroll'].includes(getComputedStyle(g).overflowX) || g.scrollWidth > g.clientWidth + 1,
+        scrolls: [g, g.parentElement, g.closest('.insight-free')].some(n => ['auto', 'scroll'].includes(getComputedStyle(n).overflowX)),
         front: cards.filter(c => c.classList.contains('is-front')).map(c => c.getAttribute('data-card')),
-        stacked: cards.filter(c => ['1', '2'].includes(c.getAttribute('data-pos')) && Number(getComputedStyle(c).opacity) > 0.2).length,
+        // One peeking out each side of the front card, and centred under it, the arrows.
+        stacked: cards.filter(c => ['1', 'prev'].includes(c.getAttribute('data-pos')) && Number(getComputedStyle(c).opacity) > 0.2).length,
+        sides: (() => {
+          const front = cards.find(c => c.classList.contains('is-front')).getBoundingClientRect();
+          const next = cards.find(c => c.getAttribute('data-pos') === '1').getBoundingClientRect();
+          const prev = cards.find(c => c.getAttribute('data-pos') === 'prev').getBoundingClientRect();
+          return prev.left < front.left && next.right > front.right;
+        })(),
+        centred: (() => {
+          const front = cards.find(c => c.classList.contains('is-front')).getBoundingClientRect();
+          const nav = document.querySelector('.insight-deck-nav').getBoundingClientRect();
+          return Math.abs((front.left + front.right) / 2 - (nav.left + nav.right) / 2) <= 2;
+        })(),
         labels: cards.slice(1).every(c => {
           const owner = c.querySelector('.pc-sowner, .pc-owner');
           return owner && c.getAttribute('aria-label').includes(owner.textContent);
@@ -2974,8 +2986,9 @@ try {
     check('the front page shows a deck of six sample cards, each its own character and person, with its scene',
       gallery.count === 6 && gallery.characters === 6 && new Set(gallery.names).size === 6 && gallery.art && gallery.labels,
       JSON.stringify(gallery));
-    check('Mulan\'s at the front with two stacked behind it, and no scrollbar', !gallery.scrolls && gallery.spill <= 1 &&
-      gallery.front.join() === '0' && gallery.stacked === 2, JSON.stringify(gallery));
+    check('Mulan\'s at the front, centred over the arrows, one card peeking out each side, and no scrollbar',
+      !gallery.scrolls && gallery.spill <= 1 && gallery.front.join() === '0' && gallery.stacked === 2 && gallery.sides && gallery.centred,
+      JSON.stringify(gallery));
     // The deck's back arrow brings the last card to the front, wrapping round.
     await page.locator('.insight-deck-step[data-deck-step="-1"]').scrollIntoViewIfNeeded();
     await page.click('.insight-deck-step[data-deck-step="-1"]');
@@ -7421,8 +7434,8 @@ try {
       if (!card || !tier) return false;
       const a = card.getBoundingClientRect();
       const b = tier.getBoundingClientRect();
-      // 250px fitted, a little more as drawn: the card sits at a slight tilt.
-      return a.width > 0 && a.width <= 300 && a.right <= b.right + 1 &&
+      // Up to 320px fitted, the front of the deck, and inside the tier.
+      return a.width > 0 && a.width <= 330 && a.right <= b.right + 1 &&
         document.documentElement.scrollWidth <= window.innerWidth + 1;
     }));
   check('the guide links at the foot show only to a new reader, so not here',
