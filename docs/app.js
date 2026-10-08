@@ -7293,6 +7293,9 @@
     return stripeJsLoad;
   }
 
+  // Which product the open payment sheet is selling, for the promo field.
+  let premiumKind = 'unlock';
+
   function premiumStatus(message, tone) {
     const status = $('#premium-status');
     status.textContent = message || '';
@@ -7776,7 +7779,8 @@
     const errorEl = $('#premium-card-error');
     const payButton = $('#premium-card-pay');
     $('#premium-card-label').textContent = TEXT.premiumCardLabel;
-    payButton.textContent = esc(TEXT.premiumUnlockPrefix) + esc(TEXT.premiumPriceLabel);
+    payButton.textContent = TEXT.premiumUnlockPrefix +
+      (intent.discount ? Prices.label(intent.currency, 'unlock', intent.amount) : TEXT.premiumPriceLabel);
     errorEl.hidden = true;
     errorEl.textContent = '';
     wrap.hidden = false;
@@ -7833,6 +7837,7 @@
     const rerunAll = product === 'rerunAll';
     const dialog = $('#premium-dialog');
     if (dialog.open) return;
+    premiumKind = kind;
 
     // Data first, review second, money last.
     //
@@ -7927,24 +7932,36 @@
       // failure still arrives here as itself; the catch below shows it.
       const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
       if (!intent) throw new Error(TEXT.premiumNotConfigured);
-
-      if (intent.mock) {
-        // The whole Stripe round trip stands in for a click here — mock mode
-        // never loads Stripe.js or touches the network again, the same way
-        // PSYCHEAI_MOCK=1 never calls a real model.
-        const mockButton = $('#premium-mock-pay');
-        mockButton.textContent = TEXT.premiumMockPay;
-        mockButton.hidden = false;
-        mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
-        return;
-      }
-
-      await mountPaymentRequestButton(intent, dialog);
+      await mountIntent(intent, dialog);
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
     } finally {
       if (button) button.disabled = false;
     }
+  }
+
+  /**
+   * Puts the ways to pay a PaymentIntent on the sheet: the mock stand-in, or
+   * the wallet button with the card form behind it. Called again with a
+   * cheaper intent when a discount code is applied, so whatever the first one
+   * mounted is cleared first.
+   */
+  async function mountIntent(intent, dialog) {
+    $('#premium-payment-request-button').innerHTML = '';
+    $('#premium-card-fallback').hidden = true;
+    $('#premium-card-element').innerHTML = '';
+    $('#premium-mock-pay').hidden = true;
+    if (intent.mock) {
+      // The whole Stripe round trip stands in for a click here — mock mode
+      // never loads Stripe.js or touches the network again, the same way
+      // PSYCHEAI_MOCK=1 never calls a real model.
+      const mockButton = $('#premium-mock-pay');
+      mockButton.textContent = TEXT.premiumMockPay;
+      mockButton.hidden = false;
+      mockButton.onclick = () => onPaymentAuthorised({ paymentIntentId: intent.id }, dialog);
+      return;
+    }
+    await mountPaymentRequestButton(intent, dialog);
   }
 
   /**
@@ -8005,15 +8022,47 @@
     return auth || false;
   }
 
-  // The promo path never touches Stripe or create-payment-intent at all — it
-  // goes straight to the same paid route a real payment reaches, with a code
-  // instead of a paymentIntentId, so it works even mid-dialog while a wallet
-  // button is already mounted, and even on a server with no Stripe key set.
-  function applyPromoCode() {
+  // A code typed into the full report's sheet is asked about first: a code
+  // worth 100% goes straight to the same paid route a real payment reaches,
+  // with the code instead of a paymentIntentId, so it works even mid-dialog
+  // while a wallet button is already mounted, and even on a server with no
+  // Stripe key set. A discount code comes back as a cheaper PaymentIntent,
+  // and the sheet is re-mounted to pay that instead. A code the server
+  // refuses says why, here, before any report is asked for. The extra
+  // analysis's sheet keeps the old path: discounts are for the full report.
+  async function applyPromoCode() {
     const input = $('#premium-promo-input');
     const code = input.value.trim();
     if (!code) return;
-    onPaymentAuthorised({ promoCode: code }, $('#premium-dialog'));
+    const dialog = $('#premium-dialog');
+    if (premiumKind !== 'unlock') {
+      onPaymentAuthorised({ promoCode: code }, dialog);
+      return;
+    }
+    const apply = $('#premium-promo-apply');
+    apply.disabled = true;
+    let answer = null;
+    try {
+      answer = await LLM.postWithTicket('api/create-payment-intent',
+        { product: 'unlock', currency: CURRENCY, promoCode: code });
+    } catch (error) {
+      if (error && error.status === 402) {
+        premiumStatus(error.message, 'bad');
+        return;
+      }
+      // A server that could not price it (no Stripe keys, an older server):
+      // the analyse route judges the code itself, as it always did.
+      answer = null;
+    } finally {
+      apply.disabled = false;
+    }
+    if (answer && answer.discount) {
+      premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent,
+        Prices.label(answer.currency, 'unlock', answer.amount)), 'good');
+      await mountIntent(answer, dialog);
+      return;
+    }
+    onPaymentAuthorised({ promoCode: code }, dialog);
   }
   $('#premium-promo-apply').addEventListener('click', applyPromoCode);
   $('#premium-promo-input').addEventListener('keydown', event => {

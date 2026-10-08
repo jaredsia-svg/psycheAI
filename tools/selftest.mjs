@@ -7070,6 +7070,24 @@ check('the schema requires evidence on strengths and frictions',
     !promoCodes.check('bad code', d1).ok && !promoCodes.check('none', d1).ok && promoCodes.check('open', d3).ok &&
       promoCodes.check('MASTER-X', d3).ok && !promoCodes.check('MASTER-X', d3).creator &&
       promoCodes.describe().map(c => c.code).join(',') === 'AVA50,OLD,OPEN');
+  promoCodes.configure({ PSYCHEAI_PROMO_CODES: 'HALF:100::50, PCT:5:2099-01-01:25%, TYPO:5::5o, ZERO:5::0' });
+  check('promo: a fourth field takes that percent off; left out it is 100, and a malformed one drops the code',
+    promoCodes.check('half', d1).percent === 50 && promoCodes.check('pct', d1).percent === 25 &&
+      promoCodes.check('AVA50', d1).ok === false && !promoCodes.check('typo', d1).ok && !promoCodes.check('zero', d1).ok &&
+      promoCodes.describe().map(c => c.code + '=' + c.percent).join() === 'HALF=50,PCT=25',
+    JSON.stringify(promoCodes.describe()));
+  promoCodes.configure({ PSYCHEAI_PROMO_CODES: 'FULL:3' });
+  check('promo: a code without a percent is worth 100%, as every code was before', promoCodes.check('full', d1).percent === 100);
+  {
+    const P = globalThis.PsychePrices;
+    check('prices: a discount comes off the local price, rounded, never below Stripe\'s minimum and never free',
+      P.discounted('usd', 'unlock', 50) === 250 && P.discounted('sgd', 'unlock', 50) === 350 &&
+        P.discounted('gbp', 'unlock', 50) === 200 && P.discounted('jpy', 'unlock', 50) === 400 &&
+        P.discounted('hkd', 'unlock', 95) === 400 && P.discounted('usd', 'unlock', 0) === 500 &&
+        P.discounted('usd', 'unlock', 100) === 0 && P.label('sgd', 'unlock', 350) === 'S$3.50' &&
+        P.label('usd', 'unlock', 250) === 'US$2.50',
+      [P.discounted('usd', 'unlock', 50), P.discounted('hkd', 'unlock', 95), P.label('sgd', 'unlock', 350)].join());
+  }
   promoCodes.configure({});
   check('promo: with nothing configured, no code works', !promoCodes.check('AVA50', d1).ok && !promoCodes.enabled());
   promoCodes.configure(process.env);
@@ -7082,7 +7100,7 @@ check('the schema requires evidence on strengths and frictions',
     const { join } = require('node:path');
     const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
       env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '',
-        PSYCHEAI_PROMO_CODES: 'AVA:2:2099-12-31,OLD:5:2000-01-01', PSYCHEAI_STATS_TOKEN: '${token}',
+        PSYCHEAI_PROMO_CODES: 'AVA:2:2099-12-31,OLD:5:2000-01-01,HALF:1:2099-12-31:50,FREE:5', PSYCHEAI_STATS_TOKEN: '${token}',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-stats-budget-${process.pid}.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-stats-usage-${process.pid}.jsonl') },
       stdio: 'ignore',
@@ -7097,6 +7115,16 @@ check('the schema requires evidence on strengths and frictions',
       let json = null;
       try { json = await response.json(); } catch (error) { /* left null */ }
       return { status: response.status, error: json && json.error };
+    };
+    const intentFor = async body => {
+      const ticket = (await (await fetch(base + '/api/nonce')).json()).nonce;
+      const response = await fetch(base + '/api/create-payment-intent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': ticket },
+        body: JSON.stringify(body),
+      });
+      let json = null;
+      try { json = await response.json(); } catch (error) { /* left null */ }
+      return Object.assign({ status: response.status }, json);
     };
     (async () => {
       for (let i = 0; i < 100; i++) {
@@ -7114,6 +7142,14 @@ check('the schema requires evidence on strengths and frictions',
       out.unlock3 = await post({ digest: variant(3), product: 'unlock', promoCode: 'ava' });
       out.retry1 = await post({ digest: variant(1), product: 'unlock', promoCode: 'ava' });
       out.expired = await post({ digest: variant(4), product: 'unlock', promoCode: 'old' });
+      out.halfAlone = await post({ digest: variant(5), product: 'unlock', promoCode: 'half' });
+      out.halfIntent = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'Half' });
+      out.halfPaid = await post({ digest: variant(5), product: 'unlock', paymentIntentId: out.halfIntent.id });
+      out.halfAgain = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'half' });
+      out.halfOnAnalysis = await intentFor({ product: 'analysis', promoCode: 'free' });
+      out.freeCode = await intentFor({ product: 'unlock', currency: 'usd', promoCode: 'FREE' });
+      out.badCode = await intentFor({ product: 'unlock', promoCode: 'nope' });
+      out.halfForFull = await intentFor({ product: 'unlock', currency: 'sgd' });
       out.noToken = (await fetch(base + '/api/stats')).status;
       out.wrongToken = (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer nope' } })).status;
       out.stats = await (await fetch(base + '/api/stats', { headers: { Authorization: 'Bearer ${token}' } })).json();
@@ -7137,13 +7173,34 @@ check('the schema requires evidence on strengths and frictions',
     today['via:ava'] === 1 && today.card_from_invite === 1 &&
       !Object.keys(today).some(key => /<|x</.test(key)), JSON.stringify(today));
   check('stats routes: a creator code unlocks up to its cap, and each redemption is counted',
-    got.unlock1.status === 200 && got.unlock2.status === 200 && today.full_report === 2 && today['promo:AVA'] === 2 &&
+    // Three full reports: these two, and the half-price one further down.
+    got.unlock1.status === 200 && got.unlock2.status === 200 && today.full_report === 3 && today['promo:AVA'] === 2 &&
       today['via:ava:full_report'] === 1, JSON.stringify({ today, u1: got.unlock1, u2: got.unlock2 }));
   check('stats routes: past its cap a new report is refused with a reason, and its own retry is not',
     got.unlock3.status === 402 && got.unlock3.error === 'That code has been used up.' && got.retry1.status === 200,
     JSON.stringify({ u3: got.unlock3, retry: got.retry1 }));
   check('stats routes: an expired code is refused as expired',
     got.expired.status === 402 && got.expired.error === 'That code has expired.', JSON.stringify(got.expired));
+  check('promo discount: on its own a percent-off code opens nothing, and says to pay the rest',
+    got.halfAlone && got.halfAlone.status === 402 && /takes 50% off the full report/.test(got.halfAlone.error),
+    JSON.stringify(got.halfAlone));
+  check('promo discount: the payment sheet asks for half the local price, with the code written on the payment',
+    got.halfIntent && got.halfIntent.status === 200 && got.halfIntent.currency === 'sgd' && got.halfIntent.amount === 350 &&
+      got.halfIntent.discount && got.halfIntent.discount.code === 'HALF' && got.halfIntent.discount.percent === 50 &&
+      got.halfForFull && got.halfForFull.amount === 700, JSON.stringify({ half: got.halfIntent, full: got.halfForFull }));
+  check('promo discount: that half-price payment unlocks the full report, and spends a use of the code',
+    got.halfPaid && got.halfPaid.status === 200 && today['promo:HALF'] === 1 &&
+      got.stats.promoCodes.find(c => c.code === 'HALF').used === 1 &&
+      got.stats.promoCodes.find(c => c.code === 'HALF').percent === 50,
+    JSON.stringify({ paid: got.halfPaid, today }));
+  check('promo discount: at its cap the code is refused before anyone pays',
+    got.halfAgain && got.halfAgain.status === 402 && got.halfAgain.error === 'That code has been used up.',
+    JSON.stringify(got.halfAgain));
+  check('promo discount: a 100% code asks for no payment, a bad one is refused, and codes are for the full report only',
+    got.freeCode && got.freeCode.status === 200 && got.freeCode.free === true && !got.freeCode.id &&
+      got.badCode && got.badCode.status === 402 && got.badCode.error === 'That code is not valid.' &&
+      got.halfOnAnalysis && got.halfOnAnalysis.status === 402,
+    JSON.stringify({ free: got.freeCode, bad: got.badCode, analysis: got.halfOnAnalysis }));
   check('stats routes: the totals need the token, and say how much of each code is left',
     got.noToken === 401 && got.wrongToken === 401 && Array.isArray(got.stats.promoCodes) &&
       got.stats.promoCodes.find(c => c.code === 'AVA').used === 2 && got.stats.promoCodes.find(c => c.code === 'AVA').cap === 2,

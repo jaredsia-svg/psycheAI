@@ -27,6 +27,10 @@
     myr: { symbol: 'RM', unlock: 2200, analysis: 900 },
   };
   const DEFAULT_CURRENCY = 'usd';
+  // Stripe's smallest charge in each currency, in the same minor unit. A
+  // discount never takes a price below it: a 95%-off code pays this instead
+  // of an amount Stripe would refuse.
+  const MINIMUM = { usd: 50, sgd: 50, gbp: 30, eur: 50, aud: 50, cad: 50, nzd: 50, hkd: 400, jpy: 50, chf: 50, myr: 200 };
 
   const EUROZONE = ['AT', 'BE', 'CY', 'DE', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LU', 'LV',
     'MT', 'NL', 'PT', 'SI', 'SK'];
@@ -93,15 +97,29 @@
     return value;
   }
 
+  /**
+   * What a product costs with `percent` taken off by a promo code: the table's
+   * price less that share, rounded to a whole minor unit, and never under
+   * Stripe's minimum for the currency. 100 or more is free (0).
+   */
+  function discounted(currency, product, percent) {
+    const c = known(currency);
+    const off = Number(percent) || 0;
+    if (off >= 100) return 0;
+    const full = amount(c, product);
+    if (off <= 0) return full;
+    return Math.min(full, Math.max(MINIMUM[c] || 50, Math.round(full * (100 - off) / 100)));
+  }
+
   /** "S$7", "£1.50", "¥800": whole amounts without decimals, others with two. */
-  function label(currency, product) {
+  function label(currency, product, minorAmount) {
     const c = known(currency);
     const row = TABLE[c];
-    const minor = amount(c, product);
+    const minor = minorAmount == null ? amount(c, product) : minorAmount;
     const major = row.zeroDecimal ? minor : minor / 100;
     const text = Number.isInteger(major) ? String(major) : major.toFixed(2);
     return row.symbol + text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  root.PsychePrices = { TABLE, DEFAULT_CURRENCY, COUNTRY_CURRENCY, guessCountry, countryFromZone, currencyFor, known, amount, label };
+  root.PsychePrices = { TABLE, DEFAULT_CURRENCY, COUNTRY_CURRENCY, guessCountry, countryFromZone, currencyFor, known, amount, discounted, label, MINIMUM };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -217,7 +217,10 @@
       if (response.status === 400 && payload && payload.nonceRequired) {
         return { nonceRefused: true, truncated: false, dropped: false, payload: null };
       }
-      throw new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').');
+      // The status rides along for the one caller that tells a refusal (402)
+      // from a server that cannot help (503) — the promo field.
+      throw Object.assign(new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').'),
+        { status: response.status });
     }
     // An `error` field on an otherwise-fine response is a real failure. A
     // generating request commits its 200 before the work starts — it has to,

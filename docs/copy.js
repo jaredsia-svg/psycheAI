@@ -609,6 +609,8 @@
     premiumPromoLabel: 'Have a promo code?',
     premiumPromoPlaceholder: 'Promo code',
     premiumPromoApply: 'Apply',
+    // A discount code, accepted: what it took off and what is left to pay.
+    premiumPromoDiscount: (code, percent, price) => code + ': ' + percent + '% off. Pay ' + price + ' to unlock.',
 
     trust: 'How much to trust this',
     trustSub: 'Everything above is inferred from behavioural traces, and the model says how far ' +

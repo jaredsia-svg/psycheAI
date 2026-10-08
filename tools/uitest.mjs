@@ -304,6 +304,8 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
     // wants to exercise the promo path has to declare one, which is exactly
     // the property that stops a test fixture doubling as a live backdoor.
     PSYCHEAI_PROMO_CODE: UITEST_PROMO,
+    // A half-price code, for the payment sheet's discount path.
+    PSYCHEAI_PROMO_CODES: 'UIHALF:50::50',
     // This suite checks the classic layout section by section, so it pins it.
     // The structured layout is checked on its own further down, against a
     // page told to draw that layout with ?layout=structured.
@@ -678,6 +680,66 @@ try {
         refusals === 2, String(refusals));
     } finally {
       await payPage.close();
+    }
+  }
+
+  // ---- a half-price promo code ----
+  //
+  // A percent-off code typed into the unlock sheet does not unlock anything by
+  // itself: the sheet is re-priced to what is left (US$2.50 of US$5), says so,
+  // and the payment it then takes is the one that buys the report.
+  {
+    const halfPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await halfPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await halfPage.waitForTimeout(300);
+      const sample = await halfPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await halfPage.evaluate(report => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report, card: report.card, payload: 'x', model: 'mock',
+          createdAt: new Date().toISOString(),
+        }));
+        localStorage.setItem('psycheai_digest', JSON.stringify({
+          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
+          google: { activity: [] },
+        }));
+      }, sample);
+      await halfPage.reload();
+      await halfPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const intents = [];
+      const analyses = [];
+      halfPage.on('response', async response => {
+        if (/api\/create-payment-intent/.test(response.url())) {
+          intents.push({ asked: response.request().postDataJSON(), got: await response.json().catch(() => null) });
+        }
+        if (/api\/analyse/.test(response.url())) analyses.push(response.request().postDataJSON());
+      });
+      const unlock = halfPage.locator('.premium-unlock').first();
+      await unlock.scrollIntoViewIfNeeded();
+      await unlock.click();
+      await skipPremiumDataOffer(halfPage);
+      await halfPage.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 20000 });
+      await halfPage.fill('#premium-promo-input', 'uihalf');
+      await halfPage.click('#premium-promo-apply');
+      await halfPage.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
+        .catch(() => {});
+      const said = await halfPage.locator('#premium-status').innerText();
+      const discounted = intents.find(entry => entry.asked && entry.asked.promoCode);
+      check('a half-price code re-prices the unlock sheet and says what is left to pay',
+        /UIHALF: 50% off\. Pay US\$2\.50 to unlock\./.test(said) &&
+          discounted && discounted.got && discounted.got.amount === 250 && discounted.got.discount.percent === 50 &&
+          analyses.length === 0, said + ' ' + JSON.stringify(discounted && discounted.got));
+      await halfPage.click('#premium-mock-pay');
+      await halfPage.waitForFunction(() => document.querySelector('#premium-dialog') && !document.querySelector('#premium-dialog').open,
+        null, { timeout: 60000 }).catch(() => {});
+      const paidWith = analyses.find(body => body && body.paymentIntentId);
+      check('and paying that buys the full report on the discounted payment, not on the code',
+        paidWith && paidWith.paymentIntentId === discounted.got.id && !paidWith.promoCode &&
+          await halfPage.evaluate(() => !document.querySelector('#premium-dialog').open),
+        JSON.stringify(paidWith));
+      await halfPage.fill('#premium-promo-input', '').catch(() => {});
+    } finally {
+      await halfPage.close();
     }
   }
 

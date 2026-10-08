@@ -95,12 +95,28 @@ const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
 //
 // A code is checked against what it would unlock (the digest), so a creator
 // code at its cap still answers a retry for a report it already paid for.
+//
+// Only a code worth 100% opens anything by itself. A discount code is refused
+// on every free path, with what to do instead: it is spent through the payment
+// sheet, on a PaymentIntent re-priced by handleCreatePaymentIntent.
 function isValidPromoCode(code, key) {
-  return promo.check(code, key).ok;
+  return !promoRefusal(code, key);
 }
 function promoRefusal(code, key) {
   const checked = promo.check(code, key);
-  return checked.ok ? null : checked.reason;
+  if (!checked.ok) return checked.reason;
+  if (checked.percent < 100) {
+    return 'That code takes ' + checked.percent + '% off the full report. Enter it on the payment sheet and pay the rest.';
+  }
+  return null;
+}
+
+// A discount code is spent once the report its payment bought is written: the
+// code is read off the PaymentIntent, where this server wrote it, rather than
+// from anything the request says.
+function discountRedeemed(intent, key) {
+  const code = intent && intent.metadata && intent.metadata.promo;
+  if (code && promo.redeem(code, key)) stats.count('promo:' + String(code).toUpperCase());
 }
 
 // Once a report has actually been written on a code: a creator code spends a
@@ -484,12 +500,13 @@ async function handleAnalyse(request, response) {
   // and whether a friend's compatibility link was waiting for this card.
   const via = stats.cleanVia(body.via);
   const fromInvite = body.invite === true;
+  let paidIntent = null;
   if (paymentIntentId && !promoCode) {
     if (!payments.hasKey()) {
       sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
       return;
     }
-    await payments.verifyPaid(paymentIntentId, product);
+    paidIntent = await payments.verifyPaid(paymentIntentId, product);
     if (!paymentLedger.canUse(paymentIntentId, ledgerKind)) {
       sendJson(response, 429, {
         error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
@@ -619,6 +636,7 @@ async function handleAnalyse(request, response) {
       // outage neither spends the day's budget nor burns the reader's payment.
       if (paying) {
         if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
+        if (paidRun) discountRedeemed(paidIntent, body.digest);
       } else {
         budget.record(kind);
       }
@@ -686,10 +704,6 @@ function handleNonce(response) {
 // "Let us roast you" unlock, and nothing report-shaped is anywhere near its
 // signature.
 async function handleCreatePaymentIntent(request, response) {
-  if (!payments.hasKey()) {
-    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
-    return;
-  }
   // Which of the two products, and nothing else — never an amount. The price
   // of each lives in lib/stripe.js's PRODUCTS and is read from there, so the
   // only thing a client can influence here is *what* it is buying, not what
@@ -701,6 +715,41 @@ async function handleCreatePaymentIntent(request, response) {
   // The currency the page showed its price in, from the shared table; an
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';
+
+  // A promo code typed into the unlock sheet comes here first, to learn what
+  // it is worth. A 100% code needs no payment at all, so the answer is just
+  // that (and works on a server with no Stripe keys); a discount comes back as
+  // a PaymentIntent for what is left of the price, with the code written onto
+  // it; anything else is refused with the reason, before any report is asked for.
+  const promoCode = body && typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
+  if (promoCode) {
+    const checked = promo.check(promoCode, null);
+    if (!checked.ok) {
+      sendJson(response, 402, { error: checked.reason });
+      return;
+    }
+    if (product !== 'unlock') {
+      sendJson(response, 402, { error: 'Promo codes are for the full report.' });
+      return;
+    }
+    if (checked.percent >= 100) {
+      sendJson(response, 200, { free: true, code: checked.code });
+      return;
+    }
+    if (!payments.hasKey()) {
+      sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+      return;
+    }
+    const discount = { code: checked.code, percent: checked.percent };
+    const intent = await payments.createPaymentIntent(label, product, currency, discount);
+    sendJson(response, 200, Object.assign({}, intent, { discount }));
+    return;
+  }
+
+  if (!payments.hasKey()) {
+    sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
+    return;
+  }
   sendJson(response, 200, await payments.createPaymentIntent(label, product, currency));
 }
 
@@ -764,7 +813,7 @@ async function handlePremiumAnalysis(request, response) {
     sendJson(response, 503, { error: 'Payments are not configured on this server. ' + payments.describe().hint });
     return;
   }
-  await payments.verifyPaid(paymentIntentId, 'unlock');
+  const paidIntent = await payments.verifyPaid(paymentIntentId, 'unlock');
   if (!paymentLedger.canUse(paymentIntentId, 'premium')) {
     sendJson(response, 429, {
       error: 'This payment has already generated the maximum number of analyses. Contact support if yours failed to come through.',
@@ -804,6 +853,7 @@ async function handlePremiumAnalysis(request, response) {
       const result = await engine.analysePremium(body.digest);
       usage.record('premium', result, true);
       paymentLedger.recordUse(paymentIntentId, 'premium');
+      discountRedeemed(paidIntent, body.digest);
       stats.count('premium_sections');
       return scrubbed(result, body.digest, 'premium');
     },

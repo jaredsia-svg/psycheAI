@@ -398,7 +398,7 @@ export STRIPE_ACCOUNT_COUNTRY=SG       # optional — the merchant's country, no
 export PSYCHEAI_PAYMENTS_FILE=...      # optional — where the usage ledger lives; see below
 export ANTHROPIC_API_KEY=...           # the paid call always runs on Claude — see below
 export PSYCHEAI_PROMO_CODE=...         # optional — the operator's one uncapped code; see below
-export PSYCHEAI_PROMO_CODES=AVA50:50:2026-12-31   # optional — creator codes, CODE[:cap[:last day]]
+export PSYCHEAI_PROMO_CODES=AVA:50:2026-12-31,HALF:100:2026-12-31:50   # optional — CODE[:cap[:last day[:percent off]]]
 export PSYCHEAI_STATS_TOKEN=...        # optional — unlocks GET /api/stats, the daily totals
 npm start
 ```
@@ -1400,7 +1400,7 @@ the first.
 | `PSYCHEAI_PREMIUM_EFFORT` | Adaptive thinking effort for the paid call on Claude. Default `high` — see ["Waiting for it, and not losing it"](#waiting-for-it-and-not-losing-it). |
 | `XAI_MODEL` | Grok model ID. Default `grok-4.6`. |
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
-| `PSYCHEAI_PROMO_CODES` | Creator codes, comma-separated, each `CODE[:cap[:last day]]` — e.g. `AVA50:50:2026-12-31,BEN:20`. A cap counts distinct reports; the last day is inclusive, UTC. See [Counting what works](#counting-what-works-without-counting-anyone). |
+| `PSYCHEAI_PROMO_CODES` | Creator codes, comma-separated, each `CODE[:cap[:last day[:percent off]]]` — e.g. `AVA:50:2026-12-31,BEN:20,HALF:100:2026-12-31:50`. A cap counts distinct reports; the last day is inclusive, UTC; percent off defaults to 100 (free), and 1–99 makes a discount paid through the payment sheet. See [Counting what works](#counting-what-works-without-counting-anyone). |
 | `PSYCHEAI_CANONICAL_HOST` | The site's one address, e.g. `psycheai.io`. Set, a page requested at any `*.onrender.com` address gets a 301 to the same path there, so search engines index one copy; `/api/` is left alone so a tab already open on the old address can still collect its report. Unset ⇒ nothing is redirected. Browser storage is per address, so a card saved on the old address stays there. |
 | `PSYCHEAI_STATS_TOKEN` | Bearer token for `GET /api/stats`, the daily totals and how much of each creator code is left. Unset ⇒ the route 404s. |
 
@@ -1773,6 +1773,36 @@ a report it already unlocked (it remembers SHA-256 hashes of what it unlocked, n
 and refuses a new one with *That code has been used up.*; past its last day it says *That code has
 expired.* The counts are in memory like everything else here, so a restart starts them again: set
 caps with that in mind, and the end date bounds it.
+
+**Discount codes.** A fourth field takes a percentage off instead of opening the report for free:
+`HALF:100:2026-12-31:50` is 50% off, at most 100 uses, until the end of 31 December 2026. Leave a
+field empty to skip it (`HALF:100::50` never expires; `HALF:::50` has no cap and no end). Left out,
+the percentage is 100 — every code written before this behaves exactly as it did. A malformed
+percentage (`5o`, `0`, `150`) drops the code rather than defaulting to 100, so a typo can never turn a
+discount into free reports.
+
+- **In the unlock sheet**, Apply asks `/api/create-payment-intent` about the code first. A 100% code
+  comes back as `{ free: true }` and unlocks as before; a refused one says why on the sheet; a
+  discount comes back as a new PaymentIntent for what is left of the *local* price (50% of US$5 is
+  US$2.50, of S$7 is S$3.50, of £4 is £2), the sheet says *HALF: 50% off. Pay US$2.50 to unlock.*,
+  and the wallet button, card form or mock button are re-mounted for that amount.
+- **The server writes the code and its percentage onto the PaymentIntent** (Stripe `metadata`).
+  `verifyPaid` holds a payment to the discounted price only when that metadata is there, and only
+  this server can write it — a client cannot claim a discount, and a half-price payment presented
+  without one fails as the wrong amount.
+- **A discount code never opens anything by itself.** Sent straight to `/api/analyse` or
+  `/api/premium`, it is refused: *That code takes 50% off the full report. Enter it on the payment
+  sheet and pay the rest.*
+- **A use is spent when the paid report is written**, not when the sheet is opened, and counted under
+  `promo:HALF` in the stats like any other code. Expiry and the cap are checked before anyone pays;
+  a reader who paid just as the cap ran out is still served.
+- **Never below Stripe's minimum charge** for the currency (`MINIMUM` in `docs/prices.js` — 50 cents,
+  30p, HK$4, ¥50, RM2): a 95%-off code charges the minimum rather than an amount Stripe would refuse.
+  Codes apply to the full report only; the US$2 extra card keeps 100% codes.
+
+**To create one on Render**: Environment → `PSYCHEAI_PROMO_CODES` → add `NEWCODE:cap:YYYY-MM-DD:50`
+to the comma-separated list → Save, which redeploys. Use counts reset when the server restarts (each
+deploy is a restart), so the cap is per deploy until the counts have somewhere permanent to live.
 
 The FAQ says all of this under **Does PsycheAI count anything?**, and a UI check holds it to that.
 
