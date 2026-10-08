@@ -835,6 +835,179 @@ const SCENES = {
       '<path d="M200 418c30-6 60 6 90 0s60-6 90 0 60 6 90 0" fill="none" stroke="#cfe0ff" stroke-width="2" opacity=".4"/>' +
       sparkle(488, 60, 9) + sparkle(250, 90, 7);
   },
+
+  // A spellbook open in the air above a castle of lit windows, a wand
+  // trailing sparks across its pages, candles floating in the dark.
+  'Hermione Granger': () => {
+    const halo = rad('cg', [[0, '#ffd27a', 0.6], [1, '#ffd27a', 0]]);
+    const candle = (x, y, r) => {
+      const h = n(14 + r() * 12);
+      return '<circle cx="' + x + '" cy="' + n(y - 4) + '" r="12" fill="' + halo + '"/>' +
+        '<rect x="' + n(x - 3) + '" y="' + y + '" width="6" height="' + h + '" rx="1.5" fill="#fff4dc"/>' +
+        '<path d="M' + x + ' ' + n(y - 9) + 'c3 4 3 7 0 8c-3-1-3-4 0-8z" fill="#ffb84a"/>';
+    };
+    const page = side => {
+      const s = side;
+      return '<path d="M390 150C' + (390 - 30 * s) + ' 132 ' + (390 - 70 * s) + ' 130 ' + (390 - 100 * s) + ' 140L' + (390 - 100 * s) + ' 222C' +
+        (390 - 70 * s) + ' 212 ' + (390 - 30 * s) + ' 214 390 232Z" fill="' + lin('pg' + (s > 0 ? 'l' : 'r'), [[0, '#fffaf0'], [1, '#f0dcb4']]) + '" stroke="#c9a46a" stroke-width="1.6"/>' +
+        [0, 1, 2, 3, 4].map(i => '<path d="M' + (390 - 16 * s) + ' ' + (160 + i * 13) + 'C' + (390 - 40 * s) + ' ' + (150 + i * 13) + ' ' +
+          (390 - 66 * s) + ' ' + (149 + i * 13) + ' ' + (390 - 88 * s) + ' ' + (155 + i * 13) + '" stroke="#b08a5a" stroke-width="1.6" fill="none" opacity=".55"/>').join('');
+    };
+    let trail = '';
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      const [x, y] = bez([456, 170], [486, 130], [440, 80], [500, 50], t);
+      trail += i % 3 === 0 ? sparkle(x, y, n(4 + t * 6), '#fff6c4') : '<circle cx="' + x + '" cy="' + y + '" r="' + n(1.6 + t * 1.4) + '" fill="#ffe9a6" opacity=".85"/>';
+    }
+    return tint('#f2b84a', '#2a1048', 0.58) + stars(401, 34, 120, W, 0, 220, '#fff6dc') +
+      scatter(402, 9, (x, y, r) => candle(x, y, r), 160, 510, 70, 130) +
+      glow('g', 390, 186, 170, '#ffe2a0', 0.75) +
+      '<path d="M390 158C356 140 312 138 282 148L282 236C312 226 356 228 390 246C424 228 468 226 498 236L498 148C468 138 424 140 390 158Z" fill="#7a1a2a" stroke="#f0c050" stroke-width="2"/>' +
+      page(1) + page(-1) + '<path d="M390 150V232" stroke="#c9a46a" stroke-width="2"/>' +
+      '<path d="M354 148c6-10 14-14 22-12M404 136c8-2 16 2 22 12" stroke="#fff" stroke-width="2" fill="none" opacity=".5"/>' +
+      '<g transform="translate(456 170) rotate(-35)"><rect x="-4" y="0" width="8" height="120" rx="3" fill="' + lin('wand', [[0, '#8a5a2a'], [1, '#3a200e']], 0, 0, 1, 0) + '"/>' +
+        '<path d="M-5 74h10M-5 84h10M-5 94h10" stroke="#c9945a" stroke-width="2.4"/><circle cy="0" r="4" fill="#fff6c4"/></g>' +
+      trail +
+      '<path d="M0 440V360C90 350 200 362 280 352S440 340 520 348V440Z" fill="#1c0b30"/>' +
+      '<g fill="#140826"><rect x="312" y="326" width="186" height="46"/>' +
+        '<rect x="316" y="302" width="24" height="70"/><path d="M312 302L328 272L344 302Z"/>' +
+        '<rect x="362" y="292" width="28" height="80"/><path d="M357 292L376 256L395 292Z"/>' +
+        '<rect x="420" y="282" width="32" height="90"/><path d="M415 282L436 252L457 282Z"/>' +
+        '<rect x="472" y="304" width="22" height="68"/><path d="M468 304L483 276L498 304Z"/>' +
+        [318, 342, 396, 456].map(x => '<rect x="' + x + '" y="318" width="10" height="8"/>').join('') + '</g>' +
+      '<g fill="#ffd27a" opacity=".85">' + [[324, 312], [326, 336], [372, 304], [380, 330], [432, 294], [440, 320], [432, 346], [478, 320], [404, 348], [464, 350], [350, 350]]
+        .map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="8" rx="2.5"/>').join('') + '</g>' +
+      '<rect x="0" y="372" width="520" height="68" fill="' + lin('lake', [[0, '#2a1450'], [1, '#0e0620']]) + '"/>' +
+      '<g fill="#ffd27a" opacity=".35">' + [[322, 384], [376, 392], [436, 386], [482, 396]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="5" height="16" rx="2.5"/>').join('') + '</g>';
+  },
+
+  // A pink skull charm on a two-pointed jester hood, under a lilac crescent
+  // moon, with little bats, hearts and a spade-tipped tail; a spiked gate below.
+  'Kuromi': () => {
+    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="486" cy="58" r="66" fill="#000"/></mask>');
+    const bat = (x, y, s) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 -2C3 -6 7 -6 9 -3C11 -8 17 -9 22 -5C18 -2 18 3 21 6C15 3 11 4 9 8C6 4 3 3 0 4C-3 3 -6 4 -9 8C-11 4 -15 3 -21 6C-18 3 -18 -2 -22 -5C-17 -9 -11 -8 -9 -3C-7 -6 -3 -6 0 -2Z" fill="#2a1240"/>';
+    const heart = (x, y, s, c) => '<path transform="translate(' + x + ' ' + y + ') scale(' + s + ')" d="M0 6C-8 0 -10 -4 -8 -7C-6 -10 -2 -9 0 -6C2 -9 6 -10 8 -7C10 -4 8 0 0 6Z" fill="' + c + '"/>';
+    return tint('#ff8fc8', '#22103a', 0.62) + stars(411, 40, 120, W, 0, 230, '#ffe0f4') +
+      '<circle cx="452" cy="86" r="74" fill="' + lin('moon', [[0, '#f6e6ff'], [1, '#c9a0ff']]) + '" mask="url(#{id}-cres)"/>' +
+      glow('g', 376, 214, 170, '#ff9ad2', 0.6) +
+      '<g transform="translate(376 214)">' +
+        '<path d="M-86 50C-96 -20 -60 -78 0 -82C60 -78 96 -20 86 50C60 64 -60 64 -86 50Z" fill="' + lin('hood', [[0, '#3a2454'], [1, '#160a26']]) + '" stroke="#fff" stroke-width="3"/>' +
+        '<path d="M-62 -48C-92 -80 -118 -96 -150 -104C-130 -74 -110 -50 -80 -22Z" fill="#22123a" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M62 -48C92 -80 118 -96 150 -104C130 -74 110 -50 80 -22Z" fill="#22123a" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-58 -50C-30 -64 30 -64 58 -50" stroke="#ff8fc8" stroke-width="3" fill="none" opacity=".6"/>' +
+        '<g transform="translate(0 -10)">' +
+          '<path d="M0 -34C-22 -34 -36 -20 -36 -2C-36 10 -30 18 -22 22V34H22V22C30 18 36 10 36 -2C36 -20 22 -34 0 -34Z" fill="' + lin('skull', [[0, '#ffc2e0'], [1, '#ff5fa8']]) + '" stroke="#fff" stroke-width="3"/>' +
+          '<ellipse cx="-14" cy="-2" rx="8" ry="10" fill="#2a1240"/><ellipse cx="14" cy="-2" rx="8" ry="10" fill="#2a1240"/>' +
+          '<circle cx="-11" cy="-6" r="2.4" fill="#fff"/><circle cx="17" cy="-6" r="2.4" fill="#fff"/>' +
+          '<path d="M0 10L-4 16H4Z" fill="#2a1240"/><path d="M-12 28V22M-4 30V22M4 30V22M12 28V22" stroke="#2a1240" stroke-width="2.4" stroke-linecap="round"/></g></g>' +
+      '<path d="M462 296C500 284 506 250 486 236" fill="none" stroke="#2a1240" stroke-width="7" stroke-linecap="round"/>' +
+      '<path d="M486 236L474 228L492 222L496 240Z" fill="#2a1240" transform="rotate(-10 486 236)"/>' +
+      [[268, 110, 1.1], [520, 180, 0.8], [300, 300, 0.7], [250, 200, 0.6], [470, 150, 0.6]].map(([x, y, s]) => bat(x, y, s)).join('') +
+      heart(282, 160, 1.4, '#ff5fa8') + heart(488, 300, 1.2, '#ffc2e0') + heart(236, 260, 1, '#ff8fc8') + heart(330, 70, 0.9, '#ffc2e0') +
+      sparkle(400, 60, 9, '#ffe0f4') + sparkle(250, 320, 7, '#ffe0f4') +
+      '<path d="M0 440V384C120 376 260 388 380 380S490 376 520 378V440Z" fill="#160a26"/>' +
+      '<g fill="#160a26">' + Array.from({ length: 16 }, (_, i) => 216 + i * 20).map(x =>
+        '<rect x="' + (x - 2.5) + '" y="334" width="5" height="54"/><path d="M' + (x - 6) + ' 336L' + x + ' 320L' + (x + 6) + ' 336Z"/>').join('') +
+        '<rect x="210" y="346" width="320" height="5"/><rect x="210" y="372" width="320" height="5"/></g>';
+  },
+
+  // A heart-shaped brooch with a crescent at its centre, ribbons streaming,
+  // under a great crescent moon over a city at night and its lattice tower.
+  'Sailor Moon': () => {
+    defs.push('<mask id="{id}-cres" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="500" cy="40" r="72" fill="#000"/></mask>');
+    defs.push('<mask id="{id}-inner" maskUnits="userSpaceOnUse"><rect width="' + W + '" height="' + H + '" fill="#fff"/><circle cx="386" cy="190" r="22" fill="#000"/></mask>');
+    const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f4c84a'], [1, '#c98a1f']]);
+    const heart = s => 'M0 ' + n(40 * s) + 'C' + n(-50 * s) + ' ' + n(6 * s) + ' ' + n(-62 * s) + ' ' + n(-24 * s) + ' ' + n(-44 * s) + ' ' + n(-42 * s) +
+      'C' + n(-28 * s) + ' ' + n(-58 * s) + ' ' + n(-8 * s) + ' ' + n(-50 * s) + ' 0 ' + n(-34 * s) +
+      'C' + n(8 * s) + ' ' + n(-50 * s) + ' ' + n(28 * s) + ' ' + n(-58 * s) + ' ' + n(44 * s) + ' ' + n(-42 * s) +
+      'C' + n(62 * s) + ' ' + n(-24 * s) + ' ' + n(50 * s) + ' ' + n(6 * s) + ' 0 ' + n(40 * s) + 'Z';
+    const tower = '<g fill="none" stroke="#ff5a6a" stroke-width="2.4"><path d="M262 400L290 250L318 400M276 330H304M270 360H310M282 290H298M290 250V220"/>' +
+      '<path d="M266 380L314 340M314 380L266 340M274 330L306 296M306 330L274 296"/></g>' +
+      '<rect x="278" y="312" width="24" height="7" fill="#ff5a6a"/>';
+    return tint('#ff9ad5', '#24247a', 0.55) + stars(421, 46, 120, W, 0, 260) +
+      '<circle cx="460" cy="74" r="80" fill="' + lin('moon', [[0, '#fffbe6'], [1, '#ffe08a']]) + '" mask="url(#{id}-cres)"/>' +
+      glow('g', 380, 196, 170, '#ffd6f0', 0.75) +
+      '<path d="M380 210C320 230 280 280 230 300C270 290 320 270 360 240Z" fill="#ff7ab8" opacity=".85"/>' +
+      '<path d="M380 210C440 236 470 290 520 306V290C480 276 450 246 400 220Z" fill="#7ab8ff" opacity=".85"/>' +
+      '<path d="M380 210C330 250 312 300 300 340C330 300 352 262 386 232Z" fill="#ffb3d9" opacity=".7"/>' +
+      '<g transform="translate(380 196)"><path d="' + heart(1.5) + '" fill="' + gold + '" stroke="#fff" stroke-width="3"/>' +
+        '<path d="' + heart(1.18) + '" fill="' + lin('pink', [[0, '#ffc2e0'], [1, '#ff4f9a']]) + '" stroke="#c98a1f" stroke-width="2"/></g>' +
+      '<circle cx="372" cy="190" r="26" fill="' + gold + '" mask="url(#{id}-inner)"/>' +
+      [[380, 128, '#ff4f6a'], [324, 170, '#4f9aff'], [436, 170, '#4fd08a'], [380, 246, '#ffe04f']].map(([x, y, c]) =>
+        '<circle cx="' + x + '" cy="' + y + '" r="7" fill="' + c + '" stroke="#fff" stroke-width="2"/>').join('') +
+      sparkle(476, 210, 12) + sparkle(270, 120, 9) + sparkle(452, 290, 7) + sparkle(318, 90, 6) +
+      skyline(422, 140, W, 420, 50, 150, '#1a1650', '#ffe9a6') + tower +
+      '<rect x="0" y="420" width="520" height="20" fill="#120e3a"/>';
+  },
+
+  // A golden crown set with gems above a pink-roofed castle on green hills,
+  // pennants flying, a peach or two in the grass.
+  'Princess Peach': () => {
+    const gold = lin('gold', [[0, '#fff6c4'], [0.5, '#f4c84a'], [1, '#c98a1f']]);
+    const cone = (x, y, w, h) => '<path d="M' + (x - w / 2 - 4) + ' ' + y + 'L' + x + ' ' + (y - h) + 'L' + (x + w / 2 + 4) + ' ' + y + 'Z" fill="' + lin('roof', [[0, '#ff9ac8'], [1, '#d0447e']]) + '"/>';
+    const peach = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')"><path d="M0 -8C-10 -14 -22 -6 -22 6C-22 16 -12 22 0 22S22 16 22 6C22 -6 10 -14 0 -8Z" fill="' + lin('peach', [[0, '#ffd2a8'], [1, '#ff7a6a']]) + '"/>' +
+      '<path d="M0 -8C-3 2 -3 12 0 22" stroke="#e05a5a" stroke-width="1.6" fill="none"/><path d="M2 -9C8 -18 16 -18 20 -14C14 -9 8 -8 2 -9Z" fill="#4fa04a"/></g>';
+    return tint('#ffc2dc', '#7a3a9a', 0.5) +
+      '<g fill="#fff" opacity=".8"><ellipse cx="270" cy="70" rx="44" ry="15"/><ellipse cx="298" cy="60" rx="26" ry="15"/><ellipse cx="480" cy="230" rx="40" ry="12"/><ellipse cx="504" cy="222" rx="22" ry="12"/></g>' +
+      '<g fill="#fff6c4" opacity=".2">' + [-50, -25, 0, 25, 50].map(a => '<path d="M384 150L370 -30H398Z" transform="rotate(' + a + ' 384 150)"/>').join('') + '</g>' +
+      glow('g', 384, 136, 160, '#fff1b8', 0.85) +
+      '<g transform="translate(384 128) scale(.92)">' +
+        '<path d="M-70 40L-82 -34L-44 -6L-22 -56L0 -14L22 -56L44 -6L82 -34L70 40Z" fill="' + gold + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-72 40H72V58H-72Z" fill="' + gold + '" stroke="#fff" stroke-width="3"/>' +
+        [[-82, -34], [-22, -56], [22, -56], [82, -34]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="8" fill="#fffbe6" stroke="#c98a1f" stroke-width="2"/>').join('') +
+        '<path d="M0 -4l12 16-12 16-12-16z" fill="#4f9aff" stroke="#fff" stroke-width="2"/>' +
+        '<circle cx="-40" cy="20" r="8" fill="#ff4f6a" stroke="#fff" stroke-width="2"/><circle cx="40" cy="20" r="8" fill="#ff4f6a" stroke="#fff" stroke-width="2"/>' +
+        '<circle cx="-50" cy="49" r="4" fill="#4f9aff"/><circle cx="0" cy="49" r="4" fill="#ff4f6a"/><circle cx="50" cy="49" r="4" fill="#4f9aff"/></g>' +
+      sparkle(476, 96, 11) + sparkle(290, 150, 8) + sparkle(470, 180, 6) +
+      '<path d="M0 440V330C80 300 160 318 230 336S380 300 520 320V440Z" fill="#6fcf6a"/>' +
+      '<g transform="translate(0 30)"><g fill="#fffaf4">' +
+        '<rect x="330" y="270" width="150" height="90"/><rect x="316" y="250" width="34" height="110"/><rect x="460" y="250" width="34" height="110"/>' +
+        '<rect x="384" y="236" width="42" height="124"/></g>' +
+      cone(333, 250, 34, 50) + cone(477, 250, 34, 50) + cone(405, 236, 42, 60) +
+      '<path d="M405 176V158" stroke="#7a3a9a" stroke-width="3"/><path d="M405 158L426 164L405 170Z" fill="#ff5f9a"/>' +
+      '<path d="M392 360V326A13 13 0 0 1 418 326V360Z" fill="#a0522d"/>' +
+      '<g fill="#ffd27a"><circle cx="405" cy="268" r="9"/></g><path d="' + starPath(5, 6, 2.6) + '" fill="#ff5f9a" transform="translate(405 268)"/>' +
+      '<g fill="#7ab8ff">' + [[338, 292], [462, 292], [354, 320], [446, 320]].map(([x, y]) => '<rect x="' + x + '" y="' + y + '" width="10" height="16" rx="5"/>').join('') + '</g></g>' +
+      '<path d="M0 440V384C100 366 220 390 330 376S460 366 520 372V440Z" fill="#3f9f4a"/>' +
+      peach(250, 396, 1.1) + peach(286, 410, 0.8) + peach(500, 404, 0.9);
+  },
+
+  // A big red bow over a little cottage on a hill of apples and flowers,
+  // polka dots in a pink sky.
+  'Hello Kitty': () => {
+    const red = lin('red', [[0, '#ff6a7a'], [1, '#d01a32']]);
+    const apple = (x, y, s) => '<g transform="translate(' + x + ' ' + y + ') scale(' + s + ')"><path d="M0 -10C-6 -16 -20 -14 -20 2C-20 16 -10 22 0 18C10 22 20 16 20 2C20 -14 6 -16 0 -10Z" fill="' + red + '"/>' +
+      '<path d="M0 -10V-18" stroke="#6a3a1a" stroke-width="2.4"/><path d="M2 -16C8 -24 16 -22 18 -18C12 -14 6 -13 2 -16Z" fill="#5ab04a"/>' +
+      '<ellipse cx="-9" cy="-3" rx="3" ry="5" fill="#fff" opacity=".5"/></g>';
+    const flower = (x, y, c) => '<g fill="' + c + '">' + [0, 72, 144, 216, 288].map(a => {
+      const r = a * Math.PI / 180;
+      return '<circle cx="' + n(x + 6 * Math.sin(r)) + '" cy="' + n(y - 6 * Math.cos(r)) + '" r="4.6"/>';
+    }).join('') + '</g><circle cx="' + x + '" cy="' + y + '" r="3.4" fill="#ffd23c"/>';
+    return tint('#ffd6e4', '#c2366a', 0.5) +
+      scatter(431, 30, (x, y, r) => '<circle cx="' + x + '" cy="' + y + '" r="' + n(4 + r() * 6) + '" fill="#fff" opacity=".35"/>', 120, W, 0, 300) +
+      glow('g', 384, 158, 170, '#fff0f4', 0.85) +
+      '<g transform="translate(384 156)">' +
+        '<path d="M-14 22L-46 92L-26 82L-16 100L-2 30Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M14 22L46 92L26 82L16 100L2 30Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-12 0C-50 -66 -120 -64 -122 -6C-124 54 -54 62 -12 10Z" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
+        '<path d="M12 0C50 -66 120 -64 122 -6C124 54 54 62 12 10Z" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
+        '<path d="M-24 2C-52 -38 -92 -40 -96 -6C-98 26 -60 34 -26 8Z" fill="#a8102a" opacity=".45"/>' +
+        '<path d="M24 2C52 -38 92 -40 96 -6C98 26 60 34 26 8Z" fill="#a8102a" opacity=".45"/>' +
+        '<path d="M-100 -30C-92 -48 -70 -52 -52 -40" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>' +
+        '<path d="M100 -30C92 -48 70 -52 52 -40" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>' +
+        '<ellipse cx="0" cy="4" rx="22" ry="26" fill="' + red + '" stroke="#fff" stroke-width="4"/>' +
+        '<ellipse cx="-6" cy="-6" rx="6" ry="9" fill="#fff" opacity=".45"/></g>' +
+      sparkle(270, 90, 9) + sparkle(500, 250, 8) + sparkle(290, 250, 6) +
+      '<path d="M0 440V340C90 320 190 336 270 346S420 318 520 326V440Z" fill="#a8e08a"/>' +
+      '<g transform="translate(456 300)"><rect x="-34" y="0" width="68" height="56" fill="#fffaf4"/>' +
+        '<path d="M-44 4L0 -36L44 4Z" fill="' + red + '" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>' +
+        '<path d="M-10 56V30A10 10 0 0 1 10 30V56Z" fill="#ffb3c6"/>' +
+        '<path d="M0 -8C-6 -14 -14 -10 -12 -4C-10 2 0 8 0 8S10 2 12 -4C14 -10 6 -14 0 -8Z" fill="#ff8aa8" transform="translate(-18 22) scale(.7)"/>' +
+        '<path d="M0 -8C-6 -14 -14 -10 -12 -4C-10 2 0 8 0 8S10 2 12 -4C14 -10 6 -14 0 -8Z" fill="#ff8aa8" transform="translate(18 22) scale(.7)"/></g>' +
+      '<path d="M0 440V388C110 372 230 392 340 380S470 372 520 378V440Z" fill="#6fc06a"/>' +
+      apple(300, 372, 1) + apple(334, 380, 0.9) + apple(366, 374, 1.05) +
+      flower(250, 404, '#fff') + flower(400, 410, '#ffc2dc') + flower(440, 400, '#fff') + flower(500, 414, '#ffc2dc') + flower(220, 424, '#ffc2dc');
+  },
 };
 
 // ---------- write ----------

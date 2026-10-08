@@ -3587,13 +3587,36 @@ their ids, names and lines) so it explains the same patterns under the same name
 the Enneagram went still opens; its Enneagram is simply left behind.
 
 **Characters come from a catalogue, each with an original emblem.** In the structured layout the
-model chooses the character from `CHARACTER_CATALOGUE` (28 characters across temperaments, in
+model chooses the character from `CHARACTER_CATALOGUE` (29 characters across temperaments, in
 `lib/prompts.js`) rather than naming anyone it likes, so every character has artwork. The artwork
 is an original line emblem drawn for this app (`CHARACTER_EMBLEMS` and `EMBLEM_PATHS` in
 `docs/copy.js`): a generic object the character is associated with, never the studio's character
 art or logo. A report from before the catalogue keeps its emoji. The summary card is one
 1080 × 1920 story, the same on screen and in the export; a report whose content runs long is scaled
 down just enough to fit, rather than clipped.
+
+**The catalogue is balanced: twelve women, twelve men, five who are neither.** It started with seven
+women out of 28, so the closest honest fit for most temperaments was a man by default. The choice is
+still made on temperament, drive and how someone treats people — never on gender, which the prompt
+forbids and the app never knows — so a woman can be Remy, Totoro or Spider-Man and a man can be
+Moana or Hermione; the balance only means each temperament has a close fit on both sides. Each
+character holds a temperament nobody else in the list does:
+
+| Added | Temperament it brings | | Retired | Overlapped with |
+|---|---|---|---|---|
+| Hermione Granger | the diligent, principled over-preparer who has read ahead | | Doctor Strange | Iron Man (brilliant, proud expert) |
+| Kuromi | the mischievous contrarian, tough outside and sentimental inside | | Black Panther | Captain America (principled, duty-bound leader) |
+| Sailor Moon | the big-hearted, emotional, imperfect friend who rises when it counts | | Mario | Po (cheerful, uncomplicated persistent doer) |
+| Princess Peach | the gracious, composed leader and host who keeps everyone steady | | Link | Moana and Hiccup (quiet, brave explorer) |
+| Hello Kitty | the warm, gentle connector who shows care through small kindnesses | | | |
+
+My Melody, Bubbles and Barbie were considered and left out: My Melody and Bubbles overlap Hello
+Kitty and Joy, and Barbie overlaps Judy Hopps and invites a read on looks the prompt rules out.
+Retired characters are no longer offered to the model but keep their scene and emblem
+(`RETIRED_CHARACTERS`), so a card written before they went still draws. The five new scenes follow
+the same rule as the rest — symbols, never likenesses: a spellbook over a castle of lit windows, a
+skull charm on a two-pointed hood under a crescent moon, a heart-shaped brooch over a city and its
+lattice tower, a gem-set crown above a pink-roofed castle, a red bow over a cottage on a hill of apples.
 
 Each signature pattern lists the sections it shows up in; the sections themselves no longer carry a
 "Connects to" row back, and neither plan items nor pressure points name a pattern. There is no digital

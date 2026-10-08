@@ -6112,11 +6112,20 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     String(prompts.CHARACTER_NAMES.length));
   const emblems = globalThis.PsycheCopy.CHARACTER_EMBLEMS;
   check('every catalogue character has an emblem, and no emblem is drawn for anyone else',
-    prompts.CHARACTER_NAMES.every(name => emblems[name] && globalThis.PsycheCopy.EMBLEM_PATHS[emblems[name]]) &&
-    Object.keys(emblems).length === prompts.CHARACTER_NAMES.length &&
+    prompts.CHARACTER_NAMES.concat(prompts.RETIRED_CHARACTERS.map(([name]) => name))
+      .every(name => emblems[name] && globalThis.PsycheCopy.EMBLEM_PATHS[emblems[name]]) &&
+    Object.keys(emblems).length === prompts.CHARACTER_NAMES.length + prompts.RETIRED_CHARACTERS.length &&
     globalThis.PsycheCopy.emblemSvg('Bruce Banner') === '' && /<svg[^>]*viewBox="0 0 48 48"/.test(globalThis.PsycheCopy.emblemSvg('Mulan')));
   check('the emblems are distinct drawings, one per character',
-    new Set(Object.values(emblems)).size === prompts.CHARACTER_NAMES.length);
+    new Set(Object.values(emblems)).size === Object.keys(emblems).length);
+  check('the catalogue is balanced: as many women as men, and a retired character is no longer offered',
+    ['Mulan', 'Elsa', 'Moana', 'Rapunzel', 'Judy Hopps', 'Joy', 'Wonder Woman', 'Hermione Granger', 'Kuromi',
+      'Sailor Moon', 'Princess Peach', 'Hello Kitty'].every(name => prompts.CHARACTER_NAMES.includes(name)) &&
+      prompts.CHARACTER_NAMES.filter(name => ['Simba', 'Nick Wilde', 'Woody', 'Buzz Lightyear', 'Iron Man', 'Captain America',
+        'Spider-Man', 'Hulk', 'Batman', 'Shrek', 'Po', 'Hiccup'].includes(name)).length === 12 &&
+      prompts.CHARACTER_NAMES.length === 29 &&
+      prompts.RETIRED_CHARACTERS.every(([name]) => !prompts.CHARACTER_NAMES.includes(name)),
+    prompts.CHARACTER_NAMES.join(', '));
   check('the sample\'s character is in the catalogue', prompts.CHARACTER_NAMES.includes(sample.essence.character));
   check('the structured card\'s write-up is two sentences on why they are like the character',
     /Exactly two sentences/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
@@ -6905,8 +6914,9 @@ check('the schema requires evidence on strengths and frictions',
   const sandbox = {};
   runInThisContext('(function (window) {' + readFileSync(join(root, 'docs', 'character-art.js'), 'utf8') + '})')(sandbox);
   const art = sandbox.PsycheCharacterArt || {};
-  const missing = prompts.CHARACTER_CATALOGUE.map(([name]) => name).filter(name => !art[name]);
-  check('every catalogue character has a scene', missing.length === 0 && Object.keys(art).length === prompts.CHARACTER_CATALOGUE.length,
+  const drawn = prompts.CHARACTER_CATALOGUE.concat(prompts.RETIRED_CHARACTERS).map(([name]) => name);
+  const missing = drawn.filter(name => !art[name]);
+  check('every catalogue character has a scene, and so does every retired one', missing.length === 0 && Object.keys(art).length === drawn.length,
     missing.join(', '));
   const broken = Object.entries(art).filter(([, svg]) => {
     const ids = [...svg.matchAll(/ id="([^"]+)"/g)].map(m => m[1]);
@@ -6918,7 +6928,7 @@ check('the schema requires evidence on strengths and frictions',
   check('every scene\'s references resolve to its own ids, fade in from the left, and close what it opens',
     broken.length === 0, broken.join(', '));
   check('no scene draws a studio\'s character outright: the art file names no franchise',
-    !/Disney|Pixar|Marvel|Nintendo|DreamWorks|Ghibli|Pok[eé]mon/i.test(JSON.stringify(art)));
+    !/Disney|Pixar|Marvel|Nintendo|DreamWorks|Ghibli|Pok[eé]mon|Sanrio|Harry Potter|Hogwarts|Toei/i.test(JSON.stringify(art)));
 }
 
 // ---------- the front page's gallery of sample cards ----------

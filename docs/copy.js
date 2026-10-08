@@ -1161,6 +1161,11 @@
     leaf: '<path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z" fill="currentColor" fill-opacity=".18"/><path d="M6 42C6 20 20 6 42 6c0 22-14 36-36 36z"/><path d="M6 42L32 16"/><path d="M14 34l-1-8M20 28l-1-9M26 22v-8M14 34l8 1M20 28l9 1M26 22l8 1"/>',
     onion: '<path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z" fill="currentColor" fill-opacity=".18"/><path d="M24 8c-9 9-17 15-17 23a17 13 0 0 0 34 0c0-8-8-14-17-23z"/><path d="M24 14c-5 6-10 11-10 17a10 9 0 0 0 20 0c0-6-5-11-10-17z"/><path d="M24 20c-2 4-4 7-4 11a4 5 0 0 0 8 0c0-4-2-7-4-11z"/><path d="M24 8c0-3 1-5 3-6M24 8c-1-2-3-3-5-3"/><path d="M18 44l-1 2M24 44v2M30 44l1 2"/>',
     bowl: '<path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z" fill="currentColor" fill-opacity=".18"/><path d="M5 24h38c0 11-9 18-19 18S5 35 5 24z"/><path d="M17 42h14"/><path d="M12 24c3-4 6-4 9 0s6 4 9 0 6-4 9 0"/><path d="M30 4l-8 22M36 6l-10 20"/><path d="M12 18c0-3 3-3 3-6M18 18c0-3 3-3 3-6"/>',
+    book: '<path d="M24 13C19 9 11 8 4 10v28c7-2 15-1 20 3 5-4 13-5 20-3V10c-7-2-15-1-20 3z" fill="currentColor" fill-opacity=".18"/><path d="M24 13C19 9 11 8 4 10v28c7-2 15-1 20 3 5-4 13-5 20-3V10c-7-2-15-1-20 3z"/><path d="M24 13v28"/><path d="M9 17c4-1 8 0 11 2M9 23c4-1 8 0 11 2M9 29c4-1 8 0 11 2M28 19c3-2 7-3 11-2M28 25c3-2 7-3 11-2"/><path d="M38 1l1.3 3.2 3.2 1.3-3.2 1.3L38 10l-1.3-3.2-3.2-1.3 3.2-1.3z" fill="currentColor" stroke="none"/>',
+    skull: '<path d="M24 6C14 6 7 13 7 22c0 6 3 10 7 12v7h20v-7c4-2 7-6 7-12 0-9-7-16-17-16z" fill="currentColor" fill-opacity=".18"/><path d="M24 6C14 6 7 13 7 22c0 6 3 10 7 12v7h20v-7c4-2 7-6 7-12 0-9-7-16-17-16z"/><ellipse cx="17" cy="22" rx="4" ry="5" fill="currentColor" stroke="none"/><ellipse cx="31" cy="22" rx="4" ry="5" fill="currentColor" stroke="none"/><path d="M24 28l-2.5 3.5h5z" fill="currentColor" stroke="none"/><path d="M19 41v-5M24 41v-5M29 41v-5"/><path d="M40 8c2 2 3 5 2 8M8 8c-2 2-3 5-2 8"/>',
+    brooch: '<path d="M24 43S5 31 5 18a9.5 9.5 0 0 1 19-4 9.5 9.5 0 0 1 19 4c0 13-19 25-19 25z" fill="currentColor" fill-opacity=".18"/><path d="M24 43S5 31 5 18a9.5 9.5 0 0 1 19-4 9.5 9.5 0 0 1 19 4c0 13-19 25-19 25z"/><path d="M27 16a9 9 0 1 0 5 15 7 7 0 0 1-5-15z" fill="currentColor" stroke="none"/><circle cx="24" cy="10" r="1.6" fill="currentColor" stroke="none"/><circle cx="9" cy="22" r="1.6" fill="currentColor" stroke="none"/><circle cx="39" cy="22" r="1.6" fill="currentColor" stroke="none"/>',
+    peach: '<path d="M24 15c-9-5-20 1-20 13 0 9 8 16 20 16s20-7 20-16c0-12-11-18-20-13z" fill="currentColor" fill-opacity=".18"/><path d="M24 15c-9-5-20 1-20 13 0 9 8 16 20 16s20-7 20-16c0-12-11-18-20-13z"/><path d="M24 15c-3 8-3 19 0 29"/><path d="M24 15c0-4 2-8 5-10"/><path d="M28 9c4-6 11-6 14-3-4 5-10 6-14 3z" fill="currentColor" fill-opacity=".18"/><path d="M28 9c4-6 11-6 14-3-4 5-10 6-14 3z"/>',
+    bow: '<path d="M24 21C17 10 4 9 4 21s13 11 20 0z" fill="currentColor" fill-opacity=".18"/><path d="M24 21C17 10 4 9 4 21s13 11 20 0z"/><path d="M24 21c7-11 20-12 20 0s-13 11-20 0z" fill="currentColor" fill-opacity=".18"/><path d="M24 21c7-11 20-12 20 0s-13 11-20 0z"/><ellipse cx="24" cy="21" rx="4.5" ry="5.5" fill="currentColor" fill-opacity=".45"/><ellipse cx="24" cy="21" rx="4.5" ry="5.5"/><path d="M21 26l-5 15 5-3 2 4 1-15M27 26l5 15-5-3-2 4-1-15"/>',
     flame: '<path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z" fill="currentColor" fill-opacity=".18"/><path d="M24 45c-10 0-15-6-15-14 0-10 9-13 9-24 6 4 11 10 11 16 2-2 3-5 3-8 5 4 7 10 7 16 0 8-5 14-15 14z"/><path d="M24 45c-5 0-7-3-7-7 0-5 4-7 5-12 3 3 6 6 6 10 1-1 2-2 2-4 2 2 3 4 3 6 0 4-3 7-9 7z" fill="currentColor" stroke="none" fill-opacity=".45"/>',
   };
   const CHARACTER_EMBLEMS = {
@@ -1168,10 +1173,13 @@
     'Judy Hopps': 'badge', 'Nick Wilde': 'fox', 'Baymax': 'heart',
     'Woody': 'star', 'Buzz Lightyear': 'rocket', 'WALL-E': 'seedling', 'Remy': 'whisk', 'Joy': 'sun',
     'Iron Man': 'wrench', 'Captain America': 'shield', 'Spider-Man': 'web', 'Hulk': 'mountain',
-    'Black Panther': 'claw', 'Doctor Strange': 'eye',
     'Wonder Woman': 'lasso', 'Batman': 'moon',
-    'Pikachu': 'bolt', 'Mario': 'mushroom', 'Link': 'compass', 'Totoro': 'leaf',
+    'Pikachu': 'bolt', 'Totoro': 'leaf',
     'Shrek': 'onion', 'Po': 'bowl', 'Hiccup': 'flame',
+    'Hermione Granger': 'book', 'Kuromi': 'skull', 'Sailor Moon': 'brooch', 'Princess Peach': 'peach', 'Hello Kitty': 'bow',
+    // Retired from the catalogue (lib/prompts.js, RETIRED_CHARACTERS), kept so
+    // a card written before they were retired still draws its emblem.
+    'Black Panther': 'claw', 'Doctor Strange': 'eye', 'Mario': 'mushroom', 'Link': 'compass',
   };
 
   // A full scene for the card's purple box, for every catalogue character:
