@@ -5310,6 +5310,8 @@
   }
 
   const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together', 'appendix'];
+  // Below this width a full report opens with its parts shut (renderProfile).
+  const PHONE_REPORT = '(max-width: 759px)';
 
   /**
    * One part of the structured report as a single box that opens and shuts:
@@ -6827,6 +6829,12 @@
     }).catch(() => {});
     layoutSideActions();
     collapseSections($('#profile-body'));
+    // A full report on a phone opens with parts 00 to 04 shut, so the reader
+    // sees them all at a glance and opens the one they want; on a wider
+    // screen they all start open.
+    if (explained && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
+      for (const card of $('#profile-body').querySelectorAll('.part-card')) setSectionOpen(card, false);
+    }
     markStructured($('#profile-body'));
 
     // Sits after the action buttons rather than inside the report: it is a

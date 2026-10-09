@@ -10445,6 +10445,22 @@ try {
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
+      // On a phone a full report opens with every part shut; the reader opens
+      // the one they want. (Wider, above, they all start open.)
+      {
+        const wide = sp.viewportSize();
+        await sp.setViewportSize({ width: 390, height: 844 });
+        await seed(true);
+        const states = () => sp.$$eval('#profile-body .part-card', cards => cards.map(c =>
+          c.getAttribute('data-part-card') + ':' + (c.classList.contains('is-collapsed') ? 'shut' : 'open')).join());
+        check('structured, on a phone: a full report opens with parts 00 to 04 shut',
+          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut', await states());
+        await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
+        check('and a tap opens just the part the reader chose',
+          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut', await states());
+        await sp.setViewportSize(wide);
+        await seed(true);
+      }
       const subs = await sp.$$eval('#profile-body .section-card .card-sub', nodes => nodes.map(n => n.textContent));
       // A line under a title only where the title does not already say it.
       check('structured: a short line only under the sections whose title needs one',
