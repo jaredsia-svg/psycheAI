@@ -1977,7 +1977,7 @@ Back.
 **A link already synced is not taken again.** Each past sync stores a fingerprint of the friend's
 card (`with`, from `syncCardKey`: a hash of the card's shape). Opening a friend's link checks it
 (`alreadySynced`). A card synced before is not added to the waiting rows: the reader lands on My
-Syncs (titled **Your Syncs**) with a note, *You have already synced with Jared — it is in your list
+Syncs (titled **Your Syncs**, the same size as My Report's title) with a note, *You have already synced with Jared — it is in your list
 below.* Syncs saved before the fingerprint existed are matched by the friend's name. A different
 friend's link, or the same friend with a new card, still waits as usual.
 
@@ -2102,8 +2102,8 @@ A paid structured report is split into two pages, which are two modes of `#view-
   - Evidence and method
   - Your link
 
-  Once paid, the way into My Report is **See Psyche Report**, one button across the card's three
-  tools (`.cx-open-report`). A free reader has the unlock box under Beyond your card instead. The card
+  Once paid, the way into My Report is **See Psyche Report →**, one button across the card's three
+  tools (`.cx-open-report`), with an arrow on its right (`.cx-open-arrow`) that nudges right on hover. A free reader has the unlock box under Beyond your card instead. The card
   panel and, on a phone, the top of the card's box carry the same light wash as My Syncs' header.
   The panel's purple top line is part of its background rather than a `::before` strip: the panel
   cannot clip (the card's popouts spill out of it), so a strip ran square past its rounded corners.
@@ -2117,17 +2117,18 @@ A paid structured report is split into two pages, which are two modes of `#view-
   own data, and what to do with it.*), and the character's emblem in a gradient disc. The pill reads
   *5 parts · N pages*. N is counted from the real PDF (`reportPdfPages` builds it when the browser is
   idle, counts its pages, and caches the count per report), so until then it reads *5 parts*.
-  The part nav has no title of its own (`.part-nav.is-report`). On a laptop it is the left column,
-  its top level with the header (`--side-nav-top`, measured in `layoutSideActions`). On a phone it
-  is the row of part numbers under the header and sticks just below the site's header. Part heads
+  The part nav has no title of its own and no purple line on top (`.part-nav.is-report`). On a
+  laptop it is the left column, its top level with the header (`--side-nav-top`, measured in
+  `layoutSideActions`). On a phone (under 760px) there is no part nav at all: nothing floats over the
+  report, and the part headings are the way between parts. Part heads
   are smaller than before: the title is 1.15rem, the number about 2rem. Then come Parts 00 to 05. Part 05, the appendix (only the roast
   now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
   row starts with **← Back** (`#report-back`), before Download, and returns to My Psyche.
-- **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) every
-  part starts shut.
+- **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) Part 00
+  starts open and the others shut.
 - **One part at a time on a phone:** opening a part shuts the others and brings its top to the top
-  of the screen, clear of the part nav. A part-nav jump does the same. On a laptop, parts open and
-  shut on their own.
+  of the screen, clear of the site's header. On a laptop, parts open and shut on their own, and a
+  jump from the left column opens the part it lands on.
 - **No sync bar:** My Report never shows the "You + Jared" bar.
 
 The nav shows My Report only once the report is unlocked. The current page is marked the same way
@@ -4049,6 +4050,18 @@ the hook a reader sees before paying, and the paid report is anchored to them (`
 their ids, names and lines) so it explains the same patterns under the same names. A link made before
 the Enneagram went still opens; its Enneagram is simply left behind.
 
+**What is printed on the card is neutral or positive, and never about romance.** The card is shared
+with friends, so the headline, the two sentences on the character (`cardHighlights`) and the
+signature pattern names are phrased neutrally or positively: they name the behaviour, never a
+fault ("The quiet organiser", "Warm in small circles", not "guarded", "avoidant" or "stubborn").
+The honest cost of each pattern still exists, in its `line`, which only the paid report shows, and
+in the paid report's development and pressure sections. No pattern is about romance or dating, in
+its name, line or evidence: how someone is with a partner belongs only in the paid report's
+relationship sections (`attachment`, `idealPartner`, under *How you connect & work*). The rules
+are in both calls' prompts and schema descriptions in `lib/prompts.js` (`STRUCTURED_FREE_SYSTEM`,
+`FREE_PATTERNS`, `STRUCTURED_CARD_HIGHLIGHTS`, `CARD_SCHEMA.headline`, and the paid `patterns`).
+Cards already made keep what they were written with until they are re-run.
+
 **Characters come from a catalogue, each with an original emblem.** In the structured layout the
 model chooses the character from `CHARACTER_CATALOGUE` (29 characters across temperaments, in
 `lib/prompts.js`) rather than naming anyone it likes, so every character has artwork. The artwork
@@ -5441,7 +5454,7 @@ way people say it:
 **The free card is not romantic either.**
 - It carries no attachment style any more: not in `CARD_SCHEMA`, not in the payload (`docs/card.js`
   drops an old link's `a`), and not in *Beyond your card*.
-- Its first column is *With friends*.
+- Its first column is *With connections* (it was *With friends*: the column covers family and colleagues as much as friends, and still says nothing about romance).
 - Love languages are labelled *Receives care as / Shows care as*.
 - The relationship strengths and watch-outs are asked for as being with friends.
 - The full premium report keeps *How you attach* and *Who suits you*.

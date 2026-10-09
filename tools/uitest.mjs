@@ -4073,14 +4073,14 @@ try {
       tentative: panel ? panel.querySelectorAll('.beyond-tag').length : 0,
       saysLink: /your link, for Psyche Sync/.test(text),
       attachment: /attachment/i.test(text),
-      friends: /With friends/i.test(text) && !/In relationships/i.test(text),
+      friends: /With connections/i.test(text) && !/In relationships/i.test(text),
     };
   });
   check('a free report shows "Beyond your card" in three columns, between the card and the unlock box',
     beyond.columns === 3 && beyond.beforeUnlock && beyond.saysLink, JSON.stringify(beyond));
   check('with every line and list the link carries, and the guesses tagged tentative rather than worded so',
     beyond.lines && beyond.lists && beyond.tentative >= 1, JSON.stringify(beyond));
-  check('it is about friends: no attachment style, and "With friends" rather than "In relationships"',
+  check('it is about friends: no attachment style, and "With connections" rather than "In relationships"',
     !beyond.attachment && beyond.friends, JSON.stringify(beyond));
   // "See sample report" at the head of the unlock block: what the unlock buys,
   // to look at first. The same sample the front page opens.
@@ -7209,7 +7209,7 @@ try {
       appUsesCopy: /const Copy = window\.PsycheCopy/.test(app),
       pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
     };
-  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'With friends', 'At work',
+  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'With connections', 'At work',
     'Your digital footprint', 'What your link contains', 'Your matches',
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
@@ -9962,6 +9962,15 @@ try {
   check('the sync page is titled Your Syncs',
     (await page.locator('#scan-title').innerText()) === 'Your Syncs',
     await page.locator('#scan-title').innerText());
+  check('the Your Syncs title is the same size as My Report\'s',
+    await page.evaluate(() => {
+      const probe = document.createElement('h2');
+      probe.className = 'report-hero-title';
+      document.body.appendChild(probe);
+      const same = getComputedStyle(probe).fontSize === getComputedStyle(document.querySelector('#scan-title')).fontSize;
+      probe.remove();
+      return same;
+    }));
   check('the intro is about friends, and nothing romantic or about work',
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
@@ -10536,14 +10545,14 @@ try {
           document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
         await sp.evaluate(() => document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + ' vs ' +
           (document.querySelector('#profile-body .report-hero') || document.body).getBoundingClientRect().top));
-      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "5 parts" in the pill; the left menu has no title',
+      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "5 parts" in the pill; the left menu has no title and no purple line on top',
         await sp.evaluate(() => {
           const hero = document.querySelector('#profile-body .report-hero');
           const nav = document.querySelector('#profile-body .part-nav');
           return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Your Psyche Report' &&
             /^5 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
             !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
-            /linear-gradient/.test(getComputedStyle(nav).backgroundImage);
+            !/linear-gradient/.test(getComputedStyle(nav).backgroundImage) && getComputedStyle(nav, '::before').content === 'none';
         }));
       await sp.waitForFunction(() => /^5 parts · \d+ pages$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
       check('structured: and once counted, the pill gives the PDF\'s pages too', true);
@@ -10578,13 +10587,16 @@ try {
       });
       check('structured: My Psyche has no Download full report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
         hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
-      check('structured: paid, the way into My Report is "See Psyche Report", one button across the card\'s three tools',
+      check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',
         await sp.evaluate(() => {
           const b = document.querySelector('#profile-side .cx-tools #open-report');
           const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
           if (!b || tools.length !== 3) return false;
           const r = b.getBoundingClientRect();
-          return b.textContent === 'See Psyche Report' && r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
+          const arrow = b.querySelector('svg.cx-open-arrow');
+          return b.textContent === 'See Psyche Report' && Boolean(arrow) &&
+            arrow.getBoundingClientRect().left > b.querySelector('span').getBoundingClientRect().right &&
+            r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
       check('structured: Back lands on My Psyche: card, Beyond your card, Evidence and method, then Your link — no "Your full report" box, no parts',
@@ -10602,8 +10614,8 @@ try {
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
-      // On a phone a full report opens with every part shut; the reader opens
-      // the one they want. (Wider, above, they all start open.)
+      // On a phone a full report opens on Part 00 with the rest shut, and no
+      // part nav floats over it. (Wider, above, they all start open.)
       {
         const wide = sp.viewportSize();
         await sp.setViewportSize({ width: 390, height: 844 });
@@ -10613,11 +10625,15 @@ try {
         check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
-        check('structured, on a phone: a full report opens with parts 00 to 05 shut',
-          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
-        check('structured, on a phone: the report\'s header sits above the row of part numbers',
-          await sp.evaluate(() => document.querySelector('#profile-body .report-hero').getBoundingClientRect().bottom <=
-            document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + 1));
+        check('structured, on a phone: a full report opens with Part 00 open and parts 01 to 05 shut',
+          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
+        check('structured, on a phone: no part nav floats over the report; the header leads straight into Part 00',
+          await sp.evaluate(() => {
+            const nav = document.querySelector('#profile-body .part-nav');
+            const first = document.querySelector('#profile-body .part-card');
+            return (!nav || getComputedStyle(nav).display === 'none') &&
+              document.querySelector('#profile-body .report-hero').getBoundingClientRect().bottom <= first.getBoundingClientRect().top + 1;
+          }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
           (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut,appendix:shut', await states());
@@ -10625,7 +10641,7 @@ try {
         await sp.waitForTimeout(900);
         const opened = await sp.evaluate(() => {
           const card = document.querySelector('#profile-body .part-card[data-part-card="drives"]').getBoundingClientRect();
-          const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+          const nav = document.querySelector('.nav').getBoundingClientRect();
           return { top: Math.round(card.top), navBottom: Math.round(nav.bottom) };
         });
         check('opening another shuts the one before, and brings the opened part\'s top to the top of the screen',
@@ -11017,7 +11033,7 @@ try {
 
       // A jump from the nav lands with the part's heading in full view, clear
       // of the site's header and of the nav where it sticks over the page.
-      for (const [label, width] of [['wide', 1440], ['laptop', 1100], ['phone', 390]]) {
+      for (const [label, width] of [['wide', 1440], ['laptop', 1100]]) {
         await sp.setViewportSize({ width, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
         await sp.waitForTimeout(250);
@@ -11061,30 +11077,18 @@ try {
           covered.grey && !covered.same && read.same, JSON.stringify([covered, read]));
         await sp.click('#profile-body .bonus-hide');
       }
-      // On a phone the nav is one thin row of numerals, stuck under the header.
+      // On a phone My Report has no part nav at all: nothing floats over it.
       {
         await sp.setViewportSize({ width: 390, height: 844 });
         await sp.evaluate(() => window.scrollTo(0, 2400));
         await sp.waitForTimeout(300);
-        const thin = await sp.evaluate(() => {
+        const phoneNav = await sp.evaluate(() => {
           const nav = document.querySelector('#profile-body .part-nav');
-          const r = nav.getBoundingClientRect();
-          const header = document.querySelector('.nav').getBoundingClientRect();
-          const items = [...nav.querySelectorAll('.part-nav-item')];
-          const current = nav.querySelector('.part-nav-item.is-current');
-          return { height: Math.round(r.height), stuck: Math.abs(r.top - header.bottom) <= 2,
-            numerals: items.map(i => i.innerText.trim()).join(' '), lead: nav.querySelector('.part-nav-lead').innerText.trim(),
-            current: current ? current.querySelector('.part-nav-label').textContent : '',
-            leadFits: nav.querySelector('.part-nav-lead').getBoundingClientRect().right <= items[0].getBoundingClientRect().left + 1,
-            // The longest name, whole, on a 390px phone.
-            longestFits: (() => { const lead = nav.querySelector('.part-nav-lead'); const was = lead.textContent;
-              lead.textContent = 'How you connect & work'; const fits = lead.scrollWidth <= lead.clientWidth; lead.textContent = was; return fits; })(),
-            oneRow: new Set(items.map(i => Math.round(i.getBoundingClientRect().top))).size === 1,
+          return { hidden: !nav || getComputedStyle(nav).display === 'none',
             spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
         });
-        check('structured: on a phone the nav is a thin bar under the header: the part being read by name, then the numbers',
-          thin.height <= 36 && thin.stuck && thin.numerals === '00 01 02 03 04 05' && thin.lead && thin.lead === thin.current && thin.leadFits && thin.longestFits &&
-            thin.oneRow && thin.spill <= 1, JSON.stringify(thin));
+        check('structured: on a phone My Report has no floating part nav',
+          phoneNav.hidden && phoneNav.spill <= 1, JSON.stringify(phoneNav));
         // The page's two actions — Test compatibility is under the card's tools
         // now — one row across the phone, an icon over a small label each.
         const phoneActions = await sp.evaluate(() => {
@@ -11106,7 +11110,8 @@ try {
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
       // Part 00 is the top of My Report: its nav entry goes to the top of the page.
-      for (const [label, width] of [['wide', 1440], ['phone', 390]]) {
+      // (A phone has no part nav.)
+      for (const [label, width] of [['wide', 1440]]) {
         await sp.setViewportSize({ width, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 3000));
         await sp.waitForTimeout(250);

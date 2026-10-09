@@ -355,7 +355,7 @@
 
     linkContents: 'What your link contains',
     linkContentsFields: ['First name', 'Who you are most like', 'Tagline', 'MBTI', 'Big Five', 'Top motivators',
-      'Patterns', 'Values & beliefs', 'Interests', 'How you show care', 'With friends & at work', 'Rhythm & energy'],
+      'Patterns', 'Values & beliefs', 'Interests', 'How you show care', 'With connections & at work', 'Rhythm & energy'],
 
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
@@ -1117,7 +1117,7 @@
     beyond: {
       title: 'Beyond your card',
       sub: 'A few more things your data says. These also go into your link, for Psyche Sync.',
-      relationships: 'With friends',
+      relationships: 'With connections',
       dayToDay: 'Day to day',
       work: 'At work',
       conflict: 'In conflict',

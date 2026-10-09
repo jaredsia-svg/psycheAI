@@ -1226,9 +1226,10 @@ textarea { resize: vertical; }
   background: var(--accent-soft); color: var(--accent);
   font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
 }
+/* The same size as My Report's title (.report-hero-title). */
 .scan-hero h1 {
   margin: 0 0 .55rem; padding-right: 150px;
-  font-size: clamp(1.8rem, 4.2vw, 2.5rem); line-height: 1.12; letter-spacing: -.02em;
+  font-size: clamp(1.6rem, 3.8vw, 2.2rem); line-height: 1.12; letter-spacing: -.02em;
 }
 .scan-lede { margin: 0; max-width: 36rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.6; }
 .scan-modes { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 0; padding: 0; position: relative; z-index: 1; }
@@ -3383,12 +3384,15 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav-item.is-current .part-nav-num { opacity: .85; }
 [data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }
 
-/* My Report's part nav: a white box under the cards' purple line, with My
-   Syncs' light wash. Its title is the page header above (.report-hero). */
+/* My Report's part nav: a plain white box with My Syncs' light wash and no
+   purple line on top. Its title is the page header above (.report-hero).
+   On a phone there is no nav at all: Part 00 starts open, the others shut
+   under it, and their headings are the way between parts. */
 .part-nav.is-report {
-  background: linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 3px no-repeat,
-    radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .12), transparent 55%),
-    var(--bg-alt);
+  background: radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .12), transparent 55%), var(--bg-alt);
+}
+@media (max-width: 759px) {
+  #profile-body .part-nav.is-report { display: none; }
 }
 /* My Report's header: My Syncs' hero, with the reader's emblem where My
    Syncs has its pair of faces. */
@@ -3683,7 +3687,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (prefers-reduced-motion: reduce) { .psyche-card-expand { animation: none !important; } }
 .cx-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
 /* Paid: the way into My Report, one button across the three tools. */
-.cx-tools .cx-open-report { grid-column: 1 / -1; width: 100%; padding: .6rem 1rem; font-size: .95rem; }
+.cx-tools .cx-open-report { grid-column: 1 / -1; width: 100%; padding: .6rem 1rem; font-size: .95rem;
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
+/* The arrow says it goes to another page; it nudges right on hover. */
+.cx-open-arrow { width: 1.05em; height: 1.05em; flex: none; transition: transform .15s ease; }
+.cx-open-report:hover .cx-open-arrow { transform: translateX(3px); }
 .cx-tool {
   display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0;
   padding: .5rem .55rem .4rem; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt);

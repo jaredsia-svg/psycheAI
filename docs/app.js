@@ -3394,7 +3394,7 @@
     // Only a nav pinned across the top covers the part; one standing down the
     // side (the sample on a laptop) covers nothing.
     const navStyle = getComputedStyle(nav);
-    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
+    if (navStyle.display !== 'none' && navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
     return Math.round(height);
   }
 
@@ -6677,7 +6677,9 @@
           tool('copy', '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>') +
           // Once the report is unlocked: the way into it, across all three.
           (fullReportPage() ? '<button class="btn cx-open-report" type="button" data-nav="full" id="open-report">' +
-            esc(Copy.STRUCTURED.reportPage.open) + '</button>' : '') +
+            '<span>' + esc(Copy.STRUCTURED.reportPage.open) + '</span>' +
+            '<svg class="cx-open-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ' +
+            'stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>' : '') +
         '</div>' +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
@@ -7160,11 +7162,13 @@
     }).catch(() => {});
     layoutSideActions();
     collapseSections($('#profile-body'));
-    // A full report on a phone opens with parts 00 to 04 shut, so the reader
-    // sees them all at a glance and opens the one they want; on a wider
-    // screen they all start open.
+    // A full report on a phone opens on Part 00 with the other parts shut, so
+    // the reader starts reading at once and sees the rest at a glance below
+    // it; on a wider screen they all start open.
     if (reportPage && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
-      for (const card of $('#profile-body').querySelectorAll('.part-card')) setSectionOpen(card, false);
+      for (const card of $('#profile-body').querySelectorAll('.part-card')) {
+        setSectionOpen(card, card.getAttribute('data-part-card') === 'overview');
+      }
     }
     markStructured($('#profile-body'));
 
