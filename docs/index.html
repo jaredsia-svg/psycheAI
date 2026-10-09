@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PsycheAI — free personality test from your Instagram data (MBTI, Big Five, love languages)</title>
-<meta name="description" content="No questionnaire. PsycheAI reads your own Instagram, Google and Facebook data and gives you a free Psyche Card: your MBTI, Big Five, love languages and the character you're most like.">
+<title>PsycheAI — free personality test from your Instagram data</title>
+<meta name="description" content="No questionnaire. PsycheAI reads your own Instagram data for a free Psyche Card: MBTI, Big Five, love languages and the character you're most like.">
 <!-- One address for everything: psycheai.io, whichever host served the page. -->
 <link rel="canonical" href="https://psycheai.io/">
 <meta name="theme-color" content="#7b3fa0">
@@ -194,7 +194,7 @@
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync</h3>
-      <p>Send friends your link and see how in sync you are, and how to be better friends to each other. Free.</p></div>
+      <p>Send friends your link and see how in sync you are, and how to relate better to each other. Free.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -739,7 +739,7 @@
     <p>Each reader has one short personal link, like <code>psycheai.io/c/k7Qm2xPa1Z#…</code>, also
       on their card as a QR code. Send it to a friend and they see your Psyche Card — the same card you
       can post as an image — with a way to make their own. Once they have, one tap shows how in sync
-      the two of you are as friends: a Psyche Sync score and how to be better friends to each other,
+      the two of you are as friends: a Psyche Sync score and how to relate better to each other,
       free. It is about friendship only, never romance. The result stays on their device: you do not
       see it unless they send it to you. It also counts towards a free full report for you: every 3 friends who make a card from your
       link, or 2 who buy the full report, earn one, which you can use or gift to someone. My Psyche
@@ -1241,8 +1241,8 @@
      not an informed one. -->
 <dialog id="review-dialog" class="mode-dialog review-dialog" aria-labelledby="review-dialog-title">
   <h2 id="review-dialog-title">Review what gets sent</h2>
-  <p class="muted">Choose which data gets analysed by Gemini or Claude. None of this data or the
-    results can be accessed by PsycheAI or others.</p>
+  <p class="muted">Choose which data gets analysed by Gemini or Claude. PsycheAI keeps no copy of
+    this data or your report.</p>
   <!-- What is taken out before anything leaves the device. Always shown. -->
   <div class="deid-note">
     <span class="deid-icon" aria-hidden="true">🛡️</span>
@@ -1255,6 +1255,11 @@
        float above the list where it would always be visible regardless of
        scroll position. See reviewSwitch's caller in app.js. -->
   <div class="review-list" id="review-list"></div>
+  <!-- The terms' two conditions, where the reader's data is about to leave:
+       the free path never reaches the payment sheet's own line. -->
+  <p class="fineprint review-legal" id="review-legal">By sending, you confirm you are 18 or over and agree to the
+    <a href="/terms" target="_blank" rel="noopener">terms</a> and
+    <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
   <div class="btn-row">
     <button class="btn btn-ghost" id="review-cancel" type="button">Back</button>
     <button class="btn" id="review-send" type="button">Send this</button>
@@ -1299,6 +1304,7 @@
     <a href="/download-instagram-data">Download your Instagram data</a></p>
   <!-- Filled from /api/status by renderBuild() in app.js: the release number
        only, so a report of a problem can name it. -->
+  <p class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google.</p>
   <p class="footer-version" id="footer-version" hidden></p>
 </footer>
 

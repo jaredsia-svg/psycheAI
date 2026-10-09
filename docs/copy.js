@@ -1002,7 +1002,7 @@
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
       compatTitle: 'Psyche Sync, free',
-      compatBlurb: 'Send a friend your link and see how in sync you are — your Psyche Sync score and how to be a better friend to each other.',
+      compatBlurb: 'Send a friend your link and see how in sync you are — your Psyche Sync score and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.

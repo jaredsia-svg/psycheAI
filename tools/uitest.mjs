@@ -3808,16 +3808,16 @@ try {
     /\d+ names among who you like/.test(reviewText), reviewText.slice(0, 400));
   check('and no longer offers a list of follows it does not send',
     !/followed accounts/.test(reviewText), reviewText.slice(0, 400));
-  check('the review names both providers and says nothing else can access the data',
+  check('the review names both providers and says PsycheAI keeps no copy — not that nobody can access it',
     /Choose which data gets analysed by Gemini or Claude/i.test(reviewText) &&
-    /None of this data or the results can be accessed by PsycheAI or others/i.test(reviewText));
+    /PsycheAI keeps no copy of this data or your report/i.test(reviewText));
   // The claim used to appear twice — once as the subtitle, once again as a
   // fineprint line under the buttons. The second copy is gone now that the
   // subtitle carries it; held as an exact count so it cannot quietly become
   // two again.
   check('the claim appears once, not repeated as a fineprint line under the buttons',
     (reviewText.match(/Choose which data gets analysed/gi) || []).length === 1 &&
-    (await page.locator('#review-dialog .fineprint').count()) === 0,
+    (await page.locator('#review-dialog .fineprint:not(.review-legal)').count()) === 0,
     (reviewText.match(/Choose which data gets analysed/gi) || []).length + ' mentions');
   // A <dialog> shown with showModal() gets `overflow: auto` from the
   // browser's own stylesheet by default. With a scrollable list already
@@ -4005,6 +4005,16 @@ try {
 
   // Send is only ever "send this to the model" here — a first upload is free,
   // so nothing due after it should read as a charge.
+  {
+    const review = await page.locator('#review-dialog').innerText();
+    check('the review sheet asks for 18+ and the terms right above Send, and claims nothing it cannot keep',
+      /By sending, you confirm you are 18 or over and agree to the terms and privacy policy\./.test(review) &&
+        /PsycheAI keeps no copy of this data or your report/.test(review) && !/accessed by PsycheAI or others/.test(review),
+      review.slice(0, 200));
+    check('its rows count in the right number: no "1 comments", no "the 0 hashtags"',
+      !/\b1 (comments|captions|names|topics|hashtags)\b/.test(review) && !/\b0 hashtags\b/.test(review),
+      (review.match(/[^\n]*(comment|hashtag)[^\n]*/g) || []).join(' | '));
+  }
   check('the send button reads plainly when nothing is due next',
     (await page.locator('#review-send').innerText()).trim() === 'Send this');
 
@@ -6275,6 +6285,15 @@ try {
           count('/sample.json') === 1 && count('/sample-cards.json') === 1, JSON.stringify(fetched.filter(p => /sample/.test(p))));
         await fresh.close();
       }
+      const missing = await raw('/no-such-page', { Accept: 'text/html' });
+      const missingAsset = await raw('/no-such-script.js');
+      check('a mistyped address gets the site\'s "Page not found" with a 404; a missing file, a plain 404',
+        missing.status === 404 && /text\/html/.test(missing.headers['content-type']) && /Page not found/.test(missing.body.toString()) &&
+          missingAsset.status === 404 && /text\/plain/.test(missingAsset.headers['content-type']),
+        JSON.stringify({ page: missing.status, type: missing.headers['content-type'], asset: missingAsset.status }));
+      const policy = (await raw('/')).headers['permissions-policy'] || '';
+      check('the permissions policy names only features browsers know, and lets the front page\'s video play itself',
+        !/ambient-light-sensor|battery/.test(policy) && /autoplay=\(self\)/.test(policy), policy);
       const ico = await raw('/favicon.ico');
       check('/favicon.ico is served as an icon',
         ico.status === 200 && ico.headers['content-type'] === 'image/x-icon' && ico.body.length > 1000,

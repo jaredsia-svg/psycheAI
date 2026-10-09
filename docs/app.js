@@ -4008,11 +4008,13 @@
     // and the downloadable summary read their copy from, so the two
     // descriptions of the same seven things cannot quietly drift apart.
     // decisionKey lines up with currentDecision()'s shape by position.
+    // "1 comment", "2 comments": a count with its noun in the right number.
+    const n = (count, one, many) => count + ' ' + (count === 1 ? one : many);
     const rows = [
       ['review-captions', 'includeCaptions', captionsCount + commentsCount,
         'Your captions & comments', 'Your captions & comments — none found',
-        captionsCount + ' captions, ' + commentsCount +
-        ' comments — a sample of your own words. Needed for any read at all.'],
+        n(captionsCount, 'caption', 'captions') + ', ' + n(commentsCount, 'comment', 'comments') +
+        ' — a sample of your own words. Needed for any read at all.'],
       ['review-activity', 'includeActivity', 1,
         'Activity & timing', 'Activity & timing',
         'Post counts, likes, saves and when you tend to be active. Numbers only, no text.'],
@@ -4030,19 +4032,20 @@
       // direction to make it in.
       ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount + likedTagsCount,
         'Posts you liked', 'Posts you liked — none found',
-        likedCaptionsCount + likedTagsCount ? likedCaptionsCount + ' captions from posts you liked in ' +
-          'the last year, and the ' + likedTagsCount + ' hashtags that came up most across all of them — ' +
+        likedCaptionsCount + likedTagsCount ? n(likedCaptionsCount, 'caption', 'captions') + ' from posts you liked in ' +
+          'the last year' + (likedTagsCount ? ', and the ' + n(likedTagsCount, 'hashtag', 'hashtags') +
+          ' that came up most across all of them' : '') + ' — ' +
           'written by other people, kept because what you reach for says something about you.' :
           'This export did not include captions on the posts you liked.'],
       ['review-accounts', 'includeAccounts', engagedCount,
         'Accounts you engage with', 'Accounts you engage with — none found',
-        engagedCount + ' names among who you like, save and comment on most.'],
+        n(engagedCount, 'name', 'names') + ' among who you like, save and comment on most.'],
       ['review-topics', 'includeTopics', topicsCount,
         'Instagram’s own inferred topics', 'Instagram’s own inferred topics — none found',
-        topicsCount + ' topics Instagram has already guessed you are interested in.'],
+        n(topicsCount, 'topic', 'topics') + ' Instagram has already guessed you are interested in.'],
       ['review-dms', 'includeMessages', dmCount,
         'Direct messages', 'Direct messages — none found',
-        dmCount ? dmCount + ' of your own messages sampled out of ' + dmTotal + ' total. Some show a short, ' +
+        dmCount ? dmCount + ' of your own ' + (dmCount === 1 ? 'message' : 'messages') + ' sampled out of ' + dmTotal + ' total. Some show a short, ' +
           'anonymised line of the message they answered; nothing else from the other side is included.' :
           'This export did not include any direct messages to sample.'],
     ];
@@ -4093,8 +4096,8 @@
       rows.push(
         ['review-fb-posts', 'includeFacebookPosts', fbWriting,
           'Facebook posts & comments', 'Facebook posts & comments — none found',
-          fbWriting ? fb.postSample.length + ' posts and ' + fb.commentSample.length +
-            ' comments — a sample of your own words on Facebook.' :
+          fbWriting ? n(fb.postSample.length, 'post', 'posts') + ' and ' + n(fb.commentSample.length, 'comment', 'comments') +
+            ' — a sample of your own words on Facebook.' :
             'No Facebook posts or comments were found in this export.'],
         ['review-fb-connections', 'includeFacebookConnections', fbFriends,
           'Facebook friends & follows', 'Facebook friends & follows — none found',

@@ -5,11 +5,11 @@
       "card": { "name": "Ethan Tan", "confidence": 82, "headline": "Quick-witted helper who shows up first and explains later" },
       "confidence": { "score": 82, "level": "high" },
       "essence": { "character": "Spider-Man", "franchise": "Marvel", "icon": "🕸️" },
-      "cardHighlights": "Like him, you are the one who notices somebody needs a hand and is already there before anyone asks: sixty-odd posts of fixing, lifting and covering shifts for friends, almost none about yourself. The jokes come fastest when the stakes are highest, which keeps the room light and keeps the weight you are carrying out of view.",
+      "cardHighlights": "Like him, you are the one who notices somebody needs a hand and is already there before anyone asks: sixty-odd posts of fixing, lifting and covering shifts for friends. The jokes come fastest when things get tense, which keeps the room light for everyone in it.",
       "patterns": [
         { "id": "p1", "name": "First to help, last to mention it" },
-        { "id": "p2", "name": "Humour as a pressure valve" },
-        { "id": "p3", "name": "Two lives, kept in separate boxes" }
+        { "id": "p2", "name": "Humour that lightens the room" },
+        { "id": "p3", "name": "Gives each circle its own time" }
       ],
       "topMotivators": ["benevolence", "stimulation", "self-direction"],
       "mbti": { "type": "ENFP", "letters": [
@@ -57,7 +57,7 @@
       "card": { "name": "Ryan Walker", "confidence": 79, "headline": "Inventive outsider who wins people over slowly" },
       "confidence": { "score": 79, "level": "high" },
       "essence": { "character": "Hiccup", "franchise": "DreamWorks", "icon": "🔥" },
-      "cardHighlights": "Like him, you solve the problem nobody else thought was a problem, usually by building something: a workshop's worth of half-finished projects and the one that worked. You would rather understand the thing everyone is afraid of than fight it, and the friends you keep are the ones who came round to that.",
+      "cardHighlights": "Like him, you solve the problem nobody else thought was a problem, usually by building something: a workshop's worth of projects, and the one that cracked it. You would rather understand the thing everyone is afraid of than fight it, and the friends you keep are the ones who came round to that.",
       "patterns": [
         { "id": "p1", "name": "Builds the answer" },
         { "id": "p2", "name": "Understands before judging" },
@@ -83,11 +83,11 @@
       "card": { "name": "Hana Sato", "confidence": 88, "headline": "Bright energiser who keeps the mood up on purpose" },
       "confidence": { "score": 88, "level": "high" },
       "essence": { "character": "Joy", "franchise": "Pixar", "icon": "☀️" },
-      "cardHighlights": "Like her, you run the room's mood like a job: birthdays planned weeks out, the group chat kept warm, and four years of posts that are almost all highlights. The resemblance is in the effort it takes — you work hard at bright, and the quieter days are the ones that never get posted.",
+      "cardHighlights": "Like her, you set the mood for everyone around you: birthdays planned weeks out, the group chat kept warm, and four years of posts full of good moments. The resemblance is in the care behind it — you put real effort into making a day bright for the people you love.",
       "patterns": [
         { "id": "p1", "name": "Keeps everyone's spirits up" },
         { "id": "p2", "name": "Plans the fun properly" },
-        { "id": "p3", "name": "Posts the highs, keeps the lows" }
+        { "id": "p3", "name": "Shares the bright moments" }
       ],
       "topMotivators": ["hedonism", "benevolence", "achievement"],
       "mbti": { "type": "ESFJ", "letters": [

@@ -56,25 +56,11 @@ gone: the dialog, its copy, its styles, and the POST route that received the add
 removed rather than left in place unused, because an unauthenticated write endpoint that nothing
 calls is a spam target with no upside.
 
-What remains is the archive. `lib/recipients.js` and `GET /api/recipients` still exist, so addresses
-collected while the gate was up are still readable by whoever runs the box:
-
-```bash
-export PSYCHEAI_ADMIN_TOKEN=...   # unset ⇒ the address list is refused, not open
-npm start
-```
-
-The list lives in `data/recipients.jsonl` — append-only JSON lines, greppable, gitignored — behind a
-bearer token compared in constant time. With no `PSYCHEAI_ADMIN_TOKEN` set the route 404s rather
-than serving openly: a list of real people's contact details answering to anyone who guesses the
-path is worse than no route at all. Nothing new is written to that file, because nothing posts to it
-any more.
-
-**The operator never got a report, and still cannot.** That was never a policy somebody had to
-remember — the report is never passed to the server at all. `recipients.record()` takes an address
-and has no parameter a report could go in, so there is no code path that could write one to the
-store. A check asserts the function's arity for exactly that reason, and injecting a `report` field
-into the stored line fails a check.
+The archive is gone too. `lib/recipients.js`, `GET /api/recipients` and `PSYCHEAI_ADMIN_TOKEN`
+were removed before launch. Nothing had written to `data/recipients.jsonl` since the form went, and
+a store of contact details that the privacy policy does not mention should not exist, even empty.
+The server's disk on Render is wiped on every deploy anyway. `tools/selftest.mjs` checks that the
+module and the route stay gone.
 
 Emailing the report was tried in an earlier version — relaying the PDF through Amazon SES rather
 than downloading it — and pulled back out, since it needs a verified sending domain this project
@@ -697,7 +683,7 @@ its own verification, rather than something the client reveals:
 That still leaves one gap `verifyPaid` alone cannot close: a genuinely successful PaymentIntent
 verifies as successful *every time it is re-presented*, so without something else, one payment would
 buy unlimited free re-generations. `lib/premiumLedger.js` is that something else — a flat, append-only
-JSONL file (same shape as `data/recipients.jsonl` above, same reasoning: no database, survives a
+JSONL file (no database, survives a
 restart, greppable) recording each time a PaymentIntent is actually spent, and capping it at five uses
 per payment. Five rather than one, because a network error after a real, billed model call should not
 strand a reader who paid with nothing to show for it — the cap exists to stop unlimited abuse, not to
@@ -2169,6 +2155,40 @@ is no account. The privacy policy restates what this README says the code does: 
 Gemini or Claude, finished reports are held in memory for four hours (`lib/results.js`), and Upstash
 holds what is listed under "Kept across deploys". **Change the pages when the code changes what it
 keeps.**
+
+**Agreement before anything is sent.** The terms used to be agreed only at payment, and the free path
+never reaches the payment sheet. So the review sheet now says, just above **Send this**, *By sending,
+you confirm you are 18 or over and agree to the terms and privacy policy* (`#review-legal`). Its
+opening line said *None of this data or the results can be accessed by PsycheAI or others*, which
+was not true: Gemini or Claude read the data, and the server holds the finished report in memory for
+four hours. It now says *PsycheAI keeps no copy of this data or your report*. The review rows count
+in the right number too (*1 comment*, *1 hashtag*), and leave out a hashtag clause when there are
+none.
+
+**Not affiliated.** Every page's footer says *PsycheAI is independent and is not affiliated with,
+endorsed or sponsored by Instagram, Meta or Google* (`.footer-note`). The terms' section 7 says the
+same for Facebook and WhatsApp, and that MBTI is The Myers-Briggs Company's trademark.
+
+**Page not found.** An address that names no page gets `docs/404.html` with a 404 status: what to do
+next, a link home, and the contact address. It uses absolute paths throughout so it works at any
+depth, and carries `noindex`. A missing script, image or other file still gets a plain-text 404.
+
+**Smaller launch fixes.**
+- The front page's **sample cards follow the card rule.** Patterns and write-ups are neutral or
+  positive. For example, *Humour that lightens the room* replaces *Humour as a pressure valve*, and
+  *Generous with attention* replaces *Generous with attention, sparing with disclosure*. The premium
+  sample report still names costs, as a real one does. The link preview (`og-card.jpg`) was redrawn
+  from the new sample. `promo/capture.mjs` now hides the full-screen viewer's arrows before its
+  picture, which it does through the DOM because the CSP refuses an injected stylesheet.
+  `docs/media/psycheai-intro.mp4` still shows the old Mulan wording: rebuild it with `npm run promo`.
+- **The front page's video plays by itself in Chrome.** `Permissions-Policy` had `autoplay=()`,
+  added before the video. It made `play()` reject without a tap, so the silent loop never started.
+  It is now `autoplay=(self)`. `ambient-light-sensor` and `battery`, which Chrome does not recognise
+  and warned about on every page, are gone.
+- **Psyche Sync promises one thing everywhere:** *how to relate better to each other*. That covers
+  the front page, the FAQ, the compatibility guide and the free card's blurb.
+- **Search results:** every page title is 60 characters or fewer, and every description 155 or fewer,
+  so neither is cut short.
 
 ## My Psyche and My Report
 

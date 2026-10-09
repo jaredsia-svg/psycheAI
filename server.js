@@ -12,7 +12,6 @@ const path = require('node:path');
 
 const provider = require('./lib/provider');
 const prompts = require('./lib/prompts');
-const recipients = require('./lib/recipients');
 const payments = require('./lib/stripe');
 const paymentLedger = require('./lib/premiumLedger');
 const budget = require('./lib/budget');
@@ -1015,24 +1014,6 @@ async function handleLinkOpen(response, url) {
   sendJson(response, 200, found);
 }
 
-// The address list, for whoever runs this server. Refused outright rather than
-// served openly when no token is configured: a list of addresses that answers
-// to anyone who guesses the path is worse than having no route.
-function handleRecipients(request, response, url) {
-  if (!recipients.configured()) {
-    sendJson(response, 404, { error: 'No such endpoint.' });
-    return;
-  }
-  const header = request.headers['authorization'] || '';
-  const token = header.replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '';
-  if (!recipients.authorised(token)) {
-    sendJson(response, 401, { error: 'Not authorised.' });
-    return;
-  }
-  const rows = recipients.list();
-  sendJson(response, 200, { count: rows.length, recipients: rows });
-}
-
 async function handleCompatibility(request, response) {
   const body = await readJsonBody(request);
   const a = body && body.a;
@@ -1105,7 +1086,10 @@ function serveStatic(requestedPath, request, response) {
   }
   // Compressed where the browser accepts it, and answered with a 304 when its
   // copy is current. See lib/staticfiles.js.
-  staticFiles.send(resolved, type, request, response);
+  // An address that names no page gets the site's own "Page not found",
+  // with a way home; a missing file of any other kind, a plain 404.
+  const pageLike = !path.extname(resolved) || path.extname(resolved).toLowerCase() === '.html';
+  staticFiles.send(resolved, type, request, response, null, pageLike ? path.join(ROOT, '404.html') : null);
 }
 
 // A video is streamed, never read whole, and answers byte ranges: Safari and
@@ -1155,9 +1139,8 @@ function serveMedia(file, type, request, response) {
 // `limit` names a bucket in lib/ratelimit.js; `nonce` says the request must
 // carry a live single-use ticket. The routes listed here are exactly the ones
 // that cost real money to answer: three of them spend model budget, and the
-// fourth creates an object in the Stripe account. /api/status and
-// /api/recipients are absent deliberately — the first is a cacheable fact
-// about the deployment, and the second has a token of its own.
+// fourth creates an object in the Stripe account. /api/status is absent
+// deliberately: it is a cacheable fact about the deployment.
 const API_GUARDS = {
   '/api/nonce': { limit: 'nonce', nonce: false },
   // Rate-limited but not ticketed. A poll is a read that costs nothing to
@@ -1263,7 +1246,8 @@ function applySecurityHeaders(request, response) {
   // question — an injected script under a strict CSP still inherits whatever
   // the page is permitted to touch.
   //
-  // One grant, and a real one: the Payment Request API behind Apple Pay and
+  // Two grants. Autoplay for the site's own page (the front page's silent
+  // video, below). And the Payment Request API behind Apple Pay and
   // Google Pay. The camera was granted too while compatibility codes were
   // scanned in the page; they travel as links now, so it is refused like
   // everything else. `payment` names
@@ -1277,9 +1261,10 @@ function applySecurityHeaders(request, response) {
   // arrives in a future browser version is denied by omission.
   response.setHeader('Permissions-Policy', [
     'accelerometer=()',
-    'ambient-light-sensor=()',
-    'autoplay=()',
-    'battery=()',
+    // The front page's silent video loop starts itself once it is on
+    // screen. autoplay=() refused that in Chrome (play() rejects without a
+    // tap), so it is allowed for this site's own page and nothing else.
+    'autoplay=(self)',
     'camera=()',
     'display-capture=()',
     'encrypted-media=()',
@@ -1393,7 +1378,6 @@ function routeRequest(route, url, request, response) {
           : route === '/api/result' && request.method === 'GET' ? () => handleResult(response, url)
             : route === '/api/analyse' && request.method === 'POST' ? () => handleAnalyse(request, response)
               : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
-                : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
                   : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)
                   : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
                   : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)

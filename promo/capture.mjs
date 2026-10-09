@@ -34,6 +34,13 @@ try {
   await page.click('#insight-card-open');
   await page.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full .pc-shero');
   await page.waitForTimeout(800);
+  // The full-screen view steps between sample cards with arrows over the
+  // card's edges; they belong to the viewer, not the card, so they are hidden
+  // for the picture.
+  // Set through the DOM, since the site's CSP refuses an injected <style>.
+  await page.evaluate(() => document.querySelectorAll('#sample-card-dialog button').forEach(b => {
+    if (!b.closest('#sample-psyche-card-full')) b.style.visibility = 'hidden';
+  }));
   const card = page.locator('#sample-psyche-card-full');
   await card.screenshot({ path: dir + '/assets/card.png' });
   const parts = await card.evaluate((root, targets) => {

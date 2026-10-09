@@ -170,6 +170,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 .view[hidden] { display: none; }
 .footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align: center; color: var(--ink-soft); font-size: .85rem; }
 /* Small and quiet: it is for whoever is reporting a problem, not for every reader. */
+/* Every page: PsycheAI is independent of the platforms it reads exports from. */
+.footer-note { margin: .4rem auto 0; max-width: 40rem; font-size: .72rem; opacity: .8; }
 .footer-version { margin: .35rem 0 0; font-size: .75rem; opacity: .8; }
 .footer-version a { color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 
@@ -4070,6 +4072,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .legal .section-card li { margin: 0 0 .5rem; }
 .legal .section-card p:last-child { margin-bottom: 0; }
 .premium-legal { margin: .8rem 0 0; text-align: center; font-size: .78rem; }
+/* The review sheet's 18+ and terms line, just above Send this. */
+.review-legal { margin: .7rem 0 0; font-size: .78rem; color: var(--ink-soft); }
 
 /* The QR code in the foot of the reader's own card: their one link, so any
    copy of the card leads back to it. Bottom of the card, out of the way of

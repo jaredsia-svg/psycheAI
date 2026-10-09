@@ -5,7 +5,7 @@
 // and validates the prompt schemas against the structured-output rules.
 // The live model call is covered by tools/livetest.mjs, which needs a key.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,9 +56,6 @@ const claude = await import('../lib/claude.js').then(m => m.default);
 process.env.PSYCHEAI_GEMINI_CACHE_TTL = '900';
 const gemini = await import('../lib/gemini.js').then(m => m.default);
 const grok = await import('../lib/grok.js').then(m => m.default);
-process.env.PSYCHEAI_RECIPIENTS_FILE = process.env.PSYCHEAI_RECIPIENTS_FILE ||
-  join(tmpdir(), 'psycheai-selftest-recipients.jsonl');
-const recipients = await import('../lib/recipients.js').then(m => m.default);
 const payments = await import('../lib/stripe.js').then(m => m.default);
 process.env.PSYCHEAI_PAYMENTS_FILE = process.env.PSYCHEAI_PAYMENTS_FILE ||
   join(tmpdir(), 'psycheai-selftest-payments.jsonl');
@@ -77,51 +74,16 @@ for (const engine of [claude, gemini, grok, mock]) {
   check(engine.name + ' names a model', typeof engine.MODEL === 'string' && engine.MODEL.length > 0);
 }
 
-// ---------- the address that is recorded before a download, and who can see it ----------
+// ---------- no address list ----------
 //
-// The report itself is typeset and downloaded entirely in the browser and
-// never reaches this module at all — the only thing that reaches the server
-// is the address, and `recipients.record` takes an address and nothing else.
-{
-  rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
-
-  // Deliberately not RFC 5322: that grammar admits addresses no provider will
-  // accept, and rejecting a valid oddity costs somebody their download.
-  check('a usable address is accepted', recipients.validAddress(' Reader@Example.com ') === 'Reader@Example.com');
-  for (const bad of ['nope', 'a@b', 'a b@c.com', '@example.com', 'a@.com', '']) {
-    check('an unusable address is refused: ' + JSON.stringify(bad), recipients.validAddress(bad) === '');
-  }
-
-  // Storage. The address is written down on purpose; the report is never
-  // passed to this module at all, so there is no code path that could write
-  // one down beside it.
-  recipients.record('Reader@Example.com');
-  recipients.record('reader@example.com');
-  recipients.record('other@example.com');
-  const rows = recipients.list();
-  check('the operator gets every address that asked', rows.length === 2, JSON.stringify(rows));
-  check('addresses are folded to one row with a request count',
-    (rows.find(r => r.email === 'reader@example.com') || {}).requests === 2,
-    JSON.stringify(rows));
-  const stored = readFileSync(process.env.PSYCHEAI_RECIPIENTS_FILE, 'utf8');
-  check('what is on disk is addresses and timestamps, nothing else',
-    stored.split('\n').filter(Boolean).every(line => {
-      const row = JSON.parse(line);
-      return Object.keys(row).sort().join(',') === 'at,email';
-    }), stored.split('\n')[0]);
-  // `record` takes an address and nothing else, so a future edit cannot
-  // casually start storing a report beside it without changing the signature.
-  check('the store has no parameter it could put a report in', recipients.record.length === 1);
-
-  // The admin route is refused outright without a token rather than served
-  // openly: a list of addresses answering to anyone who finds the path is
-  // worse than no route.
-  check('the list is closed when no token is configured', recipients.configured() === false);
-  check('and refuses every token while it is closed',
-    recipients.authorised('') === false && recipients.authorised('anything') === false);
-
-  rmSync(process.env.PSYCHEAI_RECIPIENTS_FILE, { force: true });
-}
+// PsycheAI once asked for an email address before a download and kept a list
+// of them behind an admin route. Nothing has recorded an address since the
+// download moved wholly into the browser, so the list, its module and its
+// route are gone: a store of personal data the privacy policy does not
+// mention should not exist even empty.
+check('there is no address list, and no route to one',
+  !existsSync(join(root, 'lib', 'recipients.js')) &&
+    !/recipients/.test(readFileSync(join(root, 'server.js'), 'utf8')));
 
 check('providers are distinguishable', new Set([claude.name, gemini.name, grok.name, mock.name]).size === 4);
 check('gemini can list models for discovery', typeof gemini.listModels === 'function');
@@ -6834,6 +6796,39 @@ check('the schema requires evidence on strengths and frictions',
         new RegExp('id="' + id + '" role="heading" aria-level="1"').test(bare)));
     check('a favicon.ico is linked, with the SVG icon beside it',
       /<link rel="icon" href="\/favicon\.ico" sizes="any">/.test(index) && /<link rel="icon" type="image\/svg\+xml"/.test(index));
+  }
+  // Launch review: what the pages promise, and how they read in search.
+  {
+    const pages = ['index', 'instagram-personality-test', 'compatibility-test', 'mbti-test-no-questions',
+      'download-instagram-data', 'privacy', 'terms', 'refunds', '404'];
+    const html = Object.fromEntries(pages.map(n => [n, readFileSync(join(root, 'docs', n + '.html'), 'utf8')]));
+    check('every page says PsycheAI is not affiliated with Instagram, Meta or Google',
+      pages.every(n => /class="footer-note">PsycheAI is independent and is not affiliated with, endorsed or sponsored by Instagram, Meta or Google\./.test(html[n])),
+      pages.filter(n => !/footer-note/.test(html[n])).join());
+    check('and the terms say it too, with MBTI\'s owner named',
+      /not affiliated with, endorsed or sponsored by Instagram, Meta, Google, Facebook or WhatsApp/.test(html.terms) &&
+        /MBTI is a trademark of The Myers-Briggs Company/.test(html.terms));
+    const lengths = ['index', 'instagram-personality-test', 'compatibility-test', 'mbti-test-no-questions', 'download-instagram-data']
+      .map(n => [n, /<title>(.*?)<\/title>/.exec(html[n])[1].length, /<meta name="description" content="(.*?)">/.exec(html[n])[1].length]);
+    check('titles fit a search result (60 characters) and descriptions too (155)',
+      lengths.every(([, t, d]) => t <= 60 && d <= 155), JSON.stringify(lengths));
+    check('the review sheet does not claim nobody can access the data, and asks for 18+ and the terms before sending',
+      !/can be accessed by PsycheAI or others/.test(index) && /PsycheAI keeps no copy of\s+this data or your report/.test(index) &&
+        /id="review-legal">By sending, you confirm you are 18 or over and agree to the/.test(index) &&
+        index.indexOf('id="review-legal"') < index.indexOf('id="review-send"'));
+    const everywhere = pages.map(n => html[n]).join('') + readFileSync(join(root, 'docs', 'copy.js'), 'utf8');
+    check('Psyche Sync promises one thing everywhere: how to relate better to each other',
+      !/better friends? to each other/.test(everywhere) && /relate better to each other/.test(index));
+    check('the 404 page links home, is kept out of search, and works at any depth',
+      /<meta name="robots" content="noindex">/.test(html['404']) && /href="\/"/.test(html['404']) &&
+        !/(href|src)="(?!\/|https?:|mailto:|data:|#)/.test(html['404']));
+    // Only what the card prints: the write-up and the pattern names. The
+    // premium sample report may still name a cost, as a real one does.
+    const onCard = r => [r.cardHighlights, (r.card || {}).headline, ...(r.patterns || []).map(p => p.name)].join(' | ');
+    const samples = [JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'))]
+      .concat(JSON.parse(readFileSync(join(root, 'docs', 'sample-cards.json'), 'utf8')).cards).map(onCard).join(' || ');
+    check('the sample cards follow the card\'s own rule: nothing negative in the patterns or the write-up',
+      !/pressure valve|separate boxes|keeps the lows|sparing with disclosure|absorb the cost|weight you are carrying|never get posted/.test(samples));
   }
   // Static files: compressed where the browser accepts it, revalidated by ETag.
   {
