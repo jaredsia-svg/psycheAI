@@ -1940,10 +1940,24 @@ Short links are on when Upstash is configured (`/api/status` → `shortLinks`), 
 `PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
 links keep opening.
 
+## More than one friend's link
+
+Each friend's link is kept for 14 days, however many arrive. The latest is `psycheai_invite`, and
+the welcome page shows its card, with a line naming anyone else waiting ("Mei also sent you their
+card"). The ones before it are in `psycheai_invites_more`, newest first, five at most, one per
+friend. On the reader's own report one bar holds them all:
+- **One friend:** *You + Jared = ?% in sync*, with its button.
+- **More:** *2 friends are waiting to sync with you*, with **Sync with Mei** and **Sync with
+  Jared** buttons.
+
+Each sync spends only its own friend's link, and only once it lands. The free card credits the most
+recent link the reader arrived on.
+
 ## Your link: its numbers, free reports, and gifts
 
-Every report page has a **Your link** card. On a free report it sits under the unlock offer; on a
-full report it comes at the end. It shows three plain counts for the reader's link:
+Every report page has a compact **Your link** card. On a free report it sits right under the
+Psyche Card; on a full report it comes at the end. It shows two counts, cards and paid, and one
+line on what they earn. Opens are still counted for the reader's link, but not shown:
 - *opened it*: each browser's first open of someone's link that day, sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
 - *made a card*: friends' first free cards, `ref:<code>:friends`.

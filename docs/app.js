@@ -123,6 +123,8 @@
     // A free full report someone gifted this reader (?gift=), and the gift
     // links this reader has made for others.
     gift: 'psycheai_gift',
+    // Friends' links opened before the latest one, still waiting to sync.
+    invitesMore: 'psycheai_invites_more',
     gifts: 'psycheai_gifts_made',
   };
 
@@ -1740,20 +1742,20 @@
    */
   function referralCardHtml(paid) {
     const R = TEXT.referral;
-    const stat = (key, icon, label) => '<li class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
-      '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
-    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
-      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🔗</span><div>' +
-        '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
-        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + '</p></div></div>' +
-      '<ul class="referral-stats">' + stat('opens', '👀', R.opens) + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + '</ul>' +
+    // Compact: one line of what it has done, one of what it earns, and the
+    // buttons. Two numbers, cards and paid reports; opens are not shown.
+    const stat = (key, icon, label) => '<span class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
+      '<b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</span>';
+    return '<section class="card section-card referral-card referral-compact screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+      '<div class="referral-top"><h3 class="referral-title"><span aria-hidden="true">🔗</span> ' + esc(R.title) + '</h3>' +
+        '<p class="referral-stats">' + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + '</p></div>' +
       '<p class="referral-progress" aria-live="polite"></p>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
-        '<button class="btn referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
-        '<button class="btn btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
+        '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
+        '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
       '<div class="referral-actions">' +
-        '<button class="btn btn-outline referral-copy" type="button">' + esc(R.copy) + '</button>' +
-        '<button class="btn btn-outline referral-share" type="button">' + esc(R.share) + '</button>' +
+        '<button class="btn btn-sm btn-outline referral-copy" type="button">' + esc(R.copy) + '</button>' +
+        '<button class="btn btn-sm btn-outline referral-share" type="button">' + esc(R.share) + '</button>' +
       '</div>' +
       '<p class="referral-status" role="status" hidden></p>' +
       '<div class="referral-gifts"></div>' +
@@ -1804,7 +1806,7 @@
     if (!status) return;
     const R = TEXT.referral;
     for (const card of cards) {
-      for (const key of ['opens', 'friends', 'paid']) {
+      for (const key of ['friends', 'paid']) {
         const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
         if (n) n.textContent = String(Number(status[key]) || 0);
       }
@@ -6318,7 +6320,8 @@
       // Structured: Evidence and method under the offer (freeMethodCardHtml),
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
-      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml(false) +
+      // Their link right under their card, while the card is all they have.
+      return referralCardHtml(false) + beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
@@ -8946,8 +8949,7 @@
   function adoptComparison(result, other, mode, stance) {
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
-      const waiting = pendingInvite();
-      if (waiting && waiting.payload === syncingInvite) store.remove(KEYS.invite);
+      spendInvite(syncingInvite);
       syncingInvite = null;
       refreshSyncInvite();
     }
@@ -9119,7 +9121,7 @@
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
-    store.write(KEYS.invite, Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null));
+    addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null));
     // A reader who already has a card lands on it, with the sync one tap
     // away; one who does not sees the friend's card and how to make theirs.
     if (state.profile) {
@@ -9145,6 +9147,39 @@
       return null;
     }
     return invite;
+  }
+
+  // More than one friend's link: the latest is the invite (its card is the one
+  // the welcome page shows); the ones before it wait here, newest first, each
+  // for its own fourteen days. Nobody is dropped for having sent theirs first.
+  const MORE_INVITES = 5;
+  function moreInvites() {
+    const list = store.read(KEYS.invitesMore, []);
+    return (Array.isArray(list) ? list : []).filter(i => i && typeof i.payload === 'string' &&
+      Date.now() - Number(i.at) < INVITE_DAYS * 86400000);
+  }
+  /** Every friend whose link is waiting, latest first. */
+  function allInvites() {
+    const first = pendingInvite();
+    return (first ? [first] : []).concat(moreInvites().filter(i => !first || i.payload !== first.payload));
+  }
+  function addInvite(invite) {
+    const before = pendingInvite();
+    // One entry per friend: a newer link from the same person replaces theirs.
+    const others = [before].concat(moreInvites())
+      .filter(i => i && i.payload !== invite.payload && i.name !== invite.name);
+    store.write(KEYS.invite, invite);
+    store.write(KEYS.invitesMore, others.slice(0, MORE_INVITES));
+  }
+  /** One friend's link, synced with: gone, and the next one waiting moves up. */
+  function spendInvite(payload) {
+    const first = pendingInvite();
+    const rest = moreInvites().filter(i => i.payload !== payload);
+    if (first && first.payload === payload) {
+      if (rest.length) store.write(KEYS.invite, rest.shift());
+      else store.remove(KEYS.invite);
+    }
+    store.write(KEYS.invitesMore, rest);
   }
 
   /**
@@ -9212,6 +9247,10 @@
     $('#invite-text').textContent = TEXT.inviteText(name);
     $('#invite-match-title').textContent = TEXT.inviteMatchTitle(name);
     $('#invite-match-text').textContent = TEXT.inviteMatchText;
+    // Other friends' links waiting too: named, so nobody is lost.
+    const others = moreInvites().map(i => firstName(i.name) || i.name).filter(Boolean);
+    $('#invite-also').textContent = others.length ? TEXT.inviteAlso(others) : '';
+    $('#invite-also').hidden = !others.length;
     $('#invite-guide').textContent = TEXT.inviteStart;
     $('#invite-card-hint').textContent = TEXT.inviteCardHint;
     const open = $('#invite-card-open');
@@ -9249,21 +9288,28 @@
   // To the steps for requesting the export, on this same page.
   // On the reader's own report, once they have a card: the friend whose link
   // brought them, and the sync with that friend, run only when they tap it.
+  // One bar however many friends are waiting: for one, "You + Jared = ?% in
+  // sync"; for several, one line naming them and a button for each.
   function refreshSyncInvite() {
     const box = $('#sync-invite');
     if (!box) return;
-    const invite = state.profile ? pendingInvite() : null;
-    box.hidden = !invite;
-    if (!invite) return;
-    const name = firstName(invite.name);
-    $('#sync-invite-title').textContent = TEXT.syncInviteTitle(name);
-    $('#sync-invite-sub').textContent = TEXT.syncInviteSub(name);
-    $('#sync-invite-go').textContent = TEXT.syncInviteGo(name);
+    const invites = state.profile ? allInvites() : [];
+    box.hidden = !invites.length;
+    if (!invites.length) return;
+    const names = invites.map(i => firstName(i.name) || i.name);
+    $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
+    $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany;
+    $('#sync-invite-actions').innerHTML = invites.map((invite, i) =>
+      '<button class="btn' + (i ? ' btn-outline' : '') + ' sync-invite-go" type="button"' + (i ? '' : ' id="sync-invite-go"') +
+        ' data-i="' + i + '">' + esc(invites.length === 1 ? TEXT.syncInviteGo(names[i]) : TEXT.syncInviteGoShort(names[i])) + '</button>').join('');
+    box.classList.toggle('is-many', invites.length > 1);
   }
   // The invite is spent only once the sync has landed (adoptComparison): a
   // sync that fails leaves it, and the banner, for another try.
-  $('#sync-invite-go').addEventListener('click', async () => {
-    const invite = pendingInvite();
+  $('#sync-invite').addEventListener('click', async event => {
+    const button = event.target.closest('.sync-invite-go');
+    if (!button) return;
+    const invite = allInvites()[Number(button.dataset.i) || 0];
     if (!invite || !state.profile) { refreshSyncInvite(); return; }
     syncingInvite = invite.payload;
     if (!(await runMatch(invite.payload))) syncingInvite = null;

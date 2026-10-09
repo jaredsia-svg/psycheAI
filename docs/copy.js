@@ -211,6 +211,13 @@
     syncInviteTitle: (name) => 'You + ' + (name || 'your friend') + ' = ?% in sync',
     syncInviteSub: (name) => 'Your card is ready. See how in sync you are with ' + (name || 'your friend') + ' — free, and only you see it.',
     syncInviteGo: (name) => 'See how in sync you are with ' + (name || 'them'),
+    // Several friends' links waiting at once: one bar, a button for each.
+    syncInviteTitleMany: (names) => names.length + ' friends are waiting to sync with you',
+    syncInviteSubMany: 'Your card is ready. Pick one — each is free, and only you see it.',
+    syncInviteGoShort: (name) => 'Sync with ' + (name || 'them'),
+    inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
+      : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
+      ' — you can sync with everyone once your card is ready.',
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
     // Every share carries the reader's one link (myLinkUrl in app.js): the
     // same link for a bio, an invite and a comparison.
@@ -634,13 +641,10 @@
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
       title: 'Your link',
-      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — use it yourself or gift it.',
-      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — gift it, or use it for a re-run with new data.',
-      opens: 'opened it',
-      cards: 'made a card',
-      paid: 'bought the full report',
-      progress: (cards, perCards, paid, perPaid) => 'Towards your next free full report: ' + cards + ' of ' + perCards +
-        ' cards, or ' + paid + ' of ' + perPaid + ' paid.',
+      cards: 'cards',
+      paid: 'paid',
+      progress: (cards, perCards, paid, perPaid) => perCards + ' cards or ' + perPaid + ' paid = 1 free full report · next: ' +
+        cards + '/' + perCards + ' cards, ' + paid + '/' + perPaid + ' paid',
       ready: n => n === 1 ? '🎉 1 free full report ready' : '🎉 ' + n + ' free full reports ready',
       copy: 'Copy my link',
       copyShort: 'Copy',

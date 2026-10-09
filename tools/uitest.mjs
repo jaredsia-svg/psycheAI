@@ -4034,8 +4034,8 @@ try {
   check('and under it one locked block offering the full report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only "Beyond your card", the invite-friends card and the card that holds the controls',
-    freeState.sections.length === 3 && /beyond-card/.test(freeState.sections[0]) && /referral-card/.test(freeState.sections[1]) &&
+  check('no written section is on the page — only "Your link" right under the card, "Beyond your card" and the card that holds the controls',
+    freeState.sections.length === 3 && /referral-card/.test(freeState.sections[0]) && /beyond-card/.test(freeState.sections[1]) &&
       /confidence-card/.test(freeState.sections[2]),
     JSON.stringify(freeState.sections));
   // "Beyond your card": the card's other lines, between the card and the
@@ -10055,6 +10055,20 @@ try {
     await page.locator('#view-profile').isVisible() &&
       /See how in sync you are with Jordan/.test(await page.locator('#sync-invite').innerText()) &&
       compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
+  // A second friend's link too: both wait, in one bar with a button each,
+  // latest first; neither is lost.
+  const meiPayload = await page.evaluate(card => window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Mei Lin' })),
+    await page.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card)));
+  await page.goto('about:blank');
+  await page.goto('http://localhost:' + PORT + '/#p=' + meiPayload, { waitUntil: 'load' });
+  await page.waitForSelector('#sync-invite.is-many:not([hidden])', { timeout: 30000 });
+  const many = await page.evaluate(() => ({
+    title: document.querySelector('#sync-invite-title').textContent,
+    buttons: [...document.querySelectorAll('#sync-invite .sync-invite-go')].map(b => b.textContent),
+  }));
+  check('two friends\' links wait in one bar, a button for each, latest first',
+    many.title === '2 friends are waiting to sync with you' && many.buttons.join('|') === 'Sync with Mei|Sync with Jordan',
+    JSON.stringify(many));
 
   // The comparison runs for real time with nothing else standing between a
   // reader's back button and losing it — the same risk runPremiumAnalysis's
@@ -10074,7 +10088,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.continue();
   });
-  await page.click('#sync-invite-go');
+  await page.click('#sync-invite .sync-invite-go[data-i="1"]');
   // Free, so the model call — and the unload guard with it — starts on the tap.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
@@ -10088,8 +10102,10 @@ try {
   check('as friends, labelled Psyche Sync',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
     (await page.locator('#report-sub').innerText()).trim() === 'Psyche Sync');
-  check('and the banner is gone once the invite is spent',
-    await page.evaluate(() => localStorage.getItem('psycheai_invite') === null));
+  check('Jordan\'s link is spent once synced, and Mei\'s still waits',
+    await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_invite') || 'null').name === 'Mei Lin' &&
+      JSON.parse(localStorage.getItem('psycheai_invites_more') || '[]').length === 0));
+  await page.evaluate(() => { localStorage.removeItem('psycheai_invite'); });
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });
@@ -10410,7 +10426,12 @@ try {
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: a full report ends on the reader\'s link card, whose free reports re-run or are gifted',
         (await sp.locator('#profile-body .referral-card[data-paid="1"]').count()) === 1 &&
-          /gift it, or use it for a re-run/.test(await sp.locator('#profile-body .referral-card').innerText()));
+          (await sp.locator('#profile-body .referral-card').innerText()).length > 0 &&
+          await sp.evaluate(() => {
+            const body = document.querySelector('#profile-body');
+            const link = body.querySelector('.referral-card');
+            return [...body.children].indexOf(link) === body.children.length - 1;
+          }));
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
       // On a phone a full report opens with every part shut; the reader opens
@@ -11519,10 +11540,10 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your link": opened, cards and paid, and nothing to claim yet',
-        /Your link/.test(card.text) && card.stats === 3 && !card.ready && /opened it/.test(card.text) &&
-          /made a card/.test(card.text) && /bought the full report/.test(card.text) &&
-          /0 of 3 cards, or 0 of 2 paid/.test(card.text), JSON.stringify(card));
+      check('the free report shows a compact "Your link": cards and paid, no opens, and nothing to claim yet',
+        /Your link/.test(card.text) && card.stats === 2 && !card.ready && !/opened/i.test(card.text) &&
+          /0 cards/.test(card.text) && /0 paid/.test(card.text) &&
+          /3 cards or 2 paid = 1 free full report/.test(card.text) && /0\/3 cards, 0\/2 paid/.test(card.text), JSON.stringify(card));
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
       await rp.click('#profile-body .referral-copy');
@@ -11648,13 +11669,14 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
-      const ready = await rp.evaluate(() => ({ text: document.querySelector('#profile-body .referral-card').innerText,
+      const ready = await rp.evaluate(async () => ({ text: document.querySelector('#profile-body .referral-card').innerText,
         cards: document.querySelector('#profile-body .referral-n[data-stat="friends"]').textContent,
-        opens: Number(document.querySelector('#profile-body .referral-n[data-stat="opens"]').textContent) }));
+        opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
       check('with three friends in, the card counts them, says a free full report is ready, and offers to use or gift it',
         ready.cards === '3' && /1 free full report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
         JSON.stringify(ready));
-      check('and counts the friend who opened the link', ready.opens >= 1, JSON.stringify(ready));
+      check('opens are still counted, though the card no longer shows them', ready.opens >= 1, JSON.stringify(ready));
 
       await rp.click('#profile-body .referral-claim');
       await skipPremiumDataOffer(rp);

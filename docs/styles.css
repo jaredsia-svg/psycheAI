@@ -3937,32 +3937,24 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: max(10px, calc(21.5px * var(--pcs))); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
 }
 
-/* Invite three friends, get the full report free (lib/referral.js). */
-.referral-card { margin-top: 1rem; }
-.referral-head { display: flex; gap: .75rem; align-items: flex-start; }
-.referral-icon {
-  flex: none; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 12px;
-  background: var(--accent-soft); font-size: 1.25rem;
-}
-.referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
-.referral-blurb { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--ink-soft); }
-.referral-progress { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; margin: .85rem 0 .8rem; }
-.referral-dots { display: inline-flex; gap: .3rem; }
-.referral-dots i {
-  width: .8rem; height: .8rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  background: transparent;
-}
-.referral-dots i.is-on { background: var(--accent); border-color: var(--accent); }
-.referral-count { font-size: .86rem; font-weight: 700; color: var(--ink); }
+/* "Your link" (lib/referral.js): compact — what it has done, what that earns,
+   and the buttons, in three short lines. */
+.referral-card.referral-compact { margin-top: 1rem; padding: .85rem 1rem .9rem; }
+.referral-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .9rem; }
+.referral-title { margin: 0; font-size: 1rem; }
+.referral-stats { display: flex; gap: .8rem; margin: 0; font-size: .86rem; color: var(--ink-soft); }
+.referral-stat .referral-n { font-size: 1rem; font-weight: 800; color: var(--ink); }
+.referral-progress { margin: .3rem 0 .6rem; font-size: .8rem; color: var(--ink-soft); }
+.referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin: 0 0 .6rem; }
+.referral-ready-row[hidden] { display: none; }
 .referral-ready {
-  font-size: .78rem; font-weight: 700; color: var(--good); background: var(--good-soft);
-  padding: .15rem .55rem; border-radius: 999px;
+  font-size: .8rem; font-weight: 700; color: var(--good); background: var(--good-soft);
+  padding: .2rem .6rem; border-radius: 999px; margin-right: auto;
 }
-.referral-ready[hidden] { display: none; }
-.referral-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-.referral-actions .btn { flex: 1 1 auto; min-width: 8rem; padding: .6rem .9rem; }
-.referral-actions .btn[hidden] { display: none; }
-.referral-status { margin: .6rem 0 0; font-size: .82rem; color: var(--ink-soft); word-break: break-all; }
+.referral-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.referral-card .btn-sm { padding: .42rem .8rem; font-size: .86rem; min-width: 0; }
+.referral-actions .btn { flex: 1 1 auto; }
+.referral-status { margin: .5rem 0 0; font-size: .8rem; color: var(--ink-soft); word-break: break-all; }
 .referral-status[hidden] { display: none; }
 .premium-referral { width: 100%; margin: .2rem 0 .8rem; }
 .premium-referral[hidden] { display: none; }
@@ -4017,23 +4009,13 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (max-width: 640px) {
   .sync-invite { flex-wrap: wrap; }
   .sync-invite .btn { width: 100%; }
+  .sync-invite-actions { flex: 1 1 100%; }
 }
 
-/* "Your link": its numbers, what they have earned, and the gift links made. */
-.referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: .9rem 0 .4rem; padding: 0; list-style: none; }
-.referral-stat {
-  display: grid; justify-items: center; gap: .1rem; padding: .7rem .4rem; border-radius: 14px; text-align: center;
-  background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .78rem; color: var(--ink-soft);
-}
-.referral-stat .referral-n { font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
-.referral-progress { margin: .4rem 0 0; font-size: .86rem; color: var(--ink-soft); }
-.referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin: .8rem 0 0; }
-.referral-ready-row[hidden] { display: none; }
-.referral-ready { font-weight: 800; flex: 1 1 100%; }
-.referral-gifts-head { margin: .9rem 0 .3rem; font-size: .8rem; color: var(--ink-soft); }
+.referral-gifts-head { margin: .7rem 0 .25rem; font-size: .76rem; color: var(--ink-soft); }
 .referral-gift-list { margin: 0; padding: 0; list-style: none; display: grid; gap: .3rem; }
 .referral-gift-list li { display: flex; align-items: center; gap: .5rem; min-width: 0; }
-.referral-gift-list code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+.referral-gift-list code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .76rem; }
 
 /* A free full report someone gifted this reader. */
 .gift-banner {
@@ -4048,3 +4030,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .gift-banner-text { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 .hero > .gift-banner { grid-column: 1 / -1; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
+.sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.sync-invite.is-many { flex-wrap: wrap; }
+.sync-invite.is-many .sync-invite-actions { flex: 1 1 100%; justify-content: flex-start; }
+.invite-banner .invite-also { margin: .7rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent); }
+.invite-banner .invite-also[hidden] { display: none; }
