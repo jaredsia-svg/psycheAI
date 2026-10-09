@@ -371,6 +371,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   border-radius: 10px; font-size: .82rem; font-weight: 500; line-height: 1.5;
 }
 .eyebrow strong { font-weight: 700; }
+.eyebrow a { color: inherit; font-weight: 600; white-space: nowrap; }
 /* Sits right under the dropzone with a small gap, so it reads as attached to
    the dropzone rather than floating in the space before the card's own edge
    below it. */

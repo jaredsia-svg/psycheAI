@@ -2189,6 +2189,13 @@ depth, and carries `noindex`. A missing script, image or other file still gets a
   the front page, the FAQ, the compatibility guide and the free card's blurb.
 - **Search results:** every page title is 60 characters or fewer, and every description 155 or fewer,
   so neither is cut short.
+- **The promise under "Load your data"** now says only what is literally true: *Your Instagram file
+  never leaves your device. Only a de-identified summary, which you check first, is sent to Gemini or
+  Claude to write your card — and PsycheAI keeps no copy of it or your report. No sign-up, no cookies,
+  no trackers or third-party analytics.* It links to the privacy policy. The old version said *No one
+  can see that you visited, let alone what you uploaded*. That was not true: the host sees an IP
+  address, and PsycheAI counts daily totals. It also said the data was *kept on your device*, when the
+  summary is sent.
 
 ## My Psyche and My Report
 

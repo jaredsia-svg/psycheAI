@@ -302,11 +302,16 @@
     <!-- The promise sits at the point of the ask: this is the moment somebody
          is deciding whether to hand over their Instagram history, not the
          moment they arrive on the page. One bar covers both worries: what
-         PsycheAI does with the data once it has it, and whether PsycheAI can
-         see the reader at all. -->
-    <p class="eyebrow"><strong>Your data is kept on your device and is never stored by
-      PsycheAI.</strong> There are no trackers, no cookies and no third-party analytics. No one can see
-      that you visited, let alone what you uploaded.</p>
+         happens to the data, and whether anyone is watching. Every clause is
+         literally true: the export never leaves the browser; what is sent is
+         the reviewed, de-identified digest, to Gemini or Claude; PsycheAI
+         keeps neither it nor the report. It used to say "No one can see that
+         you visited", which was not true — the host sees an IP address, and
+         PsycheAI counts daily totals — so that promise is gone. -->
+    <p class="eyebrow"><strong>Your Instagram file never leaves your device.</strong> Only a de-identified
+      summary, which you check first, is sent to Gemini or Claude to write your card — and PsycheAI keeps
+      no copy of it or your report. No sign-up, no cookies, no trackers or third-party analytics.
+      <a href="/privacy">How your data is handled</a></p>
 
     <div id="upload-error" class="alert" hidden></div>
     <!-- The way back from a failed analysis. It runs the digest already in
