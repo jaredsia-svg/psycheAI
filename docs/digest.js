@@ -80,17 +80,26 @@
     // the reader's actual social life. WhatsApp's three chats get a quarter
     // each instead (waMinShare).
     messageMinShare: 0.04,
-    // The floor a message must clear: two characters. It used to be forty,
-    // which kept "the more considered end" of somebody's writing — and lost
-    // the ordinary voice entirely: "haha ok", "sorry!!", "omw", the emoji,
-    // the tone of a quick reply. Those are now a fifth of every period's
-    // places on purpose (MESSAGE_MIX in sampleConversations), so the floor
-    // only removes what is not a message at all.
-    messageChars: 2,
-    // The ceiling on one message as shown, past which it is clipped. 400:
-    // p90 of a real export was 167 characters and p95 213, so this clips
-    // about 1% of messages and none of them near the start.
-    messageMaxChars: 400,
+    // The floor a message must clear: thirty characters, counted after a
+    // burst is joined ("omg / did you see / the email??" is one message and
+    // passes). Below it only a short message that reveals something — an
+    // apology, a feeling, a question, or the line that opened a conversation
+    // — may take a place, at most a tenth of them (MESSAGE_MIX), and never a
+    // bare "ok" or "haha" (MESSAGE_FILLER). How briefly somebody writes is
+    // still carried whole by averageSentLength.
+    messageChars: 30,
+    // A long message is shown as its opening and its end, " … " between, so
+    // a long apology keeps both its setup and its "anyway, I'm sorry". About
+    // 1–3% of messages run past it (p90 167 characters, p95 213).
+    messageHeadChars: 330,
+    messageTailChars: 150,
+    // Kept for the burst rule and older callers: the most one shown line
+    // runs to, head + " … " + tail.
+    messageMaxChars: 483,
+    // No one conversation's lines may run past this many characters, however
+    // much room is left: one relationship never outweighs the rest of the
+    // evidence. 16,000 in the premium read (DEEP_LIMITS).
+    messageThreadChars: 6000,
     // Past this a message is not used at all: a 1,200-character message is
     // almost always pasted or forwarded — an article, an announcement, a
     // chain message — not something the reader wrote. One carrying a link is
@@ -219,6 +228,11 @@
     // guaranteed a quarter of the places when it has that many.
     waMessages: 200,
     waMinShare: 0.25,
+    // And at most two fifths of them, as a hard ceiling: when two or three
+    // chats are loaded, places a chat cannot use are left empty rather than
+    // handed to the busiest one. (One chat alone is bounded by
+    // messageThreadChars instead.)
+    waMaxShare: 0.40,
     // Derived rather than typed, so the ceiling and the price cannot drift
     // apart. This was hardcoded at 600000, which is 49,516 chars *past* what
     // COST_CAP buys: a digest that actually filled it would have cost $0.5212
@@ -556,6 +570,7 @@
   const DEEP_LIMITS = {
     youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 140,
     fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 600,
+    messageThreadChars: 16000,
     totalChars: DEEP_DIGEST_CHARS, maxListItems: 800, sourceShares: SOURCE_SHARES,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
@@ -944,9 +959,10 @@
   //      square root of how much was written in each, so a two-year chat is
   //      read across two years rather than from its last month.
   //   3. **A mix of lengths.** In every stretch, half the places for
-  //      substantial messages (120+ characters), three tenths for ordinary
-  //      ones and a fifth for short ones — the "haha ok" and "sorry!!" that
-  //      carry tone and that a longest-first rule never reached.
+  //      substantial messages (120+ characters) and two fifths for ordinary
+  //      ones (from the 30-character floor). A tenth at most go to short
+  //      messages that reveal something — "sorry!!", "miss u", "wdym?", the
+  //      line that opened a conversation — never a bare "ok" or "haha".
   //   4. **The revealing ones first.** Inside each length band: openers (the
   //      first message after six hours' quiet — who reaches out), apologies,
   //      feelings and conflict, and questions, before the rest.
@@ -957,7 +973,11 @@
   //      one carrying a link, or one marked forwarded is left out — it is
   //      almost always an article, an announcement or a chain message.
   //      Length counts for at most 280 characters when ranking, so a long
-  //      message does not win on length alone.
+  //      message does not win on length alone, and one past the shown length
+  //      keeps its opening and its end.
+  //   8. **A ceiling per conversation**, in characters (`threadChars`), that
+  //      holds however much room is left — and for WhatsApp a hard ceiling
+  //      on places too (`maxShare`), so one chat cannot dominate.
   //   7. **What it answered.** About `contextShare` of the lines — the ones
   //      where it matters most — open with the message they replied to,
   //      «them: …», shortened and de-identified where it was read (ownSide in
@@ -970,7 +990,10 @@
   const MESSAGE_SHORT = 25;
   const MESSAGE_LONG = 120;
   const MESSAGE_LENGTH_CREDIT = 280;
-  const MESSAGE_MIX = [50, 30, 20]; // long, medium, short
+  // long (120+), ordinary (the floor to 119), short and revealing (under the floor)
+  const MESSAGE_MIX = [50, 40, 10];
+  // Short messages that say nothing whatever their place in a conversation.
+  const MESSAGE_FILLER = /^(ok|okay|k|kk|haha|hehe|lol|lmao|omw|yes|yeah|ya|yup|no|nope|sure|hmm|cool|nice|thanks|thx|ty)$/;
   const OPENER_SECONDS = 6 * 3600;
   const APOLOGY = /\b(sorry|soz|apologi[sz]e|my bad|forgive me|i was wrong)\b/i;
   const FEELING = /\b(love|loved|miss(?:ed)? you|hate|angry|mad at|upset|sad|hurt|worried|worry|anxious|scared|afraid|stressed|lonely|proud|grateful|thankful|disappoint\w*|frustrat\w*|annoy\w*|jealous|cry|crying|cried|happy|excited|feel|feeling|felt|sick of|tired of|overwhelm\w*|argu\w*|fight|fought)\b/i;
@@ -994,8 +1017,11 @@
   }
 
   function sampleConversations(items, opts) {
-    const maxChars = opts.maxChars || LIMITS.messageMaxChars;
+    const head = opts.headChars || LIMITS.messageHeadChars;
+    const tail = opts.tailChars || LIMITS.messageTailChars;
+    const maxChars = head + 3 + tail;
     const floor = opts.minChars || LIMITS.messageChars;
+    const threadChars = opts.threadChars === undefined ? LIMITS.messageThreadChars : opts.threadChars;
     const pasteChars = opts.pasteChars || LIMITS.messagePasteChars;
     const linkChars = opts.linkChars || LIMITS.messageLinkChars;
     const burst = opts.burstSeconds === undefined ? LIMITS.messageBurstSeconds : opts.burstSeconds;
@@ -1047,8 +1073,11 @@
         // reader's own writing.
         if (m.len > pasteChars || FORWARDED.test(m.raw) || (HAS_LINK.test(m.raw) && m.len > linkChars)) { stats.pasted++; continue; }
         const text = m.raw.replace(/\s*\b(?:https?:\/\/|www\.)\S+/gi, ' ').replace(/\s{2,}/g, ' ').trim();
-        if (text.length < floor) continue;
         const norm = normaliseMessage(text) || text;
+        const opener = m.gap !== undefined && (m.gap === null || m.gap >= OPENER_SECONDS);
+        // Under the floor, only a short message that reveals something.
+        if (text.length < floor && (MESSAGE_FILLER.test(norm) ||
+          !(opener || APOLOGY.test(text) || FEELING.test(text) || text.includes('?')))) continue;
         if (norm.length < MESSAGE_SHORT) {
           if (seenShort.has(norm)) continue;
           seenShort.add(norm);
@@ -1056,11 +1085,13 @@
           if (seenLong.has(norm)) continue;
           seenLong.add(norm);
         }
-        const shown = text.length > maxChars ? text.slice(0, maxChars) + '…' : text;
+        // A long one keeps its opening and its end.
+        const shown = text.length > maxChars && root.PsycheInstagram && root.PsycheInstagram.keepEnds
+          ? root.PsycheInstagram.keepEnds(text, head, tail)
+          : text.length > maxChars ? text.slice(0, head).trimEnd() + ' … ' + text.slice(-tail).trimStart() : text;
         const unit = {
           ts: m.ts, year: m.ts ? yearOf(m.ts) : '', text: shown, len: text.length, ctx: m.ctx,
-          opener: m.gap !== undefined && (m.gap === null || m.gap >= OPENER_SECONDS),
-          hash: stableHash(shown),
+          opener, hash: stableHash(shown),
         };
         unit.score = messageScore(unit);
         kept.push(unit);
@@ -1080,14 +1111,18 @@
     const sizes = top.map(([, list]) => list.length);
     const pool = sizes.reduce((sum, n) => sum + n, 0);
     const total = Math.min(opts.limit, pool);
-    const cap = pool <= opts.limit ? total
+    // WhatsApp's ceiling is hard: with two or three chats none takes more
+    // than maxShare, even when places are left over.
+    const hard = Boolean(opts.maxShare) && sizes.length > 1;
+    const cap = hard ? Math.floor(total * opts.maxShare)
+      : pool <= opts.limit ? total
       : Math.max(Math.ceil(total / sizes.length), Math.floor(total * (opts.threadCap || 1)));
     // The guaranteed minimum first, then the rest by volume.
     const least = sizes.map(n => Math.min(n, cap, Math.floor(total * (opts.minShare || 0))));
     // The cap is on the whole quota, so this call gets what is left of it; and
     // allocatePlaces lets it yield when smaller conversations run dry.
     const rest = allocatePlaces(sizes, total - least.reduce((a, b) => a + b, 0), cap - Math.max(...least),
-      sizes.map((n, i) => n - least[i]));
+      sizes.map((n, i) => (hard ? Math.min(n, cap) : n) - least[i]), hard);
     const quota = least.map((n, i) => n + rest[i]);
 
     const picked = [];
@@ -1109,8 +1144,8 @@
         if (room <= 0) return;
         const bands = [
           period.filter(m => m.len >= MESSAGE_LONG),
-          period.filter(m => m.len >= MESSAGE_SHORT && m.len < MESSAGE_LONG),
-          period.filter(m => m.len < MESSAGE_SHORT),
+          period.filter(m => m.len >= floor && m.len < MESSAGE_LONG),
+          period.filter(m => m.len < floor),
         ];
         const perBand = allocatePlaces(MESSAGE_MIX, room, room, bands.map(b => b.length));
         bands.forEach((band, b) => {
@@ -1119,7 +1154,19 @@
             x.hash - y.hash).slice(0, perBand[b]).forEach(m => chosen.add(m));
         });
       });
-      for (const m of list) if (chosen.has(m)) picked.push(Object.assign(m, { rank, key }));
+      // The conversation's ceiling in characters, as its lines will be
+      // written (tags and «them: …» included, roughly): thinned evenly
+      // through time until it fits.
+      let mine = list.filter(m => chosen.has(m));
+      const cost = m => m.text.length + (m.ctx ? m.ctx.length + 10 : 0) + 12;
+      let chars = mine.reduce((sum, m) => sum + cost(m), 0);
+      while (threadChars > 0 && chars > threadChars && mine.length > 1) {
+        const per = chars / mine.length;
+        mine = dropEvenly(mine, Math.min(mine.length - 1, Math.max(1, Math.ceil((chars - threadChars) / per))));
+        chars = mine.reduce((sum, m) => sum + cost(m), 0);
+        stats.threadCapped = (stats.threadCapped || 0) + 1;
+      }
+      for (const m of mine) picked.push(Object.assign(m, { rank, key }));
     });
 
     // What it answered, for the lines where that matters most.
@@ -1152,7 +1199,7 @@
    * last few places evenly. Deterministic beats fair for a handful of places,
    * because the result cache keys on the digest.
    */
-  function allocatePlaces(sizes, total, cap, capacities) {
+  function allocatePlaces(sizes, total, cap, capacities, hard) {
     // Weight and capacity are the same number for conversations — a thread's
     // share is its size and it cannot give more than it holds — but not for
     // years, where the share is damped and the capacity is not. Passed apart
@@ -1203,7 +1250,9 @@
     // not better, than a sample that reflects how lopsided their archive
     // actually is. So the cap yields: whatever is left is handed out again
     // with the ceiling lifted.
-    if (left > 0) fill(Infinity);
+    // A hard cap (WhatsApp chats) does not yield: spare places stay unused
+    // rather than going to the chat that already has the most.
+    if (left > 0 && !hard) fill(Infinity);
     return quota;
   }
 
@@ -1898,7 +1947,8 @@
         }),
         ownMessageSample: sampleConversations(chats.flatMap(c => (c.ownMessages || []).map(m =>
           Object.assign({}, m && typeof m === 'object' ? m : { text: m }, { thread: c.chat }))), {
-          limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, label: key => key, alwaysTag: true, stats: waStats,
+          limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, maxShare: LIMITS.waMaxShare,
+          label: key => key, alwaysTag: true, stats: waStats,
         }),
       };
       digest.coverage.sampling.whatsappMessages = {

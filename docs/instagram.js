@@ -772,5 +772,25 @@
     return signals;
   }
 
-  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide };
+  /**
+   * A long message kept as its opening and its end, " … " between — the
+   * shape digest.js shows it in (messageHeadChars / messageTailChars) — so a
+   * source that has to hold messages short (WhatsApp, Messenger) never loses
+   * the end of a long one, where its point often is.
+   */
+  function keepEnds(text, head, tail) {
+    const h = head || 330;
+    const t = tail || 150;
+    if (text.length <= h + 3 + t) return text;
+    // At word boundaries, when one is near: "augu … ther" reads as damage.
+    let start = text.slice(0, h);
+    const cut = start.search(/\s\S*$/);
+    if (cut > h - 40) start = start.slice(0, cut);
+    let end = text.slice(-t);
+    const from = end.search(/\s/);
+    if (from >= 0 && from < 40) end = end.slice(from + 1);
+    return start.trimEnd() + ' … ' + end.trimStart();
+  }
+
+  root.PsycheInstagram = { readExports, fixText, routeOf, LIMITS, ownSide, keepEnds };
 })(typeof window !== 'undefined' ? window : globalThis);

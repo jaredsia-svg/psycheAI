@@ -3851,7 +3851,9 @@ check('the sample arrives in chronological order',
 //
 // One conversation, two years long, with every kind of message in it: the
 // sample is spread across its whole span, mixes long, ordinary and short
-// messages, and prefers the revealing ones within each length.
+// revealing messages, and prefers the revealing ones within each length.
+// The conversation's character ceiling is lifted here (threadChars: 0) so
+// these rules are what is measured; the ceiling has checks of its own below.
 {
   const DAY = 86400;
   const now = Math.floor(Date.parse('2026-06-01T00:00:00Z') / 1000);
@@ -3861,30 +3863,28 @@ check('the sample arrives in chronological order',
     // Every day: one long, one ordinary and one short message, hours apart.
     ownTexts.push({ text: 'L' + i + ' ' + 'a thought that runs on for a while about the week and what it meant '.repeat(2), ts, thread: 0, gap: 3600, prevMine: false });
     ownTexts.push({ text: 'M' + i + ' sounds good, see you at the usual place', ts: ts + 3 * 3600, thread: 0, gap: 3600, prevMine: false });
-    ownTexts.push({ text: 'S' + i + ' ok', ts: ts + 6 * 3600, thread: 0, gap: 3600, prevMine: false });
+    ownTexts.push({ text: 'S' + i + ' sorry!!', ts: ts + 6 * 3600, thread: 0, gap: 3600, prevMine: false });
+    ownTexts.push({ text: 'ok', ts: ts + 7 * 3600, thread: 0, gap: 3600, prevMine: false });
   }
-  // A handful of revealing messages, otherwise ordinary.
   ownTexts.push({ text: 'MSORRY sorry about last night, i was wrong', ts: now - 400 * DAY + 100, thread: 0, gap: 3600, prevMine: false });
-  const built = Digest.build({ ...signals, messages: { total: 3000, threads: 1, groupThreads: 0, sent: 2191, received: 800, avgSentLength: 60, ownTexts } },
-    { includeMessages: true, maxChars: 1e7 });
-  const sample = built.directMessages.ownMessageSample;
+  const run = () => Digest.sampleConversations(ownTexts, { limit: 270, threadChars: 0 });
+  const sample = run();
   const body = line => line.replace(/^(\[[^\]]+\] )+/, '');
-  const days = sample.map(line => Number(/^[LMS](\d+) /.exec(body(line)) ? /^[LMS](\d+) /.exec(body(line))[1] : -1)).filter(d => d >= 0);
+  const days = sample.map(line => (/^[LMS](\d+) /.exec(body(line)) || [])[1]).filter(Boolean).map(Number);
   const kind = k => sample.filter(line => body(line).startsWith(k)).length;
-  check('one conversation on its own fills the whole sample, untagged',
-    sample.length === Digest.LIMITS.messages && sample.every(line => !/\[t\d+\]/.test(line)), String(sample.length));
+  check('one conversation fills the places it is given, untagged',
+    sample.length === 270 && sample.every(line => !/\[t\d+\]/.test(line)), String(sample.length));
   check('spread across the whole span: every quarter of the two years is in it',
     [0, 1, 2, 3].every(q => days.some(d => d >= q * 182 && d < (q + 1) * 182)) &&
       days.filter(d => d >= 547).length < sample.length * 0.4,
     JSON.stringify([0, 1, 2, 3].map(q => days.filter(d => d >= q * 182 && d < (q + 1) * 182).length)));
-  check('a mix of lengths: about half long, three tenths ordinary, a fifth short',
-    Math.abs(kind('L') / sample.length - 0.5) < 0.08 && Math.abs((kind('M')) / sample.length - 0.3) < 0.08 &&
-      Math.abs(kind('S') / sample.length - 0.2) < 0.08, JSON.stringify({ L: kind('L'), M: kind('M'), S: kind('S') }));
+  check('a mix of lengths: about half long, two fifths ordinary, a tenth short and revealing — and no bare "ok"',
+    Math.abs(kind('L') / sample.length - 0.5) < 0.08 && Math.abs(kind('M') / sample.length - 0.4) < 0.08 &&
+      Math.abs(kind('S') / sample.length - 0.1) < 0.05 && !sample.some(line => body(line) === 'ok'),
+    JSON.stringify({ L: kind('L'), M: kind('M'), S: kind('S') }));
   check('and the revealing message is chosen over the ordinary ones around it',
     sample.some(line => /MSORRY/.test(line)));
-  check('the draw is deterministic',
-    JSON.stringify(Digest.build({ ...signals, messages: { total: 3000, threads: 1, groupThreads: 0, sent: 2191, received: 800, avgSentLength: 60, ownTexts } },
-      { includeMessages: true, maxChars: 1e7 }).directMessages.ownMessageSample) === JSON.stringify(sample));
+  check('the draw is deterministic', JSON.stringify(run()) === JSON.stringify(sample));
 }
 
 // ---------- bursts, duplicates, pasted text, and what it answered ----------
@@ -3895,31 +3895,33 @@ check('the sample arrives in chronological order',
     { text: 'omg', ts: t, thread: 0, gap: 7200, prevMine: false },
     { text: 'did you see', ts: t + 20, thread: 0, gap: 20, prevMine: true },
     { text: 'the email??', ts: t + 50, thread: 0, gap: 30, prevMine: true },
-    { text: 'later', ts: t + 4000, thread: 0, gap: 3950, prevMine: true },
+    { text: 'later, heading to the shops now for a bit', ts: t + 4000, thread: 0, gap: 3950, prevMine: true },
   ], { limit: 10 });
-  check('lines sent in one quick burst are one message, joined with " / "',
+  check('lines sent in one quick burst are one message, joined with " / ", and then clear the floor',
     burst.some(line => /omg \/ did you see \/ the email\?\?/.test(line)) && burst.length === 2, JSON.stringify(burst));
   const noBurst = S([
-    { text: 'omg', ts: t, thread: 0, gap: 7200, prevMine: false },
-    { text: 'did you see', ts: t + 20, thread: 0, gap: 10, prevMine: false },
+    { text: 'omg did you see what happened today', ts: t, thread: 0, gap: 7200, prevMine: false },
+    { text: 'the whole office was talking about it', ts: t + 20, thread: 0, gap: 10, prevMine: false },
   ], { limit: 10 });
   check('but not across a reply from the other side', noBurst.length === 2, JSON.stringify(noBurst));
-  const dupes = S(['ok', 'Ok!', 'okkkk', 'OK', 'fine'].map((text, i) => ({ text, ts: t + i * 9999, thread: 0 })), { limit: 10 });
+  const dupes = S(['sorry!!', 'Sorry!', 'sorryyy', 'SORRY', 'miss you'].map((text, i) => ({ text, ts: t + i * 9999, thread: 0, gap: 600 })), { limit: 10 });
   check('near-identical short messages are one per conversation', dupes.length === 2, JSON.stringify(dupes));
   const pasted = S([
     { text: 'a long article pasted in. ' + 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(30), ts: t, thread: 0 },
     { text: 'read this https://news.example.com/x ' + 'and the summary goes on and on about the piece. '.repeat(8), ts: t + 9999, thread: 0 },
     { text: 'Forwarded many times: send this to ten friends', ts: t + 19999, thread: 0 },
-    { text: 'my own long message ' + 'with something to say about it all. '.repeat(20), ts: t + 29999, thread: 0 },
+    { text: 'my own long message ' + 'with something to say about it all. '.repeat(19) + 'anyway, I am sorry.', ts: t + 29999, thread: 0 },
   ], { limit: 10 });
   check('pasted, forwarded and link-heavy long messages are left out',
     pasted.length === 1 && /my own long message/.test(pasted[0]), JSON.stringify(pasted.map(x => x.slice(0, 40))));
-  check('and a long message of their own is clipped at the ceiling, 400 characters',
-    Digest.LIMITS.messageMaxChars === 400 && Digest.LIMITS.messagePasteChars === 1200 &&
-      pasted[0].replace(/^\[\d{4}\] /, '').length === 400 + 1 && pasted[0].endsWith('…'), String(pasted[0].length));
+  const shown = (pasted[0] || '').replace(/^\[\d{4}\] /, '');
+  check('and a long message of their own keeps its opening and its end, " … " between',
+    Digest.LIMITS.messagePasteChars === 1200 && /^my own long message/.test(shown) && shown.includes(' … ') &&
+      shown.endsWith('anyway, I am sorry.') && shown.length <= Digest.LIMITS.messageHeadChars + 3 + Digest.LIMITS.messageTailChars,
+    shown.length + ' ' + shown.slice(-60));
   const replies = [];
   for (let i = 0; i < 100; i++) {
-    replies.push({ text: 'reply number ' + i + ' with a few words in it', ts: t + i * 99999, thread: 0, gap: 600, prevMine: false,
+    replies.push({ text: 'reply number ' + i + ' with a few more words in it', ts: t + i * 99999, thread: 0, gap: 600, prevMine: false,
       ctx: i % 2 ? 'are you free on day ' + i + '?' : 'just saw this ' + i });
   }
   const answered = S(replies, { limit: 40 });
@@ -3929,63 +3931,70 @@ check('the sample arrives in chronological order',
     JSON.stringify(quoted.slice(0, 3)));
 }
 
-// ---------- WhatsApp: per chat, a quarter each at least ----------
+// ---------- a long message keeps its opening and its end ----------
+//
+// WhatsApp and Messenger hold messages short as they read them; they hold
+// them in this shape, so the end of a long one — often its point — survives.
+{
+  const long = 'i have been thinking about what you said and ' + 'there is a lot more to say about how it went. '.repeat(14) + 'anyway, i am sorry and i want to fix it.';
+  const kept = IG.keepEnds(long);
+  check('a long message is kept as its opening and its end, cut at word boundaries',
+    kept.startsWith('i have been thinking') && kept.endsWith('anyway, i am sorry and i want to fix it.') &&
+      / \S+ … \S+ /.test(kept) && !/\S…|…\S/.test(kept) && kept.length <= 483 && IG.keepEnds('short one') === 'short one',
+    kept.length + ' ' + kept.slice(320, 360));
+}
+
+// ---------- a ceiling per conversation, in characters ----------
+{
+  const t = 1700000000;
+  const one = Array.from({ length: 3000 }, (_, i) => ({ text: 'a message of an ordinary length about the plans, number ' + i, ts: t + i * 7200, thread: 0 }));
+  const lines = Digest.sampleConversations(one, { limit: 270 });
+  const chars = lines.reduce((sum, line) => sum + line.length, 0);
+  check('one conversation never runs past its character ceiling, however many places are free',
+    Digest.LIMITS.messageThreadChars === 6000 && chars <= 6000 && lines.length < 270 && lines.length > 60,
+    lines.length + ' lines, ' + chars + ' chars');
+  // The fifth-of-the-sample cap still yields when the other conversations
+  // run dry — a lopsided archive is read as lopsided — but only up to the
+  // big conversation's own character ceiling.
+  const lopsided = one.concat(
+    Array.from({ length: 10 }, (_, i) => ({ text: 'a small conversation message, number ' + i, ts: t + i * 7200 + 1, thread: 1 })),
+    Array.from({ length: 10 }, (_, i) => ({ text: 'another small conversation, message ' + i, ts: t + i * 7200 + 2, thread: 2 })));
+  const mixed = Digest.sampleConversations(lopsided, { limit: 270, topThreads: 10, threadCap: 0.2 });
+  const big = mixed.filter(line => line.includes('[t1] '));
+  check('a dominant conversation may pass a fifth of the sample when the others run dry, but not its character ceiling',
+    big.length > 270 * 0.2 && big.reduce((sum, line) => sum + line.length, 0) <= 6000 &&
+      mixed.filter(line => /\[t[23]\] /.test(line)).length === 20,
+    big.length + ' of ' + mixed.length);
+}
+
+// ---------- WhatsApp: per chat, between a quarter and two fifths each ----------
 {
   const t = 1780000000;
   const chat = (name, n) => ({ chat: name, kind: 'one-to-one', members: 2, span: {}, counts: { messages: n * 2, sentByUser: n, receivedByUser: n },
-    ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with words', ts: t + i * 5000, gap: 4000, prevMine: false })) });
-  const digest = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000), chat('c2', 300), chat('c3', 80)] } } },
-    { includeMessages: false, maxChars: 1e7 });
-  const lines = digest.whatsapp.ownMessageSample;
-  const per = ['c1', 'c2', 'c3'].map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
-  check('WhatsApp: sampled per chat, every line tagged with its chat, a quarter of the places at least for each',
-    lines.length === Digest.LIMITS.waMessages && per.every(n => n >= Math.floor(Digest.LIMITS.waMessages * 0.25)) && per[0] > per[1],
-    JSON.stringify(per));
-}
-
-// ---------- the cap yields rather than starving the sample ----------
-//
-// One large conversation and two small ones. Held strictly to a fifth each the
-// sample would come back with 120 of its 300 places filled and a thousand
-// eligible messages unused, which is a worse sample than an honestly lopsided
-// one. The cap balances where there is something to balance and gets out of
-// the way where there is not.
-{
-  const DAY = 86400;
-  const now = Math.floor(Date.parse('2026-06-01T00:00:00Z') / 1000);
-  const ownTexts = [];
-  for (let i = 0; i < 1000; i++) {
-    ownTexts.push({ text: 'BIG' + i + ' ' + 'b'.repeat(40), ts: now - i * DAY, thread: 0 });
-  }
-  for (let k = 1; k <= 2; k++) {
-    for (let i = 0; i < 10; i++) {
-      ownTexts.push({ text: 'S' + k + '_' + i + ' ' + 's'.repeat(40), ts: now - i * DAY - k, thread: k });
-    }
-  }
-  const built = Digest.build({
-    ...signals,
-    messages: {
-      total: 2040, threads: 3, groupThreads: 0, sent: 1020, received: 1020,
-      avgSentLength: 45, ownTexts,
-    },
-  }, { includeMessages: true });
-  const sample = built.directMessages.ownMessageSample;
-  const big = sample.filter(line => /\[t1\] BIG/.test(line)).length;
-  check('a lopsided archive still fills every place it can',
-    sample.length === Digest.LIMITS.messages, String(sample.length));
-  check('and the small conversations are drained rather than padded',
-    sample.filter(line => /\[t[23]\] S/.test(line)).length === 20,
-    String(sample.filter(line => /\[t[23]\] S/.test(line)).length));
-  check('so the dominant conversation is allowed past the cap to fill the rest',
-    big === Digest.LIMITS.messages - 20, String(big));
+    ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with enough words to clear it', ts: t + i * 5000, gap: 4000, prevMine: false })) });
+  const build = chats => Digest.build({ ...signals, supplements: { whatsapp: { chats } } }, { includeMessages: false, maxChars: 1e7 }).whatsapp.ownMessageSample;
+  const per = (lines, names) => names.map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
+  const three = build([chat('c1', 5000), chat('c2', 300), chat('c3', 80)]);
+  const p3 = per(three, ['c1', 'c2', 'c3']);
+  const L = Digest.LIMITS.waMessages;
+  check('WhatsApp: sampled per chat, tagged by chat, each between a quarter and two fifths of the places',
+    p3.every(n => n >= Math.floor(L * 0.25) && n <= Math.floor(L * 0.4)) && Digest.LIMITS.waMaxShare === 0.4,
+    JSON.stringify(p3));
+  const two = build([chat('c1', 5000), chat('c2', 5000)]);
+  const p2 = per(two, ['c1', 'c2']);
+  check('WhatsApp: with two chats the ceiling still holds, and the spare places stay empty',
+    p2.every(n => n <= Math.floor(L * 0.4)) && two.length <= Math.floor(L * 0.8), JSON.stringify(p2));
+  const alone = build([chat('c1', 5000)]);
+  check('WhatsApp: one chat alone is held by its character ceiling instead',
+    alone.reduce((sum, line) => sum + line.length, 0) <= Digest.LIMITS.messageThreadChars && alone.length > 50,
+    alone.length + ' lines');
 }
 
 // ---------- the floor on a message ----------
 //
-// Two characters. It was forty, which kept the considered end of somebody's
-// writing and lost their ordinary voice; short messages now have a fifth of
-// every period's places on purpose, and the floor only removes what is not a
-// message at all.
+// Thirty characters, after bursts are joined. Under it only a short message
+// that reveals something — an apology, a feeling, a question, an opener —
+// and never a bare "ok".
 {
   const short = Digest.build({
     ...signals,
@@ -3995,14 +4004,16 @@ check('the sample arrives in chronological order',
         { text: 'k', ts: 1700000000 },
         { text: 'Handsum', ts: 1700000400 },
         { text: 'Hahahaha wtf', ts: 1700000800 },
-        { text: 'this one is comfortably long and then some more besides', ts: 1700001200 },
+        { text: 'you ok?', ts: 1700001600 },
+        { text: 'sorry about that', ts: 1700002400 },
+        { text: 'this one is comfortably long and then some more besides', ts: 1700003200 },
       ],
     },
   }, { includeMessages: true });
   const text = short.directMessages.ownMessageSample.join(' | ');
-  check('short messages now take places too; only a single character does not',
-    /Handsum/.test(text) && /Hahahaha wtf/.test(text) && /comfortably long/.test(text) && !/(^|\| )k$/.test(text) &&
-      Digest.LIMITS.messageChars === 2, text);
+  check('under thirty characters only a revealing message takes a place',
+    Digest.LIMITS.messageChars === 30 && !/Handsum|Hahahaha|(^|\| )(\[\d{4}\] )?k$/.test(text) &&
+      /you ok\?/.test(text) && /sorry about that/.test(text) && /comfortably long/.test(text), text);
   check('the fact that somebody writes briefly is still carried, in the average',
     short.directMessages.averageSentLength === 12, String(short.directMessages.averageSentLength));
   const shortCaps = Digest.build({
@@ -4419,7 +4430,10 @@ const heavyWithDms = Digest.build({
   messages: {
     total: 9000, threads: 120, groupThreads: 8, sent: 5000, received: 4000,
     avgSentLength: 90,
-    ownTexts: Array.from({ length: 5000 }, (_, i) => 'A message of a fairly ordinary length, number ' + i),
+    // Threaded and dated, as instagram.js sends them: a real archive spreads
+    // over many conversations, each held to its own character ceiling.
+    ownTexts: Array.from({ length: 5000 }, (_, i) => ({ text: 'A message of a fairly ordinary length, number ' + i,
+      ts: 1600000000 + i * 3600, thread: i % 12 })),
   },
 }, { includeMessages: true });
 
@@ -4486,8 +4500,8 @@ const heavyMessagesSignals = {
   ...signals,
   messages: {
     total: 5000, threads: 40, groupThreads: 2, sent: 2500, received: 2500, avgSentLength: 42,
-    ownTexts: manyMessages(2500, i =>
-      'A real message with actual content in it, long enough to clear the floor, number ' + i + '.'),
+    ownTexts: manyMessages(2500, i => ({ text: 'A real message with actual content in it, long enough to clear the floor, number ' + i + '.',
+      ts: 1600000000 + i * 3600, thread: i % 12 })),
   },
 };
 const heavyMessages = Digest.build(heavyMessagesSignals, { includeMessages: true });
@@ -5063,7 +5077,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     likedCaptions: Array.from({ length: 900 }, (_, i) => long('Liked', i)),
     messages: {
       total: 30000, threads: 400, groupThreads: 20, sent: 15000, received: 15000, avgSentLength: 300,
-      ownTexts: Array.from({ length: 15000 }, (_, i) => long('Message', i)),
+      ownTexts: Array.from({ length: 15000 }, (_, i) => ({ text: long('Message', i), ts: 1500000000 + i * 3600, thread: i % 40 })),
     },
     supplements: {
       google: {
@@ -5140,9 +5154,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   {
     const ig = {
       ...heavySignals(),
-      messages: { total: 9000, threads: 3, groupThreads: 0, sent: 5000, received: 4000, avgSentLength: 90,
+      messages: { total: 9000, threads: 10, groupThreads: 0, sent: 5000, received: 4000, avgSentLength: 90,
         ownTexts: Array.from({ length: 3000 }, (_, i) => ({ text: 'A message of a fairly ordinary length about the plan, number ' + i,
-          ts: 1600000000 + i * 3600, thread: i % 3 })) },
+          ts: 1600000000 + i * 3600, thread: i % 10 })) },
     };
     const capped = Digest.build(ig, { includeMessages: true });
     const filled = buildFilled(ig, { includeMessages: true, fill: true });

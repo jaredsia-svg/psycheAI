@@ -557,7 +557,7 @@
           .map(p => trimText(p && p.name, 80)).filter(Boolean);
         for (const own of root.PsycheInstagram.ownSide(list, out.owner, { blankOwnText: true, otherNames: participants.filter(n => n !== out.owner) })) {
           if (out.ownMessages.length >= LIMITS.commentBuffer) break;
-          out.ownMessages.push(Object.assign(own, { thread, len: own.text.length, text: own.text.slice(0, LIMITS.textChars) }));
+          out.ownMessages.push(Object.assign(own, { thread, len: own.text.length, text: root.PsycheInstagram.keepEnds(own.text) }));
         }
       }
       out.kinds.messages = true;

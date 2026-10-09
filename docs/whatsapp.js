@@ -45,9 +45,10 @@
     // Own messages kept per chat for sampling, the most recent; the digest
     // samples again.
     ownPerChat: 4000,
-    // Held longer than digest.js shows (400), so it can tell a long pasted or
-    // forwarded message from one the reader wrote; `len` keeps the full length.
-    textChars: 600,
+    // A long message is held as its opening and its end (keepEnds in
+    // instagram.js), the shape digest.js shows; `len` keeps the full length,
+    // so a pasted or forwarded one can still be told apart.
+    textChars: 483,
     fileBytes: 60 * 1024 * 1024,
     // A new conversation, for "who starts it", after this much quiet.
     newConversationHours: 6,
@@ -269,7 +270,7 @@
         // The reader's own messages, each with what it answered (ownSide).
         const own = ownSide(messages.map(m => ({ sender: m.sender, text: m.text.replace(/\s+/g, ' ').trim(), ts: Math.floor(m.t / 1000) })),
           owner, { blankOwnText: true, otherNames: others, extra: m => ({ len: m.text.length }) })
-          .map(o => Object.assign(o, { text: (blank ? o.text.replace(blank, 'someone') : o.text).slice(0, LIMITS.textChars) }));
+          .map(o => Object.assign(o, { text: root.PsycheInstagram.keepEnds(blank ? o.text.replace(blank, 'someone') : o.text) }));
         const iso = ms => (Number.isFinite(ms) && ms > 0 ? new Date(ms).toISOString().slice(0, 10) : null);
         return {
           chat: 'c' + (index + 1),
