@@ -1476,7 +1476,7 @@ the first.
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
-| `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the compatibility call alone: `MINIMAL` (default), `LOW`, `MEDIUM` or `HIGH`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
+| `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the Psyche Sync call alone: `LOW`, `MEDIUM` or `HIGH`. Unset, it follows `PSYCHEAI_GEMINI_THINKING` (`MEDIUM`). The current model refuses `MINIMAL`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
 | `PSYCHEAI_REPORT_LAYOUT` | `structured` (default) or `classic`. Which report the unlock writes and the page and PDF draw — see [The structured report](#the-structured-report-four-parts-one-thread). Set `classic` to go back to the previous format with no deploy: the prompt, the schema, the page and the PDF all switch together. An unrecognised value is logged and treated as `structured`. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
@@ -1527,20 +1527,20 @@ changes the level with no deploy; measure a change with `npm run compare` first.
 Compatibility is free to the reader, so its call is held small on all three counts that bill it
 (`lib/gemini.js`, `analyseCompatibility`):
 
-- **Its own output cap, 2,500 tokens** (`COMPAT_MAX_OUTPUT_TOKENS`). It used to inherit the full
-  report's 18,000, so a call that thought for long could bill about 7¢. The answer is about 1,000
-  tokens at its longest.
-- **`MINIMAL` thinking** (`PSYCHEAI_COMPAT_THINKING`). It reasons over two short cards and facts
-  already worked out (`derivedFacts`), not a digest; at `MEDIUM` the thinking was about 2,500 tokens,
-  two thirds of the cost.
+- **Its own output cap, 8,000 tokens** (`COMPAT_MAX_OUTPUT_TOKENS`), the free card's. It used to
+  inherit the full report's 18,000, so a call that thought for long could bill about 7¢. The answer
+  is about 1,000 tokens at its longest, and the thinking about 2,500 more.
+- **The card's thinking level, `MEDIUM`** (`PSYCHEAI_COMPAT_THINKING` to change it). It was `MINIMAL`
+  for a while, to save that thinking, but the current Gemini model refuses `MINIMAL` and every sync
+  failed with a 400. So a sync costs about 1.5–2¢ again.
 - **A shorter system prompt**, 4,830 characters from 9,826, every rule kept. It is under Gemini's
   caching floor, so it is billed in full on every call.
 
 At $0.75 / $3.75 per million tokens: input about 2,700–3,400 tokens (prompt, the 3k-character answer
 schema, two cards and the derived facts) is about 0.2–0.26¢; output about 800–1,100 tokens is about
-0.3–0.4¢. So **about 0.5–0.65¢ a compatibility**, and **at most about 1.2¢** with both cards at every
-length limit and the output at its cap — down from about 2¢ typical and 7¢ worst. A repeat of the same
-pair on the same basis is answered from memory and costs nothing; a different basis is a new call.
+0.3–0.4¢ for the answer, plus about 2,500 thinking tokens at `MEDIUM`, about 0.9¢. So **about 1.5–2¢
+a sync**, and **at most about 3.2¢** with both cards at every length limit and the output at its cap.
+A repeat of the same pair is answered from memory and costs nothing.
 These are estimates from sizes; `npm run usage` has the real figures once there is traffic, and if it
 shows compatibility calls ending on `MAX_TOKENS`, raise the cap.
 

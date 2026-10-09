@@ -14,6 +14,8 @@
   const TEXT = Copy.TEXT;
   // "Jared", from "Jared Tan": a friend is named by first name on their link.
   const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
+  // The friend's link a sync was started from, until it lands (adoptComparison).
+  let syncingInvite = null;
   const TRAIT_LABELS = Copy.TRAIT_LABELS;
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
@@ -8942,6 +8944,13 @@
    * did inline.
    */
   function adoptComparison(result, other, mode, stance) {
+    // The friend's link that brought this sync, now used.
+    if (syncingInvite) {
+      const waiting = pendingInvite();
+      if (waiting && waiting.payload === syncingInvite) store.remove(KEYS.invite);
+      syncingInvite = null;
+      refreshSyncInvite();
+    }
     clearPending();
     clearJob();
     const basis = mode || result.data.mode;
@@ -9251,16 +9260,13 @@
     $('#sync-invite-sub').textContent = TEXT.syncInviteSub(name);
     $('#sync-invite-go').textContent = TEXT.syncInviteGo(name);
   }
+  // The invite is spent only once the sync has landed (adoptComparison): a
+  // sync that fails leaves it, and the banner, for another try.
   $('#sync-invite-go').addEventListener('click', async () => {
     const invite = pendingInvite();
     if (!invite || !state.profile) { refreshSyncInvite(); return; }
-    // Spent once the sync starts; a failure leaves it for another try.
-    store.remove(KEYS.invite);
-    refreshSyncInvite();
-    if (!(await runMatch(invite.payload))) {
-      store.write(KEYS.invite, invite);
-      refreshSyncInvite();
-    }
+    syncingInvite = invite.payload;
+    if (!(await runMatch(invite.payload))) syncingInvite = null;
   });
 
   $('#invite-guide').addEventListener('click', () => {

@@ -1761,6 +1761,18 @@ try {
         waiting.profile && waiting.kept && waiting.reports === 0 &&
           /You \+ Ava = \?% in sync/.test(waiting.text) && /See how in sync you are with Ava/.test(waiting.text),
         JSON.stringify(waiting));
+      // A sync that fails keeps the friend's link, and the banner, for another try.
+      await invitePage.route('**/api/compatibility', route => route.fulfill({ status: 400, contentType: 'application/json',
+        body: JSON.stringify({ error: 'Gemini API error: the model refused this.' }) }));
+      await invitePage.click('#sync-invite-go');
+      await invitePage.waitForSelector('#view-scan:not([hidden])', { timeout: 30000 });
+      await invitePage.unroute('**/api/compatibility');
+      await invitePage.click('[data-nav="profile"]');
+      await invitePage.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+      check('a sync that fails says why, and leaves the friend\'s link and its banner for another try',
+        await invitePage.evaluate(() => /refused/.test(document.querySelector('#scan-alert').textContent) &&
+          localStorage.getItem('psycheai_invite') !== null && !document.querySelector('#sync-invite').hidden &&
+          document.querySelector('#welcome, #view-welcome').hidden));
       await invitePage.click('#sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
       const synced = await invitePage.evaluate(() => ({
