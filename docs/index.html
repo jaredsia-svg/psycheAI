@@ -362,12 +362,11 @@
     <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
     <button class="btn gift-banner-go" type="button"></button>
   </div>
-  <!-- Parked here; renderProfile moves it under the unlock offer, or under
-       Open My Report once paid. Its one button goes to My Syncs, where the
-       reader picks who to sync with. -->
+  <!-- At the top of My Psyche while a friend's link waits. Its one button
+       goes to My Syncs, where the reader picks who to sync with. -->
   <div id="sync-invite-home">
   <div class="sync-invite no-print" id="sync-invite" hidden>
-    <span class="sync-invite-ring" aria-hidden="true">?</span>
+    <span class="sync-invite-ring" id="sync-invite-count" aria-hidden="true">?</span>
     <div class="sync-invite-text">
       <p class="sync-invite-title" id="sync-invite-title"></p>
       <p class="sync-invite-sub" id="sync-invite-sub"></p>
@@ -389,7 +388,10 @@
     <h2 class="visually-hidden" id="psyche-card-title"></h2>
     <button class="psyche-card-slot" id="psyche-card-open" type="button"
             aria-label="Open your psyche card full screen">
-      <div class="psyche-card-frame"><div class="psyche-card" id="psyche-card"></div></div>
+      <div class="psyche-card-frame"><div class="psyche-card" id="psyche-card"></div>
+        <!-- On a phone: a faded expand mark in the card's corner says a tap
+             opens it full screen (styles.css, .psyche-card-expand). -->
+        <span class="psyche-card-expand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></span></div>
       <span class="psyche-card-hint" id="psyche-card-hint"></span>
     </button>
   </section>

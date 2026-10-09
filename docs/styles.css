@@ -1309,7 +1309,7 @@ textarea { resize: vertical; }
 .scan-action-icon-2 { background: linear-gradient(135deg, var(--accent-2), #f08c6c); box-shadow: 0 6px 16px rgba(209, 71, 122, .22); }
 .scan-action-icon svg { width: 17px; height: 17px; }
 /* Syncs list: a friend waiting to sync, a row like a past sync with Sync at its end. */
-.card .match-waiting { margin-bottom: .55rem; }
+.scan-waiting-card { margin-bottom: 1rem; }
 .match-row.is-waiting { border-style: dashed; background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg)); }
 .match-row.is-waiting:hover { transform: none; box-shadow: none; }
 .match-row.is-waiting .btn { flex: none; min-width: 5.5rem; }
@@ -3635,18 +3635,24 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-home-hint .cx-hint-tap, .cx-home-hint .cx-hint-phone { display: none; }
 @media (hover: none) { .cx-home-hint .cx-hint-tap { display: inline; } .cx-home-hint .cx-hint-hover { display: none; } }
 /* On a phone the card opens full screen first, and is explained there. */
-/* On a phone the hint gives way to a button that does it. */
-.cx-open-full { display: none; }
+/* On a phone the hint gives way to a faded expand mark in the card's own
+   corner: a tap anywhere on the card opens it full screen. It breathes twice
+   on arrival, then rests. */
+.psyche-card-expand { display: none; }
 @media (max-width: 719px) {
   .cx-home-hint { display: none !important; }
-  .cx-open-full {
-    display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%;
-    padding: .7rem .8rem; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-    background: var(--accent-soft); font: inherit; font-size: .9rem; font-weight: 700; color: var(--accent); cursor: pointer;
+  #view-profile.profile-structured .psyche-card-frame { position: relative; }
+  #view-profile.profile-structured .psyche-card-expand {
+    display: grid; place-items: center; position: absolute; right: 16px; bottom: 30px; z-index: 2;
+    width: 30px; height: 30px; border-radius: 50%; pointer-events: none;
+    color: var(--accent); background: color-mix(in srgb, var(--bg) 78%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent), 0 4px 12px rgba(60, 20, 90, .18);
+    backdrop-filter: blur(4px); opacity: .85; animation: card-expand-breathe 1.6s ease-in-out .6s 2;
   }
-  .cx-open-full svg { width: 18px; height: 18px; flex: none; }
-  .cx-open-full:active { transform: translateY(1px); }
+  .psyche-card-expand svg { width: 15px; height: 15px; }
 }
+@keyframes card-expand-breathe { 50% { transform: scale(1.15); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .psyche-card-expand { animation: none !important; } }
 .cx-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
 .cx-tool {
   display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0;
@@ -3738,7 +3744,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   .cx-home-title { order: 1; margin: 0; text-align: center; }
   .cx-home-intro { display: none; }
   .cx-home-hint { order: 3; justify-content: center; text-align: left; }
-  .cx-open-full { order: 3; }
   .cx-tools { order: 4; }
   .cx-stage { order: 5; }
 }
@@ -4087,7 +4092,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hero > .gift-banner { grid-column: 1 / -1; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
 .sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
-.sync-invite-slot .sync-invite { margin: 1rem 0; }
 .sync-invite-actions .btn { min-width: 7rem; }
 /* My Syncs: the friends whose links are waiting, a Sync button each. */
 .scan-waiting { margin-bottom: 1rem; }

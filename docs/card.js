@@ -56,7 +56,7 @@
       // Values & Beliefs, one list, as on the card.
       values: 3,
       loveReceiving: 2,
-      loveGiving: 1,
+      loveGiving: 2,
       relationshipStrengths: 2,
       relationshipWeaknesses: 2,
       careerStrengths: 2,

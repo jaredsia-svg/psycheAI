@@ -208,16 +208,17 @@
     inviteCardHint: 'Tap to explore',
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
-    syncInviteTitle: (name) => 'You + ' + (name || 'your friend') + ' = ?% in sync',
-    syncInviteSub: (name) => 'See how in sync you are with ' + (name || 'your friend') + ' — free, and only you see it.',
+    syncInviteTitle: () => 'You have a friend waiting to sync with you',
+    syncInviteSub: (name) => (name || 'A friend') + ' sent you their link. See how in sync you are — free, and only you see it.',
     syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
     syncInviteOpen: 'Sync',
-    syncWaitingMeta: 'Waiting to sync · free, only you see it',
+    syncWaitingMeta: 'Sent you their link · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
-    syncInviteTitleMany: (names) => names.length + ' friends are waiting to sync with you',
-    syncInviteSubMany: 'Pick who to sync with on My Syncs — each is free, and only you see it.',
+    syncInviteTitleMany: () => 'You have friends waiting to sync with you',
+    syncInviteSubMany: (names) => names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] +
+      ' sent you their links. Pick who to sync with — each is free, and only you see it.',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
       ' — you can sync with everyone once your card is ready.',
@@ -810,8 +811,9 @@
     // are listed.
     scanTitle: 'Psyche Sync',
     scanHistory: 'My Syncs',
-    // The list on My Syncs: friends waiting to sync, then past syncs.
-    syncsList: 'Syncs list',
+    // My Syncs: friends waiting to sync, then past syncs.
+    syncsWaiting: 'Waiting to sync with you',
+    syncsList: 'Sync Results',
   };
 
   // ---------- the structured report layout ----------
@@ -1052,9 +1054,6 @@
         introPaid: 'Open My Report for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
-        // On a phone the card is too small to explain in place: this button,
-        // under it, opens it full screen first.
-        phone: 'Tap to open full screen',
       },
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',

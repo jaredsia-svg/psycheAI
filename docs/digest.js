@@ -231,6 +231,14 @@
     // chat like any other conversation and tagged [c1]–[c3]. Each chat is
     // guaranteed a quarter of the places when it has that many.
     waMessages: 200,
+    // No one WhatsApp chat's lines may run past this many characters: a
+    // private chat is dense and personal, and left at the general ceiling
+    // one or two of them outweighed everything else read (8,000 in the
+    // premium read, DEEP_LIMITS).
+    waThreadChars: 5000,
+    // And WhatsApp as a whole never more than this share of the evidence as
+    // sent, whatever room is left (trimToBudget, after the source shares).
+    waMaxDigestShare: 0.2,
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -558,7 +566,10 @@
   //   Google     25   searches and watching: the unperformed self
   //   Facebook   25   an older life stage, posts and messages
   //
-  // So all three added to a full 80,000 get about 32,000, 24,000 and 24,000.
+  // WhatsApp is also held by ceilings of its own: 8,000 characters a chat
+  // (waThreadChars) and never more than a fifth of the digest as sent
+  // (waMaxDigestShare), so its weight is a most rather than a promise; three
+  // chats come to about 24,000 at most.
   // A source that needs less than its part hands the rest on to the others
   // in proportion (allocateShares below), and one added alone has the whole
   // room to itself. A source in the standard digest already, and not loaded
@@ -574,7 +585,7 @@
   const DEEP_LIMITS = {
     youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 140,
     fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 600,
-    messageThreadChars: 16000,
+    messageThreadChars: 16000, waThreadChars: 8000,
     totalChars: DEEP_DIGEST_CHARS, maxListItems: 800, sourceShares: SOURCE_SHARES,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
@@ -1953,7 +1964,7 @@
         ownMessageSample: sampleConversations(chats.flatMap(c => (c.ownMessages || []).map(m =>
           Object.assign({}, m && typeof m === 'object' ? m : { text: m }, { thread: c.chat }))), {
           limit: LIMITS.waMessages, minShare: LIMITS.waMinShare, maxShare: LIMITS.waMaxShare,
-          label: key => key, alwaysTag: true, stats: waStats,
+          threadChars: LIMITS.waThreadChars, label: key => key, alwaysTag: true, stats: waStats,
         }),
       };
       digest.coverage.sampling.whatsappMessages = {
@@ -2245,6 +2256,23 @@
       // lost the newest year, or the last conversations, first.
       worst[2](dropEvenly(list, list.length - Math.max(floor, Math.min(list.length - 1, Math.floor(list.length * 0.9)))));
       size = evidenceChars(digest);
+    }
+
+    // WhatsApp never more than waMaxDigestShare of the evidence, even with
+    // room to spare: its chats are the densest, most personal text there is,
+    // and at half the digest they set the tone of the whole report. Thinned
+    // evenly, a tenth at a time, down to the supplement floor. A digest the
+    // premium read was given to keep whole (protect) is left as it is.
+    const waEntry = trimmableSupplements.find(entry => entry[0] === 'waOwnMessages');
+    const waShare = LIMITS.waMaxDigestShare;
+    if (digest.whatsapp && waEntry && waShare > 0) {
+      for (let guard = 0; guard < 200; guard++) {
+        const total = evidenceChars(digest);
+        if ((sourceSizes(digest).whatsapp || 0) <= total * waShare) break;
+        const list = waEntry[1]();
+        if (!Array.isArray(list) || list.length <= SUPPLEMENT_FLOOR) break;
+        waEntry[2](dropEvenly(list, Math.max(1, Math.ceil(list.length * 0.1))));
+      }
     }
 
     restateShown(digest);

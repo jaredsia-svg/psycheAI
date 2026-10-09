@@ -3864,6 +3864,9 @@ check('the sample arrives in chronological order',
   const t = 1780000000;
   const chat = (name, n) => ({ chat: name, kind: 'one-to-one', members: 2, span: {}, counts: { messages: n * 2, sentByUser: n, receivedByUser: n },
     ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with enough words to clear it', ts: t + i * 5000, gap: 4000, prevMine: false })) });
+  // The sampler alone here: the share of the whole digest is checked below.
+  const share = Digest.LIMITS.waMaxDigestShare;
+  Digest.LIMITS.waMaxDigestShare = 0;
   const build = chats => Digest.build({ ...signals, supplements: { whatsapp: { chats } } }, { includeMessages: false, maxChars: 1e7 }).whatsapp.ownMessageSample;
   const per = (lines, names) => names.map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
   const three = build([chat('c1', 5000), chat('c2', 300), chat('c3', 80)]);
@@ -3877,9 +3880,21 @@ check('the sample arrives in chronological order',
   check('WhatsApp: with two chats the ceiling still holds, and the spare places stay empty',
     p2.every(n => n <= Math.floor(L * 0.4)) && two.length <= Math.floor(L * 0.8), JSON.stringify(p2));
   const alone = build([chat('c1', 5000)]);
-  check('WhatsApp: one chat alone is held by its character ceiling instead',
-    alone.reduce((sum, line) => sum + line.length, 0) <= Digest.LIMITS.messageThreadChars && alone.length > 50,
+  check('WhatsApp: one chat alone is held by its own character ceiling instead, 5,000 (8,000 in the premium read)',
+    alone.reduce((sum, line) => sum + line.length, 0) <= Digest.LIMITS.waThreadChars && Digest.LIMITS.waThreadChars === 5000 &&
+      Digest.DEEP_LIMITS.waThreadChars === 8000 && alone.length > 40,
     alone.length + ' lines');
+  Digest.LIMITS.waMaxDigestShare = share;
+  // With the share in force, three busy chats never pass a fifth of the evidence.
+  const whole = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000), chat('c2', 5000), chat('c3', 5000)] } } },
+    { includeMessages: false, maxChars: 1e7 });
+  const total = Digest.evidenceChars(whole);
+  const withoutWa = Object.assign({}, whole);
+  delete withoutWa.whatsapp;
+  const waChars = total - Digest.evidenceChars(withoutWa);
+  check('WhatsApp: as a whole never more than a fifth of the evidence sent, however much room is left',
+    share === 0.2 && waChars <= total * 0.2 + 50 && whole.whatsapp.ownMessageSample.length >= 10,
+    waChars + ' of ' + total + ' characters, ' + whole.whatsapp.ownMessageSample.length + ' lines');
 }
 
 // ---------- the floor on a message ----------
@@ -5159,9 +5174,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const top = Digest.DEEP_DIGEST_CHARS - before.instagram - before.google;
     const rooms = Digest.allocateShares({ facebook: 1e6, whatsapp: 1e6 }, S, top);
     const near = (got, want) => got <= want * 1.02 && got >= want * 0.9;
-    check('and share the room above it by weight, the whole under 160,000',
-      Digest.evidenceChars(added) <= Digest.DEEP_DIGEST_CHARS && Digest.evidenceChars(added) > Digest.DEEP_DIGEST_CHARS * 0.95 &&
-        near(after.whatsapp, rooms.whatsapp) && near(after.facebook, rooms.facebook) && after.whatsapp > after.facebook,
+    // WhatsApp is held by its own ceilings (8,000 a chat, a fifth of the
+    // digest), and the room it does not use goes to Facebook.
+    const total = Digest.evidenceChars(added);
+    check('and share the room above it, the whole under 160,000: WhatsApp held to its ceilings, Facebook taking the rest',
+      total <= Digest.DEEP_DIGEST_CHARS && total > Digest.DEEP_DIGEST_CHARS * 0.95 &&
+        after.whatsapp <= rooms.whatsapp && after.whatsapp <= total * 0.2 + 50 && after.whatsapp <= 3 * 8000 + 4000 &&
+        after.facebook >= rooms.facebook && after.facebook > after.whatsapp,
       JSON.stringify({ after, rooms }));
     check('an added source over its room is thinned evenly, keeping its newest lines',
       /number 3999\b/.test(added.whatsapp.ownMessageSample.join('\n')) || /number 39\d\d\b/.test(added.whatsapp.ownMessageSample.join('\n')),
@@ -5365,7 +5384,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     answered.motivators.join() === 'benevolence,security' &&
     answered.patterns.join('|') === 'The quiet organiser|Bursts, then recovery' &&
     answered.loveReceiving.join('|') === 'Quality time (primary)|Words of affirmation (secondary)' &&
-    answered.loveGiving.join('|') === 'Acts of service (primary)' && answered.name === 'PsycheUser',
+    answered.loveGiving.join('|') === 'Acts of service (primary)|Quality time (minor)' && answered.name === 'PsycheUser',
     JSON.stringify(answered));
   check('while what the model wrote on the card is kept as it wrote it',
     answered.headline === 'The one holding the camera' && answered.energy === 'participant, a few close ties');

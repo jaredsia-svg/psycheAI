@@ -1915,7 +1915,13 @@ Card, and see how compatible you are with Jared."* Then a *You + Jared = ?* scor
 panel sits to the right of the card. The card is drawn by the same `psycheCardHtml` as everyone's own, from
 `reportFromCard(card, face)`. The **face** holds what the compatibility read never needs: the character,
 franchise and icon, the two lines on why, each type letter's strength and the patterns' full names.
-It is not in the card payload, so the long link is unchanged. `cardFace` puts it inside the locked
+It also carries every list exactly as the owner's card shows it: motivators (`m`), values & beliefs
+(`v`), interests (`n`), and how they receive and show care (`lr`, `lg`). That way a friend's view has
+no gaps where the payload is shorter, and nothing is missing when a paid re-run wrote a card without
+motivators. A card stored with those gaps is mended before its link is published
+(`mendCardPayload`), so a link already shared shows them on its next open. The payload now carries
+two *Shows care as* entries, not one. The face is not in the card payload, so the long link is
+unchanged. `cardFace` puts it inside the locked
 short link instead (`{ p: payload, f: face }`, falling back to the bare payload past 4 KB), so a
 friend sees the card exactly as its owner posts it. A long link has no face, so its card is drawn
 without the character. The share message now leads
@@ -1947,26 +1953,29 @@ the welcome page shows its card, with a line naming anyone else waiting ("Mei al
 card"). The ones before it are in `psycheai_invites_more`, newest first, five at most, one per
 friend.
 
-On My Psyche, one bar holds them all, under the unlock offer (or under Open My Report once paid):
-- **One friend:** *You + Jared = ?% in sync*, *See how in sync you are with Jared*.
-- **More:** *2 friends are waiting to sync with you*.
+At the top of My Psyche, above the card, one bar holds them all, with the number waiting in its ring:
+- **One friend:** *You have a friend waiting to sync with you*, *Jared sent you their link*.
+- **More:** *You have friends waiting to sync with you*, *Jared and Mei sent you their links*.
 
-The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche.
+The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche, and My Report
+never shows the bar.
 
-On My Syncs everything is in one card, **Syncs list**:
-- **Waiting friends** come first, latest first, as dashed rows ("Waiting to sync · free, only you
+On My Syncs there are two cards:
+- **Waiting to sync with you:** latest first, as dashed rows ("Sent you their link · free, only you
   see it"), each with a **Sync** button.
-- **Past syncs** follow. Tapping one opens its result in a popout (`#sync-dialog`) over My Syncs,
-  not a page of its own. A fresh sync lands in the same popout.
-- **Closing the popout:** its ✕, **Close**, Esc, a click outside it, or Back.
+- **Sync Results:** past syncs. Tapping one opens its result in a popout (`#sync-dialog`) over My
+  Syncs, not a page of its own.
+
+A sync from the waiting list opens in the same popout. Behind it, that friend has already moved from
+the first card to the second. The popout closes with its ✕, **Close**, Esc, a click outside it, or
+Back.
 
 Below the list are two compact panels:
 - **Sync with a friend:** paste a link, then **Sync**.
 - **My link:** **Copy link**.
 
 *What your link contains* names the fields as chips, not the reader's own values. In the result,
-the sections are *How to relate to each other* and *What to look out for*. The bar is parked in `#sync-invite-home` and moved into `.sync-invite-slot` by
-`renderProfile`. My Report has no slot, so it never shows the bar.
+the sections are *How to relate to each other* and *What to look out for*.
 
 Each sync spends only its own friend's link, and only once it lands. A sync with a link that carried
 a referral code also sends `/api/event` `sync_done` with that code, counted in `ref:<code>:syncs`. The free card credits the most
@@ -2014,7 +2023,10 @@ days, for whoever holds it.
 
 ## The Psyche Card on a phone
 
-On a phone the card has a thin, faint edge, an inset shadow drawn at the card's own scale. With a
+On a phone there is no "Tap to open full screen" button. A faded expand mark sits in the card's
+bottom-right corner (`.psyche-card-expand`). It pulses twice on arrival, and not at all with reduced
+motion. A tap anywhere on the card opens it full screen, as before. The card has a thin, faint edge,
+an inset shadow drawn at the card's own scale. With a
 part explained, a tap anywhere outside the explanation puts it away, including a tap on another
 part. The tap returns to the card rather than opening the next explanation. This applies on the
 page (touch screens), full screen, and on the sample cards. With a pointer, hovering still moves
@@ -3699,10 +3711,16 @@ Messenger and WhatsApp):
    a fifth (a soft cap: it yields when the others run dry). WhatsApp: every chat (up to three) at least a
    quarter and at most two fifths — a hard cap (`waMaxShare`), so places a chat cannot use stay empty
    rather than going to the busiest one. And every conversation is held to a ceiling in characters,
-   however much room is left, so no one relationship outweighs the rest: 10,000 for an Instagram
-   conversation (`igThreadChars`), 6,000 for a Messenger conversation or a WhatsApp chat
-   (`messageThreadChars`; 16,000 in the premium read). One WhatsApp chat on its own is bounded by that
-   ceiling rather than by the share.
+   however much room is left, so no one relationship outweighs the rest:
+   - an Instagram conversation: 10,000 (`igThreadChars`);
+   - a Messenger conversation: 6,000 (`messageThreadChars`; 16,000 in the premium read);
+   - a WhatsApp chat: 5,000 (`waThreadChars`; 8,000 in the premium read).
+
+   One WhatsApp chat on its own is bounded by that ceiling rather than by the share. WhatsApp as a
+   whole is also never more than a fifth of the evidence sent (`waMaxDigestShare`), however much
+   room is left: its chats are the densest, most personal text there is. At about half the digest,
+   as it was with three chats added at the unlock, they set the tone of the whole report. Room
+   WhatsApp does not use goes to the other added sources, or the digest is simply smaller.
 2. **Spread across time.** Each conversation's span is cut into ten equal stretches, places shared by
    the square root of what was written in each — a two-year chat is read across two years.
 3. **A mix of lengths.** In every stretch about half the places go to substantial messages (120+

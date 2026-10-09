@@ -1315,9 +1315,10 @@
     delete written.freeCard;
     result = Object.assign({}, result, { data: written });
     if (replaceCard) {
-      const cardFields = Object.assign({}, (freshCard || result.data).card);
+      let cardFields = Object.assign({}, (freshCard || result.data).card);
       if (isPlaceholder(cardFields.name) && ownNameFrom(savedName)) cardFields.name = ownNameFrom(savedName);
       state.profile.report = freshCard ? overlayCard(result.data, freshCard) : result.data;
+      cardFields = cardFieldsFrom(cardFields, state.profile.report);
       if (freshCard) state.profile.freeReport = freshCard;
       state.profile.card = Card.shape(cardFields);
       state.profile.payload = await Card.encodeCard(cardFields);
@@ -1466,7 +1467,7 @@
     for (const key of ['report', 'freeReport', 'premiumAnalysis']) {
       if (profile[key]) profile[key] = withOwnName(profile[key], real);
     }
-    const cardFields = withOwnName(Object.assign({}, (profile.report && profile.report.card) || profile.card), real);
+    const cardFields = cardFieldsFrom(withOwnName(Object.assign({}, (profile.report && profile.report.card) || profile.card), real), profile.report);
     if (isPlaceholder(cardFields.name)) cardFields.name = real;
     profile.card = Card.shape(cardFields);
     profile.payload = await Card.encodeCard(cardFields);
@@ -1973,13 +1974,9 @@
       '<section class="card section-card open-report-card screen-only">' +
         '<div class="open-report-text"><h2>' + esc(R.title) + '</h2><p>' + esc(R.blurb) + '</p></div>' +
         '<button class="btn" type="button" data-nav="full" id="open-report">' + esc(R.open) + '</button>' +
-      '</section>' + syncInviteSlot() +
+      '</section>' +
       methodCardHtml(report, false);
   }
-
-  // Where the "You + Jared" bar sits on My Psyche: under the unlock offer, or
-  // under Open My Report once paid. renderProfile moves #sync-invite here.
-  const syncInviteSlot = () => '<div class="sync-invite-slot"></div>';
 
   function fullReportLockedHtml() {
     return '<div class="premium-tier paid-consolidated full-report-locked">' +
@@ -2001,8 +1998,7 @@
       // The other way in, under the price: three friends' cards from their link.
       (hasUnfetchedUnlock() ? '' : '<span class="premium-unlock-alt">' + esc(TEXT.premiumUnlockFriends) + '</span>') +
       '</button>' +
-      '</div>' +
-      syncInviteSlot();
+      '</div>';
   }
 
   function bonusBodyHtml(analysis) {
@@ -5032,10 +5028,11 @@
     // from the job record written when it started (see ownNameFrom).
     const realName = ownNameFrom(savedName);
     if (realName) result = Object.assign({}, result, { data: withOwnName(result.data, realName) });
-    const payload = await Card.encodeCard(result.data.card);
+    const freeFields = cardFieldsFrom(result.data.card, result.data);
+    const payload = await Card.encodeCard(freeFields);
     state.profile = {
       report: result.data,
-      card: Card.shape(result.data.card),
+      card: Card.shape(freeFields),
       payload,
       model: result.model,
       createdAt: new Date().toISOString(),
@@ -5245,7 +5242,21 @@
       s: ((r.mbti || {}).letters || []).slice(0, 4).map(l => String((l && l.strength) || '').slice(0, 10)),
       // The patterns' names in full; the payload cuts them for the comparison.
       p: signaturePatterns(r).map(p => String(p.name).slice(0, 80)),
+      // The card's lists exactly as its owner sees them, so a friend's view
+      // has no gaps where the payload is shorter or was written without them:
+      // motivators, values & beliefs, interests, and how they receive and
+      // show care.
+      m: cardMotivators(r).slice(0, 3),
+      v: faceTitles(r.values, 3).concat(faceTitles(r.beliefs, 1)).slice(0, 4),
+      n: faceTitles(r.interests, 3),
+      lr: faceLove(r, 'receiving'),
+      lg: faceLove(r, 'giving'),
     };
+  }
+  const faceTitles = (rows, limit) => titlesOf(rows, limit).map(t => String(t).slice(0, 40));
+  function faceLove(report, side) {
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    return (love[side] || []).slice(0, 2).filter(l => l && l.language).map(l => String(l.language).slice(0, 30));
   }
   /** A short link's contents: the card payload, and its face where the link carries one. */
   function openedCard(text) {
@@ -5262,11 +5273,42 @@
   // The reader's short link once it is saved for the card on screen.
   let shortLink = '';
   let publishing = null;
+  /**
+   * The card's fields for its link, with what the card itself shows filled
+   * in where the call that wrote them left a gap: the motivators (a paid
+   * re-run's card can come without them) and how they show care.
+   */
+  function cardFieldsFrom(fields, report) {
+    const out = Object.assign({}, fields || {});
+    if (!report) return out;
+    if (!(Array.isArray(out.motivators) && out.motivators.length)) out.motivators = cardMotivators(report);
+    const love = (report.relationship && report.relationship.loveLanguages) || {};
+    for (const [key, side] of [['loveReceiving', 'receiving'], ['loveGiving', 'giving']]) {
+      const shown = (love[side] || []).slice(0, 2).filter(l => l && l.language)
+        .map(l => l.language + (l.strength ? ' (' + l.strength + ')' : ''));
+      if (shown.length > (Array.isArray(out[key]) ? out[key].length : 0)) out[key] = shown;
+    }
+    return out;
+  }
+  /** A card saved with those gaps is mended in place before its link is published. */
+  async function mendCardPayload() {
+    const profile = state.profile;
+    if (!profile || !profile.card || !profile.report) return;
+    const mended = cardFieldsFrom(profile.card, profile.report);
+    const before = Card.shape(profile.card);
+    const after = Card.shape(mended);
+    if (JSON.stringify(before) === JSON.stringify(after)) return;
+    profile.card = after;
+    profile.payload = await Card.encodeCard(mended);
+    store.write(KEYS.profile, profile);
+  }
+
   async function publishShortLink() {
     if (!state.profile || !state.profile.payload || !(state.server && state.server.shortLinks)) return '';
     if (publishing) return publishing;
     publishing = (async () => {
       try {
+        await mendCardPayload();
         const mine = await ensureReferral();
         if (!mine) return '';
         let link = store.read(KEYS.link, null) || {};
@@ -6598,10 +6640,6 @@
         '<p class="cx-home-intro">' + esc(G.home.intro) + ' ' + esc(paid ? G.home.introPaid : G.home.introFree) + '</p>' +
         '<p class="cx-home-hint"><span aria-hidden="true">✨</span><span><span class="cx-hint-hover">' + esc(G.home.hover) +
           '</span><span class="cx-hint-tap">' + esc(G.home.tap) + '</span></span></p>' +
-        // On a phone, in the hint's place: a button that opens the card full screen.
-        '<button type="button" class="cx-open-full">' +
-          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg><span>' + esc(G.home.phone) + '</span></button>' +
       '</div>' +
       '<div class="cx-stage">' +
         '<div class="cx-pop" role="status" aria-live="polite" hidden>' +
@@ -6913,7 +6951,6 @@
       if (!onPart || !canHover()) explainCardPart(null);
       if (onPart && !canHover()) { event.preventDefault(); event.stopPropagation(); return; }
     }
-    if (event.target.closest('.cx-open-full')) { openPsycheCard(); return; }
     const tool = event.target.closest('.cx-tool');
     if (tool) {
       const act = tool.getAttribute('data-act');
@@ -7067,17 +7104,7 @@
     // Either way its compatibility test is one of the card's tools.
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
-    // The "You + Jared" bar is parked before the body is redrawn, then set in
-    // its slot under the unlock offer or Open My Report (none on My Report).
-    $('#sync-invite-home').appendChild($('#sync-invite'));
     setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
-    let syncSlot = $('#profile-body .sync-invite-slot');
-    // A classic full report has no unlock offer: the bar opens its body.
-    if (!syncSlot && !reportPage) {
-      syncSlot = Object.assign(document.createElement('div'), { className: 'sync-invite-slot' });
-      $('#profile-body').prepend(syncSlot);
-    }
-    if (syncSlot) syncSlot.appendChild($('#sync-invite'));
     syncNav();
     refreshReferral().catch(() => {});
     // The card's QR code waits for the short link, then fits the card again.
@@ -8980,13 +9007,15 @@
     $('#scan-title').textContent = TEXT.scanHistory;
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
-    // Syncs list: friends waiting to sync first, then past syncs.
+    // Friends waiting to sync, then Sync Results. A sync that lands moves its
+    // friend from the first to the second (adoptComparison spends the link).
     const history = store.read(KEYS.history, []);
     const waiting = state.profile ? allInvites().length : 0;
-    setHtml($('#scan-history'), history.length || waiting
-      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.syncsList) + '</h2>' +
-        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' + syncWaitingHtml() +
-        (history.length ? historyList(history) : '') + '</div>' : '');
+    const block = (cls, title, count, body) => '<div class="card scan-results ' + cls + '"><div class="scan-results-head"><h2>' +
+      esc(title) + '</h2><span class="scan-count">' + count + '</span></div>' + body + '</div>';
+    setHtml($('#scan-history'),
+      (waiting ? block('scan-waiting-card', TEXT.syncsWaiting, waiting, syncWaitingHtml()) : '') +
+      (history.length ? block('scan-results-card', TEXT.syncsList, history.length, historyList(history)) : ''));
     $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
   }
 
@@ -9352,6 +9381,8 @@
    * card is drawn without the character.
    */
   const MBTI_AXES = [['E/I', /[EI]/], ['N/S', /[NS]/], ['T/F', /[TF]/], ['J/P', /[JP]/]];
+  /** A list from a card's face, as plain strings, or null when it has none. */
+  const faceList = list => (Array.isArray(list) && list.length ? list.slice(0, 4).map(String) : null);
   function reportFromCard(card, face) {
     const c = card || {};
     const f = face || {};
@@ -9371,12 +9402,16 @@
       cardHighlights: String(f.w || ''),
       patterns: ((Array.isArray(f.p) && f.p.length ? f.p : c.patterns) || []).slice(0, 3)
         .map((name, i) => ({ id: 'p' + (i + 1), name: String(name) })),
-      topMotivators: c.motivators || [],
+      // The face's own lists where the link has them (see cardFace), else the payload's.
+      topMotivators: faceList(f.m) || c.motivators || [],
       mbti: { type, letters: letters.every(l => l.choice) ? letters : [] },
       bigFive,
-      values: titled(c.values),
-      interests: titled(c.interests),
-      relationship: { loveLanguages: { receiving: languages(c.loveReceiving), giving: languages(c.loveGiving) } },
+      // Values & beliefs travel as one list; the card shows three and a belief.
+      values: titled((faceList(f.v) || c.values || []).slice(0, 3)),
+      beliefs: titled((faceList(f.v) || []).slice(3, 4)),
+      interests: titled(faceList(f.n) || c.interests),
+      relationship: { loveLanguages: {
+        receiving: languages(faceList(f.lr) || c.loveReceiving), giving: languages(faceList(f.lg) || c.loveGiving) } },
     };
   }
 
@@ -9449,20 +9484,22 @@
   }
 
   // To the steps for requesting the export, on this same page.
-  // On My Psyche, once the reader has a card: the friends whose links are
-  // waiting, in one bar under the unlock offer — "You + Jared = ?% in sync",
-  // or "2 friends are waiting to sync with you" — with one button, to My
-  // Syncs. The sync itself runs from there, only when they pick a friend.
+  // At the top of My Psyche, once the reader has a card and a friend's link
+  // is waiting: "You have friends waiting to sync with you", naming them, with
+  // one button, to My Syncs. The sync itself runs from there, only when they
+  // pick a friend. Not on My Report.
   function refreshSyncInvite() {
     const box = $('#sync-invite');
     if (!box) return;
     const invites = state.profile ? allInvites() : [];
-    box.hidden = !invites.length || !box.closest('.sync-invite-slot');
+    box.hidden = !invites.length || reportPageOn();
     if (!invites.length) return;
     const names = invites.map(i => firstName(i.name) || i.name);
     $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
-    $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany;
+    $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany(names);
     $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
+    // How many are waiting, in the ring.
+    $('#sync-invite-count').textContent = String(invites.length);
   }
   /** Syncs list: each friend whose link is waiting, with a Sync button of their own. */
   function syncWaitingHtml() {
