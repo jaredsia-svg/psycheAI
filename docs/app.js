@@ -3107,7 +3107,7 @@
     const share = event.target.closest('.bonus-share');
     if (share && state.profile && state.profile.report && state.profile.report.bonus) {
       shareStoryImage(roastImageCanvas(state.profile.report.bonus), 'PsycheAI roast.png',
-        TEXT.roastShareText, share.closest('.bonus-card').querySelector('.bonus-share-status'));
+        TEXT.roastShareText(myLinkUrl()), share.closest('.bonus-card').querySelector('.bonus-share-status'));
     }
   });
 
@@ -4923,8 +4923,11 @@
 
 
 
+  // The long form of the reader's one link, for a server that cannot keep
+  // short ones: the card after the #, and the invite code with it, so it
+  // does everything the short link does.
   function profileUrl(payload) {
-    return location.origin + location.pathname + '#p=' + payload;
+    return location.origin + location.pathname + (referralCode ? '?ref=' + referralCode : '') + '#p=' + payload;
   }
 
   // ---------- the short personal link ----------
@@ -6883,7 +6886,7 @@
     const last = state.lastReport;
     if (!last) return;
     shareStoryImage(compatImageCanvas(last), 'PsycheAI compatibility.png',
-      TEXT.compatResultShareText(Math.round(Number(last.report.score) || 0)), '#compat-share-status');
+      TEXT.compatResultShareText(Math.round(Number(last.report.score) || 0), myLinkUrl()), '#compat-share-status');
   });
   $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
   $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
@@ -7542,7 +7545,7 @@
         try {
           const character = state.profile && state.profile.report && state.profile.report.essence &&
             state.profile.report.essence.character;
-          await navigator.share({ files: [file], title: TEXT.cardSection, text: TEXT.cardShareText(character) });
+          await navigator.share({ files: [file], title: TEXT.cardSection, text: TEXT.cardShareText(character, myLinkUrl()) });
           return;
         } catch (error) {
           // The reader opened the share sheet and backed out themselves —
@@ -9065,6 +9068,7 @@
   // The welcome page for a friend's link: their card itself, drawn the way it
   // is on their own screen, beside why to make one — the comparison with them
   // waits on it. Tapping the card opens it full screen, part by part.
+  const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
   let inviteDrawn = '';
   let inviteReport = null;
   async function refreshInvite() {
@@ -9081,20 +9085,18 @@
     if (inviteDrawn !== drawn) {
       inviteDrawn = drawn;
       const card = await Card.decodeCard(invite.payload);
-      inviteReport = card ? reportFromCard(card, invite.face) : null;
+      // Their first name on the card too, as everywhere on this page.
+      inviteReport = card ? reportFromCard(Object.assign({}, card, { name: firstName(card.name) }), invite.face) : null;
       const el = $('#invite-card');
       el.innerHTML = inviteReport ? psycheCardHtml(inviteReport) : '';
       freshArtIds(el);
     }
-    const name = invite.name;
-    const character = inviteReport ? essenceName(inviteReport.essence) : '';
-    $('#invite-eyebrow').textContent = TEXT.inviteEyebrow(name);
-    $('#invite-title').textContent = TEXT.inviteTitle(name, character);
+    const name = firstName(invite.name);
+    $('#invite-title').textContent = TEXT.inviteTitle(name);
     $('#invite-text').textContent = TEXT.inviteText(name);
     $('#invite-match-title').textContent = TEXT.inviteMatchTitle(name);
     $('#invite-match-text').textContent = TEXT.inviteMatchText;
     $('#invite-guide').textContent = TEXT.inviteStart;
-    $('#invite-small').textContent = TEXT.inviteSmall;
     $('#invite-card-hint').textContent = TEXT.inviteCardHint;
     const open = $('#invite-card-open');
     open.hidden = !inviteReport;

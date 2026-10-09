@@ -810,48 +810,18 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 
-/* A friend's link: their Psyche Card itself, beside why to make your own.
-   Phone: the hook, the card, then the rest, one under the other. Wider: the
-   card on the left, everything said about it on the right. */
-.invite-banner {
-  position: relative; margin: 0 0 1.6rem; padding: 1.1rem clamp(1rem, 3vw, 1.6rem) 1.3rem; border-radius: 22px;
-  background:
-    radial-gradient(80% 90% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
-    radial-gradient(70% 90% at 100% 100%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 70%),
-    var(--bg);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  box-shadow: 0 22px 50px -30px rgba(60, 20, 90, .55);
-  display: grid; grid-template-columns: 1fr; gap: .2rem 0; text-align: left;
-}
-.invite-banner .invite-eyebrow {
-  margin: 0; justify-self: start; padding: .22rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 700;
-  color: var(--accent); background: var(--accent-soft);
-}
+/* A friend's link: their Psyche Card, then — in a panel of its own, joined
+   to the card by a short line — what to do about it. Phone: one under the
+   other. Wider: the card on the left, the panel on the right. */
+.invite-banner { position: relative; margin: 0 0 1.6rem; display: grid; grid-template-columns: 1fr; justify-items: center; }
+.invite-card-side { display: grid; justify-items: center; }
 .invite-banner .invite-title {
-  margin: .55rem 0 .2rem; font-size: clamp(1.35rem, 3.6vw, 1.85rem); font-weight: 800; line-height: 1.18;
+  margin: 0 0 .2rem; text-align: center; font-size: clamp(1.3rem, 3.6vw, 1.7rem); font-weight: 800; line-height: 1.2;
   letter-spacing: -.01em;
 }
-.invite-banner .invite-text { margin: .2rem 0 0; font-size: .95rem; color: var(--ink-soft); }
-.invite-banner .btn-row { margin: 1rem 0 0; }
-.invite-small { margin: .7rem 0 0; font-size: .8rem; color: var(--ink-soft); }
-.invite-match {
-  display: flex; align-items: center; gap: .8rem; margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
-  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.invite-match p { margin: 0; font-size: .86rem; line-height: 1.4; }
-.invite-match strong { display: block; font-size: 1.02rem; }
-.invite-ring {
-  flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
-  font-weight: 800; font-size: 1.3rem; color: var(--accent);
-  background: conic-gradient(var(--accent) 0 30%, var(--accent-2) 30% 62%, color-mix(in srgb, var(--accent) 25%, transparent) 62% 100%);
-  position: relative; isolation: isolate;
-}
-/* The ring's hole: the score it will hold is still a question. */
-.invite-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); z-index: -1; }
 /* The card: tilted and lifted, like the samples, with a soft glow behind it. */
 .invite-card-open {
-  position: relative; justify-self: center; margin: 1rem 0 .4rem; padding: 0; border: 0; background: none;
+  position: relative; margin: 1.1rem 0 .4rem; padding: 0; border: 0; background: none;
   cursor: zoom-in; font: inherit; color: inherit; border-radius: 18px;
 }
 .invite-card-open::before {
@@ -870,14 +840,54 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   box-shadow: 0 6px 16px -6px rgba(60, 20, 90, .6);
 }
 @media (prefers-reduced-motion: reduce) { .invite-card-frame { transition: none; } }
+/* The panel, and the line that ties it to the card above it. */
+.invite-body {
+  position: relative; width: 100%; max-width: 34rem; margin-top: 2.2rem; padding: 1.1rem 1.2rem 1.2rem; border-radius: 20px;
+  background:
+    radial-gradient(80% 90% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    radial-gradient(70% 90% at 100% 100%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 70%),
+    var(--bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 22px 50px -30px rgba(60, 20, 90, .5);
+}
+.invite-body::before {
+  content: ''; position: absolute; left: 50%; top: -2.2rem; height: 2.2rem; width: 0;
+  border-left: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.invite-body::after {
+  content: ''; position: absolute; left: calc(50% - 5px); top: -6px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--accent);
+}
+.invite-banner .invite-text { margin: 0; font-size: .98rem; line-height: 1.55; }
+.invite-banner .btn-row { margin: 1rem 0 0; }
+.invite-banner .btn-row .btn { width: 100%; }
+.invite-match {
+  display: flex; align-items: center; gap: .8rem; margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.invite-match p { margin: 0; font-size: .86rem; line-height: 1.4; }
+.invite-match strong { display: block; font-size: 1.02rem; }
+.invite-ring {
+  flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
+  font-weight: 800; font-size: 1.3rem; color: var(--accent);
+  background: conic-gradient(var(--accent) 0 30%, var(--accent-2) 30% 62%, color-mix(in srgb, var(--accent) 25%, transparent) 62% 100%);
+  position: relative; isolation: isolate;
+}
+/* The ring's hole: the score it will hold is still a question. */
+.invite-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); z-index: -1; }
 @media (min-width: 760px) {
   .invite-banner.has-card {
-    grid-template-columns: auto 1fr; column-gap: clamp(1.4rem, 4vw, 2.6rem); align-items: start;
-    padding: 1.6rem clamp(1.4rem, 3vw, 2.2rem);
+    grid-template-columns: auto minmax(0, 30rem); justify-content: center; align-items: center;
+    column-gap: clamp(2.6rem, 6vw, 4.5rem);
   }
-  .invite-banner.has-card .invite-card-open { grid-column: 1; grid-row: 1 / span 3; margin: .4rem 0 .6rem; align-self: center; }
-  .invite-banner.has-card .invite-eyebrow, .invite-banner.has-card .invite-title,
-  .invite-banner.has-card .invite-body { grid-column: 2; }
+  .invite-banner.has-card .invite-body { margin-top: 0; }
+  /* The joining line runs sideways, from the card to the panel. */
+  .invite-banner.has-card .invite-body::before {
+    left: auto; right: 100%; top: 50%; width: clamp(2.6rem, 6vw, 4.5rem); height: 0;
+    border-left: 0; border-top: 2px dashed color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .invite-banner.has-card .invite-body::after { left: -6px; top: calc(50% - 4px); }
 }
 .alert li { margin-bottom: .2rem; }
 

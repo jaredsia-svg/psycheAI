@@ -108,13 +108,15 @@
          across both. Filled in by refreshInvite() in app.js; it stays until
          a profile spends it or it expires. -->
     <section id="invite-banner" class="invite-banner no-print" aria-labelledby="invite-title" hidden>
-      <p class="invite-eyebrow" id="invite-eyebrow"></p>
-      <p class="invite-title" id="invite-title"></p>
       <!-- Their card, as it looks on their own screen; tap for full screen. -->
-      <button type="button" class="invite-card-open" id="invite-card-open" hidden>
-        <span class="invite-card-frame"><span class="psyche-card" id="invite-card"></span></span>
-        <span class="invite-card-hint" id="invite-card-hint" aria-hidden="true"></span>
-      </button>
+      <div class="invite-card-side">
+        <p class="invite-title" id="invite-title"></p>
+        <button type="button" class="invite-card-open" id="invite-card-open" hidden>
+          <span class="invite-card-frame"><span class="psyche-card" id="invite-card"></span></span>
+          <span class="invite-card-hint" id="invite-card-hint" aria-hidden="true"></span>
+        </button>
+      </div>
+      <!-- Then, in a panel of its own joined to the card, what to do about it. -->
       <div class="invite-body">
         <p class="invite-text" id="invite-text"></p>
         <div class="invite-match">
@@ -124,7 +126,6 @@
         <div class="btn-row">
           <button class="btn btn-lg" id="invite-guide" type="button">Get my free Psyche Card</button>
         </div>
-        <p class="invite-small" id="invite-small"></p>
       </div>
     </section>
     <div class="hero-top">

@@ -1650,11 +1650,11 @@ try {
       await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
       const first = await banner();
       check('a compatibility link opened with no card of your own greets you by the sender\'s name',
-        first.shown && first.welcome && /Ava Tan sent you their Psyche Card/.test(first.text) && !first.error,
+        first.shown && first.welcome && /⭐ This is Ava’s Psyche Card/.test(first.text) && !/Ava Tan/.test(first.text) && !first.error,
         JSON.stringify(first));
       check('and says what to do, and that the analysis with them is free and follows on its own',
-        /Make your free Psyche Card, and the compatibility analysis with Ava Tan runs straight after it, also free\./
-          .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
+        /No questionnaire, no sign-up\. Get your free Psyche Card, and see how compatible you are with Ava\./
+          .test(first.text) && /You \+ Ava = \?/.test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
       check('with one way on, to the steps, and no button to throw the invite away',
         await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-have').count()) === 0 &&
           (await invitePage.locator('#invite-forget').count()) === 0);
@@ -1669,10 +1669,10 @@ try {
           traits: el.querySelectorAll('.pc-straits li, .pc-trait').length };
       });
       check('the sender\'s Psyche Card is shown beside the invite, small enough to sit beside it',
-        drawnCard.owner === 'Ava Tan' && drawnCard.traits > 0 && drawnCard.width > 150 && drawnCard.width < 330 &&
+        drawnCard.owner === 'Ava' && drawnCard.traits > 0 && drawnCard.width > 150 && drawnCard.width < 330 &&
           drawnCard.height > 150, JSON.stringify(drawnCard));
-      check('a long link has no character to name, so the card leaves it out and the heading asks about yours',
-        !drawnCard.name && /This is Ava Tan’s Psyche Card\. What would yours say\?/.test(drawnCard.title), drawnCard.title);
+      check('a long link has no character to name, so the card leaves it out',
+        !drawnCard.name && drawnCard.title === '⭐ This is Ava’s Psyche Card', drawnCard.title);
       await invitePage.click('#invite-guide');
       await invitePage.waitForTimeout(900);
       check('"Get my free Psyche Card" scrolls to "Request your Instagram data first", and opens nothing over it',
@@ -1685,7 +1685,7 @@ try {
       await invitePage.click('#invite-card-open');
       await invitePage.waitForSelector('#sample-card-dialog[open]', { timeout: 10000 });
       check('tapping their card opens it full screen, explained part by part',
-        await invitePage.evaluate(() => /Ava Tan/.test(document.querySelector('#sample-psyche-card-full').textContent) &&
+        await invitePage.evaluate(() => /Ava/.test(document.querySelector('#sample-psyche-card-full').textContent) &&
           !document.querySelector('#sample-card-dialog').classList.contains('is-gallery')));
       await invitePage.keyboard.press('Escape');
       await invitePage.waitForFunction(() => !document.querySelector('#sample-card-dialog').open, { timeout: 10000 });
@@ -1697,7 +1697,7 @@ try {
       await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
       await invitePage.waitForTimeout(200);
       check('the invite is still there after the tab is closed and reopened',
-        (await banner()).shown && /Ava Tan/.test((await banner()).text));
+        (await banner()).shown && /This is Ava’s Psyche Card/.test((await banner()).text));
 
       // Older than the window: dropped, not shown.
       await invitePage.evaluate(() => {
@@ -5055,7 +5055,8 @@ try {
   check('it says what the link is for',
     /how compatible you both are/.test(await page.locator('#compat-dialog').innerText()));
   const myLink = await page.evaluate(() =>
-    location.origin + location.pathname + '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
+    location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
   // With a share sheet, the message goes to it: written in the sender's own
   // voice, and carrying the link.
   await page.evaluate(() => {
@@ -5436,7 +5437,9 @@ try {
   });
   check('"Share this roast" hands the share sheet a 1080 x 1920 image and a caption with the address',
     Boolean(roastImage) && roastImage.width === 1080 && roastImage.height === 1920 && roastImage.type === 'image/png' &&
-      /roasted me/.test(roastImage.text) && /https:\/\/psycheai\.io/.test(roastImage.text), JSON.stringify(roastImage));
+      /roasted me/.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)),
+    JSON.stringify(roastImage).slice(0, 300));
   await page.click('#profile-body .bonus-hide');
 
   await clickClear(page, '#profile-body .premium-unlock');
@@ -9659,7 +9662,8 @@ try {
   check('"Share result" hands the share sheet a 1080 x 1920 story image with a line carrying the address',
     Boolean(compatImage) && compatImage.width === 1080 && compatImage.height === 1920 &&
       compatImage.type === 'image/png' && /\/100 on PsycheAI/.test(compatImage.text) &&
-      /https:\/\/psycheai\.io/.test(compatImage.text), JSON.stringify(compatImage));
+      compatImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatImage).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
     await page.locator('#compat-return').isVisible() &&
       /Want Jordan to see it too\?/.test(await page.locator('#compat-return').innerText()) &&
@@ -10019,7 +10023,8 @@ try {
   check('and it says the analysis runs on the side of whoever opens it',
     /runs on the side of whoever opens the link/.test(await page.locator('#view-scan .link-panel').innerText()));
   const ownLink = await page.evaluate(() =>
-    location.origin + location.pathname + '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
+    location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
   await page.evaluate(() => {
     navigator.share = undefined;
     window.__copied = null;
@@ -11557,7 +11562,7 @@ try {
         }));
         const name = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name);
         check('a friend opening the short link gets the compatibility invite, from the locked card',
-          arrived.invite && arrived.invite.name === name && arrived.banner.includes(name), JSON.stringify(arrived.banner));
+          arrived.invite && arrived.invite.name === name && arrived.banner.includes(name.split(' ')[0]), JSON.stringify(arrived.banner));
         // The short link carries the card's face too: the character, why, and
         // the type letters' strengths, so the friend sees the card as its owner does.
         const own = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).report);
@@ -11567,8 +11572,8 @@ try {
           name: (document.querySelector('#invite-card .pc-sname h2, #invite-card .pc-name h2') || {}).textContent || '',
           stored: JSON.parse(localStorage.getItem('psycheai_invite') || '{}').face || null,
         }));
-        check('and sees the sender\'s card with its character, and a heading that asks who they are most like',
-          Boolean(character) && face.name === character && face.title === name + ' is most like ' + character + '. Who are you most like?' &&
+        check('and sees the sender\'s card with its character, under their first name',
+          Boolean(character) && face.name === character && face.title === '⭐ This is ' + name.split(' ')[0] + '’s Psyche Card' &&
             face.stored && face.stored.c === character, JSON.stringify(face));
         check('and the invite code with it, so their first free card counts', arrived.referredBy && arrived.referredBy.code === mine.code,
           JSON.stringify(arrived.referredBy));

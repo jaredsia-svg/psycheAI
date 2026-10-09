@@ -195,21 +195,19 @@
     // has a card of their own.
     // With their card beside it: the hook is the character, and what the
     // reader's own card would say.
-    inviteEyebrow: (name) => '⭐ ' + (name || 'A friend') + ' sent you their Psyche Card',
-    inviteTitle: (name, character) => character
-      ? (name || 'They') + ' is most like ' + character + '. Who are you most like?'
-      : 'This is ' + possessive(name || 'your friend') + ' Psyche Card. What would yours say?',
-    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram — your type, your traits, ' +
-      'what drives you and how you connect. No questionnaire, no sign-up. Make your free Psyche Card, and the ' +
-      'compatibility analysis with ' + (name || 'them') + ' runs straight after it, also free.',
+    // By first name only: "Jared", not "Jared Tan".
+    inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your friend') + ' Psyche Card',
+    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
+      'no sign-up. Get your free Psyche Card, and see how compatible you are with ' + (name || 'them') + '.',
     inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?',
     inviteMatchText: 'Your compatibility score is revealed the moment your card is ready — as partners, friends & family, or at work.',
     inviteStart: 'Get my free Psyche Card',
-    inviteSmall: 'Instagram takes a few hours to email your data. This invite waits for you on this device for 14 days.',
     inviteCardHint: 'Tap to explore',
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
-    cardShareText: (character) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
-      'Find yours free, no questionnaire: https://psycheai.io',
+    // Every share carries the reader's one link (myLinkUrl in app.js): the
+    // same link for a bio, an invite and a comparison.
+    cardShareText: (character, url) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
+      'Find yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
     // Download sits on the left, share on the right — the order a reader
     // meets them reading left to right. Each carries a small visible label
@@ -352,13 +350,13 @@
     roastImageLead: 'I let AI read my Instagram. It said:',
     roastImageCredit: 'My PsycheAI roast',
     roastImageFooter: 'Get roasted free · psycheai.io',
-    roastShareText: 'I let AI read my Instagram and it roasted me. Get yours free: https://psycheai.io',
+    roastShareText: (url) => 'I let AI read my Instagram and it roasted me. Get yours free: ' + (url || 'https://psycheai.io'),
     compatShareImage: 'Share result',
     compatImageLead: (mode) => (mode ? mode + ' compatibility' : 'Compatibility'),
     compatImageFooter: 'Test yours free · psycheai.io',
     compatImageShared: 'What we share',
-    compatResultShareText: (score) => 'We got ' + score + '/100 on PsycheAI. How compatible are you two? ' +
-      'Free, no questionnaire: https://psycheai.io',
+    compatResultShareText: (score, url) => 'We got ' + score + '/100 on PsycheAI. How compatible are you two? ' +
+      'Free, no questionnaire: ' + (url || 'https://psycheai.io'),
     storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkCopied: 'Link copied.',
