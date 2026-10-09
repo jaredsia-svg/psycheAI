@@ -1654,7 +1654,7 @@ try {
         JSON.stringify(first));
       check('and says what to do, and that the analysis with them is free and follows on its own',
         /No questionnaire, no sign-up\. Get your free Psyche Card, and see how in sync you are with Ava\./
-          .test(first.text) && /You \+ Ava = \?% in sync/.test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
+          .test(first.text) && !/\?% in sync/.test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
       check('with one way on, to the steps, and no button to throw the invite away',
         await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-have').count()) === 0 &&
           (await invitePage.locator('#invite-forget').count()) === 0);
@@ -1759,7 +1759,7 @@ try {
       }));
       check('the first card made on this device opens on the reader\'s own card, with the sync one tap away',
         waiting.profile && waiting.kept && waiting.reports === 0 &&
-          /You have a friend waiting to sync with you/.test(waiting.text) && /Ava sent you their link/.test(waiting.text),
+          /You have a friend waiting to sync with you/.test(waiting.text) && !/sent you their link/.test(waiting.text),
         JSON.stringify(waiting));
       check('the sync bar sits at the top of My Psyche, above the card, with one button, Sync, and no sync runs there',
         await invitePage.evaluate(() => {
@@ -7215,7 +7215,7 @@ try {
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
     'What you share', 'What works', 'What to look out for',
-    'My Syncs']);
+    'Your Syncs']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
   check('the page does not re-type any section title',
@@ -9959,8 +9959,8 @@ try {
 
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
-  check('the sync page is titled My Syncs',
-    (await page.locator('#scan-title').innerText()) === 'My Syncs',
+  check('the sync page is titled Your Syncs',
+    (await page.locator('#scan-title').innerText()) === 'Your Syncs',
     await page.locator('#scan-title').innerText());
   check('the intro is about friends, and nothing romantic or about work',
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
@@ -9997,7 +9997,7 @@ try {
     return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('and are rendered, not just positioned',
-    /My Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
+    /Your Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
     scanText.slice(0, 400));
   check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
@@ -10093,11 +10093,23 @@ try {
   // A friend's link opened by a reader who already has a card lands on that
   // card, with the sync one tap away — never run on their behalf.
   const syncsBefore = compatBodies.length;
+  // Jordan was synced with above: the same link again is not a friend
+  // waiting, it opens the list where that sync is.
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
+  await page.waitForSelector('#view-scan:not([hidden]) #scan-alert:not([hidden])', { timeout: 30000 });
+  check('the same friend\'s link again, once synced, adds no one waiting: it opens Your Syncs, saying so',
+    /already synced with Jordan/.test(await page.locator('#scan-alert').innerText()) &&
+      await page.evaluate(() => localStorage.getItem('psycheai_invite') === null) && compatBodies.length === syncsBefore,
+    await page.locator('#scan-alert').innerText());
+  // A new friend's link does wait.
+  const kaiPayload = await page.evaluate(card => window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Kai Ong', headline: 'A different card' })),
+    await page.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card)));
+  await page.goto('about:blank');
+  await page.goto('http://localhost:' + PORT + '/#p=' + kaiPayload, { waitUntil: 'load' });
   await page.waitForSelector('#sync-invite:not([hidden])', { timeout: 30000 });
   check('a friend\'s link lands on the reader\'s own card, with the sync one tap away',
     await page.locator('#view-profile').isVisible() &&
-      /Jordan sent you their link/.test(await page.locator('#sync-invite').innerText()) &&
+      /You have a friend waiting to sync with you/.test(await page.locator('#sync-invite').innerText()) &&
       compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
   // A second friend's link too: both wait, in one bar with one Sync button
   // to My Syncs, where each has a button of their own, latest first.
@@ -10113,7 +10125,7 @@ try {
   }));
   check('two friends\' links wait in one bar, with one Sync button',
     many.title === 'You have friends waiting to sync with you' && many.buttons.join('|') === 'Sync' &&
-      /Mei and Jordan sent you their links/.test(await page.locator('#sync-invite-sub').innerText()) &&
+
       (await page.locator('#sync-invite-count').innerText()) === '2',
     JSON.stringify(many));
   // Its ✕ closes it until a new friend's link arrives; the friends still wait on My Syncs.
@@ -10130,7 +10142,7 @@ try {
   await page.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
   const waitingNames = await page.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label')));
   check('on My Syncs, a Sync button for each waiting friend, latest first',
-    waitingNames.join('|') === 'Sync with Mei|Sync with Jordan', waitingNames.join('|'));
+    waitingNames.join('|') === 'Sync with Mei|Sync with Kai', waitingNames.join('|'));
 
   // The comparison runs for real time with nothing else standing between a
   // reader's back button and losing it — the same risk runPremiumAnalysis's
@@ -10160,19 +10172,19 @@ try {
   check('and the guard lifts again once the comparison actually lands',
     !(await beforeunloadPrevented()));
   check('the tap runs the sync with the friend',
-    (await page.locator('#report-body').innerText()).includes('Jordan'));
+    (await page.locator('#report-body').innerText()).includes('Kai'));
   check('as friends, labelled Psyche Sync',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
     (await page.locator('#report-sub').innerText()).trim() === 'Psyche Sync');
-  check('Jordan\'s link is spent once synced, and Mei\'s still waits',
+  check('Kai\'s link is spent once synced, and Mei\'s still waits',
     await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_invite') || 'null').name === 'Mei Lin' &&
       JSON.parse(localStorage.getItem('psycheai_invites_more') || '[]').length === 0));
-  check('behind the popout, in the one Psyche Sync list, Jordan has moved from waiting to the past syncs; Mei still waits',
+  check('behind the popout, in the one Psyche Sync list, Kai has moved from waiting to the past syncs; Mei still waits',
     await page.evaluate(() => {
       const waiting = document.querySelector('#scan-history .match-waiting');
       const results = document.querySelector('#scan-history .match-list:not(.match-waiting)');
-      return Boolean(waiting && results) && /Mei/.test(waiting.innerText) && !/Jordan/.test(waiting.innerText) &&
-        /Jordan/.test(results.innerText) && document.querySelector('#scan-history h2').textContent === 'Psyche Sync' &&
+      return Boolean(waiting && results) && /Mei/.test(waiting.innerText) && !/Kai/.test(waiting.innerText) &&
+        /Kai/.test(results.innerText) && document.querySelector('#scan-history h2').textContent === 'Psyche Sync' &&
         waiting.compareDocumentPosition(results) === Node.DOCUMENT_POSITION_FOLLOWING;
     }));
   await page.evaluate(() => { localStorage.removeItem('psycheai_invite'); });
@@ -10512,20 +10524,25 @@ try {
         shape.toggles === 6 && shape.inner === 0 &&
         shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open' &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .card-chevron').count()) === 1, JSON.stringify(shape));
-      check('structured: on a laptop the left column\'s box starts level with the report\'s first part',
+      check('structured: on a laptop the left column\'s box starts level with the report\'s header',
         await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
-          document.querySelector('#profile-body .part-card').getBoundingClientRect().top) <= 2),
+          document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
         await sp.evaluate(() => document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + ' vs ' +
-          document.querySelector('#profile-body .part-card').getBoundingClientRect().top));
-      check('structured: My Report is titled "Your Psyche Report", heading the part nav\'s own box, under the purple line',
+          (document.querySelector('#profile-body .report-hero') || document.body).getBoundingClientRect().top));
+      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "5 parts" in the pill; the left menu has no title',
         await sp.evaluate(() => {
+          const hero = document.querySelector('#profile-body .report-hero');
           const nav = document.querySelector('#profile-body .part-nav');
-          const title = nav && nav.querySelector('.part-nav-title');
-          if (!title) return false;
-          const t = title.getBoundingClientRect(); const first = nav.querySelector('.part-nav-item').getBoundingClientRect();
-          return title.textContent === 'Your Psyche Report' && t.bottom <= first.top + 1 &&
-            /linear-gradient/.test(getComputedStyle(nav).backgroundImage) && !document.querySelector('#profile-body .report-page-title');
+          return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Your Psyche Report' &&
+            /^5 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
+            !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
+            /linear-gradient/.test(getComputedStyle(nav).backgroundImage);
         }));
+      await sp.waitForFunction(() => /^5 parts · \d+ pages$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
+      check('structured: and once counted, the pill gives the PDF\'s pages too', true);
+      check('structured: the part heads are smaller than a page heading',
+        await sp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#profile-body .part-card .part-title')).fontSize) <= 19 &&
+          parseFloat(getComputedStyle(document.querySelector('#profile-body .part-card .part-num')).fontSize) <= 34));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: the plan shows only the horizons that have steps — never "Nothing here yet"',
@@ -10591,20 +10608,9 @@ try {
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
         check('structured, on a phone: a full report opens with parts 00 to 05 shut',
           (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
-        check('structured, on a phone: "Your Psyche Report" heads the same box as the row of part numbers, and slides under the header once stuck',
-          await sp.evaluate(async () => {
-            const nav = document.querySelector('#profile-body .part-nav');
-            const t = nav.querySelector('.part-nav-title').getBoundingClientRect();
-            const item = nav.querySelector('.part-nav-item').getBoundingClientRect();
-            const inBox = t.bottom <= item.top + 1 && t.width > 280;
-            window.scrollTo(0, 1200);
-            await new Promise(r => setTimeout(r, 100));
-            const header = document.querySelector('.nav').getBoundingClientRect().bottom;
-            const stuck = nav.querySelector('.part-nav-item').getBoundingClientRect().top >= header - 1 &&
-              nav.querySelector('.part-nav-title').getBoundingClientRect().bottom <= header + 2;
-            window.scrollTo(0, 0);
-            return inBox && stuck;
-          }));
+        check('structured, on a phone: the report\'s header sits above the row of part numbers',
+          await sp.evaluate(() => document.querySelector('#profile-body .report-hero').getBoundingClientRect().bottom <=
+            document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + 1));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
           (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut,appendix:shut', await states());
@@ -11059,9 +11065,7 @@ try {
           const header = document.querySelector('.nav').getBoundingClientRect();
           const items = [...nav.querySelectorAll('.part-nav-item')];
           const current = nav.querySelector('.part-nav-item.is-current');
-          // The title row slides under the header once stuck: what shows is the row of parts.
-          return { height: Math.round(r.bottom - header.bottom), stuck: Math.abs(items[0].getBoundingClientRect().top - header.bottom) <= 8 &&
-            nav.querySelector('.part-nav-title').getBoundingClientRect().bottom <= header.bottom + 2,
+          return { height: Math.round(r.height), stuck: Math.abs(r.top - header.bottom) <= 2,
             numerals: items.map(i => i.innerText.trim()).join(' '), lead: nav.querySelector('.part-nav-lead').innerText.trim(),
             current: current ? current.querySelector('.part-nav-label').textContent : '',
             leadFits: nav.querySelector('.part-nav-lead').getBoundingClientRect().right <= items[0].getBoundingClientRect().left + 1,

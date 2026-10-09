@@ -3394,11 +3394,7 @@
     // Only a nav pinned across the top covers the part; one standing down the
     // side (the sample on a laptop) covers nothing.
     const navStyle = getComputedStyle(nav);
-    // A titled nav slides its title under the site's header once stuck: only the rest of it covers anything.
-    const title = nav.querySelector('.part-nav-title');
-    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') {
-      height += nav.getBoundingClientRect().height - (title ? title.getBoundingClientRect().height + 4 : 0) + 8;
-    }
+    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
     return Math.round(height);
   }
 
@@ -5600,14 +5596,58 @@
    * and sticky so a reader can move between them from anywhere in the
    * report. markStructured lights the one they are in.
    */
-  function partNavHtml(hasRoast, title) {
+  /**
+   * My Report's header: the eyebrow pill (parts and the PDF's pages, filled
+   * in once counted), the title, a line on what the report is, and the
+   * reader's character's emblem where My Syncs has its pair.
+   */
+  function reportHeroHtml(report) {
+    const R = Copy.STRUCTURED.reportPage;
+    const name = essenceName(report.essence || {});
+    const emblem = name ? Copy.emblemSvg(name, 'report-hero-emblem') : '';
+    const parts = PART_ORDER.filter(key => key !== 'appendix').length;
+    return '<header class="scan-hero report-hero">' +
+      (emblem ? '<span class="report-hero-mark" aria-hidden="true">' + emblem + '</span>' : '') +
+      '<p class="scan-eyebrow" id="report-hero-pill">' + esc(R.pill(parts, reportPdfPages())) + '</p>' +
+      '<h2 class="report-hero-title">' + esc(R.pageTitle) + '</h2>' +
+      '<p class="scan-lede">' + esc(R.lede) + '</p></header>';
+  }
+  // The PDF's page count, for the pill: built once per report when the page
+  // is idle, and kept for as long as the report is the same one.
+  let reportPagesFor = '';
+  let reportPages = 0;
+  function reportPdfPages() {
+    const profile = state.profile;
+    const key = profile ? String(profile.createdAt) + '|' + String(profile.premiumAt || '') : '';
+    if (key && key === reportPagesFor) return reportPages;
+    if (key) {
+      reportPagesFor = key;
+      reportPages = 0;
+      const count = () => {
+        try {
+          buildReportPdf(state.profile).text().then(text => {
+            if (reportPagesFor !== key) return;
+            reportPages = (text.match(/\/Type \/Page[^s]/g) || []).length;
+            const pill = $('#report-hero-pill');
+            if (pill && reportPages) {
+              pill.textContent = Copy.STRUCTURED.reportPage.pill(PART_ORDER.filter(k => k !== 'appendix').length, reportPages);
+            }
+          }).catch(() => {});
+        } catch (error) { /* the pill keeps the parts alone */ }
+      };
+      if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(count, { timeout: 2000 });
+      else setTimeout(count, 300);
+    }
+    return 0;
+  }
+
+  function partNavHtml(hasRoast, ownPage) {
     const S = Copy.STRUCTURED;
     // Evidence and method and the roast sit inside part 05, the appendix.
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
     // On a phone it is one thin row under the site's header: the name of the
     // part being read, then the numerals 00 … 05.
-    return '<nav class="part-nav' + (title ? ' has-title' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
-      (title ? '<h2 class="part-nav-title">' + esc(title) + '</h2>' : '') +
+    return '<nav class="part-nav' + (ownPage ? ' is-report' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
       '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
       (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
@@ -6277,8 +6317,9 @@
     const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
     const roast = sample ? null : report.bonus;
-    // My Report's title heads the part nav, in its box.
-    let html = partNavHtml(Boolean(roast), options && options.page && !sample ? S.reportPage.pageTitle : '');
+    // My Report opens with its own header, as My Syncs does; the part nav
+    // under it (or down the left) carries no title of its own.
+    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(Boolean(roast), ownPage);
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -7379,7 +7420,7 @@
     const view = $('#view-profile');
     // The left column's top level with the report's first part, as the page
     // first lays out; then the actions under it.
-    const first = document.querySelector('#profile-body .part-card');
+    const first = document.querySelector('#profile-body .report-hero') || document.querySelector('#profile-body .part-card');
     if (first && first.offsetParent) {
       const header = document.querySelector('.nav');
       const floor = (header ? header.getBoundingClientRect().height : 56) + 12;
@@ -8943,6 +8984,7 @@
 
   function renderScan() {
     flash('#scan-alert', '');
+    $('#scan-alert').classList.remove('is-note');
     // Named for whoever this device belongs to, the way the profile page is.
     // There may be no profile yet on a device that was sent a link, so the
     // generic title in the markup stays the fallback.
@@ -9073,6 +9115,23 @@
    * The report's own `mode` still wins where the model set one, exactly as it
    * did inline.
    */
+  /** A short fingerprint of a friend's card, so the same link is recognised once synced. */
+  function syncCardKey(card) {
+    const text = JSON.stringify(Card.shape(card || {}));
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+    return (hash >>> 0).toString(16) + '.' + text.length.toString(16);
+  }
+  /**
+   * Whether this card has been synced with on this device already. A sync
+   * saved before fingerprints were kept is matched by the friend's name.
+   */
+  function alreadySynced(card) {
+    const key = syncCardKey(card);
+    return (store.read(KEYS.history, []) || []).some(entry => entry &&
+      (entry.with ? entry.with === key : entry.withName === card.name));
+  }
+
   function adoptComparison(result, other, mode, stance) {
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
@@ -9090,7 +9149,7 @@
     const report = { ...result.data, mode: result.data.mode || basis, stance };
     const history = store.read(KEYS.history, []);
     history.unshift({
-      when: new Date().toISOString(), withName: other.name, mode: report.mode, stance, report,
+      when: new Date().toISOString(), withName: other.name, with: syncCardKey(other), mode: report.mode, stance, report,
     });
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name);
@@ -9254,6 +9313,15 @@
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
+    // A link already synced with is not a friend waiting again: it opens the
+    // list, where that sync is.
+    if (state.profile && alreadySynced(card)) {
+      renderScan();
+      show('scan');
+      flash('#scan-alert', TEXT.syncAlreadyDone(firstName(card.name) || card.name));
+      $('#scan-alert').classList.add('is-note');
+      return true;
+    }
     // The link's own code too, so a sync with this friend counts for them.
     addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null,
       fromRef ? { ref: fromRef } : null));
@@ -9386,8 +9454,6 @@
     const name = firstName(invite.name);
     $('#invite-title').textContent = TEXT.inviteTitle(name);
     $('#invite-text').textContent = TEXT.inviteText(name);
-    $('#invite-match-title').textContent = TEXT.inviteMatchTitle(name);
-    $('#invite-match-text').textContent = TEXT.inviteMatchText;
     // Other friends' links waiting too: named, so nobody is lost.
     const others = moreInvites().map(i => firstName(i.name) || i.name).filter(Boolean);
     $('#invite-also').textContent = others.length ? TEXT.inviteAlso(others) : '';
@@ -9443,7 +9509,6 @@
     if (!invites.length) return;
     const names = invites.map(i => firstName(i.name) || i.name);
     $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
-    $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany(names);
     $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
     // How many are waiting, in the ring.
     $('#sync-invite-count').textContent = String(invites.length);

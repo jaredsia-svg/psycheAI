@@ -202,14 +202,13 @@
     inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your friend') + ' Psyche Card',
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
-    inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?% in sync',
-    inviteMatchText: 'Your Psyche Sync score is one tap away once your card is ready.',
     inviteStart: 'Get my free Psyche Card',
     inviteCardHint: 'Tap to explore',
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
     syncInviteTitle: () => 'You have a friend waiting to sync with you',
-    syncInviteSub: (name) => (name || 'A friend') + ' sent you their link. See how in sync you are — free, and only you see it.',
+    // Opening a friend's link that was already synced on this device.
+    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this friend') + ' — it is in your list below.',
     syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
@@ -217,8 +216,6 @@
     syncWaitingMeta: 'Waiting to sync with you · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: () => 'You have friends waiting to sync with you',
-    syncInviteSubMany: (names) => names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] +
-      ' sent you their links. Pick who to sync with — each is free, and only you see it.',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
       ' — you can sync with everyone once your card is ready.',
@@ -802,7 +799,7 @@
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
     scanTitle: 'Psyche Sync',
-    scanHistory: 'My Syncs',
+    scanHistory: 'Your Syncs',
     // My Syncs: one list, friends waiting to sync at the top, then past syncs.
     syncsList: 'Psyche Sync',
   };
@@ -1029,6 +1026,9 @@
     // My Psyche, once the full report is unlocked: the way into My Report.
     reportPage: {
       pageTitle: 'Your Psyche Report',
+      // The header's pill: the parts, and the PDF's pages once counted.
+      pill: (parts, pages) => parts + ' parts' + (pages ? ' · ' + pages + ' pages' : ''),
+      lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
       open: 'See Psyche Report',
       ready: 'Your full report is ready.',
     },

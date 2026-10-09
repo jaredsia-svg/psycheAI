@@ -1910,9 +1910,9 @@ at the top of the welcome page, *"⭐ This is Jared's Psyche Card"* (by first na
 too) over their card: tilted, and a tap away from full screen (the sample cards' dialog, with its
 part-by-part guide). Under it, joined to it by a short dashed line, comes a panel: *"PsycheAI reads
 your personality from your own Instagram data. No questionnaire, no sign-up. Get your free Psyche
-Card, and see how compatible you are with Jared."* Then a *You + Jared = ?* score still to reveal, and
-*Get my free Psyche Card*, which scrolls to *Request your Instagram data first*. On a laptop the
-panel sits to the right of the card. The card is drawn by the same `psycheCardHtml` as everyone's own, from
+Card, and see how compatible you are with Jared."* Then *Get my free Psyche Card*, which scrolls to *Request your Instagram data first*. On a laptop the
+panel sits to the right of the card. The dashed *You + Jared = ?% in sync* box that used to sit
+in the panel is gone. The card is drawn by the same `psycheCardHtml` as everyone's own, from
 `reportFromCard(card, face)`. The **face** holds what the compatibility read never needs: the character,
 franchise and icon, the two lines on why, each type letter's strength and the patterns' full names.
 It also carries every list exactly as the owner's card shows it: motivators (`m`), values & beliefs
@@ -1956,8 +1956,10 @@ friend.
 At the top of My Psyche, above the card, one bar holds them all, with the number waiting in its ring.
 Its ✕ closes it until a friend's link arrives that was not waiting then (`psycheai_sync_bar_closed`);
 those friends still wait on My Syncs.
-- **One friend:** *You have a friend waiting to sync with you*, *Jared sent you their link*.
-- **More:** *You have friends waiting to sync with you*, *Jared and Mei sent you their links*.
+- **One friend:** *You have a friend waiting to sync with you*.
+- **More:** *You have friends waiting to sync with you*.
+
+The bar is the title alone; the line naming who sent a link is gone.
 
 The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche, and My Report
 never shows the bar.
@@ -1971,6 +1973,13 @@ On My Syncs one card, **Psyche Sync**, lists them all:
 A sync from a waiting row opens in the same popout. Behind it, that friend has already moved from the
 waiting rows to the past syncs. The popout closes with its ✕, **Close**, Esc, a click outside it, or
 Back.
+
+**A link already synced is not taken again.** Each past sync stores a fingerprint of the friend's
+card (`with`, from `syncCardKey`: a hash of the card's shape). Opening a friend's link checks it
+(`alreadySynced`). A card synced before is not added to the waiting rows: the reader lands on My
+Syncs (titled **Your Syncs**) with a note, *You have already synced with Jared — it is in your list
+below.* Syncs saved before the fingerprint existed are matched by the friend's name. A different
+friend's link, or the same friend with a new card, still waits as usual.
 
 Below the list is one box with two halves, divided by a hairline:
 - **My link** (left): **Copy link**, then *What your link contains*: the fields as chips (first name,
@@ -2096,12 +2105,16 @@ A paid structured report is split into two pages, which are two modes of `#view-
   A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
   *Download full report*; its footer is **Delete everything** with the run's note (model and
   date) right beside it.
-- **My Report** (`go('full')`, nav `#nav-full`) has its title, **Your Psyche Report**
-  (`.part-nav-title`), heading the part nav's own white box under the cards' purple line, with My
-  Syncs' light wash. On a laptop it is the left column, its top set level with the first part
-  (`--side-nav-top`, measured in `layoutSideActions`); on a phone it is the row of part numbers. Once the nav sticks on a phone,
-  the title row slides under the site's header and only the numbers stay in view: the nav's `top` is
-  the header's height less `--nav-title-h`. Then come Parts 00 to 05. Part 05, the appendix (only the roast
+- **My Report** (`go('full')`, nav `#nav-full`) opens with a header built like My Syncs' one
+  (`reportHeroHtml`, `.report-hero`): a purple pill, the title **Your Psyche Report**, a one-line
+  lede (*The working behind your Psyche Card: what each result means, the evidence for it in your
+  own data, and what to do with it.*), and the character's emblem in a gradient disc. The pill reads
+  *5 parts · N pages*. N is counted from the real PDF (`reportPdfPages` builds it when the browser is
+  idle, counts its pages, and caches the count per report), so until then it reads *5 parts*.
+  The part nav has no title of its own (`.part-nav.is-report`). On a laptop it is the left column,
+  its top level with the header (`--side-nav-top`, measured in `layoutSideActions`). On a phone it
+  is the row of part numbers under the header and sticks just below the site's header. Part heads
+  are smaller than before: the title is 1.15rem, the number about 2rem. Then come Parts 00 to 05. Part 05, the appendix (only the roast
   now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
   row starts with **← Back** (`#report-back`), before Download, and returns to My Psyche.
 - **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) every
@@ -5428,8 +5441,8 @@ way people say it:
 - The full premium report keeps *How you attach* and *Who suits you*.
 
 **Card first.** A friend who arrives on a link and makes their card lands on their own card, not
-in a comparison. A banner above it (`#sync-invite`) reads *You + Jared = ?% in sync · See how in sync
-you are with Jared*, and the sync runs only when they tap it. The invite is spent then, and restored
+in a comparison. A bar above it (`#sync-invite`) reads *You have a friend waiting to sync with you*;
+its **Sync** goes to My Syncs, and the sync runs only when they tap it there. The invite is spent then, and restored
 if the run fails. A reader who already has a card and opens a friend's link lands the same way. The
 result stays on the friend's device.
 

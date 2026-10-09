@@ -809,6 +809,8 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   color: var(--warn); border-radius: 10px; padding: .7rem .9rem; margin: 1rem 0; font-size: .92rem;
 }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+/* A note rather than a problem: in the accent, not the warning colour. */
+.alert.is-note { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--accent); }
 
 /* A friend's link: their Psyche Card, then — in a panel of its own, joined
    to the card by a short line — what to do about it. Phone: one under the
@@ -863,21 +865,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .invite-banner .invite-text { margin: 0; font-size: .98rem; line-height: 1.55; }
 .invite-banner .btn-row { margin: 1rem 0 0; }
 .invite-banner .btn-row .btn { width: 100%; }
-.invite-match {
-  display: flex; align-items: center; gap: .8rem; margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
-  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-}
-.invite-match p { margin: 0; font-size: .86rem; line-height: 1.4; }
-.invite-match strong { display: block; font-size: 1.02rem; }
-.invite-ring {
-  flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
-  font-weight: 800; font-size: 1.3rem; color: var(--accent);
-  background: conic-gradient(var(--accent) 0 30%, var(--accent-2) 30% 62%, color-mix(in srgb, var(--accent) 25%, transparent) 62% 100%);
-  position: relative; isolation: isolate;
-}
-/* The ring's hole: the score it will hold is still a question. */
-.invite-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); z-index: -1; }
+
 @media (min-width: 760px) {
   .invite-banner.has-card {
     grid-template-columns: auto minmax(0, 30rem); justify-content: center; align-items: center;
@@ -3141,7 +3129,9 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-card { padding-top: 1.1rem; }
 .part-card-head { display: block; cursor: pointer; margin-bottom: 0; }
 .part-card .report-part { margin: 0; padding: 0; border: 0; }
-.part-card .part-title { margin: 0; }
+.part-card .part-title { margin: 0; font-size: 1.15rem; }
+/* Smaller in a part's own head than as a page heading. */
+.part-card .part-num { font-size: clamp(1.7rem, 5vw, 2.1rem); }
 .part-card .part-title .card-toggle { font-size: inherit; }
 .part-card:not(.is-collapsed) > .part-card-head { padding-bottom: .9rem; border-bottom: 1px solid var(--line); }
 .part-body > .card {
@@ -3386,20 +3376,30 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav-item.is-current .part-nav-num { opacity: .85; }
 [data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }
 
-/* My Report's title, at the head of the part nav's own white box, under the
-   same purple line the cards carry. Its row is a fixed height so a stuck nav
-   can slide it under the site's header and keep only the parts in view. */
-.part-nav.has-title {
-  --nav-title-h: 2.9rem;
+/* My Report's part nav: a white box under the cards' purple line, with My
+   Syncs' light wash. Its title is the page header above (.report-hero). */
+.part-nav.is-report {
   background: linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 3px no-repeat,
-    radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%),
-    radial-gradient(90% 80% at 0% 100%, rgba(123, 63, 160, .12), transparent 60%),
+    radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .12), transparent 55%),
     var(--bg-alt);
-  top: calc(3.4rem - var(--nav-title-h));
 }
-.part-nav-title {
-  flex: 1 1 100%; margin: 0; height: calc(var(--nav-title-h) - .4rem); line-height: calc(var(--nav-title-h) - .4rem);
-  padding: 0 .6rem; text-align: center; font-size: 1.12rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+/* My Report's header: My Syncs' hero, with the reader's emblem where My
+   Syncs has its pair of faces. */
+.report-hero { margin-bottom: 1rem; }
+.report-hero-title {
+  margin: 0 0 .55rem; padding-right: 110px;
+  font-size: clamp(1.6rem, 3.8vw, 2.2rem); line-height: 1.12; letter-spacing: -.02em;
+}
+.report-hero-mark {
+  position: absolute; top: 1.7rem; right: 2rem; width: 84px; height: 84px; border-radius: 50%;
+  display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 24px rgba(123, 63, 160, .28);
+}
+.report-hero-mark svg { width: 46px; height: 46px; }
+@media (max-width: 640px) {
+  .report-hero-mark { position: relative; top: auto; right: auto; width: 60px; height: 60px; margin: 0 0 .8rem; }
+  .report-hero-mark svg { width: 32px; height: 32px; }
+  .report-hero-title { padding-right: 0; }
 }
 /* Every name in full: the nav wraps rather than scrolling one off the end.
    On a phone it stays where it is rather than following the reader down, so
@@ -3420,7 +3420,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
   .part-nav .part-nav-item { flex: none; width: 1.7rem; padding: .22rem 0; font-size: .7rem; text-align: center; }
   .part-nav .part-nav-num { margin: 0; opacity: 1; }
-  #profile-body .part-nav.has-title { flex-wrap: wrap; top: calc(var(--header-h, 3rem) - var(--nav-title-h)); }
 }
 /* On any laptop the nav stands down the left. Where the screen is too narrow
    to centre the report with the nav beside it, the report moves right
@@ -3430,8 +3429,7 @@ details.more[open] > summary::after { content: ' ▴'; }
     margin-left: max(248px, calc((100vw - var(--page-w)) / 2)); margin-right: auto;
     max-width: min(var(--page-w), calc(100vw - 248px));
   }
-  #profile-body .part-nav.has-title { top: var(--side-nav-top, 6.5rem); }
-  #profile-body .part-nav-title { flex: none; height: auto; line-height: 1.3; padding: .55rem .7rem .45rem; text-align: left; font-size: 1.05rem; }
+  #profile-body .part-nav.is-report { top: var(--side-nav-top, 6.5rem); }
   #profile-body .part-nav {
     position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
