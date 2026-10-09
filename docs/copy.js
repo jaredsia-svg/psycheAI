@@ -178,6 +178,9 @@
     return String(template || '').replace('{name}', String(name || 'them'));
   }
 
+  // "Ava's", "James'" — the shared card belongs to a name the app did not choose.
+  const possessive = name => String(name) + (/s$/i.test(String(name)) ? '’' : '’s');
+
   const TEXT = {
     whoYouAre: 'Who you are',
     essenceLabel: 'You are most like',
@@ -190,9 +193,22 @@
     // takes text too: the character, then where to get your own.
     // The welcome page's banner for a compare link opened before the reader
     // has a card of their own.
-    inviteTitle: (name) => (name || 'Someone') + ' wants to see how compatible you both are',
-    inviteText: (name) => 'Download your Instagram data and make your free Psyche Card. The compatibility ' +
-      'analysis with ' + (name || 'them') + ' runs straight after it, also free.',
+    // With their card beside it: the hook is the character, and what the
+    // reader's own card would say.
+    inviteEyebrow: (name) => '💌 ' + (name || 'A friend') + ' sent you their Psyche Card',
+    inviteTitle: (name, character) => character
+      ? (name || 'They') + ' is most like ' + character + '. Who are you most like?'
+      : 'This is ' + possessive(name || 'your friend') + ' Psyche Card. What would yours say?',
+    inviteText: (name) => 'PsycheAI reads your personality from your own Instagram — your type, your traits, ' +
+      'what drives you and how you love. No questionnaire, no sign-up. Make your free Psyche Card, and the ' +
+      'compatibility analysis with ' + (name || 'them') + ' runs straight after it, also free.',
+    inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?',
+    inviteMatchText: 'Your compatibility score is revealed the moment your card is ready — as partners, friends & family, or at work.',
+    inviteStart: 'Get my free Psyche Card',
+    inviteHave: 'I already have my Instagram file',
+    inviteSmall: 'Instagram takes a few hours to email your data. This invite waits for you on this device for 14 days.',
+    inviteCardHint: 'Tap to explore',
+    inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
     cardShareText: (character) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
       'Find yours free, no questionnaire: https://psycheai.io',
     cardHint: 'Tap to open full screen',
@@ -327,8 +343,8 @@
 
     // What "Send my link" puts in the share sheet, or on the clipboard where
     // there is none. Written in the sender's own voice, since they send it.
-    compatShareText: (url) => 'Let’s see how compatible we are! Make your free Psyche Card and our ' +
-      'compatibility analysis runs straight after, also free: ' + url,
+    compatShareText: (url) => 'Here’s my Psyche Card ✨ Who are you most like? Make yours free and see how ' +
+      'compatible we are: ' + url,
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The analysis runs on the side of whoever opens the link, so ' + name +
       ' does not have this report. Send them your link and they get their own, free.',
@@ -616,7 +632,7 @@
       share: 'Share',
       claim: 'Claim your free full report',
       copied: 'Invite link copied.',
-      shareText: 'Make your free Psyche Card from your own Instagram data:',
+      shareText: 'See my Psyche Card, then make yours free from your own Instagram data:',
       useFree: 'Use your free full report — from inviting friends',
       claimFailed: 'There is no free report to claim yet.',
     },

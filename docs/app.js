@@ -502,9 +502,9 @@
           '</span>' : '') +
       '</div>' +
       '<div class="pc-hero">' +
-        '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
+        (name ? '<p class="pc-kicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-name"><span class="pc-icon" aria-hidden="true">' +
-          esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' +
+          esc(safeIcon(essence.icon)) + '</span><h2>' + esc(name) + '</h2></div>' : '') +
         (blurb ? '<p class="pc-blurb">' + esc(blurb) + '</p>' : '') +
       '</div>' +
 
@@ -621,10 +621,11 @@
         (confidence ? '<span class="pc-sconf" title="' + esc(TEXT.cardConfidence) + '">' + storyRing(confidence) + '</span>' : '<span></span>') +
       '</div>' +
       '<div class="pc-shero' + (art ? ' pc-has-art' : '') + '">' + art +
-        '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
+        // A card shared by a long link carries no character (see cardFace).
+        (name ? '<p class="pc-skicker">' + esc(TEXT.essenceLabel) + '</p>' +
         '<div class="pc-sname">' + (art ? '' : '<span class="pc-smedal" aria-hidden="true">' + (emblem || esc(safeIcon(essence.icon))) + '</span>') +
           '<div><h2>' + esc(name) + '</h2>' + (essence.franchise ? '<p class="pc-sfranchise">' + esc(essence.franchise) + '</p>' : '') +
-          '</div></div>' +
+          '</div></div>' : '') +
         (headline ? '<p class="pc-sheadline">' + esc(headline) + '</p>' : '') +
         (blurb ? '<p class="pc-sblurb">' + esc(blurb) + '</p>' : '') +
       '</div>' +
@@ -4957,6 +4958,37 @@
     return new TextDecoder().decode(plain);
   }
 
+  // What the card looks like, beside what it says: the character, the two
+  // lines on why, and how firmly each type letter was picked. The
+  // compatibility read never needs these, so they are not in the card payload
+  // (docs/card.js) and the long link is no longer for them. They travel only
+  // inside the locked short link, so a friend who opens it sees the card the
+  // way its owner does — the same card the owner posts as an image.
+  function cardFace(report) {
+    const r = report || {};
+    const essence = r.essence || {};
+    return {
+      c: String(essenceName(essence)).slice(0, 40),
+      fr: String(essence.franchise || '').slice(0, 30),
+      i: String(essence.icon || '').slice(0, 8),
+      w: splitSentences(cardBlurb(r)).slice(0, 2).join(' ').slice(0, 420),
+      s: ((r.mbti || {}).letters || []).slice(0, 4).map(l => String((l && l.strength) || '').slice(0, 10)),
+      // The patterns' names in full; the payload cuts them for the comparison.
+      p: signaturePatterns(r).map(p => String(p.name).slice(0, 80)),
+    };
+  }
+  /** A short link's contents: the card payload, and its face where the link carries one. */
+  function openedCard(text) {
+    const raw = String(text || '');
+    if (raw.charAt(0) !== '{') return { payload: raw, face: null };
+    try {
+      const sealed = JSON.parse(raw);
+      return { payload: String(sealed.p || ''), face: sealed.f && typeof sealed.f === 'object' ? sealed.f : null };
+    } catch (error) {
+      return { payload: '', face: null };
+    }
+  }
+
   // The reader's short link once it is saved for the card on screen.
   let shortLink = '';
   let publishing = null;
@@ -4971,12 +5003,15 @@
         if (!/^[A-Za-z0-9_-]{16}$/.test(link.key || '')) {
           link = { key: b64url(crypto.getRandomValues(new Uint8Array(12))) };
         }
-        const card = (await sha256Hex(state.profile.payload)).slice(0, 16);
+        const sealed = JSON.stringify({ p: state.profile.payload, f: cardFace(state.profile.report) });
+        const card = (await sha256Hex(sealed)).slice(0, 16);
         if (link.id && link.card === card && link.secret === mine.code) {
           shortLink = location.origin + '/c/' + link.id + '#' + link.key;
           return shortLink;
         }
-        const blob = await lockCard(state.profile.payload, link.key);
+        let blob = await lockCard(sealed, link.key);
+        // Past what the server keeps (lib/links.js), the card goes without its face.
+        if (blob.length > 4096) blob = await lockCard(state.profile.payload, link.key);
         const answer = await LLM.postWithTicket('api/link/save', { secret: mine.secret, blob });
         if (!answer || !/^[A-Za-z0-9_-]{10}$/.test(answer.id || '')) return '';
         store.write(KEYS.link, { key: link.key, id: answer.id, card, secret: mine.code });
@@ -8930,6 +8965,7 @@
   // that already has PsycheAI open. Both have to work.
   async function consumeIncomingLink() {
     let incoming = '';
+    let face = null;
     const params = new URLSearchParams(location.search);
     if (params.has('c')) {
       // A short personal link, /c/<id>#<key>, arrives here as ?c=<id>#<key>.
@@ -8950,7 +8986,9 @@
           trackStep('referral_open');
         }
       }
-      try { incoming = found && key ? await unlockCard(found.blob, key) : ''; } catch (error) { incoming = ''; }
+      try {
+        if (found && key) ({ payload: incoming, face } = openedCard(await unlockCard(found.blob, key)));
+      } catch (error) { incoming = ''; }
       if (!incoming) {
         showUploadError(TEXT.shortLinkUnreadable);
         return true;
@@ -8968,9 +9006,9 @@
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
-    store.write(KEYS.invite, { payload: incoming, name: card.name, at: Date.now() });
+    store.write(KEYS.invite, Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null));
     show('welcome');
-    refreshInvite();
+    await refreshInvite();
     return true;
   }
 
@@ -8989,17 +9027,111 @@
     return invite;
   }
 
-  function refreshInvite() {
+  /**
+   * A shared card as a report, so it is drawn by the same psycheCardHtml as
+   * everyone's own: the payload's fields, and the face — character, scene and
+   * why — where a short link brought one. A long link has no face, and its
+   * card is drawn without the character.
+   */
+  const MBTI_AXES = [['E/I', /[EI]/], ['N/S', /[NS]/], ['T/F', /[TF]/], ['J/P', /[JP]/]];
+  function reportFromCard(card, face) {
+    const c = card || {};
+    const f = face || {};
+    const type = String(c.mbti || '').toUpperCase();
+    const letters = MBTI_AXES.map(([axis, pole], i) => ({
+      axis, choice: pole.test(type.charAt(i)) ? type.charAt(i) : '', strength: String((f.s || [])[i] || ''),
+    }));
+    const bigFive = {};
+    for (const [key, score] of Object.entries(c.bigFive || {})) bigFive[key] = { score };
+    const titled = list => (list || []).map(title => ({ title }));
+    // The card labels each one, "Quality time (primary)"; the face shows the name.
+    const languages = list => (list || []).map(item => ({ language: String(item).replace(/\s*\([^)]*\)\s*$/, '') }));
+    return {
+      card: { name: c.name || '', headline: c.headline || '', confidence: c.confidence || 0 },
+      confidence: { score: c.confidence || 0 },
+      essence: { character: String(f.c || ''), franchise: String(f.fr || ''), icon: String(f.i || '') },
+      cardHighlights: String(f.w || ''),
+      patterns: ((Array.isArray(f.p) && f.p.length ? f.p : c.patterns) || []).slice(0, 3)
+        .map((name, i) => ({ id: 'p' + (i + 1), name: String(name) })),
+      topMotivators: c.motivators || [],
+      mbti: { type, letters: letters.every(l => l.choice) ? letters : [] },
+      bigFive,
+      values: titled(c.values),
+      interests: titled(c.interests),
+      relationship: { loveLanguages: { receiving: languages(c.loveReceiving), giving: languages(c.loveGiving) } },
+    };
+  }
+
+  // The welcome page for a friend's link: their card itself, drawn the way it
+  // is on their own screen, beside why to make one — the comparison with them
+  // waits on it. Tapping the card opens it full screen, part by part.
+  let inviteDrawn = '';
+  let inviteReport = null;
+  async function refreshInvite() {
     const banner = $('#invite-banner');
     if (!banner) return;
     const invite = state.profile ? null : pendingInvite();
-    banner.hidden = !invite;
-    if (!invite) return;
-    $('#invite-title').textContent = TEXT.inviteTitle(invite.name);
-    $('#invite-text').textContent = TEXT.inviteText(invite.name);
+    if (!invite) {
+      banner.hidden = true;
+      inviteDrawn = '';
+      inviteReport = null;
+      return;
+    }
+    const drawn = invite.payload + JSON.stringify(invite.face || null);
+    if (inviteDrawn !== drawn) {
+      inviteDrawn = drawn;
+      const card = await Card.decodeCard(invite.payload);
+      inviteReport = card ? reportFromCard(card, invite.face) : null;
+      const el = $('#invite-card');
+      el.innerHTML = inviteReport ? psycheCardHtml(inviteReport) : '';
+      freshArtIds(el);
+    }
+    const name = invite.name;
+    const character = inviteReport ? essenceName(inviteReport.essence) : '';
+    $('#invite-eyebrow').textContent = TEXT.inviteEyebrow(name);
+    $('#invite-title').textContent = TEXT.inviteTitle(name, character);
+    $('#invite-text').textContent = TEXT.inviteText(name);
+    $('#invite-match-title').textContent = TEXT.inviteMatchTitle(name);
+    $('#invite-match-text').textContent = TEXT.inviteMatchText;
+    $('#invite-guide').textContent = TEXT.inviteStart;
+    $('#invite-have').textContent = TEXT.inviteHave;
+    $('#invite-small').textContent = TEXT.inviteSmall;
+    $('#invite-card-hint').textContent = TEXT.inviteCardHint;
+    const open = $('#invite-card-open');
+    open.hidden = !inviteReport;
+    open.setAttribute('aria-label', TEXT.inviteCardOpen(name));
+    banner.classList.toggle('has-card', Boolean(inviteReport));
+    banner.hidden = false;
+    layoutInviteCard();
+  }
+
+  function layoutInviteCard() {
+    const banner = $('#invite-banner');
+    const el = $('#invite-card');
+    if (!banner || banner.hidden || !inviteReport || !el.innerHTML) return;
+    const width = Math.max(200, Math.min(270, banner.clientWidth - 48));
+    fitCard(el, width, width * 1920 / 1080);
+  }
+  window.addEventListener('resize', layoutInviteCard);
+
+  /** The friend's card full screen, explained part by part, in the sample cards' dialog. */
+  function openInviteCard() {
+    const dialog = $('#sample-card-dialog');
+    if (!dialog || dialog.open || !inviteReport) return;
+    dialog.classList.remove('is-gallery');
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    const full = $('#sample-psyche-card-full');
+    full.innerHTML = psycheCardHtml(inviteReport);
+    freshArtIds(full);
+    guideSampleCard(inviteReport);
+    $('#sample-card-count').textContent = '';
+    layoutPsycheCard();
   }
 
   $('#invite-guide').addEventListener('click', showGuide);
+  $('#invite-have').addEventListener('click', startFromSources);
+  $('#invite-card-open').addEventListener('click', openInviteCard);
 
   // A creator's or campaign's link carries ?via=<code>. Read once on arrival,
   // kept on this device for VIA_DAYS (the export takes hours, and the card is

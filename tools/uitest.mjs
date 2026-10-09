@@ -1650,13 +1650,36 @@ try {
       await invitePage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
       const first = await banner();
       check('a compatibility link opened with no card of your own greets you by the sender\'s name',
-        first.shown && first.welcome && /Ava Tan wants to see how compatible you both are/.test(first.text) && !first.error,
+        first.shown && first.welcome && /Ava Tan sent you their Psyche Card/.test(first.text) && !first.error,
         JSON.stringify(first));
       check('and says what to do, and that the analysis with them is free and follows on its own',
-        /Download your Instagram data and make your free Psyche Card\. The compatibility analysis with Ava Tan runs straight after it, also free\./
+        /Make your free Psyche Card, and the compatibility analysis with Ava Tan runs straight after it, also free\./
           .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
-      check('with a way to the steps and no button to throw the invite away',
-        await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-forget').count()) === 0);
+      check('with a way to the steps, a way straight to the upload, and no button to throw the invite away',
+        await invitePage.locator('#invite-guide').isVisible() && await invitePage.locator('#invite-have').isVisible() &&
+          (await invitePage.locator('#invite-forget').count()) === 0);
+      // Their card itself, drawn as it is on their own screen. A long link
+      // carries no character, so the card is drawn without one and the
+      // heading asks what the reader's would say instead.
+      const drawnCard = await invitePage.evaluate(() => {
+        const el = document.querySelector('#invite-card');
+        const box = document.querySelector('#invite-card-open').getBoundingClientRect();
+        return { owner: (el.querySelector('.pc-sowner, .pc-owner') || {}).textContent || '', width: box.width, height: box.height,
+          title: document.querySelector('#invite-title').textContent, name: el.querySelector('.pc-sname, .pc-name') !== null,
+          traits: el.querySelectorAll('.pc-straits li, .pc-trait').length };
+      });
+      check('the sender\'s Psyche Card is shown beside the invite, small enough to sit beside it',
+        drawnCard.owner === 'Ava Tan' && drawnCard.traits > 0 && drawnCard.width > 150 && drawnCard.width < 330 &&
+          drawnCard.height > 150, JSON.stringify(drawnCard));
+      check('a long link has no character to name, so the card leaves it out and the heading asks about yours',
+        !drawnCard.name && /This is Ava Tan’s Psyche Card\. What would yours say\?/.test(drawnCard.title), drawnCard.title);
+      await invitePage.click('#invite-card-open');
+      await invitePage.waitForSelector('#sample-card-dialog[open]', { timeout: 10000 });
+      check('tapping their card opens it full screen, explained part by part',
+        await invitePage.evaluate(() => /Ava Tan/.test(document.querySelector('#sample-psyche-card-full').textContent) &&
+          !document.querySelector('#sample-card-dialog').classList.contains('is-gallery')));
+      await invitePage.keyboard.press('Escape');
+      await invitePage.waitForFunction(() => !document.querySelector('#sample-card-dialog').open, { timeout: 10000 });
 
       // The tab is closed and the friend comes back hours later to a plain
       // address, the way they would from Instagram's email.
@@ -5008,7 +5031,7 @@ try {
   await page.click('#share-link');
   const sharedData = await page.evaluate(() => window.__shared);
   check('"Send my link" opens the share sheet with a ready-written message carrying the link',
-    Boolean(sharedData) && /^Let’s see how compatible we are! Make your free Psyche Card/.test(sharedData.text) &&
+    Boolean(sharedData) && /^Here’s my Psyche Card ✨ Who are you most like\? Make yours free/.test(sharedData.text) &&
       sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
   // Without one, as on most desktops, the same message goes to the clipboard.
   await page.evaluate(() => {
@@ -9975,7 +9998,7 @@ try {
     await page.locator('#copy-link-scan').innerText());
   await page.click('#share-link-scan');
   check('"Send my link" there sends the same ready-written message',
-    /^Let’s see how compatible we are!/.test(await page.evaluate(() => window.__copied)) &&
+    /^Here’s my Psyche Card ✨/.test(await page.evaluate(() => window.__copied)) &&
       (await page.evaluate(() => window.__copied)).endsWith(ownLink) &&
       /copied/i.test(await page.locator('#share-link-scan-status').innerText()));
   check('the panel does not overflow the viewport',
@@ -11501,6 +11524,18 @@ try {
         const name = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name);
         check('a friend opening the short link gets the compatibility invite, from the locked card',
           arrived.invite && arrived.invite.name === name && arrived.banner.includes(name), JSON.stringify(arrived.banner));
+        // The short link carries the card's face too: the character, why, and
+        // the type letters' strengths, so the friend sees the card as its owner does.
+        const own = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).report);
+        const character = own.essence && (own.essence.character || own.essence.noun);
+        const face = await friendPage.evaluate(() => ({
+          title: document.querySelector('#invite-title').textContent,
+          name: (document.querySelector('#invite-card .pc-sname h2, #invite-card .pc-name h2') || {}).textContent || '',
+          stored: JSON.parse(localStorage.getItem('psycheai_invite') || '{}').face || null,
+        }));
+        check('and sees the sender\'s card with its character, and a heading that asks who they are most like',
+          Boolean(character) && face.name === character && face.title === name + ' is most like ' + character + '. Who are you most like?' &&
+            face.stored && face.stored.c === character, JSON.stringify(face));
         check('and the invite code with it, so their first free card counts', arrived.referredBy && arrived.referredBy.code === mine.code,
           JSON.stringify(arrived.referredBy));
         check('and the key is taken out of the address once read', !/#/.test(arrived.address) && !/[?&]c=/.test(arrived.address),

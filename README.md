@@ -1905,6 +1905,20 @@ stays current (the key is kept in `psycheai_link`).
 the card with the key and goes on exactly as the long link did, then strips the key from the address
 bar. A missing or wrong key, or an unknown id, says the link could not be opened and to ask for it again.
 
+**A friend sees the card itself.** Opening a friend's link before having a card of your own shows
+their Psyche Card at the top of the welcome page: tilted, a tap away from full screen (the sample
+cards' dialog, with the part-by-part guide). Beside it are *"Jared sent you their Psyche Card"*,
+*"Jared is most like Mulan. Who are you most like?"*, a *You + Jared = ?* score still to reveal,
+*Get my free Psyche Card* (the steps to request the export) and *I already have my Instagram file*
+(the upload). The card is drawn by the same `psycheCardHtml` as everyone's own, from
+`reportFromCard(card, face)`. The **face** holds what the compatibility read never needs: the character,
+franchise and icon, the two lines on why, each type letter's strength and the patterns' full names.
+It is not in the card payload, so the long link is unchanged. `cardFace` puts it inside the locked
+short link instead (`{ p: payload, f: face }`, falling back to the bare payload past 4 KB), so a
+friend sees the card exactly as its owner posts it. A long link has no face, so its card is drawn
+without the character and the heading asks *"What would yours say?"*. The share message now leads
+with the card: *"Here's my Psyche Card ✨ Who are you most like?…"*.
+
 Short links are on when Upstash is configured (`/api/status` → `shortLinks`), or with
 `PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
 links keep opening.

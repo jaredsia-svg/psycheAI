@@ -329,6 +329,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 @media (min-width: 720px) {
   .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 2rem; align-items: center; }
   .hero-video { margin: 0; width: 230px; }
+  .hero > .invite-banner { grid-column: 1 / -1; }
 }
 /* Nothing follows the buttons in the hero any more — the privacy badge that
    used to sit under them moved down to "Start here" — so their bottom margin
@@ -809,15 +810,75 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .alert ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 
-/* A friend's compatibility invite: good news, so in the accent rather than the
-   warning colour every .alert uses. */
+/* A friend's link: their Psyche Card itself, beside why to make your own.
+   Phone: the hook, the card, then the rest, one under the other. Wider: the
+   card on the left, everything said about it on the right. */
 .invite-banner {
-  position: relative; margin: 0 0 1.2rem; padding: .9rem 1.1rem; border-radius: 14px;
-  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  position: relative; margin: 0 0 1.6rem; padding: 1.1rem clamp(1rem, 3vw, 1.6rem) 1.3rem; border-radius: 22px;
+  background:
+    radial-gradient(80% 90% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(70% 90% at 100% 100%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 70%),
+    var(--bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  box-shadow: 0 22px 50px -30px rgba(60, 20, 90, .55);
+  display: grid; grid-template-columns: 1fr; gap: .2rem 0; text-align: left;
 }
-.invite-banner .invite-title { margin: 0; font-weight: 750; font-size: 1.02rem; line-height: 1.3; }
-.invite-banner .invite-text { margin: .3rem 0 0; font-size: .92rem; }
-.invite-banner .btn-row { margin: .7rem 0 0; }
+.invite-banner .invite-eyebrow {
+  margin: 0; justify-self: start; padding: .22rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 700;
+  color: var(--accent); background: var(--accent-soft);
+}
+.invite-banner .invite-title {
+  margin: .55rem 0 .2rem; font-size: clamp(1.35rem, 3.6vw, 1.85rem); font-weight: 800; line-height: 1.18;
+  letter-spacing: -.01em;
+}
+.invite-banner .invite-text { margin: .2rem 0 0; font-size: .95rem; color: var(--ink-soft); }
+.invite-banner .btn-row { margin: 1rem 0 0; }
+.invite-small { margin: .7rem 0 0; font-size: .8rem; color: var(--ink-soft); }
+.invite-match {
+  display: flex; align-items: center; gap: .8rem; margin: 1rem 0 0; padding: .7rem .9rem; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.invite-match p { margin: 0; font-size: .86rem; line-height: 1.4; }
+.invite-match strong { display: block; font-size: 1.02rem; }
+.invite-ring {
+  flex: none; display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
+  font-weight: 800; font-size: 1.3rem; color: var(--accent);
+  background: conic-gradient(var(--accent) 0 30%, var(--accent-2) 30% 62%, color-mix(in srgb, var(--accent) 25%, transparent) 62% 100%);
+  position: relative; isolation: isolate;
+}
+/* The ring's hole: the score it will hold is still a question. */
+.invite-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); z-index: -1; }
+/* The card: tilted and lifted, like the samples, with a soft glow behind it. */
+.invite-card-open {
+  position: relative; justify-self: center; margin: 1rem 0 .4rem; padding: 0; border: 0; background: none;
+  cursor: zoom-in; font: inherit; color: inherit; border-radius: 18px;
+}
+.invite-card-open::before {
+  content: ''; position: absolute; inset: 8% -6%; z-index: 0; border-radius: 40px; filter: blur(28px);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 55%, transparent), color-mix(in srgb, var(--accent-2) 50%, transparent));
+}
+.invite-card-frame {
+  position: relative; z-index: 1; display: block; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 20px 44px -18px rgba(60, 20, 90, .6); transform: rotate(-2.5deg); transition: transform .3s ease;
+}
+.invite-card-frame .psyche-card { display: block; transform-origin: top left; }
+.invite-card-open:hover .invite-card-frame, .invite-card-open:focus-visible .invite-card-frame { transform: rotate(0deg) translateY(-3px); }
+.invite-card-hint {
+  position: absolute; z-index: 2; right: -8px; bottom: -10px; padding: .32rem .7rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 700; background: var(--accent); color: var(--bg);
+  box-shadow: 0 6px 16px -6px rgba(60, 20, 90, .6);
+}
+@media (prefers-reduced-motion: reduce) { .invite-card-frame { transition: none; } }
+@media (min-width: 760px) {
+  .invite-banner.has-card {
+    grid-template-columns: auto 1fr; column-gap: clamp(1.4rem, 4vw, 2.6rem); align-items: start;
+    padding: 1.6rem clamp(1.4rem, 3vw, 2.2rem);
+  }
+  .invite-banner.has-card .invite-card-open { grid-column: 1; grid-row: 1 / span 3; margin: .4rem 0 .6rem; align-self: center; }
+  .invite-banner.has-card .invite-eyebrow, .invite-banner.has-card .invite-title,
+  .invite-banner.has-card .invite-body { grid-column: 2; }
+}
 .alert li { margin-bottom: .2rem; }
 
 /* The words to look for in Instagram's own interface. Underlined in the text's
