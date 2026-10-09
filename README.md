@@ -1984,7 +1984,11 @@ friend's link, or the same friend with a new card, still waits as usual.
 Below the list is one box with two halves, divided by a hairline:
 - **My link** (left): **Copy link**, then *What your link contains*: the fields as chips (first name,
   character, tagline, MBTI, Big Five and so on), not the reader's own values.
-- **Sync with a friend** (right): paste a link, then **Sync**.
+- **Sync with others** (right): paste a link, then **Sync**.
+
+Both buttons are the lighter shade (`.btn-soft`): a pale purple tint with purple text, not the filled
+gradient. The header's line reads *Open a friend's PsycheAI link for your Psyche Sync score: what
+clicks between you, what may grate, and how to relate better to each other.*
 
 In the result,
 the sections are *How to relate to each other* and *What to look out for*.
@@ -2101,6 +2105,8 @@ A paid structured report is split into two pages, which are two modes of `#view-
   Once paid, the way into My Report is **See Psyche Report**, one button across the card's three
   tools (`.cx-open-report`). A free reader has the unlock box under Beyond your card instead. The card
   panel and, on a phone, the top of the card's box carry the same light wash as My Syncs' header.
+  The panel's purple top line is part of its background rather than a `::before` strip: the panel
+  cannot clip (the card's popouts spill out of it), so a strip ran square past its rounded corners.
 
   A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
   *Download full report*; its footer is **Delete everything** with the run's note (model and

@@ -9965,12 +9965,12 @@ try {
   check('the intro is about friends, and nothing romantic or about work',
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
-    /score/i.test(scanText) && /what may grate/i.test(scanText) && /better friend to each other/.test(scanText), scanText.slice(0, 500));
+    /score/i.test(scanText) && /what may grate/i.test(scanText) && /relate better to each other/.test(scanText), scanText.slice(0, 500));
   check('the paste box says what it is for, and sits right of My link', await page.evaluate(() => {
     const box = document.querySelector('#view-scan .paste-card');
     const heading = box && box.querySelector('h2');
     const link = document.querySelector('#view-scan .link-panel');
-    return Boolean(heading) && heading.textContent.trim() === 'Sync with a friend' &&
+    return Boolean(heading) && heading.textContent.trim() === 'Sync with others' &&
       link.compareDocumentPosition(box) === Node.DOCUMENT_POSITION_FOLLOWING;
   }));
   check('the button says what it does',
@@ -10032,9 +10032,16 @@ try {
       (await page.locator('#view-scan .link-title').innerText()) === 'My link' &&
       (await page.locator('#view-scan .link-panel button').allInnerTexts()).join('|') === 'Copy link',
     await page.locator('#view-scan .link-panel').innerText());
+  check('Copy link and Sync on My Syncs are the lighter shade: a pale tint with purple text, not the filled gradient',
+    await page.evaluate(() => ['#copy-link-scan', '#paste-go'].every(sel => {
+      const b = document.querySelector(sel), st = getComputedStyle(b);
+      const [r, g, bl] = st.backgroundColor.match(/\d+/g).map(Number);
+      return b.classList.contains('btn-soft') && st.backgroundImage === 'none' && r + g + bl > 600 &&
+        st.color !== 'rgb(255, 255, 255)';
+    })));
   check('the My Syncs intro says what a sync gives, in a line',
     (await page.locator('.scan-lede').innerText()) ===
-      'Open a friend\'s PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how to be a better friend to each other.',
+      'Open a friend\'s PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how to relate better to each other.',
     await page.locator('.scan-lede').innerText());
   check('and it says, in a line, what the link is for',
     /Send it to a friend so they can sync with you/.test(await page.locator('#view-scan .link-panel').innerText()));
@@ -10060,7 +10067,7 @@ try {
 
   // "What your link contains": about the link someone is about to send from
   // this page, not about the report itself.
-  check('what the link contains sits inside My link, in the one box with Sync with a friend',
+  check('what the link contains sits inside My link, in the one box with Sync with others',
     (await page.locator('#link-contents .link-fields-label').innerText()).trim().toLowerCase() === 'what your link contains' &&
       (await page.locator('#view-scan .scan-actions.card .link-panel #link-contents').count()) === 1 &&
       (await page.locator('#view-scan .scan-actions.card .paste-card').count()) === 1 &&
@@ -11128,6 +11135,12 @@ try {
       });
       check('structured: My Psyche, unlocked, opens on the Psyche Card and what it means, above everything else',
         Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
+      check('the card panel\'s purple top line is its own background, so it follows the rounded corners',
+        await sp.evaluate(() => {
+          const side = document.querySelector('#profile-side');
+          return getComputedStyle(side, '::before').display === 'none' &&
+            /^linear-gradient/.test(getComputedStyle(side).backgroundImage) && getComputedStyle(side).overflow === 'visible';
+        }));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
         /See your Psyche Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
