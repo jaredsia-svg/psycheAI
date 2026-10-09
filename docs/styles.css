@@ -1316,7 +1316,7 @@ textarea { resize: vertical; }
 .scan-action-icon-2 { background: linear-gradient(135deg, var(--accent-2), #f08c6c); box-shadow: 0 6px 16px rgba(209, 71, 122, .22); }
 .scan-action-icon svg { width: 17px; height: 17px; }
 /* Syncs list: a friend waiting to sync, a row like a past sync with Sync at its end. */
-.scan-waiting-card { margin-bottom: 1rem; }
+.card .match-waiting { margin-bottom: .55rem; }
 .match-row.is-waiting { border-style: dashed; background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg)); }
 .match-row.is-waiting:hover { transform: none; box-shadow: none; }
 .match-row.is-waiting .btn { flex: none; min-width: 5.5rem; }
@@ -3066,7 +3066,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* The card guide lights the part it is on, and steps the rest back. */
 .psyche-card .pc-spanel, .psyche-card .pc-shero, .psyche-card .pc-sconf { transition: opacity .3s ease, box-shadow .3s ease, transform .3s ease; }
 .psyche-card.pc-guiding .pc-spanel:not(.pc-glow), .psyche-card.pc-guiding .pc-shero:not(.pc-glow),
-.psyche-card.pc-guiding .pc-sconf:not(.pc-glow) { opacity: .32; }
+.psyche-card.pc-guiding .pc-sconf:not(.pc-glow), .psyche-card.pc-guiding .pc-qr-slot:not(.pc-glow) { opacity: .32; }
 .psyche-card .pc-glow { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 38%, transparent), 0 12px 32px rgba(123, 63, 160, .16); transform: scale(1.02); position: relative; z-index: 1; }
 .psyche-card .pc-sconf.pc-glow { border-radius: 999px; }
 
@@ -3392,6 +3392,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav.has-title {
   --nav-title-h: 2.9rem;
   background: linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 3px no-repeat,
+    radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, rgba(123, 63, 160, .12), transparent 60%),
     var(--bg-alt);
   top: calc(3.4rem - var(--nav-title-h));
 }
@@ -3428,7 +3430,7 @@ details.more[open] > summary::after { content: ' ▴'; }
     margin-left: max(248px, calc((100vw - var(--page-w)) / 2)); margin-right: auto;
     max-width: min(var(--page-w), calc(100vw - 248px));
   }
-  #profile-body .part-nav.has-title { top: 6.5rem; }
+  #profile-body .part-nav.has-title { top: var(--side-nav-top, 6.5rem); }
   #profile-body .part-nav-title { flex: none; height: auto; line-height: 1.3; padding: .55rem .7rem .45rem; text-align: left; font-size: 1.05rem; }
   #profile-body .part-nav {
     position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
@@ -3467,7 +3469,7 @@ details.more[open] > summary::after { content: ' ▴'; }
    scrolling on its own if a short screen cannot hold all of it, and the
    page's three actions under it. */
 @media (min-width: 1000px) and (min-height: 520px) {
-  #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - 6.5rem - 5.2rem); overflow-y: auto; }
+  #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - var(--side-nav-top, 6.5rem) - 5.2rem); overflow-y: auto; }
   /* The page's three actions, under the nav: quiet icons in the nav's own
      box style, each named by a tooltip. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
@@ -3502,7 +3504,13 @@ details.more[open] > summary::after { content: ' ▴'; }
    beside it what each part of it means. Stacked on a phone. */
 .profile-top { margin-bottom: 1rem; }
 #view-profile.profile-structured .profile-top { display: grid; gap: 1rem; align-items: start; }
-#view-profile.profile-structured #profile-side { padding: 1rem; overflow: visible; }
+#view-profile.profile-structured #profile-side { padding: 1rem; overflow: visible;
+  /* The same light wash as My Syncs' header. */
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(209, 71, 122, .14), transparent 55%),
+    radial-gradient(90% 80% at 0% 100%, rgba(123, 63, 160, .12), transparent 60%),
+    var(--bg-alt);
+}
 @media (min-width: 720px) {
   /* The card three fifths of the width, what it means the rest, the two
      the same height. */
@@ -3664,6 +3672,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 @keyframes card-expand-breathe { 50% { transform: scale(1.15); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .psyche-card-expand { animation: none !important; } }
 .cx-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+/* Paid: the way into My Report, one button across the three tools. */
+.cx-tools .cx-open-report { grid-column: 1 / -1; width: 100%; padding: .6rem 1rem; font-size: .95rem; }
 .cx-tool {
   display: inline-flex; flex-direction: column; align-items: center; gap: .25rem; min-width: 0;
   padding: .5rem .55rem .4rem; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt);
@@ -3733,7 +3743,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (max-width: 719px) {
   #view-profile.profile-structured .profile-top {
     display: flex; flex-direction: column; align-items: stretch; gap: .8rem; position: relative; overflow: hidden;
-    background: var(--bg-alt); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+    /* My Syncs' light wash, across the box's top. */
+    background:
+      radial-gradient(130% 16% at 100% 0%, rgba(209, 71, 122, .16), transparent 70%),
+      radial-gradient(100% 14% at 0% 0%, rgba(123, 63, 160, .12), transparent 70%),
+      var(--bg-alt);
+    border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
     padding: 1rem;
   }
   #view-profile.profile-structured .profile-top::before {
@@ -4068,6 +4083,14 @@ details.more[open] > summary::after { content: ' ▴'; }
   box-shadow: 0 18px 40px -28px rgba(60, 20, 90, .5);
 }
 .sync-invite[hidden] { display: none; }
+.sync-invite { position: relative; }
+.sync-invite-close {
+  position: absolute; top: .45rem; right: .55rem; width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  border: 0; background: transparent; color: var(--ink-soft); font-size: .9rem; line-height: 1; cursor: pointer;
+}
+.sync-invite-close:hover, .sync-invite-close:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+/* Room for the ✕ beside the button. */
+.sync-invite { padding-right: 2.6rem; }
 .sync-invite-ring {
   flex: none; display: grid; place-items: center; width: 2.8rem; height: 2.8rem; border-radius: 50%;
   font-weight: 800; font-size: 1.2rem; color: var(--accent); position: relative; isolation: isolate;
@@ -4078,9 +4101,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .sync-invite-title { margin: 0; font-weight: 800; font-size: 1.05rem; }
 .sync-invite-sub { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 @media (max-width: 640px) {
-  .sync-invite { flex-wrap: wrap; }
+  .sync-invite { flex-wrap: wrap; padding-right: 1.1rem; }
   .sync-invite .btn { width: 100%; }
   .sync-invite-actions { flex: 1 1 100%; }
+  .sync-invite-text { padding-right: 1.4rem; }
 }
 
 .referral-gifts-head { margin: .7rem 0 .25rem; font-size: .76rem; color: var(--ink-soft); }
@@ -4128,15 +4152,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 }
 
-/* My Psyche, unlocked: the way into My Report. */
-.open-report-card {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; padding: 1rem 1.2rem;
-  background: radial-gradient(80% 120% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--bg);
-}
-.open-report-text { flex: 1 1 18rem; min-width: 0; }
-.open-report-card h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
-.open-report-card p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
-@media (max-width: 640px) { .open-report-card .btn { width: 100%; } }
 /* My Report: Back sits first in the actions, left of Download. */
 #report-back[hidden] { display: none !important; }
 .report-ready-note {

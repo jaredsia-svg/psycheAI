@@ -129,6 +129,8 @@
     gift: 'psycheai_gift',
     // Friends' links opened before the latest one, still waiting to sync.
     invitesMore: 'psycheai_invites_more',
+    // The sync bar's ✕: the friends' links waiting when it was closed.
+    syncBarClosed: 'psycheai_sync_bar_closed',
     gifts: 'psycheai_gifts_made',
   };
 
@@ -1964,13 +1966,8 @@
    * (with the re-run that adds data).
    */
   function hubSectionsHtml(report) {
-    const R = Copy.STRUCTURED.reportPage;
-    return beyondCardHtml(state.profile && state.profile.card) +
-      '<section class="card section-card open-report-card screen-only">' +
-        '<div class="open-report-text"><h2>' + esc(R.title) + '</h2><p>' + esc(R.blurb) + '</p></div>' +
-        '<button class="btn" type="button" data-nav="full" id="open-report">' + esc(R.open) + '</button>' +
-      '</section>' +
-      methodCardHtml(report, false) + referralCardHtml(true);
+    // The way into My Report is a button under the card's tools (cardGuideHtml).
+    return beyondCardHtml(state.profile && state.profile.card) + methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2426,7 +2423,7 @@
     // The psyche card is scaled from the width of the column it sits in, and a
     // hidden view measures zero — so a card rendered before its view was shown
     // would be scaled to nothing. Re-fit here, where the width is real.
-    if (view === 'profile') layoutPsycheCard();
+    if (view === 'profile') { layoutPsycheCard(); layoutSideActions(); }
     // The Start here card claims what is loaded, and what is loaded changes
     // underneath it — a failed run, a deleted profile, a fresh session. Kept
     // truthful on arrival rather than only at boot, since arriving is when it
@@ -5931,8 +5928,11 @@
     const horizons = Object.keys(TEXT.careerHorizons);
     const items = (actions || []).filter(a => a && (a.step || a.title));
     if (!items.length) return '';
-    return '<div class="timeline">' + horizons.map((horizon, i) => {
-      const here = items.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon)));
+    // A column per horizon that has steps, as the PDF does: an empty one said
+    // "Nothing here yet", which read as a gap in the report.
+    const groups = horizons.map((horizon, i) => ({ horizon,
+      here: items.filter(a => a.horizon === horizon || (i === 0 && !horizons.includes(a.horizon))) })).filter(g => g.here.length);
+    return '<div class="timeline timeline-' + groups.length + '">' + groups.map(({ horizon, here }) => {
       return '<div class="timeline-col"><p class="timeline-head"><span class="timeline-dot" aria-hidden="true"></span>' +
         esc(TEXT.careerHorizons[horizon]) + '</p><div class="timeline-steps">' +
         (here.length ? here.map(a => {
@@ -6634,6 +6634,9 @@
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
           tool('copy', '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>') +
+          // Once the report is unlocked: the way into it, across all three.
+          (fullReportPage() ? '<button class="btn cx-open-report" type="button" data-nav="full" id="open-report">' +
+            esc(Copy.STRUCTURED.reportPage.open) + '</button>' : '') +
         '</div>' +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
@@ -6703,6 +6706,7 @@
     bigFive: ['.pc-straits'],
     standFor: ['.pc-schips'],
     love: ['.pc-slove-panel'],
+    qr: ['.pc-qr-slot'],
   };
 
   /** Marks each explained part of the reader's card with the key of its explanation. */
@@ -7372,7 +7376,16 @@
   function layoutSideActions() {
     const nav = document.querySelector('#profile-body .part-nav');
     if (!nav || !sideCardMode()) return;
-    requestAnimationFrame(() => $('#view-profile').style.setProperty('--side-nav-bottom',
+    const view = $('#view-profile');
+    // The left column's top level with the report's first part, as the page
+    // first lays out; then the actions under it.
+    const first = document.querySelector('#profile-body .part-card');
+    if (first && first.offsetParent) {
+      const header = document.querySelector('.nav');
+      const floor = (header ? header.getBoundingClientRect().height : 56) + 12;
+      view.style.setProperty('--side-nav-top', Math.round(Math.max(floor, first.getBoundingClientRect().top + window.scrollY)) + 'px');
+    }
+    requestAnimationFrame(() => view.style.setProperty('--side-nav-bottom',
       Math.round(nav.getBoundingClientRect().bottom + 10) + 'px'));
   }
 
@@ -7893,6 +7906,7 @@
     if (event.target === $('#card-dialog')) $('#card-dialog').close();
   });
   window.addEventListener('resize', layoutPsycheCard);
+  window.addEventListener('resize', layoutSideActions);
   // How tall the site's header is, for whatever sticks just under it.
   const measureHeader = () => {
     const bar = document.querySelector('.nav');
@@ -8936,15 +8950,15 @@
     $('#scan-title').textContent = TEXT.scanHistory;
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
-    // Friends waiting to sync, then Sync Results. A sync that lands moves its
-    // friend from the first to the second (adoptComparison spends the link).
+    // One list, Psyche Sync: friends waiting to sync at the top, each with a
+    // Sync button, then past syncs. A sync that lands moves its friend from
+    // one to the other (adoptComparison spends the link).
     const history = store.read(KEYS.history, []);
     const waiting = state.profile ? allInvites().length : 0;
-    const block = (cls, title, count, body) => '<div class="card scan-results ' + cls + '"><div class="scan-results-head"><h2>' +
-      esc(title) + '</h2><span class="scan-count">' + count + '</span></div>' + body + '</div>';
-    setHtml($('#scan-history'),
-      (waiting ? block('scan-waiting-card', TEXT.syncsWaiting, waiting, syncWaitingHtml()) : '') +
-      (history.length ? block('scan-results-card', TEXT.syncsList, history.length, historyList(history)) : ''));
+    setHtml($('#scan-history'), history.length || waiting
+      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.syncsList) + '</h2>' +
+        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' + syncWaitingHtml() +
+        (history.length ? historyList(history) : '') + '</div>' : '');
     $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
   }
 
@@ -9421,7 +9435,11 @@
     const box = $('#sync-invite');
     if (!box) return;
     const invites = state.profile ? allInvites() : [];
-    box.hidden = !invites.length || reportPageOn();
+    // Closed with its ✕, it stays closed until a friend's link arrives that
+    // was not waiting then. The friends still wait on My Syncs.
+    const closed = store.read(KEYS.syncBarClosed, []) || [];
+    const fresh = invites.some(invite => !closed.includes(invite.payload));
+    box.hidden = !invites.length || !fresh || reportPageOn();
     if (!invites.length) return;
     const names = invites.map(i => firstName(i.name) || i.name);
     $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
@@ -9443,6 +9461,10 @@
           esc(TEXT.syncInviteOpen) + '</button></div></li>';
     }).join('') + '</ul>';
   }
+  $('#sync-invite-close').addEventListener('click', () => {
+    store.write(KEYS.syncBarClosed, allInvites().map(invite => invite.payload));
+    refreshSyncInvite();
+  });
   // The invite is spent only once the sync has landed (adoptComparison): a
   // sync that fails leaves it, on My Syncs, for another try.
   document.addEventListener('click', async event => {

@@ -1766,20 +1766,21 @@ try {
           const bar = document.querySelector('#sync-invite');
           return bar.getBoundingClientRect().bottom <= document.querySelector('#profile-top').getBoundingClientRect().top + 1 &&
             document.querySelector('#sync-invite-count').textContent === '1' &&
-            [...bar.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'Sync';
+            [...bar.querySelectorAll('button:not(.sync-invite-close)')].map(b => b.textContent.trim()).join('|') === 'Sync' &&
+            Boolean(bar.querySelector('.sync-invite-close'));
         }));
       await invitePage.click('#sync-invite-open');
-      await invitePage.waitForSelector('#view-scan:not([hidden]) .scan-waiting-card', { timeout: 15000 });
+      await invitePage.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
       check('Sync goes to My Syncs, where the waiting friend is under "Waiting to sync with you" with a Sync button of their own',
-        (await invitePage.locator('#scan-history .scan-waiting-card .scan-results-head h2').innerText()) === 'Waiting to sync with you' &&
-          (await invitePage.locator('#scan-history .scan-results-card').count()) === 0 &&
-          (await invitePage.locator('.scan-waiting-card .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync' &&
-          /Ava/.test(await invitePage.locator('.scan-waiting-card').innerText()),
+        (await invitePage.locator('#scan-history .scan-results-head h2').innerText()) === 'Psyche Sync' &&
+          /Waiting to sync with you/.test(await invitePage.locator('.match-waiting').innerText()) &&
+          (await invitePage.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync' &&
+          /Ava/.test(await invitePage.locator('.match-waiting').innerText()),
         (await invitePage.locator('#scan-history').innerText()));
       // A sync that fails keeps the friend's link, and the banner, for another try.
       await invitePage.route('**/api/compatibility', route => route.fulfill({ status: 400, contentType: 'application/json',
         body: JSON.stringify({ error: 'Gemini API error: the model refused this.' }) }));
-      await invitePage.click('.scan-waiting-card .sync-invite-go');
+      await invitePage.click('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 });
       await invitePage.unroute('**/api/compatibility');
       await invitePage.click('[data-nav="profile"]');
@@ -1789,7 +1790,7 @@ try {
           localStorage.getItem('psycheai_invite') !== null && !document.querySelector('#sync-invite').hidden &&
           document.querySelector('#welcome, #view-welcome').hidden));
       await invitePage.click('#sync-invite-open');
-      await invitePage.click('.scan-waiting-card .sync-invite-go');
+      await invitePage.click('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
       const synced = await invitePage.evaluate(() => ({
         title: document.querySelector('#report-title').textContent,
@@ -9965,11 +9966,12 @@ try {
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
     /score/i.test(scanText) && /what may grate/i.test(scanText) && /better friend to each other/.test(scanText), scanText.slice(0, 500));
-  check('the paste box says what it is for', await page.evaluate(() => {
-    const box = [...document.querySelectorAll('#view-scan .card')]
-      .find(card => card.querySelector('#paste-go'));
+  check('the paste box says what it is for, and sits right of My link', await page.evaluate(() => {
+    const box = document.querySelector('#view-scan .paste-card');
     const heading = box && box.querySelector('h2');
-    return Boolean(heading) && heading.textContent.trim() === 'Sync with a friend';
+    const link = document.querySelector('#view-scan .link-panel');
+    return Boolean(heading) && heading.textContent.trim() === 'Sync with a friend' &&
+      link.compareDocumentPosition(box) === Node.DOCUMENT_POSITION_FOLLOWING;
   }));
   check('the button says what it does',
     (await page.locator('#paste-go').innerText()) === 'Sync',
@@ -10107,16 +10109,26 @@ try {
     !document.querySelector('#sync-invite').hidden, null, { timeout: 30000 });
   const many = await page.evaluate(() => ({
     title: document.querySelector('#sync-invite-title').textContent,
-    buttons: [...document.querySelectorAll('#sync-invite button')].map(b => b.textContent),
+    buttons: [...document.querySelectorAll('#sync-invite button:not(.sync-invite-close)')].map(b => b.textContent),
   }));
   check('two friends\' links wait in one bar, with one Sync button',
     many.title === 'You have friends waiting to sync with you' && many.buttons.join('|') === 'Sync' &&
       /Mei and Jordan sent you their links/.test(await page.locator('#sync-invite-sub').innerText()) &&
       (await page.locator('#sync-invite-count').innerText()) === '2',
     JSON.stringify(many));
+  // Its ✕ closes it until a new friend's link arrives; the friends still wait on My Syncs.
+  await page.click('#sync-invite-close');
+  check('the sync bar\'s ✕ closes it', await page.locator('#sync-invite').isHidden());
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#view-profile:not([hidden])');
+  check('and it stays closed after a reload, while those links still wait', await page.locator('#sync-invite').isHidden() &&
+    await page.evaluate(() => localStorage.getItem('psycheai_invite') !== null));
+  await page.evaluate(() => localStorage.removeItem('psycheai_sync_bar_closed'));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#sync-invite:not([hidden])', { timeout: 15000 });
   await page.click('#sync-invite-open');
-  await page.waitForSelector('#view-scan:not([hidden]) .scan-waiting-card', { timeout: 15000 });
-  const waitingNames = await page.locator('.scan-waiting-card .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label')));
+  await page.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
+  const waitingNames = await page.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label')));
   check('on My Syncs, a Sync button for each waiting friend, latest first',
     waitingNames.join('|') === 'Sync with Mei|Sync with Jordan', waitingNames.join('|'));
 
@@ -10138,7 +10150,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.continue();
   });
-  await page.click('.scan-waiting-card .sync-invite-go[data-i="1"]');
+  await page.click('.match-waiting .sync-invite-go[data-i="1"]');
   // Free, so the model call — and the unload guard with it — starts on the tap.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
@@ -10155,12 +10167,13 @@ try {
   check('Jordan\'s link is spent once synced, and Mei\'s still waits',
     await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_invite') || 'null').name === 'Mei Lin' &&
       JSON.parse(localStorage.getItem('psycheai_invites_more') || '[]').length === 0));
-  check('behind the popout, Jordan has moved from "Waiting to sync with you" to "Sync Results"; Mei still waits',
+  check('behind the popout, in the one Psyche Sync list, Jordan has moved from waiting to the past syncs; Mei still waits',
     await page.evaluate(() => {
-      const waiting = document.querySelector('#scan-history .scan-waiting-card');
-      const results = document.querySelector('#scan-history .scan-results-card');
+      const waiting = document.querySelector('#scan-history .match-waiting');
+      const results = document.querySelector('#scan-history .match-list:not(.match-waiting)');
       return Boolean(waiting && results) && /Mei/.test(waiting.innerText) && !/Jordan/.test(waiting.innerText) &&
-        /Jordan/.test(results.innerText) && results.querySelector('h2').textContent === 'Sync Results';
+        /Jordan/.test(results.innerText) && document.querySelector('#scan-history h2').textContent === 'Psyche Sync' &&
+        waiting.compareDocumentPosition(results) === Node.DOCUMENT_POSITION_FOLLOWING;
     }));
   await page.evaluate(() => { localStorage.removeItem('psycheai_invite'); });
   // The result is a popout over My Syncs: the page under it is out of reach
@@ -10499,6 +10512,11 @@ try {
         shape.toggles === 6 && shape.inner === 0 &&
         shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open' &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .card-chevron').count()) === 1, JSON.stringify(shape));
+      check('structured: on a laptop the left column\'s box starts level with the report\'s first part',
+        await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
+          document.querySelector('#profile-body .part-card').getBoundingClientRect().top) <= 2),
+        await sp.evaluate(() => document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + ' vs ' +
+          document.querySelector('#profile-body .part-card').getBoundingClientRect().top));
       check('structured: My Report is titled "Your Psyche Report", heading the part nav\'s own box, under the purple line',
         await sp.evaluate(() => {
           const nav = document.querySelector('#profile-body .part-nav');
@@ -10510,13 +10528,15 @@ try {
         }));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
+      check('structured: the plan shows only the horizons that have steps — never "Nothing here yet"',
+        (await sp.locator('#profile-body .timeline-empty').count()) === 0 && (await sp.locator('#profile-body .timeline-col').count()) >= 1);
       check('structured: My Report is Parts 00-04 and the appendix only — no link card, no card, a Back button',
         (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
           await sp.locator('#report-back').isVisible());
       // My Psyche, unlocked: the card, the link right under it, what it
       // carries, the way into My Report, and Evidence and method.
       await sp.click('#report-back');
-      await sp.waitForSelector('#profile-body .open-report-card', { timeout: 15000 });
+      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
           n.matches('.referral-card') ? 'link' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
@@ -10534,15 +10554,24 @@ try {
       });
       check('structured: My Psyche has no Download full report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
         hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
-      check('structured: Back lands on My Psyche: card, Beyond your card, Open My Report, Evidence and method, then Your link — no parts',
-        hubShape.order === 'beyond,open,method,link' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: paid, the way into My Report is "See Psyche Report", one button across the card\'s three tools',
+        await sp.evaluate(() => {
+          const b = document.querySelector('#profile-side .cx-tools #open-report');
+          const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
+          if (!b || tools.length !== 3) return false;
+          const r = b.getBoundingClientRect();
+          return b.textContent === 'See Psyche Report' && r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
+            Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
+        }));
+      check('structured: Back lands on My Psyche: card, Beyond your card, Evidence and method, then Your link — no "Your full report" box, no parts',
+        hubShape.order === 'beyond,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
-      check('structured: Open My Report goes back to the parts, and the nav marks My Report',
+      check('structured: See Psyche Report goes to the parts, and the nav marks My Report',
         (await sp.locator('.nav-links a.is-current .nav-long').textContent()) === 'My Report');
       await sp.goBack();
-      await sp.waitForSelector('#profile-body .open-report-card', { timeout: 15000 });
+      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       check('structured: the phone\'s Back from My Report returns to My Psyche, not off the site',
         await sp.locator('#view-profile').isVisible() && (await sp.locator('#profile-body .part-card').count()) === 0);
       await sp.click('#nav-full');
@@ -11097,7 +11126,7 @@ try {
         Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
-        /Open My Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
+        /See your Psyche Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
       check('and Copy link is one of the card\'s tools there, with no sync on My Psyche',
         await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="copy"]')) &&
           !document.querySelector('#profile-side .cx-tool[data-act="compat"]')));
@@ -11783,6 +11812,15 @@ try {
       check('the reader\'s card carries a QR code of that same link, on the page and full screen',
         qr.count === 2 && qr.same && qr.call === 'Scan to see how in sync we are', JSON.stringify(qr));
       const saved = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_link') || 'null'));
+      // Pointing at the code says what it is for.
+      await rp.locator('#psyche-card .pc-qr-slot').hover().catch(() => {});
+      await rp.waitForTimeout(300);
+      const qrPop = await rp.evaluate(() => {
+        const pop = document.querySelector('#profile-side .cx-pop');
+        return pop && !pop.hidden ? pop.innerText : '';
+      });
+      check('pointing at the QR code explains it: share it or the link with friends to see how well you sync',
+        /Your QR code/.test(qrPop) && /Share this QR code, or your link, with friends/.test(qrPop) && /how well you sync/.test(qrPop), qrPop.slice(0, 200));
       check('what the server holds is locked: no name, no card text in it',
         await rp.evaluate(async id => {
           const found = await fetch('api/link?id=' + id).then(r => r.json());

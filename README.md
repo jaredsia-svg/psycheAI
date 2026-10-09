@@ -1953,27 +1953,29 @@ the welcome page shows its card, with a line naming anyone else waiting ("Mei al
 card"). The ones before it are in `psycheai_invites_more`, newest first, five at most, one per
 friend.
 
-At the top of My Psyche, above the card, one bar holds them all, with the number waiting in its ring:
+At the top of My Psyche, above the card, one bar holds them all, with the number waiting in its ring.
+Its ✕ closes it until a friend's link arrives that was not waiting then (`psycheai_sync_bar_closed`);
+those friends still wait on My Syncs.
 - **One friend:** *You have a friend waiting to sync with you*, *Jared sent you their link*.
 - **More:** *You have friends waiting to sync with you*, *Jared and Mei sent you their links*.
 
 The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche, and My Report
 never shows the bar.
 
-On My Syncs there are two cards:
-- **Waiting to sync with you:** latest first, as dashed rows ("Sent you their link · free, only you
-  see it"), each with a **Sync** button.
-- **Sync Results:** past syncs. Tapping one opens its result in a popout (`#sync-dialog`) over My
-  Syncs, not a page of its own.
+On My Syncs one card, **Psyche Sync**, lists them all:
+- **Friends waiting** come first, latest first, as dashed rows ("Waiting to sync with you · free, only
+  you see it"), each with a **Sync** button.
+- **Past syncs** follow. Tapping one opens its result in a popout (`#sync-dialog`) over My Syncs,
+  not a page of its own.
 
-A sync from the waiting list opens in the same popout. Behind it, that friend has already moved from
-the first card to the second. The popout closes with its ✕, **Close**, Esc, a click outside it, or
+A sync from a waiting row opens in the same popout. Behind it, that friend has already moved from the
+waiting rows to the past syncs. The popout closes with its ✕, **Close**, Esc, a click outside it, or
 Back.
 
-Below the lists is one box with two halves, divided by a hairline:
-- **Sync with a friend:** paste a link, then **Sync**.
-- **My link:** **Copy link**, then *What your link contains*: the fields as chips (first name,
+Below the list is one box with two halves, divided by a hairline:
+- **My link** (left): **Copy link**, then *What your link contains*: the fields as chips (first name,
   character, tagline, MBTI, Big Five and so on), not the reader's own values.
+- **Sync with a friend** (right): paste a link, then **Sync**.
 
 In the result,
 the sections are *How to relate to each other* and *What to look out for*.
@@ -2022,6 +2024,12 @@ days, for whoever holds it.
 - The unlock sheet offers *Use your gifted free full report* ahead of the reader's own credit.
 - The gift is cleared once a full report is written with it.
 
+## The QR code's explanation
+
+The QR code in the foot of the reader's own card is one of the card's explained parts (`qr` in
+`GUIDE_TARGETS`). Pointing at it, or tapping it, says: *Share this QR code, or your link, with friends.
+When they open it and make their free Psyche Card, you see how well you sync.*
+
 ## The Psyche Card on a phone
 
 On a phone there is no "Tap to open full screen" button. A faded expand mark sits in the card's
@@ -2033,6 +2041,14 @@ part. The tap returns to the card rather than opening the next explanation. This
 page (touch screens), full screen, and on the sample cards. With a pointer, hovering still moves
 the explanation from part to part. The explanation's border and the ring around the part it explains are
 thin and faint: a 28% accent hairline, and a 3px ring at 38%.
+
+## The plan's horizons
+
+*Your plan* shows a column only for a horizon that has steps, as the PDF already did. An empty one used
+to say *Nothing here yet*. The premium prompt also asks that, across the development and career
+actions, the plan covers this week, this quarter and this year, at least one each. Before, it only
+required one *this week* action, and a model could leave *this year* empty. The wellbeing suggestions
+always count as *this week*.
 
 ## One share message
 
@@ -2070,16 +2086,20 @@ A paid structured report is split into two pages, which are two modes of `#view-
 
 - **My Psyche** (`go('profile')`) has the Psyche Card and its guide at the top, then a fixed order:
   - Beyond your card
-  - an **Open My Report →** tile, which replaces the unlock box once paid
   - Evidence and method
   - Your link
+
+  Once paid, the way into My Report is **See Psyche Report**, one button across the card's three
+  tools (`.cx-open-report`). A free reader has the unlock box under Beyond your card instead. The card
+  panel and, on a phone, the top of the card's box carry the same light wash as My Syncs' header.
 
   A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
   *Download full report*; its footer is **Delete everything** with the run's note (model and
   date) right beside it.
 - **My Report** (`go('full')`, nav `#nav-full`) has its title, **Your Psyche Report**
-  (`.part-nav-title`), heading the part nav's own white box under the cards' purple line. On a laptop
-  it is the left column; on a phone it is the row of part numbers. Once the nav sticks on a phone,
+  (`.part-nav-title`), heading the part nav's own white box under the cards' purple line, with My
+  Syncs' light wash. On a laptop it is the left column, its top set level with the first part
+  (`--side-nav-top`, measured in `layoutSideActions`); on a phone it is the row of part numbers. Once the nav sticks on a phone,
   the title row slides under the site's header and only the numbers stay in view: the nav's `top` is
   the header's height less `--nav-title-h`. Then come Parts 00 to 05. Part 05, the appendix (only the roast
   now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
@@ -3718,13 +3738,16 @@ Messenger and WhatsApp):
    however much room is left, so no one relationship outweighs the rest:
    - an Instagram conversation: 10,000 (`igThreadChars`);
    - a Messenger conversation: 6,000 (`messageThreadChars`; 16,000 in the premium read);
-   - a WhatsApp chat: 5,000 (`waThreadChars`; 8,000 in the premium read).
+   - a WhatsApp chat: 8,000 (`waThreadChars`; 16,000 in the premium read), a tenth of each read's budget.
 
-   One WhatsApp chat on its own is bounded by that ceiling rather than by the share. WhatsApp as a
-   whole is also never more than a fifth of the evidence sent (`waMaxDigestShare`), however much
-   room is left: its chats are the densest, most personal text there is. At about half the digest,
-   as it was with three chats added at the unlock, they set the tone of the whole report. Room
-   WhatsApp does not use goes to the other added sources, or the digest is simply smaller.
+   One WhatsApp chat on its own is bounded by that ceiling rather than by the share. Whatever room is
+   left, two shares of the evidence actually sent also hold:
+   - no one chat more than a tenth (`waChatMaxDigestShare`);
+   - WhatsApp as a whole, three chats at most, no more than three tenths (`waMaxDigestShare`).
+
+   Its chats are the densest, most personal text there is. At about half the digest, as it was with
+   three chats added at the unlock, they set the tone of the whole report. Room WhatsApp does not use
+   goes to the other added sources, or the digest is simply smaller.
 2. **Spread across time.** Each conversation's span is cut into ten equal stretches, places shared by
    the square root of what was written in each — a two-year chat is read across two years.
 3. **A mix of lengths.** In every stretch about half the places go to substantial messages (120+

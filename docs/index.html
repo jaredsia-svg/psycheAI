@@ -372,6 +372,7 @@
       <p class="sync-invite-sub" id="sync-invite-sub"></p>
     </div>
     <div class="sync-invite-actions"><button class="btn" type="button" id="sync-invite-open" data-nav="scan">Sync</button></div>
+    <button class="sync-invite-close" id="sync-invite-close" type="button" aria-label="Close">✕</button>
   </div>
   </div>
 
@@ -563,19 +564,9 @@
        past syncs, each opening its result in a popout. -->
   <div id="scan-history"></div>
 
-  <!-- One box: syncing with a link that came some other way, and this
-       reader's own link with what it carries. -->
+  <!-- One box: this reader's own link with what it carries, and beside it
+       syncing with a link that came some other way. -->
   <div class="card scan-actions">
-    <div class="paste-card scan-action">
-      <div class="scan-action-head"><span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
-      <h2>Sync with a friend</h2></div>
-      <p class="muted">Got their link another way? Paste it here.</p>
-      <label class="field">Their link
-        <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
-      </label>
-      <button class="btn" id="paste-go">Sync</button>
-    </div>
-
     <div class="link-panel scan-action">
       <div class="scan-action-head"><span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
       <h2 class="link-title">My link</h2></div>
@@ -585,6 +576,16 @@
       </div>
       <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
       <div id="link-contents"></div>
+    </div>
+
+    <div class="paste-card scan-action">
+      <div class="scan-action-head"><span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
+      <h2>Sync with a friend</h2></div>
+      <p class="muted">Got their link another way? Paste it here.</p>
+      <label class="field">Their link
+        <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
+      </label>
+      <button class="btn" id="paste-go">Sync</button>
     </div>
   </div>
 </section>

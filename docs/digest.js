@@ -232,13 +232,15 @@
     // guaranteed a quarter of the places when it has that many.
     waMessages: 200,
     // No one WhatsApp chat's lines may run past this many characters: a
-    // private chat is dense and personal, and left at the general ceiling
-    // one or two of them outweighed everything else read (8,000 in the
-    // premium read, DEEP_LIMITS).
-    waThreadChars: 5000,
-    // And WhatsApp as a whole never more than this share of the evidence as
-    // sent, whatever room is left (trimToBudget, after the source shares).
-    waMaxDigestShare: 0.2,
+    // tenth of the digest's budget (16,000 in the premium read, DEEP_LIMITS).
+    // A private chat is dense and personal; left at the general ceiling one
+    // or two of them outweighed everything else read.
+    waThreadChars: 8000,
+    // And as a share of the evidence actually sent, whatever room is left
+    // (trimToBudget, after the source shares): no one chat over a tenth,
+    // WhatsApp as a whole — three chats at most — over three tenths.
+    waChatMaxDigestShare: 0.1,
+    waMaxDigestShare: 0.3,
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -566,10 +568,10 @@
   //   Google     25   searches and watching: the unperformed self
   //   Facebook   25   an older life stage, posts and messages
   //
-  // WhatsApp is also held by ceilings of its own: 8,000 characters a chat
-  // (waThreadChars) and never more than a fifth of the digest as sent
-  // (waMaxDigestShare), so its weight is a most rather than a promise; three
-  // chats come to about 24,000 at most.
+  // WhatsApp is also held by ceilings of its own: 16,000 characters a chat
+  // here (waThreadChars), no chat over a tenth of the digest as sent and all
+  // of it no more than three tenths (waChatMaxDigestShare, waMaxDigestShare),
+  // so its weight is a most rather than a promise.
   // A source that needs less than its part hands the rest on to the others
   // in proportion (allocateShares below), and one added alone has the whole
   // room to itself. A source in the standard digest already, and not loaded
@@ -585,7 +587,7 @@
   const DEEP_LIMITS = {
     youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 140,
     fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 600,
-    messageThreadChars: 16000, waThreadChars: 8000,
+    messageThreadChars: 16000, waThreadChars: 16000,
     totalChars: DEEP_DIGEST_CHARS, maxListItems: 800, sourceShares: SOURCE_SHARES,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
@@ -2258,13 +2260,37 @@
       size = evidenceChars(digest);
     }
 
-    // WhatsApp never more than waMaxDigestShare of the evidence, even with
-    // room to spare: its chats are the densest, most personal text there is,
-    // and at half the digest they set the tone of the whole report. Thinned
+    // WhatsApp never more than waMaxDigestShare of the evidence, and no one
+    // chat more than waChatMaxDigestShare, even with room to spare: its chats
+    // are the densest, most personal text there is, and at half the digest
+    // they set the tone of the whole report. Thinned
     // evenly, a tenth at a time, down to the supplement floor. A digest the
     // premium read was given to keep whole (protect) is left as it is.
     const waEntry = trimmableSupplements.find(entry => entry[0] === 'waOwnMessages');
     const waShare = LIMITS.waMaxDigestShare;
+    const chatShare = LIMITS.waChatMaxDigestShare;
+    if (digest.whatsapp && waEntry && chatShare > 0) {
+      // Each chat first: its lines, tagged [c1]–[c3], thinned evenly until it
+      // is no more than a tenth of the evidence.
+      for (let guard = 0; guard < 200; guard++) {
+        const list = waEntry[1]();
+        if (!Array.isArray(list)) break;
+        const total = evidenceChars(digest);
+        const sizes = {};
+        for (const line of list) {
+          const tag = (/\[(c\d)\] /.exec(String(line)) || [])[1] || 'c?';
+          sizes[tag] = (sizes[tag] || 0) + String(line).length + 1;
+        }
+        const over = Object.keys(sizes).filter(tag => sizes[tag] > total * chatShare)
+          .sort((x, y) => sizes[y] - sizes[x])[0];
+        if (!over) break;
+        const chatOf = line => (/\[(c\d)\] /.exec(String(line)) || [])[1] || 'c?';
+        const at = list.map((line, i) => i).filter(i => chatOf(list[i]) === over);
+        if (at.length <= 3) break;
+        const kept = new Set(dropEvenly(at, Math.max(1, Math.ceil(at.length * 0.1))));
+        waEntry[2](list.filter((line, i) => chatOf(line) !== over || kept.has(i)));
+      }
+    }
     if (digest.whatsapp && waEntry && waShare > 0) {
       for (let guard = 0; guard < 200; guard++) {
         const total = evidenceChars(digest);

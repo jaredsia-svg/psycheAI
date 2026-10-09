@@ -3866,7 +3866,9 @@ check('the sample arrives in chronological order',
     ownMessages: Array.from({ length: n }, (_, i) => ({ text: name + ' message ' + i + ' with enough words to clear it', ts: t + i * 5000, gap: 4000, prevMine: false })) });
   // The sampler alone here: the share of the whole digest is checked below.
   const share = Digest.LIMITS.waMaxDigestShare;
+  const chatShare = Digest.LIMITS.waChatMaxDigestShare;
   Digest.LIMITS.waMaxDigestShare = 0;
+  Digest.LIMITS.waChatMaxDigestShare = 0;
   const build = chats => Digest.build({ ...signals, supplements: { whatsapp: { chats } } }, { includeMessages: false, maxChars: 1e7 }).whatsapp.ownMessageSample;
   const per = (lines, names) => names.map(c => lines.filter(line => line.includes('[' + c + '] ')).length);
   const three = build([chat('c1', 5000), chat('c2', 300), chat('c3', 80)]);
@@ -3880,21 +3882,26 @@ check('the sample arrives in chronological order',
   check('WhatsApp: with two chats the ceiling still holds, and the spare places stay empty',
     p2.every(n => n <= Math.floor(L * 0.4)) && two.length <= Math.floor(L * 0.8), JSON.stringify(p2));
   const alone = build([chat('c1', 5000)]);
-  check('WhatsApp: one chat alone is held by its own character ceiling instead, 5,000 (8,000 in the premium read)',
-    alone.reduce((sum, line) => sum + line.length, 0) <= Digest.LIMITS.waThreadChars && Digest.LIMITS.waThreadChars === 5000 &&
-      Digest.DEEP_LIMITS.waThreadChars === 8000 && alone.length > 40,
+  check('WhatsApp: one chat alone is held by its own character ceiling instead, 8,000 (16,000 in the premium read)',
+    alone.reduce((sum, line) => sum + line.length, 0) <= Digest.LIMITS.waThreadChars && Digest.LIMITS.waThreadChars === 8000 &&
+      Digest.DEEP_LIMITS.waThreadChars === 16000 && alone.length > 40,
     alone.length + ' lines');
   Digest.LIMITS.waMaxDigestShare = share;
-  // With the share in force, three busy chats never pass a fifth of the evidence.
+  Digest.LIMITS.waChatMaxDigestShare = chatShare;
+  // With the shares in force, no chat passes a tenth of the evidence, and
+  // three busy chats together never pass three tenths.
   const whole = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000), chat('c2', 5000), chat('c3', 5000)] } } },
     { includeMessages: false, maxChars: 1e7 });
   const total = Digest.evidenceChars(whole);
   const withoutWa = Object.assign({}, whole);
   delete withoutWa.whatsapp;
   const waChars = total - Digest.evidenceChars(withoutWa);
-  check('WhatsApp: as a whole never more than a fifth of the evidence sent, however much room is left',
-    share === 0.2 && waChars <= total * 0.2 + 50 && whole.whatsapp.ownMessageSample.length >= 10,
-    waChars + ' of ' + total + ' characters, ' + whole.whatsapp.ownMessageSample.length + ' lines');
+  const chatChars = ['c1', 'c2', 'c3'].map(c => whole.whatsapp.ownMessageSample.filter(line => line.includes('[' + c + '] '))
+    .reduce((sum, line) => sum + line.length + 1, 0));
+  check('WhatsApp: no one chat more than a tenth of the evidence sent, and all of it no more than three tenths',
+    share === 0.3 && chatShare === 0.1 && waChars <= total * 0.3 + 50 && chatChars.every(n => n <= total * 0.1 + 10) &&
+      whole.whatsapp.ownMessageSample.length >= 10,
+    waChars + ' of ' + total + ' characters; per chat ' + chatChars.join(', '));
 }
 
 // ---------- the floor on a message ----------
@@ -5174,13 +5181,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const top = Digest.DEEP_DIGEST_CHARS - before.instagram - before.google;
     const rooms = Digest.allocateShares({ facebook: 1e6, whatsapp: 1e6 }, S, top);
     const near = (got, want) => got <= want * 1.02 && got >= want * 0.9;
-    // WhatsApp is held by its own ceilings (8,000 a chat, a fifth of the
-    // digest), and the room it does not use goes to Facebook.
+    // WhatsApp is held by its own ceilings (16,000 a chat in the premium read,
+    // a tenth of the digest each, three tenths together); Facebook fills its room.
     const total = Digest.evidenceChars(added);
-    check('and share the room above it, the whole under 160,000: WhatsApp held to its ceilings, Facebook taking the rest',
+    check('and share the room above it, the whole under 160,000: WhatsApp held to its ceilings, Facebook filling its room',
       total <= Digest.DEEP_DIGEST_CHARS && total > Digest.DEEP_DIGEST_CHARS * 0.95 &&
-        after.whatsapp <= rooms.whatsapp && after.whatsapp <= total * 0.2 + 50 && after.whatsapp <= 3 * 8000 + 4000 &&
-        after.facebook >= rooms.facebook && after.facebook > after.whatsapp,
+        after.whatsapp <= rooms.whatsapp && after.whatsapp <= total * 0.3 + 50 && after.whatsapp <= 3 * 16000 + 4000 &&
+        after.facebook >= rooms.facebook * 0.9,
       JSON.stringify({ after, rooms }));
     check('an added source over its room is thinned evenly, keeping its newest lines',
       /number 3999\b/.test(added.whatsapp.ownMessageSample.join('\n')) || /number 39\d\d\b/.test(added.whatsapp.ownMessageSample.join('\n')),

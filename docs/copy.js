@@ -214,7 +214,7 @@
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
     syncInviteOpen: 'Sync',
-    syncWaitingMeta: 'Sent you their link · free, only you see it',
+    syncWaitingMeta: 'Waiting to sync with you · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: () => 'You have friends waiting to sync with you',
     syncInviteSubMany: (names) => names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] +
@@ -803,9 +803,8 @@
     // are listed.
     scanTitle: 'Psyche Sync',
     scanHistory: 'My Syncs',
-    // My Syncs: friends waiting to sync, then past syncs.
-    syncsWaiting: 'Waiting to sync with you',
-    syncsList: 'Sync Results',
+    // My Syncs: one list, friends waiting to sync at the top, then past syncs.
+    syncsList: 'Psyche Sync',
   };
 
   // ---------- the structured report layout ----------
@@ -1030,9 +1029,7 @@
     // My Psyche, once the full report is unlocked: the way into My Report.
     reportPage: {
       pageTitle: 'Your Psyche Report',
-      title: 'Your full report',
-      blurb: 'Parts 00 to 04 and your roast, on a page of their own, with the reasoning behind every line of your card.',
-      open: 'Open My Report →',
+      open: 'See Psyche Report',
       ready: 'Your full report is ready.',
     },
     cardGuide: {
@@ -1043,7 +1040,7 @@
         intro: 'Your personality on a single card – who you are most like, what drives you and how you connect, read from your own data.',
         // After the intro: where the reasoning behind the card is, free and paid.
         introFree: 'Unlock the premium report to read the full analysis and reasoning behind your Psyche Card.',
-        introPaid: 'Open My Report for the full analysis and reasoning behind your Psyche Card.',
+        introPaid: 'See your Psyche Report for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
       },
@@ -1094,6 +1091,10 @@
         { key: 'standFor', icon: '⚖️', title: 'Values, beliefs and interests', when: f => f.value || f.interest,
           about: 'Values and beliefs are the principles your posts and messages keep returning to; interests are what lasts beyond a passing phase. When what you do matches what you value, life feels meaningful.',
           yours: f => (f.value && f.interest ? f.value + ' and ' + f.interest + ' come first.' : (f.value || f.interest) + ' comes first.') },
+        // The QR code in the foot of the reader's own card (only theirs has one).
+        { key: 'qr', icon: '🔗', title: 'Your QR code', when: () => true,
+          about: 'Share this QR code, or your link, with friends. When they open it and make their free Psyche Card, you see how well you sync.',
+          yours: () => 'It opens your own link: the same one Share Card and Copy link send.' },
         { key: 'love', icon: '💝', title: 'Love languages', when: f => f.loveIn || f.loveOut,
           about: 'Gary Chapman\'s five ways people give and receive care. Many show care one way and want it another – knowing yours, and theirs, keeps it from going unnoticed.',
           yours: f => (f.loveIn ? 'You feel cared for through ' + f.loveIn.toLowerCase() : '') +
