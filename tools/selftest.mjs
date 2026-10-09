@@ -7263,6 +7263,13 @@ check('the schema requires evidence on strengths and frictions',
   referral.countOpen('not-a-code');
   await new Promise(resolve => setTimeout(resolve, 10));
   check('opens of the link are counted for its owner', (await referral.status(secret)).opens === 3);
+  // Friends' syncs with the card from the link, likewise.
+  check('no syncs before any', (await referral.status(secret)).syncs === 0);
+  referral.countSync(code);
+  referral.countSync(code);
+  referral.countSync('not-a-code');
+  await new Promise(resolve => setTimeout(resolve, 10));
+  check('friends\' syncs from the link are counted for its owner', (await referral.status(secret)).syncs === 2);
   // A free report claimed to give away is the same grant: anyone holding it
   // unlocks one report with it, once.
   const gift = await referral.claim(secret);

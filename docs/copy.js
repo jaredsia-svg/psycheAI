@@ -209,20 +209,25 @@
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
     syncInviteTitle: (name) => 'You + ' + (name || 'your friend') + ' = ?% in sync',
-    syncInviteSub: (name) => 'Your card is ready. See how in sync you are with ' + (name || 'your friend') + ' — free, and only you see it.',
-    syncInviteGo: (name) => 'See how in sync you are with ' + (name || 'them'),
+    syncInviteSub: (name) => 'See how in sync you are with ' + (name || 'your friend') + ' — free, and only you see it.',
+    syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
+    // The bar on My Psyche has one button, to My Syncs, where the reader
+    // picks who to sync with.
+    syncInviteOpen: 'Sync',
+    syncWaitingTitle: 'Waiting to sync with you',
+    syncWaitingSub: 'Friends who sent you their link. Each sync is free, and only you see it.',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: (names) => names.length + ' friends are waiting to sync with you',
-    syncInviteSubMany: 'Your card is ready. Pick one — each is free, and only you see it.',
-    syncInviteGoShort: (name) => 'Sync with ' + (name || 'them'),
+    syncInviteSubMany: 'Pick who to sync with on My Syncs — each is free, and only you see it.',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
       ' — you can sync with everyone once your card is ready.',
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
-    // Every share carries the reader's one link (myLinkUrl in app.js): the
-    // same link for a bio, an invite and a comparison.
+    // The one share message, everywhere: Share Card, Copy link, a sync's
+    // result, the roast. It carries the reader's one link (myLinkUrl in
+    // app.js): the same link for a bio, an invite and a comparison.
     cardShareText: (character, url) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
-      'Find yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
+      'Get yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
     // The QR code in the foot of the reader's own card: their one link.
     cardQrCall: 'Scan to see how in sync we are',
@@ -235,8 +240,8 @@
     // still spells out what the download actually produces.
     cardDownload: 'Download as image',
     cardDownloadLabel: 'Download',
-    cardShare: 'Share',
-    cardShareLabel: 'Share',
+    cardShare: 'Share Card',
+    cardShareLabel: 'Share Card',
     // One shared status line under both buttons rather than each swallowing
     // its own label on failure, since the visible label is a fixed word
     // ("Download"/"Share") rather than a place an error could borrow.
@@ -358,10 +363,6 @@
       'style, how you show care, and your rhythm, energy and work style — all as short phrases, the ' +
       'same ones shown under your card.',
 
-    // What "Send my link" puts in the share sheet, or on the clipboard where
-    // there is none. Written in the sender's own voice, since they send it.
-    compatShareText: (url) => 'Here’s my Psyche Card ✨ Who are you most like? Make yours free and see how ' +
-      'in sync we are: ' + url,
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
       ' does not have this report. Send them your link and they get their own, free.',
@@ -370,15 +371,13 @@
     roastImageLead: 'I let AI read my Instagram. It said:',
     roastImageCredit: 'My PsycheAI roast',
     roastImageFooter: 'Get roasted free · psycheai.io',
-    roastShareText: (url) => 'I let AI read my Instagram and it roasted me. Get yours free: ' + (url || 'https://psycheai.io'),
     compatShareImage: 'Share result',
     compatImageLead: () => 'Psyche Sync',
     compatImageFooter: 'Test yours free · psycheai.io',
     compatImageShared: 'What we share',
-    compatResultShareText: (score, url) => 'We’re ' + score + '% in sync on PsycheAI. How in sync are you two? ' +
-      'Free, no questionnaire: ' + (url || 'https://psycheai.io'),
     storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
+    linkMessageCopiedShort: 'Copied ✓',
     linkCopied: 'Link copied.',
     shortLinkUnreadable: 'That PsycheAI link could not be opened — it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
     linkCopyPrompt: 'Copy this and send it to them:',
@@ -541,6 +540,8 @@
     premiumSourcesBlurb: 'Add a source or replace one with a fresh export — more data, a fuller report. ' +
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
+    // Under the price on the free card's unlock button: the other way in.
+    premiumUnlockFriends: 'or get 3 friends to make their Psyche Card from your link',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
     // reason: a long structured response with thinking enabled. The dialog
@@ -641,19 +642,19 @@
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
       title: 'Your link',
-      cards: 'cards',
-      paid: 'paid',
-      progress: (cards, perCards, paid, perPaid) => perCards + ' cards or ' + perPaid + ' paid = 1 free full report · next: ' +
-        cards + '/' + perCards + ' cards, ' + paid + '/' + perPaid + ' paid',
+      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — use it yourself or gift it.',
+      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — gift it, or use it for a re-run with new data.',
+      shareHint: 'Share your card or link above to start.',
+      cards: 'made a card',
+      paid: 'bought the full report',
+      syncs: 'synced with you',
+      progress: (cards, perCards, paid, perPaid) => 'Towards your next free full report: ' + cards + ' of ' + perCards +
+        ' cards, or ' + paid + ' of ' + perPaid + ' paid.',
       ready: n => n === 1 ? '🎉 1 free full report ready' : '🎉 ' + n + ' free full reports ready',
-      copy: 'Copy my link',
       copyShort: 'Copy',
-      share: 'Share',
       claim: 'Use it',
       claimPaid: 'Use it for a re-run',
       gift: 'Gift it',
-      copied: 'Link copied.',
-      shareText: 'See my Psyche Card, then make yours free from your own Instagram data:',
       useFree: 'Use your free full report — from your link',
       useGift: 'Use your gifted free full report',
       claimFailed: 'There is no free report to claim yet.',
@@ -1056,8 +1057,8 @@
       },
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',
-      tools: { download: 'Download', share: 'Share', compat: 'Sync' },
-      toolTips: { download: 'Save your card as an image', share: 'Share your card', compat: 'See how in sync you are with a friend' },
+      tools: { download: 'Download', share: 'Share Card', copy: 'Copy link' },
+      toolTips: { download: 'Save your card as an image', share: 'Share your card and your link', copy: 'Copy your share message and link' },
       labels: { yours: 'Yours', sample: 'On this card' },
       // Under the sample's card, full screen.
       sampleTip: { hover: 'Hover over any part of the card to learn more', tap: 'Tap any part to learn more' },

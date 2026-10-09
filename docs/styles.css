@@ -3937,24 +3937,28 @@ details.more[open] > summary::after { content: ' ▴'; }
   font-size: max(10px, calc(21.5px * var(--pcs))); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
 }
 
-/* "Your link" (lib/referral.js): compact — what it has done, what that earns,
-   and the buttons, in three short lines. */
-.referral-card.referral-compact { margin-top: 1rem; padding: .85rem 1rem .9rem; }
-.referral-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .9rem; }
-.referral-title { margin: 0; font-size: 1rem; }
-.referral-stats { display: flex; gap: .8rem; margin: 0; font-size: .86rem; color: var(--ink-soft); }
-.referral-stat .referral-n { font-size: 1rem; font-weight: 800; color: var(--ink); }
-.referral-progress { margin: .3rem 0 .6rem; font-size: .8rem; color: var(--ink-soft); }
-.referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem; margin: 0 0 .6rem; }
-.referral-ready-row[hidden] { display: none; }
-.referral-ready {
-  font-size: .8rem; font-weight: 700; color: var(--good); background: var(--good-soft);
-  padding: .2rem .6rem; border-radius: 999px; margin-right: auto;
+/* "Your link" (lib/referral.js): what it earns, three purple boxes for what
+   friends did with it, and Use it / Gift it once a free report is earned. */
+.referral-card { margin-top: 1rem; }
+.referral-head { display: flex; gap: .75rem; align-items: flex-start; }
+.referral-icon {
+  flex: none; display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 12px;
+  background: var(--accent-soft); font-size: 1.25rem;
 }
-.referral-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
-.referral-card .btn-sm { padding: .42rem .8rem; font-size: .86rem; min-width: 0; }
-.referral-actions .btn { flex: 1 1 auto; }
-.referral-status { margin: .5rem 0 0; font-size: .8rem; color: var(--ink-soft); word-break: break-all; }
+.referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
+.referral-blurb { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--ink-soft); }
+.referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: .9rem 0 .4rem; padding: 0; list-style: none; }
+.referral-stat {
+  display: grid; justify-items: center; align-content: start; gap: .1rem; padding: .7rem .4rem; border-radius: 14px; text-align: center;
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .78rem; color: var(--ink-soft);
+}
+.referral-stat .referral-n { font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
+.referral-progress { margin: .4rem 0 0; font-size: .86rem; color: var(--ink-soft); }
+.referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin: .8rem 0 0; }
+.referral-ready-row[hidden] { display: none; }
+.referral-ready { font-weight: 800; flex: 1 1 100%; }
+.referral-card .btn-sm { padding: .5rem .95rem; font-size: .88rem; min-width: 0; }
+.referral-status { margin: .6rem 0 0; font-size: .82rem; color: var(--ink-soft); word-break: break-all; }
 .referral-status[hidden] { display: none; }
 .premium-referral { width: 100%; margin: .2rem 0 .8rem; }
 .premium-referral[hidden] { display: none; }
@@ -4031,8 +4035,19 @@ details.more[open] > summary::after { content: ' ▴'; }
 .hero > .gift-banner { grid-column: 1 / -1; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
 .sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
-.sync-invite.is-many { flex-wrap: wrap; }
-.sync-invite.is-many .sync-invite-actions { flex: 1 1 100%; justify-content: flex-start; }
+.sync-invite-slot .sync-invite { margin: 1rem 0; }
+.sync-invite-actions .btn { min-width: 7rem; }
+/* My Syncs: the friends whose links are waiting, a Sync button each. */
+.scan-waiting { margin-bottom: 1rem; }
+.scan-waiting h2 { margin: 0 0 .2rem; font-size: 1.1rem; }
+.scan-waiting .muted { margin: 0 0 .7rem; font-size: .88rem; }
+.card .scan-waiting-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.card .scan-waiting-list li { margin: 0; display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem; border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+.scan-waiting-list strong { flex: 1; min-width: 0; }
+.scan-waiting-list .match-face { flex: none; }
+/* The unlock button's second line: the other way in, three friends' cards. */
+.premium-unlock-alt { display: block; margin-top: .2rem; font-size: .8rem; font-weight: 500; opacity: .9; }
 .invite-banner .invite-also { margin: .7rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent); }
 .invite-banner .invite-also[hidden] { display: none; }
 

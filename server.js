@@ -945,7 +945,7 @@ function handleStats(request, response, url) {
 // campaign link, an Instagram export read on the device, the unlock opened.
 // The rest (card made, report paid for) the routes below count where they
 // happen. Counts only: no identifier is sent or kept.
-const JOURNEY_STEPS = new Set(['open', 'export_loaded', 'unlock_open', 'referral_open']);
+const JOURNEY_STEPS = new Set(['open', 'export_loaded', 'unlock_open', 'referral_open', 'sync_done']);
 async function handleEvent(request, response) {
   const body = await readJsonBody(request);
   const step = body && typeof body.event === 'string' ? body.event : '';
@@ -958,6 +958,8 @@ async function handleEvent(request, response) {
   if (via) stats.count('via:' + via + ':' + step);
   // An open of someone's link, counted for its owner as a plain number.
   if (step === 'referral_open') referral.countOpen(body.ref);
+  // A friend's sync with the card from someone's link, counted for that link's owner.
+  if (step === 'sync_done') referral.countSync(body.ref);
   sendJson(response, 200, { ok: true });
 }
 

@@ -362,13 +362,18 @@
     <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
     <button class="btn gift-banner-go" type="button"></button>
   </div>
+  <!-- Parked here; renderProfile moves it under the unlock offer, or under
+       Open My Report once paid. Its one button goes to My Syncs, where the
+       reader picks who to sync with. -->
+  <div id="sync-invite-home">
   <div class="sync-invite no-print" id="sync-invite" hidden>
     <span class="sync-invite-ring" aria-hidden="true">?</span>
     <div class="sync-invite-text">
       <p class="sync-invite-title" id="sync-invite-title"></p>
       <p class="sync-invite-sub" id="sync-invite-sub"></p>
     </div>
-    <div class="sync-invite-actions" id="sync-invite-actions"></div>
+    <div class="sync-invite-actions"><button class="btn" type="button" id="sync-invite-open" data-nav="scan">Sync</button></div>
+  </div>
   </div>
 
   <!-- The card at a glance, above the written report. Built from the same
@@ -547,12 +552,13 @@
     </div>
     <p class="scan-eyebrow">Psyche Sync · free, every time</p>
     <h1 id="scan-title">My Syncs</h1>
-    <p class="scan-lede">Open a friend's PsycheAI link to see how in sync you are. You get a Psyche Sync
-      score, the five things behind it, what works, what will grate, and what each of you could do
-      differently.</p>
+    <p class="scan-lede">Open a friend's PsycheAI link for your Psyche Sync score: what clicks between
+      you, what may grate, and how to be a better friend to each other.</p>
   </header>
   <div id="scan-alert" class="alert" hidden></div>
 
+  <!-- Friends whose links are waiting, each with its own Sync button. -->
+  <div id="scan-waiting"></div>
   <div id="scan-history"></div>
 
   <div class="scan-actions">
@@ -569,12 +575,11 @@
 
     <div class="link-panel card scan-action">
       <span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
-      <h2 class="link-title">Send my link</h2>
+      <h2 class="link-title">My link</h2>
       <p class="muted">The sync runs on the side of whoever opens the link. Send yours so they can
         see how in sync you are, and ask them to send theirs back.</p>
       <div class="btn-row">
-        <button class="btn" id="share-link-scan" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
-        <button class="btn btn-ghost" id="copy-link-scan" type="button">Copy link</button>
+        <button class="btn" id="copy-link-scan" type="button">Copy link</button>
       </div>
       <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
     </div>
@@ -727,8 +732,8 @@
       the two of you are as friends: a Psyche Sync score and how to be better friends to each other,
       free. It is about friendship only, never romance. The result stays on their device: you do not
       see it unless they send it to you. It also counts towards a free full report for you: every 3 friends who make a card from your
-      link, or 2 who buy the full report, earn one, which you can use or gift to someone. Your report page
-      shows how many opened your link, made a card and bought the full report. The link points to
+      link, or 2 who buy the full report, earn one, which you can use or gift to someone. My Psyche
+      shows how many friends made a card from your link, bought the full report and synced with you. The link points to
       a locked copy of your card’s short summary, never your export, messages or report. The key that opens it is the part after the #, which a browser never
       sends to a server, so PsycheAI stores the locked copy but cannot read it. The link stays the
       same if your card is redrawn, and shows the new one.</p>
@@ -926,7 +931,7 @@
               is gigabytes for nothing</span>
           </li>
         </ul>
-        <p class="guide-then">Then tap <span class="ui-label">Start export</span>.</p>
+        <p class="guide-then">Then tap <span class="ui-label">Start export</span>. Password is required.</p>
         <div class="guide-shots is-single">
           <figure class="guide-shot">
             <span class="guide-frame">
@@ -1301,7 +1306,7 @@
       <span class="ui-label">Export to device</span>.</li>
   <li>Set Date range to <span class="ui-label">All time</span>, Format to
       <strong><span class="ui-label">JSON</span> (not HTML)</strong>, and Media quality to
-      <span class="ui-label">Lower</span>. Start the export.</li>
+      <span class="ui-label">Lower</span>. Start the export. Password is required.</li>
   <li>Instagram emails a link, usually within a few hours. Download the .zip to this device and
       load it into PsycheAI.</li>
 </template>

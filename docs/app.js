@@ -1746,21 +1746,21 @@
    */
   function referralCardHtml(paid) {
     const R = TEXT.referral;
-    // Compact: one line of what it has done, one of what it earns, and the
-    // buttons. Two numbers, cards and paid reports; opens are not shown.
-    const stat = (key, icon, label) => '<span class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
-      '<b class="referral-n" data-stat="' + key + '">0</b> ' + esc(label) + '</span>';
-    return '<section class="card section-card referral-card referral-compact screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
-      '<div class="referral-top"><h3 class="referral-title"><span aria-hidden="true">🔗</span> ' + esc(R.title) + '</h3>' +
-        '<p class="referral-stats">' + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + '</p></div>' +
+    // Three purple boxes: friends who made a card, bought the full report,
+    // and synced with the reader. No buttons of its own: the card's Share
+    // Card and Copy link above carry the same link. "Use it" and "Gift it"
+    // appear only once a free report is earned.
+    const stat = (key, icon, label) => '<li class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
+      '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
+    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🔗</span><div>' +
+        '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
+        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
+      '<ul class="referral-stats">' + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + stat('syncs', '🔄', R.syncs) + '</ul>' +
       '<p class="referral-progress" aria-live="polite"></p>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
         '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
         '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
-      '<div class="referral-actions">' +
-        '<button class="btn btn-sm btn-outline referral-copy" type="button">' + esc(R.copy) + '</button>' +
-        '<button class="btn btn-sm btn-outline referral-share" type="button">' + esc(R.share) + '</button>' +
-      '</div>' +
       '<p class="referral-status" role="status" hidden></p>' +
       '<div class="referral-gifts"></div>' +
     '</section>';
@@ -1810,7 +1810,7 @@
     if (!status) return;
     const R = TEXT.referral;
     for (const card of cards) {
-      for (const key of ['friends', 'paid']) {
+      for (const key of ['friends', 'paid', 'syncs']) {
         const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
         if (n) n.textContent = String(Number(status[key]) || 0);
       }
@@ -1840,15 +1840,7 @@
     if (!card) return;
     const R = TEXT.referral;
     const mine = await ensureReferral();
-    // One link for everything: the short personal link, which carries the
-    // card and the invite code together.
-    const url = myLinkUrl();
-    if (event.target.closest('.referral-copy')) {
-      try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
-      catch (error) { referralSay(card, url); }
-    } else if (event.target.closest('.referral-share')) {
-      await shareOrCopy(card, R.shareText, url, R.copied);
-    } else if (event.target.closest('.referral-gift-copy')) {
+    if (event.target.closest('.referral-gift-copy')) {
       const link = giftUrl(event.target.closest('.referral-gift-copy').dataset.token);
       try { await navigator.clipboard.writeText(link); referralSay(card, R.giftCopied); }
       catch (error) { referralSay(card, link); }
@@ -1982,9 +1974,13 @@
       '<section class="card section-card open-report-card screen-only">' +
         '<div class="open-report-text"><h2>' + esc(R.title) + '</h2><p>' + esc(R.blurb) + '</p></div>' +
         '<button class="btn" type="button" data-nav="full" id="open-report">' + esc(R.open) + '</button>' +
-      '</section>' +
+      '</section>' + syncInviteSlot() +
       methodCardHtml(report, false);
   }
+
+  // Where the "You + Jared" bar sits on My Psyche: under the unlock offer, or
+  // under Open My Report once paid. renderProfile moves #sync-invite here.
+  const syncInviteSlot = () => '<div class="sync-invite-slot"></div>';
 
   function fullReportLockedHtml() {
     return '<div class="premium-tier paid-consolidated full-report-locked">' +
@@ -2002,8 +1998,12 @@
         : '<ul class="premium-tier-list">' + tierItemsHtml(explainedSections(), row => row.blurb()) +
           tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>') +
       '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
-      premiumUnlockLabel(false) + '</button>' +
-      '</div>';
+      premiumUnlockLabel(false) +
+      // The other way in, under the price: three friends' cards from their link.
+      (hasUnfetchedUnlock() ? '' : '<span class="premium-unlock-alt">' + esc(TEXT.premiumUnlockFriends) + '</span>') +
+      '</button>' +
+      '</div>' +
+      syncInviteSlot();
   }
 
   function bonusBodyHtml(analysis) {
@@ -3318,7 +3318,7 @@
     const share = event.target.closest('.bonus-share');
     if (share && state.profile && state.profile.report && state.profile.report.bonus) {
       shareStoryImage(roastImageCanvas(state.profile.report.bonus), 'PsycheAI roast.png',
-        TEXT.roastShareText(myLinkUrl()), share.closest('.bonus-card').querySelector('.bonus-share-status'));
+        shareMessage(), share.closest('.bonus-card').querySelector('.bonus-share-status'));
     }
   });
 
@@ -5240,6 +5240,11 @@
     if (shortLink) return shortLink;
     return state.profile && state.profile.payload ? profileUrl(state.profile.payload) : inviteUrl();
   }
+  /** The one share message, everywhere: "I got <character> on my Psyche Card…" and the reader's link. */
+  function shareMessage() {
+    const report = state.profile && state.profile.report;
+    return TEXT.cardShareText(report && report.essence && report.essence.character, myLinkUrl());
+  }
 
   /**
    * The report's sections as HTML, from the report alone.
@@ -6528,7 +6533,7 @@
         '<div class="cx-tools">' +
           tool('download', '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/>') +
           tool('share', '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>') +
-          tool('compat', '<circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/>') +
+          tool('copy', '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>') +
         '</div>' +
         '<p class="cx-status" role="status" hidden></p>' +
         // What the card is, then where its reasoning is: below, or behind the unlock.
@@ -6847,7 +6852,7 @@
     const tool = event.target.closest('.cx-tool');
     if (tool) {
       const act = tool.getAttribute('data-act');
-      if (act === 'compat') $('#test-compat-open').click();
+      if (act === 'copy') copyShareMessage(tool);
       else if (act === 'download') downloadCardImage({ currentTarget: tool });
       else if (act === 'share') shareCardImage({ currentTarget: tool });
       return;
@@ -6996,7 +7001,17 @@
     // Either way its compatibility test is one of the card's tools.
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
+    // The "You + Jared" bar is parked before the body is redrawn, then set in
+    // its slot under the unlock offer or Open My Report (none on My Report).
+    $('#sync-invite-home').appendChild($('#sync-invite'));
     setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
+    let syncSlot = $('#profile-body .sync-invite-slot');
+    // A classic full report has no unlock offer: the bar opens its body.
+    if (!syncSlot && !reportPage) {
+      syncSlot = Object.assign(document.createElement('div'), { className: 'sync-invite-slot' });
+      $('#profile-body').prepend(syncSlot);
+    }
+    if (syncSlot) syncSlot.appendChild($('#sync-invite'));
     syncNav();
     refreshReferral().catch(() => {});
     // The card's QR code waits for the short link, then fits the card again.
@@ -7075,7 +7090,7 @@
   // very long address. Without a share sheet (most desktops) the same message
   // goes to the clipboard.
   function compatMessage() {
-    return TEXT.compatShareText(myLinkUrl());
+    return shareMessage();
   }
 
   function writeClipboard(text) {
@@ -7108,24 +7123,23 @@
       () => window.prompt(TEXT.linkCopyPrompt, text));
   }
 
-  // The bare link, for anyone who would rather write their own message.
+  // Copy link: the same message Share Card sends, link and all.
   function copyMyLink(button, statusSelector) {
-    const url = myLinkUrl();
+    const url = shareMessage();
     writeClipboard(url).then(() => {
       const label = button.textContent;
       button.textContent = 'Copied ✓';
       setTimeout(() => { button.textContent = label; }, 2000);
-      linkStatus(statusSelector, TEXT.linkCopied);
+      linkStatus(statusSelector, TEXT.linkMessageCopied);
     }, () => window.prompt(TEXT.linkCopyPrompt, url));
   }
   $('#share-link').addEventListener('click', () => sendMyLink('#share-link-status'));
-  $('#share-link-scan').addEventListener('click', () => sendMyLink('#share-link-scan-status'));
   $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
   $('#share-compat-image').addEventListener('click', () => {
     const last = state.lastReport;
     if (!last) return;
     shareStoryImage(compatImageCanvas(last), 'PsycheAI sync.png',
-      TEXT.compatResultShareText(Math.round(Number(last.report.score) || 0), myLinkUrl()), '#compat-share-status');
+      shareMessage(), '#compat-share-status');
   });
   $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
   $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
@@ -7740,6 +7754,18 @@
   // Shared by both icon buttons: neither carries visible text of its own any
   // more for a failure to borrow, so an error from either one shows up here
   // instead of inside the button.
+  // The card's Copy link: the share message, link and all, on the clipboard.
+  function copyShareMessage(button) {
+    const text = shareMessage();
+    writeClipboard(text).then(() => {
+      const label = button.querySelector('span');
+      const was = label.textContent;
+      label.textContent = TEXT.linkMessageCopiedShort;
+      setTimeout(() => { label.textContent = was; }, 2000);
+      flashCardStatus(TEXT.linkMessageCopied);
+    }, () => window.prompt(TEXT.linkCopyPrompt, text));
+  }
+
   function flashCardStatus(message) {
     const dialog = $('#card-dialog');
     const status = dialog && dialog.open ? $('#card-dialog-status') : ($('#profile-side .cx-status') || $('#card-dialog-status'));
@@ -7782,9 +7808,7 @@
       const file = new File([blob], name, { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          const character = state.profile && state.profile.report && state.profile.report.essence &&
-            state.profile.report.essence.character;
-          await navigator.share({ files: [file], title: TEXT.cardSection, text: TEXT.cardShareText(character, myLinkUrl()) });
+          await navigator.share({ files: [file], title: TEXT.cardSection, text: shareMessage() });
           return;
         } catch (error) {
           // The reader opened the share sheet and backed out themselves —
@@ -8890,6 +8914,7 @@
     $('#scan-title').textContent = TEXT.scanHistory;
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
+    setHtml($('#scan-waiting'), syncWaitingHtml());
     const history = store.read(KEYS.history, []);
     setHtml($('#scan-history'), history.length
       ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.scanHistory) + '</h2>' +
@@ -9011,6 +9036,10 @@
   function adoptComparison(result, other, mode, stance) {
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
+      // A sync with a friend's link counts on that friend's "Your link".
+      const synced = allInvites().find(i => i.payload === syncingInvite);
+      const mine = store.read(KEYS.referral, null);
+      if (synced && synced.ref && !(mine && mine.code === synced.ref)) trackStep('sync_done', synced.ref);
       spendInvite(syncingInvite);
       syncingInvite = null;
       refreshSyncInvite();
@@ -9145,6 +9174,7 @@
   async function consumeIncomingLink() {
     let incoming = '';
     let face = null;
+    let fromRef = '';
     const params = new URLSearchParams(location.search);
     if (params.has('c')) {
       // A short personal link, /c/<id>#<key>, arrives here as ?c=<id>#<key>.
@@ -9159,6 +9189,7 @@
         found = response.ok ? await response.json() : null;
       } catch (error) { found = null; }
       if (found && /^[0-9a-f]{12}$/.test(found.ref || '')) {
+        fromRef = found.ref;
         const mine = store.read(KEYS.referral, null);
         if (!(mine && mine.code === found.ref)) {
           store.write(KEYS.referredBy, { code: found.ref, at: Date.now() });
@@ -9183,7 +9214,9 @@
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
-    addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null));
+    // The link's own code too, so a sync with this friend counts for them.
+    addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null,
+      fromRef ? { ref: fromRef } : null));
     // A reader who already has a card lands on it, with the sync one tap
     // away; one who does not sees the friend's card and how to make theirs.
     if (state.profile) {
@@ -9348,31 +9381,41 @@
   }
 
   // To the steps for requesting the export, on this same page.
-  // On the reader's own report, once they have a card: the friend whose link
-  // brought them, and the sync with that friend, run only when they tap it.
-  // One bar however many friends are waiting: for one, "You + Jared = ?% in
-  // sync"; for several, one line naming them and a button for each.
+  // On My Psyche, once the reader has a card: the friends whose links are
+  // waiting, in one bar under the unlock offer — "You + Jared = ?% in sync",
+  // or "2 friends are waiting to sync with you" — with one button, to My
+  // Syncs. The sync itself runs from there, only when they pick a friend.
   function refreshSyncInvite() {
     const box = $('#sync-invite');
     if (!box) return;
     const invites = state.profile ? allInvites() : [];
-    box.hidden = !invites.length;
+    box.hidden = !invites.length || !box.closest('.sync-invite-slot');
     if (!invites.length) return;
     const names = invites.map(i => firstName(i.name) || i.name);
     $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
     $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany;
-    $('#sync-invite-actions').innerHTML = invites.map((invite, i) =>
-      '<button class="btn' + (i ? ' btn-outline' : '') + ' sync-invite-go" type="button"' + (i ? '' : ' id="sync-invite-go"') +
-        ' data-i="' + i + '">' + esc(invites.length === 1 ? TEXT.syncInviteGo(names[i]) : TEXT.syncInviteGoShort(names[i])) + '</button>').join('');
-    box.classList.toggle('is-many', invites.length > 1);
+    $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
+  }
+  /** My Syncs: each waiting friend with a Sync button of their own. */
+  function syncWaitingHtml() {
+    const invites = state.profile ? allInvites() : [];
+    if (!invites.length) return '';
+    return '<div class="card scan-waiting"><h2>' + esc(TEXT.syncWaitingTitle) + '</h2>' +
+      '<p class="muted">' + esc(TEXT.syncWaitingSub) + '</p><ul class="scan-waiting-list">' +
+      invites.map((invite, i) => {
+        const name = firstName(invite.name) || invite.name || '?';
+        return '<li><span class="match-face" aria-hidden="true">' + esc(String(name).trim().charAt(0).toUpperCase()) + '</span>' +
+          '<strong>' + esc(name) + '</strong>' +
+          '<button class="btn btn-sm sync-invite-go" type="button" data-i="' + i + '">' + esc(TEXT.syncInviteGo(name)) + '</button></li>';
+      }).join('') + '</ul></div>';
   }
   // The invite is spent only once the sync has landed (adoptComparison): a
-  // sync that fails leaves it, and the banner, for another try.
-  $('#sync-invite').addEventListener('click', async event => {
-    const button = event.target.closest('.sync-invite-go');
+  // sync that fails leaves it, on My Syncs, for another try.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('.sync-invite-go');
     if (!button) return;
     const invite = allInvites()[Number(button.dataset.i) || 0];
-    if (!invite || !state.profile) { refreshSyncInvite(); return; }
+    if (!invite || !state.profile) { renderScan(); return; }
     syncingInvite = invite.payload;
     if (!(await runMatch(invite.payload))) syncingInvite = null;
   });

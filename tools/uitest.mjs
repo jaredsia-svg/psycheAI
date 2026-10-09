@@ -1761,11 +1761,23 @@ try {
         waiting.profile && waiting.kept && waiting.reports === 0 &&
           /You \+ Ava = \?% in sync/.test(waiting.text) && /See how in sync you are with Ava/.test(waiting.text),
         JSON.stringify(waiting));
+      check('the sync bar sits under the unlock offer, with one button, Sync, and no sync runs on My Psyche',
+        await invitePage.evaluate(() => {
+          const bar = document.querySelector('#sync-invite');
+          const slot = bar.closest('.sync-invite-slot');
+          return Boolean(slot) && Boolean(slot.previousElementSibling && slot.previousElementSibling.matches('.full-report-locked')) &&
+            [...bar.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'Sync';
+        }));
+      await invitePage.click('#sync-invite-open');
+      await invitePage.waitForSelector('#view-scan:not([hidden]) .scan-waiting', { timeout: 15000 });
+      check('Sync goes to My Syncs, where the waiting friend has a Sync button of their own',
+        (await invitePage.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|') === 'Sync with Ava',
+        (await invitePage.locator('#scan-waiting').innerText()));
       // A sync that fails keeps the friend's link, and the banner, for another try.
       await invitePage.route('**/api/compatibility', route => route.fulfill({ status: 400, contentType: 'application/json',
         body: JSON.stringify({ error: 'Gemini API error: the model refused this.' }) }));
-      await invitePage.click('#sync-invite-go');
-      await invitePage.waitForSelector('#view-scan:not([hidden])', { timeout: 30000 });
+      await invitePage.click('.scan-waiting .sync-invite-go');
+      await invitePage.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 });
       await invitePage.unroute('**/api/compatibility');
       await invitePage.click('[data-nav="profile"]');
       await invitePage.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
@@ -1773,7 +1785,8 @@ try {
         await invitePage.evaluate(() => /refused/.test(document.querySelector('#scan-alert').textContent) &&
           localStorage.getItem('psycheai_invite') !== null && !document.querySelector('#sync-invite').hidden &&
           document.querySelector('#welcome, #view-welcome').hidden));
-      await invitePage.click('#sync-invite-go');
+      await invitePage.click('#sync-invite-open');
+      await invitePage.click('.scan-waiting .sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
       const synced = await invitePage.evaluate(() => ({
         title: document.querySelector('#report-title').textContent,
@@ -4861,9 +4874,9 @@ try {
     (await page.locator('#card-share').isVisible()));
   check('each carries a small visible label beside its icon, plus a fuller aria-label',
     (await page.locator('#card-download-label').innerText()).trim() === 'Download' &&
-    (await page.locator('#card-share-label').innerText()).trim() === 'Share' &&
+    (await page.locator('#card-share-label').innerText()).trim() === 'Share Card' &&
     (await page.locator('#card-download').getAttribute('aria-label')) === 'Download as image' &&
-    (await page.locator('#card-share').getAttribute('aria-label')) === 'Share');
+    (await page.locator('#card-share').getAttribute('aria-label')) === 'Share Card');
   check('download sits to the left of share, with a visible gap between them',
     await page.evaluate(() => {
       const dl = document.querySelector('#card-download').getBoundingClientRect();
@@ -5094,8 +5107,8 @@ try {
   });
   await page.click('#share-link');
   const sharedData = await page.evaluate(() => window.__shared);
-  check('"Send my link" opens the share sheet with a ready-written message carrying the link',
-    Boolean(sharedData) && /^Here’s my Psyche Card ✨ Who are you most like\? Make yours free/.test(sharedData.text) &&
+  check('"Send my link" opens the share sheet with the one share message, carrying the link',
+    Boolean(sharedData) && /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(sharedData.text) &&
       sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
   // Without one, as on most desktops, the same message goes to the clipboard.
   await page.evaluate(() => {
@@ -5109,8 +5122,8 @@ try {
       /copied/i.test(await page.locator('#share-link-status').innerText()),
     await page.locator('#share-link-status').innerText());
   await page.click('#copy-link');
-  check('"Copy link" copies the bare link',
-    (await page.evaluate(() => window.__copied)) === myLink);
+  check('"Copy link" copies the same share message as Share Card',
+    (await page.evaluate(() => window.__copied)) === sharedData.text);
   await page.click('#compat-dialog-close');
   check('the compatibility popout closes', !(await page.locator('#compat-dialog').isVisible()));
   check('closing it leaves the reader where they were, not snapped back to the top',
@@ -5464,9 +5477,9 @@ try {
     const bitmap = await createImageBitmap(data.files[0]);
     return { width: bitmap.width, height: bitmap.height, type: data.files[0].type, text: data.text };
   });
-  check('"Share this roast" hands the share sheet a 1080 x 1920 image and a caption with the address',
+  check('"Share this roast" hands the share sheet a 1080 x 1920 image and the one share message with the address',
     Boolean(roastImage) && roastImage.width === 1080 && roastImage.height === 1920 && roastImage.type === 'image/png' &&
-      /roasted me/.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)),
     JSON.stringify(roastImage).slice(0, 300));
   await page.click('#profile-body .bonus-hide');
@@ -9628,9 +9641,9 @@ try {
     const bitmap = await createImageBitmap(data.files[0]);
     return { name: data.files[0].name, type: data.files[0].type, width: bitmap.width, height: bitmap.height, text: data.text };
   });
-  check('"Share result" hands the share sheet a 1080 x 1920 story image with a line carrying the address',
+  check('"Share result" hands the share sheet a 1080 x 1920 story image with the one share message carrying the address',
     Boolean(compatImage) && compatImage.width === 1080 && compatImage.height === 1920 &&
-      compatImage.type === 'image/png' && /^We’re \d+% in sync on PsycheAI/.test(compatImage.text) &&
+      compatImage.type === 'image/png' && /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(compatImage.text) &&
       compatImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatImage).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
@@ -9924,7 +9937,7 @@ try {
   check('the intro is about friends, and nothing romantic or about work',
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
-    /score/i.test(scanText) && /what will grate/i.test(scanText), scanText.slice(0, 500));
+    /score/i.test(scanText) && /what may grate/i.test(scanText) && /better friend to each other/.test(scanText), scanText.slice(0, 500));
   check('the paste box says what it is for', await page.evaluate(() => {
     const box = [...document.querySelectorAll('#view-scan .card')]
       .find(card => card.querySelector('#paste-go'));
@@ -9985,10 +9998,15 @@ try {
   // Whoever opened someone's link is the person most likely to be asked
   // "what's yours?" in the same conversation, so the page carries the same
   // two actions as the profile page's popout.
-  check('the compatibility page has its own send-my-link panel',
+  check('My Syncs has its own link panel, with Copy link and no Send my link',
     (await page.locator('#view-scan .link-panel').count()) === 1 &&
-      (await page.locator('#view-scan .link-title').innerText()) === 'Send my link',
-    await page.locator('#view-scan .link-title').innerText());
+      (await page.locator('#view-scan .link-title').innerText()) === 'My link' &&
+      (await page.locator('#view-scan .link-panel button').allInnerTexts()).join('|') === 'Copy link',
+    await page.locator('#view-scan .link-panel').innerText());
+  check('the My Syncs intro says what a sync gives, in a line',
+    (await page.locator('.scan-lede').innerText()) ===
+      'Open a friend\'s PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how to be a better friend to each other.',
+    await page.locator('.scan-lede').innerText());
   check('and it says the analysis runs on the side of whoever opens it',
     /runs on the side of whoever opens the link/.test(await page.locator('#view-scan .link-panel').innerText()));
   const ownLink = await page.evaluate(() =>
@@ -10000,15 +10018,13 @@ try {
     navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
   });
   await page.click('#copy-link-scan');
-  check('"Copy link" on the compatibility page copies this person\'s actual link',
-    (await page.evaluate(() => window.__copied)) === ownLink);
+  check('"Copy link" on My Syncs copies the share message with this person\'s actual link',
+    /^(I got .+ on my|My) Psyche Card\. Get yours free, no questionnaire: /.test(await page.evaluate(() => window.__copied)) &&
+      (await page.evaluate(() => window.__copied)).endsWith(ownLink),
+    await page.evaluate(() => window.__copied));
   check('the button confirms the copy', (await page.locator('#copy-link-scan').innerText()) === 'Copied ✓',
     await page.locator('#copy-link-scan').innerText());
-  await page.click('#share-link-scan');
-  check('"Send my link" there sends the same ready-written message',
-    /^Here’s my Psyche Card ✨/.test(await page.evaluate(() => window.__copied)) &&
-      (await page.evaluate(() => window.__copied)).endsWith(ownLink) &&
-      /copied/i.test(await page.locator('#share-link-scan-status').innerText()));
+  check('and says the message was copied', /copied/i.test(await page.locator('#share-link-scan-status').innerText()));
   check('the panel does not overflow the viewport',
     await page.evaluate(() =>
       document.querySelector('#view-scan .link-panel').getBoundingClientRect().right <= window.innerWidth + 1));
@@ -10055,20 +10071,26 @@ try {
     await page.locator('#view-profile').isVisible() &&
       /See how in sync you are with Jordan/.test(await page.locator('#sync-invite').innerText()) &&
       compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
-  // A second friend's link too: both wait, in one bar with a button each,
-  // latest first; neither is lost.
+  // A second friend's link too: both wait, in one bar with one Sync button
+  // to My Syncs, where each has a button of their own, latest first.
   const meiPayload = await page.evaluate(card => window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Mei Lin' })),
     await page.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card)));
   await page.goto('about:blank');
   await page.goto('http://localhost:' + PORT + '/#p=' + meiPayload, { waitUntil: 'load' });
-  await page.waitForSelector('#sync-invite.is-many:not([hidden])', { timeout: 30000 });
+  await page.waitForFunction(() => /2 friends/.test(document.querySelector('#sync-invite-title').textContent) &&
+    !document.querySelector('#sync-invite').hidden, null, { timeout: 30000 });
   const many = await page.evaluate(() => ({
     title: document.querySelector('#sync-invite-title').textContent,
-    buttons: [...document.querySelectorAll('#sync-invite .sync-invite-go')].map(b => b.textContent),
+    buttons: [...document.querySelectorAll('#sync-invite button')].map(b => b.textContent),
   }));
-  check('two friends\' links wait in one bar, a button for each, latest first',
-    many.title === '2 friends are waiting to sync with you' && many.buttons.join('|') === 'Sync with Mei|Sync with Jordan',
+  check('two friends\' links wait in one bar, with one Sync button',
+    many.title === '2 friends are waiting to sync with you' && many.buttons.join('|') === 'Sync',
     JSON.stringify(many));
+  await page.click('#sync-invite-open');
+  await page.waitForSelector('#view-scan:not([hidden]) .scan-waiting', { timeout: 15000 });
+  check('on My Syncs, a button for each friend, latest first',
+    (await page.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|') === 'Sync with Mei|Sync with Jordan',
+    (await page.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|'));
 
   // The comparison runs for real time with nothing else standing between a
   // reader's back button and losing it — the same risk runPremiumAnalysis's
@@ -10088,7 +10110,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.continue();
   });
-  await page.click('#sync-invite .sync-invite-go[data-i="1"]');
+  await page.click('.scan-waiting .sync-invite-go[data-i="1"]');
   // Free, so the model call — and the unload guard with it — starts on the tap.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
@@ -10440,13 +10462,13 @@ try {
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
           n.matches('.referral-card') ? 'link' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
-            n.matches('.method-card') ? 'method' : n.className).join(','),
+            n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
         current: (document.querySelector('.nav-links a.is-current .nav-long') || {}).textContent,
       }));
       check('structured: Back lands on My Psyche: card, link, Beyond your card, Open My Report, Evidence and method — no parts',
-        hubShape.order === 'link,beyond,open,method' && hubShape.card && hubShape.parts === 0 &&
+        hubShape.order === 'link,beyond,open,sync,method' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
@@ -10975,8 +10997,9 @@ try {
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
       check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
         /Open My Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
-      check('and Psyche Sync is one of the card\'s tools there',
-        await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="compat"]'))));
+      check('and Copy link is one of the card\'s tools there, with no sync on My Psyche',
+        await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="copy"]')) &&
+          !document.querySelector('#profile-side .cx-tool[data-act="compat"]')));
       await sp.click('#nav-full');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       await sp.waitForTimeout(300);
@@ -11226,17 +11249,29 @@ try {
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
-      check('structured: a free report\'s Compatibility is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
+      check('structured: the unlock button gives the price and the other way in: three friends\' cards from the reader\'s link',
+        await sp.evaluate(() => {
+          const b = document.querySelector('#profile-body .full-report-locked .premium-unlock');
+          return Boolean(b) && /Unlock the full premium report – US\$5/.test(b.textContent) &&
+            b.querySelector('.premium-unlock-alt').textContent === 'or get 3 friends to make their Psyche Card from your link';
+        }));
+      check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
         await sp.evaluate(() => {
           const tools = [...document.querySelectorAll('#profile-side .cx-tools .cx-tool')];
-          return tools.length === 3 && tools[2].dataset.act === 'compat' && !document.querySelector('#profile-side .cx-compat') &&
+          return tools.length === 3 && tools[2].dataset.act === 'copy' && !document.querySelector('#profile-side .cx-compat') &&
             getComputedStyle(document.querySelector('#test-compat-open')).display === 'none' &&
             getComputedStyle(document.querySelector('#delete-profile')).display !== 'none';
         }));
-      await sp.click('#profile-side .cx-tool[data-act="compat"]');
-      await sp.waitForSelector('#compat-dialog[open]', { timeout: 10000 });
-      check('structured: and it opens the compatibility popout', await sp.locator('#compat-dialog').isVisible());
-      await sp.click('#compat-dialog-close');
+      await sp.evaluate(() => {
+        window.__copied = null;
+        navigator.clipboard.writeText = text => { window.__copied = text; return Promise.resolve(); };
+      });
+      await sp.click('#profile-side .cx-tool[data-act="copy"]');
+      await sp.waitForFunction(() => window.__copied !== null, null, { timeout: 5000 });
+      check('structured: Copy link copies the one share message, "I got <character> on my Psyche Card. Get yours free, no questionnaire: <link>"',
+        await sp.evaluate(() => /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: https?:\/\/\S+$/.test(window.__copied) &&
+          /Copied/.test(document.querySelector('#profile-side .cx-tool[data-act="copy"]').textContent)),
+        await sp.evaluate(() => window.__copied));
       // Its "Add / change data" is the US$5 unlock — data first, then payment —
       // never the US$2 re-run of the card.
       // A real report has its evidence summary on the device.
@@ -11328,14 +11363,14 @@ try {
         !(await sp.locator('#card-dialog-tip').isVisible()));
       await sp.keyboard.press('Escape');
       await sp.waitForTimeout(200);
-      // Beside the card: Download, Share, Compatibility, each label whole on one line.
+      // Beside the card: Download, Share Card, Copy link, each label whole on one line.
       const toolRow = await sp.evaluate(() => [...document.querySelectorAll('#profile-side .cx-tool')].map(b => {
         const label = b.querySelector('span');
         return { act: b.dataset.act, label: label.textContent, fits: label.scrollWidth <= label.clientWidth + 1 &&
           label.getBoundingClientRect().height < 20 && label.getBoundingClientRect().width <= b.getBoundingClientRect().width };
       }));
-      check('structured: the three buttons beside the card are Download, Share and Sync, each label fitting',
-        toolRow.map(t => t.act + ':' + t.label).join('|') === 'download:Download|share:Share|compat:Sync' &&
+      check('structured: the three buttons beside the card are Download, Share Card and Copy link, each label fitting',
+        toolRow.map(t => t.act + ':' + t.label).join('|') === 'download:Download|share:Share Card|copy:Copy link' &&
           toolRow.every(t => t.fits) && !(await sp.locator('#profile-side .cx-compat').count()), JSON.stringify(toolRow));
       // Download beside the card saves the card as an image.
       const [cardImage] = await Promise.all([
@@ -11589,16 +11624,23 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows a compact "Your link": cards and paid, no opens, and nothing to claim yet',
-        /Your link/.test(card.text) && card.stats === 2 && !card.ready && !/opened/i.test(card.text) &&
-          /0 cards/.test(card.text) && /0 paid/.test(card.text) &&
-          /3 cards or 2 paid = 1 free full report/.test(card.text) && /0\/3 cards, 0\/2 paid/.test(card.text), JSON.stringify(card));
+      check('the free report shows "Your link": what it earns, three boxes (cards, paid, syncs), no buttons and nothing to claim yet',
+        /Your link/.test(card.text) && card.stats === 3 && !card.ready && !/opened/i.test(card.text) &&
+          /Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report/.test(card.text) &&
+          /Share your card or link above/.test(card.text) &&
+          /0\s*made a card/.test(card.text) && /0\s*bought the full report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
+          /0 of 3\s+cards, or 0 of 2 paid/.test(card.text) &&
+          await rp.evaluate(() => !document.querySelector('#profile-body .referral-card .referral-copy, #profile-body .referral-card .referral-share') &&
+            [...document.querySelectorAll('#profile-body .referral-card button')].every(b => b.closest('[hidden]'))),
+        JSON.stringify(card));
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
-      await rp.click('#profile-body .referral-copy');
+      await rp.click('#profile-side .cx-tool[data-act="copy"]');
       await rp.waitForTimeout(300);
-      const copied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-      check('Copy invite link copies the one short personal link, /c/<id>#<key>',
+      const copiedMessage = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+      const copied = copiedMessage.replace(/^.*: /, '');
+      check('Copy link beside the card copies the one share message, ending in the short personal link, /c/<id>#<key>',
+        /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(copiedMessage) &&
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
       // The same link as a QR code in the foot of the reader's own card, on

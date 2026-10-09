@@ -1801,8 +1801,8 @@ so it is built in rather than left to a plugin.
   `/#sample` also opens the sample when the hash changes on a page already open, not only on load.
 - **Everything shared carries the address.** The Psyche Card's footer reads *psycheai.io · your
   personality, read from your own data*, on screen, in the shared image and in the PDF, and the
-  share sheet's text is *I got <character> on my Psyche Card. Find yours free, no questionnaire:
-  https://psycheai.io*. A card that travels is an invitation.
+  share sheet's text is *I got <character> on my Psyche Card. Get yours free, no questionnaire:
+  <link>*, the one share message (see "One share message"). A card that travels is an invitation.
 
 - **A compatibility link waits for the friend who opens it.** Whoever taps someone's link usually has
   no Instagram export yet, and Instagram takes hours to email one. The invite used to sit in
@@ -1922,8 +1922,8 @@ without the character. The share message now leads
 with the card: *"Here's my Psyche Card ✨ Who are you most like?…"*.
 
 **One link for everything.** A reader's bio link, invite link and compatibility link are the same
-one link (`myLinkUrl`). Every share uses it: *Send my link*, *Copy invite link*, the card image, the
-roast image and the compatibility result. Without short links it is the long form, `/?ref=<code>#p=…`,
+one link (`myLinkUrl`). Every share uses it, in the one share message: *Share Card*, *Copy link*,
+the roast image and the sync result. Without short links it is the long form, `/?ref=<code>#p=…`,
 which carries the invite code too.
 
 **The QR code on the reader's card.** The foot of the reader's own card, on the page, full screen and
@@ -1945,29 +1945,47 @@ links keep opening.
 Each friend's link is kept for 14 days, however many arrive. The latest is `psycheai_invite`, and
 the welcome page shows its card, with a line naming anyone else waiting ("Mei also sent you their
 card"). The ones before it are in `psycheai_invites_more`, newest first, five at most, one per
-friend. On the reader's own report one bar holds them all:
-- **One friend:** *You + Jared = ?% in sync*, with its button.
-- **More:** *2 friends are waiting to sync with you*, with **Sync with Mei** and **Sync with
-  Jared** buttons.
+friend.
 
-Each sync spends only its own friend's link, and only once it lands. The free card credits the most
+On My Psyche, one bar holds them all, under the unlock offer (or under Open My Report once paid):
+- **One friend:** *You + Jared = ?% in sync*, *See how in sync you are with Jared*.
+- **More:** *2 friends are waiting to sync with you*.
+
+The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche. My Syncs lists
+the waiting friends under *Waiting to sync with you*, latest first, each with its own **Sync with
+Mei** button. The bar is parked in `#sync-invite-home` and moved into `.sync-invite-slot` by
+`renderProfile`. My Report has no slot, so it never shows the bar.
+
+Each sync spends only its own friend's link, and only once it lands. A sync with a link that carried
+a referral code also sends `/api/event` `sync_done` with that code, counted in `ref:<code>:syncs`. The free card credits the most
 recent link the reader arrived on.
 
 ## Your link: its numbers, free reports, and gifts
 
-Every report page has a compact **Your link** card. On a free report it sits right under the
-Psyche Card; on a full report it comes at the end. It shows two counts, cards and paid, and one
-line on what they earn. Opens are still counted for the reader's link, but not shown:
+My Psyche has a **Your link** card right under the Psyche Card, free or paid. It opens with what
+the link earns: *Every 3 friends who make their card from your link, or 2 who buy the full report,
+earn you a free full report.* Then it says *Share your card or link above*. The card has no
+copy or share buttons of its own; the card's **Share Card** and **Copy link** carry the same link.
+
+Three purple boxes give the counts:
+- **made a card**
+- **bought the full report**
+- **synced with you**
+
+A progress line sits under the boxes. Opens are still counted for the reader's link, but not shown.
+Where each number comes from:
 - *opened it*: each browser's first open of someone's link that day, sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
 - *made a card*: friends' first free cards, `ref:<code>:friends`.
 - *bought the full report*: friends who paid for the full report with a real Stripe payment, not
   a promo code or a grant. Counted once per buyer account, never the owner's own:
   `ref:<code>:paid`, written by `referral.afterPaid` after the report is written.
+- *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
+  browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
 **Credits.** Every 3 friends' cards earn a free full report, and so does every 2 paid reports. The
-two add up: `earned = floor(friends/3) + floor(paid/2)`. The card shows progress towards both and,
-when one is ready, offers two buttons:
+two add up: `earned = floor(friends/3) + floor(paid/2)`. Syncs are shown but earn nothing. The card
+shows progress towards both. Only when a report is ready does it show two buttons:
 - **Use it** opens the unlock, or on a full report the re-run with new data. The sheet's *Use your
   free full report* claims a grant.
 - **Gift it** claims the grant with `{ gift: true }` (counted as `referral_gifted`) and shares or
@@ -1981,6 +1999,22 @@ days, for whoever holds it.
   on a report it offers to unlock.
 - The unlock sheet offers *Use your gifted free full report* ahead of the reader's own credit.
 - The gift is cleared once a full report is written with it.
+
+## One share message
+
+Every share and copy of the reader's link sends the same message, from `shareMessage()` in
+`docs/app.js` (`TEXT.cardShareText`):
+
+> I got Mulan on my Psyche Card. Get yours free, no questionnaire: psycheai.io/c/…
+
+It is used by:
+- the card's **Share Card** (with the card image) and **Copy link**;
+- My Syncs' **Copy link**;
+- the roast and sync-result story images;
+- the classic layout's Send my link.
+
+A gift link keeps its own message, since it is a different link. The free card's unlock button
+also names the other way in: *or get 3 friends to make their Psyche Card from your link*.
 
 ## Policies: privacy, terms, refunds
 
@@ -5381,8 +5415,10 @@ friends, or as colleagues. It was two paragraphs; the second one restated the pi
 moments later, so it was cut rather than trimmed.
 
 The box for a link that arrived some other way is one line, a field and **Check compatibility**: a
-tapped link opens the comparison by itself, so pasting is the fallback. Below it, **Send my link**
-and **Copy link**, then what the link contains.
+tapped link opens the comparison by itself, so pasting is the fallback. Below it, **My link** with
+**Copy link** (the one share message), then what the link contains. The intro is one line: *Open a
+friend's PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how
+to be a better friend to each other.*
 
 Past results sit *above* the box that makes new ones. Someone returning to that page is far more
 often looking for a report they already ran than starting another.
