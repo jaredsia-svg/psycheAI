@@ -1940,6 +1940,34 @@ Short links are on when Upstash is configured (`/api/status` → `shortLinks`), 
 `PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
 links keep opening.
 
+## Your link: its numbers, free reports, and gifts
+
+Every report page has a **Your link** card. On a free report it sits under the unlock offer; on a
+full report it comes at the end. It shows three plain counts for the reader's link:
+- *opened it*: each browser's first open of someone's link that day, sent with `/api/event`
+  `referral_open` and the link's code, then `ref:<code>:opens`.
+- *made a card*: friends' first free cards, `ref:<code>:friends`.
+- *bought the full report*: friends who paid for the full report with a real Stripe payment, not
+  a promo code or a grant. Counted once per buyer account, never the owner's own:
+  `ref:<code>:paid`, written by `referral.afterPaid` after the report is written.
+
+**Credits.** Every 3 friends' cards earn a free full report, and so does every 2 paid reports. The
+two add up: `earned = floor(friends/3) + floor(paid/2)`. The card shows progress towards both and,
+when one is ready, offers two buttons:
+- **Use it** opens the unlock, or on a full report the re-run with new data. The sheet's *Use your
+  free full report* claims a grant.
+- **Gift it** claims the grant with `{ gift: true }` (counted as `referral_gifted`) and shares or
+  copies `psycheai.io/?gift=<grant>`. The link is listed under the card
+  (`psycheai_gifts_made`) so it can be copied again.
+
+**Receiving a gift.** The grant is a bearer token: it unlocks one full report, once, within 60
+days, for whoever holds it.
+- Opening the link keeps it on the device (`psycheai_gift`) and takes it out of the address.
+- A 🎁 banner says a free full report is waiting. On the welcome page it says to make a card first;
+  on a report it offers to unlock.
+- The unlock sheet offers *Use your gifted free full report* ahead of the reader's own credit.
+- The gift is cleared once a full report is written with it.
+
 ## Policies: privacy, terms, refunds
 
 Three static pages, served at `/privacy`, `/terms` and `/refunds` like the guides, and listed in the

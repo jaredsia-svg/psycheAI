@@ -684,6 +684,13 @@ async function handleAnalyse(request, response) {
         referral.spendGrant(referralGrant, body.digest);
         stats.count('referral_report');
       }
+      // A full report really paid for, by someone who arrived on a friend's
+      // link: that friend is credited (lib/referral.js, afterPaid).
+      if (paidRun && full && body.ref) {
+        referral.afterPaid({ account, ref: body.ref, myRef: body.myRef, payment: paymentIntentId })
+          .then(credited => { if (credited) stats.count('referral_paid'); })
+          .catch(() => {});
+      }
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
         referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef })
@@ -949,6 +956,8 @@ async function handleEvent(request, response) {
   const via = stats.cleanVia(body.via);
   stats.count('step:' + step);
   if (via) stats.count('via:' + via + ':' + step);
+  // An open of someone's link, counted for its owner as a plain number.
+  if (step === 'referral_open') referral.countOpen(body.ref);
   sendJson(response, 200, { ok: true });
 }
 
@@ -970,7 +979,8 @@ async function handleReferralClaim(request, response) {
     sendJson(response, 402, { error: 'There is no free report to claim yet.' });
     return;
   }
-  stats.count('referral_claimed');
+  // Claimed to use, or to give away: the grant is the same either way.
+  stats.count(body.gift === true ? 'referral_gifted' : 'referral_claimed');
   sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 

@@ -7239,6 +7239,35 @@ check('the schema requires evidence on strengths and frictions',
     JSON.stringify(status));
   check('only the secret\'s holder can ask: a code alone is not a secret',
     (await referral.status(code)) === null);
+
+  // Friends who buy the full report count too: two of them earn a free full
+  // report, adding to what cards earn. Once per buyer, never the referrer.
+  const buyer = n => sha('psycheai:buyer' + n);
+  check('the referrer buying through their own link earns nothing',
+    !(await referral.afterPaid({ account: me, ref: code, payment: 'pi_self' })) &&
+    !(await referral.afterPaid({ account: buyer(9), ref: code, myRef: code, payment: 'pi_mine' })));
+  const bought = await referral.afterPaid({ account: buyer(1), ref: code, payment: 'pi_1' });
+  const boughtAgain = await referral.afterPaid({ account: buyer(1), ref: code, payment: 'pi_1b' });
+  check('a friend\'s paid report counts once per buyer', bought && !boughtAgain);
+  check('a code with no owner is credited nothing',
+    !(await referral.afterPaid({ account: buyer(2), ref: referral.codeOf(sha('nobody')), payment: 'pi_2' })));
+  status = await referral.status(secret);
+  check('one paid report: one of two, nothing more yet', status.paid === 1 && status.earned === 2 && status.towardPaid === 1,
+    JSON.stringify(status));
+  await referral.afterPaid({ account: buyer(3), ref: code, payment: 'pi_3' });
+  status = await referral.status(secret);
+  check('two paid reports earn a free full report, on top of the cards\'', status.paid === 2 && status.earned === 3 &&
+    status.available === 2 && status.perCards === 3 && status.perPaid === 2, JSON.stringify(status));
+  // Opens are a plain count of the link's code.
+  for (let i = 0; i < 3; i++) referral.countOpen(code);
+  referral.countOpen('not-a-code');
+  await new Promise(resolve => setTimeout(resolve, 10));
+  check('opens of the link are counted for its owner', (await referral.status(secret)).opens === 3);
+  // A free report claimed to give away is the same grant: anyone holding it
+  // unlocks one report with it, once.
+  const gift = await referral.claim(secret);
+  check('a free report can be claimed as a gift link\'s grant, and works for someone else once',
+    /^[0-9a-f]{48}$/.test(gift || '') && (await referral.grantRefusal(gift, { someoneElse: 1 })) === null);
 }
 
 // ---------- the short personal link ----------

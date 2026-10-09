@@ -1710,6 +1710,8 @@ try {
       await invitePage.reload({ waitUntil: 'load' });
       await invitePage.waitForSelector('#view-welcome:not([hidden])', { timeout: 20000 });
       await invitePage.waitForTimeout(200);
+      check('a dropped invite leaves nothing drawn on the page, not even its empty panel',
+        await invitePage.evaluate(() => document.querySelector('#invite-banner').getBoundingClientRect().height === 0));
       check('an invite older than fourteen days is dropped rather than shown',
         !(await banner()).shown && await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null));
 
@@ -10394,8 +10396,9 @@ try {
         (await sp.locator('#profile-body .appendix-part .card-chevron').count()) === 0, JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
-      check('structured: a full report has no invite-friends card — it offers what the reader already has',
-        (await sp.locator('#profile-body .referral-card').count()) === 0);
+      check('structured: a full report ends on the reader\'s link card, whose free reports re-run or are gifted',
+        (await sp.locator('#profile-body .referral-card[data-paid="1"]').count()) === 1 &&
+          /gift it, or use it for a re-run/.test(await sp.locator('#profile-body .referral-card').innerText()));
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
       // On a phone a full report opens with every part shut; the reader opens
@@ -11502,11 +11505,12 @@ try {
       await rp.waitForSelector('#profile-body .referral-card', { timeout: 10000 });
       const card = await rp.evaluate(() => {
         const c = document.querySelector('#profile-body .referral-card');
-        return { text: c.innerText, dots: c.querySelectorAll('.referral-dots i').length, claim: !c.querySelector('.referral-claim').hidden };
+        return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report offers the invite-friends card: three dots, nothing to claim yet',
-        /Invite 3 friends, get your full report free/.test(card.text) && card.dots === 3 && !card.claim &&
-          /0 of 3 friends/.test(card.text), JSON.stringify(card));
+      check('the free report shows "Your link": opened, cards and paid, and nothing to claim yet',
+        /Your link/.test(card.text) && card.stats === 3 && !card.ready && /opened it/.test(card.text) &&
+          /made a card/.test(card.text) && /bought the full report/.test(card.text) &&
+          /0 of 3 cards, or 0 of 2 paid/.test(card.text), JSON.stringify(card));
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
       await rp.click('#profile-body .referral-copy');
@@ -11630,11 +11634,15 @@ try {
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
       await rp.waitForFunction(() => {
         const c = document.querySelector('#profile-body .referral-card');
-        return c && !c.querySelector('.referral-claim').hidden;
+        return c && !c.querySelector('.referral-ready-row').hidden;
       }, null, { timeout: 15000 });
-      const ready = await rp.evaluate(() => document.querySelector('#profile-body .referral-card').innerText);
-      check('with three friends in, the card says a free full report is ready and offers to claim it',
-        /3 of 3 friends/.test(ready) && /1 free full report ready/.test(ready) && /Claim your free full report/.test(ready), ready);
+      const ready = await rp.evaluate(() => ({ text: document.querySelector('#profile-body .referral-card').innerText,
+        cards: document.querySelector('#profile-body .referral-n[data-stat="friends"]').textContent,
+        opens: Number(document.querySelector('#profile-body .referral-n[data-stat="opens"]').textContent) }));
+      check('with three friends in, the card counts them, says a free full report is ready, and offers to use or gift it',
+        ready.cards === '3' && /1 free full report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
+        JSON.stringify(ready));
+      check('and counts the friend who opened the link', ready.opens >= 1, JSON.stringify(ready));
 
       await rp.click('#profile-body .referral-claim');
       await skipPremiumDataOffer(rp);
@@ -11660,12 +11668,66 @@ try {
       check('and it is spent: none left until three more friends', after.available === 0 && after.claimed === 1 && after.friends === 3,
         JSON.stringify(after));
 
+      // Three more friends earn another, and this one is given away: a gift
+      // link that unlocks one full report for whoever opens it.
+      await rp.evaluate(async ([text, code]) => {
+        const sha = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
+          b => b.toString(16).padStart(2, '0')).join('');
+        for (let n = 4; n <= 6; n++) {
+          const digest = window.PsycheDigest.forModel(JSON.parse(text));
+          digest.counts = Object.assign({}, digest.counts, { posts: 2000 + n });
+          await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
+        }
+      }, [digestText, mine.code]);
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await rp.reload({ waitUntil: 'load' });
+      await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+      await rp.waitForFunction(() => {
+        const c = document.querySelector('#profile-body .referral-card');
+        return c && !c.querySelector('.referral-ready-row').hidden;
+      }, null, { timeout: 15000 });
+      await rp.evaluate(() => { delete navigator.share; });
+      await rp.click('#profile-body .referral-gift');
+      await rp.waitForFunction(() => /Gift link copied/.test(document.querySelector('#profile-body .referral-status').textContent),
+        null, { timeout: 15000 });
+      const giftLink = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+      const giftState = await rp.evaluate(() => ({
+        list: document.querySelector('#profile-body .referral-gifts').innerText,
+        ready: !document.querySelector('#profile-body .referral-ready-row').hidden,
+      }));
+      check('"Gift it" makes a gift link, copies it and lists it under the card, and the credit is spent',
+        /^http:\/\/localhost:\d+\/\?gift=[0-9a-f]{48}$/.test(giftLink) && /Gift links you have made/.test(giftState.list) &&
+          !giftState.ready, JSON.stringify({ giftLink, ...giftState }));
+      const giftPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+      try {
+        await giftPage.goto(giftLink, { waitUntil: 'load' });
+        await giftPage.waitForSelector('#gift-banner:not([hidden])', { timeout: 15000 });
+        const arrived = await giftPage.evaluate(() => ({
+          banner: document.querySelector('#gift-banner').innerText,
+          kept: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
+          address: location.href,
+        }));
+        check('whoever opens a gift link is told they have a free full report waiting, kept on their device',
+          /You’ve been gifted a free full report/.test(arrived.banner) && /Make your free Psyche Card first/.test(arrived.banner) &&
+            arrived.kept && giftLink.endsWith(arrived.kept.token) && !/gift=/.test(arrived.address), JSON.stringify(arrived));
+        const grantOk = await giftPage.evaluate(async token => {
+          const answer = await fetch('api/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ digest: { probe: true }, referralGrant: token, product: 'analysis' }) });
+          return answer.status;
+        }, arrived.kept.token);
+        check('and the gift is a grant the server knows: it unlocks the full report only', grantOk === 402 || grantOk === 400,
+          String(grantOk));
+      } finally {
+        await giftPage.close();
+      }
+
       // The journey, counted per campaign link.
       const totals = await rp.evaluate(() => fetch('api/stats?token=uitest-stats').then(r => r.json()));
       const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
       check('the journey is counted per campaign link: arrived, export read, card made',
         day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
-          day['step:unlock_open'] >= 1 && day.referral_friend === 3 && day.referral_claimed === 1 && day.referral_report === 1 &&
+          day['step:unlock_open'] >= 1 && day.referral_friend === 6 && day.referral_claimed === 1 && day.referral_report === 1 &&
+          day.referral_gifted === 1 &&
           day.free_refused_account === 1, JSON.stringify(day));
       check('the invite-friends flow runs with no page errors', rpErrors.length === 0, rpErrors.join(' | '));
     } finally {

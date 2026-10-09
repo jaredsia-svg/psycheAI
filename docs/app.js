@@ -118,6 +118,10 @@
     // only in the link, after the # — the id the server answered with, and
     // which card it was last saved for.
     link: 'psycheai_link',
+    // A free full report someone gifted this reader (?gift=), and the gift
+    // links this reader has made for others.
+    gift: 'psycheai_gift',
+    gifts: 'psycheai_gifts_made',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -1726,28 +1730,37 @@
    * Invite three friends, get the full report free. Filled in by
    * refreshReferral once the server says where this reader's code stands.
    */
-  /** The invite-friends card, under the unlock offer on a free report only. */
-  function referralCardHtml() {
+  /**
+   * "Your link": how many opened it, made a card and bought the full report,
+   * and the free full reports that earns — three friends' cards or two paid
+   * reports each, adding up. On a free report under the unlock offer, on a
+   * full one at its end. A free report earned can be used or given away.
+   */
+  function referralCardHtml(paid) {
     const R = TEXT.referral;
-    return '<section class="card section-card referral-card screen-only">' +
-      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🎁</span><div>' +
+    const stat = (key, icon, label) => '<li class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
+      '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
+    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🔗</span><div>' +
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
-        '<p class="referral-blurb">' + esc(R.blurb) + '</p></div></div>' +
-      '<div class="referral-progress"><span class="referral-dots" aria-hidden="true">' +
-        '<i></i><i></i><i></i></span><span class="referral-count" aria-live="polite">' + esc(R.count(0, 3)) + '</span>' +
-        '<span class="referral-ready" hidden></span></div>' +
+        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + '</p></div></div>' +
+      '<ul class="referral-stats">' + stat('opens', '👀', R.opens) + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + '</ul>' +
+      '<p class="referral-progress" aria-live="polite"></p>' +
+      '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
+        '<button class="btn referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
+        '<button class="btn btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
       '<div class="referral-actions">' +
         '<button class="btn btn-outline referral-copy" type="button">' + esc(R.copy) + '</button>' +
         '<button class="btn btn-outline referral-share" type="button">' + esc(R.share) + '</button>' +
-        '<button class="btn referral-claim" type="button" hidden>' + esc(R.claim) + '</button>' +
       '</div>' +
       '<p class="referral-status" role="status" hidden></p>' +
+      '<div class="referral-gifts"></div>' +
     '</section>';
   }
 
-  // Where this reader's invite code stands, from the server; null when it
-  // cannot be reached. Cached for the payment sheet's offer.
-  // Asked at most once a minute: the report page redraws often.
+  // Where this reader's link stands, from the server; null when it cannot be
+  // reached. Cached for the payment sheet's offer, and asked at most once a
+  // minute: the report page redraws often.
   let referralStatus = null;
   let referralAskedAt = 0;
   async function fetchReferralStatus(fresh) {
@@ -1763,20 +1776,41 @@
     } catch (error) { /* keep what we had */ }
     return referralStatus;
   }
+  /** The gift links this reader has made, newest first, while they can still be used. */
+  function giftsMade() {
+    const list = store.read(KEYS.gifts, []);
+    const fresh = (Array.isArray(list) ? list : []).filter(g => g && /^[0-9a-f]{48}$/.test(g.token || '') &&
+      Date.now() - Number(g.at) < GIFT_DAYS * 86400000);
+    return fresh;
+  }
+  const GIFT_DAYS = 60;
+  const giftUrl = token => location.origin + '/?gift=' + token;
+  function giftsHtml() {
+    const gifts = giftsMade();
+    if (!gifts.length) return '';
+    const R = TEXT.referral;
+    return '<p class="referral-gifts-head">' + esc(R.giftsHead) + '</p><ul class="referral-gift-list">' +
+      gifts.map(g => '<li><code>' + esc(giftUrl(g.token).replace(/^https?:\/\//, '')) + '</code>' +
+        '<button class="btn btn-ghost referral-gift-copy" type="button" data-token="' + esc(g.token) + '">' + esc(R.copyShort) + '</button></li>').join('') +
+      '</ul>';
+  }
   async function refreshReferral() {
     const cards = document.querySelectorAll('.referral-card');
     if (!cards.length) return;
+    for (const card of cards) card.querySelector('.referral-gifts').innerHTML = giftsHtml();
     const status = await fetchReferralStatus();
     if (!status) return;
     const R = TEXT.referral;
     for (const card of cards) {
-      const toward = status.available > 0 && status.towardNext === 0 ? status.perReport : status.towardNext;
-      card.querySelectorAll('.referral-dots i').forEach((dot, i) => dot.classList.toggle('is-on', i < toward));
-      card.querySelector('.referral-count').textContent = R.count(toward, status.perReport);
-      const ready = card.querySelector('.referral-ready');
-      ready.hidden = !(status.available > 0);
-      ready.textContent = status.available > 0 ? R.ready(status.available) : '';
-      card.querySelector('.referral-claim').hidden = !(status.available > 0);
+      for (const key of ['opens', 'friends', 'paid']) {
+        const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
+        if (n) n.textContent = String(Number(status[key]) || 0);
+      }
+      card.querySelector('.referral-progress').textContent =
+        R.progress(status.towardCards || 0, status.perCards || 3, status.towardPaid || 0, status.perPaid || 2);
+      const row = card.querySelector('.referral-ready-row');
+      row.hidden = !(status.available > 0);
+      card.querySelector('.referral-ready').textContent = status.available > 0 ? R.ready(status.available) : '';
     }
   }
   function referralSay(card, message) {
@@ -1785,24 +1819,48 @@
     line.textContent = message;
     line.hidden = !message;
   }
+  async function shareOrCopy(card, text, url, copied) {
+    if (navigator.share) {
+      try { await navigator.share({ title: 'PsycheAI', text, url }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); referralSay(card, copied); }
+    catch (error) { referralSay(card, url); }
+  }
   document.addEventListener('click', async event => {
     const card = event.target.closest && event.target.closest('.referral-card');
     if (!card) return;
     const R = TEXT.referral;
-    await ensureReferral();
-    // One link for both: the short personal link, which carries the card and
-    // the invite code together; the plain invite link only before there is one.
+    const mine = await ensureReferral();
+    // One link for everything: the short personal link, which carries the
+    // card and the invite code together.
     const url = myLinkUrl();
     if (event.target.closest('.referral-copy')) {
       try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
       catch (error) { referralSay(card, url); }
     } else if (event.target.closest('.referral-share')) {
-      if (navigator.share) {
-        try { await navigator.share({ title: 'PsycheAI', text: R.shareText, url }); return; }
-        catch (error) { if (error && error.name === 'AbortError') return; }
+      await shareOrCopy(card, R.shareText, url, R.copied);
+    } else if (event.target.closest('.referral-gift-copy')) {
+      const link = giftUrl(event.target.closest('.referral-gift-copy').dataset.token);
+      try { await navigator.clipboard.writeText(link); referralSay(card, R.giftCopied); }
+      catch (error) { referralSay(card, link); }
+    } else if (event.target.closest('.referral-gift')) {
+      // Spent now, as a grant someone else can use: the link is the gift.
+      if (!mine) return;
+      const button = event.target.closest('.referral-gift');
+      button.disabled = true;
+      try {
+        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret, gift: true });
+        referralStatus = answer && answer.status ? answer.status : referralStatus;
+        if (!answer || !/^[0-9a-f]{48}$/.test(answer.grant || '')) throw new Error(R.claimFailed);
+        store.write(KEYS.gifts, [{ token: answer.grant, at: Date.now() }].concat(giftsMade()).slice(0, 20));
+        await refreshReferral();
+        await shareOrCopy(card, R.giftShareText, giftUrl(answer.grant), R.giftCopied);
+      } catch (error) {
+        referralSay(card, (error && error.message) || R.claimFailed);
+      } finally {
+        button.disabled = false;
       }
-      try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
-      catch (error) { referralSay(card, url); }
     } else if (event.target.closest('.referral-claim')) {
       // The unlock (or, with the report already unlocked, the re-run with new
       // data); the payment sheet then offers the free report.
@@ -1811,14 +1869,69 @@
     }
   });
 
+  // ---------- a gifted free full report ----------
+  //
+  // ?gift=<grant> on arrival: kept on this device and taken out of the
+  // address. The unlock's sheet then offers it; it is cleared once a full
+  // report has been written with it.
+  function giftWaiting() {
+    const gift = store.read(KEYS.gift, null);
+    if (!gift || !/^[0-9a-f]{48}$/.test(gift.token || '')) return null;
+    if (!(Date.now() - Number(gift.at) < GIFT_DAYS * 86400000)) { store.remove(KEYS.gift); return null; }
+    return gift;
+  }
+  (function captureGift() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('gift')) return;
+      const token = String(params.get('gift') || '').trim().toLowerCase();
+      if (/^[0-9a-f]{48}$/.test(token)) store.write(KEYS.gift, { token, at: Date.now() });
+      params.delete('gift');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: the gift link can be opened again */ }
+  })();
+  // Shown on the welcome page (make your card first) and on the report
+  // (unlock it now), by the same banner in each.
+  function refreshGiftBanner() {
+    const gift = giftWaiting();
+    for (const banner of document.querySelectorAll('.gift-banner')) {
+      banner.hidden = !gift;
+      if (!gift) continue;
+      const own = banner.closest('#view-profile');
+      banner.querySelector('.gift-banner-title').textContent = TEXT.referral.giftArrivedTitle;
+      banner.querySelector('.gift-banner-text').textContent = own ? TEXT.referral.giftArrivedHave : TEXT.referral.giftArrivedNew;
+      banner.querySelector('.gift-banner-go').textContent = own ? TEXT.referral.giftUse : TEXT.inviteStart;
+    }
+  }
+  document.addEventListener('click', event => {
+    const go = event.target.closest && event.target.closest('.gift-banner-go');
+    if (!go) return;
+    if (!go.closest('#view-profile')) {
+      $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+      return;
+    }
+    const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
+    if (target) target.click();
+  });
+
   /** On the unlock's sheet: the free report from inviting friends, when one is ready. */
   function showReferralOffer(kind) {
     const button = $('#premium-referral');
     if (!button) return;
     button.hidden = true;
+    delete button.dataset.gift;
     if (kind !== 'unlock') return;
+    // A gifted one first: it is someone else's present and expires.
+    const gift = giftWaiting();
+    if (gift) {
+      button.textContent = TEXT.referral.useGift;
+      button.dataset.gift = gift.token;
+      button.hidden = false;
+      return;
+    }
     const show = status => {
-      if (!status || !(status.available > 0) || premiumKind !== 'unlock') return;
+      if (!status || !(status.available > 0) || premiumKind !== 'unlock' || button.dataset.gift) return;
       button.textContent = TEXT.referral.useFree;
       button.hidden = false;
     };
@@ -1828,6 +1941,11 @@
   if ($('#premium-referral')) {
     $('#premium-referral').addEventListener('click', async () => {
       const button = $('#premium-referral');
+      if (button.dataset.gift) {
+        button.hidden = true;
+        onPaymentAuthorised({ referralGrant: button.dataset.gift }, $('#premium-dialog'));
+        return;
+      }
       const mine = await ensureReferral();
       if (!mine) return;
       button.disabled = true;
@@ -6098,8 +6216,9 @@
       methodCardHtml(report, sample) +
       (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
       '</section>';
-    // No invite-friends card here: it offers a free full report, and this
-    // reader already has one.
+    // Their link's numbers, and any free report it has earned: for a reader
+    // who already has the full report, to give away or re-run with new data.
+    if (!sample) html += referralCardHtml(true);
     return html;
   }
 
@@ -6197,7 +6316,7 @@
       // Structured: Evidence and method under the offer (freeMethodCardHtml),
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
-      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml() +
+      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml(false) +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
@@ -6845,6 +6964,7 @@
     // buttons above it.
     renderAnalysedBy(profile);
     refreshSyncInvite();
+    refreshGiftBanner();
   }
 
   // Past results as a list rather than a table: a row each, the whole row the
@@ -8117,6 +8237,9 @@
       // and better than losing the report.
       const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), await withAttribution(request),
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
+      // A gifted report, now used.
+      const gift = giftWaiting();
+      if (gift && auth.referralGrant === gift.token) { store.remove(KEYS.gift); refreshGiftBanner(); }
 
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
@@ -8966,7 +9089,7 @@
         const mine = store.read(KEYS.referral, null);
         if (!(mine && mine.code === found.ref)) {
           store.write(KEYS.referredBy, { code: found.ref, at: Date.now() });
-          trackStep('referral_open');
+          trackStep('referral_open', found.ref);
         }
       }
       try {
@@ -9174,11 +9297,11 @@
   // Once per step per day from this browser, so a reload does not count twice.
   // Nothing identifies the browser: the request carries the step and the
   // campaign code, and nothing else.
-  function trackStep(step) {
+  function trackStep(step, ref) {
     try {
       const seen = store.read(KEYS.steps, {}) || {};
       const day = new Date().toISOString().slice(0, 10);
-      const id = step + ':' + (viaCode() || '');
+      const id = step + ':' + (viaCode() || '') + (ref ? ':' + ref : '');
       if (seen[id] === day) return;
       seen[id] = day;
       store.write(KEYS.steps, seen);
@@ -9187,7 +9310,9 @@
       const via = viaCode();
       fetch('api/event', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
-        body: JSON.stringify(Object.assign({ event: step }, via ? { via } : null)),
+        // The link's own code on an open of someone's link, so its owner sees
+        // how many opened it: a plain count, nothing about who.
+        body: JSON.stringify(Object.assign({ event: step }, via ? { via } : null, ref ? { ref } : null)),
       }).catch(() => {});
     } catch (error) { /* no network: nothing counted */ }
   }
@@ -9251,7 +9376,7 @@
       const mine = store.read(KEYS.referral, null);
       if (/^[0-9a-f]{12}$/.test(code) && !(mine && mine.code === code)) {
         store.write(KEYS.referredBy, { code, at: Date.now() });
-        trackStep('referral_open');
+        trackStep('referral_open', code);
       }
       params.delete('ref');
       const query = params.toString();
@@ -9420,6 +9545,7 @@
     }
     show('welcome');
     refreshInvite();
+    refreshGiftBanner();
   }
 
   // Coming back to the page is not always a page load.

@@ -107,6 +107,13 @@
          Psyche Card and why to make one. Above the hero's two columns,
          across both. Filled in by refreshInvite() in app.js; it stays until
          a profile spends it or it expires. -->
+    <!-- A free full report someone gifted this reader (?gift=): app.js,
+         refreshGiftBanner. -->
+    <div class="gift-banner no-print" id="gift-banner" hidden>
+      <span class="gift-banner-icon" aria-hidden="true">🎁</span>
+      <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
+      <button class="btn gift-banner-go" type="button"></button>
+    </div>
     <section id="invite-banner" class="invite-banner no-print" aria-labelledby="invite-title" hidden>
       <!-- Their card, as it looks on their own screen; tap for full screen. -->
       <div class="invite-card-side">
@@ -347,6 +354,11 @@
   <!-- A friend's link, waiting: the reader sees their own card first, and the
        sync with the friend runs only when they choose it (app.js,
        refreshSyncInvite). -->
+  <div class="gift-banner no-print" id="gift-banner-profile" hidden>
+    <span class="gift-banner-icon" aria-hidden="true">🎁</span>
+    <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
+    <button class="btn gift-banner-go" type="button"></button>
+  </div>
   <div class="sync-invite no-print" id="sync-invite" hidden>
     <span class="sync-invite-ring" aria-hidden="true">?</span>
     <div class="sync-invite-text">
@@ -658,8 +670,9 @@
     <p>There is no sign-up, no password to create and no email address. Your export, the digest and
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
     <p>What PsycheAI does keep, in a small database (Upstash): the daily totals below; a one-way
-      scrambled code of your Instagram username, so each account gets one free card; how many friends
-      your invite has brought; and, once you share your link, a locked copy of your card’s short
+      scrambled code of your Instagram username, so each account gets one free card; for your link, how
+      many times it was opened and how many friends made a card or bought the full report from it
+      (plain numbers, never who); and, once you share your link, a locked copy of your card’s short
       summary — locked on your device with a key that is only in the link itself, so PsycheAI holds
       it but cannot read it. None of it names you.</p>
 
@@ -708,7 +721,9 @@
       can post as an image — with a way to make their own. Once they have, one tap shows how in sync
       the two of you are as friends: a Psyche Sync score and how to be better friends to each other,
       free. It is about friendship only, never romance. The result stays on their device: you do not
-      see it unless they send it to you. It also counts as your invite, towards a free full report. The link points to
+      see it unless they send it to you. It also counts towards a free full report for you: every 3 friends who make a card from your
+      link, or 2 who buy the full report, earn one, which you can use or gift to someone. Your report page
+      shows how many opened your link, made a card and bought the full report. The link points to
       a locked copy of your card’s short summary, never your export, messages or report. The key that opens it is the part after the #, which a browser never
       sends to a server, so PsycheAI stores the locked copy but cannot read it. The link stays the
       same if your card is redrawn, and shows the new one.</p>
