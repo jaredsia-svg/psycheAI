@@ -7355,6 +7355,27 @@ check('the schema requires evidence on strengths and frictions',
     (await referral.status(code)) === null);
 }
 
+// ---------- the short personal link ----------
+{
+  const links = await import('../lib/links.js').then(m => m.default);
+  const referral = await import('../lib/referral.js').then(m => m.default);
+  const { createHash } = await import('node:crypto');
+  const secret = createHash('sha256').update('a link secret').digest('hex');
+  const id = await links.publish(secret, 'bG9ja2VkLWNhcmQ');
+  check('a reader\'s link id is theirs, ten characters, the same every time',
+    id === links.idOf(secret) && /^[A-Za-z0-9_-]{10}$/.test(id));
+  const opened = await links.open(id);
+  check('opening it gives back the locked card and the invite code, nothing else',
+    opened && opened.blob === 'bG9ja2VkLWNhcmQ' && opened.ref === referral.codeOf(secret) &&
+      JSON.stringify(Object.keys(opened)) === JSON.stringify(['blob', 'ref']), JSON.stringify(opened));
+  await links.publish(secret, 'bmV3LWNhcmQ');
+  check('a redrawn card replaces what the same link shows', (await links.open(id)).blob === 'bmV3LWNhcmQ');
+  check('nothing is saved without a real secret, or for something too long or not base64url',
+    (await links.publish('nope', 'abc')) === null && (await links.publish(secret, 'x'.repeat(links.MAX_BLOB + 1))) === null &&
+      (await links.publish(secret, 'not base64!')) === null);
+  check('an unknown or malformed id opens nothing', (await links.open('AAAAAAAAAA')) === null && (await links.open('../x')) === null);
+}
+
 // ---------- WhatsApp chats ----------
 //
 // docs/whatsapp.js reads WhatsApp's Export chat files, works out which sender
@@ -7623,7 +7644,7 @@ check('the schema requires evidence on strengths and frictions',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/compatibility', '/api/create-payment-intent', '/api/event',
+      '/api/analyse', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
     ]), JSON.stringify(guarded));
   // Two routes are rate-limited without a ticket, and both are named here
@@ -7636,7 +7657,8 @@ check('the schema requires evidence on strengths and frictions',
   // /api/event is a step of the journey for the day's totals: it spends
   // nothing and returns nothing, and a ticket per step would cost more than
   // the count.
-  const TICKETLESS = ['/api/event', '/api/nonce', '/api/referral', '/api/result'];
+  // /api/link opens a short link by the id the link itself names.
+  const TICKETLESS = ['/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
       guard.nonce === !TICKETLESS.includes(route)),

@@ -112,6 +112,10 @@
     account: 'psycheai_account',
     // Which journey steps this browser has already reported today.
     steps: 'psycheai_steps',
+    // The short personal link (lib/links.js): its lock key — which travels
+    // only in the link, after the # — the id the server answered with, and
+    // which card it was last saved for.
+    link: 'psycheai_link',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -1737,7 +1741,9 @@
     if (!card) return;
     const R = TEXT.referral;
     await ensureReferral();
-    const url = inviteUrl();
+    // One link for both: the short personal link, which carries the card and
+    // the invite code together; the plain invite link only before there is one.
+    const url = myLinkUrl();
     if (event.target.closest('.referral-copy')) {
       try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
       catch (error) { referralSay(card, url); }
@@ -4920,6 +4926,76 @@
     return location.origin + location.pathname + '#p=' + payload;
   }
 
+  // ---------- the short personal link ----------
+  //
+  // psycheai.io/c/<id>#<key>, one per reader, doing what the long compatibility
+  // link and the ?ref= invite link did between them (lib/links.js). The card
+  // is locked here (AES-GCM) before it is saved; the key is the part after
+  // the #, which browsers never send to a server, so what PsycheAI keeps it
+  // cannot read. Saved once per card, in the background after the report
+  // renders, so a share button can hand it over at once; until then — or on
+  // a server without a store that survives a deploy — the long link is used.
+  const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const fromB64url = text => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((text.length + 3) % 4)), c => c.charCodeAt(0));
+  async function linkCipherKey(material) {
+    const raw = await crypto.subtle.digest('SHA-256', fromB64url(material));
+    return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  }
+  async function lockCard(payload, material) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv },
+      await linkCipherKey(material), new TextEncoder().encode(payload)));
+    const out = new Uint8Array(iv.length + sealed.length);
+    out.set(iv);
+    out.set(sealed, iv.length);
+    return b64url(out);
+  }
+  async function unlockCard(blob, material) {
+    const bytes = fromB64url(blob);
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12) },
+      await linkCipherKey(material), bytes.slice(12));
+    return new TextDecoder().decode(plain);
+  }
+
+  // The reader's short link once it is saved for the card on screen.
+  let shortLink = '';
+  let publishing = null;
+  async function publishShortLink() {
+    if (!state.profile || !state.profile.payload || !(state.server && state.server.shortLinks)) return '';
+    if (publishing) return publishing;
+    publishing = (async () => {
+      try {
+        const mine = await ensureReferral();
+        if (!mine) return '';
+        let link = store.read(KEYS.link, null) || {};
+        if (!/^[A-Za-z0-9_-]{16}$/.test(link.key || '')) {
+          link = { key: b64url(crypto.getRandomValues(new Uint8Array(12))) };
+        }
+        const card = (await sha256Hex(state.profile.payload)).slice(0, 16);
+        if (link.id && link.card === card && link.secret === mine.code) {
+          shortLink = location.origin + '/c/' + link.id + '#' + link.key;
+          return shortLink;
+        }
+        const blob = await lockCard(state.profile.payload, link.key);
+        const answer = await LLM.postWithTicket('api/link/save', { secret: mine.secret, blob });
+        if (!answer || !/^[A-Za-z0-9_-]{10}$/.test(answer.id || '')) return '';
+        store.write(KEYS.link, { key: link.key, id: answer.id, card, secret: mine.code });
+        shortLink = location.origin + '/c/' + answer.id + '#' + link.key;
+        return shortLink;
+      } catch (error) {
+        return '';
+      } finally {
+        publishing = null;
+      }
+    })();
+    return publishing;
+  }
+  /** The link a reader shares: the short one when it is ready, the long one until then. */
+  function myLinkUrl() {
+    if (shortLink) return shortLink;
+    return state.profile && state.profile.payload ? profileUrl(state.profile.payload) : inviteUrl();
+  }
+
   /**
    * The report's sections as HTML, from the report alone.
    *
@@ -6659,6 +6735,7 @@
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     refreshReferral().catch(() => {});
+    publishShortLink().catch(() => {});
     layoutSideActions();
     collapseSections($('#profile-body'));
     markStructured($('#profile-body'));
@@ -6721,7 +6798,7 @@
   // very long address. Without a share sheet (most desktops) the same message
   // goes to the clipboard.
   function compatMessage() {
-    return TEXT.compatShareText(profileUrl(state.profile.payload));
+    return TEXT.compatShareText(myLinkUrl());
   }
 
   function writeClipboard(text) {
@@ -6756,7 +6833,7 @@
 
   // The bare link, for anyone who would rather write their own message.
   function copyMyLink(button, statusSelector) {
-    const url = profileUrl(state.profile.payload);
+    const url = myLinkUrl();
     writeClipboard(url).then(() => {
       const label = button.textContent;
       button.textContent = 'Copied ✓';
@@ -8852,11 +8929,38 @@
   // A shared link may arrive as a fresh page load or as a hash change in a tab
   // that already has PsycheAI open. Both have to work.
   async function consumeIncomingLink() {
-    if (!/^#p=/.test(location.hash)) return false;
-    const incoming = Card.extractPayload(location.hash);
-    if (!incoming) return false;
-
-    history.replaceState(null, '', location.pathname + location.search);
+    let incoming = '';
+    const params = new URLSearchParams(location.search);
+    if (params.has('c')) {
+      // A short personal link, /c/<id>#<key>, arrives here as ?c=<id>#<key>.
+      const id = String(params.get('c') || '');
+      const key = location.hash.replace(/^#/, '');
+      params.delete('c');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : ''));
+      let found = null;
+      try {
+        const response = await fetch('api/link?id=' + encodeURIComponent(id));
+        found = response.ok ? await response.json() : null;
+      } catch (error) { found = null; }
+      if (found && /^[0-9a-f]{12}$/.test(found.ref || '')) {
+        const mine = store.read(KEYS.referral, null);
+        if (!(mine && mine.code === found.ref)) {
+          store.write(KEYS.referredBy, { code: found.ref, at: Date.now() });
+          trackStep('referral_open');
+        }
+      }
+      try { incoming = found && key ? await unlockCard(found.blob, key) : ''; } catch (error) { incoming = ''; }
+      if (!incoming) {
+        showUploadError(TEXT.shortLinkUnreadable);
+        return true;
+      }
+    } else {
+      if (!/^#p=/.test(location.hash)) return false;
+      incoming = Card.extractPayload(location.hash);
+      if (!incoming) return false;
+      history.replaceState(null, '', location.pathname + location.search);
+    }
     if (state.profile && await runMatch(incoming)) return true;
 
     const card = await Card.decodeCard(incoming);

@@ -26,6 +26,11 @@ const stats = require('./lib/stats');
 const promo = require('./lib/promo');
 const store = require('./lib/store');
 const referral = require('./lib/referral');
+const links = require('./lib/links');
+// Short personal links need a store that survives a deploy (Upstash); in
+// memory they would break on the next one, so the page keeps the long link.
+// PSYCHEAI_SHORT_LINKS=1 turns them on regardless (the test suite).
+const SHORT_LINKS = () => store.enabled() || String(process.env.PSYCHEAI_SHORT_LINKS || '') === '1';
 // Read once: the build does not change while the process runs.
 const BUILD = version.describe();
 // Required directly rather than reached through provider.active: the paid
@@ -377,6 +382,7 @@ async function handleStatus(response) {
     // costs after that. Served rather than hard-coded in docs/app.js so the
     // price on the button and the price Stripe charges cannot drift apart.
     freeAnalyses: FREE_ANALYSES,
+    shortLinks: SHORT_LINKS(),
     // Which build this is — the commit, the branch and when it started — so
     // the footer can say what a reader is running. See lib/version.js.
     build: BUILD,
@@ -968,6 +974,31 @@ async function handleReferralClaim(request, response) {
   sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 
+// The short personal link (lib/links.js): saving the reader's locked card under
+// their id, and opening one.
+async function handleLinkSave(request, response) {
+  if (!SHORT_LINKS()) {
+    sendJson(response, 503, { error: 'Short links are not available on this server.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const id = await links.publish(body && body.secret, body && body.blob);
+  if (!id) {
+    sendJson(response, 400, { error: 'That link could not be saved.' });
+    return;
+  }
+  sendJson(response, 200, { id });
+}
+async function handleLinkOpen(response, url) {
+  const found = await links.open(url.searchParams.get('id'));
+  if (!found) {
+    sendJson(response, 404, { error: 'That link has expired or does not exist. Ask for it to be sent again.' });
+    return;
+  }
+  stats.count('link_opened');
+  sendJson(response, 200, found);
+}
+
 // The address list, for whoever runs this server. Refused outright rather than
 // served openly when no token is configured: a list of addresses that answers
 // to anyone who guesses the path is worse than having no route.
@@ -1141,6 +1172,10 @@ const API_GUARDS = {
   // claim, which spends something, takes one.
   '/api/referral': { limit: 'referral', nonce: false },
   '/api/referral/claim': { limit: 'referral', nonce: true },
+  // The short personal link: saving one writes, so it takes a ticket; opening
+  // one is a read of something the link's own id names.
+  '/api/link': { limit: 'link', nonce: false },
+  '/api/link/save': { limit: 'referral', nonce: true },
 };
 
 // The ticket travels in a header rather than in the body, for three reasons:
@@ -1358,6 +1393,8 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
                   : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)
                   : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
+                  : route === '/api/link' && request.method === 'GET' ? () => handleLinkOpen(response, url)
+                  : route === '/api/link/save' && request.method === 'POST' ? () => handleLinkSave(request, response)
                   : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                     : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                       : null;
@@ -1415,6 +1452,16 @@ function routeRequest(route, url, request, response) {
         console.error('[' + route + ']', error && error.message ? error.message : error);
         sendJson(response, described.status, { error: described.message });
       });
+    return;
+  }
+
+  // A short personal link, /c/<id>: to the page, with the id where the page
+  // reads it. The #key after it is kept by the browser across the redirect
+  // and never reaches here.
+  const short = /^\/c\/([A-Za-z0-9_-]{10})\/?$/.exec(route);
+  if (short && (request.method === 'GET' || request.method === 'HEAD')) {
+    response.writeHead(302, { Location: '/?c=' + short[1], 'Cache-Control': 'no-store' });
+    response.end();
     return;
   }
 

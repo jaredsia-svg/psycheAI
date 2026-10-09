@@ -277,8 +277,8 @@
          PsycheAI does with the data once it has it, and whether PsycheAI can
          see the reader at all. -->
     <p class="eyebrow"><strong>Your data is kept on your device and is never stored by
-      PsycheAI.</strong> There are no analytics, no trackers, no cookies. No one can see that you
-      visited, let alone what you uploaded.</p>
+      PsycheAI.</strong> There are no trackers, no cookies and no third-party analytics. No one can see
+      that you visited, let alone what you uploaded.</p>
 
     <div id="upload-error" class="alert" hidden></div>
     <!-- The way back from a failed analysis. It runs the digest already in
@@ -632,9 +632,13 @@
       would not know whose it is, but someone who already knows you well might recognise you in it.</p>
 
     <h3>Can anyone else access my data?</h3>
-    <p>PsycheAI has no database. There is no sign-up, no password to create, no email address and no
-      stored files. Nothing you send is retained, so there is no accumulated data for anyone to
-      take. No one can see that you visited, let alone what you uploaded.</p>
+    <p>There is no sign-up, no password to create and no email address. Your export, the digest and
+      the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
+    <p>What PsycheAI does keep, in a small database (Upstash): the daily totals below; a one-way
+      scrambled code of your Instagram username, so each account gets one free card; how many friends
+      your invite has brought; and, once you share your link, a locked copy of your card’s short
+      summary — locked on your device with a key that is only in the link itself, so PsycheAI holds
+      it but cannot read it. None of it names you.</p>
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only totals for each day: how many Psyche Cards, full reports and compatibility reports were
@@ -676,11 +680,17 @@
       <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
 
     <h3>How does the compatibility feature work?</h3>
-    <p>Each reader has a personal link that carries a summary of their PsycheAI results. Send it to
-      someone; once they open it and make their own Psyche Card, they choose a romantic,
-      family/friends or work basis and get a report, free. The link carries the data itself, in the
-      part after the # that a browser never sends to a server — it is not a link to a file on a
-      server.</p>
+    <p>Each reader has one short personal link, like <code>psycheai.io/c/k7Qm2xPa1Z#…</code>. Send it
+      to someone; once they open it and make their own Psyche Card, they choose a romantic,
+      family/friends or work basis and get a report, free — and it also counts as your invite, towards
+      a free full report. The link points to a locked copy of your card’s short summary, never your
+      export, messages or report. The key that opens it is the part after the #, which a browser never
+      sends to a server, so PsycheAI stores the locked copy but cannot read it. The link stays the
+      same if your card is redrawn, and shows the new one.</p>
+
+    <h3>How do I contact PsycheAI?</h3>
+    <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> — for questions, payment
+      problems or anything about your data.</p>
 
 
     <!-- Written by renderAbout() on every boot: which provider this particular
@@ -1269,6 +1279,7 @@
   <!-- Named the same as the nav link that goes to the same place. It read "how
        it works" until now, which made one destination look like two. -->
   <p>PsycheAI · <a href="#" data-nav="about">FAQ</a> ·
+    <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> ·
     <a href="https://github.com/jaredsia-svg/psycheAI" target="_blank" rel="noopener noreferrer">Source
       code on GitHub</a></p>
   <!-- The guides, for search engines to find and for anyone who wants the

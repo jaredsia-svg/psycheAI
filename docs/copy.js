@@ -347,6 +347,7 @@
     storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkCopied: 'Link copied.',
+    shortLinkUnreadable: 'That PsycheAI link could not be opened — it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',

@@ -1881,10 +1881,38 @@ the full-report request carries as `referralGrant` instead of a payment. A grant
 (retries of that same report are fine) and lasts 60 days. `POST /api/referral` with the secret
 returns `{ friends, earned, claimed, available }`; the code alone proves nothing.
 
+## One short personal link: `psycheai.io/c/<id>#<key>`
+
+The compatibility link (about 760 characters) and the invite link were two things to share, and the
+first was too long to paste comfortably. They are now one link of about 45 characters that does
+both: a friend who opens it is offered a compatibility reading against the reader's card, and the
+reader's invite code comes with it.
+
+**The server holds the card but cannot read it.** After the card is drawn (`publishShortLink` in
+`docs/app.js`), the browser makes a 12-byte random key, locks the packed card with AES-GCM under its
+SHA-256, and sends only the locked bytes to `POST /api/link/save` with the reader's invite secret.
+`lib/links.js` keeps `link:<id>` = `{ blob, ref, at }` for a year, renewed on each open. The key
+goes in the link after the `#`, which a browser never sends to a server — so what PsycheAI stores is
+opaque to it, and the FAQ says so.
+
+**The id is the reader's own:** the first 10 base64url characters of
+SHA-256(`psycheai-link:` + secret). Only the browser holding the secret can write it, and the same
+reader always has the same link: a redrawn card replaces what it shows, so a link already in a bio
+stays current (the key is kept in `psycheai_link`).
+
+`/c/<id>` redirects to `/?c=<id>` (the fragment survives a redirect). The page fetches
+`GET /api/link?id=` — `{ blob, ref }`, counted as `link_opened` — keeps `ref` as the invite, unlocks
+the card with the key and goes on exactly as the long link did, then strips the key from the address
+bar. A missing or wrong key, or an unknown id, says the link could not be opened and to ask for it again.
+
+Short links are on when Upstash is configured (`/api/status` → `shortLinks`), or with
+`PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
+links keep opening.
+
 ## Counting what works, without counting anyone
 
-The site promises no analytics, no trackers and no cookies, and that no one can see that you
-visited. That rules out the usual way of knowing which post, creator or campaign worked. What it
+The site promises no trackers, no cookies and no third-party analytics, and that no one can see
+that you visited. That rules out the usual way of knowing which post, creator or campaign worked. What it
 leaves is counting the work the server already does, as totals.
 
 **`lib/stats.js`** keeps, per UTC day: free cards (`card`), paid re-runs (`card_paid`), full reports

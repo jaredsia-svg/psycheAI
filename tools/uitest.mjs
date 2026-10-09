@@ -1965,7 +1965,7 @@ try {
     (await page.locator('#view-welcome .eyebrow').count()) + ' badges on the page');
   check('the single badge carries both the storage claim and the no-tracking claim',
     (await page.locator('#view-welcome .upload-card .eyebrow').innerText())
-      .includes('no analytics, no trackers, no cookies'),
+      .includes('no trackers, no cookies and no third-party analytics'),
     await page.locator('#view-welcome .upload-card .eyebrow').innerText());
   // A pill (border-radius: 999px) reads fine for a short single-line label,
   // which is what this started as. Sized to a three-sentence paragraph it
@@ -2276,6 +2276,11 @@ try {
   // privacy question with assertions. A link to the source is the one thing
   // that makes those assertions checkable instead of taken on faith, so it is
   // held here rather than left to survive the next edit by luck.
+  check('the footer gives the contact address as an email link',
+    await page.evaluate(() => {
+      const a = document.querySelector('.footer a[href^="mailto:"]');
+      return Boolean(a) && a.getAttribute('href') === 'mailto:admin@psycheai.io' && a.textContent.trim() === 'admin@psycheai.io';
+    }));
   check('the footer links to the source, so the privacy claims can be checked',
     /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(footer.href || '') &&
     /source|code/i.test(footer.text || ''),
@@ -9656,6 +9661,7 @@ try {
       'How accurate is it?',
       'What does it cost?',
       'How does the compatibility feature work?',
+      'How do I contact PsycheAI?',
     ]), JSON.stringify(faqQuestions));
 
   // ---- the privacy claims have to match the code that implements them ----
@@ -9680,9 +9686,9 @@ try {
     (serverSource.match(/fs\.\w+/g) || []).join(', '));
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
-  check('the page says there is no account or stored pile of data to breach',
-    /no sign-up, no password to create/i.test(about) && /has no database/i.test(about) &&
-    /no accumulated data for anyone to take/i.test(about));
+  check('the page says there is no account, and no collection of exports or reports to breach',
+    /no sign-up, no password to create/i.test(about) &&
+    /never stored by PsycheAI, so there is no collection of them for anyone to take/i.test(about));
   check('the page names both model providers as the party that reads the digest',
     /Google Gemini or Anthropic Claude/.test(about) && !/Grok/i.test(about));
   check('and says plainly that no copy is kept on the server',
@@ -9770,7 +9776,13 @@ try {
   check('the compatibility answer says what the link actually is',
     /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
     /family\/friends/i.test(about) &&
-    /not a link to a file on a server/i.test(about));
+    /locked copy of your card’s short summary/.test(about) && /never sends\s+to a server/.test(about) &&
+    /cannot read it/.test(about) && /never your\s+export, messages or report/.test(about));
+  check('the FAQ says what is stored, rather than claiming nothing is',
+    !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
+    /locked copy of your card’s short\s+summary/.test(about) && /None of it names you/.test(about));
+  check('the FAQ gives a contact address',
+    /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
   check('the prices are named, once, with what each buys — and compatibility is free',
     /US\$5/.test(about) && /US\$2/.test(about) && /every compatibility report/i.test(about));
   check('the limits are stated rather than implied',
@@ -11420,7 +11432,7 @@ try {
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-ref-usage.jsonl'),
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
         PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_PREMIUM: '100000', PSYCHEAI_RATE_NONCE: '100000',
-        PSYCHEAI_RATE_PAYMENT_INTENT: '100000', PSYCHEAI_STATS_TOKEN: 'uitest-stats',
+        PSYCHEAI_RATE_PAYMENT_INTENT: '100000', PSYCHEAI_STATS_TOKEN: 'uitest-stats', PSYCHEAI_SHORT_LINKS: '1',
       },
       stdio: 'ignore',
     });
@@ -11463,9 +11475,43 @@ try {
       await rp.click('#profile-body .referral-copy');
       await rp.waitForTimeout(300);
       const copied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
-      check('Copy invite link copies the site with this reader\'s code',
-        copied === base + '?ref=' + mine.code || /Invite link copied/.test(await rp.locator('#profile-body .referral-status').innerText()),
-        copied);
+      check('Copy invite link copies the one short personal link, /c/<id>#<key>',
+        /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
+      check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
+      const saved = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_link') || 'null'));
+      check('what the server holds is locked: no name, no card text in it',
+        await rp.evaluate(async id => {
+          const found = await fetch('api/link?id=' + id).then(r => r.json());
+          const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
+          return Boolean(found.blob) && !found.blob.includes(card.name) && !JSON.stringify(found).includes(card.name);
+        }, saved.id));
+      // A friend opens it in a browser of their own: the card unlocks with the
+      // key after the #, the compatibility invite is waiting, and the invite
+      // code comes with it.
+      const friendPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+      try {
+        await friendPage.goto(copied, { waitUntil: 'load' });
+        await friendPage.waitForSelector('#invite-banner:not([hidden])', { timeout: 15000 });
+        const arrived = await friendPage.evaluate(() => ({
+          banner: document.querySelector('#invite-banner').innerText,
+          invite: JSON.parse(localStorage.getItem('psycheai_invite') || 'null'),
+          referredBy: JSON.parse(localStorage.getItem('psycheai_referred_by') || 'null'),
+          address: location.href,
+        }));
+        const name = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name);
+        check('a friend opening the short link gets the compatibility invite, from the locked card',
+          arrived.invite && arrived.invite.name === name && arrived.banner.includes(name), JSON.stringify(arrived.banner));
+        check('and the invite code with it, so their first free card counts', arrived.referredBy && arrived.referredBy.code === mine.code,
+          JSON.stringify(arrived.referredBy));
+        check('and the key is taken out of the address once read', !/#/.test(arrived.address) && !/[?&]c=/.test(arrived.address),
+          arrived.address);
+        await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });
+        await friendPage.waitForTimeout(800);
+        check('a short link cut short (no key) says so rather than failing silently',
+          /could not be opened/.test(await friendPage.locator('#upload-error').innerText().catch(() => '')));
+      } finally {
+        await friendPage.close();
+      }
 
       // A second free card for the same account, as if on a new device: refused
       // by the server, and offered at the re-run price instead.
