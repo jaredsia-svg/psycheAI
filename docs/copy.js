@@ -607,8 +607,8 @@
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
       title: 'Invite 3 friends, get your full report free',
-      blurb: 'When 3 friends make their free Psyche Card from your link, your full premium report is free. Every 3 more earn another.',
-      blurbPaid: 'When 3 friends make their free Psyche Card from your link, your next full report is free — a re-run with new data. Every 3 more earn another.',
+      blurb: 'When 3 friends make their free Psyche Card from your link, your full premium report is free.',
+      blurbPaid: 'When 3 friends make their free Psyche Card from your link, your next full report is free — a re-run with new data.',
       count: (n, per) => n + ' of ' + per + ' friends',
       ready: n => n === 1 ? '1 free full report ready' : n + ' free full reports ready',
       copy: 'Copy invite link',
