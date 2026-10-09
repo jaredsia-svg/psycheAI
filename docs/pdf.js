@@ -1097,7 +1097,7 @@
     this.doc.y += 4;
     for (const entry of history) {
       this.need(22);
-      const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
+      const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
       const score = Math.round(Number(entry.report && entry.report.score) || 0);
       const cells = [
         { text: entry.withName || '', bold: true, color: INK },
@@ -3214,7 +3214,7 @@
     const text = toWinAnsi(String(value));
     const style = { size: 25, bold: true, color: WHITE };
     doc.draw(text, cx - measure(text, 25, true) / 2, cy + 6, style);
-    const of = toWinAnsi('/100');
+    const of = toWinAnsi('% sync');
     doc.draw(of, cx - measure(of, 7.5, true) / 2, cy + 17, { size: 7.5, bold: true, color: WHITE });
   }
 
@@ -3341,8 +3341,8 @@
     if (source.caveats) out.fineprint(source.caveats);
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
 
-    return serialise(doc, a + ' & ' + b + ' — compatibility report',
-      'Compatibility report from two PsycheAI profiles');
+    return serialise(doc, a + ' & ' + b + ' — Psyche Sync',
+      'Psyche Sync from two PsycheAI profiles');
   }
 
   function serialise(doc, docTitle, subject) {

@@ -5222,7 +5222,42 @@ confidence — it now has its own fixed element after the buttons, since it is a
 rather than a finding and stays true regardless of what else gets added above it. It is unchanged in
 the PDF, which has no link panel or buttons after its own confidence section for it to be pushed past.
 
-## Compatibility
+## Psyche Sync (was "compatibility")
+
+**Friends only, and called Psyche Sync.** A reader's link is often public: an Instagram bio, or the
+QR code on their card. A stranger running a romantic read against someone's card was the creepy
+version of this feature, so the romantic and work comparisons were removed outright.
+- **The basis picker is gone:** the romantic / family-friends / work choice, and the
+  colleagues / manager / report choice after it.
+- **`lib/prompts.js`:** `COMPATIBILITY_MODES` has the one key `platonic`, labelled *Friends*, and
+  `resolveMode` returns it for anything. `COMPATIBILITY_SYSTEM`'s *Friends only* section rules out
+  romance, attachment and work. `WORK_STANCES` is gone.
+- **Old reports:** reports saved on the old bases still open on the reader's device, labelled as
+  they were.
+
+**Wording.** "Compatibility" is "Psyche Sync" everywhere a reader looks, and the score is said the
+way people say it:
+- *78% in sync*, beside a band, on the result page.
+- *% sync* under the PDF's ring.
+- *We're 78% in sync on PsycheAI…* in the share text.
+- The page is **My Syncs**, its button **See how in sync we are**, and the card tool **Sync**.
+- The QR line on the card reads *Scan to see how in sync we are*.
+- The `/compatibility-test` landing page keeps its address and "friend compatibility test" in its
+  title, for search, and is otherwise about Psyche Sync.
+
+**The free card is not romantic either.**
+- It carries no attachment style any more: not in `CARD_SCHEMA`, not in the payload (`docs/card.js`
+  drops an old link's `a`), and not in *Beyond your card*.
+- Its first column is *With friends*.
+- Love languages are labelled *Receives care as / Shows care as*.
+- The relationship strengths and watch-outs are asked for as being with friends.
+- The full premium report keeps *How you attach* and *Who suits you*.
+
+**Card first.** A friend who arrives on a link and makes their card lands on their own card, not
+in a comparison. A banner above it (`#sync-invite`) reads *You + Jared = ?% in sync · See how in sync
+you are with Jared*, and the sync runs only when they tap it. The invite is spent then, and restored
+if the run fails. A reader who already has a card and opens a friend's link lands the same way. The
+result stays on the friend's device.
 
 **The report is three blocks, on the page and in the PDF.** It had grown long and repetitive — five
 scored dimensions, a biggest upside and a biggest risk that restated the verdict, and conversation

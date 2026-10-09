@@ -142,14 +142,17 @@
     dot: { cx: 70, cy: 70, r: 11 },
   };
 
-  // Compatibility bases, as the match history names them.
+  // The basis of a Psyche Sync, as the history names it. Friends is the only
+  // one run now; the other two still label reports saved before.
   const MODE_LABELS = {
     romantic: 'Romantic',
-    platonic: 'Family / Friends',
+    platonic: 'Friends',
     professional: 'Professional / work',
   };
 
-  // A professional run also asks who reports to whom, because two peers, a
+  // Reports saved before Psyche Sync was friends-only may be professional
+  // runs, and still show who reported to whom. A professional run asked
+  // who reports to whom, because two peers, a
   // manager and a report are three different questions rather than one.
   // `{name}` is filled with the other person's name — the direction is stated
   // from the reader's side, since "superior" on its own is ambiguous about
@@ -198,11 +201,16 @@
     // By first name only: "Jared", not "Jared Tan".
     inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your friend') + ' Psyche Card',
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
-      'no sign-up. Get your free Psyche Card, and see how compatible you are with ' + (name || 'them') + '.',
-    inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?',
-    inviteMatchText: 'Your compatibility score is revealed the moment your card is ready — as partners, friends & family, or at work.',
+      'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
+    inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?% in sync',
+    inviteMatchText: 'Your Psyche Sync score is one tap away once your card is ready.',
     inviteStart: 'Get my free Psyche Card',
     inviteCardHint: 'Tap to explore',
+    // On the reader's own report, once their card is made, while a friend's
+    // link is waiting.
+    syncInviteTitle: (name) => 'You + ' + (name || 'your friend') + ' = ?% in sync',
+    syncInviteSub: (name) => 'Your card is ready. See how in sync you are with ' + (name || 'your friend') + ' — free, and only you see it.',
+    syncInviteGo: (name) => 'See how in sync you are with ' + (name || 'them'),
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
     // Every share carries the reader's one link (myLinkUrl in app.js): the
     // same link for a bio, an invite and a comparison.
@@ -210,8 +218,8 @@
       'Find yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
     // The QR code in the foot of the reader's own card: their one link.
-    cardQrCall: 'Scan to see how compatible we are',
-    cardQrLabel: 'QR code: this card’s link, to see how compatible you are',
+    cardQrCall: 'Scan to see how in sync we are',
+    cardQrLabel: 'QR code: this card’s link, to see how in sync you are',
     // Download sits on the left, share on the right — the order a reader
     // meets them reading left to right. Each carries a small visible label
     // beside its icon (`cardDownloadLabel`/`cardShareLabel`) plus a fuller
@@ -233,8 +241,10 @@
     cardValues: 'Values',
     cardBeliefs: 'Beliefs',
     cardInterests: 'Interests',
-    cardLoveIn: 'Receives love as',
-    cardLoveOut: 'Gives love as',
+    // How they like care shown, and show it: love languages, worded for
+    // friends as much as anyone, since the card travels to anyone.
+    cardLoveIn: 'Receives care as',
+    cardLoveOut: 'Shows care as',
     cardConfidence: 'Confidence',
 
     bigFive: 'Big Five',
@@ -337,16 +347,16 @@
     linkContents: 'What your link contains',
     linkContentsSub: 'Only this — the compact card the other person’s report is built from.',
     linkContentsFineprint: 'Plus your Big Five scores, MBTI, top motivators and pattern names, ' +
-      'values & beliefs, relationship and work strengths and what holds you back, your attachment ' +
-      'and conflict style, your love languages, and your rhythm, energy and work style — all as ' +
-      'short phrases, the same ones shown under your card.',
+      'values & beliefs, strengths with friends and at work and what holds you back, your conflict ' +
+      'style, how you show care, and your rhythm, energy and work style — all as short phrases, the ' +
+      'same ones shown under your card.',
 
     // What "Send my link" puts in the share sheet, or on the clipboard where
     // there is none. Written in the sender's own voice, since they send it.
     compatShareText: (url) => 'Here’s my Psyche Card ✨ Who are you most like? Make yours free and see how ' +
-      'compatible we are: ' + url,
+      'in sync we are: ' + url,
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
-    compatReturnText: (name) => 'The analysis runs on the side of whoever opens the link, so ' + name +
+    compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
       ' does not have this report. Send them your link and they get their own, free.',
     // The roast and compatibility story images, and what goes with them.
     roastShare: 'Share this roast',
@@ -355,10 +365,10 @@
     roastImageFooter: 'Get roasted free · psycheai.io',
     roastShareText: (url) => 'I let AI read my Instagram and it roasted me. Get yours free: ' + (url || 'https://psycheai.io'),
     compatShareImage: 'Share result',
-    compatImageLead: (mode) => (mode ? mode + ' compatibility' : 'Compatibility'),
+    compatImageLead: () => 'Psyche Sync',
     compatImageFooter: 'Test yours free · psycheai.io',
     compatImageShared: 'What we share',
-    compatResultShareText: (score, url) => 'We got ' + score + '/100 on PsycheAI. How compatible are you two? ' +
+    compatResultShareText: (score, url) => 'We’re ' + score + '% in sync on PsycheAI. How in sync are you two? ' +
       'Free, no questionnaire: ' + (url || 'https://psycheai.io'),
     storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
@@ -760,7 +770,7 @@
     dataSourcesContinue: 'Continue',
     dataSourcesBack: 'Back',
 
-    // The compatibility report. It is two renderings of one document for the
+    // The Psyche Sync report. It is two renderings of one document for the
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
     compatCommon: 'What you share',
@@ -770,12 +780,17 @@
     compatRubs: 'What will rub',
     compatBoth: 'Both of you',
     compatFor: 'For ',
-    compatSuffix: ' compatibility',
+    compatSuffix: ' sync',
+    // The score, said the way people say it: 78% in sync.
+    syncName: 'Psyche Sync',
+    syncScoreLabel: 'Psyche Sync score',
+    syncPercent: (score) => score + '% in sync',
+    syncPercentUnit: 'in sync',
 
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
-    scanTitle: 'Test your compatibility',
-    scanHistory: 'Your compatibility results',
+    scanTitle: 'Psyche Sync',
+    scanHistory: 'My Syncs',
   };
 
   // ---------- the structured report layout ----------
@@ -975,8 +990,8 @@
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
-      compatTitle: 'Compatibility, free',
-      compatBlurb: 'Send a friend, partner or colleague your link and see how compatible you both are — on whichever basis you choose.',
+      compatTitle: 'Psyche Sync, free',
+      compatBlurb: 'Send a friend your link and see how in sync you are — your Psyche Sync score and how to be a better friend to each other.',
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
@@ -991,7 +1006,7 @@
     },
     pdfCardFoot: 'psycheai.io · your personality, read from your own data',
     deleteText: 'This removes your Psyche Card, your full report, your evidence summary and every saved ' +
-      'compatibility report from this browser. It cannot be undone.',
+      'Psyche Sync from this browser. It cannot be undone.',
     deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
     // Beside a free report's Psyche Card: what each part means, popped out
     // when the reader points at it. Each has one short paragraph on what it is and why
@@ -1014,8 +1029,8 @@
       },
       // Under the card full screen on a phone, in place of download and share.
       fullTip: 'Tap any part to learn more',
-      tools: { download: 'Download', share: 'Share', compat: 'Compatibility' },
-      toolTips: { download: 'Save your card as an image', share: 'Share your card', compat: 'Test your compatibility with someone' },
+      tools: { download: 'Download', share: 'Share', compat: 'Sync' },
+      toolTips: { download: 'Save your card as an image', share: 'Share your card', compat: 'See how in sync you are with a friend' },
       labels: { yours: 'Yours', sample: 'On this card' },
       // Under the sample's card, full screen.
       sampleTip: { hover: 'Hover over any part of the card to learn more', tap: 'Tap any part to learn more' },
@@ -1080,11 +1095,10 @@
     // shows, and each is one the full report explains.
     beyond: {
       title: 'Beyond your card',
-      sub: 'A few more things your data says. These also go into your compatibility link.',
-      relationships: 'In relationships',
+      sub: 'A few more things your data says. These also go into your link, for Psyche Sync.',
+      relationships: 'With friends',
       dayToDay: 'Day to day',
       work: 'At work',
-      attachment: 'Attachment style',
       conflict: 'In conflict',
       rhythm: 'Rhythm',
       energy: 'Social energy & contact',

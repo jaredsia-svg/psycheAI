@@ -1653,8 +1653,8 @@ try {
         first.shown && first.welcome && /⭐ This is Ava’s Psyche Card/.test(first.text) && !/Ava Tan/.test(first.text) && !first.error,
         JSON.stringify(first));
       check('and says what to do, and that the analysis with them is free and follows on its own',
-        /No questionnaire, no sign-up\. Get your free Psyche Card, and see how compatible you are with Ava\./
-          .test(first.text) && /You \+ Ava = \?/.test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
+        /No questionnaire, no sign-up\. Get your free Psyche Card, and see how in sync you are with Ava\./
+          .test(first.text) && /You \+ Ava = \?% in sync/.test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
       check('with one way on, to the steps, and no button to throw the invite away',
         await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-have').count()) === 0 &&
           (await invitePage.locator('#invite-forget').count()) === 0);
@@ -1742,15 +1742,34 @@ try {
       }, null, { timeout: 30000 });
       await continueFromDataSources(invitePage);
       await answerReview(invitePage);
-      await invitePage.waitForSelector('#mode-dialog[open]', { timeout: 60000 });
+      await invitePage.waitForSelector('#sync-invite:not([hidden])', { timeout: 60000 });
       check('the analysis carries the campaign code and says an invite was waiting, and nothing else extra',
         analyseBodies.length > 0 && analyseBodies[0].via === 'ava-tan' && analyseBodies[0].invite === true &&
           Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite', 'account', 'myRef', 'ref'].includes(key)).length === 0,
         JSON.stringify(analyseBodies.map(body => Object.keys(body))));
-      check('the first card made on this device runs straight into the comparison with the sender',
-        /Ava Tan/.test(await invitePage.locator('#mode-dialog').innerText()) &&
-          await invitePage.evaluate(() => localStorage.getItem('psycheai_invite') === null &&
-            Boolean(localStorage.getItem('psycheai_profile'))));
+      // Card first: the reader lands on their own card, and the sync with the
+      // sender is one tap away rather than run for them.
+      const waiting = await invitePage.evaluate(() => ({
+        profile: !document.querySelector('#view-profile').hidden,
+        text: document.querySelector('#sync-invite').innerText,
+        kept: localStorage.getItem('psycheai_invite') !== null,
+        reports: (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length,
+      }));
+      check('the first card made on this device opens on the reader\'s own card, with the sync one tap away',
+        waiting.profile && waiting.kept && waiting.reports === 0 &&
+          /You \+ Ava = \?% in sync/.test(waiting.text) && /See how in sync you are with Ava/.test(waiting.text),
+        JSON.stringify(waiting));
+      await invitePage.click('#sync-invite-go');
+      await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+      const synced = await invitePage.evaluate(() => ({
+        title: document.querySelector('#report-title').textContent,
+        pill: document.querySelector('#report-sub').innerText,
+        band: (document.querySelector('#report-body .compat-band') || {}).textContent || '',
+        spent: localStorage.getItem('psycheai_invite') === null,
+      }));
+      check('a tap runs the Psyche Sync with the sender, as friends, and spends the invite',
+        /Ava/.test(synced.title) && synced.pill.trim() === 'Psyche Sync' && /^\d+% in sync/.test(synced.band) && synced.spent,
+        JSON.stringify(synced));
     } finally {
       await invitePage.close();
     }
@@ -2271,7 +2290,7 @@ try {
       ' vs card heading ' + getComputedStyle(document.querySelector('.step-card h3')).color));
   check('the four steps say what you get, not how it works',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | ') ===
-    'Load your IG data | PsycheAI reads it | Gain insights | Test compatibility',
+    'Load your IG data | PsycheAI reads it | Gain insights | Psyche Sync',
     (await page.locator('.step-card h3').allInnerTexts()).join(' | '));
   // Step one points the reader downwards for the how-to. A directional
   // reference is a claim about the page, so it is checked as one: the card it
@@ -2956,8 +2975,8 @@ try {
   check('the premium tier is the full report, by its four numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04',
     JSON.stringify(premiumTier));
-  check('and compatibility is offered as free',
-    /Compatibility, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
+  check('and Psyche Sync is offered as free',
+    /Psyche Sync, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
 
   // ---- the premium tier block ----
   //
@@ -3256,23 +3275,9 @@ try {
     /private to your device/.test(await page.locator('.step-card').nth(2).innerText()));
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
-  check('step four leads with the relationship, not the mechanism',
-    /^build better relationships/i.test(stepFour), stepFour);
-  check('step four says how a comparison starts', /sending them your link/i.test(stepFour), stepFour);
-  // The card sells relationships rather than reciting the mode labels, but it
-  // still has to cover every basis the picker will offer. Binding it to
-  // MODE_LABELS means adding a fourth basis fails here — the word for it is
-  // missing from the map below — rather than quietly leaving this card selling
-  // three of four.
-  check('step four names an everyday word for every basis on offer',
-    await page.evaluate(() => {
-      const said = document.querySelectorAll('.step-card')[3].innerText.toLowerCase();
-      const perBasis = {
-        romantic: ['partner'], platonic: ['family', 'friends'], professional: ['colleagues'],
-      };
-      return Object.keys(window.PsycheCopy.MODE_LABELS).every(mode =>
-        (perBasis[mode] || []).length > 0 && perBasis[mode].every(word => said.includes(word)));
-    }), stepFour);
+  check('step four is Psyche Sync, between friends, started by sending your link, and free',
+    /^send friends your link and see how in sync you are/i.test(stepFour) && /Free\.$/.test(stepFour) &&
+      !/partner|colleague|romantic/i.test(stepFour), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload
   // page, so they are noise on a first visit.
@@ -4030,18 +4035,22 @@ try {
     return {
       columns: panel ? panel.querySelectorAll('.beyond-col').length : 0,
       beforeUnlock: Boolean(panel && locked && (panel.compareDocumentPosition(locked) & Node.DOCUMENT_POSITION_FOLLOWING)),
-      lines: ['attachment', 'conflictStyle', 'rhythm', 'energy', 'workStyle'].every(key =>
+      lines: ['conflictStyle', 'rhythm', 'energy', 'workStyle'].every(key =>
         !card[key] || text.toLowerCase().includes(strip(card[key]).toLowerCase())),
       lists: ['relationshipStrengths', 'relationshipWeaknesses', 'careerStrengths', 'careerWeaknesses']
         .every(key => (card[key] || []).every(item => text.includes(item))),
       tentative: panel ? panel.querySelectorAll('.beyond-tag').length : 0,
-      saysLink: /compatibility link/.test(text),
+      saysLink: /your link, for Psyche Sync/.test(text),
+      attachment: /attachment/i.test(text),
+      friends: /With friends/i.test(text) && !/In relationships/i.test(text),
     };
   });
   check('a free report shows "Beyond your card" in three columns, between the card and the unlock box',
     beyond.columns === 3 && beyond.beforeUnlock && beyond.saysLink, JSON.stringify(beyond));
   check('with every line and list the link carries, and the guesses tagged tentative rather than worded so',
-    beyond.lines && beyond.lists && beyond.tentative >= 2, JSON.stringify(beyond));
+    beyond.lines && beyond.lists && beyond.tentative >= 1, JSON.stringify(beyond));
+  check('it is about friends: no attachment style, and "With friends" rather than "In relationships"',
+    !beyond.attachment && beyond.friends, JSON.stringify(beyond));
   // "See sample report" at the head of the unlock block: what the unlock buys,
   // to look at first. The same sample the front page opens.
   check('the unlock block carries "See sample report" at the far end of its head',
@@ -4692,7 +4701,7 @@ try {
       return noLabs && noRow;
     }));
   check('it keeps love languages and drops the strength and weakness lists',
-    /Receives love as/i.test(cardText) && /Gives love as/i.test(cardText) &&
+    /Receives care as/i.test(cardText) && /Shows care as/i.test(cardText) &&
     !/Strong in relationships/i.test(cardText) && !/Strong at work/i.test(cardText) &&
     !/Costs you in relationships/i.test(cardText) && !/Costs you at work/i.test(cardText),
     cardText.replace(/\s+/g, ' ').slice(0, 200));
@@ -5055,11 +5064,11 @@ try {
     (await page.locator('#compat-dialog canvas').count()) === 0 &&
       (await page.locator('#download-qr, #qr-canvas').count()) === 0 &&
       await page.locator('#share-link').isVisible() && await page.locator('#copy-link').isVisible());
-  check('the share panel is framed as testing compatibility',
-    (await page.locator('#compat-dialog .link-title').innerText()) === 'Test your compatibility',
+  check('the share panel is Psyche Sync',
+    (await page.locator('#compat-dialog .link-title').innerText()) === 'Psyche Sync',
     await page.locator('#compat-dialog .link-title').innerText());
   check('it says what the link is for',
-    /how compatible you both are/.test(await page.locator('#compat-dialog').innerText()));
+    /see how in sync you are/.test(await page.locator('#compat-dialog').innerText()));
   const myLink = await page.evaluate(() =>
     location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
@@ -5094,8 +5103,8 @@ try {
     Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeOpen) < 5,
     'before ' + scrollBeforeOpen + ', after ' + (await page.evaluate(() => window.scrollY)));
 
-  check('the personality and compatibility links appear once there is a profile',
-    (await visibleNav()).join('|') === 'My Psyche|My Compatibility|FAQ',
+  check('the personality and sync links appear once there is a profile',
+    (await visibleNav()).join('|') === 'My Psyche|My Syncs|FAQ',
     (await visibleNav()).join('|'));
 
   // ---- the nav on a phone ----
@@ -6292,7 +6301,7 @@ try {
   // for that path.
   check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Download full report | Test compatibility | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Download full report | Psyche Sync | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -6647,7 +6656,7 @@ try {
     coverStream.length + ' bytes of cover stream');
   // The card's own rows, so a cover that kept the hero and quietly lost
   // everything under it does not pass.
-  for (const label of ['MBTI', 'BIG FIVE', 'VALUES', 'RECEIVES LOVE AS']) {
+  for (const label of ['MBTI', 'BIG FIVE', 'VALUES', 'RECEIVES CARE AS']) {
     check('the card prints its ' + label + ' row on the cover', coverHas(label));
   }
   // The report proper starts overleaf. A cover that ran into the first section
@@ -7145,13 +7154,13 @@ try {
       appUsesCopy: /const Copy = window\.PsycheCopy/.test(app),
       pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
     };
-  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'In relationships', 'At work',
+  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'With friends', 'At work',
     'Your digital footprint', 'What your link contains', 'Your matches',
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
     'What you share', 'What works', 'What will rub',
-    'Your compatibility results']);
+    'My Syncs']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
   check('the page does not re-type any section title',
@@ -9426,64 +9435,15 @@ try {
   await page.fill('#compat-paste-input', 'https://example.com/#p=' + otherPayload);
   await page.click('#compat-paste-go');
 
-  // ---- the basis picker ----
+  // ---- straight to the sync ----
   //
-  // Reading a code must not spend a model call until the user has said which
-  // question they want answered.
-  await page.waitForSelector('#mode-dialog[open]', { timeout: 15000 });
-  check('reading a code asks which basis to compare on',
-    await page.locator('#mode-dialog').isVisible());
-  check('the picker names the other person',
-    /Jordan/.test(await page.locator('#mode-dialog-sub').innerText()));
+  // Psyche Sync is between friends and only that, so there is no basis to
+  // pick: a pasted link starts it, free, with no payment sheet in between.
+  check('a pasted link asks no basis question: there is no picker any more',
+    (await page.locator('#mode-dialog, #stance-dialog').count()) === 0);
   check('and the popout the link was pasted into has closed behind it',
-    !(await page.evaluate(() => document.querySelector('#compat-dialog').open)));
-  check('all three bases are offered',
-    (await page.locator('#mode-dialog .mode-option').allInnerTexts()).join(' | ').replace(/\n/g, ' ')
-      .match(/Romantic|Family \/ Friends|Professional/g).length >= 3);
-  check('the friendship basis covers family too, not just friends',
-    /Family \/ Friends/.test(await page.locator('#mode-dialog').innerText()));
-  check('nothing is sent before a basis is chosen',
-    compatBodies.length === 0, String(compatBodies.length));
-  await shot('3-mode-picker');
-
-  // Backing out returns to the scanner rather than running anything. Wait on
-  // the dialog closing, not on the scan view being visible — it never stopped
-  // being visible, so that would race whatever the close handler does next.
-  await page.click('#mode-cancel');
-  // state: 'hidden' matters — a closed <dialog> is display:none, so the
-  // default "wait until visible" could never be satisfied.
-  await page.waitForSelector('#mode-dialog', { state: 'hidden' });
-  check('cancelling the picker runs no analysis', compatBodies.length === 0);
-  check('cancelling the picker keeps the link you pasted',
-    (await page.inputValue('#paste-input')).includes(otherPayload));
-
-  await page.click('#paste-go');
-  await page.waitForSelector('#mode-dialog[open]');
-  const beforeModes = compatBodies.length;
-  await page.click('#mode-dialog .mode-option[data-mode="professional"]');
-
-  // ---- the working-relationship picker ----
-  // Managing someone and reporting to them are different questions, so the
-  // basis alone is not enough to run on.
-  await page.waitForSelector('#stance-dialog[open]', { timeout: 30000 });
-  check('picking work asks who reports to whom before running',
-    await page.locator('#stance-dialog').isVisible());
-  check('nothing is sent until the working relationship is known',
-    compatBodies.length === beforeModes, String(compatBodies.length));
-  const stanceText = await page.locator('#stance-dialog').innerText();
-  check('the stance options name the other person, not "them"',
-    /I am the superior of Jordan/.test(stanceText) &&
-    /I am a subordinate of Jordan/.test(stanceText), stanceText);
-  check('sitting alongside them is an option too', /We are colleagues/.test(stanceText));
-  check('the stance picker offers exactly three',
-    (await page.locator('#stance-dialog .mode-option').count()) === 3);
-  await shot('3b-stance-picker');
-  await page.click('#stance-dialog .mode-option[data-stance="superior"]');
-
-  // ---- and then straight to the comparison ----
-  //
-  // A compatibility read is free: once both questions are answered it is
-  // sent, with no payment sheet in between.
+    await page.waitForFunction(() => !document.querySelector('#compat-dialog').open, null, { timeout: 5000 })
+      .then(() => true, () => false));
 
   // A comparison is as long a call as an analysis and just as easy to close an
   // app during, so it records a job of its own. Its record has to carry more
@@ -9512,24 +9472,20 @@ try {
     !JSON.parse(compatBodies[compatBodies.length - 1]).promoCode,
     compatBodies[compatBodies.length - 1]);
   const reportText = await page.locator('#report-body').innerText();
-  check('the chosen basis was sent to the server',
-    JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'professional',
+  check('the sync was sent as between friends',
+    JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
+      !JSON.parse(compatBodies[compatBodies.length - 1]).stance,
     compatBodies[compatBodies.length - 1]);
   check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
-  check('report shows one score, for one basis', (await page.locator('.ring').count()) === 1);
-  // The basis is the header's pill, not repeated in the body under it.
-  check('report is labelled with the basis chosen',
-    /Professional \/ work/.test(await page.locator('#report-sub').innerText()));
-  check('report does not cover the bases that were not asked for',
-    !/Romantic/.test(reportText) && !/Platonic/.test(reportText), reportText.slice(0, 200));
-  // The heading belongs to the stance, not the basis: "How to work with each
-  // other" is wrong for somebody who manages the other person.
-  check('the playbook heading matches the stance, not just the basis',
-    /How to manage Jordan/i.test(reportText) && !/How to work with each other/i.test(reportText),
-    reportText.slice(0, 200));
-  check('the report says which side of the relationship it answered',
-    /I am the superior of Jordan/.test(await page.locator('#report-sub').innerText()),
+  check('report shows one score', (await page.locator('.ring').count()) === 1);
+  check('report is labelled Psyche Sync, and the score is said as a percentage in sync',
+    (await page.locator('#report-sub').innerText()).trim() === 'Psyche Sync' &&
+      /^\d+% in sync/.test(await page.locator('#report-body .compat-band').innerText()),
     await page.locator('#report-sub').innerText());
+  check('nothing in it is romantic or about work',
+    !/Romantic|Professional|partner|colleague/i.test(reportText), reportText.slice(0, 200));
+  check('the playbook is about being close to each other',
+    /How to be close to each other/i.test(reportText), reportText.slice(0, 200));
   check('report gives each person their own advice',
     (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
@@ -9553,18 +9509,12 @@ try {
   check('and no separate types section',
     (await page.locator('#report-body .compat-types, #report-body .type-axis').count()) === 0 &&
       !/Your types together/.test(reportText));
-  // The five focus areas for the stance still steer what is written: the
-  // mock titles its strengths with them.
-  check('what it says is about the focus areas for the stance chosen',
-    /Briefing and direction/.test(reportText) && /Whether problems reach you/.test(reportText),
-    reportText.slice(0, 300));
-  check('a manager is not given the peer focus areas',
-    !/Load balance/.test(reportText) && !/Complementary strengths/.test(reportText));
-  check('nor those of another basis entirely',
-    !/Emotional safety/.test(reportText) && !/Appetite for contact/.test(reportText));
-  check('the stance reached the server, not just the basis',
-    JSON.parse(compatBodies[compatBodies.length - 1]).stance === 'superior',
-    compatBodies[compatBodies.length - 1]);
+  // The friendship focus areas steer what is written: the mock titles its
+  // strengths with them.
+  check('what it says is about the friendship focus areas',
+    /Shared interests/.test(reportText) && /Friction load/.test(reportText), reportText.slice(0, 300));
+  check('and none of the old romantic or work ones',
+    !/Emotional safety|Load balance|Briefing and direction/.test(reportText));
   // The ring is the same problem in a custom property rather than a width:
   // --pct drives a conic-gradient, and an unset one is a ring drawn empty
   // around a number that says 82.
@@ -9597,8 +9547,8 @@ try {
   await compatDownload.saveAs(compatPdfPath);
   const compatText = readFileSync(compatPdfPath).toString('latin1');
 
-  check('the compatibility button downloads a file named for both people',
-    /^psycheai-compatibility-[a-z-]+-[a-z-]+\.pdf$/.test(compatDownload.suggestedFilename()),
+  check('the sync button downloads a file named for both people',
+    /^psycheai-sync-[a-z-]+-[a-z-]+\.pdf$/.test(compatDownload.suggestedFilename()),
     compatDownload.suggestedFilename());
   check('the comparison is a real PDF', compatText.startsWith('%PDF-1.') &&
     compatText.trimEnd().endsWith('%%EOF'));
@@ -9608,7 +9558,7 @@ try {
   check('the comparison PDF is titled for the pair, not for one person',
     /\/Title \(Ale\xe7 & Jordan/.test(compatText), (/\/Title \(([^)]*)/.exec(compatText) || [])[1]);
   check('and carries its own subject rather than the profile one',
-    /\/Subject \(Compatibility report/.test(compatText));
+    /\/Subject \(Psyche Sync/.test(compatText));
 
   // The document has to say the same things the page does. These are read from
   // the drawn text, so a section that renders on screen and is missing here
@@ -9617,19 +9567,18 @@ try {
     .map(m => m[1]).join('\n').replace(/\\/g, '');
   for (const [label, needle] of [
     ['both names on the cover', 'Ale\xe7 & Jordan'],
-    ['the basis it answered', 'Professional / work'],
-    ['which side of it', 'I am the superior of Jordan'],
-    ['a focus area for the stance', 'Briefing and direction'],
+    ['what it is', 'Psyche Sync'],
+    ['a friendship focus area', 'Shared interests'],
     ['what works', 'What works'],
     ['what will rub', 'What will rub'],
-    ['the playbook heading for the stance', 'How to manage Jordan'],
+    ['the playbook heading', 'How to be close to each other'],
     ['advice addressed to each person', 'For Ale\xe7'],
   ]) {
     check('the comparison PDF carries ' + label, compatDrawn.includes(needle),
       needle.slice(0, 40));
   }
-  check('the comparison PDF does not print the peer focus areas for a manager',
-    !compatDrawn.includes('Load balance'));
+  check('the comparison PDF prints nothing romantic or about work',
+    !compatDrawn.includes('Load balance') && !compatDrawn.includes('Romantic') && !compatDrawn.includes('Professional'));
   check('nor the sections taken out of the page',
     !['Where it holds and where it does not', 'Biggest upside', 'Biggest risk', 'Things to actually talk about', 'Your types together']
       .some(t => compatDrawn.includes(t)));
@@ -9645,10 +9594,10 @@ try {
   const actionTiles = await page.evaluate(() => [...document.querySelectorAll('#view-report .compat-actions > *')].map(b => ({
     id: b.id, cls: b.className, icon: Boolean(b.querySelector('svg')), label: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
   })));
-  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Back to Compatibility',
+  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Back to My Syncs',
     actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
       actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
-      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Back to Compatibility' &&
+      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Back to My Syncs' &&
       new Set(actionTiles.map(t => t.top)).size === 1, JSON.stringify(actionTiles));
   check('and there is no "Check someone else" any more',
     !/Check someone else|scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
@@ -9667,7 +9616,7 @@ try {
   });
   check('"Share result" hands the share sheet a 1080 x 1920 story image with a line carrying the address',
     Boolean(compatImage) && compatImage.width === 1080 && compatImage.height === 1920 &&
-      compatImage.type === 'image/png' && /\/100 on PsycheAI/.test(compatImage.text) &&
+      compatImage.type === 'image/png' && /^We’re \d+% in sync on PsycheAI/.test(compatImage.text) &&
       compatImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatImage).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
@@ -9678,7 +9627,7 @@ try {
   await shot('4-report');
   await page.click('#compat-back');
   await page.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
-  check('"Back to Compatibility" goes to My Compatibility, where this report is listed',
+  check('"Back to My Syncs" goes to My Syncs, where this report is listed',
     (await page.locator('#scan-history').innerText()).includes('Jordan'));
 
   // The report page is reached from the reader's own psyche page, and on a
@@ -9727,7 +9676,7 @@ try {
       'Can I verify this?',
       'How accurate is it?',
       'What does it cost?',
-      'How does the compatibility feature work?',
+      'How does Psyche Sync work?',
       'How do I contact PsycheAI?',
     ]), JSON.stringify(faqQuestions));
 
@@ -9840,9 +9789,9 @@ try {
       /identifies you, your device or anything you\s+uploaded/.test(about));
   check('and says plainly why there is one free card per account, and what is kept for it',
     /one-way scrambled code/.test(about) && /cannot be turned back into your username/.test(about));
-  check('the compatibility answer says what the link actually is',
-    /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
-    /family\/friends/i.test(about) &&
+  check('the Psyche Sync answer says what the link actually is, and that it is about friends only',
+    /How does Psyche Sync work\?/.test(about) && /about friendship only, never romance/.test(about) &&
+    /you do not\s+see it unless they send it to you/.test(about) &&
     /locked copy of your card’s short summary/.test(about) && /never sends\s+to a server/.test(about) &&
     /cannot read it/.test(about) && /never your\s+export, messages or report/.test(about));
   check('the FAQ says what is stored, rather than claiming nothing is',
@@ -9850,8 +9799,8 @@ try {
     /locked copy of your card’s short\s+summary/.test(about) && /None of it names you/.test(about));
   check('the FAQ gives a contact address',
     /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
-  check('the prices are named, once, with what each buys — and compatibility is free',
-    /US\$5/.test(about) && /US\$2/.test(about) && /every compatibility report/i.test(about));
+  check('the prices are named, once, with what each buys — and Psyche Sync is free',
+    /US\$5/.test(about) && /US\$2/.test(about) && /every Psyche Sync/i.test(about));
   check('the limits are stated rather than implied',
     /not a test\s+and not a diagnosis/i.test(about));
   check('the question about a thin account is gone, not half-removed',
@@ -9955,27 +9904,26 @@ try {
 
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
-  check('the compatibility page is titled for whoever this device belongs to',
-    (await page.locator('#scan-title').innerText()) === 'Ale\u00e7\u2019s Compatibility',
+  check('the sync page is titled My Syncs',
+    (await page.locator('#scan-title').innerText()) === 'My Syncs',
     await page.locator('#scan-title').innerText());
-  check('the intro names all three things a link can be compared on',
-    /couple/i.test(scanText) && /family or friends/i.test(scanText) && /colleagues/i.test(scanText),
-    scanText.slice(0, 300));
+  check('the intro is about friends, and nothing romantic or about work',
+    /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
     /score/i.test(scanText) && /what will grate/i.test(scanText), scanText.slice(0, 500));
   check('the paste box says what it is for', await page.evaluate(() => {
     const box = [...document.querySelectorAll('#view-scan .card')]
       .find(card => card.querySelector('#paste-go'));
     const heading = box && box.querySelector('h2');
-    return Boolean(heading) && heading.textContent.trim() === 'Test your compatibility';
+    return Boolean(heading) && heading.textContent.trim() === 'Sync with a friend';
   }));
   check('the button says what it does',
-    (await page.locator('#paste-go').innerText()) === 'Check compatibility',
+    (await page.locator('#paste-go').innerText()) === 'See how in sync we are',
     await page.locator('#paste-go').innerText());
   check('no camera, no picture upload, no code: only a link to paste',
     (await page.locator('#start-camera, #upload-qr, #qr-file, #scan-video, #view-scan canvas').count()) === 0 &&
       /^https:\/\/psycheai\.io\/#p=/.test(await page.locator('#paste-input').getAttribute('placeholder')) &&
-      !/scan/i.test(scanText.replace(/Your compatibility results/, '')));
+      !/scan/i.test(scanText));
   check('the how-to sentence under the paste box is gone',
     !/fill the frame with it/.test(scanText) && !/pasting the\s+link is always the sure thing/.test(scanText),
     scanText.slice(0, 500));
@@ -9993,7 +9941,8 @@ try {
     return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('and are rendered, not just positioned',
-    /Your compatibility results/.test(scanText), scanText.slice(0, 400));
+    /My Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
+    scanText.slice(0, 400));
   check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
     const box = [...document.querySelectorAll('#view-scan .card')]
@@ -10014,7 +9963,7 @@ try {
     }));
   check('the header carries this reader\'s initial beside an open seat for the next link',
     (await page.locator('#scan-initial').innerText()) === 'A' &&
-      (await page.locator('.scan-hero .scan-modes li').count()) === 3,
+      (await page.locator('.scan-hero .scan-modes li').count()) === 0,
     await page.locator('#scan-initial').innerText());
 
   // ---- this person's own link, from the compatibility page ----
@@ -10083,11 +10032,15 @@ try {
     (await page.locator('#link-contents .card-head h2').count()) === 1);
 
   // ---- deep link ----
-  // A pasted link is the third way into the comparison, and it has to ask
-  // which basis too rather than picking one on the user's behalf.
+  // A friend's link opened by a reader who already has a card lands on that
+  // card, with the sync one tap away — never run on their behalf.
+  const syncsBefore = compatBodies.length;
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
-  await page.waitForSelector('#mode-dialog[open]', { timeout: 30000 });
-  check('a shared link asks for the basis as well', await page.locator('#mode-dialog').isVisible());
+  await page.waitForSelector('#sync-invite:not([hidden])', { timeout: 30000 });
+  check('a friend\'s link lands on the reader\'s own card, with the sync one tap away',
+    await page.locator('#view-profile').isVisible() &&
+      /See how in sync you are with Jordan/.test(await page.locator('#sync-invite').innerText()) &&
+      compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
 
   // The comparison runs for real time with nothing else standing between a
   // reader's back button and losing it — the same risk runPremiumAnalysis's
@@ -10107,9 +10060,8 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.continue();
   });
-  await page.click('#mode-dialog .mode-option[data-mode="platonic"]');
-  // Free, so the model call — and the unload guard with it — starts as soon
-  // as the basis is chosen.
+  await page.click('#sync-invite-go');
+  // Free, so the model call — and the unload guard with it — starts on the tap.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
     await beforeunloadPrevented());
@@ -10117,14 +10069,13 @@ try {
   await page.unroute('**/api/compatibility');
   check('and the guard lifts again once the comparison actually lands',
     !(await beforeunloadPrevented()));
-  check('a shared link runs the comparison straight away',
+  check('the tap runs the sync with the friend',
     (await page.locator('#report-body').innerText()).includes('Jordan'));
-  check('the basis chosen for a link is the one reported',
+  check('as friends, labelled Psyche Sync',
     JSON.parse(compatBodies[compatBodies.length - 1]).mode === 'platonic' &&
-    /Family \/ Friends/.test(await page.locator('#report-sub').innerText()));
-  check('a non-work basis is not asked who reports to whom',
-    JSON.parse(compatBodies[compatBodies.length - 1]).stance === null,
-    compatBodies[compatBodies.length - 1]);
+    (await page.locator('#report-sub').innerText()).trim() === 'Psyche Sync');
+  check('and the banner is gone once the invite is spent',
+    await page.evaluate(() => localStorage.getItem('psycheai_invite') === null));
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });
@@ -11298,8 +11249,8 @@ try {
         return { act: b.dataset.act, label: label.textContent, fits: label.scrollWidth <= label.clientWidth + 1 &&
           label.getBoundingClientRect().height < 20 && label.getBoundingClientRect().width <= b.getBoundingClientRect().width };
       }));
-      check('structured: the three buttons beside the card are Download, Share and Compatibility, each label fitting',
-        toolRow.map(t => t.act + ':' + t.label).join('|') === 'download:Download|share:Share|compat:Compatibility' &&
+      check('structured: the three buttons beside the card are Download, Share and Sync, each label fitting',
+        toolRow.map(t => t.act + ':' + t.label).join('|') === 'download:Download|share:Share|compat:Sync' &&
           toolRow.every(t => t.fits) && !(await sp.locator('#profile-side .cx-compat').count()), JSON.stringify(toolRow));
       // Download beside the card saves the card as an image.
       const [cardImage] = await Promise.all([
@@ -11579,7 +11530,7 @@ try {
           call: (document.querySelector('#psyche-card .pc-qr-call') || {}).textContent || '' };
       }, copied);
       check('the reader\'s card carries a QR code of that same link, on the page and full screen',
-        qr.count === 2 && qr.same && qr.call === 'Scan to see how compatible we are', JSON.stringify(qr));
+        qr.count === 2 && qr.same && qr.call === 'Scan to see how in sync we are', JSON.stringify(qr));
       const saved = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_link') || 'null'));
       check('what the server holds is locked: no name, no card text in it',
         await rp.evaluate(async id => {

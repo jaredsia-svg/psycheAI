@@ -1473,7 +1473,7 @@ check('the sample report satisfies the profile schema exactly', sampleFaults.len
 // flatters would misrepresent what the model actually returns.
 check('the sample report is honest about weaknesses, not an advert',
   sample.relationship.weaknesses.length >= 2 && sample.career.weaknesses.length >= 2 &&
-  sample.confidence.score < 100 && /tentative/i.test(sample.card.attachment),
+  sample.confidence.score < 100 && /tentative/i.test(sample.card.conflictStyle),
   JSON.stringify({
     relationship: sample.relationship.weaknesses.length,
     career: sample.career.weaknesses.length,
@@ -1504,8 +1504,8 @@ check('the sample report carries none of the three paid-only sections',
   !('wellness' in sample) && !('attachment' in sample) &&
   !('idealPartner' in sample) && !('careerAssessment' in sample),
   Object.keys(sample).join(','));
-check('but the card still carries the attachment and conflict lines the link needs',
-  typeof sample.card.attachment === 'string' && sample.card.attachment.length > 0 &&
+check('but the card carries the conflict line the link needs, and no attachment style',
+  !('attachment' in sample.card) &&
   typeof sample.card.conflictStyle === 'string' && sample.card.conflictStyle.length > 0 &&
   !('attachmentWhy' in sample.card) && !('summary' in sample.card) && !('enneagram' in sample.card));
 // The roast is free again, so the sample — the one report every visitor
@@ -1742,8 +1742,9 @@ check('the prompt tells it to write attachment as a standalone section',
   /its own section, not part of the relationship read above/.test(prompts.PREMIUM_SYSTEM));
 // The card's own compressed attachment fields are a different thing and must
 // not have been dragged along by the move — they are what travels in the QR.
-check('the card keeps its own attachment and conflict lines, without the reasoning that identified people',
-  ['attachment', 'conflictStyle'].every(k => k in prompts.PROFILE_SCHEMA.properties.card.properties) &&
+check('the card keeps its conflict line, but no attachment style — it travels to anyone its link reaches',
+  'conflictStyle' in prompts.PROFILE_SCHEMA.properties.card.properties &&
+  !('attachment' in prompts.PROFILE_SCHEMA.properties.card.properties) &&
   !('attachmentWhy' in prompts.PROFILE_SCHEMA.properties.card.properties));
 
 // ---------- the wellness section ----------
@@ -2103,155 +2104,42 @@ check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
 check('career section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.career.properties));
-// The basis is chosen by the user before the call, so the report answers one
-// question rather than covering three at once.
-check('compatibility offers three bases',
-  ['romantic', 'platonic', 'professional'].every(k => k in prompts.COMPATIBILITY_MODES));
-check('compatibility scores one basis, not several',
+// Psyche Sync is between friends only. A reader's link is often public, and
+// a stranger running a romantic read against someone's card was the creepy
+// version of this feature, so romantic and work were removed outright.
+check('Psyche Sync has one basis: friends',
+  JSON.stringify(Object.keys(prompts.COMPATIBILITY_MODES)) === '["platonic"]' &&
+  prompts.COMPATIBILITY_MODES.platonic.label === 'Friends');
+check('the answer is scored once, and echoes the one basis',
   ['mode', 'score', 'band', 'verdict'].every(k => k in prompts.COMPATIBILITY_SCHEMA.properties) &&
-  !('romantic' in prompts.COMPATIBILITY_SCHEMA.properties) &&
-  !('platonic' in prompts.COMPATIBILITY_SCHEMA.properties));
-check('the answer echoes back which basis it used',
-  prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'romantic,platonic,professional');
-
-// ---------- who reports to whom ----------
-//
-// "Professional" was one question asked of three different situations. A
-// manager needs to know how to get someone's best work without losing them; a
-// report needs to know how to work for someone and keep their footing; peers
-// need neither. Answering all three the same way gave two thirds of readers a
-// report about the wrong thing.
-check('a work run splits three ways',
-  ['colleagues', 'superior', 'subordinate'].every(k => k in prompts.WORK_STANCES));
-check('an unknown stance falls back to peers rather than throwing',
-  prompts.resolveStance('nonsense') === 'colleagues' && prompts.resolveStance() === 'colleagues');
-check('each stance asks its own five questions',
-  Object.values(prompts.WORK_STANCES).every(s => s.dimensions.length === 5));
-{
-  const named = Object.values(prompts.WORK_STANCES).flatMap(s => s.dimensions);
-  check('no two stances score the same thing',
-    new Set(named).size === named.length, named.length + ' dimensions, ' + new Set(named).size + ' distinct');
-}
-check('a manager and a report are asked opposite questions',
-  prompts.WORK_STANCES.superior.dimensions.includes('Whether problems reach you') &&
-  prompts.WORK_STANCES.subordinate.dimensions.includes('Raising a problem safely'));
-check('the peer stance keeps what professional always asked',
-  prompts.WORK_STANCES.colleagues.dimensions.includes('Load balance'));
-
-// briefFor is what actually swaps the question, so pin its behaviour rather
-// than the shape of the table behind it.
-check('a work run takes its dimensions from the stance, not the basis',
-  JSON.stringify(prompts.briefFor('professional', 'superior').dimensions) ===
-  JSON.stringify(prompts.WORK_STANCES.superior.dimensions));
-check('the other two bases ignore the stance entirely',
-  JSON.stringify(prompts.briefFor('romantic', 'superior').dimensions) ===
-  JSON.stringify(prompts.COMPATIBILITY_MODES.romantic.dimensions) &&
-  JSON.stringify(prompts.briefFor('platonic', 'subordinate').dimensions) ===
-  JSON.stringify(prompts.COMPATIBILITY_MODES.platonic.dimensions));
-check('a work run with no stance still answers as peers',
-  JSON.stringify(prompts.briefFor('professional').dimensions) ===
-  JSON.stringify(prompts.WORK_STANCES.colleagues.dimensions));
-check('the heading follows the stance too',
-  prompts.briefFor('professional', 'superior').heading === 'How to manage them' &&
-  prompts.briefFor('professional', 'subordinate').heading === 'How to work for them');
-
-// The direction is not symmetrical and person A is always the scanner, so a
-// prompt that does not say which way round it runs is worse than useless.
-{
-  const a = { name: 'Sam' };
-  const b = { name: 'Jordan' };
-  const asBoss = prompts.compatibilityBlocks(a, b, 'professional', 'superior')[0].text;
-  const asReport = prompts.compatibilityBlocks(a, b, 'professional', 'subordinate')[0].text;
-  check('the manager turn says A manages B', /Person A manages person B/.test(asBoss));
-  check('the report turn says A reports to B', /Person A reports to person B/.test(asReport));
-  check('the two work turns are genuinely different briefs', asBoss !== asReport);
-  check('the manager turn asks for the manager dimensions',
-    prompts.WORK_STANCES.superior.dimensions.every(d => asBoss.includes(d)));
-  check('the manager turn does not smuggle in the peer dimensions',
-    !asBoss.includes('Load balance'));
-  check('a work turn still carries the derived facts',
-    asBoss.includes('<derived_facts>'));
-}
-
-// The stance has to survive the whole way down: client -> server -> provider
-// -> prompt. Everything above tests the prompt end, and the UI suite tests the
-// client end, but both providers sat in between building the user turn
-// themselves — and dropping the fourth argument there is silent, because a
-// peer brief is a perfectly valid brief. So patch the prompt builder, call
-// each real provider, and read back what it actually passed.
-{
-  const realBlocks = prompts.compatibilityBlocks;
-  const seen = [];
-  prompts.compatibilityBlocks = (...args) => {
-    seen.push(args);
-    throw new Error('__stop_before_the_network__');
-  };
-  for (const engine of [gemini, claude]) {
-    try {
-      engine.analyseCompatibility({ name: 'A' }, { name: 'B' }, 'professional', 'subordinate');
-    } catch (error) {
-      if (!/__stop_before_the_network__/.test(error.message)) throw error;
-    }
-  }
-  prompts.compatibilityBlocks = realBlocks;
-  check('every provider forwards the stance, not just the basis',
-    seen.length === 2 && seen.every(args => args[2] === 'professional' && args[3] === 'subordinate'),
-    JSON.stringify(seen.map(args => args.slice(2))));
-}
-
-// A power difference is exactly where a report like this could do harm, so the
-// prompt has to say so rather than leaving it to taste.
-check('the prompt stays even-handed across a power gap',
-  /only audits whoever has less power/.test(prompts.COMPATIBILITY_SYSTEM));
-check('the prompt refuses to supply tactics for pushing somebody out',
-  /a method for pushing somebody out/.test(prompts.COMPATIBILITY_SYSTEM));
-check('the prompt warns that the direction is not symmetrical',
-  /Person A is always the one who opened the link/.test(prompts.COMPATIBILITY_SYSTEM));
-
-// The client draws the picker from its own copy of the stance list, so the two
-// have to name the same three things or the UI offers one the server drops.
-{
-  const clientStances = Object.keys(globalThis.PsycheCopy.WORK_STANCES);
-  check('client and server name the same working relationships',
-    JSON.stringify(clientStances.slice().sort()) ===
-    JSON.stringify(Object.keys(prompts.WORK_STANCES).slice().sort()),
-    clientStances.join(','));
-  // Read defensively: if a stance is renamed on one side only, this has to say
-  // which one is missing rather than dying on an undefined.
-  const clientOption = key => {
-    const entry = globalThis.PsycheCopy.WORK_STANCES[key];
-    return entry && typeof entry.option === 'string' ? entry.option : '';
-  };
-  check('every stance option leaves a slot for the other person\'s name',
-    ['superior', 'subordinate'].every(k => clientOption(k).includes('{name}')),
-    ['superior', 'subordinate'].filter(k => !clientOption(k).includes('{name}')).join(',') || 'none');
-  check('the peer option needs no name and has none',
-    clientOption('colleagues').length > 0 && !clientOption('colleagues').includes('{name}'));
-  check('the name actually gets filled in',
-    globalThis.PsycheCopy.stanceText('I am the superior of {name}', 'Jordan') ===
-    'I am the superior of Jordan');
-  check('a missing name degrades to something readable',
-    globalThis.PsycheCopy.stanceText('How to manage {name}', '') === 'How to manage them');
-}
-
-// The basis was renamed to cover relatives, so the brief has to actually say
-// something about family rather than the label alone changing.
-check('the friendship basis is labelled for family too',
-  prompts.COMPATIBILITY_MODES.platonic.label === 'Family / Friends');
-check('and its brief tells the model family is in scope',
-  /relatives as well as friends/.test(prompts.COMPATIBILITY_MODES.platonic.brief));
-check('the system prompt knows family did not choose each other',
-  /people do not pick their family/.test(prompts.COMPATIBILITY_SYSTEM));
+  prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'platonic');
+check('whatever basis an older page asks for, the sync is between friends',
+  ['romantic', 'professional', 'nonsense', undefined].every(m => prompts.resolveMode(m) === 'platonic'));
+check('the user turn asks how in sync two friends are, with the friendship dimensions',
+  (() => {
+    const text = prompts.compatibilityBlocks({ name: 'Sam' }, { name: 'Jordan' }, 'romantic', 'superior')[0].text;
+    return /how in sync these two people are as \*\*friends\*\*/.test(text) &&
+      prompts.COMPATIBILITY_MODES.platonic.dimensions.every(d => text.includes(d)) &&
+      text.includes('<derived_facts>') && !/romantic|partner|colleague|manage/i.test(text);
+  })());
+check('the system prompt rules out romance, attachment and work',
+  /Never write about romance, dating, partners or attraction, and never about attachment style/.test(prompts.COMPATIBILITY_SYSTEM) &&
+  /Do not assess them as colleagues/.test(prompts.COMPATIBILITY_SYSTEM) &&
+  !/# Who reports to whom/.test(prompts.COMPATIBILITY_SYSTEM) && !/\*\*Romantic\*\*/.test(prompts.COMPATIBILITY_SYSTEM));
+check('evidence no longer points at an attachment read',
+  !/attachment/i.test(JSON.stringify(prompts.COMPATIBILITY_SCHEMA)));
 check('the report carries directional advice',
   ['forA', 'forB', 'together'].every(k =>
     k in prompts.COMPATIBILITY_SCHEMA.properties.howToPartner.properties));
-check('an unknown basis falls back rather than throwing',
-  prompts.resolveMode('nonsense') === 'romantic' && prompts.resolveMode('PROFESSIONAL') === 'professional');
-check('each basis is briefed differently',
-  new Set(Object.values(prompts.COMPATIBILITY_MODES).map(m => m.brief)).size === 3);
-check('the chosen basis reaches the model',
-  /\*\*Professional \/ work\*\* basis, and on that basis only/.test(
-    prompts.compatibilityBlocks({}, {}, 'professional')[0].text));
+// The free card is public now (it travels to anyone its link reaches, and its
+// QR code with it), so it carries no attachment style and nothing romantic.
+check('the free card has no attachment style',
+  !('attachment' in prompts.CARD_SCHEMA.properties));
+check('and its relationship lines are about friends, never romance',
+  /Nothing about romance or dating/.test(prompts.CARD_SCHEMA.properties.relationshipStrengths.description) &&
+  !/romantic/i.test(prompts.CARD_SCHEMA.properties.loveReceiving.description));
+check('the paid report keeps its attachment section',
+  /\*\*attachment\*\*: its own section/.test(prompts.PREMIUM_SYSTEM));
 check('MBTI is constrained to real types', prompts.MBTI_TYPES.length === 17 && prompts.MBTI_TYPES.includes('Uncertain'));
 
 // The prompt is the actual product here, so assert the guardrails survive edits.
@@ -2476,9 +2364,7 @@ for (const [label, needle] of [
 }
 
 for (const [label, needle] of [
-  ['answers only the basis it was given', /Assess \*\*only\*\* that basis/],
-  ['refuses to hedge across all three', /do not hedge by covering all three/],
-  ['briefs the professional basis distinctly', /reliability, candour and dividing work well/],
+  ['is about friends only', /# Friends only/],
   ['tells the model not to inflate', /Do not inflate/],
   ['respects the confidence figure', /respect it/],
 ]) {
@@ -5450,8 +5336,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('the card schema no longer asks for the eight fields it already has answers to',
     prompts.CARD_DERIVED_KEYS.length === 8 &&
     prompts.CARD_DERIVED_KEYS.every(key => !(key in cardProps)) &&
-    ['headline', 'attachment', 'conflictStyle', 'energy', 'workStyle', 'rhythm', 'careerWeaknesses']
-      .every(key => key in cardProps) && !('summary' in cardProps) && !('attachmentWhy' in cardProps),
+    ['headline', 'conflictStyle', 'energy', 'workStyle', 'rhythm', 'careerWeaknesses']
+      .every(key => key in cardProps) && !('summary' in cardProps) && !('attachment' in cardProps) &&
+      !('attachmentWhy' in cardProps),
     Object.keys(cardProps).join(','));
   // withCard against a hand-written answer, so the check reads the copying
   // itself rather than the mock, which would agree with anything.
@@ -6450,17 +6337,16 @@ const carries = (key, min) => typeof decoded[key] === 'string'
   ? decoded[key].length > min
   : Array.isArray(decoded[key]) && decoded[key].length > min;
 for (const [label, present] of [
-  ['love languages, which decide the romantic read', carries('loveReceiving', 0) && carries('loveGiving', 0)],
-  ['the attachment leaning', carries('attachment', 5)],
-  ['the conflict style, which every basis turns on', carries('conflictStyle', 5)],
-  ['contact appetite, which decides the platonic read', carries('energy', 10)],
-  ['work style, which decides the professional read', carries('workStyle', 10)],
+  ['how they show care (love languages)', carries('loveReceiving', 0) && carries('loveGiving', 0)],
+  ['the conflict style', carries('conflictStyle', 5)],
+  ['contact appetite, which decides the friendship read', carries('energy', 10)],
+  ['work style', carries('workStyle', 10)],
   ['what holds them back at work', carries('careerWeaknesses', 0)],
 ]) {
   check('the card carries ' + label, Boolean(present));
 }
-check('and none of what K5 dropped: the Enneagram, the summary, the attachment\'s reasoning, separate beliefs',
-  ['enneagram', 'summary', 'attachmentWhy', 'beliefs'].every(key => !(key in decoded)), Object.keys(decoded).join(','));
+check('and none of what was dropped: the Enneagram, the summary, the attachment style and its reasoning, separate beliefs',
+  ['enneagram', 'summary', 'attachment', 'attachmentWhy', 'beliefs'].every(key => !(key in decoded)), Object.keys(decoded).join(','));
 {
   // Motivators and pattern names travel too, the motivators as their place in
   // Schwartz's ten, and an unknown word never survives the trip.
@@ -6563,9 +6449,9 @@ check('a pre-K4 card gains the new fields as empties, never undefined',
   Array.isArray(legacyShape.motivators) && legacyShape.motivators.length === 0 &&
   Array.isArray(legacyShape.loveGiving) && legacyShape.loveGiving.length === 0 &&
   Array.isArray(legacyShape.loveReceiving) && legacyShape.loveReceiving.length === 0);
-check('a pre-K4 card keeps the data it did carry',
+check('a pre-K4 card keeps the data it did carry, but not its attachment style',
   legacyShape.name === 'Alex' && legacyShape.bigFive.agreeableness === 70 &&
-  legacyShape.attachment === 'leans secure (tentative)');
+  !('attachment' in legacyShape));
 
 check('a foreign code is rejected', (await Card.decodeCard('https://example.com/not-psycheai')) === null);
 check('a corrupted payload is rejected', (await Card.decodeCard(cardPayload.slice(0, -8) + 'AAAAAAAA')) === null);
@@ -6633,8 +6519,8 @@ const compat = (await mock.analyseCompatibility(decoded, other, 'professional'))
 
 check('compatibility fills every section',
   Object.keys(prompts.COMPATIBILITY_SCHEMA.properties).every(key => key in compat));
-check('compatibility scores the chosen basis',
-  Number.isInteger(compat.score) && compat.mode === 'professional');
+check('a sync is scored between friends, whatever basis is asked for',
+  Number.isInteger(compat.score) && compat.mode === 'platonic');
 check('compatibility names both people',
   compat.verdict.includes(decoded.name) && compat.verdict.includes('Jordan'));
 check('compatibility gives each person their own advice',
@@ -6660,9 +6546,8 @@ check('and to weigh the types in the score and writing, in a sentence or two, no
 {
   const named = Object.values(prompts.COMPATIBILITY_MODES).flatMap(m => m.dimensions);
   const repeated = [...new Set(named.filter((d, i) => named.indexOf(d) !== i))];
-  check('each basis is scored on dimensions chosen for it',
-    named.length === 15 && repeated.length === 1 && repeated[0] === 'Energy match',
-    'only "Energy match" is asked of more than one basis');
+  check('the friendship read is scored on five distinct dimensions',
+    named.length === 5 && repeated.length === 0, named.join(', '));
 }
 check('every basis scores the same number of dimensions',
   Object.values(prompts.COMPATIBILITY_MODES).every(m => m.dimensions.length === 5));

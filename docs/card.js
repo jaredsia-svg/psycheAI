@@ -21,7 +21,9 @@
   // motivators and their patterns' names, and dropped the Enneagram (gone from
   // the app), the summary (the headline and the rest say it) and the
   // attachment's reasoning (the most identifying line, in a link anyone can
-  // decode). Values and beliefs travel as the one list the card shows. K4 and
+  // decode). Values and beliefs travel as the one list the card shows. The
+  // attachment style itself went later, too: links are public now, and the
+  // friendship read (Psyche Sync) does not turn on it. K4 and
   // K3 links still decode, arriving without the fields they never had —
   // silently refusing a link someone saved would be a worse failure than a
   // slightly thinner comparison.
@@ -43,7 +45,6 @@
   const CAPS = {
     name: 24,
     headline: 60,
-    attachment: 52,
     conflictStyle: 48,
     rhythm: 56,
     energy: 70,
@@ -159,7 +160,6 @@
       headline: text(source.headline, CAPS.headline),
       mbti: text(source.mbti, 12),
       bigFive: {},
-      attachment: text(source.attachment, CAPS.attachment),
       conflictStyle: text(source.conflictStyle, CAPS.conflictStyle),
       rhythm: text(source.rhythm, CAPS.rhythm),
       energy: text(source.energy, CAPS.energy),
@@ -199,11 +199,13 @@
   // nothing downstream of decodeCard knows this happened.
   const PACKED_KEYS = {
     name: 'n', headline: 'h', mbti: 'm',
-    attachment: 'a', conflictStyle: 'x', rhythm: 'r', energy: 'y', workStyle: 'k', confidence: 'c', interests: 'i', values: 'v',
+    conflictStyle: 'x', rhythm: 'r', energy: 'y', workStyle: 'k', confidence: 'c', interests: 'i', values: 'v',
     loveReceiving: 'lr', loveGiving: 'lg', careerStrengths: 'cs', careerWeaknesses: 'cw',
     relationshipStrengths: 'rs', relationshipWeaknesses: 'rw', patterns: 'p',
   };
   // A K4 link's beliefs, packed under their old key; shape() folds them into values.
+  // An older link's attachment ('a') is not read at all: the card no longer
+  // carries one (it travels to whoever opens the link), so shape() leaves it out.
   const LEGACY_KEYS = { beliefs: 'f' };
 
   /** Canonical card → the short-keyed object that actually gets compressed. */

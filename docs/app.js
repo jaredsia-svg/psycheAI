@@ -12,6 +12,8 @@
   // string and label they share comes from here rather than being written twice.
   const Copy = window.PsycheCopy;
   const TEXT = Copy.TEXT;
+  // "Jared", from "Jared Tan": a friend is named by first name on their link.
+  const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
   const TRAIT_LABELS = Copy.TRAIT_LABELS;
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
@@ -4823,12 +4825,8 @@
       flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
     }
 
-    const invite = pendingInvite();
-    if (invite) {
-      store.remove(KEYS.invite);
-      refreshInvite();
-      if (await runMatch(invite.payload)) return;
-    }
+    // A friend's link waiting is not run here: the reader sees their own
+    // card first, and the sync is a tap away on it (refreshSyncInvite).
     renderProfile();
     show('profile');
   }
@@ -6164,7 +6162,9 @@
         rows.map(item => '<li><span class="beyond-mark" aria-hidden="true">' + (kind === 'good' ? '✓' : '!') + '</span><b>' + esc(item) + '</b></li>').join('') + '</ul></div>';
     };
     const columns = [
-      ['💞', B.relationships, line(B.attachment, card.attachment) + line(B.conflict, card.conflictStyle) +
+      // With friends, not in love: no attachment style here (the card travels
+      // to anyone its link reaches); the full report keeps it.
+      ['🤝', B.relationships, line(B.conflict, card.conflictStyle) +
         list(B.strengths, card.relationshipStrengths, 'good') + list(B.watchOuts, card.relationshipWeaknesses, 'warn')],
       ['☀️', B.dayToDay, line(B.rhythm, card.rhythm) + line(B.energy, card.energy)],
       ['💼', B.work, line(B.workStyle, card.workStyle) + list(B.strengths, card.careerStrengths, 'good') +
@@ -6844,6 +6844,7 @@
     // it stays true no matter what gets added between the report and the
     // buttons above it.
     renderAnalysedBy(profile);
+    refreshSyncInvite();
   }
 
   // Past results as a list rather than a table: a row each, the whole row the
@@ -6857,7 +6858,7 @@
     };
     return '<ul class="match-list">' +
       history.map((entry, index) => {
-        const mode = entry.mode || (entry.report && entry.report.mode) || 'romantic';
+        const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
         const name = String(entry.withName || '?');
         const score = Math.max(0, Math.min(100, Math.round(Number(entry.report && entry.report.score) || 0)));
         return '<li><a href="#" class="match-row" data-report="' + index + '">' +
@@ -6946,7 +6947,7 @@
   $('#share-compat-image').addEventListener('click', () => {
     const last = state.lastReport;
     if (!last) return;
-    shareStoryImage(compatImageCanvas(last), 'PsycheAI compatibility.png',
+    shareStoryImage(compatImageCanvas(last), 'PsycheAI sync.png',
       TEXT.compatResultShareText(Math.round(Number(last.report.score) || 0), myLinkUrl()), '#compat-share-status');
   });
   $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
@@ -7492,10 +7493,10 @@
     context.fillStyle = STORY_INK;
     context.textBaseline = 'middle';
     context.font = storyFont(850, 190);
-    context.fillText(String(value), cx, cy - 10);
+    context.fillText(value + '%', cx, cy - 10);
     context.fillStyle = '#6b3f8f';
     context.font = storyFont(700, 44);
-    context.fillText('/ 100', cx, cy + 115);
+    context.fillText(TEXT.syncPercentUnit, cx, cy + 115);
 
     let y = 1150;
     if (report.band) {
@@ -7710,8 +7711,8 @@
     }
     $('#compat-dialog').close();
     $('#compat-paste-input').value = '';
-    // Backing out of the basis picker lands on My Compatibility; the link
-    // waits in its box there, so choosing again does not mean pasting again.
+    // Kept in My Syncs' own box too, so a sync that fails can be tried
+    // again without pasting again.
     $('#paste-input').value = value;
     await runMatch(value);
   });
@@ -8634,7 +8635,7 @@
       const blob = window.PsychePDF.buildCompatibility(last.report, {
         a: last.myName,
         b: last.otherName,
-        modeLabel: MODE_LABELS[last.mode] || '',
+        modeLabel: last.mode === 'platonic' ? TEXT.syncName : MODE_LABELS[last.mode] || '',
         stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
           ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
         heading: playbookHeading(last.mode, last.stance, last.otherName),
@@ -8644,7 +8645,7 @@
       const slug = value => String(value || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
       const href = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = 'psycheai-compatibility-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf';
+      link.download = 'psycheai-sync-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf';
       link.href = href;
       document.body.appendChild(link);
       link.click();
@@ -8696,7 +8697,7 @@
     // There may be no profile yet on a device that was sent a link, so the
     // generic title in the markup stays the fallback.
     const who = state.profile && state.profile.card && state.profile.card.name;
-    $('#scan-title').textContent = who ? who + '\u2019s Compatibility' : 'Your compatibility';
+    $('#scan-title').textContent = TEXT.scanHistory;
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
     const history = store.read(KEYS.history, []);
@@ -8728,105 +8729,19 @@
     return chosen ? Copy.stanceText(chosen.heading, otherName) : MODE_HEADINGS[mode];
   }
 
-  // Ask which question to answer before spending a model call on it. Resolves
-  // to a mode key, or null if they backed out.
-  function askMode(otherName) {
-    const dialog = $('#mode-dialog');
-    $('#mode-dialog-sub').textContent =
-      'You and ' + otherName + ' can be compared on any of these. Pick one.';
-
-    return new Promise(resolve => {
-      let answer = null;
-      const choose = event => {
-        answer = event.currentTarget.dataset.mode;
-        dialog.close();
-      };
-      const buttons = dialog.querySelectorAll('.mode-option');
-      for (const button of buttons) button.addEventListener('click', choose);
-
-      const cancel = () => dialog.close();
-      $('#mode-cancel').addEventListener('click', cancel);
-
-      dialog.addEventListener('close', () => {
-        for (const button of buttons) button.removeEventListener('click', choose);
-        $('#mode-cancel').removeEventListener('click', cancel);
-        resolve(answer);
-      }, { once: true });
-
-      // showModal traps focus and handles Escape; the fallback keeps the flow
-      // alive on anything that does not support <dialog>.
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
-    });
-  }
-
-  // The second question, asked only when the first answer was "professional".
-  // Managing someone, reporting to them and sitting beside them are three
-  // different questions, and the model cannot infer which one from two cards.
-  function askWorkStance(otherName) {
-    const dialog = $('#stance-dialog');
-    $('#stance-dialog-sub').textContent =
-      'You picked work. How do you and ' + otherName + ' actually sit?';
-
-    for (const button of dialog.querySelectorAll('.mode-option')) {
-      const stance = Copy.WORK_STANCES[button.dataset.stance];
-      if (!stance) continue;
-      button.querySelector('.stance-option').textContent = Copy.stanceText(stance.option, otherName);
-      button.querySelector('.stance-blurb').textContent = stance.blurb;
-    }
-
-    return new Promise(resolve => {
-      let answer = null;
-      const choose = event => {
-        answer = event.currentTarget.dataset.stance;
-        dialog.close();
-      };
-      const buttons = dialog.querySelectorAll('.mode-option');
-      for (const button of buttons) button.addEventListener('click', choose);
-
-      const cancel = () => dialog.close();
-      $('#stance-cancel').addEventListener('click', cancel);
-
-      dialog.addEventListener('close', () => {
-        for (const button of buttons) button.removeEventListener('click', choose);
-        $('#stance-cancel').removeEventListener('click', cancel);
-        resolve(answer);
-      }, { once: true });
-
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-      else { dialog.setAttribute('open', ''); buttons[0].focus(); }
-    });
-  }
-
   async function runMatch(rawText) {
     if (!state.profile) return false;
     const other = await Card.decodeCard(Card.extractPayload(rawText));
     if (!other) return false;
 
-    const mode = await askMode(other.name);
-    // Backing out is not a failure to read the code — the caller must not fall
-    // through to "no code found", so this still returns true. And the scan view
-    // is shown as it stands rather than re-rendered: re-rendering clears the
-    // paste box, so cancelling would throw away the link they just pasted and
-    // make them find it again to pick a different basis.
-    if (!mode) { show('scan'); return true; }
-
-    // Backing out of the second question returns to the scan page the same way
-    // backing out of the first does, rather than quietly assuming "colleagues"
-    // — a wrong guess here produces a report aimed at the wrong person.
-    let stance = null;
-    if (mode === 'professional') {
-      stance = await askWorkStance(other.name);
-      if (!stance) { show('scan'); return true; }
-    }
-
-    // Free: no payment to ask for, so the comparison starts as soon as both
-    // questions are answered.
+    // Psyche Sync is between friends, and only that: no basis to pick, so it
+    // starts at once. Free, so there is no payment to ask for either.
+    const mode = 'platonic';
+    const stance = null;
     const auth = {};
 
-    $('#working-title').textContent = modelName() + ' is comparing you';
-    $('#working-note').textContent =
-      MODE_LABELS[mode] + ' compatibility. Two profile cards were sent — nothing else.';
+    $('#working-title').textContent = modelName() + ' is syncing you';
+    $('#working-note').textContent = 'Psyche Sync. Two profile cards were sent — nothing else.';
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
@@ -8921,7 +8836,9 @@
 
   function renderReport(report, otherName, when) {
     const myName = state.profile ? state.profile.card.name : 'You';
-    const mode = MODE_LABELS[report.mode] ? report.mode : 'romantic';
+    // Friends unless the report says otherwise: one saved before Psyche Sync
+    // was friends-only keeps the basis it was run on.
+    const mode = MODE_LABELS[report.mode] ? report.mode : 'platonic';
     const stance = report.stance;
     // The pill says which question was answered, and for a work run the basis
     // alone does not: "Professional / work" reads the same whether the reader
@@ -8931,9 +8848,10 @@
 
     // The title and the basis pills live in the static header rather than in
     // the rendered body.
-    $('#report-title').textContent = myName + ' & ' + otherName;
+    // First names, as everywhere a friend is named.
+    $('#report-title').textContent = (firstName(myName) || myName) + ' & ' + (firstName(otherName) || otherName);
     $('#report-sub').innerHTML =
-      '<span class="pill pill-clear">' + esc(MODE_LABELS[mode]) + '</span>' +
+      '<span class="pill pill-clear">' + esc(mode === 'platonic' ? TEXT.syncName : MODE_LABELS[mode]) + '</span>' +
       (stanceLabel ? ' <span class="pill pill-clear">' + esc(stanceLabel) + '</span>' : '');
     // Kept for the PDF, which is built from whatever was last rendered.
     state.lastReport = { report, otherName, myName, mode, stance, when };
@@ -8986,7 +8904,8 @@
     const shared = (report.sharedGround || []).filter(Boolean);
     return '<div class="card score-card score-single compat-lead tier-' + tier + '">' +
       '<div class="ring" data-pct="' + value + '"><span>' + value + '</span></div>' +
-      '<div>' + (report.band ? '<p class="band compat-band">' + esc(report.band) + '</p>' : '') +
+      // "78% in sync", the way people say it, then the band in words.
+      '<div><p class="band compat-band">' + esc(TEXT.syncPercent(value) + (report.band ? ' · ' + report.band : '')) + '</p>' +
       '<p class="compat-verdict">' + esc(report.verdict) + '</p>' +
       (shared.length ? '<div class="compat-common"><h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(shared) + '</div>' : '') +
       '</div></div>';
@@ -9063,14 +8982,19 @@
       if (!incoming) return false;
       history.replaceState(null, '', location.pathname + location.search);
     }
-    if (state.profile && await runMatch(incoming)) return true;
-
     const card = await Card.decodeCard(incoming);
     if (!card) {
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
     store.write(KEYS.invite, Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null));
+    // A reader who already has a card lands on it, with the sync one tap
+    // away; one who does not sees the friend's card and how to make theirs.
+    if (state.profile) {
+      renderProfile();
+      show('profile');
+      return true;
+    }
     show('welcome');
     await refreshInvite();
     return true;
@@ -9129,7 +9053,6 @@
   // The welcome page for a friend's link: their card itself, drawn the way it
   // is on their own screen, beside why to make one — the comparison with them
   // waits on it. Tapping the card opens it full screen, part by part.
-  const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
   let inviteDrawn = '';
   let inviteReport = null;
   async function refreshInvite() {
@@ -9192,6 +9115,31 @@
   }
 
   // To the steps for requesting the export, on this same page.
+  // On the reader's own report, once they have a card: the friend whose link
+  // brought them, and the sync with that friend, run only when they tap it.
+  function refreshSyncInvite() {
+    const box = $('#sync-invite');
+    if (!box) return;
+    const invite = state.profile ? pendingInvite() : null;
+    box.hidden = !invite;
+    if (!invite) return;
+    const name = firstName(invite.name);
+    $('#sync-invite-title').textContent = TEXT.syncInviteTitle(name);
+    $('#sync-invite-sub').textContent = TEXT.syncInviteSub(name);
+    $('#sync-invite-go').textContent = TEXT.syncInviteGo(name);
+  }
+  $('#sync-invite-go').addEventListener('click', async () => {
+    const invite = pendingInvite();
+    if (!invite || !state.profile) { refreshSyncInvite(); return; }
+    // Spent once the sync starts; a failure leaves it for another try.
+    store.remove(KEYS.invite);
+    refreshSyncInvite();
+    if (!(await runMatch(invite.payload))) {
+      store.write(KEYS.invite, invite);
+      refreshSyncInvite();
+    }
+  });
+
   $('#invite-guide').addEventListener('click', () => {
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });

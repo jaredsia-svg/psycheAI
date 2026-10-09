@@ -1032,13 +1032,10 @@ async function handleCompatibility(request, response) {
   // promo code sent by an older page is ignored: nothing here is sold.
   const engine = requireEngine(response);
   if (!engine) return;
-  // Resolved once, up here, because they are part of the cache key: the same
-  // two cards read as colleagues and read as partners are different reports,
-  // and keying on the pair alone would serve one where the other was asked
-  // for. An unknown mode or stance falls back rather than 400ing — the basis
-  // is a presentation choice, not something worth failing a call over.
+  // Every Psyche Sync is between friends now: whatever basis an older page
+  // sends resolves to that one, and is part of the cache key as before.
   const mode = prompts.resolveMode(body.mode);
-  const stance = prompts.resolveStance(body.stance);
+  const stance = null;
   const cacheKey = { a, b, mode, stance };
 
   const background = wantsBackground(body);
