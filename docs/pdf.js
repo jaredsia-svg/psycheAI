@@ -3191,158 +3191,148 @@
   }
 
   /**
-   * The score on the cover: a ring filled clockwise from the top to the score,
-   * the number in its middle. Drawn as a filled wedge with the middle punched
-   * back out in the band's colour, which needs nothing but fills.
+   * The score in the band: a white disc with a ring filled clockwise from
+   * the top to the score, the number in its middle — the same disc the
+   * premium report's cover sets its confidence in.
    */
-  function scoreRing(doc, cx, cy, value, behind) {
-    const r = 44;
-    const hole = 34;
-    doc.circle(cx, cy, r, [0.69, 0.53, 0.80]);
+  function syncRing(doc, cx, cy, value) {
+    doc.circle(cx, cy, 47, WHITE);
+    doc.circle(cx, cy, 40, mix(ACCENT, WHITE, 0.82));
     if (value > 0) {
       const steps = Math.max(2, Math.round(72 * value / 100));
       const ops = [num(cx) + ' ' + num(PAGE.height - cy) + ' m'];
       for (let i = 0; i <= steps; i++) {
         const angle = -Math.PI / 2 + (Math.PI * 2 * value / 100) * i / steps;
-        ops.push(num(cx + r * Math.cos(angle)) + ' ' + num(PAGE.height - (cy + r * Math.sin(angle))) + ' l');
+        ops.push(num(cx + 40 * Math.cos(angle)) + ' ' + num(PAGE.height - (cy + 40 * Math.sin(angle))) + ' l');
       }
-      doc.setFill(WHITE);
+      doc.setFill(ACCENT);
       for (const op of ops) doc.op(op);
       doc.op('h f');
     }
-    doc.circle(cx, cy, hole, behind);
-    const text = toWinAnsi(String(value));
-    const style = { size: 25, bold: true, color: WHITE };
-    doc.draw(text, cx - measure(text, 25, true) / 2, cy + 6, style);
-    const of = toWinAnsi('% sync');
-    doc.draw(of, cx - measure(of, 7.5, true) / 2, cy + 17, { size: 7.5, bold: true, color: WHITE });
+    doc.circle(cx, cy, 31, WHITE);
+    const text = toWinAnsi(String(value) + '%');
+    doc.draw(text, cx - measure(text, 21, true) / 2, cy + 4, { size: 21, bold: true, color: ACCENT });
+    const of = toWinAnsi('in sync');
+    doc.draw(of, cx - measure(of, 7, true) / 2, cy + 15, { size: 7, bold: true, color: SOFT });
   }
 
   /**
-   * The cover: the pair, the basis, the band in words and the score as a ring,
-   * all in the band — then the verdict under it as the lead, so the first page
-   * says the answer before it shows the working.
+   * A Psyche Sync on one page, in the premium report's design: the plum band
+   * with the pair and the score, the verdict in the gradient "one line" box,
+   * what they share, how it plays out side by side, and how to relate to
+   * each other. Laid out at the most generous of three settings
+   * that keeps it to one page; the last drops the evidence lines.
    */
-  function compatCover(doc, report, meta) {
-    doc.newPage({ bare: true, top: 0 });
-    doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
-    const bandHeight = 196;
-    doc.rect(0, 0, PAGE.width, bandHeight, ACCENT);
-    doc.setFill(ACCENT_2);
-    doc.op('0 ' + num(PAGE.height - bandHeight) + ' m ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight) + ' l ' +
-      num(PAGE.width) + ' ' + num(PAGE.height - bandHeight + 34) + ' l 0 ' +
-      num(PAGE.height - bandHeight) + ' l f');
-
-    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 42, size: 19, color: WHITE });
-    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 57, { size: 13, bold: true, color: WHITE });
-
-    const score = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
-    const ringX = PAGE.width - MARGIN - 48;
-    scoreRing(doc, ringX, 104, score, ACCENT);
-
-    // Names and the basis, kept clear of the ring.
-    const textWidth = ringX - 64 - MARGIN;
-    const title = meta.a + ' & ' + meta.b;
-    const titleStyle = { size: 25, bold: true, color: WHITE };
-    let y = 96;
-    for (const line of wrap(toWinAnsi(title), textWidth, titleStyle).slice(0, 2)) {
-      doc.draw(line, MARGIN, y, titleStyle);
-      y += 29;
-    }
-    // The basis, and for a work run the side of it, because "Professional /
-    // work" alone does not say whether the reader manages this person.
-    const basis = [meta.modeLabel, meta.stanceLabel].filter(Boolean).join('  ·  ');
-    if (basis) {
-      const style = { size: 11, italic: true, color: WHITE };
-      for (const line of wrap(toWinAnsi(basis), textWidth, style).slice(0, 2)) {
-        doc.draw(line, MARGIN, y + 1, style);
-        y += 14;
-      }
-    }
-    if (report.band) {
-      const band = toWinAnsi(String(report.band));
-      const w = measure(band, 10, true) + 20;
-      doc.roundRect(MARGIN, y + 8, w, 20, 10, WHITE);
-      doc.draw(band, MARGIN + 10, y + 22, { size: 10, bold: true, color: ACCENT });
-    }
-    doc.draw(toWinAnsi('Generated ' + (meta.date || '')), MARGIN, bandHeight + 22, { size: 8.4, color: SOFT });
-    doc.y = bandHeight + 34;
-  }
-
-  /**
-   * A comparison as a PDF, in the same order as the report page: the answer
-   * (verdict and what they share), what it looks like (what works, what will
-   * rub, side by side), then what to do about it.
-   * Each block is kept whole on a page. Every heading comes from copy.js, as
-   * the profile's do.
-   */
+  const SYNC_FITS = [
+    { body: 9.2, lead: 12.6, title: 10.2, ev: true, gap: 8 },
+    { body: 8.6, lead: 11.6, title: 9.8, ev: true, gap: 6 },
+    { body: 8.3, lead: 11, title: 9.4, ev: false, gap: 5 },
+  ];
   function buildCompatibility(report, meta) {
     bindCopy();
     const source = report || {};
     const stamp = meta || {};
     const a = stamp.a || 'You';
     const b = stamp.b || 'Them';
+    let doc = null;
+    for (const fit of SYNC_FITS) {
+      doc = laySync(source, stamp, a, b, fit);
+      if (doc.pages.length === 1) break;
+    }
+    return serialise(doc, a + ' & ' + b + ' — Psyche Sync', 'Psyche Sync from two PsycheAI profiles');
+  }
+
+  function laySync(source, stamp, a, b, fit) {
     const [labelA, labelB] = pairLabels(a, b);
     const doc = new Doc();
     const out = new Report(doc, { name: a + ' & ' + b });
-    // Every section here opens with a block kept whole with its title (keep),
-    // so the title's own reserve only has to cover the title: the profile's
-    // larger one left half of page one empty under the common ground.
-    out.titleReserve = 120;
+    doc.newPage({ bare: true, top: 0 });
+    doc.rect(0, 0, PAGE.width, PAGE.height, PAPER);
 
-    compatCover(doc, source, stamp);
+    // ---- the band: the pair, when, and the score ----
+    const bandH = 138;
+    doc.gradientBox(0, 0, PAGE.width, bandH, 0, BAND_FROM, ACCENT, () => {
+      doc.circle(PAGE.width - 30, 14, 104, mix(ACCENT, WHITE, 0.1));
+      doc.circle(36, bandH + 26, 62, mix(BAND_FROM, WHITE, 0.07));
+    });
+    doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 32, size: 19, color: WHITE });
+    doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 47, { size: 13, bold: true, color: WHITE });
+    const score = Math.max(0, Math.min(100, Math.round(Number(source.score) || 0)));
+    const ringX = PAGE.width - MARGIN - 44;
+    syncRing(doc, ringX, 78, score);
+    const titleStyle = { size: 26, bold: true, color: WHITE };
+    let y = 86;
+    for (const line of wrap(toWinAnsi(a + ' & ' + b), ringX - 70 - MARGIN, titleStyle).slice(0, 2)) {
+      doc.draw(line, MARGIN, y, titleStyle);
+      y += 28;
+    }
+    const line = [TEXT.syncName, source.band, 'Generated ' + (stamp.date || '')].filter(Boolean).join('  ·  ');
+    doc.draw(toWinAnsi(line), MARGIN, y - 8, { size: 8.8, color: mix(WHITE, ACCENT, 0.18) });
+    doc.y = bandH + 16;
 
-    // 1. The answer: the verdict as the lead, and what they share.
+    // ---- the verdict, in the gradient box ----
     if (source.verdict) {
-      out.panel([{ text: source.verdict, style: { size: 11.2, color: INK }, leading: 16 }], { fill: WASH, bar: ACCENT });
-    }
-    if ((source.sharedGround || []).length) {
-      out.space(4);
-      out.h3(TEXT.compatCommon);
-      out.tags(source.sharedGround);
+      const style = { size: 11.2, bold: true, color: WHITE };
+      const lines = wrap(toWinAnsi(source.verdict), COLUMN - 44, style);
+      const h = 20 + 12 + lines.length * 15 + 12;
+      const top = doc.y;
+      doc.gradientBox(MARGIN, top, COLUMN, h, 13, ACCENT, ACCENT_2, () => {
+        doc.circle(MARGIN + COLUMN - 20, top + 4, 40, mix(ACCENT_2, WHITE, 0.15));
+      });
+      doc.draw(toWinAnsi('THE VERDICT'), MARGIN + 22, top + 21, { size: 7, bold: true, color: mix(WHITE, ACCENT, 0.15), tracking: 1.6 });
+      lines.forEach((l, i) => doc.draw(l, MARGIN + 22, top + 40 + i * 15, style));
+      doc.y = top + h + fit.gap + 2;
     }
 
-    // 2. What it looks like: what works and what will rub, side by side, each
-    // point with its evidence in small type under it.
+    const shared = (source.sharedGround || []).filter(Boolean);
+
+    // ---- what they share ----
+    if (shared.length) {
+      out.eyebrow(TEXT.compatCommon, ACCENT);
+      out.tags(shared, { small: true, color: ACCENT, fill: mix(ACCENT, WHITE, 0.88) });
+    }
+
+    // A section head, smaller than the report's: the same rule under it.
+    const heading = text => {
+      doc.y += fit.gap;
+      doc.draw(toWinAnsi(text), MARGIN, doc.y + 13, { size: 13.5, bold: true, color: INK });
+      doc.y += 20;
+      doc.hairline(doc.y, MARGIN, MARGIN + 46, ACCENT);
+      doc.hairline(doc.y, MARGIN + 46, PAGE.width - MARGIN, LINE);
+      doc.y += 8;
+    };
+    const titleStyle2 = { size: fit.title, bold: true, color: INK };
+    const bodyStyle = { size: fit.body, color: INK };
     const pointRows = list => (list || []).filter(item => item && item.title).flatMap((item, i) => [
-      { text: item.title, style: T_TITLE, leading: 14, before: i ? 10 : 0 },
-      item.detail && { text: item.detail, style: T_BODY, leading: 13.2, before: 2 },
-      (item.evidence || []).filter(Boolean).length &&
-        { text: (item.evidence || []).filter(Boolean).join('  ·  '), style: { size: 7.6, italic: true, color: SOFT }, leading: 10.4, before: 3 },
+      { text: item.title, style: titleStyle2, leading: fit.title + 3, before: i ? fit.gap : 0 },
+      item.detail && { text: item.detail, style: bodyStyle, leading: fit.lead, before: 1.5 },
+      fit.ev && (item.evidence || []).filter(Boolean).length &&
+        { text: (item.evidence || []).filter(Boolean).join('  ·  '), style: { size: 7.2, italic: true, color: SOFT }, leading: 9.6, before: 2 },
     ]).filter(Boolean);
     if ((source.strengths || []).length || (source.frictions || []).length) {
-      out.keep(() => {
-        out.sectionTitle(TEXT.compatHowItPlays);
-        out.pairedPanels(
-          { title: TEXT.compatWorks, color: GOOD, fill: GOOD_WASH, rows: pointRows(source.strengths) },
-          { title: TEXT.compatRubs, color: WARN, fill: WARN_WASH, rows: pointRows(source.frictions) },
-          // Whole: split, one side runs on alone overleaf beside an empty column.
-          { whole: true });
-      });
+      heading(TEXT.compatHowItPlays);
+      out.pairedPanels(
+        { title: TEXT.compatWorks, color: GOOD, fill: GOOD_WASH, rows: pointRows(source.strengths) },
+        { title: TEXT.compatRubs, color: WARN, fill: WARN_WASH, rows: pointRows(source.frictions) },
+        { whole: true });
     }
 
-    // 3. What to do about it: one column each, then what they do together.
     const bullets = (list, color) => (list || []).filter(Boolean)
-      .map((line, i) => ({ text: line, style: T_BODY, leading: 13.4, bullet: color, before: i ? 5 : 0 }));
+      .map((text, i) => ({ text, style: bodyStyle, leading: fit.lead, bullet: color, before: i ? 3 : 0 }));
     const play = source.howToPartner || {};
-    out.keep(() => {
-      out.sectionTitle(stamp.heading || '');
+    if ((play.forA || []).length || (play.forB || []).length) {
+      heading(stamp.heading || '');
       out.pairedPanels(
         { title: TEXT.compatFor + labelA, color: ACCENT, fill: WHITE, rows: bullets(play.forA, ACCENT) },
         { title: TEXT.compatFor + labelB, color: ACCENT_2, fill: WHITE, rows: bullets(play.forB, ACCENT_2) },
         { whole: true });
-    });
-    if ((play.together || []).length) {
-      out.panel(bullets(play.together, ACCENT), { label: TEXT.compatBoth, fill: WASH, bar: ACCENT });
     }
-
-    out.space(6);
-    if (source.caveats) out.fineprint(source.caveats);
-    out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
-
-    return serialise(doc, a + ' & ' + b + ' — Psyche Sync',
-      'Psyche Sync from two PsycheAI profiles');
+    if ((play.together || []).length) {
+      out.panel(bullets(play.together, ACCENT), { label: TEXT.compatBoth, fill: WASH, bar: ACCENT, whole: true });
+    }
+    const foot = [source.caveats, 'Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.'].filter(Boolean).join(' ');
+    out.body(foot, { size: 7.6, color: SOFT, leading: 10.4 });
+    return doc;
   }
 
   function serialise(doc, docTitle, subject) {

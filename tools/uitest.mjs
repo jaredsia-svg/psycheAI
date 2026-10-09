@@ -4050,9 +4050,9 @@ try {
   check('and under it one locked block offering the full report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only "Your link" right under the card, "Beyond your card" and the card that holds the controls',
-    freeState.sections.length === 3 && /referral-card/.test(freeState.sections[0]) && /beyond-card/.test(freeState.sections[1]) &&
-      /confidence-card/.test(freeState.sections[2]),
+  check('no written section is on the page — only "Beyond your card", the card that holds the controls, then "Your link"',
+    freeState.sections.length === 3 && /beyond-card/.test(freeState.sections[0]) && /confidence-card/.test(freeState.sections[1]) &&
+      /referral-card/.test(freeState.sections[2]),
     JSON.stringify(freeState.sections));
   // "Beyond your card": the card's other lines, between the card and the
   // unlock box, read from the card the link carries.
@@ -5137,7 +5137,9 @@ try {
     const marked = async () => (await page.locator('.nav-links a.is-current').allInnerTexts()).map(t => t.trim()).join('|');
     const pill = () => page.evaluate(() => {
       const a = document.querySelector('.nav-links a.is-current');
-      return Boolean(a) && getComputedStyle(a, '::before').content !== 'none' && a.getAttribute('aria-current') === 'page';
+      // Bold and purple, no pill behind it.
+      return Boolean(a) && Number(getComputedStyle(a).fontWeight) >= 700 && getComputedStyle(a, '::before').content === 'none' &&
+        getComputedStyle(a).backgroundColor === 'rgba(0, 0, 0, 0)' && a.getAttribute('aria-current') === 'page';
     });
     await page.click('#compat-dialog-close').catch(() => {});
     await page.click('[data-nav="scan"]');
@@ -9604,8 +9606,8 @@ try {
     compatDownload.suggestedFilename());
   check('the comparison is a real PDF', compatText.startsWith('%PDF-1.') &&
     compatText.trimEnd().endsWith('%%EOF'));
-  check('the comparison runs to more than one page',
-    (compatText.match(/\/Type \/Page[^s]/g) || []).length >= 2,
+  check('the sync fits on one page, in the premium report\'s design: the plum band and the verdict box',
+    (compatText.match(/\/Type \/Page[^s]/g) || []).length === 1 && compatText.includes('(THE VERDICT)') && compatText.includes('(in sync)'),
     String((compatText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
   check('the comparison PDF is titled for the pair, not for one person',
     /\/Title \(Ale\xe7 & Jordan/.test(compatText), (/\/Title \(([^)]*)/.exec(compatText) || [])[1]);
@@ -9646,16 +9648,15 @@ try {
   const actionTiles = await page.evaluate(() => [...document.querySelectorAll('#view-report .compat-actions > *')].map(b => ({
     id: b.id, cls: b.className, icon: Boolean(b.querySelector('svg')), label: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
   })));
-  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Close',
+  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share PDF, Close',
     actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
       actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
-      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Close' &&
+      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share PDF|Close' &&
       Math.max(...actionTiles.map(t => t.top)) - Math.min(...actionTiles.map(t => t.top)) <= 2, JSON.stringify(actionTiles));
   check('and there is no "Check someone else" any more',
     !/Check someone else|scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
-  // The result as a story image: drawn at 1080 x 1920, carrying the score,
-  // both names and the address. Read off the canvas the button would share.
-  const compatImage = await page.evaluate(async () => {
+  // Share PDF: the same PDF Download PDF saves, with the one share message.
+  const compatShared = await page.evaluate(async () => {
     window.__storyShare = null;
     navigator.canShare = () => true;
     navigator.share = data => { window.__storyShare = data; return Promise.resolve(); };
@@ -9663,14 +9664,15 @@ try {
     for (let i = 0; i < 50 && !window.__storyShare; i++) await new Promise(r => setTimeout(r, 100));
     const data = window.__storyShare;
     if (!data) return null;
-    const bitmap = await createImageBitmap(data.files[0]);
-    return { name: data.files[0].name, type: data.files[0].type, width: bitmap.width, height: bitmap.height, text: data.text };
+    const head = new TextDecoder('latin1').decode((await data.files[0].arrayBuffer()).slice(0, 8));
+    return { name: data.files[0].name, type: data.files[0].type, size: data.files[0].size, head, text: data.text };
   });
-  check('"Share result" hands the share sheet a 1080 x 1920 story image with the one share message carrying the address',
-    Boolean(compatImage) && compatImage.width === 1080 && compatImage.height === 1920 &&
-      compatImage.type === 'image/png' && /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(compatImage.text) &&
-      compatImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
-      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatImage).slice(0, 300));
+  check('"Share PDF" hands the share sheet the same PDF as Download PDF, with the one share message carrying the address',
+    Boolean(compatShared) && compatShared.type === 'application/pdf' && compatShared.head.startsWith('%PDF-1.') &&
+      compatShared.name === compatDownload.suggestedFilename() &&
+      /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(compatShared.text) &&
+      compatShared.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatShared).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
     await page.locator('#compat-return').isVisible() &&
       /Want Jordan to see it too\?/.test(await page.locator('#compat-return').innerText()) &&
@@ -10056,11 +10058,12 @@ try {
 
   // "What your link contains": about the link someone is about to send from
   // this page, not about the report itself.
-  check('the link-contents section is on the compatibility page',
-    (await page.locator('#link-contents .card-head h2').innerText()).trim() === 'What your link contains',
-    await page.locator('#link-contents .card-head h2').innerText());
-  check('it explains only the card is shared, not the full report',
-    /Only your card/i.test(await page.locator('#link-contents .card-sub').innerText()));
+  check('what the link contains sits inside My link, in the one box with Sync with a friend',
+    (await page.locator('#link-contents .link-fields-label').innerText()).trim().toLowerCase() === 'what your link contains' &&
+      (await page.locator('#view-scan .scan-actions.card .link-panel #link-contents').count()) === 1 &&
+      (await page.locator('#view-scan .scan-actions.card .paste-card').count()) === 1 &&
+      (await page.locator('#view-scan .scan-actions .card').count()) === 0,
+    await page.locator('#link-contents').innerText());
   check('it names the fields, not this reader\'s own name, tagline or interests',
     await page.evaluate(() => {
       const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
@@ -10068,13 +10071,10 @@ try {
       const fields = [...document.querySelectorAll('#link-contents .link-fields li')].map(li => li.textContent);
       return !text.includes(card.headline) && !(card.interests || []).some(i => text.includes(i)) &&
         ['MBTI', 'Big Five', 'Top motivators', 'Interests'].every(f => fields.includes(f)) && !/Enneagram/i.test(text) &&
-        /never your export, messages or report/.test(text);
+        !/never your export|Only your card/.test(text);
     }));
-  check('it sits below the link panel, not above it', await page.evaluate(() => {
-    const panel = document.querySelector('#view-scan .link-panel').getBoundingClientRect();
-    const contents = document.querySelector('#link-contents').getBoundingClientRect();
-    return contents.top >= panel.bottom;
-  }));
+  check('it sits under the Copy link button', await page.evaluate(() =>
+    document.querySelector('#link-contents').getBoundingClientRect().top >= document.querySelector('#copy-link-scan').getBoundingClientRect().bottom));
 
   // renderScan() overwrites #link-contents rather than appending to it; leaving
   // the page and coming back is the real way to prove a second render does
@@ -10085,7 +10085,7 @@ try {
   await page.click('[data-nav="scan"]');
   await page.waitForSelector('#view-scan:not([hidden])');
   check('the link-contents section does not stack up across repeat visits',
-    (await page.locator('#link-contents .card-head h2').count()) === 1);
+    (await page.locator('#link-contents .link-fields-label').count()) === 1);
 
   // ---- deep link ----
   // A friend's link opened by a reader who already has a card lands on that
@@ -10499,13 +10499,14 @@ try {
         shape.toggles === 6 && shape.inner === 0 &&
         shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open' &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .card-chevron').count()) === 1, JSON.stringify(shape));
-      check('structured: My Report is titled "Your Psyche Report", above the part nav in the left column',
+      check('structured: My Report is titled "Your Psyche Report", heading the part nav\'s own box, under the purple line',
         await sp.evaluate(() => {
-          const title = document.querySelector('#profile-body .report-page-title');
           const nav = document.querySelector('#profile-body .part-nav');
-          if (!title || !nav) return false;
-          const t = title.getBoundingClientRect(); const n = nav.getBoundingClientRect();
-          return title.textContent === 'Your Psyche Report' && t.bottom <= n.top + 1 && Math.abs(t.left - n.left) < 2;
+          const title = nav && nav.querySelector('.part-nav-title');
+          if (!title) return false;
+          const t = title.getBoundingClientRect(); const first = nav.querySelector('.part-nav-item').getBoundingClientRect();
+          return title.textContent === 'Your Psyche Report' && t.bottom <= first.top + 1 &&
+            /linear-gradient/.test(getComputedStyle(nav).backgroundImage) && !document.querySelector('#profile-body .report-page-title');
         }));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
@@ -10533,8 +10534,8 @@ try {
       });
       check('structured: My Psyche has no Download full report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
         hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
-      check('structured: Back lands on My Psyche: card, link, Beyond your card, Open My Report, Evidence and method — no parts',
-        hubShape.order === 'link,beyond,open,method' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: Back lands on My Psyche: card, Beyond your card, Open My Report, Evidence and method, then Your link — no parts',
+        hubShape.order === 'beyond,open,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
@@ -10561,11 +10562,19 @@ try {
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
         check('structured, on a phone: a full report opens with parts 00 to 05 shut',
           (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
-        check('structured, on a phone: "Your Psyche Report" sits above the row of part numbers',
-          await sp.evaluate(() => {
-            const t = document.querySelector('#profile-body .report-page-title').getBoundingClientRect();
-            const n = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
-            return t.bottom <= n.top + 1 && t.width > 300;
+        check('structured, on a phone: "Your Psyche Report" heads the same box as the row of part numbers, and slides under the header once stuck',
+          await sp.evaluate(async () => {
+            const nav = document.querySelector('#profile-body .part-nav');
+            const t = nav.querySelector('.part-nav-title').getBoundingClientRect();
+            const item = nav.querySelector('.part-nav-item').getBoundingClientRect();
+            const inBox = t.bottom <= item.top + 1 && t.width > 280;
+            window.scrollTo(0, 1200);
+            await new Promise(r => setTimeout(r, 100));
+            const header = document.querySelector('.nav').getBoundingClientRect().bottom;
+            const stuck = nav.querySelector('.part-nav-item').getBoundingClientRect().top >= header - 1 &&
+              nav.querySelector('.part-nav-title').getBoundingClientRect().bottom <= header + 2;
+            window.scrollTo(0, 0);
+            return inBox && stuck;
           }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
@@ -11021,7 +11030,9 @@ try {
           const header = document.querySelector('.nav').getBoundingClientRect();
           const items = [...nav.querySelectorAll('.part-nav-item')];
           const current = nav.querySelector('.part-nav-item.is-current');
-          return { height: Math.round(r.height), stuck: Math.abs(r.top - header.bottom) <= 2,
+          // The title row slides under the header once stuck: what shows is the row of parts.
+          return { height: Math.round(r.bottom - header.bottom), stuck: Math.abs(items[0].getBoundingClientRect().top - header.bottom) <= 8 &&
+            nav.querySelector('.part-nav-title').getBoundingClientRect().bottom <= header.bottom + 2,
             numerals: items.map(i => i.innerText.trim()).join(' '), lead: nav.querySelector('.part-nav-lead').innerText.trim(),
             current: current ? current.querySelector('.part-nav-label').textContent : '',
             leadFits: nav.querySelector('.part-nav-lead').getBoundingClientRect().right <= items[0].getBoundingClientRect().left + 1,
@@ -11736,7 +11747,12 @@ try {
           /Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report/.test(card.text) &&
           /Share your card or link above/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*bought the full report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
-          /0 of 3\s+cards, or 0 of 2 paid/.test(card.text) &&
+          !/Towards your next/.test(card.text) &&
+          await rp.evaluate(() => {
+            const nodes = [...document.querySelectorAll('#profile-body > *')];
+            const at = sel => nodes.findIndex(n => n.matches(sel));
+            return at('.referral-card') > at('.method-card, .free-method-card, .confidence-card') && at('.referral-card') === nodes.length - 1;
+          }) &&
           await rp.evaluate(() => !document.querySelector('#profile-body .referral-card .referral-copy, #profile-body .referral-card .referral-share') &&
             [...document.querySelectorAll('#profile-body .referral-card button')].every(b => b.closest('[hidden]'))),
         JSON.stringify(card));

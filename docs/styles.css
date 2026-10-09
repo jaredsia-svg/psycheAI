@@ -1287,9 +1287,16 @@ textarea { resize: vertical; }
 
 /* Checking someone's link and sending your own: side by side where there is
    room, each under an icon of its own. */
-.scan-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; margin-bottom: 1rem; }
-.scan-actions .card { margin: 0; display: flex; flex-direction: column; }
-.scan-actions .card.scan-action { padding: .9rem 1rem 1rem; }
+.scan-actions {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 0; margin-bottom: 1rem; padding: 0;
+}
+.scan-actions .scan-action { padding: 1rem 1.1rem 1.05rem; min-width: 0; }
+/* A hairline between the two halves: beside each other on a laptop, stacked on a phone. */
+.scan-actions .scan-action + .scan-action { border-left: 1px solid var(--line); }
+@media (max-width: 660px) {
+  .scan-actions .scan-action + .scan-action { border-left: 0; border-top: 1px solid var(--line); }
+}
+.link-fields-label { margin: .8rem 0 .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
 /* Each only as tall as it needs; the paste field and its button on one row. */
 .scan-actions { align-items: start; }
 .paste-card.scan-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: end; }
@@ -1314,8 +1321,8 @@ textarea { resize: vertical; }
 .match-row.is-waiting:hover { transform: none; box-shadow: none; }
 .match-row.is-waiting .btn { flex: none; min-width: 5.5rem; }
 /* What the link contains: the fields, named, as small chips. */
-.card .link-fields { list-style: none; margin: .2rem 0 .6rem; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
-.card .link-fields li { margin: 0; padding: .2rem .6rem; border-radius: 999px; font-size: .78rem;
+.card .link-fields { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.card .link-fields li { margin: 0; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem;
   background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
 /* A sync's result: a popout over My Syncs. */
@@ -1352,7 +1359,6 @@ textarea { resize: vertical; }
 .link-preview-headline { margin: .15rem 0 .6rem; font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
 .link-preview .tag-row { margin: 0; }
 .link-preview .tag { background: var(--bg-alt); }
-.link-contents-card .fineprint { margin: 0; }
 
 @media (max-width: 560px) {
   .scan-hero { padding: 1.4rem 1.2rem 1.3rem; border-radius: 20px; }
@@ -3061,7 +3067,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .psyche-card .pc-spanel, .psyche-card .pc-shero, .psyche-card .pc-sconf { transition: opacity .3s ease, box-shadow .3s ease, transform .3s ease; }
 .psyche-card.pc-guiding .pc-spanel:not(.pc-glow), .psyche-card.pc-guiding .pc-shero:not(.pc-glow),
 .psyche-card.pc-guiding .pc-sconf:not(.pc-glow) { opacity: .32; }
-.psyche-card .pc-glow { box-shadow: 0 0 0 6px var(--accent), 0 16px 40px rgba(123, 63, 160, .35); transform: scale(1.02); position: relative; z-index: 1; }
+.psyche-card .pc-glow { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 38%, transparent), 0 12px 32px rgba(123, 63, 160, .16); transform: scale(1.02); position: relative; z-index: 1; }
 .psyche-card .pc-sconf.pc-glow { border-radius: 999px; }
 
 .pc-straits { list-style: none; margin: 0; padding: 0; display: grid; gap: 13px; }
@@ -3380,11 +3386,18 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav-item.is-current .part-nav-num { opacity: .85; }
 [data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }
 
-/* My Report's title: a box of its own over the part nav, centred like "Your
-   Psyche Card" on a phone, and at the head of the left column on a laptop. */
-.report-page-title {
-  margin: 0 0 .7rem; padding: .7rem 1rem; text-align: center; font-size: 1.2rem; line-height: 1.25;
-  border-radius: 16px; border: 1px solid var(--line); background: var(--bg-alt); box-shadow: var(--shadow);
+/* My Report's title, at the head of the part nav's own white box, under the
+   same purple line the cards carry. Its row is a fixed height so a stuck nav
+   can slide it under the site's header and keep only the parts in view. */
+.part-nav.has-title {
+  --nav-title-h: 2.9rem;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)) top / 100% 3px no-repeat,
+    var(--bg-alt);
+  top: calc(3.4rem - var(--nav-title-h));
+}
+.part-nav-title {
+  flex: 1 1 100%; margin: 0; height: calc(var(--nav-title-h) - .4rem); line-height: calc(var(--nav-title-h) - .4rem);
+  padding: 0 .6rem; text-align: center; font-size: 1.12rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Every name in full: the nav wraps rather than scrolling one off the end.
    On a phone it stays where it is rather than following the reader down, so
@@ -3405,6 +3418,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
   .part-nav .part-nav-item { flex: none; width: 1.7rem; padding: .22rem 0; font-size: .7rem; text-align: center; }
   .part-nav .part-nav-num { margin: 0; opacity: 1; }
+  #profile-body .part-nav.has-title { flex-wrap: wrap; top: calc(var(--header-h, 3rem) - var(--nav-title-h)); }
 }
 /* On any laptop the nav stands down the left. Where the screen is too narrow
    to centre the report with the nav beside it, the report moves right
@@ -3414,11 +3428,8 @@ details.more[open] > summary::after { content: ' ▴'; }
     margin-left: max(248px, calc((100vw - var(--page-w)) / 2)); margin-right: auto;
     max-width: min(var(--page-w), calc(100vw - 248px));
   }
-  #profile-body .report-page-title {
-    position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
-    margin: 0; padding: .6rem .8rem; font-size: 1.05rem; text-align: left;
-  }
-  #profile-body:has(> .report-page-title) .part-nav { top: 10rem; }
+  #profile-body .part-nav.has-title { top: 6.5rem; }
+  #profile-body .part-nav-title { flex: none; height: auto; line-height: 1.3; padding: .55rem .7rem .45rem; text-align: left; font-size: 1.05rem; }
   #profile-body .part-nav {
     position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
@@ -3457,7 +3468,6 @@ details.more[open] > summary::after { content: ' ▴'; }
    page's three actions under it. */
 @media (min-width: 1000px) and (min-height: 520px) {
   #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - 6.5rem - 5.2rem); overflow-y: auto; }
-  #view-profile.profile-paid #profile-body:has(> .report-page-title) .part-nav { max-height: calc(100vh - 10rem - 5.2rem); }
   /* The page's three actions, under the nav: quiet icons in the nav's own
      box style, each named by a tooltip. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
@@ -3670,14 +3680,15 @@ details.more[open] > summary::after { content: ' ▴'; }
    ring at the very top of the card, over the actions if need be. */
 .cx-pop {
   position: absolute; left: 0; right: 0; top: 0; z-index: 3;
-  padding: .95rem 1rem 1rem; border-radius: 16px; border: 1px solid var(--accent);
-  background: var(--bg-alt); box-shadow: 0 16px 38px rgba(123, 63, 160, .18);
+  padding: .95rem 1rem 1rem; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  background: var(--bg-alt); box-shadow: 0 12px 30px rgba(123, 63, 160, .12);
   transition: transform .25s ease; animation: cx-in .2s ease both;
 }
 @keyframes cx-in { from { opacity: 0; } to { opacity: 1; } }
 .cx-arrow {
   position: absolute; left: -7px; top: 50%; width: 12px; height: 12px; margin-top: -6px; transform: rotate(45deg);
-  background: var(--bg-alt); border-left: 1px solid var(--accent); border-bottom: 1px solid var(--accent);
+  background: var(--bg-alt); border-left: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
 }
 .cx-close {
   position: absolute; top: .45rem; right: .45rem; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 0;
@@ -4010,7 +4021,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .78rem; color: var(--ink-soft);
 }
 .referral-stat .referral-n { font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
-.referral-progress { margin: .4rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 .referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin: .8rem 0 0; }
 .referral-ready-row[hidden] { display: none; }
 .referral-ready { font-weight: 800; flex: 1 1 100%; }
@@ -4114,16 +4124,7 @@ details.more[open] > summary::after { content: ' ▴'; }
   .nav-links .nav-long { display: none; }
   .nav-links .nav-short { display: inline; }
 }
-.nav-links a.is-current { position: relative; isolation: isolate; color: var(--accent); font-weight: 700; }
-/* A soft pill behind the current page, drawn outside the link's own box so
-   the row never moves. */
-.nav-links a.is-current::before {
-  content: ""; position: absolute; inset: -.3rem -.6rem; z-index: -1; border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 13%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
-}
-@media (max-width: 430px) {
-  .nav-links a.is-current::before { inset: -.25rem -.38rem; }
+.nav-links a.is-current { color: var(--accent); font-weight: 700; }
 }
 }
 

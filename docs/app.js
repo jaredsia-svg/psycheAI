@@ -923,10 +923,8 @@
   function linkContentsBlock(card) {
     if (!card) return '';
     // The fields, named; not this reader's own values.
-    return '<div class="card section-card link-contents-card">' +
-      sectionHead('🔗', esc(TEXT.linkContents), esc(TEXT.linkContentsSub)) +
-      '<ul class="link-fields">' + TEXT.linkContentsFields.map(field => '<li>' + esc(field) + '</li>').join('') + '</ul>' +
-      '<p class="fineprint">' + esc(TEXT.linkContentsFineprint) + '</p></div>';
+    return '<div class="link-contents-card"><p class="link-fields-label">' + esc(TEXT.linkContents) + '</p>' +
+      '<ul class="link-fields">' + TEXT.linkContentsFields.map(field => '<li>' + esc(field) + '</li>').join('') + '</ul></div>';
   }
 
   // ---------- mental wellness ----------
@@ -1757,7 +1755,6 @@
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
         '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
       '<ul class="referral-stats">' + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + stat('syncs', '🔄', R.syncs) + '</ul>' +
-      '<p class="referral-progress" aria-live="polite"></p>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
         '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
         '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
@@ -1814,8 +1811,6 @@
         const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
         if (n) n.textContent = String(Number(status[key]) || 0);
       }
-      card.querySelector('.referral-progress').textContent =
-        R.progress(status.towardCards || 0, status.perCards || 3, status.towardPaid || 0, status.perPaid || 2);
       const row = card.querySelector('.referral-ready-row');
       row.hidden = !(status.available > 0);
       card.querySelector('.referral-ready').textContent = status.available > 0 ? R.ready(status.available) : '';
@@ -1970,12 +1965,12 @@
    */
   function hubSectionsHtml(report) {
     const R = Copy.STRUCTURED.reportPage;
-    return referralCardHtml(true) + beyondCardHtml(state.profile && state.profile.card) +
+    return beyondCardHtml(state.profile && state.profile.card) +
       '<section class="card section-card open-report-card screen-only">' +
         '<div class="open-report-text"><h2>' + esc(R.title) + '</h2><p>' + esc(R.blurb) + '</p></div>' +
         '<button class="btn" type="button" data-nav="full" id="open-report">' + esc(R.open) + '</button>' +
       '</section>' +
-      methodCardHtml(report, false);
+      methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -3402,7 +3397,11 @@
     // Only a nav pinned across the top covers the part; one standing down the
     // side (the sample on a laptop) covers nothing.
     const navStyle = getComputedStyle(nav);
-    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
+    // A titled nav slides its title under the site's header once stuck: only the rest of it covers anything.
+    const title = nav.querySelector('.part-nav-title');
+    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') {
+      height += nav.getBoundingClientRect().height - (title ? title.getBoundingClientRect().height + 4 : 0) + 8;
+    }
     return Math.round(height);
   }
 
@@ -5604,13 +5603,14 @@
    * and sticky so a reader can move between them from anywhere in the
    * report. markStructured lights the one they are in.
    */
-  function partNavHtml(hasRoast) {
+  function partNavHtml(hasRoast, title) {
     const S = Copy.STRUCTURED;
     // Evidence and method and the roast sit inside part 05, the appendix.
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
     // On a phone it is one thin row under the site's header: the name of the
     // part being read, then the numerals 00 … 05.
-    return '<nav class="part-nav" aria-label="' + esc(S.partNavLabel) + '">' +
+    return '<nav class="part-nav' + (title ? ' has-title' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
+      (title ? '<h2 class="part-nav-title">' + esc(title) + '</h2>' : '') +
       '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
       (num ? '<span class="part-nav-num">' + num + '</span>' : '') + '<span class="part-nav-label">' + esc(title) + '</span></button>').join('') + '</nav>';
@@ -6277,10 +6277,8 @@
     const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
     const roast = sample ? null : report.bonus;
-    // My Report's title, over the part nav: above the left column on a
-    // laptop, and above the row of numerals on a phone.
-    let html = (options && options.page && !sample
-      ? '<h2 class="report-page-title">' + esc(S.reportPage.pageTitle) + '</h2>' : '') + partNavHtml(Boolean(roast));
+    // My Report's title heads the part nav, in its box.
+    let html = partNavHtml(Boolean(roast), options && options.page && !sample ? S.reportPage.pageTitle : '');
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -6468,10 +6466,12 @@
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
       // Their link right under their card, while the card is all they have.
-      return referralCardHtml(false) + beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
+      // Their link last, after Evidence and method.
+      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
-        (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
+        (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false)) +
+        referralCardHtml(false);
     }
     if (reportLayout() === 'structured') return structuredSectionsHtml(report, options);
     // Every section of the report body is a disclosure; sectionHead's other
@@ -7228,11 +7228,19 @@
   }
   $('#share-link').addEventListener('click', () => sendMyLink('#share-link-status'));
   $('#share-link-report').addEventListener('click', () => sendMyLink('#share-link-report-status'));
-  $('#share-compat-image').addEventListener('click', () => {
+  // Share PDF: the same PDF Download PDF saves, to the share sheet with the
+  // one share message; where files cannot be shared, it is downloaded.
+  $('#share-compat-image').addEventListener('click', async () => {
     const last = state.lastReport;
     if (!last) return;
-    shareStoryImage(compatImageCanvas(last), 'PsycheAI sync.png',
-      shareMessage(), '#compat-share-status');
+    let pdf;
+    try { pdf = compatPdf(last); } catch (error) { linkStatus('#compat-share-status', 'Could not build the PDF.'); return; }
+    const file = new File([pdf.blob], pdf.name, { type: 'application/pdf' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: shareMessage() }); return; }
+      catch (error) { if (error && error.name === 'AbortError') return; }
+    }
+    exportCompatPdf();
   });
   $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
   $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
@@ -7738,91 +7746,6 @@
     context.textAlign = 'center';
     context.textBaseline = 'top';
     context.fillText(TEXT.roastImageCredit, STORY_IMAGE_W / 2, panelTop + panelHeight + 48);
-    return canvas;
-  }
-
-  function compatImageCanvas(last) {
-    const { report, myName, otherName, mode } = last;
-    const { canvas, context } = storyCanvas(TEXT.compatImageFooter);
-    const value = Math.max(0, Math.min(100, Math.round(Number(report.score) || 0)));
-    context.fillStyle = STORY_PURPLE;
-    context.font = storyFont(700, 40);
-    context.textAlign = 'center';
-    context.textBaseline = 'top';
-    context.fillText(TEXT.compatImageLead(MODE_LABELS[mode] || ''), STORY_IMAGE_W / 2, 300);
-    context.fillStyle = STORY_INK;
-    const names = fitCanvasText(context, myName + ' & ' + otherName, { width: 920, height: 200 }, 88, 52, 850);
-    drawCanvasLines(context, names, STORY_IMAGE_W / 2, 370, 'center');
-
-    // The score ring: the same gradient as the page's, drawn as an arc.
-    const cx = STORY_IMAGE_W / 2;
-    const cy = 860;
-    const radius = 230;
-    context.lineCap = 'round';
-    context.lineWidth = 44;
-    context.strokeStyle = 'rgba(123, 63, 160, .12)';
-    context.beginPath();
-    context.arc(cx, cy, radius, 0, Math.PI * 2);
-    context.stroke();
-    if (value) {
-      const ring = context.createLinearGradient(cx - radius, cy - radius, cx + radius, cy + radius);
-      ring.addColorStop(0, '#ff7a45');
-      ring.addColorStop(0.5, '#e0457b');
-      ring.addColorStop(1, '#8a3fd0');
-      context.strokeStyle = ring;
-      context.beginPath();
-      context.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * value / 100);
-      context.stroke();
-    }
-    context.fillStyle = STORY_INK;
-    context.textBaseline = 'middle';
-    context.font = storyFont(850, 190);
-    context.fillText(value + '%', cx, cy - 10);
-    context.fillStyle = '#6b3f8f';
-    context.font = storyFont(700, 44);
-    context.fillText(TEXT.syncPercentUnit, cx, cy + 115);
-
-    let y = 1150;
-    if (report.band) {
-      context.fillStyle = STORY_INK;
-      const band = fitCanvasText(context, report.band, { width: 900, height: 140 }, 64, 44, 800);
-      y = drawCanvasLines(context, band, cx, y, 'center') + 40;
-    }
-    // What they have in common, as tags, wrapped across at most three rows.
-    const tagsToDraw = (report.sharedGround || []).slice(0, 4);
-    if (tagsToDraw.length) {
-      context.fillStyle = '#6b3f8f';
-      context.font = storyFont(700, 32);
-      context.textAlign = 'center';
-      context.textBaseline = 'top';
-      context.fillText(TEXT.compatImageShared.toUpperCase(), STORY_IMAGE_W / 2, y + 10);
-      y += 70;
-    }
-    context.font = storyFont(650, 34);
-    context.textBaseline = 'middle';
-    let rowItems = [];
-    const rows = [];
-    let rowWidth = 0;
-    for (const tag of tagsToDraw) {
-      const width = Math.min(900, context.measureText(tag).width + 60);
-      if (rowItems.length && rowWidth + 20 + width > 920) { rows.push([rowItems, rowWidth]); rowItems = []; rowWidth = 0; }
-      rowItems.push([tag, width]);
-      rowWidth += (rowItems.length > 1 ? 20 : 0) + width;
-    }
-    if (rowItems.length) rows.push([rowItems, rowWidth]);
-    for (const [items, width] of rows.slice(0, 3)) {
-      let x = (STORY_IMAGE_W - width) / 2;
-      for (const [tag, tagWidth] of items) {
-        context.fillStyle = 'rgba(123, 63, 160, .12)';
-        roundedRect(context, x, y, tagWidth, 76, 38);
-        context.fill();
-        context.fillStyle = STORY_PURPLE;
-        context.textAlign = 'center';
-        context.fillText(tag, x + tagWidth / 2, y + 38, tagWidth - 40);
-        x += tagWidth + 20;
-      }
-      y += 96;
-    }
     return canvas;
   }
 
@@ -8934,25 +8857,31 @@
    * renderReport fills — the report on screen is the one that gets written,
    * whether it arrived from a fresh scan or from the history table.
    */
+  /** The sync's PDF and its file name: what Download PDF saves and Share PDF shares. */
+  function compatPdf(last) {
+    const when = last.when ? new Date(last.when) : new Date();
+    const blob = window.PsychePDF.buildCompatibility(last.report, {
+      a: last.myName,
+      b: last.otherName,
+      modeLabel: last.mode === 'platonic' ? TEXT.syncName : MODE_LABELS[last.mode] || '',
+      stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
+        ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
+      heading: playbookHeading(last.mode, last.stance, last.otherName),
+      date: when.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
+      model: (state.profile && state.profile.model) || '',
+    });
+    const slug = value => String(value || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+    return { blob, name: 'psycheai-sync-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf' };
+  }
+
   function exportCompatPdf() {
     const last = state.lastReport;
     if (!last) return;
     try {
-      const when = last.when ? new Date(last.when) : new Date();
-      const blob = window.PsychePDF.buildCompatibility(last.report, {
-        a: last.myName,
-        b: last.otherName,
-        modeLabel: last.mode === 'platonic' ? TEXT.syncName : MODE_LABELS[last.mode] || '',
-        stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
-          ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
-        heading: playbookHeading(last.mode, last.stance, last.otherName),
-        date: when.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
-        model: (state.profile && state.profile.model) || '',
-      });
-      const slug = value => String(value || 'me').toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '');
+      const { blob, name } = compatPdf(last);
       const href = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.download = 'psycheai-sync-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf';
+      link.download = name;
       link.href = href;
       document.body.appendChild(link);
       link.click();

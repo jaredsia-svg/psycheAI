@@ -1970,11 +1970,12 @@ A sync from the waiting list opens in the same popout. Behind it, that friend ha
 the first card to the second. The popout closes with its ✕, **Close**, Esc, a click outside it, or
 Back.
 
-Below the list are two compact panels:
+Below the lists is one box with two halves, divided by a hairline:
 - **Sync with a friend:** paste a link, then **Sync**.
-- **My link:** **Copy link**.
+- **My link:** **Copy link**, then *What your link contains*: the fields as chips (first name,
+  character, tagline, MBTI, Big Five and so on), not the reader's own values.
 
-*What your link contains* names the fields as chips, not the reader's own values. In the result,
+In the result,
 the sections are *How to relate to each other* and *What to look out for*.
 
 Each sync spends only its own friend's link, and only once it lands. A sync with a link that carried
@@ -1983,7 +1984,7 @@ recent link the reader arrived on.
 
 ## Your link: its numbers, free reports, and gifts
 
-My Psyche has a **Your link** card right under the Psyche Card, free or paid. It opens with what
+My Psyche ends with a **Your link** card, below Evidence and method, free or paid. It opens with what
 the link earns: *Every 3 friends who make their card from your link, or 2 who buy the full report,
 earn you a free full report.* Then it says *Share your card or link above*. The card has no
 copy or share buttons of its own; the card's **Share Card** and **Copy link** carry the same link.
@@ -1993,7 +1994,7 @@ Three purple boxes give the counts:
 - **bought the full report**
 - **synced with you**
 
-A progress line sits under the boxes. Opens are still counted for the reader's link, but not shown.
+Opens are still counted for the reader's link, but not shown.
 Where each number comes from:
 - *opened it*: each browser's first open of someone's link that day, sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
@@ -2030,7 +2031,8 @@ an inset shadow drawn at the card's own scale. With a
 part explained, a tap anywhere outside the explanation puts it away, including a tap on another
 part. The tap returns to the card rather than opening the next explanation. This applies on the
 page (touch screens), full screen, and on the sample cards. With a pointer, hovering still moves
-the explanation from part to part.
+the explanation from part to part. The explanation's border and the ring around the part it explains are
+thin and faint: a 28% accent hairline, and a 3px ring at 38%.
 
 ## One share message
 
@@ -2042,7 +2044,7 @@ Every share and copy of the reader's link sends the same message, from `shareMes
 It is used by:
 - the card's **Share Card** (with the card image) and **Copy link**;
 - My Syncs' **Copy link**;
-- the roast and sync-result story images;
+- the roast's story image, and **Share PDF** on a sync's result;
 - the classic layout's Send my link.
 
 A gift link keeps its own message, since it is a different link. The free card's unlock button
@@ -2067,17 +2069,19 @@ A paid structured report is split into two pages, which are two modes of `#view-
 (`profilePage` in `docs/app.js` is `'hub'` or `'report'`).
 
 - **My Psyche** (`go('profile')`) has the Psyche Card and its guide at the top, then a fixed order:
-  - Your link
   - Beyond your card
   - an **Open My Report →** tile, which replaces the unlock box once paid
   - Evidence and method
+  - Your link
 
   A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
   *Download full report*; its footer is **Delete everything** with the run's note (model and
   date) right beside it.
-- **My Report** (`go('full')`, nav `#nav-full`) opens with the title **Your Psyche Report**
-  (`.report-page-title`): at the head of the left column on a laptop, and as a centred box above the
-  row of part numbers on a phone. Then come Parts 00 to 05. Part 05, the appendix (only the roast
+- **My Report** (`go('full')`, nav `#nav-full`) has its title, **Your Psyche Report**
+  (`.part-nav-title`), heading the part nav's own white box under the cards' purple line. On a laptop
+  it is the left column; on a phone it is the row of part numbers. Once the nav sticks on a phone,
+  the title row slides under the site's header and only the numbers stay in view: the nav's `top` is
+  the header's height less `--nav-title-h`. Then come Parts 00 to 05. Part 05, the appendix (only the roast
   now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
   row starts with **← Back** (`#report-back`), before Download, and returns to My Psyche.
 - **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) every
@@ -2088,8 +2092,8 @@ A paid structured report is split into two pages, which are two modes of `#view-
 - **No sync bar:** My Report never shows the "You + Jared" bar.
 
 The nav shows My Report only once the report is unlocked. The current page is marked the same way
-on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, a
-soft accent pill drawn by `::before` so the row never moves. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
+on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, in
+bold purple and nothing more. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
 lands on My Report at Part 00, with a note: *Your full report is ready.* A classic-layout report stays on
 one page.
@@ -5441,10 +5445,21 @@ a manager) still go to the model, as what matters most on that basis, rather tha
 sections.
 
 **The page's actions** are the paid report's card tools: three tiles, an icon over a short label —
-**Download PDF**, **Share result** and **Back to Compatibility** (to My Compatibility, where the report
-is listed). The download at the top and *Check someone else* are gone. The PDF has the same three blocks:
-the cover, the verdict and what they share, then how it plays out and the playbook. Every block is kept whole on a page, and two people with the same name are told
-apart as "(you)" and "(them)" (`pairLabels`).
+**Download PDF**, **Share PDF** and **Close**. The download at the top and *Check someone else* are gone.
+
+**The PDF is one page, in the premium report's design** (`buildCompatibility` / `laySync` in
+`docs/pdf.js`):
+- **The band:** the plum-to-purple band with the brand, *Emily & Jared* and *Psyche Sync · band ·
+  date*. The score sits in a white ring at its right.
+- **The verdict:** in the gradient box the report's *In one line* uses.
+- **What you share:** as chips.
+- **How it plays out:** *What works* and *What to look out for*, side by side, each point with its
+  evidence.
+- **How to relate to each other:** one column for each person, then *Both of you*.
+
+It is laid out at the most generous of three settings that stays on one page; the last drops the
+evidence lines. Two people with the same name are told apart as "(you)" and "(them)"
+(`pairLabels`).
 
 The prompt still says each thing once (a piece of evidence quoted once in the whole report; shared
 ground not the strengths retitled), never talks about the data, quotes a phrase only whole, and calls
@@ -5566,11 +5581,8 @@ The result is a score, an honest verdict, what works, what to look out for, and 
 person individually about the other. Paste their link again to compare on a different basis — the
 picker appears on every read, whether the link was tapped or pasted.
 
-**Share result** draws the result as a 1080×1920 story image — the basis, both names, the score ring,
-the band and up to four things they share, with *Test yours free · psycheai.io* at the foot — and
-hands it to the share sheet with the line *"We got 58/100 on PsycheAI. How compatible are you two?
-Free, no questionnaire: https://psycheai.io"*, or downloads it where there is no sheet. It is drawn
-on a canvas rather than captured from the page, so it is a poster, not a copy of a section.
+**Share PDF** hands the share sheet that same PDF, the file **Download PDF** saves, with the one
+share message. Where a browser cannot share files, it downloads it instead.
 
 ## Tests
 

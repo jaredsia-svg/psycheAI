@@ -563,8 +563,10 @@
        past syncs, each opening its result in a popout. -->
   <div id="scan-history"></div>
 
-  <div class="scan-actions">
-    <div class="card paste-card scan-action">
+  <!-- One box: syncing with a link that came some other way, and this
+       reader's own link with what it carries. -->
+  <div class="card scan-actions">
+    <div class="paste-card scan-action">
       <div class="scan-action-head"><span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
       <h2>Sync with a friend</h2></div>
       <p class="muted">Got their link another way? Paste it here.</p>
@@ -574,7 +576,7 @@
       <button class="btn" id="paste-go">Sync</button>
     </div>
 
-    <div class="link-panel card scan-action">
+    <div class="link-panel scan-action">
       <div class="scan-action-head"><span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
       <h2 class="link-title">My link</h2></div>
       <p class="muted">Send it to a friend so they can sync with you, and ask for theirs back.</p>
@@ -582,9 +584,9 @@
         <button class="btn" id="copy-link-scan" type="button">Copy link</button>
       </div>
       <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
+      <div id="link-contents"></div>
     </div>
   </div>
-  <div id="link-contents"></div>
 </section>
 
 <!-- ══════════════ report ══════════════ -->
@@ -619,7 +621,7 @@
        link; Back goes to My Syncs, where this report is listed. -->
   <div class="compat-actions no-print">
     <button class="cx-tool" id="export-compat-bottom" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span>Download PDF</span></button>
-    <button class="cx-tool" id="share-compat-image" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share result</span></button>
+    <button class="cx-tool" id="share-compat-image" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share PDF</span></button>
     <button class="cx-tool" id="compat-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Close</span></button>
   </div>
   <p class="fineprint link-status compat-share-status no-print" id="compat-share-status" role="status"></p>

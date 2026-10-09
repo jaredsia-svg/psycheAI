@@ -357,10 +357,8 @@
     wellnessCaveat: 'A read of patterns in how you use social media, not of your mental health – it is not a diagnosis and cannot see your circumstances. If anything here weighs on you, talk to a GP or a qualified professional.',
 
     linkContents: 'What your link contains',
-    linkContentsSub: 'Only your card, in short — what a friend’s sync is built from.',
     linkContentsFields: ['First name', 'Who you are most like', 'Tagline', 'MBTI', 'Big Five', 'Top motivators',
       'Patterns', 'Values & beliefs', 'Interests', 'How you show care', 'With friends & at work', 'Rhythm & energy'],
-    linkContentsFineprint: 'Short phrases only — never your export, messages or report.',
 
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
@@ -370,10 +368,6 @@
     roastImageLead: 'I let AI read my Instagram. It said:',
     roastImageCredit: 'My PsycheAI roast',
     roastImageFooter: 'Get roasted free · psycheai.io',
-    compatShareImage: 'Share result',
-    compatImageLead: () => 'Psyche Sync',
-    compatImageFooter: 'Test yours free · psycheai.io',
-    compatImageShared: 'What we share',
     storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
@@ -647,8 +641,6 @@
       cards: 'made a card',
       paid: 'bought the full report',
       syncs: 'synced with you',
-      progress: (cards, perCards, paid, perPaid) => 'Towards your next free full report: ' + cards + ' of ' + perCards +
-        ' cards, or ' + paid + ' of ' + perPaid + ' paid.',
       ready: n => n === 1 ? '🎉 1 free full report ready' : '🎉 ' + n + ' free full reports ready',
       copyShort: 'Copy',
       claim: 'Use it',
