@@ -3308,6 +3308,28 @@ details.more[open] > summary::after { content: ' ▴'; }
   #profile-body .part-nav-item:not(:has(.part-nav-num)) { padding-left: 2.45rem; }
 }
 
+/* The sample report on a laptop: the same nav down the left of the
+   popout, as the full report has it, beside the parts — the popout widened
+   by the column so the report keeps its width. The nav sticks to the top of
+   the popout's scrolling body as the report moves past it. */
+@media (min-width: 1000px) {
+  .sample-dialog:has(#sample-sections .part-nav) { width: min(62rem, calc(100vw - 3rem)); }
+  #sample-sections:has(> .part-nav) {
+    display: grid; grid-template-columns: 200px minmax(0, 1fr); column-gap: 1.1rem; align-items: start;
+  }
+  #sample-sections:has(> .part-nav) > * { grid-column: 2; }
+  #sample-sections > .part-nav {
+    grid-column: 1; grid-row: 1 / span 400; position: sticky; top: 0; z-index: 2;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
+    box-shadow: none; max-height: calc(min(88vh, 60rem) - 6rem); overflow-y: auto;
+  }
+  #sample-sections > .part-nav .part-nav-item {
+    display: flex; align-items: baseline; text-align: left; white-space: normal; border-radius: 10px; padding: .45rem .7rem;
+  }
+  #sample-sections > .part-nav .part-nav-num { flex: none; width: 1.75rem; margin-right: 0; }
+  #sample-sections > .part-nav .part-nav-item:not(:has(.part-nav-num)) { padding-left: 2.45rem; }
+}
+
 /* The full report on a wide, tall screen: the nav down the left column,
    scrolling on its own if a short screen cannot hold all of it, and the
    page's three actions under it. */

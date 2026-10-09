@@ -2993,7 +2993,10 @@
       const position = bar && getComputedStyle(bar).position;
       if (position === 'sticky' || position === 'fixed') height += bar.getBoundingClientRect().bottom;
     }
-    if (getComputedStyle(nav).position === 'sticky') height += nav.getBoundingClientRect().height + 8;
+    // Only a nav pinned across the top covers the part; one standing down the
+    // side (the sample on a laptop) covers nothing.
+    const navStyle = getComputedStyle(nav);
+    if (navStyle.position === 'sticky' && navStyle.flexDirection !== 'column') height += nav.getBoundingClientRect().height + 8;
     return Math.round(height);
   }
 

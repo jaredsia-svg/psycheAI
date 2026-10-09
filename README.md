@@ -1036,7 +1036,10 @@ report"* rather than implying the sample is partial. The free report is a whole 
 incomplete in order to sell the rest would be a lie about what somebody already has.
 
 **The sample report no longer shows the Psyche Card: it opens straight on 00 Overview and the part
-nav** (`#sample-card-section` stays hidden). The front page already shows sample cards of its own. The
+nav** (`#sample-card-section` stays hidden). On a laptop (1000px and wider) the nav stands down the left
+of the popout, as the full report's does, sticking to the top as the report scrolls past; the popout
+widens by that column (`#sample-sections` becomes a two-column grid), and `pinnedHeight()` no longer
+adds the nav's height to a jump when the nav is beside the report rather than across it. The front page already shows sample cards of its own. The
 card is still built (hidden) for the full-screen copy and the score check. What follows describes the
 earlier arrangement, kept for its reasoning.
 
