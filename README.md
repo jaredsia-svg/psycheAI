@@ -1995,6 +1995,29 @@ Gemini or Claude, finished reports are held in memory for four hours (`lib/resul
 holds what is listed under "Kept across deploys". **Change the pages when the code changes what it
 keeps.**
 
+## My Psyche and My Report
+
+A paid structured report is split into two pages, which are two modes of `#view-profile`
+(`profilePage` in `docs/app.js` is `'hub'` or `'report'`).
+
+- **My Psyche** (`go('profile')`) has the Psyche Card and its guide at the top, then a fixed order:
+  - Your link
+  - Beyond your card
+  - an **Open My Report →** tile, which replaces the unlock box once paid
+  - Evidence and method
+
+  A free reader sees the same page, with the unlock box in place of the tile.
+- **My Report** (`go('full')`, nav `#nav-full`) has Parts 00 to 04 and an appendix that holds only the
+  roast. It does not repeat the card at the top. The left bar's action row starts with **← Back**
+  (`#report-back`), placed before Download, and it returns to My Psyche. My Report keeps its parts
+  collapsed on a phone and open on a laptop, as before.
+
+The nav shows My Report only once the report is unlocked. The current page's link is marked
+`.is-current`. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
+gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
+lands on My Report at Part 00, with a note: *Your full report is ready.* A classic-layout report stays on
+one page.
+
 ## Counting what works, without counting anyone
 
 The site promises no trackers, no cookies and no third-party analytics, and that no one can see

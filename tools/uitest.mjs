@@ -6315,7 +6315,7 @@ try {
   // for that path.
   check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Download full report | Psyche Sync | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Back | Download full report | Psyche Sync | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -10397,7 +10397,13 @@ try {
         }, [sampleReport, samplePremium, explained]);
         await sp.reload({ waitUntil: 'load' });
         await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+        // A full report is on its own page, My Report: opened as a reader would.
+        if (explained && !hub) {
+          await sp.click('#nav-full');
+          await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+        }
       };
+      let hub = false;
       await seed(true);
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
@@ -10424,14 +10430,34 @@ try {
         (await sp.locator('#profile-body .appendix-part .card-chevron').count()) === 0, JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
-      check('structured: a full report ends on the reader\'s link card, whose free reports re-run or are gifted',
-        (await sp.locator('#profile-body .referral-card[data-paid="1"]').count()) === 1 &&
-          (await sp.locator('#profile-body .referral-card').innerText()).length > 0 &&
-          await sp.evaluate(() => {
-            const body = document.querySelector('#profile-body');
-            const link = body.querySelector('.referral-card');
-            return [...body.children].indexOf(link) === body.children.length - 1;
-          }));
+      check('structured: My Report is Parts 00-04 and the appendix only — no link card, no card, a Back button',
+        (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
+          await sp.locator('#report-back').isVisible());
+      // My Psyche, unlocked: the card, the link right under it, what it
+      // carries, the way into My Report, and Evidence and method.
+      await sp.click('#report-back');
+      await sp.waitForSelector('#profile-body .open-report-card', { timeout: 15000 });
+      const hubShape = await sp.evaluate(() => ({
+        order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
+          n.matches('.referral-card') ? 'link' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
+            n.matches('.method-card') ? 'method' : n.className).join(','),
+        card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
+        nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
+        current: (document.querySelector('.nav-links a.is-current .nav-long') || {}).textContent,
+      }));
+      check('structured: Back lands on My Psyche: card, link, Beyond your card, Open My Report, Evidence and method — no parts',
+        hubShape.order === 'link,beyond,open,method' && hubShape.card && hubShape.parts === 0 &&
+          hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
+      await sp.click('#open-report');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+      check('structured: Open My Report goes back to the parts, and the nav marks My Report',
+        (await sp.locator('.nav-links a.is-current .nav-long').textContent()) === 'My Report');
+      await sp.goBack();
+      await sp.waitForSelector('#profile-body .open-report-card', { timeout: 15000 });
+      check('structured: the phone\'s Back from My Report returns to My Psyche, not off the site',
+        await sp.locator('#view-profile').isVisible() && (await sp.locator('#profile-body .part-card').count()) === 0);
+      await sp.click('#nav-full');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
       // On a phone a full report opens with every part shut; the reader opens
@@ -10442,6 +10468,9 @@ try {
         await seed(true);
         const states = () => sp.$$eval('#profile-body .part-card', cards => cards.map(c =>
           c.getAttribute('data-part-card') + ':' + (c.classList.contains('is-collapsed') ? 'shut' : 'open')).join());
+        check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
+          (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
+          (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
         check('structured, on a phone: a full report opens with parts 00 to 04 shut',
           (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut', await states());
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
@@ -10457,6 +10486,10 @@ try {
         subs.some(t => /Schwartz/.test(t)) && !subs.some(t => /how clearly your data shows the cost/.test(t)) &&
         subs.length <= 7 && subs.every(t => t.length <= 100), JSON.stringify(subs));
 
+      // The card is on My Psyche.
+      await sp.click('#nav-profile');
+      await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
+      await sp.waitForTimeout(300);
       const cardFace = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card');
         const fits = Array.from(card.querySelectorAll('.pc-straits .pc-sbar-fill')).map(r => r.getAttribute('width'));
@@ -10492,6 +10525,9 @@ try {
           standFor: Array.from(card.querySelectorAll('.pc-schips')).map(row => row.children.length),
         };
       });
+      // And back to My Report for the parts.
+      await sp.click('#nav-full');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('structured: the summary card is one 1080 x 1920 story, and everything on it fits',
         cardFace.story && cardFace.fitsInside, JSON.stringify(cardFace));
       if (cardFace.character === 'Mulan') {
@@ -10598,10 +10634,15 @@ try {
         /Finishes things/.test(work) && /You finish what other people announce/.test(work) &&
         (await sp.locator('#profile-body .work-card[data-paid="careerAssessment"]').count()) === 1 &&
         (await sp.locator('#profile-body .paid-card[data-paid="careerAssessment"]').count()) === 1);
+      // Evidence and method is on My Psyche, beside the card it rates.
+      await sp.click('#nav-profile');
+      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const method = await sp.locator('#profile-body .method-card').textContent();
       check('structured: the method section is short: the score, what it read, the sources — no build or format rows',
         /Confidence/.test(method) && !/Sources read|Structured report, v1|Written by|Report format|Build/.test(method) &&
         (await sp.locator('#profile-body .method-card .method-list').count()) === 0, method.slice(0, 300));
+      await sp.click('#nav-full');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       const order = await sp.evaluate(() => {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
@@ -10613,8 +10654,10 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.appendix-part'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: after Part 4 comes part 05, the appendix: the method, then the roast last',
-        order[0] >= 0 && order[0] < order[1] && order[2] === 'method+roast' && order[3] === 0, order.join());
+      check('structured: after Part 4 comes part 05, the appendix, with the roast — Evidence and method is on My Psyche',
+        order[0] >= 0 && order[0] < order[1] && order[2] === 'roast' && order[3] === 0, order.join());
+      await sp.click('#nav-profile');
+      await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       // Without a digest on the device, "Read from" is the model's own summary.
       const basedOnChips = await sp.$$eval('#profile-body .method-card .trait-evidence .ev', nodes => nodes.map(n => n.textContent));
       check('structured: with no digest on the device, Read from falls back to the model\'s own summary',
@@ -10842,7 +10885,7 @@ try {
           const raw = getComputedStyle(card).backgroundColor;
           const scale = /^color\(/.test(raw) ? 255 : 1;
           const [r, g, b] = raw.replace(/^color\(srgb/, '').match(/\d*\.?\d+/g).map(n => Number(n) * scale);
-          const body = getComputedStyle(document.querySelector('#profile-body .method-card')).backgroundColor;
+          const body = getComputedStyle(document.querySelector('#profile-body .part-card')).backgroundColor;
           return { rgb: [r, g, b], grey: Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 150 && r < 240,
             same: getComputedStyle(card).backgroundColor === body };
         });
@@ -10886,33 +10929,34 @@ try {
           const buttons = [...row.querySelectorAll('.btn')].filter(b => getComputedStyle(b).display !== 'none');
           const boxes = buttons.map(b => b.getBoundingClientRect());
           const r = row.getBoundingClientRect();
-          return { two: buttons.length === 2, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
+          return { two: buttons.length === 3, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
             sameSize: boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1 && Math.abs(b.height - boxes[0].height) <= 1),
             across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
-            thinCompat: !document.querySelector('#profile-side .cx-compat') &&
-              Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="compat"]')),
+            thinCompat: !document.querySelector('#profile-side .cx-compat'),
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone a full report\'s two actions sit side by side across the screen, each an icon over its label, and Compatibility is one of the card\'s tools',
+        check('structured: on a phone My Report\'s three actions — Back, Download, Delete — sit side by side, each an icon over its label',
           phoneActions.two && phoneActions.oneRow && phoneActions.sameSize && phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Download full report|Delete everything' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Back|Download full report|Delete everything' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
-      // Part 00 begins with the Psyche Card: its nav entry goes to the top of the page.
+      // Part 00 is the top of My Report: its nav entry goes to the top of the page.
       for (const [label, width] of [['wide', 1440], ['phone', 390]]) {
         await sp.setViewportSize({ width, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 3000));
         await sp.waitForTimeout(250);
         await sp.click('#profile-body .part-nav-item[data-part-target="overview"]');
         await sp.waitForTimeout(900);
-        check('structured: on a ' + label + ' screen 00 goes to the top, where the Psyche Card is',
-          await sp.evaluate(() => window.scrollY < 5 && document.querySelector('#psyche-card-section').getBoundingClientRect().top > 0));
+        check('structured: on a ' + label + ' screen 00 goes to the top of My Report',
+          await sp.evaluate(() => window.scrollY < 5));
       }
-      // A full report opens on the Psyche Card and what it means, as a free
-      // one does — no thumbnail in the left column above the nav.
+      // My Psyche opens on the Psyche Card and what it means, as a free
+      // report does — no thumbnail in the left column above the nav.
       await sp.setViewportSize({ width: 1440, height: 900 });
+      await sp.click('#nav-profile');
+      await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
       await sp.evaluate(() => window.scrollTo(0, 0));
       await sp.waitForTimeout(300);
       const paidTop = await sp.evaluate(() => {
@@ -10920,17 +10964,22 @@ try {
         const side = document.querySelector('#profile-side');
         const s = side.getBoundingClientRect();
         const body = document.querySelector('#profile-body').getBoundingClientRect();
-        const overview = document.querySelector('#profile-body .part-card[data-part-card="overview"]').getBoundingClientRect();
+        const overview = document.querySelector('#profile-body > :first-child').getBoundingClientRect();
         return { notFixed: getComputedStyle(document.querySelector('#psyche-card-section')).position !== 'fixed',
           inColumn: card.left >= body.left - 1, beside: !side.hidden && s.left >= card.right - 1 && Math.abs(s.top - card.top) < 2,
           sameHeight: Math.abs(card.height - s.height) <= 2, aboveOverview: Math.max(card.bottom, s.bottom) <= overview.top,
           title: side.querySelector('.cx-home-title') && side.querySelector('.cx-home-title').textContent };
       });
-      check('structured: a full report opens on the Psyche Card and what it means, above 00 Overview, with no thumbnail by the nav',
+      check('structured: My Psyche, unlocked, opens on the Psyche Card and what it means, above everything else',
         Object.values(paidTop).every(Boolean) && paidTop.title === 'Your Psyche Card', JSON.stringify(paidTop));
       const paidIntro = await sp.evaluate(() => document.querySelector('#profile-side .cx-home-intro').textContent);
-      check('structured: a full report\'s panel points to the report below for the reasoning behind the card',
-        /Read the report below for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
+      check('structured: an unlocked reader\'s panel points to My Report for the reasoning behind the card',
+        /Open My Report for the full analysis and reasoning behind your Psyche Card\./.test(paidIntro) && !/Unlock/.test(paidIntro), paidIntro);
+      check('and Psyche Sync is one of the card\'s tools there',
+        await sp.evaluate(() => Boolean(document.querySelector('#profile-side .cx-tools .cx-tool[data-act="compat"]'))));
+      await sp.click('#nav-full');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
+      await sp.waitForTimeout(300);
       const actions = await sp.evaluate(() => {
         const row = document.querySelector('#view-profile .cta-row');
         const r = row.getBoundingClientRect();
@@ -10945,7 +10994,7 @@ try {
       });
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.tips === 'Download full report|Delete everything', JSON.stringify(actions));
+          actions.tips === 'Back to my Psyche Card|Download full report|Delete everything', JSON.stringify(actions));
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {
@@ -10958,7 +11007,7 @@ try {
           const top = document.querySelector('#profile-top').getBoundingClientRect();
           const body = document.querySelector('#profile-body').getBoundingClientRect();
           return { fixed: getComputedStyle(document.querySelector('#profile-body .part-nav')).position === 'fixed',
-            left: nav.left <= 20, clear: nav.right <= Math.min(top.left, body.left) - 12,
+            left: nav.left <= 20, clear: nav.right <= (top.width ? Math.min(top.left, body.left) : body.left) - 12,
             actions: getComputedStyle(document.querySelector('#view-profile .cta-row')).position === 'fixed' && row.top >= nav.bottom - 1 && row.bottom <= innerHeight,
             spill: document.documentElement.scrollWidth - document.documentElement.clientWidth };
         });
@@ -10967,15 +11016,15 @@ try {
       }
       await sp.setViewportSize({ width: 1100, height: 900 });
       await sp.waitForTimeout(300);
-      check('structured: at a laptop width the card and its panel still sit above the report',
-        await sp.evaluate(() => Math.max(document.querySelector('#psyche-card-section').getBoundingClientRect().bottom,
-          document.querySelector('#profile-side').getBoundingClientRect().bottom) <=
-            document.querySelector('#profile-body').getBoundingClientRect().top + 1));
+      check('structured: at a laptop width My Report starts straight on its parts, with no card above them',
+        await sp.evaluate(() => document.querySelector('#profile-top').getBoundingClientRect().height === 0));
 
       // Ticking an action keeps it ticked on this device.
       await sp.locator('#profile-body .development-card .plan-check').first().check();
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      await sp.click('#nav-full');
+      await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
       check('structured: a ticked action stays ticked after a reload',
         await sp.locator('#profile-body .development-card .plan-check').first().isChecked() &&
         (await sp.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('psycheai_plan') || '{}')).length)) === 1);
@@ -11690,6 +11739,11 @@ try {
         const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
         return Boolean(p && p.premiumAnalysis);
       }, null, { timeout: 60000 });
+      await rp.waitForSelector('#profile-body .report-ready-note', { timeout: 15000 });
+      check('once unlocked, the reader lands on My Report, told it is ready, and My Report joins the nav',
+        await rp.evaluate(() => document.querySelectorAll('#profile-body .part-card').length > 0 &&
+          /Your full report is ready/.test(document.querySelector('#profile-body .report-ready-note').textContent) &&
+          !document.querySelector('#nav-full').hidden && document.querySelector('#profile-top').hidden));
       const paidWith = bodies.slice(before).find(body => body.product === 'unlock') || {};
       check('and using it writes the full report on the free report, with no payment',
         /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,

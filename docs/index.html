@@ -70,8 +70,10 @@
     <span>PsycheAI</span>
   </a>
   <div class="nav-links">
-    <a href="#" data-nav="profile" id="nav-profile" hidden>My Psyche</a>
-    <a href="#" data-nav="scan" id="nav-scan" hidden>My Syncs</a>
+    <!-- Each with a shorter name a phone shows instead (styles.css, .nav-short). -->
+    <a href="#" data-nav="profile" id="nav-profile" hidden><span class="nav-long">My Psyche</span><span class="nav-short" aria-hidden="true">Psyche</span></a>
+    <a href="#" data-nav="full" id="nav-full" hidden><span class="nav-long">My Report</span><span class="nav-short" aria-hidden="true">Report</span></a>
+    <a href="#" data-nav="scan" id="nav-scan" hidden><span class="nav-long">My Syncs</span><span class="nav-short" aria-hidden="true">Syncs</span></a>
     <a href="#" data-nav="about">FAQ</a>
   </div>
 </nav>
@@ -504,6 +506,8 @@
        two side by side on one line (styles.css, .profile-foot). -->
   <div class="profile-foot">
   <div class="cta-row no-print">
+    <!-- My Report only: back to the card on My Psyche. -->
+    <button class="btn" id="report-back" type="button" data-nav="profile" data-tip="Back to my Psyche Card" hidden><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back</span></button>
     <button class="btn" id="export-pdf-bottom" data-tip="Download full report"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download full report</span></button>
     <button class="btn" id="test-compat-open" type="button" data-tip="Psyche Sync"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span class="cta-label">Psyche Sync</span></button>
     <button class="btn btn-ghost danger" id="delete-profile" data-tip="Delete everything"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg><span class="cta-label">Delete everything</span></button>

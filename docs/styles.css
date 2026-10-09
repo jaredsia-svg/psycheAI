@@ -4035,3 +4035,30 @@ details.more[open] > summary::after { content: ' ▴'; }
 .sync-invite.is-many .sync-invite-actions { flex: 1 1 100%; justify-content: flex-start; }
 .invite-banner .invite-also { margin: .7rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent); }
 .invite-banner .invite-also[hidden] { display: none; }
+
+/* The nav: a shorter name for each page on a phone (Psyche, Report, Syncs),
+   and the page on screen marked. */
+.nav-links .nav-short { display: none; }
+@media (max-width: 640px) {
+  .nav-links .nav-long { display: none; }
+  .nav-links .nav-short { display: inline; }
+}
+.nav-links a.is-current { color: var(--accent); font-weight: 700; }
+
+/* My Psyche, unlocked: the way into My Report. */
+.open-report-card {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .8rem 1.2rem; padding: 1rem 1.2rem;
+  background: radial-gradient(80% 120% at 0% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%), var(--bg);
+}
+.open-report-text { flex: 1 1 18rem; min-width: 0; }
+.open-report-card h2 { margin: 0 0 .25rem; font-size: 1.15rem; }
+.open-report-card p { margin: 0; font-size: .9rem; color: var(--ink-soft); }
+@media (max-width: 640px) { .open-report-card .btn { width: 100%; } }
+/* My Report: Back sits first in the actions, left of Download. */
+#report-back[hidden] { display: none !important; }
+.report-ready-note {
+  margin: 0 0 1rem; padding: .6rem .9rem; border-radius: 12px; font-weight: 700; font-size: .92rem;
+  color: var(--good); background: var(--good-soft);
+}
+/* My Report has no card at its head: its display: grid would beat [hidden]. */
+#view-profile .profile-top[hidden] { display: none; }

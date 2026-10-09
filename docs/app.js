@@ -16,6 +16,10 @@
   const firstName = name => String(name || '').trim().split(/\s+/)[0] || '';
   // The friend's link a sync was started from, until it lands (adoptComparison).
   let syncingInvite = null;
+  // Which page of the reader's own report is on screen once it is unlocked:
+  // 'hub' (My Psyche: the card and what to do next) or 'report' (My Report:
+  // Parts 00-04 and the roast). Structured layout only; see renderProfile.
+  let profilePage = 'hub';
   const TRAIT_LABELS = Copy.TRAIT_LABELS;
   const LOVE_LANGUAGE_ICONS = Copy.LOVE_LANGUAGE_ICONS;
   const CARD_ICONS = Copy.CARD_ICONS;
@@ -1967,6 +1971,21 @@
     });
   }
 
+  /**
+   * My Psyche once the full report is unlocked: their link under the card,
+   * what the card carries, the way into My Report, and how it was all read
+   * (with the re-run that adds data).
+   */
+  function hubSectionsHtml(report) {
+    const R = Copy.STRUCTURED.reportPage;
+    return referralCardHtml(true) + beyondCardHtml(state.profile && state.profile.card) +
+      '<section class="card section-card open-report-card screen-only">' +
+        '<div class="open-report-text"><h2>' + esc(R.title) + '</h2><p>' + esc(R.blurb) + '</p></div>' +
+        '<button class="btn" type="button" data-nav="full" id="open-report">' + esc(R.open) + '</button>' +
+      '</section>' +
+      methodCardHtml(report, false);
+  }
+
   function fullReportLockedHtml() {
     return '<div class="premium-tier paid-consolidated full-report-locked">' +
       '<div class="premium-tier-head">' +
@@ -2368,6 +2387,19 @@
     const ready = Boolean(state.profile);
     $('#nav-profile').hidden = !ready;
     $('#nav-scan').hidden = !ready;
+    // My Report, once there is a full report to read on its own page.
+    $('#nav-full').hidden = !(ready && fullReportPage());
+    const current = !$('#view-profile').hidden;
+    $('#nav-profile').classList.toggle('is-current', current && !reportPageOn());
+    $('#nav-full').classList.toggle('is-current', current && reportPageOn());
+  }
+  /** Whether this reader's full report lives on a page of its own (My Report). */
+  function fullReportPage() {
+    return Boolean(state.profile) && reportLayout() === 'structured' && hasExplanations(state.profile);
+  }
+  /** Whether My Report, rather than My Psyche, is the page drawn. */
+  function reportPageOn() {
+    return profilePage === 'report' && fullReportPage();
   }
 
   function show(view) {
@@ -2382,7 +2414,9 @@
     // like the FAQ for a reader who already has a card: they reached it from
     // the logo, and Back should take them to their card rather than off the
     // site.
-    const secondary = SECONDARY_VIEWS.includes(view) || (view === 'welcome' && Boolean(state.profile));
+    // My Report is an excursion from My Psyche, so Back returns to the card.
+    const secondary = SECONDARY_VIEWS.includes(view) || (view === 'welcome' && Boolean(state.profile)) ||
+      (view === 'profile' && reportPageOn());
     if (navHistoryEntry && HOME_VIEWS.includes(view) && !secondary && !closingNavFromHistory) {
       navHistoryEntry = false;
       history.back();
@@ -2670,6 +2704,13 @@
     if (target === 'main') return show('welcome');
     if (target === 'profile') {
       if (!state.profile) return show('welcome');
+      profilePage = 'hub';
+      renderProfile(); show('profile'); return;
+    }
+    // My Report: the full report on its own page, once it is unlocked.
+    if (target === 'full') {
+      if (!fullReportPage()) return go('profile');
+      profilePage = 'report';
       renderProfile(); show('profile'); return;
     }
     if (target === 'scan') {
@@ -6118,6 +6159,8 @@
   function structuredSectionsHtml(report, options) {
     const S = Copy.STRUCTURED;
     const sample = Boolean(options && options.sample);
+    // The reader's own My Report, as opposed to the sample or an older page.
+    const ownPage = Boolean(options && options.page) && !sample;
     const patterns = signaturePatterns(report);
     // Sections inside a part do not open and shut on their own: the part does.
     const head = (icon, title, defKey) =>
@@ -6217,12 +6260,11 @@
       '<div class="report-part appendix-head" data-part="appendix">' +
         '<span class="part-num" aria-hidden="true">' + String(PART_ORDER.indexOf('appendix')).padStart(2, '0') + '</span>' +
         '<h2 class="part-title">' + esc(S.parts.appendix.title) + '</h2></div>' +
-      methodCardHtml(report, sample) +
+      // Evidence and method lives on My Psyche now, beside the card it rates;
+      // the sample, which has no My Psyche, keeps it here.
+      (ownPage ? '' : methodCardHtml(report, sample)) +
       (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
       '</section>';
-    // Their link's numbers, and any free report it has earned: for a reader
-    // who already has the full report, to give away or re-run with new data.
-    if (!sample) html += referralCardHtml(true);
     return html;
   }
 
@@ -6927,13 +6969,22 @@
     // and has no nav; a full one moves the card above the nav on a wide screen.
     const structured = reportLayout() === 'structured';
     const explained = hasExplanations(profile);
+    // Unlocked, the report is two pages: My Psyche (the hub: the card, the
+    // link, what it carries, how it was read, and the way to the report) and
+    // My Report (Parts 00-04 and the roast, the part nav down the left).
+    const reportPage = structured && explained && profilePage === 'report';
+    const hub = structured && explained && !reportPage;
     const view = $('#view-profile');
     view.classList.toggle('profile-structured', structured);
-    view.classList.toggle('profile-free', structured && !explained);
-    view.classList.toggle('profile-paid', structured && explained);
+    view.classList.toggle('profile-free', structured && !reportPage);
+    view.classList.toggle('profile-paid', reportPage);
+    view.classList.toggle('profile-hub', hub);
+    // My Report starts at Part 00: the card is on My Psyche, one tap back.
+    $('#profile-top').hidden = reportPage;
+    $('#report-back').hidden = !reportPage;
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
-    side.hidden = !structured;
+    side.hidden = !structured || reportPage;
     setHtml(side, side.hidden ? '' : cardGuideHtml(report, explained));
     if (!side.hidden) {
       markCardParts();
@@ -6945,7 +6996,8 @@
     // Either way its compatibility test is one of the card's tools.
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
-    setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
+    setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
+    syncNav();
     refreshReferral().catch(() => {});
     // The card's QR code waits for the short link, then fits the card again.
     publishShortLink().then(link => {
@@ -6958,7 +7010,7 @@
     // A full report on a phone opens with parts 00 to 04 shut, so the reader
     // sees them all at a glance and opens the one they want; on a wider
     // screen they all start open.
-    if (explained && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
+    if (reportPage && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
       for (const card of $('#profile-body').querySelectorAll('.part-card')) setSectionOpen(card, false);
     }
     markStructured($('#profile-body'));
@@ -8287,8 +8339,18 @@
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.
       // renderProfile calls renderAnalysedBy and redraws the re-run price
-      // note, which says US$5 from this point on.
-      renderProfile();
+      // note, which says US$5 from this point on. Where the report has a page
+      // of its own, that page is where the reader lands, with a line saying so.
+      if (fullReportPage()) {
+        go('full');
+        const note = document.createElement('p');
+        note.className = 'report-ready-note';
+        note.setAttribute('role', 'status');
+        note.textContent = Copy.STRUCTURED.reportPage.ready;
+        $('#profile-body').prepend(note);
+      } else {
+        renderProfile();
+      }
       // renderProfile shuts every section, and this is the one moment that is
       // wrong: the reader has just paid for the four premium ones.
       openPaidSections();

@@ -1032,6 +1032,13 @@
     // when the reader points at it. Each has one short paragraph on what it is and why
     // it is worth knowing (`about`), then the reader's own reading (`yours`);
     // `when` skips a part the card does not have.
+    // My Psyche, once the full report is unlocked: the way into My Report.
+    reportPage: {
+      title: 'Your full report',
+      blurb: 'Parts 00 to 04 and your roast, on a page of their own, with the reasoning behind every line of your card.',
+      open: 'Open My Report →',
+      ready: 'Your full report is ready.',
+    },
     cardGuide: {
       title: 'How to read your Psyche Card',
       // What the panel says before any part of the card is pointed at.
@@ -1040,7 +1047,7 @@
         intro: 'Your personality on a single card – who you are most like, what drives you and how you connect, read from your own data.',
         // After the intro: where the reasoning behind the card is, free and paid.
         introFree: 'Unlock the premium report to read the full analysis and reasoning behind your Psyche Card.',
-        introPaid: 'Read the report below for the full analysis and reasoning behind your Psyche Card.',
+        introPaid: 'Open My Report for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
         // On a phone the card is too small to explain in place: this button,
