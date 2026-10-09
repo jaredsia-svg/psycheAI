@@ -101,8 +101,10 @@ body:has(dialog[open]) { overflow: hidden; }
   html { scrollbar-gutter: stable; }
 }
 
-h1, h2, h3 { line-height: 1.25; margin: 0 0 .5em; font-weight: 650; letter-spacing: -.015em; }
-h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); }
+h1, .h1, h2, h3 { line-height: 1.25; margin: 0 0 .5em; font-weight: 650; letter-spacing: -.015em; }
+/* .h1: a view's title styled as a heading 1 without being an <h1> — the
+   front page keeps the document's only one (see index.html). */
+h1, .h1 { font-size: clamp(1.7rem, 4vw, 2.6rem); }
 h2 { font-size: 1.28rem; }
 h3 { font-size: 1.02rem; margin-top: 1.4em; }
 p { margin: 0 0 1em; }
@@ -1137,7 +1139,7 @@ textarea { resize: vertical; }
 
 /* ---- the compatibility report, in the order the PDF uses ---- */
 .compat-head { margin-bottom: 1.2rem; }
-.compat-head h1 { margin: 0 0 .35rem; }
+.compat-head h1, .compat-head .h1 { margin: 0 0 .35rem; }
 .compat-head #report-sub { margin: 0; font-size: .86rem; }
 /* The answer: the ring, the band in words, the verdict. */
 .compat-lead { align-items: center; }
@@ -1227,7 +1229,7 @@ textarea { resize: vertical; }
   font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
 }
 /* The same size as My Report's title (.report-hero-title). */
-.scan-hero h1 {
+.scan-hero h1, .scan-hero .h1 {
   margin: 0 0 .55rem; padding-right: 150px;
   font-size: clamp(1.6rem, 3.8vw, 2.2rem); line-height: 1.12; letter-spacing: -.02em;
 }
@@ -1362,7 +1364,7 @@ textarea { resize: vertical; }
   .scan-face { width: 64px; height: 64px; font-size: 1.5rem; }
   .scan-spark { width: 28px; height: 28px; bottom: -6px; }
   .scan-spark svg { width: 15px; height: 15px; }
-  .scan-hero h1 { padding-right: 0; }
+  .scan-hero h1, .scan-hero .h1 { padding-right: 0; }
   .scan-lede { font-size: .97rem; }
   .scan-modes li { font-size: .82rem; }
   .match-row { gap: .7rem; padding: .6rem .65rem; }
@@ -2160,7 +2162,7 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   .card-icon { display: none; }
   .card-head h2 { color: var(--accent); letter-spacing: -.01em; }
 
-  h1, h2, h3, h4, .card-head { break-after: avoid; page-break-after: avoid; }
+  h1, .h1, h2, h3, h4, .card-head { break-after: avoid; page-break-after: avoid; }
   /* Hierarchy comes from weight, case and colour rather than from size, so
      the body of the document is set at one size throughout. */
   h3 { text-transform: uppercase; letter-spacing: .09em; color: var(--ink-soft); margin-top: 4mm; }

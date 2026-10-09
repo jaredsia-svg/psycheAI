@@ -513,6 +513,44 @@ back to something guessable, and the self-test's first check on this is that the
 unlocks nothing. **Any deployment that was relying on the default needs a fresh random value set in
 its environment; the old code should be treated as burned.**
 
+### How the front page loads
+
+A first visit to the front page used to download **1,856 KB**, almost all of it text sent
+uncompressed: `app.js` alone was 500 KB. It now downloads **445 KB, 76% less**, and nothing the
+reader sees changed.
+
+| | Before | After |
+| --- | --- | --- |
+| Text (HTML, JS, CSS, JSON) | ~1,700 KB raw | ~390 KB Brotli |
+| `sample.json` | fetched 3 times | fetched once |
+| Video poster | 75 KB JPEG | 49 KB WebP |
+| **First visit** | **1,856 KB** | **445 KB** |
+
+- **Compression** (`lib/staticfiles.js`): text and SVG go out Brotli-compressed (quality 11), or
+  gzip to a browser that accepts only that. The browser unpacks exactly the bytes on disk, so nothing
+  is lost. Each compressed copy is made once per file version, off the event loop, and kept in
+  memory. The server makes them at startup (`staticFiles.warm`), so the first visitor after a deploy
+  doesn't wait for it. Images and video are already compressed, so they go out as they are.
+- **Revalidation:** every file carries a weak ETag (size and modification time). `Cache-Control`
+  stays `no-cache`, meaning "check before reusing", so a returning visitor's browser asks and gets a
+  bodiless 304 when its copy is current. Long-lived caching would need fingerprinted file names
+  (`app.3f9c.js`) and a build step, so a deploy could never be masked by a stale copy. This gets most
+  of the gain without one.
+- **The sample preview** is drawn several times as the page boots, and each draw used to start its
+  own download of `sample.json` and `sample-cards.json`. One shared load (`loadSample`) now serves them all.
+- **The video poster** is WebP at quality 85: 49 KB instead of 75 KB, at 42 dB PSNR against the JPEG
+  it replaces, which is not a visible difference. Browsers older than Safari 14 (2020) cannot show WebP
+  and would show an empty frame until the video plays.
+
+What is left: `app.js` (120 KB compressed) is the largest file. Scripts used only after an upload
+(`pdf.js`, `digest.js`, `instagram.js`, `supplement.js`, `whatsapp.js`, `zip.js`, `vendor/qrcode.js`,
+about 115 KB compressed together) still load on the front page. Loading them on demand is the next
+saving, but it changes when globals exist, so it is a larger change than this one.
+
+`tools/uitest.mjs` checks that `app.js` arrives as Brotli, is identical once unpacked, and is under a
+third of its size. It also checks the 304, that images are not compressed twice, and that the
+samples are fetched once.
+
 ### What `/api/status` tells the world
 
 `/api/status` is public, and so is the repository, so it returns only what the page uses:
@@ -1796,10 +1834,23 @@ so it is built in rather than left to a plugin.
   test from your Instagram data — MBTI, Big Five, love languages*), a description, one canonical
   address, Open Graph and Twitter tags, and a JSON-LD block describing the app and its two prices.
   The JSON-LD is a data block, never executed, so the `script-src 'self'` policy is untouched.
-- **The link preview** is `docs/media/og-card.png`, 1200×630, at an absolute address — WhatsApp, X
-  and iMessage show nothing for a relative one. `node promo/og.mjs` draws it from the brand mark and
-  the sample Psyche Card, with the home-screen icons beside it (`icon-192`, `icon-512`,
-  `apple-touch-icon`) that `docs/manifest.webmanifest` names.
+- **The link preview** is `docs/media/og-card.jpg`, 1200×630, at an absolute address — WhatsApp, X
+  and iMessage show nothing for a relative one. It was a 444 KB PNG. As a JPEG at quality 92 with
+  full colour resolution it is 163 KB, a 63% saving, with no visible difference (41.7 dB PSNR
+  against the PNG). That also brings it under the roughly 300 KB above which WhatsApp can drop a
+  preview. The old `og-card.png` is kept for now, so previews that apps cached before the switch
+  still resolve. `node promo/og.mjs` draws the preview from the brand mark and the sample Psyche Card,
+  with the home-screen icons beside it (`icon-192`, `icon-512`, `apple-touch-icon`) that
+  `docs/manifest.webmanifest` names. Those were re-saved losslessly: `icon-512` went from 103 KB to
+  48 KB. If they are redrawn, run them through `PIL`'s `optimize=True` again.
+- **One `<h1>` and a `favicon.ico`.** The front page's document has a single `<h1>`, the hero's.
+  Each app view's title (My Psyche, Your Syncs, the sync popout, FAQ, the print letterhead) is a
+  `<div class="h1" role="heading" aria-level="1">`. Search engines see one main heading, screen
+  readers still hear each visible view's title as its main heading, and `.h1` styles it as one.
+  `docs/favicon.ico` (16, 32 and 48px, with bolder strokes at the small sizes so the mark survives)
+  is linked on every page with `sizes="any"`. It serves crawlers, search results and browsers
+  without SVG icons, and answers the `/favicon.ico` request browsers make on their own. The SVG icon
+  beside it still wins wherever it is supported.
 - **Four guides**, static pages with no script, each answering one thing people search for:
   [`/instagram-personality-test`](docs/instagram-personality-test.html),
   [`/compatibility-test`](docs/compatibility-test.html),

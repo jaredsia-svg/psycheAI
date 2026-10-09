@@ -6786,7 +6786,7 @@ check('the schema requires evidence on strengths and frictions',
         const path = '/media/psycheai-intro.mp4';
         const out = { whole: await get(path), first: await get(path, { Range: 'bytes=0-1' }),
           tail: await get(path, { Range: 'bytes=-100' }), past: await get(path, { Range: 'bytes=${size}-' }),
-          poster: await get('/media/psycheai-intro-poster.jpg') };
+          poster: await get('/media/psycheai-intro-poster.webp') };
         out.again = await get(path, { 'If-None-Match': out.whole.etag });
         server.kill();
         process.stdout.write(JSON.stringify(out));
@@ -6806,7 +6806,7 @@ check('the schema requires evidence on strengths and frictions',
   check('a range past the end is refused with 416', got.past.status === 416, JSON.stringify(got.past));
   check('a browser that already has the video gets 304, not the megabytes again',
     got.again.status === 304 && got.again.length === 0, JSON.stringify(got.again));
-  check('and its poster is served as a JPEG', got.poster.status === 200 && got.poster.type === 'image/jpeg',
+  check('and its poster is served as a WebP', got.poster.status === 200 && got.poster.type === 'image/webp',
     JSON.stringify(got.poster));
 }
 
@@ -6821,10 +6821,41 @@ check('the schema requires evidence on strengths and frictions',
   check('the front page names its one canonical address',
     /<link rel="canonical" href="https:\/\/psycheai\.io\/">/.test(index));
   check('and a share image at an absolute address, with its size',
-    /<meta property="og:image" content="https:\/\/psycheai\.io\/media\/og-card\.png">/.test(index) &&
+    /<meta property="og:image" content="https:\/\/psycheai\.io\/media\/og-card\.jpg">/.test(index) &&
       /og:image:width" content="1200"/.test(index) && /twitter:card" content="summary_large_image"/.test(index));
+  // The front page in one <h1>: every other view's title is a role="heading"
+  // div, so screen readers still get a level-1 heading per view.
+  {
+    const bare = index.replace(/<!--[\s\S]*?-->/g, '');
+    check('the front page has exactly one <h1>, the hero\'s',
+      (bare.match(/<h1[\s>]/g) || []).length === 1 && /<h1>The personality analysis/.test(bare));
+    check('and each other view keeps a level-1 heading for screen readers',
+      ['scan-title', 'report-title', 'profile-title', 'letterhead-name'].every(id =>
+        new RegExp('id="' + id + '" role="heading" aria-level="1"').test(bare)));
+    check('a favicon.ico is linked, with the SVG icon beside it',
+      /<link rel="icon" href="\/favicon\.ico" sizes="any">/.test(index) && /<link rel="icon" type="image\/svg\+xml"/.test(index));
+  }
+  // Static files: compressed where the browser accepts it, revalidated by ETag.
+  {
+    const sf = JSON.parse(execFileSync(process.execPath, ['-e',
+      'const s = require("' + join(root, 'lib', 'staticfiles.js') + '");' +
+      'process.stdout.write(JSON.stringify({' +
+      ' br: s.pickEncoding("gzip, deflate, br"), gz: s.pickEncoding("gzip"), none: s.pickEncoding(""),' +
+      ' refused: s.pickEncoding("br;q=0, gzip"), star: s.pickEncoding("*"), allRefused: s.pickEncoding("br;q=0, gzip;q=0"),' +
+      ' match: s.matches("W/\\"a-b\\"", "W/\\"a-b\\""), list: s.matches("\\"x\\", W/\\"a-b\\"", "W/\\"a-b\\""),' +
+      ' miss: s.matches("W/\\"a-c\\"", "W/\\"a-b\\""), any: s.matches("*", "W/\\"a-b\\""),' +
+      ' js: s.COMPRESSIBLE.test("text/javascript; charset=utf-8"), svg: s.COMPRESSIBLE.test("image/svg+xml"),' +
+      ' jpg: s.COMPRESSIBLE.test("image/jpeg"), mp4: s.COMPRESSIBLE.test("video/mp4") }))'], { encoding: 'utf8' }));
+    check('the server picks Brotli, then gzip, and never an encoding the browser refused',
+      sf.br === 'br' && sf.gz === 'gzip' && sf.none === '' && sf.refused === 'gzip' && sf.star === 'br' && sf.allRefused === '',
+      JSON.stringify(sf));
+    check('an ETag matches itself or a list naming it, and not another version',
+      sf.match && sf.list && !sf.miss && sf.any, JSON.stringify(sf));
+    check('text and SVG are compressed; images and video, already compressed, are not',
+      sf.js && sf.svg && !sf.jpg && !sf.mp4, JSON.stringify(sf));
+  }
   check('the share image and app icons exist',
-    ['og-card.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png']
+    ['og-card.jpg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', '../favicon.ico']
       .every(name => statSync(join(root, 'docs', 'media', name)).size > 1000));
   const ld = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(index);
   let ldOk = false;

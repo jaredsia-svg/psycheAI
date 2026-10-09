@@ -5031,13 +5031,13 @@ try {
   await page.waitForTimeout(150);
 
   // The page opens on the card: the banner that named the reader above it is
-  // gone from sight, kept as the page's h1 for screen readers.
+  // gone from sight, kept as a level-1 heading for screen readers.
   check('the profile page opens on the card, its title kept for screen readers only',
     await page.evaluate(() => {
       const title = document.querySelector('#profile-title');
       const nav = document.querySelector('.nav').getBoundingClientRect();
       const card = document.querySelector('#psyche-card-section').getBoundingClientRect();
-      return title.tagName === 'H1' && title.classList.contains('visually-hidden') && title.getBoundingClientRect().height <= 1 &&
+      return title.getAttribute('role') === 'heading' && title.getAttribute('aria-level') === '1' && title.classList.contains('visually-hidden') && title.getBoundingClientRect().height <= 1 &&
         !document.querySelector('#view-profile .profile-hero') && card.top - nav.bottom < 60;
     }));
   await shot('2-profile');
@@ -6234,6 +6234,53 @@ try {
     const pageHeaders = await headersOf('/');
     const apiHeaders = await headersOf('/api/status');
 
+    // What a browser actually receives for the site's own files: Brotli where
+    // it asks for it, the same bytes once unpacked, and a bodiless 304 when
+    // its copy is current. Raw node:http, so nothing unpacks it on the way.
+    const { request: rawRequest } = await import('node:http');
+    const { brotliDecompressSync } = await import('node:zlib');
+    const raw = (path, headers) => new Promise((resolve, reject) => {
+      rawRequest({ host: 'localhost', port: PORT, path, headers: headers || {} }, response => {
+        const chunks = [];
+        response.on('data', c => chunks.push(c));
+        response.on('end', () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks) }));
+      }).on('error', reject).end();
+    });
+    {
+      const plain = await raw('/app.js');
+      const packed = await raw('/app.js', { 'Accept-Encoding': 'gzip, deflate, br' });
+      check('app.js goes out Brotli-compressed to a browser that accepts it, unchanged once unpacked, at under a third of its size',
+        packed.headers['content-encoding'] === 'br' && !plain.headers['content-encoding'] &&
+          brotliDecompressSync(packed.body).equals(plain.body) && packed.body.length < plain.body.length / 3 &&
+          /Accept-Encoding/i.test(packed.headers.vary || ''),
+        JSON.stringify({ raw: plain.body.length, br: packed.body.length, enc: packed.headers['content-encoding'] }));
+      const again = await raw('/app.js', { 'Accept-Encoding': 'br', 'If-None-Match': packed.headers.etag });
+      check('and a browser holding the current copy gets a 304 with no body',
+        Boolean(packed.headers.etag) && again.status === 304 && again.body.length === 0,
+        JSON.stringify({ etag: packed.headers.etag, status: again.status }));
+      const poster = await raw('/media/psycheai-intro-poster.webp', { 'Accept-Encoding': 'br' });
+      check('images are sent as they are, not compressed a second time',
+        poster.status === 200 && !poster.headers['content-encoding'] && poster.headers['content-type'] === 'image/webp',
+        JSON.stringify(poster.headers));
+      // The front page draws its sample preview several times as it boots;
+      // each draw used to download sample.json again.
+      {
+        const fresh = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+        const fetched = [];
+        fresh.on('request', r => fetched.push(new URL(r.url()).pathname));
+        await fresh.goto('http://localhost:' + PORT + '/');
+        await fresh.waitForTimeout(2500);
+        const count = name => fetched.filter(p => p === name).length;
+        check('the front page downloads sample.json and sample-cards.json once each',
+          count('/sample.json') === 1 && count('/sample-cards.json') === 1, JSON.stringify(fetched.filter(p => /sample/.test(p))));
+        await fresh.close();
+      }
+      const ico = await raw('/favicon.ico');
+      check('/favicon.ico is served as an icon',
+        ico.status === 200 && ico.headers['content-type'] === 'image/x-icon' && ico.body.length > 1000,
+        JSON.stringify({ status: ico.status, type: ico.headers['content-type'] }));
+    }
+
     check('the page is served with a content security policy',
       /default-src 'self'/.test(pageHeaders.get('content-security-policy') || ''),
       pageHeaders.get('content-security-policy'));
@@ -7366,7 +7413,7 @@ try {
       .every(n => getComputedStyle(n).breakInside !== 'avoid' &&
                   getComputedStyle(n).breakBefore !== 'page')));
   check('a heading is never left stranded at the foot of a page', await page.evaluate(() =>
-    ['h1', 'h2', 'h3', 'h4', '.card-head', '.card-sub']
+    ['h1', '.h1', 'h2', 'h3', 'h4', '.card-head', '.card-sub']
       .every(sel => [...document.querySelectorAll('#view-profile ' + sel)]
         .every(n => getComputedStyle(n).breakAfter === 'avoid'))));
 
@@ -9703,7 +9750,7 @@ try {
     (await page.locator('#view-about .card-icon').count()) === 3 &&
     (await page.locator('#view-about .card-head h2').count()) === 3);
   check('the page is titled FAQ, and goes straight into the questions',
-    (await page.locator('#view-about h1').innerText()) === 'FAQ' &&
+    (await page.locator('#view-about [role="heading"][aria-level="1"]').innerText()) === 'FAQ' &&
     (await page.locator('#view-about .lede').count()) === 0,
     String(await page.locator('#view-about .lede').count()) + ' intro lines');
 
@@ -9744,11 +9791,15 @@ try {
   // itself — a read of its own code, not of anybody's data. stat and
   // createReadStream are the front page video's: it is streamed in ranges
   // rather than read whole, still a read of the site's own files.
-  const readOnly = ['fs.readFile', 'fs.readFileSync', 'fs.existsSync', 'fs.stat', 'fs.createReadStream'];
+  // readdirSync lists the site's own files at startup so their compressed
+  // copies can be made before the first visitor (lib/staticfiles.js).
+  const readOnly = ['fs.readFile', 'fs.readFileSync', 'fs.existsSync', 'fs.stat', 'fs.createReadStream', 'fs.readdirSync'];
   check('the claim that nothing is written to disk holds in server.js',
     (serverSource.match(/fs\.\w+/g) || []).every(call => readOnly.includes(call)) &&
     (serverSource.match(/fs\.readFileSync/g) || []).length === 1,
     (serverSource.match(/fs\.\w+/g) || []).join(', '));
+  check('and in lib/staticfiles.js, which now reads and sends the site\'s own files',
+    !/writeFile|appendFile|createWriteStream|\.write\(/.test(readFileSync(join(root, 'lib', 'staticfiles.js'), 'utf8')));
   check('the claim that responses are not cached holds too',
     /'Cache-Control': 'no-store'/.test(serverSource));
   check('the page says there is no account, and no collection of exports or reports to breach',
@@ -9794,7 +9845,7 @@ try {
     await page.evaluate(() => {
       const heavy = [...document.querySelectorAll('#view-about *')].filter(el => {
         if (el.children.length || !el.textContent.trim()) return false;
-        if (el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3') return false;
+        if (el.tagName === 'H1' || el.tagName === 'H2' || el.tagName === 'H3' || el.getAttribute('role') === 'heading') return false;
         if (el.closest('.card-head')) return false;
         return Number(getComputedStyle(el).fontWeight) >= 600;
       });

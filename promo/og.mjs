@@ -1,6 +1,6 @@
 // Draws the site's share images into docs/media:
 //
-//   og-card.png        1200x630, what a link to psycheai.io shows when it is
+//   og-card.jpg        1200x630, what a link to psycheai.io shows when it is
 //                      pasted into WhatsApp, iMessage, X, LinkedIn or Slack
 //   icon-512.png       app icons, for "Add to home screen" and the manifest
 //   icon-192.png
@@ -64,13 +64,15 @@ svg { width: ${Math.round(size * 0.72)}px; height: ${Math.round(size * 0.72)}px;
 
 const browser = await chromium.launch();
 try {
-  const shots = [['og-card.png', og, 1200, 630], ['icon-512.png', icon(512), 512, 512],
+  // The link preview as a JPEG: a third of the PNG's size, and under the
+  // 300 KB some apps (WhatsApp among them) need before they show a preview.
+  const shots = [['og-card.jpg', og, 1200, 630], ['icon-512.png', icon(512), 512, 512],
     ['icon-192.png', icon(192), 192, 192], ['apple-touch-icon.png', icon(180), 180, 180]];
   for (const [name, html, width, height] of shots) {
     const page = await browser.newPage({ viewport: { width, height } });
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: media + '/' + name });
+    await page.screenshot(name.endsWith('.jpg') ? { path: media + '/' + name, type: 'jpeg', quality: 92 } : { path: media + '/' + name });
     await page.close();
     console.log('wrote docs/media/' + name);
   }

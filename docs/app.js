@@ -2214,17 +2214,36 @@
     showInsightCard(insightIndex + step, step);
   }
 
+  // sample.json, fetched once per page: the front page draws its preview
+  // several times as boot proceeds, and each draw used to start its own
+  // download of it. Parsed afresh for every caller, so none can change what
+  // another sees; a failed fetch is forgotten, so the next call tries again.
+  let sampleText = null;
+  let insightCardsLoad = null;
+  function loadSample() {
+    if (!sampleText) {
+      sampleText = fetch('sample.json').then(response => {
+        if (!response.ok) throw new Error('The sample could not be loaded.');
+        return response.text();
+      });
+      sampleText.catch(() => { sampleText = null; });
+    }
+    return sampleText.then(text => JSON.parse(text));
+  }
+
   async function drawInsightPreview() {
     const gallery = document.getElementById('insight-deck');
     if (!gallery) return;
     try {
       if (!insightCards.length) {
-        const [sample, more] = await Promise.all([
-          fetch('sample.json').then(response => (response.ok ? response.json() : null)),
+        // One load shared by every draw that starts before it lands.
+        insightCardsLoad = insightCardsLoad || Promise.all([
+          loadSample().catch(() => null),
           fetch('sample-cards.json').then(response => (response.ok ? response.json() : null)).catch(() => null),
         ]);
-        if (!sample) return;
-        insightCards = [sample].concat((more && Array.isArray(more.cards)) ? more.cards : []);
+        const [sample, more] = await insightCardsLoad;
+        if (!sample) { insightCardsLoad = null; return; }
+        if (!insightCards.length) insightCards = [sample].concat((more && Array.isArray(more.cards)) ? more.cards : []);
       }
       const target = document.getElementById('insight-deck');
       if (!target) return;
@@ -2506,10 +2525,7 @@
     const label = button && button.textContent;
     if (button) { button.disabled = true; button.textContent = 'Loading…'; }
     try {
-      const report = await fetch('sample.json').then(response => {
-        if (!response.ok) throw new Error('The sample could not be loaded.');
-        return response.json();
-      });
+      const report = await loadSample();
       // Kept so the roast can be revealed on demand inside the sample too.
       // Its text is deliberately not written into the markup until the
       // reader asks for it — see roastBlock()/revealRoast().

@@ -16,14 +16,14 @@
 <meta property="og:url" content="https://psycheai.io/">
 <meta property="og:title" content="PsycheAI — your personality, read from your Instagram">
 <meta property="og:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Your first Psyche Card is free.">
-<meta property="og:image" content="https://psycheai.io/media/og-card.png">
+<meta property="og:image" content="https://psycheai.io/media/og-card.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="A sample Psyche Card: most like Mulan, with MBTI, Big Five, values, interests and love languages">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="PsycheAI — your personality, read from your Instagram">
 <meta name="twitter:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Free.">
-<meta name="twitter:image" content="https://psycheai.io/media/og-card.png">
+<meta name="twitter:image" content="https://psycheai.io/media/og-card.jpg">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="media/apple-touch-icon.png">
 <!-- Structured data for search: what the site is, what it costs, and the FAQ.
@@ -54,7 +54,11 @@
 }
 </script>
 <link rel="stylesheet" href="styles.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
+<!-- favicon.ico (16, 32 and 48px) for crawlers, search results and browsers
+     without SVG icons, which also ask for /favicon.ico on their own; the SVG
+     below wins wherever it is supported. -->
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 140' fill='none' stroke='%237b3fa0' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'><path d='M12 70C12 56.745 37.967 46 70 46C102.033 46 128 56.745 128 70C128 83.255 102.033 94 70 94C37.967 94 12 83.255 12 70Z'/><path d='M46 70C46 37.967 56.745 12 70 12C83.255 12 94 37.967 94 70C94 102.033 83.255 128 70 128C56.745 128 46 102.033 46 70Z'/><path d='M41 19.771C52.479 13.143 74.768 30.259 90.785 58C106.801 85.741 110.479 113.602 99 120.229C87.521 126.857 65.232 109.741 49.215 82C33.199 54.259 29.521 26.398 41 19.771Z'/><circle cx='70' cy='70' r='11' fill='%237b3fa0' stroke='none'/></svg>">
 </head>
 <body>
 
@@ -135,6 +139,9 @@
       </div>
     </section>
     <div class="hero-top">
+      <!-- The page's only <h1>. Every other view's title is a div with
+           role="heading" aria-level="1" (class .h1): one <h1> in the document for
+           search engines, and still a level-1 heading per view for screen readers. -->
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
       <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
         all derived from your Instagram and digital footprint with no questionnaire required.</p>
@@ -152,7 +159,7 @@
          scrolls it into view never downloads it. The button's words and the
          video's name are set from copy.js by initHeroVideo(). -->
     <figure class="hero-video">
-      <video id="hero-video" muted playsinline loop preload="none" poster="media/psycheai-intro-poster.jpg"
+      <video id="hero-video" muted playsinline loop preload="none" poster="media/psycheai-intro-poster.webp"
              disableremoteplayback disablepictureinpicture x-webkit-airplay="deny">
         <source src="media/psycheai-intro.mp4" type="video/mp4">
       </video>
@@ -175,7 +182,7 @@
   </header>
 
   <!-- The steps row was the one block on this page with no heading of its own,
-       which left four <h3> cards hanging directly off the hero's <h1> — a
+       which left four <h3> cards hanging directly off the hero's heading — a
        screen reader navigating by heading met level 3 with no level 2 above it.
        The heading fixes the outline and names the section at the same time. -->
   <h2 class="row-head">How it works</h2>
@@ -340,7 +347,7 @@
       <span class="letterhead-rule"></span>
       <span class="letterhead-kind">Personality profile</span>
     </div>
-    <h1 class="letterhead-name" id="letterhead-name"></h1>
+    <div class="h1 letterhead-name" id="letterhead-name" role="heading" aria-level="1"></div>
     <p class="letterhead-meta" id="letterhead-meta"></p>
   </header>
 
@@ -348,7 +355,7 @@
        owner at the top. The "<name>'s psyche" banner that sat above it said the
        same thing a card's height higher, so it is kept for screen readers only:
        the page still has its one h1 and its name. -->
-  <h1 class="visually-hidden" id="profile-title">Your psyche</h1>
+  <div class="h1 visually-hidden" id="profile-title" role="heading" aria-level="1">Your psyche</div>
 
   <!-- A friend's link, waiting: the reader sees their own card first, and the
        sync with the friend runs only when they choose it (app.js,
@@ -549,7 +556,7 @@
       <span class="scan-spark"><svg viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 2.6l2.75 5.9 6.45.8-4.75 4.45 1.2 6.4L12 17l-5.65 3.15 1.2-6.4L2.8 9.3l6.45-.8z"/></svg></span>
     </div>
     <p class="scan-eyebrow">Psyche Sync · free, every time</p>
-    <h1 id="scan-title">Your Syncs</h1>
+    <div class="h1" id="scan-title" role="heading" aria-level="1">Your Syncs</div>
     <p class="scan-lede">Open a friend's PsycheAI link for your Psyche Sync score: what clicks between
       you, what may grate, and how to relate better to each other.</p>
   </header>
@@ -594,7 +601,7 @@
   <!-- The pair in the same band the profile page opens with, the basis as a
        pill under the names. The download is with the other actions below. -->
   <header class="hero profile-hero compat-head screen-only">
-    <h1 id="report-title">Your Psyche Sync</h1>
+    <div class="h1" id="report-title" role="heading" aria-level="1">Your Psyche Sync</div>
     <p class="muted" id="report-sub"></p>
   </header>
 
@@ -626,7 +633,7 @@
 
 <!-- ══════════════ about ══════════════ -->
 <section id="view-about" class="view" hidden>
-  <header class="page-head"><h1>FAQ</h1></header>
+  <header class="page-head"><div class="h1" role="heading" aria-level="1">FAQ</div></header>
 
   <!-- Ten questions in three cards rather than ten, which is what "concise and
        easy to read" asks for: every question keeps its own heading, but the

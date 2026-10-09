@@ -27,6 +27,7 @@ const promo = require('./lib/promo');
 const store = require('./lib/store');
 const referral = require('./lib/referral');
 const links = require('./lib/links');
+const staticFiles = require('./lib/staticfiles');
 // Short personal links need a store that survives a deploy (Upstash); in
 // memory they would break on the next one, so the page keeps the long link.
 // PSYCHEAI_SHORT_LINKS=1 turns them on regardless (the test suite).
@@ -153,6 +154,7 @@ const TYPES = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.mp4': 'video/mp4',
   '.txt': 'text/plain; charset=utf-8',
@@ -1101,17 +1103,9 @@ function serveStatic(requestedPath, request, response) {
     serveMedia(resolved, type, request, response);
     return;
   }
-  fs.readFile(resolved, (error, data) => {
-    if (error) {
-      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found');
-      return;
-    }
-    response.writeHead(200, {
-      'Content-Type': type,
-      'Cache-Control': 'no-cache',
-    });
-    response.end(data);
-  });
+  // Compressed where the browser accepts it, and answered with a 304 when its
+  // copy is current. See lib/staticfiles.js.
+  staticFiles.send(resolved, type, request, response);
 }
 
 // A video is streamed, never read whole, and answers byte ranges: Safari and
@@ -1521,6 +1515,10 @@ if (require.main === module) {
   hydrateFromStore().then(() => server.listen(PORT, () => {
     const status = provider.describe();
     console.log('PsycheAI running at http://localhost:' + PORT);
+    // Brotli and gzip copies of the site's own files, made now rather than
+    // on the first visitor's request (lib/staticfiles.js).
+    staticFiles.warm(fs.readdirSync(ROOT).map(name => path.join(ROOT, name)),
+      file => TYPES[path.extname(file).toLowerCase()] || '');
     if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
     else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
     else console.log('  Not configured. ' + status.hint);
