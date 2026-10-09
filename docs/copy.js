@@ -195,7 +195,7 @@
     // has a card of their own.
     // With their card beside it: the hook is the character, and what the
     // reader's own card would say.
-    inviteEyebrow: (name) => '💌 ' + (name || 'A friend') + ' sent you their Psyche Card',
+    inviteEyebrow: (name) => '⭐ ' + (name || 'A friend') + ' sent you their Psyche Card',
     inviteTitle: (name, character) => character
       ? (name || 'They') + ' is most like ' + character + '. Who are you most like?'
       : 'This is ' + possessive(name || 'your friend') + ' Psyche Card. What would yours say?',
