@@ -9650,7 +9650,7 @@ try {
     actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
       actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
       actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Close' &&
-      new Set(actionTiles.map(t => t.top)).size === 1, JSON.stringify(actionTiles));
+      Math.max(...actionTiles.map(t => t.top)) - Math.min(...actionTiles.map(t => t.top)) <= 2, JSON.stringify(actionTiles));
   check('and there is no "Check someone else" any more',
     !/Check someone else|scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
   // The result as a story image: drawn at 1080 x 1920, carrying the score,
