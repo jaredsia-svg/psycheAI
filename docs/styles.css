@@ -3954,3 +3954,10 @@ details.more[open] > summary::after { content: ' ▴'; }
 .referral-status[hidden] { display: none; }
 .premium-referral { width: 100%; margin: .2rem 0 .8rem; }
 .premium-referral[hidden] { display: none; }
+
+/* The policy pages: plain reading, a dated line under the title. */
+.legal-meta { margin: .4rem 0 0; font-size: .85rem; color: var(--ink-soft); }
+.legal .section-card ul { margin: .3rem 0 0; padding-left: 1.2rem; }
+.legal .section-card li { margin: 0 0 .5rem; }
+.legal .section-card p:last-child { margin-bottom: 0; }
+.premium-legal { margin: .8rem 0 0; text-align: center; font-size: .78rem; }

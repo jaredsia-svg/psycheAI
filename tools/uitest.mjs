@@ -2304,6 +2304,31 @@ try {
       const a = document.querySelector('.footer a[href^="mailto:"]');
       return Boolean(a) && a.getAttribute('href') === 'mailto:admin@psycheai.io' && a.textContent.trim() === 'admin@psycheai.io';
     }));
+  check('the footer links the privacy, terms and refund pages',
+    await page.evaluate(() => ['/privacy', '/terms', '/refunds'].every(href => document.querySelector('.footer a[href="' + href + '"]'))));
+  {
+    const policies = await page.evaluate(async () => {
+      const out = {};
+      for (const name of ['privacy', 'terms', 'refunds']) {
+        const response = await fetch('/' + name);
+        out[name] = response.ok ? await response.text() : '';
+      }
+      return out;
+    });
+    check('the three policy pages are served, dated, and name the operator and Singapore',
+      Object.values(policies).every(html => /Last updated 9 October 2026/.test(html) && /PsycheAI · Singapore/.test(html) &&
+        /admin@psycheai\.io/.test(html)), Object.keys(policies).filter(k => !policies[k]).join(', '));
+    check('the refund policy gives a 24-hour window and how to ask',
+      /within 24 hours of payment/.test(policies.refunds) && /last four digits/.test(policies.refunds));
+    check('the terms set the minimum age at 18 and Singapore law',
+      /You must be 18 or over/.test(policies.terms) && /governed by the laws of Singapore/.test(policies.terms));
+    check('the privacy policy names who receives the summary, and what is kept',
+      /Gemini API/.test(policies.privacy) && /Claude API/.test(policies.privacy) && /Stripe/.test(policies.privacy) &&
+        /Upstash/.test(policies.privacy) && /Personal Data Protection Act/.test(policies.privacy));
+    check('the payment sheet points to the terms and the 24-hour refund',
+      await page.evaluate(() => Boolean(document.querySelector('#premium-dialog a[href="/terms"]')) &&
+        /Full refund within 24 hours/.test(document.querySelector('#premium-dialog a[href="/refunds"]').textContent)));
+  }
   check('the footer links to the source, so the privacy claims can be checked',
     /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(footer.href || '') &&
     /source|code/i.test(footer.text || ''),

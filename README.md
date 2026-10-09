@@ -1923,6 +1923,19 @@ Short links are on when Upstash is configured (`/api/status` → `shortLinks`), 
 `PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
 links keep opening.
 
+## Policies: privacy, terms, refunds
+
+Three static pages, served at `/privacy`, `/terms` and `/refunds` like the guides, and listed in the
+sitemap. They are linked from every page's footer, from the FAQ's contact answer, and from the payment
+sheet (*By paying you agree to the terms. Full refund within 24 hours*). The operator is PsycheAI,
+Singapore, and the pages are dated 9 October 2026. The terms set the minimum age at 18 and Singapore
+law. A refund is given for any reason within 24 hours of payment, and at any time if a paid report
+cannot be delivered. A payment is found by its date, amount and the card's last four digits, since there
+is no account. The privacy policy restates what this README says the code does: the summary goes to
+Gemini or Claude, finished reports are held in memory for four hours (`lib/results.js`), and Upstash
+holds what is listed under "Kept across deploys". **Change the pages when the code changes what it
+keeps.**
+
 ## Counting what works, without counting anyone
 
 The site promises no trackers, no cookies and no third-party analytics, and that no one can see

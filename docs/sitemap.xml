@@ -5,4 +5,7 @@
   <url><loc>https://psycheai.io/compatibility-test</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://psycheai.io/mbti-test-no-questions</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://psycheai.io/download-instagram-data</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://psycheai.io/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://psycheai.io/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://psycheai.io/refunds</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>
