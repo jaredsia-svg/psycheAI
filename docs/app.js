@@ -7355,7 +7355,7 @@
       layout: reportLayout(),
       build: (() => {
         const b = state.server && state.server.build;
-        return b && b.shortCommit ? (b.version ? 'v' + b.version + ' · ' : '') + b.shortCommit : '';
+        return b && b.version ? 'v' + b.version : '';
       })(),
       sources: [TEXT.sourceInstagram]
         .concat(state.digest && state.digest.google ? [TEXT.sourceGoogle] : [])
@@ -9255,8 +9255,8 @@
       : state.server.mock
         ? 'This server is running in mock mode — analyses are canned, and no API calls are made.'
         : state.server.ready
-          ? 'This server is using ' + state.server.provider + ' · ' + state.server.model + '.'
-          : 'This server has no model provider configured. ' + (state.server.hint || '');
+          ? ''
+          : 'Analyses are unavailable right now. Please try again later.';
   }
 
   function renderServerStatus() {
@@ -9265,8 +9265,7 @@
     } else if (state.server.unreachable) {
       flash('#server-status', 'Cannot reach the PsycheAI server. Start it with "npm start".');
     } else if (!state.server.ready) {
-      flash('#server-status', 'No model provider is configured, so the analysis will fail. ' +
-        (state.server.hint || 'Set GEMINI_API_KEY or ANTHROPIC_API_KEY and restart.'));
+      flash('#server-status', 'Analyses are unavailable right now, so a run would fail. Please try again later.');
     } else {
       flash('#server-status', '');
     }
@@ -9764,36 +9763,17 @@
   }
 
   /**
-   * The build this page is running, in the footer: package version and the
-   * short commit, linked to it on GitHub.
+   * The release this page is running, in the footer: the package version and
+   * nothing finer. The server no longer says which commit or branch it runs
+   * (see handleStatus), so neither does the page.
    * Hidden when the server did not say, rather than showing a blank version.
-   * Built with textContent and a validated href, never innerHTML — the values
-   * come from the server, which checks them, and are treated as text anyway.
    */
   function renderBuild(build) {
     const slot = $('#footer-version');
     if (!slot) return;
-    const b = build && typeof build === 'object' ? build : null;
-    if (!b || (!b.version && !b.shortCommit)) { slot.hidden = true; return; }
-    slot.textContent = '';
-    const parts = [];
-    if (b.version) parts.push('v' + b.version);
-    slot.append(parts.join(''));
-    if (b.shortCommit) {
-      slot.append((parts.length ? ' · ' : '') + 'build ');
-      if (/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{7,40}$/.test(b.url || '')) {
-        const link = document.createElement('a');
-        link.href = b.url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = b.shortCommit;
-        if (b.branch) link.title = 'Branch ' + b.branch;
-        slot.append(link);
-      } else {
-        slot.append(b.shortCommit);
-      }
-    }
-    slot.hidden = false;
+    const version = build && typeof build === 'object' && /^[\w.+-]{1,40}$/.test(build.version || '') ? build.version : '';
+    slot.textContent = version ? 'v' + version : '';
+    slot.hidden = !version;
   }
 
   async function boot() {

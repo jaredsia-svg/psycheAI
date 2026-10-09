@@ -374,23 +374,25 @@ function readJsonBody(request) {
 // ---------- routes ----------
 
 async function handleStatus(response) {
-  const premium = premiumEngine();
+  const status = provider.describe();
+  // Only what the page uses, and nothing about what is running behind it. This
+  // route is public and the repository is too, so the model, the premium
+  // engine, the exact commit, the branch, the deploy time, the platform, the
+  // payment settings and which keys are missing would tell anyone exactly
+  // which code and configuration to aim at. The operator reads those from the
+  // startup log and the host's dashboard instead (see the listen callback).
   sendJson(response, 200, {
-    ...provider.describe(), payments: payments.describe(),
-    premiumProvider: { name: premium ? premium.name : PREMIUM_PROVIDER, ready: Boolean(premium) },
-    // How many analyses a reader gets before being asked to pay, and what one
-    // costs after that. Served rather than hard-coded in docs/app.js so the
-    // price on the button and the price Stripe charges cannot drift apart.
+    ready: status.ready,
+    mock: status.mock,
+    // How many analyses a reader gets before being asked to pay. Served rather
+    // than hard-coded in docs/app.js so the page and the server cannot drift.
     freeAnalyses: FREE_ANALYSES,
     shortLinks: SHORT_LINKS(),
-    // Which build this is — the commit, the branch and when it started — so
-    // the footer can say what a reader is running. See lib/version.js.
-    build: BUILD,
     // Which report layout the unlock writes and the page draws — structured
-    // (four parts, one thread) or classic. PSYCHEAI_REPORT_LAYOUT; see
-    // lib/prompts.js. The page reads this rather than deciding for itself, so
-    // switching back is one environment variable for both halves.
+    // or classic. PSYCHEAI_REPORT_LAYOUT; see lib/prompts.js.
     reportLayout: prompts.REPORT_LAYOUT,
+    // The release number for the footer, and nothing finer.
+    build: { version: BUILD.version },
   });
 }
 
@@ -1522,6 +1524,9 @@ if (require.main === module) {
     if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
     else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
     else console.log('  Not configured. ' + status.hint);
+    // The build, for the operator only: /api/status no longer serves it.
+    console.log('  Build: ' + [BUILD.version && 'v' + BUILD.version, BUILD.shortCommit, BUILD.branch, BUILD.platform]
+      .filter(Boolean).join(' · '));
   }));
   // A deploy stops this process with SIGTERM. Today's totals go to the log
   // first, so they are not lost with the memory they were kept in.

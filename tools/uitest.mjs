@@ -368,8 +368,10 @@ try {
     /^PsycheAI — free personality test from your Instagram data/.test(await page.title()));
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
-  check('the status endpoint reports which provider is active',
-    (await page.evaluate(() => fetch('/api/status').then(r => r.json()))).provider === 'mock');
+  check('the status endpoint says mock mode, and does not name the provider or the model',
+    await page.evaluate(() => fetch('/api/status').then(r => r.json()).then(s =>
+      s.mock === true && s.provider === undefined && s.model === undefined && s.premiumProvider === undefined &&
+      s.payments === undefined && s.hint === undefined)));
   check('there is no questionnaire left in the app',
     (await page.content()).toLowerCase().includes('questionnaire') === false ||
     (await page.locator('#step-form').count()) === 0);
@@ -3023,23 +3025,15 @@ try {
   // truth, so it could never be wrong, where a sentence can be — but the
   // welcome page still carries the generated block, which is where somebody
   // deciding whether to pay actually meets it.
-  // The build, in the footer, so a reader reporting a problem can name the
-  // commit they are on. The test server runs from this checkout, so it is
-  // read from .git — the same path a local server takes.
+  // The release, in the footer, so a reader reporting a problem can name it —
+  // the version number only, with no commit, branch or link.
   const footerBuild = await page.evaluate(() => {
     const el = document.querySelector('#footer-version');
-    const link = el && el.querySelector('a');
-    return el ? { hidden: el.hidden, text: el.textContent, href: link && link.href, rel: link && link.rel } : null;
+    return el ? { hidden: el.hidden, text: el.textContent, links: el.querySelectorAll('a').length } : null;
   });
-  check('the footer says which version and build the page is running',
-    Boolean(footerBuild) && !footerBuild.hidden &&
-    /^v\d+\.\d+\.\d+ · build [0-9a-f]{7}$/.test(footerBuild.text.trim()),
+  check('the footer gives the version and nothing finer: no commit, no link',
+    Boolean(footerBuild) && !footerBuild.hidden && /^v\d+\.\d+\.\d+$/.test(footerBuild.text.trim()) && footerBuild.links === 0,
     JSON.stringify(footerBuild));
-  check('and the build links to that commit on GitHub, in a new tab, without an opener',
-    Boolean(footerBuild && footerBuild.href) &&
-    /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/commit\/[0-9a-f]{40}$/.test(footerBuild.href) &&
-    /noopener/.test(footerBuild.rel),
-    footerBuild && footerBuild.href);
   // The price is the one number on this page a reader makes a decision on, so
   // it is pinned against the same string the unlock button renders rather than
   // against a literal — two places showing different prices is worse than

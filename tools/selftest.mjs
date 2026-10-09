@@ -5587,10 +5587,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   }
   const data = r => (r && r.json && r.json.data) || {};
   check('the routes subprocess ran', !routes.crashed, routes.crashed);
-  check('the status route says which build is running',
-    Boolean(routes.status && routes.status.build) && /^[0-9a-f]{7}$/.test(routes.status.build.shortCommit) &&
-    Boolean(routes.status.build.version) && !Number.isNaN(Date.parse(routes.status.build.startedAt)),
-    JSON.stringify(routes.status && routes.status.build));
+  check('the status route gives the release number and nothing about what runs behind it',
+    Boolean(routes.status && routes.status.build) && /^\d+\.\d+\.\d+$/.test(routes.status.build.version) &&
+      Object.keys(routes.status.build).join() === 'version' &&
+      Object.keys(routes.status).sort().join() === 'build,freeAnalyses,mock,ready,reportLayout,shortLinks' &&
+      !/gemini|claude|anthropic|grok|render|commit|branch|stripe|pk_|sk_|_KEY/i.test(JSON.stringify(routes.status)),
+    JSON.stringify(routes.status));
   check('a free request gets the card: conclusions, and no writing',
     Boolean(routes.free) && routes.free.status === 200 && Boolean(data(routes.free).mbti) &&
     data(routes.free).summary === undefined && data(routes.free).bonus === undefined &&
