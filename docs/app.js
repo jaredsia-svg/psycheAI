@@ -2134,15 +2134,10 @@
       // Its text is deliberately not written into the markup until the
       // reader asks for it — see roastBlock()/revealRoast().
       sampleReport = report;
-      // The summary card first, exactly as a real report opens — a reader
-      // being shown what this app produces should meet the same thing its
-      // readers meet, and the card is the one part of the report that reads
-      // at a glance. Same psycheCardHtml() the reader's own report uses, from
-      // the same sample.json the sections below it come from.
-      //
-      // Its head carries no .card-head-toggle, which is what keeps it open:
-      // collapseSections only shuts cards whose head has one, the same
-      // mechanism that leaves the confidence card alone.
+      // No Psyche Card here: the sample opens straight on 00 and the part
+      // nav, since the front page already shows sample cards of its own. The
+      // card is still built for the full-screen copy, which other entry
+      // points open, but its section in the sample stays hidden.
       const cardHtml = psycheCardHtml(report);
       $('#sample-psyche-card').innerHTML = cardHtml;
       freshArtIds($('#sample-psyche-card'));
@@ -2152,7 +2147,7 @@
       // different boxes at the same time.
       $('#sample-psyche-card-full').innerHTML = cardHtml;
       freshArtIds($('#sample-psyche-card-full'));
-      $('#sample-card-section').hidden = !cardHtml;
+      $('#sample-card-section').hidden = true;
       $('#sample-card-title').textContent = TEXT.cardSection;
       $('#sample-card-hint').textContent = TEXT.cardHint;
       setHtml($('#sample-sections'), reportSectionsHtml(report, { sample: true }));

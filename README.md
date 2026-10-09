@@ -1035,7 +1035,12 @@ The sample dialog's copy is the one that needed the most care: it says *"This sa
 report"* rather than implying the sample is partial. The free report is a whole report, and calling it
 incomplete in order to sell the rest would be a lie about what somebody already has.
 
-**The sample opens on the summary card, above the sections, exactly as a real report does.** A reader
+**The sample report no longer shows the Psyche Card: it opens straight on 00 Overview and the part
+nav** (`#sample-card-section` stays hidden). The front page already shows sample cards of its own. The
+card is still built (hidden) for the full-screen copy and the score check. What follows describes the
+earlier arrangement, kept for its reasoning.
+
+*Earlier:* the sample opened on the summary card, above the sections, exactly as a real report does. A reader
 deciding whether this is worth handing an archive over is shown what the app actually produces, and the
 card is the one part of a report that reads at a glance — meeting a list of fourteen shut headings
 instead undersold the thing badly. It is built by the same `psycheCardHtml()` the reader's own report

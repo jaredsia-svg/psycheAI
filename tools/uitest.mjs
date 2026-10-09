@@ -480,7 +480,8 @@ try {
   // the thing that belongs at the top is still first.
   for (const [opener, dialogId, bodySel, firstSel, wanted] of [
     ['#guide-open', '#guide-dialog', '.guide-body', '.guide-step h3', /Open\s*Download your information/i],
-    ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-card-section', /Psyche Card/i],
+    // The sample opens on its first section — no Psyche Card above it.
+    ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-sections > :not([hidden])', /\S/],
   ]) {
     const reopen = async () => {
       await page.locator(opener).scrollIntoViewIfNeeded();
@@ -1764,61 +1765,26 @@ try {
     }
   }
 
-  // ---- the sample's summary card, and enlarging it ----
+  // ---- the sample opens on the report, not on a card ----
   //
-  // At preview size the card is a thumbnail — the type on it is scaled well
-  // below readable — so the whole point of it is that it opens. This is the
-  // reader's own My Psyche behaviour, given to the sample.
+  // The front page already shows sample cards; the sample report goes
+  // straight to 00 and the part nav.
   {
     await page.locator('#insight-sample').scrollIntoViewIfNeeded();
     await page.click('#insight-sample');
     await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
     await page.waitForTimeout(300);
-
-    const state = () => page.evaluate(() => {
-      const preview = document.querySelector('#sample-psyche-card');
-      const full = document.querySelector('#sample-psyche-card-full');
-      return {
-        sampleOpen: document.querySelector('#sample-dialog').open,
-        fullOpen: document.querySelector('#sample-card-dialog').open,
-        previewWidth: Math.round(preview.getBoundingClientRect().width),
-        fullWidth: Math.round(full.getBoundingClientRect().width),
-      };
-    });
-
-    const before = await state();
-    check('the sample card sits in the report as a thumbnail, not full screen',
-      before.sampleOpen && !before.fullOpen && before.previewWidth > 0, JSON.stringify(before));
-
-    await page.click('#sample-card-open');
-    await page.waitForSelector('#sample-card-dialog[open]', { timeout: 15000 });
-    await page.waitForTimeout(400);
-    const magnified = await state();
-    // Bigger, not merely present: the enlarged copy is scaled by a transform
-    // rather than by CSS size, so a broken fit renders it at the preview's
-    // dimensions and would satisfy a check that only asked whether it existed.
-    check('tapping it opens the card larger than the thumbnail it came from',
-      magnified.fullOpen && magnified.fullWidth > magnified.previewWidth * 1.2,
-      JSON.stringify(magnified));
-    check('and the sample report stays open underneath it',
-      magnified.sampleOpen === true, JSON.stringify(magnified));
-
-    // A click on the dialog itself rather than on the card. Top-left corner,
-    // which is backdrop at any viewport this suite runs at.
-    await page.mouse.click(8, 8);
-    await page.waitForFunction(() => !document.querySelector('#sample-card-dialog').open,
-      { timeout: 15000 });
-    const after = await state();
-    check('clicking outside the image closes it, back to the sample report',
-      after.fullOpen === false && after.sampleOpen === true, JSON.stringify(after));
-
-    const sampleText = (await page.locator('#sample-body').innerText()).replace(/\s+/g, ' ');
+    check('the sample report shows no Psyche Card, only the report',
+      await page.evaluate(() => document.querySelector('#sample-card-section').hidden &&
+        !document.querySelector('#sample-card-dialog').open &&
+        document.querySelector('#sample-sections').children.length > 0));
+    const sampleText = (await page.evaluate(() => document.querySelector('#sample-sections').textContent)).replace(/\s+/g, ' ');
     check('the sample report is the Mulan one',
       /Mulan/.test(sampleText) && !/Captain America/.test(sampleText),
       sampleText.slice(0, 120));
     // The card prints its own copy of the score rather than reading the
-    // report's, so the two can disagree — and did, the first time this was
-    // changed. Both are checked, against each other rather than a literal.
+    // report's, so the two can disagree. The card is still built (hidden) for
+    // the full-screen copy, so the two are checked against each other.
     const scores = await page.evaluate(() => ({
       onCard: ((document.querySelector('#sample-psyche-card').textContent || '')
         .match(/(\d+)\s*\/\s*100/) || [])[1],
@@ -1830,17 +1796,8 @@ try {
       JSON.stringify(scores));
     check('and it is a high-confidence sample rather than a hedged one',
       Number(scores.onCard) >= 80, String(scores.onCard));
-
-    // Closing the sample from underneath must take the full-screen card with
-    // it — a Back press does exactly that, and a card left open over the page
-    // with nothing behind it is the failure worth catching.
-    await page.click('#sample-card-open');
-    await page.waitForSelector('#sample-card-dialog[open]', { timeout: 15000 });
     await page.evaluate(() => document.querySelector('#sample-dialog').close());
-    await page.waitForTimeout(400);
-    check('and closing the sample takes the enlarged card down with it',
-      await page.evaluate(() => !document.querySelector('#sample-card-dialog').open &&
-        !document.querySelector('#sample-dialog').open));
+    await page.waitForTimeout(300);
   }
 
   check('clicking the summary opens it',
@@ -3435,72 +3392,22 @@ try {
   check('the report scrolls inside the dialog, so the way out stays visible',
     sample.bodyScrolls);
 
-  // ---- the summary card at the top of the sample ----
+  // ---- no summary card at the top of the sample ----
   //
-  // A reader being shown what this app produces should meet the same thing its
-  // readers meet, and the card is the one part of the report that reads at a
-  // glance. Built from the same psycheCardHtml() and the same sample.json the
-  // sections below it come from.
-  check('the sample opens on a summary card, above the sections',
+  // The front page already shows sample cards; the sample report opens
+  // straight on its first part and the part nav.
+  check('the sample opens on the report itself, with no Psyche Card above it',
     await page.evaluate(() => {
       const card = document.querySelector('#sample-card-section');
       const sections = document.querySelector('#sample-sections');
-      if (!card || card.hidden || !sections) return false;
-      return Boolean(card.compareDocumentPosition(sections) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const body = document.querySelector('#sample-body').getBoundingClientRect();
+      const first = sections && sections.firstElementChild;
+      return Boolean(card) && card.hidden && Boolean(first) &&
+        first.getBoundingClientRect().top < body.top + 160;
     }));
-  check('and it is the real card, carrying this sample report’s own reading',
-    await page.evaluate(() => {
-      const card = document.querySelector('#sample-psyche-card');
-      return Boolean(card) && card.querySelectorAll('.pc-stat').length >= 2 &&
-        card.querySelectorAll('.pc-letter').length === 4;
-    }),
-    await page.locator('#sample-psyche-card .pc-letter').allInnerTexts()
-      .then(l => l.join('')).catch(() => 'none'));
-  check('the card names the sample, not the reader',
-    (await page.locator('#sample-psyche-card .pc-owner').innerText()).trim() ===
-      sampleFixture.card.name,
-    await page.locator('#sample-psyche-card .pc-owner').innerText());
-  check('and carries the sample’s four-sentence blurb',
-    (await page.locator('#sample-psyche-card .pc-blurb').innerText()).trim() ===
-      sampleFixture.cardHighlights.trim(),
-    await page.locator('#sample-psyche-card .pc-blurb').innerText());
-  // Scaled to the dialog's own body rather than left at its natural 1000px,
-  // which would overflow the frame and scroll the dialog sideways. fitCard
-  // measures offsetHeight, so this only works when it runs after showModal —
-  // a closed <dialog> has no layout at all and the fit silently bails.
-  check('the card is fitted to the dialog rather than overflowing it',
-    await page.evaluate(() => {
-      const card = document.querySelector('#sample-psyche-card');
-      const frame = card.parentElement;
-      const scale = /scale\(([\d.]+)\)/.exec(card.style.transform || '');
-      return Boolean(scale) && Number(scale[1]) > 0 && Number(scale[1]) < 1 &&
-        frame.getBoundingClientRect().width <=
-          document.querySelector('#sample-body').clientWidth + 1;
-    }),
-    await page.evaluate(() => document.querySelector('#sample-psyche-card').style.transform));
-  // The card section is a .section-card like the rest, so it would collapse
-  // with them if its head carried a toggle. It deliberately does not — the
-  // same thing that keeps the confidence card open. It was briefly collapsible
-  // and that was wrong twice over: it is what the sample opens on, and the
-  // accordion in the toggle handler meant opening any section below it shut
-  // the card a reader had come to look at.
-  check('the summary card never collapses, the same as the confidence card',
-    await page.evaluate(() => {
-      const card = document.querySelector('#sample-card-section');
-      return !card.classList.contains('is-collapsed') &&
-        card.querySelectorAll('.card-head-toggle').length === 0;
-    }));
-  // Download and share act on "your" card and there is none here, so neither
-  // is offered. Full screen is different in kind — it acts on the image on the
-  // screen rather than on a reader's own card — and the sample card is a
-  // thumbnail whose detail is unreadable until it is enlarged, so it opens
-  // full screen exactly as the reader's own does.
-  check('the sample card offers no download or share, which would act on nothing',
-    (await page.locator('#sample-dialog #card-download, #sample-dialog #card-share')
-      .count()) === 0);
-  check('but it does open full screen, like the card on My Psyche',
-    (await page.locator('#sample-card-open').count()) === 1 &&
-    (await page.locator('#sample-card-open').isVisible()));
+  check('and offers no download or share, which would act on nothing',
+    (await page.locator('#sample-dialog #card-download, #sample-dialog #card-share').count()) === 0 &&
+      !(await page.locator('#sample-card-open').isVisible()));
   // Everything below belongs to a report somebody owns. Offering any of it on
   // a stranger's sample is at best confusing and at worst destructive — the
   // delete button clears the reader's own stored profile. Each control is
@@ -3586,18 +3493,9 @@ try {
     document.querySelector('#sample-body').innerText.length);
   check('the button under the diagram opens the same sample', fromSecond > 2500,
     fromSecond + ' chars');
-  // Third open of the dialog in this block, so this is the check that catches
-  // a close handler emptying #sample-body wholesale: the card's frame is
-  // markup in index.html rather than something showSample builds, and wiping
-  // the container takes it away permanently.
-  check('and the summary card comes back with it, open after two closes',
-    await page.evaluate(() => {
-      const section = document.querySelector('#sample-card-section');
-      const card = document.querySelector('#sample-psyche-card');
-      return Boolean(section) && !section.hidden &&
-        !section.classList.contains('is-collapsed') &&
-        Boolean(card) && card.querySelectorAll('.pc-stat').length >= 2;
-    }));
+  // Third open of the dialog in this block: still no card above the report.
+  check('and still no summary card above it, after two closes',
+    await page.evaluate(() => document.querySelector('#sample-card-section').hidden));
   // The cross is the only way out that is always on screen, so it carries the
   // whole burden now that the dialog has no footer action of its own. Scoped
   // to the dialog's own chrome: buttons inside #sample-body belong to the
