@@ -3497,10 +3497,11 @@ Messenger and WhatsApp):
    conversations the reader writes in most, each at least 4% of the places, the rest by volume, none over
    a fifth (a soft cap: it yields when the others run dry). WhatsApp: every chat (up to three) at least a
    quarter and at most two fifths — a hard cap (`waMaxShare`), so places a chat cannot use stay empty
-   rather than going to the busiest one. And every conversation, on every source, is held to
-   `messageThreadChars` — 6,000 characters in the standard read, 16,000 in the premium read — however
-   much room is left, so no one relationship outweighs the rest. One WhatsApp chat on its own is bounded
-   by that ceiling rather than by the share.
+   rather than going to the busiest one. And every conversation is held to a ceiling in characters,
+   however much room is left, so no one relationship outweighs the rest: 10,000 for an Instagram
+   conversation (`igThreadChars`), 6,000 for a Messenger conversation or a WhatsApp chat
+   (`messageThreadChars`; 16,000 in the premium read). One WhatsApp chat on its own is bounded by that
+   ceiling rather than by the share.
 2. **Spread across time.** Each conversation's span is cut into ten equal stretches, places shared by
    the square root of what was written in each — a two-year chat is read across two years.
 3. **A mix of lengths.** In every stretch about half the places go to substantial messages (120+
@@ -3512,7 +3513,7 @@ Messenger and WhatsApp):
    apologies, feelings and conflict, questions, and replies to a question.
 5. **Bursts as one.** Lines sent within two minutes, with nobody answering between, are joined with " / ".
 6. **No near-duplicates, nothing pasted.** "ok", "Ok!" and "okkk" count once per conversation. A message
-   over 1,200 characters, one over 280 that carries a link, or one marked forwarded is left out as
+   over 800 characters, one over 280 that carries a link, or one marked forwarded is left out as
    pasted or forwarded text; length counts for at most 280 characters when ranking. A message longer
    than shown keeps its opening 330 characters and its last 150, " … " between, so a long apology keeps
    its "anyway, I'm sorry".

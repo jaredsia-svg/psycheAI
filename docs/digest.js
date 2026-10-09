@@ -98,13 +98,17 @@
     messageMaxChars: 483,
     // No one conversation's lines may run past this many characters, however
     // much room is left: one relationship never outweighs the rest of the
-    // evidence. 16,000 in the premium read (DEEP_LIMITS).
+    // evidence. 6,000 for a Messenger conversation or a WhatsApp chat (16,000
+    // in the premium read, DEEP_LIMITS); 10,000 for an Instagram one
+    // (igThreadChars), since Instagram is the export the card is read from and
+    // most readers' messages there sit in a handful of conversations.
     messageThreadChars: 6000,
-    // Past this a message is not used at all: a 1,200-character message is
+    igThreadChars: 10000,
+    // Past this a message is not used at all: an 800-character message is
     // almost always pasted or forwarded — an article, an announcement, a
     // chain message — not something the reader wrote. One carrying a link is
     // held to messageLinkChars for the same reason.
-    messagePasteChars: 1200,
+    messagePasteChars: 800,
     messageLinkChars: 280,
     // Time periods each conversation's places are spread over, so a two-year
     // chat is read across the two years rather than mostly from its last month.
@@ -1560,6 +1564,7 @@
         // a link is the evidence, so the message is kept and the URL is not.
         ownMessageSample: sampleConversations(messages.ownTexts, {
           limit: LIMITS.messages,
+          threadChars: LIMITS.igThreadChars,
           topThreads: LIMITS.messageTopThreads,
           threadCap: LIMITS.messageThreadCap,
           minShare: LIMITS.messageMinShare,

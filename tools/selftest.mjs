@@ -3916,7 +3916,7 @@ check('the sample arrives in chronological order',
     pasted.length === 1 && /my own long message/.test(pasted[0]), JSON.stringify(pasted.map(x => x.slice(0, 40))));
   const shown = (pasted[0] || '').replace(/^\[\d{4}\] /, '');
   check('and a long message of their own keeps its opening and its end, " … " between',
-    Digest.LIMITS.messagePasteChars === 1200 && /^my own long message/.test(shown) && shown.includes(' … ') &&
+    Digest.LIMITS.messagePasteChars === 800 && /^my own long message/.test(shown) && shown.includes(' … ') &&
       shown.endsWith('anyway, I am sorry.') && shown.length <= Digest.LIMITS.messageHeadChars + 3 + Digest.LIMITS.messageTailChars,
     shown.length + ' ' + shown.slice(-60));
   const replies = [];
@@ -3953,6 +3953,12 @@ check('the sample arrives in chronological order',
   check('one conversation never runs past its character ceiling, however many places are free',
     Digest.LIMITS.messageThreadChars === 6000 && chars <= 6000 && lines.length < 270 && lines.length > 60,
     lines.length + ' lines, ' + chars + ' chars');
+  // An Instagram conversation has a higher ceiling: 10,000.
+  const igOne = Digest.build({ ...signals, messages: { total: 3000, threads: 1, groupThreads: 0, sent: 3000, received: 0,
+    avgSentLength: 60, ownTexts: one } }, { includeMessages: true, maxChars: 1e7 }).directMessages.ownMessageSample;
+  const igChars = igOne.reduce((sum, line) => sum + line.length, 0);
+  check('an Instagram conversation is held to 10,000 characters instead',
+    Digest.LIMITS.igThreadChars === 10000 && igChars <= 10000 && igChars > 6500, igOne.length + ' lines, ' + igChars + ' chars');
   // The fifth-of-the-sample cap still yields when the other conversations
   // run dry — a lopsided archive is read as lopsided — but only up to the
   // big conversation's own character ceiling.
