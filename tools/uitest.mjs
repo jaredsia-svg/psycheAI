@@ -1671,6 +1671,8 @@ try {
       check('the sender\'s Psyche Card is shown beside the invite, small enough to sit beside it',
         drawnCard.owner === 'Ava' && drawnCard.traits > 0 && drawnCard.width > 150 && drawnCard.width < 330 &&
           drawnCard.height > 150, JSON.stringify(drawnCard));
+      check('someone else\'s card has no QR code on it',
+        await invitePage.evaluate(() => !document.querySelector('#invite-card .pc-qr-slot')));
       check('a long link has no character to name, so the card leaves it out',
         !drawnCard.name && drawnCard.title === '⭐ This is Ava’s Psyche Card', drawnCard.title);
       await invitePage.click('#invite-guide');
@@ -4847,6 +4849,10 @@ try {
     }));
   check('the shared status line under both buttons starts out hidden',
     await page.evaluate(() => document.querySelector('#card-dialog-status').hidden));
+  // This server keeps no short links, and a long link is too dense to scan,
+  // so the card goes without a code rather than with an unreadable one.
+  check('without a short link the card has no QR code',
+    await page.evaluate(() => !document.querySelector('#psyche-card .pc-qr') && !document.querySelector('#psyche-card.pc-has-qr')));
   const [cardDownload] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
     page.click('#card-download'),
@@ -11540,6 +11546,22 @@ try {
       check('Copy invite link copies the one short personal link, /c/<id>#<key>',
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
+      // The same link as a QR code in the foot of the reader's own card, on
+      // the page and in its full-screen copy, so any copy of the image leads
+      // back to it.
+      const qr = await rp.evaluate(link => {
+        const drawn = [...document.querySelectorAll('#psyche-card .pc-qr, #psyche-card-full .pc-qr')]
+          .map(svg => svg.querySelector('path').getAttribute('d'));
+        const made = QRCode.create(link, { errorCorrectionLevel: 'M' });
+        let d = '';
+        for (let y = 0; y < made.modules.size; y++) {
+          for (let x = 0; x < made.modules.size; x++) if (made.modules.data[y * made.modules.size + x]) d += 'M' + x + ' ' + y + 'h1v1h-1z';
+        }
+        return { count: drawn.length, same: drawn.every(path => path === d),
+          call: (document.querySelector('#psyche-card .pc-qr-call') || {}).textContent || '' };
+      }, copied);
+      check('the reader\'s card carries a QR code of that same link, on the page and full screen',
+        qr.count === 2 && qr.same && qr.call === 'Scan to see how compatible we are', JSON.stringify(qr));
       const saved = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_link') || 'null'));
       check('what the server holds is locked: no name, no card text in it',
         await rp.evaluate(async id => {

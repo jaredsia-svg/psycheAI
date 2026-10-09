@@ -468,9 +468,10 @@
    * report. The QR code is dropped because this is the reader's own page, where
    * they already have one.
    */
-  function psycheCardHtml(report) {
+  function psycheCardHtml(report, options) {
     if (!report) return '';
-    if (reportLayout() === 'structured') return psycheStoryHtml(report);
+    const own = Boolean(options && options.own);
+    if (reportLayout() === 'structured') return psycheStoryHtml(report, own);
     const card = report.card || {};
     const cardName = card.name || '';
     const essence = report.essence || {};
@@ -540,7 +541,8 @@
         cardLoveBlock(CARD_ICONS.loveOut, TEXT.cardLoveOut,
           (love.giving || []).slice(0, 2).map(l => l && l.language)) +
       '</div>' +
-
+      // The reader's own card only: the QR code for their link (fillCardQr).
+      (own ? '<div class="pc-qr-slot"></div>' : '') +
       '';
   }
 
@@ -585,7 +587,7 @@
       .slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 3).map(row => row.value);
   }
 
-  function psycheStoryHtml(report) {
+  function psycheStoryHtml(report, own) {
     const S = Copy.STRUCTURED;
     const card = report.card || {};
     const essence = report.essence || {};
@@ -662,8 +664,51 @@
         '<div>' + label(CARD_ICONS.loveIn, TEXT.cardLoveIn) + '<ul class="pc-slove">' + loveList(love.receiving) + '</ul></div>' +
         '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(love.giving) + '</ul></div>' +
       '</div>' +
+      // On the reader's own card the foot carries the QR code for their link
+      // once it is saved (fillCardQr), and the line moves in beside it.
+      (own ? '<div class="pc-qr-slot"></div>' : '') +
       '<p class="pc-sfoot">' + esc(S.cardFooter) + '</p>' +
       '</div>';
+  }
+
+  // ---------- the QR code on the reader's own card ----------
+  //
+  // The reader's one link, so any copy of their card — the image posted to a
+  // story, a screenshot of a screenshot — leads back to it: scanning it opens
+  // what tapping the link does, and counts as their invite. The short link
+  // only. A long one is ~800 characters, far too dense to scan, so without
+  // a short link there is no code. Drawn as SVG squares, so the exported
+  // image carries it crisp at any size.
+  function cardQrSvg(url) {
+    try {
+      const qr = QRCode.create(url, { errorCorrectionLevel: 'M' });
+      const size = qr.modules.size;
+      const cells = qr.modules.data;
+      let d = '';
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) if (cells[y * size + x]) d += 'M' + x + ' ' + y + 'h1v1h-1z';
+      }
+      const box = size + 4;
+      return '<svg class="pc-qr" viewBox="-2 -2 ' + box + ' ' + box + '" shape-rendering="crispEdges" ' +
+        'role="img" aria-label="' + esc(TEXT.cardQrLabel) + '">' +
+        '<rect x="-2" y="-2" width="' + box + '" height="' + box + '" fill="#ffffff"/>' +
+        '<path fill="#241a2e" d="' + d + '"/></svg>';
+    } catch (error) {
+      return '';
+    }
+  }
+  const SHORT_LINK = /^https?:\/\/[^/]+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/;
+  /** Puts the reader's QR code in their card's foot, or takes it out when there is no short link. */
+  function fillCardQr() {
+    const url = SHORT_LINK.test(shortLink) ? shortLink : '';
+    const svg = url ? cardQrSvg(url) : '';
+    for (const card of [$('#psyche-card'), $('#psyche-card-full')]) {
+      const slot = card && card.querySelector('.pc-qr-slot');
+      if (!slot) continue;
+      slot.innerHTML = svg ? svg + '<div class="pc-qr-text"><p class="pc-qr-call">' + esc(TEXT.cardQrCall) + '</p>' +
+        '<p class="pc-qr-site">' + esc(Copy.STRUCTURED.cardFooter) + '</p></div>' : '';
+      card.classList.toggle('pc-has-qr', Boolean(svg));
+    }
   }
 
   // Scale-to-fit, measured rather than assumed: the card is laid out at
@@ -6725,11 +6770,12 @@
         { year: 'numeric', month: 'long', day: 'numeric' }) +
       ' · ' + Math.round(report.confidence.score) + '/100 confidence';
 
-    const cardHtml = psycheCardHtml(report);
+    const cardHtml = psycheCardHtml(report, { own: true });
     $('#psyche-card').innerHTML = cardHtml;
     freshArtIds($('#psyche-card'));
     $('#psyche-card-full').innerHTML = cardHtml;
     freshArtIds($('#psyche-card-full'));
+    fillCardQr();
     // Hidden rather than left empty on a report too old or too thin to fill it,
     // so the page never opens on a blank frame with a "tap to expand" label
     // under it.
@@ -6773,7 +6819,12 @@
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
     refreshReferral().catch(() => {});
-    publishShortLink().catch(() => {});
+    // The card's QR code waits for the short link, then fits the card again.
+    publishShortLink().then(link => {
+      if (!link || !state.profile) return;
+      fillCardQr();
+      layoutPsycheCard();
+    }).catch(() => {});
     layoutSideActions();
     collapseSections($('#profile-body'));
     markStructured($('#profile-body'));

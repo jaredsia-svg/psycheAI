@@ -3971,3 +3971,23 @@ details.more[open] > summary::after { content: ' ▴'; }
 .legal .section-card li { margin: 0 0 .5rem; }
 .legal .section-card p:last-child { margin-bottom: 0; }
 .premium-legal { margin: .8rem 0 0; text-align: center; font-size: .78rem; }
+
+/* The QR code in the foot of the reader's own card: their one link, so any
+   copy of the card leads back to it. Bottom of the card, out of the way of
+   the character and the name. Selectors start .pc- or .psyche-card so the
+   card's image export (cardStyles) carries them. */
+.pc-qr-slot:empty { display: none; }
+.pc-qr-slot {
+  display: flex; align-items: center; gap: 28px; margin: auto 0 0; padding: 20px 26px; border-radius: 28px;
+  background: var(--bg); border: 2px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.pc-qr { flex: none; width: 188px; height: 188px; border-radius: 12px; }
+.pc-qr-text { min-width: 0; }
+.pc-qr-call { font-size: 38px; font-weight: 800; line-height: 1.18; color: var(--ink); }
+.pc-qr-site { margin-top: 12px; font-size: 19px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.psyche-card.pc-has-qr .pc-sfoot { display: none; }
+/* The classic card is wider and shorter: a smaller code, one line. */
+.psyche-card:not(.pc-story) .pc-qr-slot { gap: 18px; margin-top: 14px; padding: 12px 16px; border-radius: 16px; }
+.psyche-card:not(.pc-story) .pc-qr { width: 104px; height: 104px; border-radius: 8px; }
+.psyche-card:not(.pc-story) .pc-qr-call { font-size: 22px; }
+.psyche-card:not(.pc-story) .pc-qr-site { margin-top: 6px; font-size: 12px; }

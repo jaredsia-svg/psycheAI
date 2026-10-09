@@ -209,6 +209,9 @@
     cardShareText: (character, url) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
       'Find yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
+    // The QR code in the foot of the reader's own card: their one link.
+    cardQrCall: 'Scan to see how compatible we are',
+    cardQrLabel: 'QR code: this card’s link, to see how compatible you are',
     // Download sits on the left, share on the right — the order a reader
     // meets them reading left to right. Each carries a small visible label
     // beside its icon (`cardDownloadLabel`/`cardShareLabel`) plus a fuller

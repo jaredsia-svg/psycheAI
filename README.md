@@ -1926,6 +1926,16 @@ one link (`myLinkUrl`). Every share uses it: *Send my link*, *Copy invite link*,
 roast image and the compatibility result. Without short links it is the long form, `/?ref=<code>#p=…`,
 which carries the invite code too.
 
+**The QR code on the reader's card.** The foot of the reader's own card, on the page, full screen and
+in the downloaded or shared image, carries a QR code of that same short link. Beside it are *Scan to see
+how compatible we are* and the site line. Any copy of the card, such as a story post or a
+screenshot, therefore leads back to the link. Scanning it opens exactly what tapping the link does
+and counts as their invite. `fillCardQr` draws it as SVG squares from `vendor/qrcode.js`
+(node-qrcode, MIT; only `QRCode.create`) once `publishShortLink` has the link, then fits the card
+again. It appears only with a short link: a long one is far too dense to scan, so without short links
+the card goes without a code. Sample cards and a friend's card have no slot for one. The exported
+1080×1920 image decodes at full, half and a third of its size.
+
 Short links are on when Upstash is configured (`/api/status` → `shortLinks`), or with
 `PSYCHEAI_SHORT_LINKS=1`; otherwise — or if saving fails — the long link is what gets copied, and long
 links keep opening.
