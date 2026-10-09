@@ -3521,6 +3521,12 @@ Messenger and WhatsApp):
    matters most (apologies, feelings, answers to a question). The prompt tells the model to read the
    reply against it and never to attribute, quote or describe the other person from it.
 
+**The data rows say what the full report read.** After a full report written from the premium read
+(data added at the unlock), the sample counts it read are kept with the profile
+(`state.profile.readFrom`) and the *Your data* rows show them (`readView` in `docs/app.js`): a
+WhatsApp chat added at the unlock reads "584 of your 37.8k messages read", not the "10 of" the standard
+digest beside it holds once Instagram has filled its 80,000. An unlock with nothing added clears them.
+
 Lines are tagged `[t1]`… (Instagram), `[m1]`… (Messenger) and `[c1]`–`[c3]` (WhatsApp, matching the
 chat metrics), and `coverage.sampling` records how many lines carry context. When a digest is over its
 line the trim now thins each list evenly rather than cutting its end, which used to lose the newest

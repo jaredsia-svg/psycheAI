@@ -1223,8 +1223,16 @@
   // PAID_SECTIONS, unlockedSections and the PDF have always looked for them.
   const PREMIUM_KEYS = ['wellness', 'attachment', 'idealPartner', 'careerAssessment'];
 
-  async function adoptFullReport(result, replaceCard, savedName) {
+  async function adoptFullReport(result, replaceCard, savedName, readFrom) {
     if (!state.profile) return;
+    // How much of each source the full report actually read: the premium read
+    // when data was added at the unlock (WhatsApp at its full share, where the
+    // standard digest beside it holds only a few lines), or nothing to say
+    // when it read the standard digest itself. See readView.
+    if (readFrom !== undefined) {
+      if (readFrom) state.profile.readFrom = readFrom;
+      else delete state.profile.readFrom;
+    }
     const written = withOwnName(Object.assign({}, result.data), ownNameFrom(savedName));
     const premium = {};
     for (const key of PREMIUM_KEYS) {
@@ -5679,8 +5687,26 @@
     return by.instagram.concat(by.google, by.facebook, by.whatsapp);
   }
 
+  /**
+   * The digest as the report on screen was read from it: the stored one, with
+   * the counts of what the full report actually read laid over it when that
+   * was the premium read (state.profile.readFrom). Without this a WhatsApp
+   * chat added at the unlock showed "10 of your 37.8k messages read" — the
+   * standard digest's share, trimmed to its floor beside a full Instagram —
+   * under a report written from hundreds of them.
+   */
+  function readView(digest) {
+    const read = state.profile && state.profile.readFrom;
+    if (!digest || !read || !read.sampling) return digest;
+    const coverage = Object.assign({}, digest.coverage, {
+      sampling: Object.assign({}, (digest.coverage && digest.coverage.sampling) || {}, read.sampling),
+    });
+    return Object.assign({}, digest, { coverage });
+  }
+
   /** The same lines, kept apart by the source they were read from. */
-  function countedBySource(digest) {
+  function countedBySource(source) {
+    const digest = readView(source);
     const R = Copy.STRUCTURED.readFrom;
     const items = [];
     const google = [];
@@ -7951,7 +7977,8 @@
       clearJob();
       // What was loaded for this unlock is now part of it.
       pendingDataSourceReads = {};
-      await adoptFullReport(full, dataChanged);
+      await adoptFullReport(full, dataChanged, undefined,
+        deepRead && paidDigest.coverage ? { sampling: paidDigest.coverage.sampling || {} } : null);
       // Every section changed, so the whole report is redrawn rather than
       // having bodies spliced into a page still showing the locked block.
       // renderProfile calls renderAnalysedBy and redraws the re-run price

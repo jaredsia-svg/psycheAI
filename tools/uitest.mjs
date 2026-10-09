@@ -10219,6 +10219,21 @@ try {
       });
       check('afterwards only the standard digest is kept, and it has Google',
         !after.deep && after.standardPlain, JSON.stringify(after));
+      // The data rows say what the full report read — the premium read's
+      // counts — not the standard digest's, which may hold far fewer of an
+      // added source.
+      const sentVideos = sentBody.digest.coverage.sampling.youtubeTitles;
+      const rows = await dp.evaluate(() => {
+        const profile = JSON.parse(localStorage.getItem('psycheai_profile'));
+        const stored = JSON.parse(localStorage.getItem('psycheai_digest'));
+        return { readFrom: profile.readFrom, standard: stored.coverage.sampling.youtubeTitles,
+          rows: Boolean(document.querySelector('#profile-body .sources-read')),
+          text: document.querySelector('#profile-body').textContent.replace(/\s+/g, ' ') };
+      });
+      check('the data rows show what the full report read, from the premium read',
+        rows.readFrom && rows.readFrom.sampling.youtubeTitles.shown === sentVideos.shown &&
+          rows.standard.shown < sentVideos.shown && (!rows.rows || rows.text.includes(sentVideos.shown + ' of ')),
+        JSON.stringify({ sent: sentVideos, standard: rows.standard, kept: rows.readFrom && rows.readFrom.sampling.youtubeTitles }));
       check('the premium read runs with no page errors', dpErrors.length === 0, dpErrors.join(' | '));
     } finally {
       await dp.close();
