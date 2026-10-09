@@ -1769,14 +1769,16 @@ try {
             [...bar.querySelectorAll('button')].map(b => b.textContent.trim()).join('|') === 'Sync';
         }));
       await invitePage.click('#sync-invite-open');
-      await invitePage.waitForSelector('#view-scan:not([hidden]) .scan-waiting', { timeout: 15000 });
-      check('Sync goes to My Syncs, where the waiting friend has a Sync button of their own',
-        (await invitePage.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|') === 'Sync with Ava',
-        (await invitePage.locator('#scan-waiting').innerText()));
+      await invitePage.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
+      check('Sync goes to My Syncs, where the waiting friend is in the Syncs list with a Sync button of their own',
+        (await invitePage.locator('#scan-history .scan-results-head h2').innerText()) === 'Syncs list' &&
+          (await invitePage.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync' &&
+          /Ava/.test(await invitePage.locator('.match-waiting').innerText()),
+        (await invitePage.locator('#scan-history').innerText()));
       // A sync that fails keeps the friend's link, and the banner, for another try.
       await invitePage.route('**/api/compatibility', route => route.fulfill({ status: 400, contentType: 'application/json',
         body: JSON.stringify({ error: 'Gemini API error: the model refused this.' }) }));
-      await invitePage.click('.scan-waiting .sync-invite-go');
+      await invitePage.click('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#scan-alert:not([hidden])', { timeout: 30000 });
       await invitePage.unroute('**/api/compatibility');
       await invitePage.click('[data-nav="profile"]');
@@ -1786,7 +1788,7 @@ try {
           localStorage.getItem('psycheai_invite') !== null && !document.querySelector('#sync-invite').hidden &&
           document.querySelector('#welcome, #view-welcome').hidden));
       await invitePage.click('#sync-invite-open');
-      await invitePage.click('.scan-waiting .sync-invite-go');
+      await invitePage.click('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
       const synced = await invitePage.evaluate(() => ({
         title: document.querySelector('#report-title').textContent,
@@ -5130,6 +5132,28 @@ try {
     Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeOpen) < 5,
     'before ' + scrollBeforeOpen + ', after ' + (await page.evaluate(() => window.scrollY)));
 
+  {
+    const marked = async () => (await page.locator('.nav-links a.is-current').allInnerTexts()).map(t => t.trim()).join('|');
+    const pill = () => page.evaluate(() => {
+      const a = document.querySelector('.nav-links a.is-current');
+      return Boolean(a) && getComputedStyle(a, '::before').content !== 'none' && a.getAttribute('aria-current') === 'page';
+    });
+    await page.click('#compat-dialog-close').catch(() => {});
+    await page.click('[data-nav="scan"]');
+    await page.waitForSelector('#view-scan:not([hidden])');
+    const onSyncs = await marked();
+    const syncPill = await pill();
+    await page.click('#nav-about');
+    await page.waitForSelector('#view-about:not([hidden])');
+    const onFaq = await marked();
+    await page.click('[data-nav="profile"]');
+    await page.waitForSelector('#view-profile:not([hidden])');
+    const onPsyche = await marked();
+    check('the menu marks the page the reader is on, the same way on every page: My Psyche, My Syncs and FAQ',
+      onSyncs === 'My Syncs' && onFaq === 'FAQ' && onPsyche === 'My Psyche' && syncPill && await pill(),
+      [onSyncs, onFaq, onPsyche, syncPill].join(' / '));
+  }
+  await openAllSections(page);
   check('the personality and sync links appear once there is a profile',
     (await visibleNav()).join('|') === 'My Psyche|My Syncs|FAQ',
     (await visibleNav()).join('|'));
@@ -7186,7 +7210,7 @@ try {
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
-    'What you share', 'What works', 'What will rub',
+    'What you share', 'What works', 'What to look out for',
     'My Syncs']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
@@ -9512,7 +9536,7 @@ try {
   check('nothing in it is romantic or about work',
     !/Romantic|Professional|partner|colleague/i.test(reportText), reportText.slice(0, 200));
   check('the playbook is about being close to each other',
-    /How to be close to each other/i.test(reportText), reportText.slice(0, 200));
+    /How to relate to each other/i.test(reportText), reportText.slice(0, 200));
   check('report gives each person their own advice',
     (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
@@ -9597,8 +9621,8 @@ try {
     ['what it is', 'Psyche Sync'],
     ['a friendship focus area', 'Shared interests'],
     ['what works', 'What works'],
-    ['what will rub', 'What will rub'],
-    ['the playbook heading', 'How to be close to each other'],
+    ['what to look out for', 'What to look out for'],
+    ['the playbook heading', 'How to relate to each other'],
     ['advice addressed to each person', 'For Ale\xe7'],
   ]) {
     check('the comparison PDF carries ' + label, compatDrawn.includes(needle),
@@ -9621,10 +9645,10 @@ try {
   const actionTiles = await page.evaluate(() => [...document.querySelectorAll('#view-report .compat-actions > *')].map(b => ({
     id: b.id, cls: b.className, icon: Boolean(b.querySelector('svg')), label: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
   })));
-  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Back to My Syncs',
+  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share result, Close',
     actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
       actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
-      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Back to My Syncs' &&
+      actionTiles.map(t => t.label).join('|') === 'Download PDF|Share result|Close' &&
       new Set(actionTiles.map(t => t.top)).size === 1, JSON.stringify(actionTiles));
   check('and there is no "Check someone else" any more',
     !/Check someone else|scan/i.test(await page.locator('#view-report .compat-actions').innerText()));
@@ -9654,7 +9678,7 @@ try {
   await shot('4-report');
   await page.click('#compat-back');
   await page.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
-  check('"Back to My Syncs" goes to My Syncs, where this report is listed',
+  check('Close shuts the popout, leaving My Syncs, where this report is listed',
     (await page.locator('#scan-history').innerText()).includes('Jordan'));
 
   // The report page is reached from the reader's own psyche page, and on a
@@ -9945,7 +9969,7 @@ try {
     return Boolean(heading) && heading.textContent.trim() === 'Sync with a friend';
   }));
   check('the button says what it does',
-    (await page.locator('#paste-go').innerText()) === 'See how in sync we are',
+    (await page.locator('#paste-go').innerText()) === 'Sync',
     await page.locator('#paste-go').innerText());
   check('no camera, no picture upload, no code: only a link to paste',
     (await page.locator('#start-camera, #upload-qr, #qr-file, #scan-video, #view-scan canvas').count()) === 0 &&
@@ -10007,8 +10031,8 @@ try {
     (await page.locator('.scan-lede').innerText()) ===
       'Open a friend\'s PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how to be a better friend to each other.',
     await page.locator('.scan-lede').innerText());
-  check('and it says the analysis runs on the side of whoever opens it',
-    /runs on the side of whoever opens the link/.test(await page.locator('#view-scan .link-panel').innerText()));
+  check('and it says, in a line, what the link is for',
+    /Send it to a friend so they can sync with you/.test(await page.locator('#view-scan .link-panel').innerText()));
   const ownLink = await page.evaluate(() =>
     location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
@@ -10035,15 +10059,16 @@ try {
     (await page.locator('#link-contents .card-head h2').innerText()).trim() === 'What your link contains',
     await page.locator('#link-contents .card-head h2').innerText());
   check('it explains only the card is shared, not the full report',
-    /the compact card/i.test(await page.locator('#link-contents .card-sub').innerText()));
-  check('it shows the card headline that is actually in the link, and says what else travels with it',
+    /Only your card/i.test(await page.locator('#link-contents .card-sub').innerText()));
+  check('it names the fields, not this reader\'s own name, tagline or interests',
     await page.evaluate(() => {
       const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
       const text = document.querySelector('#link-contents').innerText;
-      return text.includes(card.headline) && /conflict style/.test(text) && !/Enneagram/i.test(text);
+      const fields = [...document.querySelectorAll('#link-contents .link-fields li')].map(li => li.textContent);
+      return !text.includes(card.headline) && !(card.interests || []).some(i => text.includes(i)) &&
+        ['MBTI', 'Big Five', 'Top motivators', 'Interests'].every(f => fields.includes(f)) && !/Enneagram/i.test(text) &&
+        /never your export, messages or report/.test(text);
     }));
-  check('it lists the card\'s interests as tags',
-    (await page.locator('#link-contents .tag').count()) >= 1);
   check('it sits below the link panel, not above it', await page.evaluate(() => {
     const panel = document.querySelector('#view-scan .link-panel').getBoundingClientRect();
     const contents = document.querySelector('#link-contents').getBoundingClientRect();
@@ -10087,10 +10112,10 @@ try {
     many.title === '2 friends are waiting to sync with you' && many.buttons.join('|') === 'Sync',
     JSON.stringify(many));
   await page.click('#sync-invite-open');
-  await page.waitForSelector('#view-scan:not([hidden]) .scan-waiting', { timeout: 15000 });
-  check('on My Syncs, a button for each friend, latest first',
-    (await page.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|') === 'Sync with Mei|Sync with Jordan',
-    (await page.locator('.scan-waiting .sync-invite-go').allInnerTexts()).join('|'));
+  await page.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
+  const waitingNames = await page.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label')));
+  check('on My Syncs, a Sync button for each friend in the Syncs list, latest first',
+    waitingNames.join('|') === 'Sync with Mei|Sync with Jordan', waitingNames.join('|'));
 
   // The comparison runs for real time with nothing else standing between a
   // reader's back button and losing it — the same risk runPremiumAnalysis's
@@ -10110,7 +10135,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
     await route.continue();
   });
-  await page.click('.scan-waiting .sync-invite-go[data-i="1"]');
+  await page.click('.match-waiting .sync-invite-go[data-i="1"]');
   // Free, so the model call — and the unload guard with it — starts on the tap.
   await page.waitForSelector('#view-working:not([hidden])', { timeout: 15000 });
   check('leaving mid-comparison is guarded, so a back press cannot silently lose it',
@@ -10128,6 +10153,20 @@ try {
     await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_invite') || 'null').name === 'Mei Lin' &&
       JSON.parse(localStorage.getItem('psycheai_invites_more') || '[]').length === 0));
   await page.evaluate(() => { localStorage.removeItem('psycheai_invite'); });
+  // The result is a popout over My Syncs: the page under it is out of reach
+  // until it is closed, and a click outside it closes it.
+  check('a sync\'s result opens as a popout over My Syncs, not a page of its own',
+    await page.evaluate(() => document.querySelector('#sync-dialog').open && !document.querySelector('#view-scan').hidden &&
+      document.querySelector('#nav-scan').classList.contains('is-current')));
+  await page.mouse.click(5, 400);
+  await page.waitForFunction(() => !document.querySelector('#sync-dialog').open, null, { timeout: 5000 });
+  check('a click outside the popout closes it, leaving My Syncs', await page.locator('#view-scan').isVisible() &&
+    !(await page.locator('#view-report').isVisible()));
+  await page.click('#scan-history .match-row[data-report]');
+  await page.waitForSelector('#sync-dialog[open] #view-report:not([hidden])', { timeout: 10000 });
+  check('a sync in the Syncs list opens in the popout too', (await page.locator('#report-body').innerText()).length > 50);
+  await page.click('#sync-dialog-close');
+  check('and its ✕ closes it', !(await page.evaluate(() => document.querySelector('#sync-dialog').open)));
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });
@@ -10446,10 +10485,18 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the four parts are the only disclosures, and all five start open — the appendix does not fold',
-        shape.toggles === 5 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open' &&
-        (await sp.locator('#profile-body .appendix-part .card-chevron').count()) === 0, JSON.stringify(shape));
+      check('structured: the overview, the four parts and the appendix are the only disclosures, and on a laptop all six start open',
+        shape.toggles === 6 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open' &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .card-chevron').count()) === 1, JSON.stringify(shape));
+      check('structured: My Report is titled "Your Psyche Report", above the part nav in the left column',
+        await sp.evaluate(() => {
+          const title = document.querySelector('#profile-body .report-page-title');
+          const nav = document.querySelector('#profile-body .part-nav');
+          if (!title || !nav) return false;
+          const t = title.getBoundingClientRect(); const n = nav.getBoundingClientRect();
+          return title.textContent === 'Your Psyche Report' && t.bottom <= n.top + 1 && Math.abs(t.left - n.left) < 2;
+        }));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: My Report is Parts 00-04 and the appendix only — no link card, no card, a Back button',
@@ -10467,6 +10514,15 @@ try {
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
         current: (document.querySelector('.nav-links a.is-current .nav-long') || {}).textContent,
       }));
+      const hubFoot = await sp.evaluate(() => {
+        const del = document.querySelector('#delete-profile').getBoundingClientRect();
+        const note = document.querySelector('#analysed-by').getBoundingClientRect();
+        const small = getComputedStyle(document.querySelector('#profile-body .source-read-what')).fontSize;
+        return { download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display === 'none',
+          beside: note.left >= del.right - 1 && Math.abs((note.top + note.bottom) / 2 - (del.top + del.bottom) / 2) < 30, small };
+      });
+      check('structured: My Psyche has no Download full report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
+        hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
       check('structured: Back lands on My Psyche: card, link, Beyond your card, Open My Report, Evidence and method — no parts',
         hubShape.order === 'link,beyond,open,sync,method' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
@@ -10493,11 +10549,30 @@ try {
         check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
-        check('structured, on a phone: a full report opens with parts 00 to 04 shut',
-          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut', await states());
+        check('structured, on a phone: a full report opens with parts 00 to 05 shut',
+          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
+        check('structured, on a phone: "Your Psyche Report" sits above the row of part numbers',
+          await sp.evaluate(() => {
+            const t = document.querySelector('#profile-body .report-page-title').getBoundingClientRect();
+            const n = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+            return t.bottom <= n.top + 1 && t.width > 300;
+          }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
-          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut', await states());
+          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut,appendix:shut', await states());
+        await sp.click('#profile-body .part-card[data-part-card="drives"] .card-toggle');
+        await sp.waitForTimeout(900);
+        const opened = await sp.evaluate(() => {
+          const card = document.querySelector('#profile-body .part-card[data-part-card="drives"]').getBoundingClientRect();
+          const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect();
+          return { top: Math.round(card.top), navBottom: Math.round(nav.bottom) };
+        });
+        check('opening another shuts the one before, and brings the opened part\'s top to the top of the screen',
+          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,together:shut,appendix:shut' &&
+            opened.top >= opened.navBottom - 2 && opened.top < opened.navBottom + 60, (await states()) + ' ' + JSON.stringify(opened));
+        await sp.click('#profile-body .part-card[data-part-card="appendix"] .card-toggle');
+        check('and the appendix opens and shuts like the others',
+          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:open', await states());
         await sp.setViewportSize(wide);
         await seed(true);
       }
@@ -10669,11 +10744,11 @@ try {
         const nodes = Array.from(document.querySelectorAll('#profile-body > *'));
         const at = sel => nodes.findIndex(n => n.matches(sel));
         const together = document.querySelector('#profile-body .part-card[data-part-card="together"]');
-        const appendix = document.querySelector('#profile-body .appendix-part');
-        // Two boxes of their own, directly under the appendix heading.
+        const appendix = document.querySelector('#profile-body .part-card[data-part-card="appendix"] .part-body');
+        // Its boxes, inside the part.
         const inside = appendix ? Array.from(appendix.children).filter(n => n.matches('.method-card, .bonus-card'))
           .map(n => n.classList.contains('method-card') ? 'method' : 'roast') : [];
-        return [at('.part-card[data-part-card="together"]'), at('.appendix-part'), inside.join('+'),
+        return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
       check('structured: after Part 4 comes part 05, the appendix, with the roast — Evidence and method is on My Psyche',
@@ -10909,9 +10984,14 @@ try {
           const [r, g, b] = raw.replace(/^color\(srgb/, '').match(/\d*\.?\d+/g).map(n => Number(n) * scale);
           const body = getComputedStyle(document.querySelector('#profile-body .part-card')).backgroundColor;
           return { rgb: [r, g, b], grey: Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 150 && r < 240,
-            same: getComputedStyle(card).backgroundColor === body };
+            // Inside its part, a read roast shows the part's own colour through it.
+            same: raw === body || /rgba\(0, 0, 0, 0\)|transparent/.test(raw) };
         });
         const covered = await shade();
+        // On a phone the parts are an accordion: the appendix may be shut.
+        if (await sp.locator('#profile-body .part-card[data-part-card="appendix"].is-collapsed').count()) {
+          await sp.click('#profile-body .part-card[data-part-card="appendix"] .card-toggle');
+        }
         await sp.locator('#profile-body .bonus-reveal').scrollIntoViewIfNeeded();
         await sp.click('#profile-body .bonus-reveal');
         await sp.waitForTimeout(300);
@@ -11418,6 +11498,10 @@ try {
       });
       check('structured: on a phone the card sits in one box: title, card, how to learn more, then the three actions',
         Object.entries(phoneBox).every(([k, v]) => k === 'spill' ? v <= 1 : v), JSON.stringify(phoneBox));
+      check('structured: on a phone the card has a thin, faint edge',
+        /inset/.test(await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card')).boxShadow)) ||
+          /\binset\b|0px 0px 0px 3px/.test(await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card')).boxShadow)),
+        await sp.evaluate(() => getComputedStyle(document.querySelector('#psyche-card')).boxShadow));
       // On a phone, tapping the card opens it full screen, explaining nothing
       // on the page; full screen has no Download or Share, only a line saying
       // to tap a part.
@@ -11470,6 +11554,14 @@ try {
         fullExplained.every(e => e.shown && e.title && e.body && e.lit && e.inView && e.overlap === 0 && e.beside) &&
           fullExplained[1].title === 'MBTI', JSON.stringify(fullExplained));
       check('structured: and the sheet\'s cross puts it away, leaving the card full screen',
+        await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open));
+      // With one explained, a tap on another part goes back to the card,
+      // rather than straight on to the next part's explanation.
+      await sp.click('#psyche-card-full [data-cx="character"]');
+      await sp.waitForTimeout(250);
+      await sp.click('#psyche-card-full [data-cx="bigFive"]');
+      await sp.waitForTimeout(250);
+      check('structured: with a part explained, a tap on another part puts the explanation away, back to the card',
         await sp.evaluate(() => document.querySelector('#card-dialog .cx-pop').hidden && document.querySelector('#card-dialog').open));
       // A tap off the card first puts an explanation away; the next closes the card.
       await sp.click('#psyche-card-full [data-cx="motives"]');

@@ -214,8 +214,7 @@
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
     syncInviteOpen: 'Sync',
-    syncWaitingTitle: 'Waiting to sync with you',
-    syncWaitingSub: 'Friends who sent you their link. Each sync is free, and only you see it.',
+    syncWaitingMeta: 'Waiting to sync · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: (names) => names.length + ' friends are waiting to sync with you',
     syncInviteSubMany: 'Pick who to sync with on My Syncs — each is free, and only you see it.',
@@ -357,11 +356,10 @@
     wellnessCaveat: 'A read of patterns in how you use social media, not of your mental health – it is not a diagnosis and cannot see your circumstances. If anything here weighs on you, talk to a GP or a qualified professional.',
 
     linkContents: 'What your link contains',
-    linkContentsSub: 'Only this — the compact card the other person’s report is built from.',
-    linkContentsFineprint: 'Plus your Big Five scores, MBTI, top motivators and pattern names, ' +
-      'values & beliefs, strengths with friends and at work and what holds you back, your conflict ' +
-      'style, how you show care, and your rhythm, energy and work style — all as short phrases, the ' +
-      'same ones shown under your card.',
+    linkContentsSub: 'Only your card, in short — what a friend’s sync is built from.',
+    linkContentsFields: ['First name', 'Who you are most like', 'Tagline', 'MBTI', 'Big Five', 'Top motivators',
+      'Patterns', 'Values & beliefs', 'Interests', 'How you show care', 'With friends & at work', 'Rhythm & energy'],
+    linkContentsFineprint: 'Short phrases only — never your export, messages or report.',
 
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
@@ -795,10 +793,10 @@
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
     compatCommon: 'What you share',
-    // Over What works and What will rub, which sit side by side under it.
+    // Over What works and What to look out for, which sit side by side under it.
     compatHowItPlays: 'How it plays out',
     compatWorks: 'What works',
-    compatRubs: 'What will rub',
+    compatRubs: 'What to look out for',
     compatBoth: 'Both of you',
     compatFor: 'For ',
     compatSuffix: ' sync',
@@ -812,6 +810,8 @@
     // are listed.
     scanTitle: 'Psyche Sync',
     scanHistory: 'My Syncs',
+    // The list on My Syncs: friends waiting to sync, then past syncs.
+    syncsList: 'Syncs list',
   };
 
   // ---------- the structured report layout ----------
@@ -1035,6 +1035,7 @@
     // `when` skips a part the card does not have.
     // My Psyche, once the full report is unlocked: the way into My Report.
     reportPage: {
+      pageTitle: 'Your Psyche Report',
       title: 'Your full report',
       blurb: 'Parts 00 to 04 and your roast, on a page of their own, with the reasoning behind every line of your card.',
       open: 'Open My Report →',

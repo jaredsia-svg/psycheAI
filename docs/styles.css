@@ -1289,19 +1289,57 @@ textarea { resize: vertical; }
    room, each under an icon of its own. */
 .scan-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 1rem; margin-bottom: 1rem; }
 .scan-actions .card { margin: 0; display: flex; flex-direction: column; }
-.scan-action h2 { margin: .75rem 0 .35rem; font-size: 1.2rem; }
-.scan-action > p.muted { margin: 0 0 .9rem; font-size: .93rem; line-height: 1.55; }
+.scan-actions .card.scan-action { padding: .9rem 1rem 1rem; }
+/* Each only as tall as it needs; the paste field and its button on one row. */
+.scan-actions { align-items: start; }
+.paste-card.scan-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: .5rem; align-items: end; }
+.paste-card.scan-action > :not(.field):not(#paste-go) { grid-column: 1 / -1; }
+.paste-card.scan-action .field { margin: 0; }
+.paste-card.scan-action #paste-go { margin: 0; align-self: end; white-space: nowrap; }
+.scan-action-head { display: flex; align-items: center; gap: .6rem; }
+.scan-action h2 { margin: 0; font-size: 1.02rem; }
+.scan-action > p.muted { margin: .45rem 0 .6rem; font-size: .86rem; line-height: 1.45; }
+.scan-action .field { font-size: .86rem; }
+.scan-action .btn { padding: .5rem 1rem; font-size: .9rem; }
 .scan-action-icon {
-  width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: #fff;
+  flex: none; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   box-shadow: 0 6px 16px rgba(123, 63, 160, .22);
 }
 .scan-action-icon-2 { background: linear-gradient(135deg, var(--accent-2), #f08c6c); box-shadow: 0 6px 16px rgba(209, 71, 122, .22); }
-.scan-action-icon svg { width: 22px; height: 22px; }
+.scan-action-icon svg { width: 17px; height: 17px; }
+/* Syncs list: a friend waiting to sync, a row like a past sync with Sync at its end. */
+.card .match-waiting { margin-bottom: .55rem; }
+.match-row.is-waiting { border-style: dashed; background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg)); }
+.match-row.is-waiting:hover { transform: none; box-shadow: none; }
+.match-row.is-waiting .btn { flex: none; min-width: 5.5rem; }
+/* What the link contains: the fields, named, as small chips. */
+.card .link-fields { list-style: none; margin: .2rem 0 .6rem; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.card .link-fields li { margin: 0; padding: .2rem .6rem; border-radius: 999px; font-size: .78rem;
+  background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* A sync's result: a popout over My Syncs. */
+.sync-dialog {
+  width: min(48rem, calc(100vw - 1.5rem)); max-width: none; max-height: min(90vh, 64rem);
+  padding: 0; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink); box-shadow: var(--shadow);
+}
+.sync-dialog::backdrop { background: rgba(20, 14, 26, .58); backdrop-filter: blur(2px); }
+.sync-dialog > .view { display: block; padding: clamp(1rem, 3vw, 1.6rem); }
+.sync-dialog > .view[hidden] { display: none; }
+.sync-dialog-close {
+  position: sticky; top: .6rem; float: right; z-index: 3; margin: .6rem .6rem 0 0;
+  width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--bg-alt); color: var(--ink); font-size: 1rem; cursor: pointer; box-shadow: var(--shadow);
+}
+.sync-dialog-close:hover { color: var(--accent); }
+@media (max-width: 640px) {
+  .sync-dialog { width: calc(100vw - .8rem); max-height: calc(100dvh - .8rem); }
+}
 .paste-card .field { margin-top: auto; }
 .paste-card #paste-go, .scan-actions .link-panel .btn-row { margin-top: .8rem; }
 .paste-card #paste-go { align-self: flex-start; }
-.scan-actions .link-panel .btn-row { margin-top: auto; padding-top: .2rem; }
+.scan-actions .link-panel .btn-row { margin-top: 0; padding-top: 0; }
 
 /* What the link carries, as a little preview of what the other person gets. */
 .link-preview {
@@ -3342,6 +3380,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .part-nav-item.is-current .part-nav-num { opacity: .85; }
 [data-part="method"], [data-part="roast"] { scroll-margin-top: 5.5rem; }
 
+/* My Report's title: a box of its own over the part nav, centred like "Your
+   Psyche Card" on a phone, and at the head of the left column on a laptop. */
+.report-page-title {
+  margin: 0 0 .7rem; padding: .7rem 1rem; text-align: center; font-size: 1.2rem; line-height: 1.25;
+  border-radius: 16px; border: 1px solid var(--line); background: var(--bg-alt); box-shadow: var(--shadow);
+}
 /* Every name in full: the nav wraps rather than scrolling one off the end.
    On a phone it stays where it is rather than following the reader down, so
    two rows of it never sit over the report. Where the screen leaves room
@@ -3370,6 +3414,11 @@ details.more[open] > summary::after { content: ' ▴'; }
     margin-left: max(248px, calc((100vw - var(--page-w)) / 2)); margin-right: auto;
     max-width: min(var(--page-w), calc(100vw - 248px));
   }
+  #profile-body .report-page-title {
+    position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
+    margin: 0; padding: .6rem .8rem; font-size: 1.05rem; text-align: left;
+  }
+  #profile-body:has(> .report-page-title) .part-nav { top: 10rem; }
   #profile-body .part-nav {
     position: fixed; top: 6.5rem; left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px)); width: 232px;
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .15rem; margin: 0; border-radius: 16px;
@@ -3408,6 +3457,7 @@ details.more[open] > summary::after { content: ' ▴'; }
    page's three actions under it. */
 @media (min-width: 1000px) and (min-height: 520px) {
   #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - 6.5rem - 5.2rem); overflow-y: auto; }
+  #view-profile.profile-paid #profile-body:has(> .report-page-title) .part-nav { max-height: calc(100vh - 10rem - 5.2rem); }
   /* The page's three actions, under the nav: quiet icons in the nav's own
      box style, each named by a tooltip. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
@@ -3563,13 +3613,13 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .source-read.is-missing .source-read-icon { filter: grayscale(1); opacity: .6; }
 .source-read-name { grid-area: name; min-width: 0; font-weight: 650; font-size: .95rem; }
-.source-read-what { grid-area: what; min-width: 0; font-size: .8rem; line-height: 1.45; color: var(--ink-soft); }
+.source-read-what { grid-area: what; min-width: 0; font-size: .72rem; line-height: 1.4; color: var(--ink-soft); }
 .source-read-action { grid-area: action; justify-self: end; font-size: .8rem; font-weight: 650; color: var(--accent); white-space: nowrap; }
 .source-read.is-loaded .source-read-action::after { content: ' ›'; }
 .source-read.is-missing .source-read-action {
   padding: .25rem .65rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 }
-.sources-read-note { margin: .6rem 0 0; font-size: .78rem; line-height: 1.45; color: var(--ink-soft); }
+.sources-read-note { margin: .6rem 0 0; font-size: .72rem; line-height: 1.45; color: var(--ink-soft); }
 /* Beside a free card: its three actions along the top, and below them a
    stage that stays empty until the reader points at a part of the card —
    then that part's meaning pops out level with it, an arrow pointing back. */
@@ -3680,6 +3730,9 @@ details.more[open] > summary::after { content: ' ▴'; }
     order: 2; border: 0; box-shadow: none; background: transparent; border-radius: 14px; margin: 0;
   }
   #view-profile.profile-structured #psyche-card-section::before { display: none; }
+  /* A thin, faint edge, so the card's outline reads against the page. Drawn
+     at the card's own scale (about a third), so 3px lands near 1px. */
+  #view-profile.profile-structured #psyche-card { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--ink) 13%, transparent); }
   #view-profile.profile-structured .psyche-card-hint { display: none; }
   #view-profile.profile-structured .psyche-card-slot { cursor: default; }
   .cx-home-title { order: 1; margin: 0; text-align: center; }
@@ -3774,10 +3827,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   }
 }
 /* Part 05: a heading over two boxes of their own, not a disclosure. */
-.appendix-part { margin-top: 1.4rem; }
-.appendix-head { margin: 0 0 .9rem; padding: 0 .3rem; }
-.appendix-head .part-title { margin: 0; }
-.appendix-part > .section-card { margin-bottom: 1rem; }
+/* The appendix is a part like the others; its two boxes sit inside it. */
+.part-card[data-part-card="appendix"] .part-body > .section-card { margin-bottom: 1rem; }
+.part-card[data-part-card="appendix"] .part-body > .section-card:last-child { margin-bottom: 0; }
 /* Who wrote the report and when: a quiet pill per line, closing the page. */
 .provenance { display: flex; justify-content: center; margin: 1.4rem 0 .4rem; }
 .provenance-box {
@@ -3790,7 +3842,7 @@ details.more[open] > summary::after { content: ' ▴'; }
    the card on the right, the two boxes the same height. Wraps to two lines
    only when the screen is too narrow for both. */
 #view-profile.profile-free .profile-foot {
-  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: space-between; gap: .7rem; margin-top: 1.4rem;
+  display: flex; flex-wrap: wrap; align-items: stretch; justify-content: flex-start; gap: .7rem; margin-top: 1.4rem;
 }
 #view-profile.profile-free .profile-foot .cta-row { margin: 0; align-items: stretch; }
 #view-profile.profile-free .profile-foot .cta-row .btn { min-height: 0; padding-block: .45rem; }
@@ -4058,7 +4110,18 @@ details.more[open] > summary::after { content: ' ▴'; }
   .nav-links .nav-long { display: none; }
   .nav-links .nav-short { display: inline; }
 }
-.nav-links a.is-current { color: var(--accent); font-weight: 700; }
+.nav-links a.is-current { position: relative; isolation: isolate; color: var(--accent); font-weight: 700; }
+/* A soft pill behind the current page, drawn outside the link's own box so
+   the row never moves. */
+.nav-links a.is-current::before {
+  content: ""; position: absolute; inset: -.3rem -.6rem; z-index: -1; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+@media (max-width: 430px) {
+  .nav-links a.is-current::before { inset: -.25rem -.38rem; }
+}
+}
 
 /* My Psyche, unlocked: the way into My Report. */
 .open-report-card {

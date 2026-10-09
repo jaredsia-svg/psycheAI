@@ -1951,9 +1951,21 @@ On My Psyche, one bar holds them all, under the unlock offer (or under Open My R
 - **One friend:** *You + Jared = ?% in sync*, *See how in sync you are with Jared*.
 - **More:** *2 friends are waiting to sync with you*.
 
-The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche. My Syncs lists
-the waiting friends under *Waiting to sync with you*, latest first, each with its own **Sync with
-Mei** button. The bar is parked in `#sync-invite-home` and moved into `.sync-invite-slot` by
+The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche.
+
+On My Syncs everything is in one card, **Syncs list**:
+- **Waiting friends** come first, latest first, as dashed rows ("Waiting to sync · free, only you
+  see it"), each with a **Sync** button.
+- **Past syncs** follow. Tapping one opens its result in a popout (`#sync-dialog`) over My Syncs,
+  not a page of its own. A fresh sync lands in the same popout.
+- **Closing the popout:** its ✕, **Close**, Esc, a click outside it, or Back.
+
+Below the list are two compact panels:
+- **Sync with a friend:** paste a link, then **Sync**.
+- **My link:** **Copy link**.
+
+*What your link contains* names the fields as chips, not the reader's own values. In the result,
+the sections are *How to relate to each other* and *What to look out for*. The bar is parked in `#sync-invite-home` and moved into `.sync-invite-slot` by
 `renderProfile`. My Report has no slot, so it never shows the bar.
 
 Each sync spends only its own friend's link, and only once it lands. A sync with a link that carried
@@ -2000,6 +2012,14 @@ days, for whoever holds it.
 - The unlock sheet offers *Use your gifted free full report* ahead of the reader's own credit.
 - The gift is cleared once a full report is written with it.
 
+## The Psyche Card on a phone
+
+On a phone the card has a thin, faint edge, an inset shadow drawn at the card's own scale. With a
+part explained, a tap anywhere outside the explanation puts it away, including a tap on another
+part. The tap returns to the card rather than opening the next explanation. This applies on the
+page (touch screens), full screen, and on the sample cards. With a pointer, hovering still moves
+the explanation from part to part.
+
 ## One share message
 
 Every share and copy of the reader's link sends the same message, from `shareMessage()` in
@@ -2040,14 +2060,24 @@ A paid structured report is split into two pages, which are two modes of `#view-
   - an **Open My Report →** tile, which replaces the unlock box once paid
   - Evidence and method
 
-  A free reader sees the same page, with the unlock box in place of the tile.
-- **My Report** (`go('full')`, nav `#nav-full`) has Parts 00 to 04 and an appendix that holds only the
-  roast. It does not repeat the card at the top. The left bar's action row starts with **← Back**
-  (`#report-back`), placed before Download, and it returns to My Psyche. My Report keeps its parts
-  collapsed on a phone and open on a laptop, as before.
+  A free reader sees the same page, with the unlock box in place of the tile. My Psyche has no
+  *Download full report*; its footer is **Delete everything** with the run's note (model and
+  date) right beside it.
+- **My Report** (`go('full')`, nav `#nav-full`) opens with the title **Your Psyche Report**
+  (`.report-page-title`): at the head of the left column on a laptop, and as a centred box above the
+  row of part numbers on a phone. Then come Parts 00 to 05. Part 05, the appendix (only the roast
+  now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
+  row starts with **← Back** (`#report-back`), before Download, and returns to My Psyche.
+- **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) every
+  part starts shut.
+- **One part at a time on a phone:** opening a part shuts the others and brings its top to the top
+  of the screen, clear of the part nav. A part-nav jump does the same. On a laptop, parts open and
+  shut on their own.
+- **No sync bar:** My Report never shows the "You + Jared" bar.
 
-The nav shows My Report only once the report is unlocked. The current page's link is marked
-`.is-current`. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
+The nav shows My Report only once the report is unlocked. The current page is marked the same way
+on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, a
+soft accent pill drawn by `::before` so the row never moves. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
 lands on My Report at Part 00, with a note: *Your full report is ready.* A classic-layout report stays on
 one page.
@@ -5366,7 +5396,7 @@ write it. What is left:
 1. **The answer**: the score as a ring, the band in words, a verdict of two or three sentences under
    60 words whose first sentence is the sharpest true thing about the pair, and *What you share* as
    tags inside the same card.
-2. **How it plays out**: two or three things that work and two or three that will rub, each with its
+2. **How it plays out**: two or three things that work and two or three to look out for, each with its
    evidence on one small line.
 3. **The playbook**: three things for each person, two for both.
 
@@ -5514,7 +5544,7 @@ also what stops a report inventing a shared interest neither person has. `docs/c
 refuses to ask the model twice for anything derivable, on the grounds that a second answer can
 disagree with the first; this is the same rule applied to the second call.
 
-The result is a score, an honest verdict, what works, what will rub, and a playbook addressed to each
+The result is a score, an honest verdict, what works, what to look out for, and a playbook addressed to each
 person individually about the other. Paste their link again to compare on a different basis — the
 picker appears on every read, whether the link was tapped or pasted.
 

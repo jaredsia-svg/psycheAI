@@ -922,11 +922,10 @@
   // which is the context that page is for.
   function linkContentsBlock(card) {
     if (!card) return '';
+    // The fields, named; not this reader's own values.
     return '<div class="card section-card link-contents-card">' +
       sectionHead('🔗', esc(TEXT.linkContents), esc(TEXT.linkContentsSub)) +
-      '<div class="link-preview"><p class="link-preview-name">' + esc(card.name || '') + '</p>' +
-      '<p class="link-preview-headline">' + esc(card.headline) + '</p>' +
-      tags(card.interests) + '</div>' +
+      '<ul class="link-fields">' + TEXT.linkContentsFields.map(field => '<li>' + esc(field) + '</li>').join('') + '</ul>' +
       '<p class="fineprint">' + esc(TEXT.linkContentsFineprint) + '</p></div>';
   }
 
@@ -2389,9 +2388,16 @@
     $('#nav-scan').hidden = !ready;
     // My Report, once there is a full report to read on its own page.
     $('#nav-full').hidden = !(ready && fullReportPage());
+    // The page the reader is on, marked the same way on every link.
     const current = !$('#view-profile').hidden;
     $('#nav-profile').classList.toggle('is-current', current && !reportPageOn());
     $('#nav-full').classList.toggle('is-current', current && reportPageOn());
+    $('#nav-scan').classList.toggle('is-current', !$('#view-scan').hidden);
+    $('#nav-about').classList.toggle('is-current', !$('#view-about').hidden);
+    for (const link of document.querySelectorAll('.nav-links a')) {
+      if (link.classList.contains('is-current')) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    }
   }
   /** Whether this reader's full report lives on a page of its own (My Report). */
   function fullReportPage() {
@@ -2403,6 +2409,9 @@
   }
 
   function show(view) {
+    // A sync's result is a popout over My Syncs, not a page of its own.
+    if (view === 'report') { openSyncDialog(); return; }
+    if (syncDialog().open) syncDialog().close();
     // Arriving at a home view gives back the entry pushed for whichever
     // secondary view preceded it — a nav link, a fresh scan's result, anything
     // other than the Back press the entry exists for. Left in place, a later
@@ -2454,6 +2463,36 @@
       navHistoryEntry = true;
     }
   }
+
+  // ---- a sync's result, as a popout over My Syncs ----
+  //
+  // Opened from the Syncs list or when a sync lands; closed by its ✕, Close,
+  // Esc, a click outside it, or Back (it pushes an entry of its own, as the
+  // sample does).
+  let syncHistoryEntry = false;
+  let closingSyncFromHistory = false;
+  const syncDialog = () => $('#sync-dialog');
+  function openSyncDialog() {
+    const dialog = syncDialog();
+    if ($('#view-scan').hidden) { renderScan(); show('scan'); } else renderScan();
+    $('#view-report').hidden = false;
+    if (!dialog.open) {
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+      history.pushState({ psycheaiSync: true }, '');
+      syncHistoryEntry = true;
+    }
+    dialog.scrollTop = 0;
+  }
+  syncDialog().addEventListener('close', () => {
+    $('#view-report').hidden = true;
+    if (syncHistoryEntry && !closingSyncFromHistory) popOwnEntry();
+    syncHistoryEntry = false;
+  });
+  // A click on the backdrop lands on the dialog itself; one inside it does not.
+  syncDialog().addEventListener('click', event => { if (event.target === syncDialog()) syncDialog().close(); });
+  $('#sync-dialog-close').addEventListener('click', () => syncDialog().close());
+  $('#compat-back').addEventListener('click', () => syncDialog().close());
 
   // ---- the sample report ----
   //
@@ -2650,6 +2689,13 @@
     // reachable too, and whichever was opened last is the one a Back press is
     // aimed at. Both are guarded on being open at all, so the order only
     // decides which closes first when — impossibly, today — both are.
+    if (syncDialog().open) {
+      closingSyncFromHistory = true;
+      syncHistoryEntry = false;
+      syncDialog().close();
+      closingSyncFromHistory = false;
+      return;
+    }
     if (guideDialog().open || guideDialog().hasAttribute('open')) {
       closingGuideFromHistory = true;
       guideHistoryEntry = false;
@@ -3332,6 +3378,10 @@
     if (!target) return;
     const card = target.closest('.part-card');
     if (card) setSectionOpen(card, true);
+    // On a phone, one part open at a time, as when its heading is tapped.
+    if (card && window.matchMedia && window.matchMedia(PHONE_REPORT).matches) {
+      for (const other of scope.querySelectorAll('.part-card')) if (other !== card) setSectionOpen(other, false);
+    }
     // Part 00 starts with the Psyche Card at the top of the page.
     if (item.getAttribute('data-part-target') === 'overview' && item.closest('#profile-body')) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -3409,11 +3459,18 @@
     // The structured report's parts all start open and open and shut on their
     // own: a reader moving between parts with the nav should not find the
     // one they left closed behind them.
-    if (opening && !card.classList.contains('part-card')) {
+    // On a phone the parts are an accordion too: opening one shuts the
+    // others, and the opened part is brought to the top of the screen.
+    const partOnPhone = card.classList.contains('part-card') && window.matchMedia &&
+      window.matchMedia(PHONE_REPORT).matches;
+    if (opening && (partOnPhone || !card.classList.contains('part-card'))) {
       const scope = card.closest('#profile-body, #sample-body') || document;
       for (const head2 of scope.querySelectorAll('.card-head-toggle')) {
         const other = head2.closest('.section-card');
-        if (other && other !== card) setSectionOpen(other, false);
+        if (!other || other === card || other.contains(card)) continue;
+        // A part shuts only other parts; a section inside one, its siblings.
+        if (other.classList.contains('part-card') !== card.classList.contains('part-card')) continue;
+        setSectionOpen(other, false);
       }
 
       // Put it back exactly where it was.
@@ -3466,7 +3523,10 @@
       // a hardcoded pixel figure here would the next time the nav changes
       // height. Inside the sample dialog that margin is smaller, because the
       // dialog's own head does not overlap its scrolling body.
-      if (viewportTopOf(card, host) > visibleHeightOf(host) * REVEAL_BELOW) {
+      if (partOnPhone || viewportTopOf(card, host) > visibleHeightOf(host) * REVEAL_BELOW) {
+        // A part lands clear of the pinned bars over it, the part nav among them.
+        const partNav = partOnPhone && card.parentElement && card.parentElement.querySelector('.part-nav');
+        if (partNav) card.style.scrollMarginTop = pinnedHeight(partNav) + 'px';
         card.scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
       }
     }
@@ -6175,7 +6235,10 @@
     const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
     const roast = sample ? null : report.bonus;
-    let html = partNavHtml(Boolean(roast));
+    // My Report's title, over the part nav: above the left column on a
+    // laptop, and above the row of numerals on a phone.
+    let html = (options && options.page && !sample
+      ? '<h2 class="report-page-title">' + esc(S.reportPage.pageTitle) + '</h2>' : '') + partNavHtml(Boolean(roast));
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -6259,17 +6322,12 @@
     // Part 05, the appendix: how the report was made, then the roast — after
     // the method rather than in the middle of the report, so the professional
     // read is whole before the unkind one starts.
-    // Not a disclosure like the parts above it: a heading over two boxes of
-    // their own, Evidence and method and then the roast.
-    html += '<section class="appendix-part" data-part-card="appendix">' +
-      '<div class="report-part appendix-head" data-part="appendix">' +
-        '<span class="part-num" aria-hidden="true">' + String(PART_ORDER.indexOf('appendix')).padStart(2, '0') + '</span>' +
-        '<h2 class="part-title">' + esc(S.parts.appendix.title) + '</h2></div>' +
+    // A part like the others, that opens and shuts.
+    html += partCardHtml('appendix',
       // Evidence and method lives on My Psyche now, beside the card it rates;
       // the sample, which has no My Psyche, keeps it here.
       (ownPage ? '' : methodCardHtml(report, sample)) +
-      (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
-      '</section>';
+      (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : ''));
     return html;
   }
 
@@ -6301,7 +6359,7 @@
       const current = [...inBand].sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)[0];
       if (current) light(keyOf(current));
     }, { rootMargin: '-20% 0px -70% 0px' });
-    root.querySelectorAll('.part-card[data-part-card], .appendix-part[data-part-card]').forEach(node => partObserver.observe(node));
+    root.querySelectorAll('.part-card[data-part-card]').forEach(node => partObserver.observe(node));
     light('overview');
   }
 
@@ -6822,11 +6880,12 @@
     if (dialog && dialog.open && dialog.classList.contains('is-guided') && event.target.closest('#card-dialog')) {
       const full = dialog.querySelector('.cx-pop');
       const part = event.target.closest('#psyche-card-full [data-cx]');
-      if (part) explainFullCardPart(part.getAttribute('data-cx'));
+      // With an explanation showing, a tap anywhere outside it — another part
+      // of the card too — only puts it away, back to the card; with none
+      // showing, a part explains itself and anywhere else closes the card.
+      if (!full.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#card-dialog-close')) explainFullCardPart(null);
+      else if (part) explainFullCardPart(part.getAttribute('data-cx'));
       else if (event.target.closest('.cx-close')) explainFullCardPart(null);
-      // A tap anywhere else first puts the explanation away; only with none
-      // showing does it close the card.
-      else if (!full.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#card-dialog-close')) explainFullCardPart(null);
       else return;
       event.stopPropagation();
       return;
@@ -6837,17 +6896,23 @@
         !event.target.closest('.sample-card-nav')) {
       const pop = sample.querySelector('.cx-pop');
       const part = event.target.closest('#sample-psyche-card-full [data-cx]');
-      if (part) explainSampleCardPart(part.getAttribute('data-cx'));
+      if (!pop.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#sample-card-dialog-close')) explainSampleCardPart(null);
+      else if (part) explainSampleCardPart(part.getAttribute('data-cx'));
       else if (event.target.closest('.cx-close')) explainSampleCardPart(null);
-      else if (!pop.hidden && !event.target.closest('.cx-pop') && !event.target.closest('#sample-card-dialog-close')) explainSampleCardPart(null);
       else return;
       event.stopPropagation();
       return;
     }
-    // A tap anywhere but the explanation itself or another part of the card
-    // puts the explanation away.
+    // A tap anywhere but the explanation itself puts it away. On a touch
+    // screen that includes another part of the card: the tap goes back to
+    // the card rather than straight on to the next explanation. (With a
+    // pointer, hovering has already moved it to the part under it.)
     const openPop = document.querySelector('#profile-side .cx-pop:not([hidden])');
-    if (openPop && !event.target.closest('.cx-pop') && !event.target.closest('#psyche-card [data-cx]')) explainCardPart(null);
+    if (openPop && !event.target.closest('.cx-pop')) {
+      const onPart = event.target.closest('#psyche-card [data-cx]');
+      if (!onPart || !canHover()) explainCardPart(null);
+      if (onPart && !canHover()) { event.preventDefault(); event.stopPropagation(); return; }
+    }
     if (event.target.closest('.cx-open-full')) { openPsycheCard(); return; }
     const tool = event.target.closest('.cx-tool');
     if (tool) {
@@ -6996,8 +7061,9 @@
       // Where to start: the ring pulses gently until the reader points at anything.
       $('#psyche-card').classList.add('pc-hint');
     }
-    // A free report has only the card, which has its own download.
-    $('#export-pdf-bottom').hidden = structured && !explained;
+    // My Psyche has only the card, which has its own download: the full
+    // report's is on My Report.
+    $('#export-pdf-bottom').hidden = structured && !reportPage;
     // Either way its compatibility test is one of the card's tools.
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
@@ -8914,11 +8980,13 @@
     $('#scan-title').textContent = TEXT.scanHistory;
     $('#scan-initial').textContent = who ? String(who).trim().charAt(0).toUpperCase() : 'Y';
     $('#paste-input').value = '';
-    setHtml($('#scan-waiting'), syncWaitingHtml());
+    // Syncs list: friends waiting to sync first, then past syncs.
     const history = store.read(KEYS.history, []);
-    setHtml($('#scan-history'), history.length
-      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.scanHistory) + '</h2>' +
-        '<span class="scan-count">' + history.length + '</span></div>' + historyList(history) + '</div>' : '');
+    const waiting = state.profile ? allInvites().length : 0;
+    setHtml($('#scan-history'), history.length || waiting
+      ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.syncsList) + '</h2>' +
+        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' + syncWaitingHtml() +
+        (history.length ? historyList(history) : '') + '</div>' : '');
     $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
   }
 
@@ -8931,7 +8999,7 @@
   const MODE_LABELS = Copy.MODE_LABELS;
   const MODE_HEADINGS = {
     romantic: 'How to partner each other',
-    platonic: 'How to be close to each other',
+    platonic: 'How to relate to each other',
     professional: 'How to work with each other',
   };
 
@@ -9396,18 +9464,18 @@
     $('#sync-invite-sub').textContent = invites.length === 1 ? TEXT.syncInviteSub(names[0]) : TEXT.syncInviteSubMany;
     $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
   }
-  /** My Syncs: each waiting friend with a Sync button of their own. */
+  /** Syncs list: each friend whose link is waiting, with a Sync button of their own. */
   function syncWaitingHtml() {
     const invites = state.profile ? allInvites() : [];
     if (!invites.length) return '';
-    return '<div class="card scan-waiting"><h2>' + esc(TEXT.syncWaitingTitle) + '</h2>' +
-      '<p class="muted">' + esc(TEXT.syncWaitingSub) + '</p><ul class="scan-waiting-list">' +
-      invites.map((invite, i) => {
-        const name = firstName(invite.name) || invite.name || '?';
-        return '<li><span class="match-face" aria-hidden="true">' + esc(String(name).trim().charAt(0).toUpperCase()) + '</span>' +
-          '<strong>' + esc(name) + '</strong>' +
-          '<button class="btn btn-sm sync-invite-go" type="button" data-i="' + i + '">' + esc(TEXT.syncInviteGo(name)) + '</button></li>';
-      }).join('') + '</ul></div>';
+    return '<ul class="match-list match-waiting">' + invites.map((invite, i) => {
+      const name = firstName(invite.name) || invite.name || '?';
+      return '<li><div class="match-row is-waiting">' +
+        '<span class="match-face m-platonic" aria-hidden="true">' + esc(String(name).trim().charAt(0).toUpperCase()) + '</span>' +
+        '<span class="match-who"><strong>' + esc(name) + '</strong><span class="match-meta">' + esc(TEXT.syncWaitingMeta) + '</span></span>' +
+        '<button class="btn btn-sm sync-invite-go" type="button" data-i="' + i + '" aria-label="' + esc(TEXT.syncInviteGo(name)) + '">' +
+          esc(TEXT.syncInviteOpen) + '</button></div></li>';
+    }).join('') + '</ul>';
   }
   // The invite is spent only once the sync has landed (adoptComparison): a
   // sync that fails leaves it, on My Syncs, for another try.

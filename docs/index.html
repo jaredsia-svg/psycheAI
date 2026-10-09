@@ -74,7 +74,7 @@
     <a href="#" data-nav="profile" id="nav-profile" hidden><span class="nav-long">My Psyche</span><span class="nav-short" aria-hidden="true">Psyche</span></a>
     <a href="#" data-nav="full" id="nav-full" hidden><span class="nav-long">My Report</span><span class="nav-short" aria-hidden="true">Report</span></a>
     <a href="#" data-nav="scan" id="nav-scan" hidden><span class="nav-long">My Syncs</span><span class="nav-short" aria-hidden="true">Syncs</span></a>
-    <a href="#" data-nav="about">FAQ</a>
+    <a href="#" data-nav="about" id="nav-about">FAQ</a>
   </div>
 </nav>
 
@@ -557,27 +557,25 @@
   </header>
   <div id="scan-alert" class="alert" hidden></div>
 
-  <!-- Friends whose links are waiting, each with its own Sync button. -->
-  <div id="scan-waiting"></div>
+  <!-- Syncs list: friends waiting to sync, each with a Sync button, then
+       past syncs, each opening its result in a popout. -->
   <div id="scan-history"></div>
 
   <div class="scan-actions">
     <div class="card paste-card scan-action">
-      <span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
-      <h2>Sync with a friend</h2>
-      <p class="muted">Tapping a friend's link opens it here by itself. If it came some other way,
-        paste it.</p>
+      <div class="scan-action-head"><span class="scan-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg></span>
+      <h2>Sync with a friend</h2></div>
+      <p class="muted">Got their link another way? Paste it here.</p>
       <label class="field">Their link
         <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
       </label>
-      <button class="btn" id="paste-go">See how in sync we are</button>
+      <button class="btn" id="paste-go">Sync</button>
     </div>
 
     <div class="link-panel card scan-action">
-      <span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
-      <h2 class="link-title">My link</h2>
-      <p class="muted">The sync runs on the side of whoever opens the link. Send yours so they can
-        see how in sync you are, and ask them to send theirs back.</p>
+      <div class="scan-action-head"><span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
+      <h2 class="link-title">My link</h2></div>
+      <p class="muted">Send it to a friend so they can sync with you, and ask for theirs back.</p>
       <div class="btn-row">
         <button class="btn" id="copy-link-scan" type="button">Copy link</button>
       </div>
@@ -588,6 +586,10 @@
 </section>
 
 <!-- ══════════════ report ══════════════ -->
+<!-- A sync's result opens over My Syncs as a popout (app.js,
+     openSyncDialog): its ✕, Close, Esc, Back or a click outside it close it. -->
+<dialog id="sync-dialog" class="sync-dialog" aria-labelledby="report-title">
+<button class="sync-dialog-close" id="sync-dialog-close" type="button" aria-label="Close">✕</button>
 <section id="view-report" class="view" hidden>
   <!-- The pair in the same band the profile page opens with, the basis as a
        pill under the names. The download is with the other actions below. -->
@@ -616,10 +618,11 @@
   <div class="compat-actions no-print">
     <button class="cx-tool" id="export-compat-bottom" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span>Download PDF</span></button>
     <button class="cx-tool" id="share-compat-image" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share result</span></button>
-    <button class="cx-tool" id="compat-back" data-nav="scan" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span>Back to My Syncs</span></button>
+    <button class="cx-tool" id="compat-back" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg><span>Close</span></button>
   </div>
   <p class="fineprint link-status compat-share-status no-print" id="compat-share-status" role="status"></p>
 </section>
+</dialog>
 
 <!-- ══════════════ about ══════════════ -->
 <section id="view-about" class="view" hidden>
