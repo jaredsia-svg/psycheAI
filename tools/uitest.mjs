@@ -1655,8 +1655,8 @@ try {
       check('and says what to do, and that the analysis with them is free and follows on its own',
         /Make your free Psyche Card, and the compatibility analysis with Ava Tan runs straight after it, also free\./
           .test(first.text) && first.hash === '' && !/compare/i.test(first.text), first.text);
-      check('with a way to the steps, a way straight to the upload, and no button to throw the invite away',
-        await invitePage.locator('#invite-guide').isVisible() && await invitePage.locator('#invite-have').isVisible() &&
+      check('with one way on, to the steps, and no button to throw the invite away',
+        await invitePage.locator('#invite-guide').isVisible() && (await invitePage.locator('#invite-have').count()) === 0 &&
           (await invitePage.locator('#invite-forget').count()) === 0);
       // Their card itself, drawn as it is on their own screen. A long link
       // carries no character, so the card is drawn without one and the
@@ -1673,6 +1673,15 @@ try {
           drawnCard.height > 150, JSON.stringify(drawnCard));
       check('a long link has no character to name, so the card leaves it out and the heading asks about yours',
         !drawnCard.name && /This is Ava Tan’s Psyche Card\. What would yours say\?/.test(drawnCard.title), drawnCard.title);
+      await invitePage.click('#invite-guide');
+      await invitePage.waitForTimeout(900);
+      check('"Get my free Psyche Card" scrolls to "Request your Instagram data first", and opens nothing over it',
+        await invitePage.evaluate(() => {
+          const top = document.querySelector('.help-card').getBoundingClientRect().top;
+          return top >= -2 && top < window.innerHeight / 2 && !document.querySelector('#guide-dialog').open &&
+            /Request your Instagram data first/.test(document.querySelector('.help-card h2').textContent);
+        }));
+      await invitePage.evaluate(() => window.scrollTo(0, 0));
       await invitePage.click('#invite-card-open');
       await invitePage.waitForSelector('#sample-card-dialog[open]', { timeout: 10000 });
       check('tapping their card opens it full screen, explained part by part',

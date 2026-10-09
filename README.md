@@ -1909,8 +1909,8 @@ bar. A missing or wrong key, or an unknown id, says the link could not be opened
 their Psyche Card at the top of the welcome page: tilted, a tap away from full screen (the sample
 cards' dialog, with the part-by-part guide). Beside it are *"Jared sent you their Psyche Card"*,
 *"Jared is most like Mulan. Who are you most like?"*, a *You + Jared = ?* score still to reveal,
-*Get my free Psyche Card* (the steps to request the export) and *I already have my Instagram file*
-(the upload). The card is drawn by the same `psycheCardHtml` as everyone's own, from
+and *Get my free Psyche Card*, which scrolls to *Request your Instagram data first* on the same
+page. The card is drawn by the same `psycheCardHtml` as everyone's own, from
 `reportFromCard(card, face)`. The **face** holds what the compatibility read never needs: the character,
 franchise and icon, the two lines on why, each type letter's strength and the patterns' full names.
 It is not in the card payload, so the long link is unchanged. `cardFace` puts it inside the locked

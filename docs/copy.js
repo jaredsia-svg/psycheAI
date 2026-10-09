@@ -200,12 +200,11 @@
       ? (name || 'They') + ' is most like ' + character + '. Who are you most like?'
       : 'This is ' + possessive(name || 'your friend') + ' Psyche Card. What would yours say?',
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram — your type, your traits, ' +
-      'what drives you and how you love. No questionnaire, no sign-up. Make your free Psyche Card, and the ' +
+      'what drives you and how you connect. No questionnaire, no sign-up. Make your free Psyche Card, and the ' +
       'compatibility analysis with ' + (name || 'them') + ' runs straight after it, also free.',
     inviteMatchTitle: (name) => 'You + ' + (name || 'them') + ' = ?',
     inviteMatchText: 'Your compatibility score is revealed the moment your card is ready — as partners, friends & family, or at work.',
     inviteStart: 'Get my free Psyche Card',
-    inviteHave: 'I already have my Instagram file',
     inviteSmall: 'Instagram takes a few hours to email your data. This invite waits for you on this device for 14 days.',
     inviteCardHint: 'Tap to explore',
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',

@@ -9094,7 +9094,6 @@
     $('#invite-match-title').textContent = TEXT.inviteMatchTitle(name);
     $('#invite-match-text').textContent = TEXT.inviteMatchText;
     $('#invite-guide').textContent = TEXT.inviteStart;
-    $('#invite-have').textContent = TEXT.inviteHave;
     $('#invite-small').textContent = TEXT.inviteSmall;
     $('#invite-card-hint').textContent = TEXT.inviteCardHint;
     const open = $('#invite-card-open');
@@ -9129,8 +9128,10 @@
     layoutPsycheCard();
   }
 
-  $('#invite-guide').addEventListener('click', showGuide);
-  $('#invite-have').addEventListener('click', startFromSources);
+  // To the steps for requesting the export, on this same page.
+  $('#invite-guide').addEventListener('click', () => {
+    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
   $('#invite-card-open').addEventListener('click', openInviteCard);
 
   // A creator's or campaign's link carries ?via=<code>. Read once on arrival,
