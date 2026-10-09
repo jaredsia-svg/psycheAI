@@ -500,12 +500,12 @@
     // have not drifted, not a coincidence to engineer away.
     premiumPriceLabel: 'US$5',
     // In the data popout, once a fresh export is loaded over an existing card.
-    cardChangeNote: 'Updating your data sources may result in changes to your Psyche Card.',
+    cardChangeNote: 'Updating your data sources may change your Psyche Card.',
     premiumSourcesTitle: 'Your data for the full report',
     // The review's downloadable copy only, at the unlock: what this file is.
     deepReviewNote: 'This is what the full premium report is written from: everything your card was read from, with the data you just added on top.',
-    premiumSourcesBlurb: 'Add a source you have not used yet, or load a fresh export to replace one — more ' +
-      'data makes a fuller report. Or carry on with what is already loaded.',
+    premiumSourcesBlurb: 'Add a source or replace one with a fresh export — more data, a fuller report. ' +
+      'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock the full premium report – ',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
@@ -652,8 +652,8 @@
     sourceFacebook: 'Facebook',
     sourceWhatsApp: 'WhatsApp chats',
     // The WhatsApp row: up to three chats, each exported on its own.
-    whatsappRowEmpty: 'Load up to 3 exported chats (.zip or .txt), one or several at a time',
-    whatsappRowSome: n => n + ' of 3 chats loaded — tap to add ' + (n >= 3 ? 'again (starts over)' : 'another'),
+    whatsappRowEmpty: 'Up to 3 exported chats (.zip or .txt)',
+    whatsappRowSome: n => n + ' of 3 chats loaded — tap to ' + (n >= 3 ? 'start over' : 'add another'),
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
     whatsappFull: 'Three chats is the most — these start a fresh set.',
     sourceLoaded: 'Loaded',
@@ -684,8 +684,8 @@
     // stays clickable, so a reader can replace any one of them, Instagram
     // included, without starting the whole report over.
     dataSourcesTitle: 'Add or change your data',
-    dataSourcesBlurb: 'Load a fresh export to replace a source, or add one you have not used yet. ' +
-      'Nothing is sent anywhere until you review it on the next screen.',
+    dataSourcesBlurb: 'Add a source or replace one with a fresh export. Nothing is sent until you ' +
+      'review it on the next screen.',
     // The same popout opened from the welcome page, where there is nothing to
     // change yet — "Add or change" describes a report that does not exist and
     // offers to replace data nobody has loaded.

@@ -3989,7 +3989,10 @@
     // Every list below is built from the visible rows, so a hidden source can
     // neither be ticked, read, nor resolved.
     const buttons = dialog.querySelectorAll('.mode-option:not([hidden])');
-    $('#datasources-card-note-text').textContent = TEXT.cardChangeNote;
+    $('#datasources-confirm-text').textContent = TEXT.cardChangeNote;
+    $('#datasources-confirm').hidden = true;
+    // Asked once per opening, at the unlock, before the first file picker.
+    let warned = !settings.cardNote;
     $('#datasources-dialog-title').textContent = settings.title || TEXT.dataSourcesTitle;
     $('#datasources-dialog-blurb').textContent = settings.blurb || TEXT.dataSourcesBlurb;
     const digest = state.digest;
@@ -4141,20 +4144,38 @@
       // replaced, so reading Google or Facebook afterwards can still resolve
       // the very risk this note exists to name.
       $('#datasources-instagram-note').hidden = !(isStale('google') || isStale('facebook') || isStale('whatsapp'));
-      // Over an existing card, any export read in (now or carried from an
-      // earlier visit) means the card is written again from new data.
-      $('#datasources-card-note').hidden = !(settings.cardNote &&
-        ['instagram', 'google', 'facebook', 'whatsapp'].some(source => typeof added[source] === 'object'));
       showWhatsAppCount();
     };
 
     return new Promise(resolve => {
-      const choose = event => {
-        const source = event.currentTarget.dataset.datasource;
-        if (busy) return;
+      const pick = source => {
         pending = source;
         input.value = '';
         input.click();
+      };
+      // Over an existing card, the first tap says the card may change, and
+      // "Choose file" opens the picker from its own click.
+      const confirmFirst = source => {
+        const box = $('#datasources-confirm');
+        const close = () => {
+          box.hidden = true;
+          dialog.removeEventListener('cancel', onEscape);
+          dialog.removeEventListener('close', close);
+        };
+        const onEscape = event => { event.preventDefault(); close(); };
+        $('#datasources-confirm-go').onclick = () => { warned = true; close(); pick(source); };
+        $('#datasources-confirm-cancel').onclick = close;
+        box.onclick = event => { if (event.target === box) close(); };
+        dialog.addEventListener('cancel', onEscape);
+        dialog.addEventListener('close', close);
+        box.hidden = false;
+        $('#datasources-confirm-go').focus();
+      };
+      const choose = event => {
+        const source = event.currentTarget.dataset.datasource;
+        if (busy) return;
+        if (!warned) { confirmFirst(source); return; }
+        pick(source);
       };
 
       const read = async () => {
@@ -7969,7 +7990,7 @@
         : TEXT.premiumDialogTitle;
     // The unlock's sheet is its title and the ways to pay: what it opens was
     // set out in the offer, and that new data redraws the card was said in
-    // the data popout the moment it was loaded (#datasources-card-note).
+    // the data popout before the first file was picked (#datasources-confirm).
     const blurb = kind === 'analysis' ? TEXT.analysisDialogBlurb
       : rerunAll ? TEXT.premiumRerunDialogBlurb : '';
     $('#premium-dialog-blurb').textContent = blurb;

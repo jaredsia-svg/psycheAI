@@ -3377,6 +3377,51 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: var(--accent-soft); font-size: .82rem; line-height: 1.4; color: var(--ink); text-align: left;
 }
 .card-change-note[hidden] { display: none; }
+
+/* The data popout, compact: title, a short line, the sources in a list of
+   their own that scrolls when the screen is short (with a visible bar), and
+   everything else fixed around it. */
+.datasources-dialog[open] { display: flex; flex-direction: column; overflow: hidden; }
+.datasources-dialog > * { flex: none; }
+.datasources-dialog h2 { font-size: 1.25rem; margin-bottom: .25rem; }
+.datasources-dialog > .muted { font-size: .82rem; line-height: 1.38; margin-bottom: .75rem; }
+.datasources-dialog .mode-options {
+  flex: 0 1 auto; min-height: 7rem; overflow-y: auto; overscroll-behavior: contain;
+  gap: .4rem; margin-bottom: .75rem; padding-right: .3rem;
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 45%, transparent) transparent;
+}
+.datasources-dialog .mode-options::-webkit-scrollbar { width: 6px; }
+.datasources-dialog .mode-options::-webkit-scrollbar-thumb { border-radius: 6px; background: color-mix(in srgb, var(--accent) 45%, transparent); }
+.datasources-dialog .mode-options::-webkit-scrollbar-track { background: transparent; }
+.datasources-dialog .mode-option { padding: .55rem .75rem; gap: .65rem; align-items: center; border-radius: 10px; }
+.datasources-dialog .mode-option strong { font-size: .95rem; margin-bottom: 0; }
+.datasources-dialog .mode-body { line-height: 1.3; }
+.datasources-dialog .mode-option .muted { display: block; font-size: .8rem; line-height: 1.3; margin-top: .1rem; }
+.datasources-dialog .mode-icon { font-size: 1.2rem; }
+.datasources-dialog .btn-row { margin-top: .6rem; }
+/* The download instructions, opened, scroll inside themselves too. */
+.datasources-dialog .supplement-help[open] { flex: 0 1 auto; min-height: 6rem; overflow-y: auto; margin-bottom: .2rem; }
+
+/* "Updating your data sources may change your Psyche Card", asked over the
+   popout before the first file picker at the unlock. */
+.ds-confirm {
+  position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 1rem;
+  background: color-mix(in srgb, var(--bg-alt) 72%, transparent); backdrop-filter: blur(2px);
+  animation: ds-fade .14s ease-out;
+}
+.ds-confirm[hidden] { display: none; }
+.ds-confirm-box {
+  width: min(20rem, 100%); padding: 1rem 1.1rem .9rem; border-radius: 14px; text-align: center;
+  background: var(--bg); border: 1px solid var(--line); box-shadow: 0 14px 40px rgba(20, 14, 26, .22);
+  animation: ds-rise .16s ease-out;
+}
+.ds-confirm-icon { display: block; font-size: 1.3rem; line-height: 1; margin-bottom: .45rem; }
+.ds-confirm-box p { margin: 0 0 .85rem; font-size: .92rem; line-height: 1.4; color: var(--ink); }
+.ds-confirm-actions { display: flex; gap: .5rem; justify-content: center; }
+.ds-confirm-actions .btn { flex: 1; min-width: 0; padding: .55rem .8rem; }
+@keyframes ds-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ds-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ds-confirm, .ds-confirm-box { animation: none; } }
 /* The unlock's Deeper read, in the data popout: a quiet line above the
    buttons, off until ticked — offered, not pressed on anyone. */
 .deeper-read {

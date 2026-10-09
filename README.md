@@ -3828,10 +3828,14 @@ sources popout, titled "Your data for the full report" (`collectDataForPremium()
 `collectExtraDataForPremium`), where any source — Instagram, Google, Facebook, and whatever comes later —
 can be added or replaced by a fresh export, or the reader carries on with what is loaded. New data goes
 through the review, then the payment sheet; nothing new goes straight to the payment sheet. **The
-payment sheet asks for no agreement of its own.** Instead, the moment a fresh export is loaded in the data
-popout over an existing card — the unlock's popout and the report page's "Add / change data" alike, never
-a first upload (`askDataSources({ cardNote: true })`) — a short note appears there: "Updating your data
-sources may result in changes to your Psyche Card." (`#datasources-card-note`, `Copy.cardChangeNote`).
+payment sheet asks for no agreement of its own.** Instead, in the data popout over an existing card —
+never a first upload (`askDataSources({ cardNote: true })`) — the first tap on any source opens a small
+confirm over the popout before the file picker: "Updating your data sources may change your Psyche
+Card." with **Cancel** and **Choose file** (`#datasources-confirm`, `Copy.cardChangeNote`). Choose file
+opens the picker from its own click (a picker opened after an await is blocked in Safari); it is asked
+once per opening, and Escape or Cancel puts it away without closing the popout. The popout itself is
+compact: a shorter line under the title, tighter rows, and the source list scrolling on its own (thin
+visible bar) when the screen is too short for it, with the title and buttons staying put.
 When the data actually changed — a new evidence summary whose fingerprint (`digestFingerprint()`:
 coverage, counts, and each supplement's counts) differs from the one the card was read from — the payment
 sheet's blurb says the card is redrawn at no extra cost. With no evidence summary

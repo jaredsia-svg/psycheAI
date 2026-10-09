@@ -1031,7 +1031,7 @@
      being added once. See askDataSources() in app.js. The hidden file input
      lives inside the dialog for the same reason supplement-input does — the
      picker has to open synchronously from the row's own click. -->
-<dialog id="datasources-dialog" class="mode-dialog" aria-labelledby="datasources-dialog-title">
+<dialog id="datasources-dialog" class="mode-dialog datasources-dialog" aria-labelledby="datasources-dialog-title">
   <h2 id="datasources-dialog-title">Add or change your data</h2>
   <p class="muted" id="datasources-dialog-blurb">Load a fresh export to replace a source, or add one
     you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
@@ -1043,7 +1043,7 @@
              re-run replaces Instagram wholesale, so a reader who picks only
              part 1 of a split export replaces a complete archive with half of
              one. See dataSourcesFirstInstagram in copy.js. -->
-        <span class="muted">Load a new Instagram export .zip file here to replace it. Select multiple files as needed.</span>
+        <span class="muted">A new export .zip replaces it — select every part.</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1053,7 +1053,7 @@
     <button class="mode-option" data-datasource="google" type="button">
       <span class="mode-icon">🔍</span>
       <span class="mode-body"><strong>Google Takeout <span class="mode-tag">(recommended)</span></strong>
-        <span class="muted">Load your "My Activity" takeout .zip file here</span>
+        <span class="muted">Your “My Activity” Takeout .zip</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1063,7 +1063,7 @@
     <button class="mode-option" data-datasource="facebook" type="button">
       <span class="mode-icon">📘</span>
       <span class="mode-body"><strong>Facebook</strong>
-        <span class="muted">Load your facebook .zip file here</span>
+        <span class="muted">Your Facebook export .zip</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1095,10 +1095,20 @@
        replaced Instagram export. -->
   <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google,
     Facebook and WhatsApp data fresh too — reload them here as well if you want them included in this run.</p>
-  <!-- Shown once a fresh export is loaded over an existing card (report page
-       and premium unlock, never a first upload). Words: Copy cardChangeNote. -->
-  <p class="card-change-note" id="datasources-card-note" hidden><span aria-hidden="true">ℹ️</span>
-    <span id="datasources-card-note-text"></span></p>
+  <!-- At the unlock, over an existing card: the first tap on a source asks
+       this before the file picker opens, once per opening. "Choose file" is a
+       click of its own, so it can open the picker directly (a picker opened
+       after an await is blocked in Safari). Words: Copy cardChangeNote. -->
+  <div class="ds-confirm" id="datasources-confirm" hidden>
+    <div class="ds-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="datasources-confirm-text">
+      <span class="ds-confirm-icon" aria-hidden="true">ℹ️</span>
+      <p id="datasources-confirm-text"></p>
+      <div class="ds-confirm-actions">
+        <button class="btn btn-ghost" id="datasources-confirm-cancel" type="button">Cancel</button>
+        <button class="btn" id="datasources-confirm-go" type="button">Choose file</button>
+      </div>
+    </div>
+  </div>
 
   <details class="supplement-help">
     <summary>See download instructions</summary>

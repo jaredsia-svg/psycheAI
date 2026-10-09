@@ -146,7 +146,7 @@ async function loadSource(page, source, buffer, name) {
   await openDataSourcesPopout(page);
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="' + source + '"]'),
+    clickSource(page, '#datasources-dialog .mode-option[data-datasource="' + source + '"]'),
   ]);
   await chooser.setFiles({ name: name || (source + '.zip'), mimeType: 'application/zip', buffer });
   await page.waitForFunction(src => {
@@ -261,6 +261,16 @@ async function answerReview(page, options) {
 // Deliberately not a plausible production value: a reader of this file
 // should never be able to mistake it for one that works anywhere real.
 // Capitals, as every promo code is: the field makes anything typed capitals.
+// A source row in the data popout. At the unlock its first tap asks whether
+// to go on ("Updating your data sources may change your Psyche Card"); this
+// answers it, so the file picker opens either way.
+async function clickSource(pg, selector) {
+  await pg.click(selector);
+  const confirm = pg.locator('#datasources-confirm');
+  try { await confirm.waitFor({ state: 'visible', timeout: 400 }); } catch (error) { return; }
+  await pg.click('#datasources-confirm-go');
+}
+
 const UITEST_PROMO = 'UITEST-PROMO-NOT-A-REAL-CODE';
 
 const USAGE_STORE = join(tmpdir(), 'psycheai-uitest-usage.jsonl');
@@ -570,7 +580,7 @@ try {
 
       const [cold] = await Promise.all([
         coldPage.waitForEvent('filechooser', { timeout: 15000 }),
-        coldPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+        clickSource(coldPage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
       ]);
       await cold.setFiles({ name: 'fresh.zip', mimeType: 'application/zip', buffer: buildExportZip() });
       await coldPage.waitForFunction(() => !document.querySelector('#datasources-instagram-note').hidden,
@@ -590,7 +600,7 @@ try {
       // goes because the thing it was warning about has been done.
       const [again] = await Promise.all([
         coldPage.waitForEvent('filechooser', { timeout: 15000 }),
-        coldPage.click(googleRow),
+        clickSource(coldPage, googleRow),
       ]);
       again.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
       await coldPage.waitForFunction(sel => Boolean(document.querySelector(sel + ' .mode-added')),
@@ -1036,7 +1046,7 @@ try {
       await jobPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [jobChooser] = await Promise.all([
         jobPage.waitForEvent('filechooser', { timeout: 15000 }),
-        jobPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+        clickSource(jobPage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
       ]);
       await jobChooser.setFiles({
         name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -1209,7 +1219,7 @@ try {
 
       const [keepChooser] = await Promise.all([
         keepPage.waitForEvent('filechooser', { timeout: 15000 }),
-        keepPage.click(igRow),
+        clickSource(keepPage, igRow),
       ]);
       await keepChooser.setFiles({
         name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -1279,7 +1289,7 @@ try {
         await igTicked());
       const [replaceChooser] = await Promise.all([
         keepPage.waitForEvent('filechooser', { timeout: 15000 }),
-        keepPage.click(igRow),
+        clickSource(keepPage, igRow),
       ]);
       await replaceChooser.setFiles({
         name: 'instagram-replacement.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -1334,7 +1344,7 @@ try {
 
       const [dropChooser] = await Promise.all([
         keepPage.waitForEvent('filechooser', { timeout: 15000 }),
-        keepPage.click(igRow),
+        clickSource(keepPage, igRow),
       ]);
       await dropChooser.setFiles({
         name: 'instagram-again.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -1417,7 +1427,7 @@ try {
       await retryPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [retryChooser] = await Promise.all([
         retryPage.waitForEvent('filechooser', { timeout: 15000 }),
-        retryPage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+        clickSource(retryPage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
       ]);
       await retryChooser.setFiles({
         name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -1689,7 +1699,7 @@ try {
       await invitePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [inviteChooser] = await Promise.all([
         invitePage.waitForEvent('filechooser', { timeout: 15000 }),
-        invitePage.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+        clickSource(invitePage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
       ]);
       await inviteChooser.setFiles({ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
       await invitePage.waitForFunction(() => {
@@ -7692,7 +7702,7 @@ try {
 
   const [rechooser] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+    clickSource(page, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
   ]);
   await rechooser.setFiles({
     name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip(),
@@ -8388,7 +8398,7 @@ try {
   const analysesBeforeBack = analyseBodies.length;
   const [chooserForBack] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="google"]'),
+    clickSource(page, '#datasources-dialog .mode-option[data-datasource="google"]'),
   ]);
   await chooserForBack.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
   await page.waitForFunction(() => {
@@ -8426,7 +8436,7 @@ try {
   // to show it.
   const [chooserReplaceAfterBack] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+    clickSource(page, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
   ]);
   await chooserReplaceAfterBack.setFiles(
     { name: 'instagram-replace.zip', mimeType: 'application/zip', buffer: buildExportZip() });
@@ -8655,7 +8665,7 @@ try {
           /up to 3/i.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()));
       const [first] = await Promise.all([
         waPage.waitForEvent('filechooser', { timeout: 15000 }),
-        waPage.click('#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
+        clickSource(waPage, '#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
       ]);
       await first.setFiles({ name: 'chat.txt', mimeType: 'text/plain', buffer: Buffer.from(group) });
       await waPage.waitForSelector('#datasources-who:not([hidden])', { timeout: 15000 });
@@ -8669,7 +8679,7 @@ try {
         /1 of 3 chats loaded/.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()));
       const [second] = await Promise.all([
         waPage.waitForEvent('filechooser', { timeout: 15000 }),
-        waPage.click('#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
+        clickSource(waPage, '#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
       ]);
       await second.setFiles({ name: 'WhatsApp Chat with Mia Wong.txt', mimeType: 'text/plain', buffer: Buffer.from(pair) });
       await waPage.waitForFunction(() => /2 of 3 chats loaded/.test(
@@ -8725,7 +8735,7 @@ try {
     await page.evaluate(() => document.querySelector('#datasources-instagram-note').hidden));
   const [chooserIG] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="instagram"]'),
+    clickSource(page, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
   ]);
   await chooserIG.setFiles({ name: 'instagram2.zip', mimeType: 'application/zip', buffer: buildExportZip() });
   // Instagram starts ticked already, so unlike Google or Facebook its row
@@ -8794,7 +8804,7 @@ try {
   check('and offers no Deeper read option: every unlock reads the premium digest',
     (await page.locator('#datasources-deeper, #datasources-deeper-input').count()) === 0);
   check('and with nothing newly loaded, no note says the card may change',
-    !(await page.locator('#datasources-card-note').isVisible()));
+    !(await page.locator('#datasources-confirm').isVisible()));
   await page.click('#datasources-continue');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   await page.fill('#premium-promo-input', UITEST_PROMO);
@@ -8927,24 +8937,41 @@ try {
   check('the unlock button opens the data sources popout before asking for any money',
     (await page.locator('#datasources-dialog').isVisible()) &&
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
-  check('before anything is loaded, the popout says nothing about the card changing',
-    !(await page.locator('#datasources-card-note').isVisible()));
+  check('before anything is tapped, the popout says nothing about the card changing',
+    !(await page.locator('#datasources-confirm').isVisible()));
   check('it lists every source, Facebook included, so more can be added before paying',
     ['instagram', 'google', 'facebook'].every(Boolean) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible()) &&
     (await page.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
 
+  // The first tap on a source asks first, before any file picker opens.
+  await page.click('#datasources-dialog .mode-option[data-datasource="google"]');
+  await page.waitForSelector('#datasources-confirm:not([hidden])', { timeout: 5000 });
+  check('tapping a source first says the Psyche Card may change, before the file picker opens',
+    (await page.locator('#datasources-confirm').innerText()).includes('Updating your data sources may change your Psyche Card') &&
+      (await page.locator('#datasources-confirm-go').innerText()).trim() === 'Choose file');
+  await page.click('#datasources-confirm-cancel');
+  check('and Cancel puts it away without opening a picker or closing the popout',
+    !(await page.locator('#datasources-confirm').isVisible()) &&
+      await page.evaluate(() => document.querySelector('#datasources-dialog').open));
+  await page.click('#datasources-dialog .mode-option[data-datasource="google"]');
+  await page.waitForSelector('#datasources-confirm:not([hidden])', { timeout: 5000 });
   const [googleChooser] = await Promise.all([
     page.waitForEvent('filechooser', { timeout: 15000 }),
-    page.click('#datasources-dialog .mode-option[data-datasource="google"]'),
+    clickSource(page, '#datasources-confirm-go'),
   ]);
   await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
   await page.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
     .classList.contains('is-added'), null, { timeout: 30000 });
-  check('once new data is loaded, the popout notes the Psyche Card may change',
-    (await page.locator('#datasources-card-note').isVisible()) &&
-    (await page.locator('#datasources-card-note').innerText()).includes('Updating your data sources may result in changes to your Psyche Card'));
+  check('once agreed, it is not asked again in the same opening',
+    await (async () => {
+      const [again] = await Promise.all([
+        page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null),
+        clickSource(page, '#datasources-dialog .mode-option[data-datasource="facebook"]'),
+      ]);
+      return Boolean(again) && !(await page.locator('#datasources-confirm').isVisible());
+    })());
   await page.click('#datasources-continue');
   // Adding genuinely new data goes through the review, exactly as the first
   // upload does. Skipping does not, because skipping sends nothing new — but
@@ -10134,7 +10161,7 @@ try {
       await dp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       const [googleChooser] = await Promise.all([
         dp.waitForEvent('filechooser', { timeout: 15000 }),
-        dp.click('#datasources-dialog .mode-option[data-datasource="google"]'),
+        clickSource(dp, '#datasources-dialog .mode-option[data-datasource="google"]'),
       ]);
       await googleChooser.setFiles({ name: 'takeout.zip', mimeType: 'application/zip', buffer: buildTakeoutZip() });
       await dp.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="google"]')
