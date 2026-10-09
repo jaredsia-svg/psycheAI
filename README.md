@@ -1872,10 +1872,10 @@ A friend arriving on it keeps the code for 60 days (`psycheai_referred_by`). Whe
 account, for one referrer only, and never the referrer's own account (tied to the code when the
 referrer makes their own card). **Every three friends earn one free full premium report.**
 
-The report page shows an **Invite 3 friends** card (free report: under the unlock offer; full
-report: at the end) with three dots, *Copy invite link* and *Share*, and — once one is earned — *1
-free full report ready* and *Claim your free full report*, which opens the unlock (or, already
-unlocked, the re-run with new data). The payment sheet then offers *Use your free full report — from
+A free report shows an **Invite 3 friends** card under the unlock offer. It has three dots, *Copy
+invite link* and *Share*, and once a report is earned, *1 free full report ready* and *Claim your free
+full report*, which opens the unlock. A full report has no such card, since the reader already has
+what it offers. The payment sheet then offers *Use your free full report — from
 inviting friends*: `POST /api/referral/claim` with the secret spends one and returns a grant, which
 the full-report request carries as `referralGrant` instead of a payment. A grant unlocks one report
 (retries of that same report are fine) and lasts 60 days. `POST /api/referral` with the secret

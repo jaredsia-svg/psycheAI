@@ -10443,6 +10443,8 @@ try {
         (await sp.locator('#profile-body .appendix-part .card-chevron').count()) === 0, JSON.stringify(shape));
       check('structured: no About this report, no Premium labels on sections, and nothing behind a More',
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
+      check('structured: a full report has no invite-friends card — it offers what the reader already has',
+        (await sp.locator('#profile-body .referral-card').count()) === 0);
       check('structured: wellbeing closes Who you are',
         /wellness-card/.test(shape.whoLast), shape.whoLast);
       // On a phone a full report opens with every part shut; the reader opens

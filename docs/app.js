@@ -1724,12 +1724,13 @@
    * Invite three friends, get the full report free. Filled in by
    * refreshReferral once the server says where this reader's code stands.
    */
-  function referralCardHtml(paid) {
+  /** The invite-friends card, under the unlock offer on a free report only. */
+  function referralCardHtml() {
     const R = TEXT.referral;
-    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+    return '<section class="card section-card referral-card screen-only">' +
       '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🎁</span><div>' +
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
-        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + '</p></div></div>' +
+        '<p class="referral-blurb">' + esc(R.blurb) + '</p></div></div>' +
       '<div class="referral-progress"><span class="referral-dots" aria-hidden="true">' +
         '<i></i><i></i><i></i></span><span class="referral-count" aria-live="polite">' + esc(R.count(0, 3)) + '</span>' +
         '<span class="referral-ready" hidden></span></div>' +
@@ -6099,7 +6100,8 @@
       methodCardHtml(report, sample) +
       (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
       '</section>';
-    if (!sample) html += referralCardHtml(true);
+    // No invite-friends card here: it offers a free full report, and this
+    // reader already has one.
     return html;
   }
 
@@ -6195,7 +6197,7 @@
       // Structured: Evidence and method under the offer (freeMethodCardHtml),
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
-      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml(false) +
+      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
