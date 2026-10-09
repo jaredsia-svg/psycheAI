@@ -7262,6 +7262,93 @@ check('the schema requires evidence on strengths and frictions',
     JSON.stringify(got.stats.days));
 }
 
+// ---------- the store, one free card per account, and the referral ----------
+//
+// lib/store.js runs against memory here (no Upstash variables in the test
+// environment), so the same commands the server sends Upstash are exercised.
+{
+  const store = await import('../lib/store.js').then(m => m.default);
+  const referral = await import('../lib/referral.js').then(m => m.default);
+  const statsMod = await import('../lib/stats.js').then(m => m.default);
+  const { createHash } = await import('node:crypto');
+  const sha = text => createHash('sha256').update(text).digest('hex');
+  store._memory.reset();
+
+  const rows = await store.run([['INCR', 'k'], ['INCRBY', 'k', 4], ['HINCRBY', 'h', 'a', 2], ['HGETALL', 'h'],
+    ['SADD', 's', 'x', 'y', 'x'], ['SCARD', 's'], ['SET', 'n', 'v', 'NX'], ['SET', 'n', 'w', 'NX'], ['GET', 'n']]);
+  check('the store answers the commands the server uses, in memory without Upstash',
+    !store.enabled() && JSON.stringify(rows) === JSON.stringify([1, 5, 2, ['a', '2'], 2, 2, 'OK', null, 'v']), JSON.stringify(rows));
+  check('and scrambles identifiers one way, the same each time',
+    store.keyed('acct', 'abc') === store.keyed('acct', 'abc') && store.keyed('acct', 'abc') !== store.keyed('rl', 'abc') &&
+      /^[0-9a-f]{32}$/.test(store.keyed('acct', 'abc')));
+
+  // Stats survive in the store as one hash per day, and come back.
+  statsMod._reset();
+  statsMod.count('card');
+  statsMod.count('via:ava:open');
+  await new Promise(resolve => setTimeout(resolve, 10));
+  statsMod._reset();
+  await statsMod.hydrate();
+  const today = new Date().toISOString().slice(0, 10);
+  const back = statsMod.snapshot()[today] || {};
+  check('the day\'s totals are kept in the store and read back after a restart',
+    back.card === 1 && back['via:ava:open'] === 1, JSON.stringify(back));
+  const longer = await statsMod.history(90);
+  check('and /api/stats can read further back than memory holds', longer[today] && longer[today].card === 1);
+
+  // One free card per account.
+  const account = sha('psycheai:someone');
+  check('an account with no free card yet is not refused', !(await referral.freeCardUsed(account)));
+  await referral.afterFreeCard({ account });
+  check('after its free card, the account is refused a second one', await referral.freeCardUsed(account));
+  check('and a request with no account is never refused here', !(await referral.freeCardUsed('')));
+  const kept = JSON.stringify(await store.run([['SMEMBERS', 'free:accounts']]));
+  check('what is kept is a scrambled code, not the hash the browser sent, and never the username',
+    !kept.includes(account) && !kept.includes('someone'), kept);
+
+  // The referral: three friends, one free report; once per friend, never yourself.
+  const secret = sha('a secret only this browser has');
+  const code = referral.codeOf(secret);
+  const me = sha('psycheai:referrer');
+  await referral.afterFreeCard({ account: me, myRef: code });
+  await new Promise(resolve => setTimeout(resolve, 10));
+  const friend = n => sha('psycheai:friend' + n);
+  const self = await referral.afterFreeCard({ account: me, ref: code, myRef: code });
+  check('a reader cannot refer themselves', !self.credited);
+  const first = await referral.afterFreeCard({ account: friend(1), ref: code });
+  const again = await referral.afterFreeCard({ account: friend(1), ref: code });
+  check('a friend\'s first free card counts once, and only once', first.credited && !again.credited);
+  await referral.afterFreeCard({ account: friend(2), ref: code });
+  let status = await referral.status(secret);
+  check('two friends: two of three, nothing to claim yet',
+    status.friends === 2 && status.available === 0 && status.code === code, JSON.stringify(status));
+  check('and nothing can be claimed', (await referral.claim(secret)) === null);
+  await referral.afterFreeCard({ account: friend(3), ref: code });
+  status = await referral.status(secret);
+  check('three friends earn one free full report', status.earned === 1 && status.available === 1, JSON.stringify(status));
+  const grant = await referral.claim(secret);
+  check('claiming it gives a grant, and spends it', /^[0-9a-f]{48}$/.test(grant || '') &&
+    (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
+  const digestA = { a: 1 };
+  check('the grant unlocks a report', (await referral.grantRefusal(grant, digestA)) === null);
+  referral.spendGrant(grant, digestA);
+  await new Promise(resolve => setTimeout(resolve, 10));
+  check('the same report again with it, but not a different one',
+    (await referral.grantRefusal(grant, digestA)) === null && (await referral.grantRefusal(grant, { a: 2 })) !== null);
+  check('a made-up grant unlocks nothing', (await referral.grantRefusal('f'.repeat(48), digestA)) !== null);
+  // A friend already credited to one code cannot be credited to another.
+  const other = referral.codeOf(sha('another secret'));
+  const twice = await referral.afterFreeCard({ account: friend(4), ref: code });
+  const elsewhere = await referral.afterFreeCard({ account: friend(4), ref: other });
+  check('each friend counts for one referrer only', twice.credited && !elsewhere.credited);
+  for (const n of [5, 6]) await referral.afterFreeCard({ account: friend(n), ref: code });
+  status = await referral.status(secret);
+  check('every three more friends earn another', status.friends === 6 && status.earned === 2 && status.available === 1,
+    JSON.stringify(status));
+  check('only the secret\'s holder can ask: a code alone is not a secret',
+    (await referral.status(code)) === null);
+}
+
 // ---------- WhatsApp chats ----------
 //
 // docs/whatsapp.js reads WhatsApp's Export chat files, works out which sender
@@ -7530,8 +7617,8 @@ check('the schema requires evidence on strengths and frictions',
   const guarded = Object.keys(server.API_GUARDS).sort();
   check('every route that costs money to answer is in the guard table',
     JSON.stringify(guarded) === JSON.stringify([
-      '/api/analyse', '/api/compatibility', '/api/create-payment-intent',
-      '/api/nonce', '/api/premium-analysis', '/api/result',
+      '/api/analyse', '/api/compatibility', '/api/create-payment-intent', '/api/event',
+      '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
     ]), JSON.stringify(guarded));
   // Two routes are rate-limited without a ticket, and both are named here
   // rather than left to a rule, because "which reads are exempt" is exactly
@@ -7540,7 +7627,10 @@ check('the schema requires evidence on strengths and frictions',
   // is polled dozens of times per analysis and would exhaust a reader's own
   // nonce allowance; what stands in for the ticket there is the job key,
   // which is a hash of the digest and so cannot be produced without it.
-  const TICKETLESS = ['/api/nonce', '/api/result'];
+  // /api/event is a step of the journey for the day's totals: it spends
+  // nothing and returns nothing, and a ticket per step would cost more than
+  // the count.
+  const TICKETLESS = ['/api/event', '/api/nonce', '/api/referral', '/api/result'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
       guard.nonce === !TICKETLESS.includes(route)),

@@ -601,6 +601,24 @@
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
+    // The account's free card is spent (one per Instagram account): said on
+    // the US$2 sheet that follows.
+    freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
+    // Invite three friends, get the full report free (lib/referral.js).
+    referral: {
+      title: 'Invite 3 friends, get your full report free',
+      blurb: 'When 3 friends make their free Psyche Card from your link, your full premium report is free. Every 3 more earn another.',
+      blurbPaid: 'When 3 friends make their free Psyche Card from your link, your next full report is free — a re-run with new data. Every 3 more earn another.',
+      count: (n, per) => n + ' of ' + per + ' friends',
+      ready: n => n === 1 ? '1 free full report ready' : n + ' free full reports ready',
+      copy: 'Copy invite link',
+      share: 'Share',
+      claim: 'Claim your free full report',
+      copied: 'Invite link copied.',
+      shareText: 'Make your free Psyche Card from your own Instagram data:',
+      useFree: 'Use your free full report — from inviting friends',
+      claimFailed: 'There is no free report to claim yet.',
+    },
     premiumPromoPlaceholder: 'Promo code',
     premiumPromoApply: 'Apply',
     // A discount code, accepted: what it took off and what is left to pay.

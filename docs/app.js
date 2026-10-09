@@ -100,6 +100,18 @@
     // the analysis and counted by the server as a daily total, never stored
     // there with anything else. See lib/stats.js.
     via: 'psycheai_via',
+    // The invite-friends code: a random secret, and the public code in the
+    // reader's links (the first 12 hex of the secret's SHA-256). See
+    // lib/referral.js.
+    referral: 'psycheai_referral',
+    // The friend's code this browser arrived on (?ref=), for 60 days.
+    referredBy: 'psycheai_referred_by',
+    // A one-way code of this reader's Instagram username (SHA-256), so the
+    // server can keep the free card to one per account without ever seeing
+    // the username. Kept so a re-run after a reload still carries it.
+    account: 'psycheai_account',
+    // Which journey steps this browser has already reported today.
+    steps: 'psycheai_steps',
   };
 
   // The app stored under kindred3_* before the rename. Carry anything left
@@ -136,8 +148,10 @@
   // the allowance. Kept apart, with this comment, so nobody tidies it into
   // KEYS later and quietly reopens that door.
   //
-  // What it is not: enforcement. Clearing site data, a private window or a
-  // different browser all reset it, and nothing on the server can tell. The
+  // What it is not: enforcement on its own. Clearing site data, a private
+  // window or a different browser all reset it; what the server holds is one
+  // free card per Instagram account (lib/referral.js), by a one-way code of
+  // the username. The
   // real ceiling on spend is server-side and global — lib/budget.js — and this
   // is a fair-use allowance that keeps honest readers honest and tells them
   // plainly what the next run costs. The README says so in the same words.
@@ -1648,6 +1662,126 @@
    * `.premium-tier` look as the four-section block, and the button is the same
    * `.premium-unlock`, so the purchase it starts is the one purchase there is.
    */
+  /**
+   * Invite three friends, get the full report free. Filled in by
+   * refreshReferral once the server says where this reader's code stands.
+   */
+  function referralCardHtml(paid) {
+    const R = TEXT.referral;
+    return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
+      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🎁</span><div>' +
+        '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
+        '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + '</p></div></div>' +
+      '<div class="referral-progress"><span class="referral-dots" aria-hidden="true">' +
+        '<i></i><i></i><i></i></span><span class="referral-count" aria-live="polite">' + esc(R.count(0, 3)) + '</span>' +
+        '<span class="referral-ready" hidden></span></div>' +
+      '<div class="referral-actions">' +
+        '<button class="btn btn-outline referral-copy" type="button">' + esc(R.copy) + '</button>' +
+        '<button class="btn btn-outline referral-share" type="button">' + esc(R.share) + '</button>' +
+        '<button class="btn referral-claim" type="button" hidden>' + esc(R.claim) + '</button>' +
+      '</div>' +
+      '<p class="referral-status" role="status" hidden></p>' +
+    '</section>';
+  }
+
+  // Where this reader's invite code stands, from the server; null when it
+  // cannot be reached. Cached for the payment sheet's offer.
+  // Asked at most once a minute: the report page redraws often.
+  let referralStatus = null;
+  let referralAskedAt = 0;
+  async function fetchReferralStatus(fresh) {
+    if (!fresh && referralStatus && Date.now() - referralAskedAt < 60000) return referralStatus;
+    const mine = await ensureReferral();
+    if (!mine) return null;
+    referralAskedAt = Date.now();
+    try {
+      const response = await fetch('api/referral', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret }),
+      });
+      referralStatus = response.ok ? await response.json() : referralStatus;
+    } catch (error) { /* keep what we had */ }
+    return referralStatus;
+  }
+  async function refreshReferral() {
+    const cards = document.querySelectorAll('.referral-card');
+    if (!cards.length) return;
+    const status = await fetchReferralStatus();
+    if (!status) return;
+    const R = TEXT.referral;
+    for (const card of cards) {
+      const toward = status.available > 0 && status.towardNext === 0 ? status.perReport : status.towardNext;
+      card.querySelectorAll('.referral-dots i').forEach((dot, i) => dot.classList.toggle('is-on', i < toward));
+      card.querySelector('.referral-count').textContent = R.count(toward, status.perReport);
+      const ready = card.querySelector('.referral-ready');
+      ready.hidden = !(status.available > 0);
+      ready.textContent = status.available > 0 ? R.ready(status.available) : '';
+      card.querySelector('.referral-claim').hidden = !(status.available > 0);
+    }
+  }
+  function referralSay(card, message) {
+    const line = card && card.querySelector('.referral-status');
+    if (!line) return;
+    line.textContent = message;
+    line.hidden = !message;
+  }
+  document.addEventListener('click', async event => {
+    const card = event.target.closest && event.target.closest('.referral-card');
+    if (!card) return;
+    const R = TEXT.referral;
+    await ensureReferral();
+    const url = inviteUrl();
+    if (event.target.closest('.referral-copy')) {
+      try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
+      catch (error) { referralSay(card, url); }
+    } else if (event.target.closest('.referral-share')) {
+      if (navigator.share) {
+        try { await navigator.share({ title: 'PsycheAI', text: R.shareText, url }); return; }
+        catch (error) { if (error && error.name === 'AbortError') return; }
+      }
+      try { await navigator.clipboard.writeText(url); referralSay(card, R.copied); }
+      catch (error) { referralSay(card, url); }
+    } else if (event.target.closest('.referral-claim')) {
+      // The unlock (or, with the report already unlocked, the re-run with new
+      // data); the payment sheet then offers the free report.
+      const target = card.dataset.paid === '1' ? $('#rerun-with-data') : document.querySelector('.premium-unlock');
+      if (target) target.click();
+    }
+  });
+
+  /** On the unlock's sheet: the free report from inviting friends, when one is ready. */
+  function showReferralOffer(kind) {
+    const button = $('#premium-referral');
+    if (!button) return;
+    button.hidden = true;
+    if (kind !== 'unlock') return;
+    const show = status => {
+      if (!status || !(status.available > 0) || premiumKind !== 'unlock') return;
+      button.textContent = TEXT.referral.useFree;
+      button.hidden = false;
+    };
+    show(referralStatus);
+    fetchReferralStatus(true).then(show).catch(() => {});
+  }
+  if ($('#premium-referral')) {
+    $('#premium-referral').addEventListener('click', async () => {
+      const button = $('#premium-referral');
+      const mine = await ensureReferral();
+      if (!mine) return;
+      button.disabled = true;
+      try {
+        const answer = await LLM.postWithTicket('api/referral/claim', { secret: mine.secret });
+        referralStatus = answer && answer.status ? answer.status : referralStatus;
+        if (!answer || !answer.grant) throw new Error(TEXT.referral.claimFailed);
+        button.hidden = true;
+        onPaymentAuthorised({ referralGrant: answer.grant }, $('#premium-dialog'));
+      } catch (error) {
+        premiumStatus((error && error.message) || TEXT.referral.claimFailed, 'bad');
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
   function fullReportLockedHtml() {
     return '<div class="premium-tier paid-consolidated full-report-locked">' +
       '<div class="premium-tier-head">' +
@@ -3824,6 +3958,7 @@
       // The archive names the reader, so a stored card that lost their name
       // gets it back now, whatever they go on to do with this upload.
       repairOwnName(signals).catch(() => {});
+      trackStep('export_loaded');
 
       // The supplement offer and the review are one loop, because Back on the
       // review steps upstream to the offer rather than abandoning the upload.
@@ -4200,6 +4335,7 @@
                 Math.round((p.total ? p.done / p.total : 0) * 100), p.label),
             });
             replacedInstagram = true;
+            trackStep('export_loaded');
             // Kept even if this call ends in Back, the same as the two below.
             // The archive is minutes of the reader's phone doing real work and
             // a trip to wherever they saved the file; a Back press means "not
@@ -4549,7 +4685,7 @@
     // the server already has an answer to.
     lastAttempt = { digest, auth };
     try {
-      const result = await LLM.analyseProfile(sent, withAttribution(auth),
+      const result = await LLM.analyseProfile(sent, await withAttribution(auth),
         { onJob: key => rememberJob(key, 'analysis', auth) });
       await adoptProfile(result);
     } catch (error) {
@@ -4558,12 +4694,27 @@
       // up on — the reader is being offered a retry instead, which is a better
       // answer than a spinner.
       clearJob();
+      // The server knows this Instagram account has had its free card: the
+      // run is offered at the re-run price instead, over the same digest.
+      if (error && error.freeUsed && !auth) {
+        if (runCount() < freeAnalyses) store.write(RUNS_KEY, freeAnalyses);
+        stopElapsed();
+        guardUnload(false);
+        analysisNote = TEXT.freeUsedBlurb;
+        const paid = await authoriseAnalysis();
+        analysisNote = '';
+        if (paid) return runAnalysis(digest, paid);
+        offerRetry(error.message);
+        return;
+      }
       offerRetry((error && error.message) || 'The analysis failed.');
     } finally {
       stopElapsed();
       guardUnload(false);
     }
   }
+  // Said on the US$2 sheet when it opens because the account's free card is spent.
+  let analysisNote = '';
 
   /**
    * Take delivery of a finished report, from wherever it arrived.
@@ -5761,6 +5912,7 @@
       methodCardHtml(report, sample) +
       (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : '') +
       '</section>';
+    if (!sample) html += referralCardHtml(true);
     return html;
   }
 
@@ -5856,7 +6008,7 @@
       // Structured: Evidence and method under the offer (freeMethodCardHtml),
       // and no re-run here — more data comes with the full report, whose
       // unlock asks for it before the run.
-      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
+      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() + referralCardHtml(false) +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false));
@@ -6480,6 +6632,7 @@
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
     setHtml($('#profile-body'), reportSectionsHtml(report, { explained }));
+    refreshReferral().catch(() => {});
     layoutSideActions();
     collapseSections($('#profile-body'));
     markStructured($('#profile-body'));
@@ -7681,6 +7834,7 @@
     // between the card and the full report, and a code without it would buy a
     // second copy of the card the reader already has.
     if (auth.promoCode) return { promoCode: auth.promoCode, product: 'unlock' };
+    if (auth.referralGrant) return { referralGrant: auth.referralGrant, product: 'unlock' };
     return { paymentIntentId: auth.paymentIntentId, product: 'unlock' };
   }
 
@@ -7758,7 +7912,7 @@
       // that still lacks the source they just added; the popout shows it
       // unticked and asks for it again. That is worse than the unbroken path
       // and better than losing the report.
-      const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), withAttribution(request),
+      const full = await LLM.analyseProfile(Digest.forModel(paidDigest, { deep: deepRead }), await withAttribution(request),
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
 
       // The extra data is kept only now, because only now has it bought
@@ -7987,6 +8141,7 @@
       if (!collected) return;
       pendingPremiumDigest = collected;
     }
+    if (kind === 'unlock') trackStep('unlock_open');
     $('#premium-dialog-title').textContent =
       kind === 'analysis' ? TEXT.analysisDialogTitle
         : rerunAll ? TEXT.premiumRerunDialogTitle
@@ -7994,7 +8149,7 @@
     // The unlock's sheet is its title and the ways to pay: what it opens was
     // set out in the offer, and that new data redraws the card was said in
     // the data popout before the first file was picked (#datasources-confirm).
-    const blurb = kind === 'analysis' ? TEXT.analysisDialogBlurb
+    const blurb = kind === 'analysis' ? (analysisNote || TEXT.analysisDialogBlurb)
       : rerunAll ? TEXT.premiumRerunDialogBlurb : '';
     $('#premium-dialog-blurb').textContent = blurb;
     $('#premium-dialog-blurb').hidden = !blurb;
@@ -8018,6 +8173,7 @@
     $('#premium-promo-apply').textContent = TEXT.premiumPromoApply;
     $('#premium-promo-apply').disabled = false;
     renderPremiumPrice(kind, CURRENCY, null);
+    showReferralOffer(kind);
     premiumStatus('');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
@@ -8726,12 +8882,108 @@
       const params = new URLSearchParams(location.search);
       if (!params.has('via')) return;
       const via = String(params.get('via') || '').trim().toLowerCase();
-      if (VIA_PATTERN.test(via)) store.write(KEYS.via, { code: via, at: Date.now() });
+      if (VIA_PATTERN.test(via)) {
+        store.write(KEYS.via, { code: via, at: Date.now() });
+        trackStep('open');
+      }
       params.delete('via');
       const query = params.toString();
       history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
     } catch (error) { /* no storage or no history: nothing is counted */ }
   })();
+
+  // ---------- the journey, the account and the invite-friends code ----------
+  //
+  // A step the server cannot see for itself, for the day's totals overall and
+  // per campaign link: arriving on one, an export read, the unlock opened.
+  // Once per step per day from this browser, so a reload does not count twice.
+  // Nothing identifies the browser: the request carries the step and the
+  // campaign code, and nothing else.
+  function trackStep(step) {
+    try {
+      const seen = store.read(KEYS.steps, {}) || {};
+      const day = new Date().toISOString().slice(0, 10);
+      const id = step + ':' + (viaCode() || '');
+      if (seen[id] === day) return;
+      seen[id] = day;
+      store.write(KEYS.steps, seen);
+    } catch (error) { /* counted anyway */ }
+    try {
+      const via = viaCode();
+      fetch('api/event', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+        body: JSON.stringify(Object.assign({ event: step }, via ? { via } : null)),
+      }).catch(() => {});
+    } catch (error) { /* no network: nothing counted */ }
+  }
+
+  const toHex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  async function sha256Hex(text) {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return toHex(new Uint8Array(digest));
+  }
+
+  /** A one-way code of this reader's Instagram username, or '' when there is none to make it from. */
+  async function accountKey() {
+    try {
+      const handle = String(ownHandle() || '').trim().replace(/^@+/, '').toLowerCase();
+      if (handle) {
+        const key = await sha256Hex('psycheai:' + handle);
+        store.write(KEYS.account, key);
+        return key;
+      }
+    } catch (error) { /* no crypto: the server simply cannot limit this run */ }
+    const saved = store.read(KEYS.account, null);
+    return typeof saved === 'string' && /^[0-9a-f]{64}$/.test(saved) ? saved : '';
+  }
+
+  // The reader's own invite-friends code, made once on this device.
+  let referralCode = '';
+  async function ensureReferral() {
+    try {
+      let mine = store.read(KEYS.referral, null);
+      if (!mine || !/^[0-9a-f]{64}$/.test(mine.secret || '')) {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        mine = { secret: toHex(bytes) };
+      }
+      if (!/^[0-9a-f]{12}$/.test(mine.code || '')) {
+        mine.code = (await sha256Hex(mine.secret)).slice(0, 12);
+        store.write(KEYS.referral, mine);
+      }
+      referralCode = mine.code;
+      return mine;
+    } catch (error) { return null; }
+  }
+  /** The link a reader shares to invite friends: the site, carrying their code. */
+  function inviteUrl() {
+    return location.origin + '/' + (referralCode ? '?ref=' + referralCode : '');
+  }
+  /** The friend's code this browser arrived on, while it is fresh. */
+  function referredBy() {
+    const by = store.read(KEYS.referredBy, null);
+    if (!by || !/^[0-9a-f]{12}$/.test(by.code || '')) return '';
+    if (!(Date.now() - Number(by.at) < 60 * 86400000)) { store.remove(KEYS.referredBy); return ''; }
+    return by.code === referralCode ? '' : by.code;
+  }
+  // A friend's link carries ?ref=<code>: kept for 60 days (the export takes
+  // hours) and taken out of the address.
+  (function captureRef() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('ref')) return;
+      const code = String(params.get('ref') || '').trim().toLowerCase();
+      const mine = store.read(KEYS.referral, null);
+      if (/^[0-9a-f]{12}$/.test(code) && !(mine && mine.code === code)) {
+        store.write(KEYS.referredBy, { code, at: Date.now() });
+        trackStep('referral_open');
+      }
+      params.delete('ref');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: nothing is credited */ }
+  })();
+  ensureReferral();
 
   function viaCode() {
     const via = store.read(KEYS.via, null);
@@ -8746,11 +8998,21 @@
   // What goes beside the digest for the day's totals: the campaign code, and
   // whether a friend's compatibility link is waiting for this card. Neither
   // is part of the cache key, which is the digest alone.
-  function withAttribution(auth) {
+  //
+  // And, for the server's one-free-card-per-account rule and the
+  // invite-friends count: the one-way code of the username, this reader's own
+  // invite code, and the friend's code they arrived on.
+  async function withAttribution(auth) {
     const out = Object.assign({}, auth || {});
     const via = viaCode();
     if (via) out.via = via;
     if (pendingInvite()) out.invite = true;
+    const account = await accountKey();
+    if (account) out.account = account;
+    const mine = await ensureReferral();
+    if (mine && mine.code) out.myRef = mine.code;
+    const by = referredBy();
+    if (by) out.ref = by;
     return out;
   }
 

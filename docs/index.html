@@ -638,10 +638,18 @@
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only totals for each day: how many Psyche Cards, full reports and compatibility reports were
-      made, how many cards followed a friend’s compatibility link, how many came from a campaign link
-      (the <code>?via=</code> part of an address a creator shares, which this device keeps for 14 days),
-      and how many times each promo code was used. Visits are not counted. Nothing in those totals
-      identifies you, your device or anything you uploaded.</p>
+      made, how many cards followed a friend’s link, how many promo codes were used, and — for an
+      address a creator shares (its <code>?via=</code> part, which this device keeps for 14 days) — how
+      many people arrived on it and how far they got (export loaded, card made, full report). Other
+      visits are not counted. Nothing in those totals identifies you, your device or anything you
+      uploaded.</p>
+
+    <h3>Why is there one free card per Instagram account?</h3>
+    <p>To keep the free card free for everyone. Your browser turns your Instagram username into a
+      one-way scrambled code and sends only that; PsycheAI scrambles it once more and keeps the result,
+      to know the account has had its free card. It cannot be turned back into your username, and it
+      is not linked to anything you uploaded. If you invite friends, the same kind of code is how a
+      friend is counted once.</p>
 
     <h3>Can I verify this?</h3>
     <p>The site is open source, so you can
@@ -716,6 +724,9 @@
     <p class="premium-progress-time" id="premium-progress-time"></p>
   </div>
   <div class="premium-promo">
+    <!-- A free full report earned by inviting friends (lib/referral.js), offered
+         on the unlock's sheet when one is ready. -->
+    <button class="btn btn-ghost premium-referral" id="premium-referral" type="button" hidden></button>
     <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
     <div class="premium-promo-row">
       <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false" autocapitalize="characters" pattern="[A-Z0-9\-]*" maxlength="32">

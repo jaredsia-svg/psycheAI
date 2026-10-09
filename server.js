@@ -24,6 +24,8 @@ const nonces = require('./lib/nonce');
 const version = require('./lib/version');
 const stats = require('./lib/stats');
 const promo = require('./lib/promo');
+const store = require('./lib/store');
+const referral = require('./lib/referral');
 // Read once: the build does not change while the process runs.
 const BUILD = version.describe();
 // Required directly rather than reached through provider.active: the paid
@@ -67,6 +69,9 @@ const PORT = Number(process.env.PORT) || 3000;
 // for why the server cannot tell whose first run it is, and the README for
 // what that split does and does not buy.
 const FREE_ANALYSES = Number(process.env.PSYCHEAI_FREE_ANALYSES || 1);
+// One free card per Instagram account (lib/referral.js). On unless set to 0 —
+// for a test server, or an operator checking their own account repeatedly.
+const ONE_FREE_PER_ACCOUNT = String(process.env.PSYCHEAI_FREE_PER_ACCOUNT || '1').trim() !== '0';
 
 // A single backdoor around the whole payment flow, for the people who should
 // not need to pay — friends, reviewers, whoever this server's operator wants
@@ -467,7 +472,9 @@ async function handleAnalyse(request, response) {
 
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
-  const paying = Boolean(promoCode || paymentIntentId);
+  // A free full report earned by inviting three friends (lib/referral.js).
+  const referralGrant = typeof body.referralGrant === 'string' ? body.referralGrant.trim() : '';
+  const paying = Boolean(promoCode || paymentIntentId || referralGrant);
 
   // Which purchase is being spent here. 'analysis' is the ordinary US$2
   // re-run of the free card. 'unlock' is the US$5 premium purchase, and it is
@@ -494,6 +501,14 @@ async function handleAnalyse(request, response) {
   if (promoProblem) {
     sendJson(response, 402, { error: promoProblem });
     return;
+  }
+  if (referralGrant) {
+    const grantProblem = !full ? 'A free report from inviting friends unlocks the full report only.'
+      : await referral.grantRefusal(referralGrant, body.digest);
+    if (grantProblem) {
+      sendJson(response, 402, { error: grantProblem });
+      return;
+    }
   }
   // Where the reader came from, as two plain facts for the day's totals (see
   // lib/stats.js): the campaign code in the address they arrived on, if any,
@@ -583,12 +598,25 @@ async function handleAnalyse(request, response) {
     return;
   }
 
+  // One free card per Instagram account (lib/referral.js). After the result
+  // cache, so a retry of the same card is still answered; before anything is
+  // spent, so a second free card costs nothing to refuse.
+  const account = referral.cleanAccount(body.account);
+  if (!paying && account && ONE_FREE_PER_ACCOUNT && await referral.freeCardUsed(account)) {
+    stats.count('free_refused_account');
+    sendJson(response, 402, {
+      error: 'This Instagram account has already had its free Psyche Card. You can run it again for a small fee.',
+      freeUsed: true,
+    });
+    return;
+  }
+
   // Same hold the two premium routes take, for the same check-then-act gap:
   // canUse read a count that recordUse will not write until the model comes
   // back. Only for a paid run — a free one is metered by the daily budget,
   // which is a server-wide count rather than a per-payment cap, and a promo
   // code carries no cap at all.
-  const paidRun = Boolean(paymentIntentId && !promoCode);
+  const paidRun = Boolean(paymentIntentId && !promoCode && !referralGrant);
   const release = paidRun ? paymentLedger.hold(paymentIntentId, ledgerKind) : () => {};
   if (!release) {
     sendJson(response, 429, {
@@ -646,6 +674,21 @@ async function handleAnalyse(request, response) {
       if (via) stats.count('via:' + via + (made === 'card' ? '' : ':' + made));
       if (fromInvite && made === 'card') stats.count('card_from_invite');
       if (promoCode) promoRedeemed(promoCode, body.digest);
+      if (referralGrant) {
+        referral.spendGrant(referralGrant, body.digest);
+        stats.count('referral_report');
+      }
+      // The free card's account, and the friend who invited them.
+      if (made === 'card') {
+        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef })
+          .then(outcome => {
+            if (outcome && outcome.credited) {
+              stats.count('referral_friend');
+              if (via) stats.count('via:' + via + ':referral_friend');
+            }
+          })
+          .catch(() => {});
+      }
 
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
@@ -877,7 +920,52 @@ function handleStats(request, response, url) {
     sendJson(response, 401, { error: 'Not authorised.' });
     return;
   }
-  sendJson(response, 200, { days: stats.snapshot(), promoCodes: promo.describe() });
+  // ?days=N reads that far back from the store (up to 400).
+  const back = Number(url.searchParams.get('days')) || stats.KEEP_DAYS;
+  stats.history(back).then(days => sendJson(response, 200, {
+    days, promoCodes: promo.describe(), store: store.describe(),
+  })).catch(() => sendJson(response, 200, { days: stats.snapshot(), promoCodes: promo.describe() }));
+}
+
+// The journey, step by step, for the day's totals — overall and per campaign
+// link (?via=). Steps the server cannot see for itself: arriving on a
+// campaign link, an Instagram export read on the device, the unlock opened.
+// The rest (card made, report paid for) the routes below count where they
+// happen. Counts only: no identifier is sent or kept.
+const JOURNEY_STEPS = new Set(['open', 'export_loaded', 'unlock_open', 'referral_open']);
+async function handleEvent(request, response) {
+  const body = await readJsonBody(request);
+  const step = body && typeof body.event === 'string' ? body.event : '';
+  if (!JOURNEY_STEPS.has(step)) {
+    sendJson(response, 400, { error: 'Unknown step.' });
+    return;
+  }
+  const via = stats.cleanVia(body.via);
+  stats.count('step:' + step);
+  if (via) stats.count('via:' + via + ':' + step);
+  sendJson(response, 200, { ok: true });
+}
+
+// Where a reader's invite-friends code stands, and claiming a free report from
+// it — see lib/referral.js. The secret never leaves this request.
+async function handleReferral(request, response) {
+  const body = await readJsonBody(request);
+  const status = await referral.status(body && body.secret);
+  if (!status) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  sendJson(response, 200, status);
+}
+async function handleReferralClaim(request, response) {
+  const body = await readJsonBody(request);
+  const grant = await referral.claim(body && body.secret);
+  if (!grant) {
+    sendJson(response, 402, { error: 'There is no free report to claim yet.' });
+    return;
+  }
+  stats.count('referral_claimed');
+  sendJson(response, 200, { grant, status: await referral.status(body.secret) });
 }
 
 // The address list, for whoever runs this server. Refused outright rather than
@@ -1047,6 +1135,12 @@ const API_GUARDS = {
   '/api/compatibility': { limit: 'compatibility', nonce: true },
   '/api/create-payment-intent': { limit: 'payment-intent', nonce: true },
   '/api/premium-analysis': { limit: 'premium-analysis', nonce: true },
+  // A step of the journey: counts only, so no ticket.
+  '/api/event': { limit: 'event', nonce: false },
+  // Read-only (counts for a secret only its holder has), so no ticket; the
+  // claim, which spends something, takes one.
+  '/api/referral': { limit: 'referral', nonce: false },
+  '/api/referral/claim': { limit: 'referral', nonce: true },
 };
 
 // The ticket travels in a header rather than in the body, for three reasons:
@@ -1261,6 +1355,9 @@ function routeRequest(route, url, request, response) {
               : route === '/api/compatibility' && request.method === 'POST' ? () => handleCompatibility(request, response)
                 : route === '/api/recipients' && request.method === 'GET' ? () => handleRecipients(request, response, url)
                   : route === '/api/stats' && request.method === 'GET' ? () => handleStats(request, response, url)
+                  : route === '/api/event' && request.method === 'POST' ? () => handleEvent(request, response)
+                  : route === '/api/referral' && request.method === 'POST' ? () => handleReferral(request, response)
+                  : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
                   : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                     : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                       : null;
@@ -1295,8 +1392,17 @@ function routeRequest(route, url, request, response) {
         return;
       }
     }
-    Promise.resolve()
-      .then(handler)
+    // The shared limit, across every server process and deploy (lib/store.js).
+    Promise.resolve(guard ? rateLimit.takeShared(guard.limit, rateLimit.clientKey(request)) : { ok: true })
+      .then(shared => {
+        if (shared.ok) return handler();
+        response.setHeader('Retry-After', String(shared.retryAfter));
+        sendJson(response, 429, {
+          error: 'Too many requests from this connection. Try again in ' + shared.retryAfter + ' seconds.',
+          retryAfter: shared.retryAfter,
+        });
+        return null;
+      })
       .catch(error => {
         const described = error && error.status
           ? { status: error.status, message: error.message }
@@ -1340,14 +1446,27 @@ server.headersTimeout = KEEP_ALIVE_MS + 5000;
 // premiumEngine() directly — the fastest, most deterministic way to prove
 // which provider premium actually resolves to under a given env, with no
 // HTTP round trip and no server left listening behind the test.
+// Before the port opens: what the store remembers from before this deploy —
+// the day's totals, creator-code uses, today's free budget, payment retries.
+// Bounded, so a store that cannot be reached delays the boot by seconds at
+// most rather than keeping the site down.
+function hydrateFromStore() {
+  const steps = [stats.hydrate(), promo.hydrate(), budget.hydrate(), paymentLedger.hydrate()];
+  const settled = Promise.allSettled(steps).then(results => {
+    const ok = results.filter(r => r.status === 'fulfilled' && r.value).length;
+    console.log('store: ' + store.describe().backend + ' — ' + ok + ' of ' + steps.length + ' records restored');
+  });
+  return Promise.race([settled, new Promise(resolve => setTimeout(resolve, 6000))]);
+}
+
 if (require.main === module) {
-  server.listen(PORT, () => {
+  hydrateFromStore().then(() => server.listen(PORT, () => {
     const status = provider.describe();
     console.log('PsycheAI running at http://localhost:' + PORT);
     if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
     else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
     else console.log('  Not configured. ' + status.hint);
-  });
+  }));
   // A deploy stops this process with SIGTERM. Today's totals go to the log
   // first, so they are not lost with the memory they were kept in.
   for (const signal of ['SIGTERM', 'SIGINT']) {

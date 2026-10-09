@@ -1486,7 +1486,10 @@ the first.
 | `PSYCHEAI_MOCK=1` | Canned analyses, no API calls. Beats everything else. |
 | `PSYCHEAI_PROMO_CODES` | Creator codes, comma-separated, each `CODE[:cap[:last day[:percent off]]]` — e.g. `AVA:50:2026-12-31,BEN:20,HALF:100:2026-12-31:50`. A cap counts distinct reports; the last day is inclusive, UTC; percent off defaults to 100 (free), and 1–99 makes a discount paid through the payment sheet. See [Counting what works](#counting-what-works-without-counting-anyone). |
 | `PSYCHEAI_CANONICAL_HOST` | The site's one address, e.g. `psycheai.io`. Set, a page requested at any `*.onrender.com` address gets a 301 to the same path there, so search engines index one copy; `/api/` is left alone so a tab already open on the old address can still collect its report. Unset ⇒ nothing is redirected. Browser storage is per address, so a card saved on the old address stays there. |
-| `PSYCHEAI_STATS_TOKEN` | Bearer token for `GET /api/stats`, the daily totals and how much of each creator code is left. Unset ⇒ the route 404s. |
+| `PSYCHEAI_STATS_TOKEN` | Bearer token for `GET /api/stats`, the daily totals and how much of each creator code is left. Unset ⇒ the route 404s. `?days=N` reads up to 400 days back from the store. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis (REST). With both set, stats, creator-code uses, the daily free budget, payment retries, shared rate limits, the one-free-card-per-account record and invite-friends counts survive deploys. Unset ⇒ all of it runs in memory, as before. See [Kept across deploys](#kept-across-deploys-upstash). |
+| `PSYCHEAI_HASH_SECRET` | Optional. The key every stored identifier is scrambled with; defaults to one derived from the Upstash token. Changing it forgets which accounts had their free card. |
+| `PSYCHEAI_FREE_PER_ACCOUNT` | `0` turns off one free card per Instagram account (a test server, or checking your own account repeatedly). On by default. |
 
 Model IDs change often on every provider, so the defaults above will go stale. List what your key
 can actually reach:
@@ -1825,6 +1828,59 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
 
+## Kept across deploys (Upstash)
+
+`lib/store.js` talks to Upstash Redis over its REST API (`UPSTASH_REDIS_REST_URL`,
+`UPSTASH_REDIS_REST_TOKEN`) — one pipeline request per call, a 2.5-second timeout, and an in-memory
+imitation of the same commands when the variables are unset, so local runs and the test suite need
+nothing. Everything that used to reset on a deploy is now written through to it and read back at
+boot (`hydrateFromStore()` in `server.js`, at most six seconds before the port opens):
+
+| What | Key | Before |
+|---|---|---|
+| Daily totals (`lib/stats.js`) | `psy:stats:YYYY-MM-DD` (hash) | memory, lost on deploy |
+| Creator-code uses (`lib/promo.js`) | `psy:promo:CODE` (set of report hashes) | memory — a capped code got a fresh allowance every deploy |
+| Today's free budget (`lib/budget.js`) | `psy:budget:YYYY-MM-DD` (3-day expiry) | a file on the container's disk |
+| Payment retries (`lib/premiumLedger.js`) | `psy:ledger` (hash) | a file on the container's disk |
+| Rate limits (`takeShared` in `lib/ratelimit.js`) | `psy:rl:<limit>:<code>:<window>` (expires with the window) | per process only |
+| One free card per account (`lib/referral.js`) | `psy:free:accounts` (set) | — |
+| Invite-friends counts (`lib/referral.js`) | `psy:ref:<code>:*`, `psy:grant:<token>` | — |
+
+The in-process checks stay synchronous and answer from memory; the store is the copy that survives,
+written fire-and-forget. A store that cannot be reached is logged once and the server carries on as
+it did before (rate limits allow, the free-card check allows). Identifiers are never stored as they
+are: an address (rate limits) or the browser's account code is scrambled with `PSYCHEAI_HASH_SECRET`
+(HMAC-SHA-256) first.
+
+## One free card per Instagram account
+
+The browser sends `account`: SHA-256 of `psycheai:` + the Instagram username it read from the
+export (`accountKey()` in `docs/app.js`, kept as `psycheai_account`). The server scrambles that once
+more and keeps it in one set; a second free card for an account already in it is refused with
+`402 { freeUsed: true }`, and the page opens the US$2 re-run sheet with *"This Instagram account has
+already had its free Psyche Card. Run it again for US$2."* The check runs after the result cache, so
+the exact same summary again is answered free (it is the card already made), and before anything is
+spent. Paid runs, promo codes and requests without a username are not limited by it; the daily
+budget still bounds them. `PSYCHEAI_FREE_PER_ACCOUNT=0` turns it off.
+
+## Invite three friends, get the full report free
+
+Each browser makes a random secret (`psycheai_referral`); its public code is the first 12 hex
+characters of the secret's SHA-256 and goes in the reader's invite link, `psycheai.io/?ref=<code>`.
+A friend arriving on it keeps the code for 60 days (`psycheai_referred_by`). When the friend's
+**first** free card is written, their account is added to that code's friends — once per friend
+account, for one referrer only, and never the referrer's own account (tied to the code when the
+referrer makes their own card). **Every three friends earn one free full premium report.**
+
+The report page shows an **Invite 3 friends** card (free report: under the unlock offer; full
+report: at the end) with three dots, *Copy invite link* and *Share*, and — once one is earned — *1
+free full report ready* and *Claim your free full report*, which opens the unlock (or, already
+unlocked, the re-run with new data). The payment sheet then offers *Use your free full report — from
+inviting friends*: `POST /api/referral/claim` with the secret spends one and returns a grant, which
+the full-report request carries as `referralGrant` instead of a payment. A grant unlocks one report
+(retries of that same report are fine) and lasts 60 days. `POST /api/referral` with the secret
+returns `{ friends, earned, claimed, available }`; the code alone proves nothing.
+
 ## Counting what works, without counting anyone
 
 The site promises no analytics, no trackers and no cookies, and that no one can see that you
@@ -1834,10 +1890,17 @@ leaves is counting the work the server already does, as totals.
 **`lib/stats.js`** keeps, per UTC day: free cards (`card`), paid re-runs (`card_paid`), full reports
 (`full_report`), compatibility reports (`compatibility`), cards made while a friend's compatibility
 link was waiting (`card_from_invite`), cards and reports from a campaign link (`via:<code>`,
-`via:<code>:full_report`), and promo redemptions (`promo:<CODE>`). Each is counted once per report
+`via:<code>:full_report`), promo redemptions (`promo:<CODE>`), and the invite-friends flow (`referral_friend`,
+`referral_claimed`, `referral_report`, `free_refused_account`). The **journey** is counted too, step by
+step, overall (`step:<step>`) and per campaign link (`via:<code>:<step>`): `open` (arrived on a
+`?via=` link), `export_loaded` (an Instagram export read on the device), `unlock_open` (the unlock
+opened), `referral_open` (arrived on a friend's link) — sent by the page to `POST /api/event`, once
+per step per day per browser, with nothing but the step and the campaign code — alongside the
+server's own `via:<code>` (card made) and `via:<code>:full_report`. Each report is counted once per report
 actually written: the result cache answers a repeat of the same digest without generating, so a
 retry is not a second card. There is no IP, device, digest or time finer than the day anywhere in
-it, and visits are not counted at all. The last 31 days are kept in memory; each day's totals are
+it, and the only visits counted are arrivals on a campaign or friend's link. The last 31 days are kept in memory
+and every day in the store (see [Kept across deploys](#kept-across-deploys-upstash)); each day's totals are
 written to the log as one line when the day turns and when a deploy stops the process
 (`stats 2026-11-11 {"card":41,"compatibility":12,"via:ava":9}`), so they survive a restart in the
 host's logs. `GET /api/stats` with `Authorization: Bearer $PSYCHEAI_STATS_TOKEN` returns them.

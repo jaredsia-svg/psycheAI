@@ -279,7 +279,7 @@ try { rmSync(USAGE_STORE); } catch (error) { /* not there yet */ }
 // Mock mode: every part of the pipeline runs for real except the model call.
 const server = spawn(process.execPath, [join(root, 'server.js')], {
   env: {
-    ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1',
+    ...process.env, PORT: String(PORT), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
     // Its own budget ledger, and a ceiling far above what one run spends.
     // Sharing data/budget.jsonl would mean a long suite eating the real
     // deployment's daily allowance — and, worse, a suite that exhausted it
@@ -1711,7 +1711,7 @@ try {
       await invitePage.waitForSelector('#mode-dialog[open]', { timeout: 60000 });
       check('the analysis carries the campaign code and says an invite was waiting, and nothing else extra',
         analyseBodies.length > 0 && analyseBodies[0].via === 'ava-tan' && analyseBodies[0].invite === true &&
-          Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite'].includes(key)).length === 0,
+          Object.keys(analyseBodies[0]).filter(key => !['digest', 'background', 'via', 'invite', 'account', 'myRef', 'ref'].includes(key)).length === 0,
         JSON.stringify(analyseBodies.map(body => Object.keys(body))));
       check('the first card made on this device runs straight into the comparison with the sender',
         /Ava Tan/.test(await invitePage.locator('#mode-dialog').innerText()) &&
@@ -3951,8 +3951,9 @@ try {
   check('and under it one locked block offering the full report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only "Beyond your card" and the card that holds the controls',
-    freeState.sections.length === 2 && /beyond-card/.test(freeState.sections[0]) && /confidence-card/.test(freeState.sections[1]),
+  check('no written section is on the page — only "Beyond your card", the invite-friends card and the card that holds the controls',
+    freeState.sections.length === 3 && /beyond-card/.test(freeState.sections[0]) && /referral-card/.test(freeState.sections[1]) &&
+      /confidence-card/.test(freeState.sections[2]),
     JSON.stringify(freeState.sections));
   // "Beyond your card": the card's other lines, between the card and the
   // unlock box, read from the card the link carries.
@@ -6153,7 +6154,7 @@ try {
     const limitedPort = PORT + 1;
     const limited = spawn(process.execPath, [join(root, 'server.js')], {
       env: {
-        ...process.env, PORT: String(limitedPort), PSYCHEAI_MOCK: '1',
+        ...process.env, PORT: String(limitedPort), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-ratelimit.jsonl'),
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
         PSYCHEAI_RATE_PREMIUM: '2',
@@ -7312,9 +7313,12 @@ try {
       const stored = JSON.parse(localStorage.getItem('psycheai_digest'));
       return JSON.stringify(window.PsycheDigest.forModel(stored)) === JSON.stringify(sent);
     }, sentBody.digest));
-  check('the request carries a digest and nothing else',
+  // Beside the digest: one-way codes only — the account (a SHA-256 of the
+  // username, for one free card per account) and the invite codes.
+  check('the request carries a digest and nothing else but one-way codes',
     Object.keys(sentBody).every(k =>
-      k === 'digest' || k === 'paymentIntentId' || k === 'promoCode' || k === 'background'),
+      k === 'digest' || k === 'paymentIntentId' || k === 'promoCode' || k === 'background' ||
+      (k === 'account' && /^[0-9a-f]{64}$/.test(sentBody[k])) || ((k === 'myRef' || k === 'ref') && /^[0-9a-f]{12}$/.test(sentBody[k]))),
     Object.keys(sentBody).join(','));
   check('and the only field beside the digest is a boolean, not more evidence',
     sentBody.background === true && Object.keys(sentBody).every(k =>
@@ -7332,7 +7336,7 @@ try {
   // app makes the call.)
   check('the unlock request adds only the product and the card it explains',
     Object.keys(unlockBody).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor'].includes(k)) && unlockBody.product === 'unlock',
+      'product', 'anchor', 'account', 'myRef', 'ref'].includes(k)) && unlockBody.product === 'unlock',
     Object.keys(unlockBody).join(','));
   // Much smaller than it used to be — a dozen JPEGs were most of it.
   check('and is now a fraction of what it was when photographs rode along',
@@ -9151,7 +9155,7 @@ try {
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
     Boolean(bareBodies[0].anchor.card) && bareBodies[0].anchor.summary === undefined &&
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor'].includes(k)),
+      'product', 'anchor', 'account', 'myRef', 'ref'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
   // With nothing added, the premium read is the card's own digest: exactly
   // what the free card was read from moments before.
@@ -9647,6 +9651,7 @@ try {
       'Can the digest be linked back to me?',
       'Can anyone else access my data?',
       'Does PsycheAI count anything?',
+      'Why is there one free card per Instagram account?',
       'Can I verify this?',
       'How accurate is it?',
       'What does it cost?',
@@ -9757,9 +9762,11 @@ try {
 
   // The daily totals are disclosed in full: what is counted, and that visits
   // and anything identifying are not.
-  check('the FAQ says exactly what is counted, and that visits and identities are not',
-    /Only totals for each day/.test(about) && /\?via=/.test(about) && /Visits are not counted/.test(about) &&
-      /identifies you, your device or anything you uploaded/.test(about));
+  check('the FAQ says exactly what is counted, and that other visits and identities are not',
+    /Only totals for each day/.test(about) && /\?via=/.test(about) && /Other\s+visits are not counted/.test(about) &&
+      /identifies you, your device or anything you\s+uploaded/.test(about));
+  check('and says plainly why there is one free card per account, and what is kept for it',
+    /one-way scrambled code/.test(about) && /cannot be turned back into your username/.test(about));
   check('the compatibility answer says what the link actually is',
     /How does the compatibility feature work\?/.test(about) && /romantic/i.test(about) &&
     /family\/friends/i.test(about) &&
@@ -11314,7 +11321,7 @@ try {
     const structuredPort = PORT + 2;
     const structuredServer = spawn(process.execPath, [join(root, 'server.js')], {
       env: {
-        ...process.env, PORT: String(structuredPort), PSYCHEAI_MOCK: '1',
+        ...process.env, PORT: String(structuredPort), PSYCHEAI_MOCK: '1', PSYCHEAI_FREE_PER_ACCOUNT: '0',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-structured-budget.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-structured-usage.jsonl'),
         PSYCHEAI_DAILY_FREE_LIMIT: '100000',
@@ -11382,6 +11389,162 @@ try {
     } finally {
       await up.close();
       structuredServer.kill();
+    }
+  }
+
+  // ---- one free card per Instagram account, and inviting three friends ----
+  //
+  // Its own server, with the per-account rule on (the main one turns it off,
+  // since this suite uploads the same export again and again).
+  {
+    const refPort = PORT + 3;
+    const refServer = spawn(process.execPath, [join(root, 'server.js')], {
+      env: {
+        ...process.env, PORT: String(refPort), PSYCHEAI_MOCK: '1',
+        PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-uitest-ref-budget.jsonl'),
+        PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-uitest-ref-usage.jsonl'),
+        PSYCHEAI_DAILY_FREE_LIMIT: '100000',
+        PSYCHEAI_RATE_ANALYSE: '100000', PSYCHEAI_RATE_PREMIUM: '100000', PSYCHEAI_RATE_NONCE: '100000',
+        PSYCHEAI_RATE_PAYMENT_INTENT: '100000', PSYCHEAI_STATS_TOKEN: 'uitest-stats',
+      },
+      stdio: 'ignore',
+    });
+    const rp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    const rpErrors = [];
+    rp.on('pageerror', error => rpErrors.push(error.message));
+    const bodies = [];
+    rp.on('request', request => {
+      if (request.method() === 'POST' && /\/api\/analyse$/.test(request.url())) bodies.push(request.postDataJSON());
+    });
+    try {
+      await new Promise(resolve => setTimeout(resolve, 700));
+      const base = 'http://localhost:' + refPort + '/';
+      await rp.goto(base + '?via=uitest-creator', { waitUntil: 'load' });
+      await rp.evaluate(() => localStorage.clear());
+      await rp.goto(base + '?via=uitest-creator', { waitUntil: 'load' });
+      await rp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await chooseDepth(rp);
+      await answerReview(rp);
+      await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+      const firstBody = bodies[bodies.length - 1] || {};
+      check('the free card request carries a one-way code of the account and this reader\'s invite code',
+        /^[0-9a-f]{64}$/.test(firstBody.account || '') && /^[0-9a-f]{12}$/.test(firstBody.myRef || ''),
+        JSON.stringify(Object.keys(firstBody)));
+      const exportText = buildExportZip().toString('latin1');
+      check('and never the username itself', !JSON.stringify(firstBody).includes('"account":"' + 'uitest'),
+        String(exportText.length));
+
+      // The invite-friends card, on the free report.
+      await rp.waitForSelector('#profile-body .referral-card', { timeout: 10000 });
+      const card = await rp.evaluate(() => {
+        const c = document.querySelector('#profile-body .referral-card');
+        return { text: c.innerText, dots: c.querySelectorAll('.referral-dots i').length, claim: !c.querySelector('.referral-claim').hidden };
+      });
+      check('the free report offers the invite-friends card: three dots, nothing to claim yet',
+        /Invite 3 friends, get your full report free/.test(card.text) && card.dots === 3 && !card.claim &&
+          /0 of 3 friends/.test(card.text), JSON.stringify(card));
+      const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
+      await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+      await rp.click('#profile-body .referral-copy');
+      await rp.waitForTimeout(300);
+      const copied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+      check('Copy invite link copies the site with this reader\'s code',
+        copied === base + '?ref=' + mine.code || /Invite link copied/.test(await rp.locator('#profile-body .referral-status').innerText()),
+        copied);
+
+      // A second free card for the same account, as if on a new device: refused
+      // by the server, and offered at the re-run price instead.
+      const digestText = await rp.evaluate(() => localStorage.getItem('psycheai_digest'));
+      await rp.evaluate(() => localStorage.clear());
+      await rp.goto(base, { waitUntil: 'load' });
+      await rp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await chooseDepth(rp);
+      // A different summary of the same account (the exact same one is simply
+      // the card already made, answered from the result cache at no cost).
+      await answerReview(rp, { untickTopics: true });
+      await rp.waitForSelector('#premium-dialog[open]', { timeout: 60000 });
+      check('a second free card for the same Instagram account is refused, and the US$2 re-run is offered with why',
+        /already had its free Psyche Card/.test(await rp.locator('#premium-dialog-blurb').innerText()) &&
+          /Run your Psyche Card again/.test(await rp.locator('#premium-dialog-title').innerText()),
+        await rp.locator('#premium-dialog').innerText());
+      await rp.click('#premium-cancel');
+      await rp.waitForTimeout(300);
+
+      // Three friends, each a different account, arriving on the code.
+      await rp.evaluate(() => localStorage.clear());
+      await rp.goto(base, { waitUntil: 'load' });
+      const credited = await rp.evaluate(async ([text, code]) => {
+        const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))),
+          b => b.toString(16).padStart(2, '0')).join('');
+        const out = [];
+        for (let n = 1; n <= 3; n++) {
+          const digest = window.PsycheDigest.forModel(JSON.parse(text));
+          digest.counts = Object.assign({}, digest.counts, { posts: 1000 + n });
+          const result = await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
+          out.push(Boolean(result && result.data));
+        }
+        return out;
+      }, [digestText, mine.code]);
+      check('three friends make their free cards from the link', credited.every(Boolean), JSON.stringify(credited));
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      // Back as the reader, with their own code: a free full report is ready.
+      await rp.evaluate(([digest, ref]) => {
+        localStorage.setItem('psycheai_referral', JSON.stringify(ref));
+        localStorage.setItem('psycheai_digest', digest);
+      }, [digestText, mine]);
+      const sample = await rp.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await rp.evaluate(report => {
+        const free = Object.assign({}, report, { summary: '' });
+        for (const k of ['activity', 'motivators', 'career', 'bonus', 'development', 'premiumAnalysis']) delete free[k];
+        localStorage.setItem('psycheai_profile', JSON.stringify({ report: free, card: report.card, payload: 'x', model: 'mock',
+          createdAt: new Date().toISOString() }));
+      }, sample);
+      await rp.reload({ waitUntil: 'load' });
+      await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+      await rp.waitForFunction(() => {
+        const c = document.querySelector('#profile-body .referral-card');
+        return c && !c.querySelector('.referral-claim').hidden;
+      }, null, { timeout: 15000 });
+      const ready = await rp.evaluate(() => document.querySelector('#profile-body .referral-card').innerText);
+      check('with three friends in, the card says a free full report is ready and offers to claim it',
+        /3 of 3 friends/.test(ready) && /1 free full report ready/.test(ready) && /Claim your free full report/.test(ready), ready);
+
+      await rp.click('#profile-body .referral-claim');
+      await skipPremiumDataOffer(rp);
+      await rp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
+      await rp.waitForSelector('#premium-referral:not([hidden])', { timeout: 15000 });
+      check('the unlock\'s sheet offers the free report from inviting friends',
+        /Use your free full report/.test(await rp.locator('#premium-referral').innerText()));
+      const before = bodies.length;
+      await rp.click('#premium-referral');
+      await rp.waitForFunction(() => {
+        const p = JSON.parse(localStorage.getItem('psycheai_profile') || 'null');
+        return Boolean(p && p.premiumAnalysis);
+      }, null, { timeout: 60000 });
+      const paidWith = bodies.slice(before).find(body => body.product === 'unlock') || {};
+      check('and using it writes the full report on the free report, with no payment',
+        /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,
+        JSON.stringify(Object.keys(paidWith)));
+      const after = await rp.evaluate(async () => {
+        const mine = JSON.parse(localStorage.getItem('psycheai_referral'));
+        return fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret: mine.secret }) }).then(r => r.json());
+      });
+      check('and it is spent: none left until three more friends', after.available === 0 && after.claimed === 1 && after.friends === 3,
+        JSON.stringify(after));
+
+      // The journey, counted per campaign link.
+      const totals = await rp.evaluate(() => fetch('api/stats?token=uitest-stats').then(r => r.json()));
+      const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
+      check('the journey is counted per campaign link: arrived, export read, card made',
+        day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
+          day['step:unlock_open'] >= 1 && day.referral_friend === 3 && day.referral_claimed === 1 && day.referral_report === 1 &&
+          day.free_refused_account === 1, JSON.stringify(day));
+      check('the invite-friends flow runs with no page errors', rpErrors.length === 0, rpErrors.join(' | '));
+    } finally {
+      await rp.close();
+      refServer.kill();
     }
   }
 

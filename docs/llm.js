@@ -220,7 +220,7 @@
       // The status rides along for the one caller that tells a refusal (402)
       // from a server that cannot help (503) — the promo field.
       throw Object.assign(new Error((payload && payload.error) || 'Server error (HTTP ' + response.status + ').'),
-        { status: response.status });
+        { status: response.status, freeUsed: Boolean(payload && payload.freeUsed) });
     }
     // An `error` field on an otherwise-fine response is a real failure. A
     // generating request commits its 200 before the work starts — it has to,
