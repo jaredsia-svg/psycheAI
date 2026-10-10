@@ -710,10 +710,17 @@
     sourceFacebook: 'Facebook',
     sourceWhatsApp: 'WhatsApp chats',
     // The WhatsApp row: up to three chats, each exported on its own.
-    whatsappRowEmpty: 'Up to 3 exported chats (.zip or .txt)',
-    whatsappRowSome: n => n + ' of 3 chats loaded — tap to ' + (n >= 3 ? 'start over' : 'add another'),
+    // `max` is 3 from the report page, 1 on a first upload.
+    whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat, exported from WhatsApp (.zip or .txt)'
+      : 'Up to ' + max + ' exported chats (.zip or .txt)',
+    whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded — tap to load a different one'
+      : n + ' of ' + max + ' chats loaded — tap to ' + (n >= max ? 'start over' : 'add another'),
+    // The first upload's WhatsApp row and the tag on its two optional rows.
+    whatsappFirstTitle: 'WhatsApp chat with a close friend',
+    sourceOptional: '(optional)',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
-    whatsappFull: 'Three chats is the most — these start a fresh set.',
+    whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here — this one replaces the last.'
+      : 'Three chats is the most — these start a fresh set.',
     sourceLoaded: 'Loaded',
     sourceMissing: 'Not loaded',
     rerunAnalysis: 'Add / change data & re-run analysis',

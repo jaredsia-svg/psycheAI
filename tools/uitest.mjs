@@ -318,10 +318,24 @@ const server = spawn(process.execPath, [join(root, 'server.js')], {
   },
   stdio: 'ignore',
 });
+// Waits until a spawned server answers, rather than for a fixed moment: a
+// fixed 600 ms was sometimes not enough on a loaded machine, and the first
+// page then failed with "connection refused" and took the run down with it.
+async function waitForServer(port, ms = 20000) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    try {
+      const response = await fetch('http://localhost:' + port + '/api/status');
+      if (response.ok) return;
+    } catch (error) { /* not listening yet */ }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  throw new Error('the test server on port ' + port + ' did not start');
+}
 const stop = () => { try { server.kill(); } catch (error) { /* already gone */ } };
 process.on('exit', stop);
 
-await new Promise(resolve => setTimeout(resolve, 600));
+await waitForServer(PORT);
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
@@ -424,8 +438,9 @@ try {
     '#datasources-dialog [data-datasource="' + source + '"] strong').innerText()).replace(/\s+/g, ' ').trim();
   check('the Instagram row says it is required',
     (await rowLabel('instagram')) === 'Instagram (required)', await rowLabel('instagram'));
-  check('and the Google row says it is recommended, not required',
-    (await rowLabel('google')) === 'Google Takeout (recommended)', await rowLabel('google'));
+  check('and the WhatsApp and Google rows say they are optional',
+    (await rowLabel('whatsapp')) === 'WhatsApp chat with a close friend (optional)' &&
+      (await rowLabel('google')) === 'Google Takeout (optional)', await rowLabel('whatsapp') + ' / ' + await rowLabel('google'));
   check('the qualifier is set back from the name rather than reading as part of it',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog [data-datasource="instagram"]');
@@ -443,8 +458,8 @@ try {
   check('the blurb does not spend its first line instructing the obvious',
     !/^load your data below/i.test(askBlurb), askBlurb);
 
-  check('the first-run popout offers Instagram and Google, not Facebook',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2 &&
+  check('the first-run popout offers Instagram, WhatsApp and Google, not Facebook',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3 &&
     (await page.locator('#datasources-dialog [data-datasource="facebook"]').isVisible()) === false);
   check('and its download instructions leave Facebook out to match',
     (await page.locator('#datasources-dialog [data-help="facebook"]').isVisible()) === false);
@@ -762,6 +777,65 @@ try {
       await halfPage.fill('#premium-promo-input', '').catch(() => {});
     } finally {
       await halfPage.close();
+    }
+  }
+
+  // ---- a new reader's "Load your data": Instagram, one WhatsApp chat, Google ----
+  //
+  // Instagram is required; a WhatsApp chat with a close friend and Google
+  // Takeout are both optional, in that order, with their steps in the same
+  // order. One chat only: a second replaces the first.
+  {
+    const newPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await newPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await newPage.click('#open-sources');
+      await newPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const shown = await newPage.evaluate(() => ({
+        rows: [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
+          .map(r => r.querySelector('strong').textContent.replace(/\s+/g, ' ').trim()),
+        help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
+        steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
+      }));
+      check('a new reader is offered Instagram (required), a WhatsApp chat with a close friend (optional), then Google Takeout (optional)',
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram (required)', 'WhatsApp chat with a close friend (optional)',
+          'Google Takeout (optional)']), JSON.stringify(shown.rows));
+      check('and the download steps follow in the same order, WhatsApp\'s included',
+        JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout']) &&
+          /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
+        JSON.stringify(shown.help));
+      const [igPick] = await Promise.all([
+        newPage.waitForEvent('filechooser', { timeout: 15000 }),
+        clickSource(newPage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await igPick.setFiles({ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+      await newPage.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]')
+        .classList.contains('is-added'), null, { timeout: 30000 });
+      const chat = name => [
+        '9/4/26, 9:01 PM - Sam Rivera: did you get home ok?',
+        '9/4/26, 9:20 PM - ' + name + ': yes thanks',
+        '9/5/26, 7:45 AM - ' + name + ': coffee later?',
+        '9/5/26, 7:52 AM - Sam Rivera: always. 10?',
+      ].join('\n');
+      const waRow = '#datasources-dialog .mode-option[data-datasource="whatsapp"]';
+      for (const friend of ['Mia Wong', 'Jun Lee']) {
+        const [pick] = await Promise.all([newPage.waitForEvent('filechooser', { timeout: 15000 }), clickSource(newPage, waRow)]);
+        await pick.setFiles({ name: 'WhatsApp Chat with ' + friend + '.txt', mimeType: 'text/plain', buffer: Buffer.from(chat(friend)) });
+        if (await newPage.locator('#datasources-who:not([hidden])').count()) await newPage.click('#datasources-who-list button:text-is("Sam Rivera")');
+        await newPage.waitForFunction(sel => document.querySelector(sel).classList.contains('is-added'), waRow, { timeout: 15000 });
+        await newPage.waitForTimeout(300);
+      }
+      check('one chat at most: a second chat replaces the first, and the row says one is loaded',
+        /Chat loaded/.test(await newPage.locator(waRow).innerText()) &&
+          /One chat is the most here/.test(await newPage.locator('#datasources-status').innerText().catch(() => '')),
+        (await newPage.locator(waRow).innerText()) + ' / ' + (await newPage.locator('#datasources-status').innerText().catch(() => '')));
+      await continueFromDataSources(newPage);
+      await newPage.waitForSelector('#review-dialog[open]', { timeout: 30000 });
+      const review = await newPage.locator('#review-dialog').innerText();
+      check('the chat reaches the review, as one chat, beside Instagram',
+        /WhatsApp/.test(review) && /\b1 chat\b|one chat/i.test(review), review.slice(0, 600));
+    } finally {
+      await newPage.close();
     }
   }
 
@@ -6467,7 +6541,7 @@ try {
       stdio: 'ignore',
     });
     try {
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await waitForServer(limitedPort);
       const limitedUrl = 'http://localhost:' + limitedPort + '/api/premium-analysis';
       const hit = async () => {
         const nonce = await fetch('http://localhost:' + limitedPort + '/api/nonce')
@@ -7973,14 +8047,13 @@ try {
   check('the first-upload popout asks to add data rather than change it',
     (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data',
     await page.locator('#datasources-dialog-title').innerText());
-  // Instagram and Google only. A first upload is not the moment to open a
-  // third door, and the how-to card directly above recommends exactly those
-  // two. Checked as visibility rather than as markup: the row is hidden, not
-  // removed, because the report page still offers all three from this same
-  // dialog — and `display: flex` beats `[hidden]` unless a rule says
-  // otherwise, which is precisely how a "hidden" row stays on screen.
-  check('it offers Instagram and Google, and does not open a third door',
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2 &&
+  // Instagram, a WhatsApp chat and Google; never Facebook. Checked as
+  // visibility rather than as markup: the row is hidden, not removed, because
+  // the report page still offers all four from this same dialog — and
+  // `display: flex` beats `[hidden]` unless a rule says otherwise, which is
+  // precisely how a "hidden" row stays on screen.
+  check('it offers Instagram, WhatsApp and Google, and not Facebook',
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3 &&
     await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible() &&
     !(await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()),
     (await page.locator('#datasources-dialog .mode-option:visible').count()) + ' rows shown');
@@ -8042,7 +8115,7 @@ try {
       '#datasources-dialog .mode-option[data-datasource="instagram"]').className));
   check('and it is still the first-upload popout, not the report page\'s wording',
     (await page.locator('#datasources-dialog-title').innerText()).trim() === 'Add your data' &&
-    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 2,
+    (await page.locator('#datasources-dialog .mode-option:visible').count()) === 3,
     await page.locator('#datasources-dialog-title').innerText());
 
   await page.keyboard.press('Escape');
@@ -11879,7 +11952,7 @@ try {
     const upErrors = [];
     up.on('pageerror', error => upErrors.push('pageerror: ' + error.message));
     try {
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await waitForServer(structuredPort);
       const digestText = JSON.stringify({
         coverage: { sources: ['instagram'], sampling: { captions: { shown: 2, available: 2 } } },
         counts: { posts: 2, commentsWritten: 1, postsLiked: 40, following: 120 },
@@ -11960,7 +12033,7 @@ try {
       if (request.method() === 'POST' && /\/api\/analyse$/.test(request.url())) bodies.push(request.postDataJSON());
     });
     try {
-      await new Promise(resolve => setTimeout(resolve, 700));
+      await waitForServer(refPort);
       const base = 'http://localhost:' + refPort + '/';
       await rp.goto(base + '?via=uitest-creator', { waitUntil: 'load' });
       await rp.evaluate(() => localStorage.clear());

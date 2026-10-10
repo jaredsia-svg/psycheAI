@@ -2996,13 +2996,16 @@
         collected = await askDataSources({
           title: TEXT.dataSourcesFirstTitle,
           blurb: TEXT.dataSourcesFirstBlurb,
-          // Instagram and Google only. A first upload is not the moment to
-          // open a third door, and the how-to card directly above this
-          // recommends exactly these two; Facebook stays available from the
+          // Instagram, then one WhatsApp chat with a close friend, then
+          // Google, both of those optional. Facebook stays available from the
           // report page afterwards, which is where somebody who wants it will
           // already be.
-          sources: ['instagram', 'google'],
+          sources: ['instagram', 'whatsapp', 'google'],
           sublines: { instagram: TEXT.dataSourcesFirstInstagram },
+          // One chat with a close friend, and Google, both optional.
+          titles: { whatsapp: TEXT.whatsappFirstTitle },
+          tags: { whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional },
+          whatsappMax: 1,
         });
       } catch (error) {
         showUploadError((error && error.message) || 'Could not read that export.');
@@ -4404,6 +4407,24 @@
     // wants it, one screen later. Hidden rather than removed from the markup:
     // one dialog, two audiences.
     const offered = settings.sources || ['instagram', 'google', 'facebook', 'whatsapp'];
+    // Rows, and their instructions, in the order offered: the welcome page
+    // asks for Instagram, then a WhatsApp chat, then Google; the report page
+    // keeps the markup's own order. Moving a node is all it takes, and every
+    // opening sets the order afresh, so neither entry point inherits the
+    // other's.
+    const order = offered.concat(['instagram', 'google', 'facebook', 'whatsapp'].filter(x => !offered.includes(x)));
+    const optionsBox = dialog.querySelector('.mode-options');
+    const helpBox = dialog.querySelector('.supplement-help-body');
+    const helpTail = helpBox.querySelector('.help-illustrated');
+    for (const source of order) {
+      const row = optionsBox.querySelector('.mode-option[data-datasource="' + source + '"]');
+      if (row) optionsBox.appendChild(row);
+      const help = helpBox.querySelector('[data-help="' + source + '"]');
+      if (help) helpBox.insertBefore(help, helpTail);
+    }
+    // How many WhatsApp chats this entry point takes: one on the welcome page
+    // (a close friend's), three from the report page.
+    const waMax = settings.whatsappMax || 3;
     // The download instructions follow the rows. A reader on the welcome page
     // is offered Instagram and Google, so being walked through a Facebook
     // export they cannot load from here is noise; a reader on the report page
@@ -4422,9 +4443,20 @@
     // without it the welcome page's wording would stick for the rest of the
     // page's life.
     const sublines = settings.sublines || {};
+    // A row's title and tag, overridden per entry point the same way and for
+    // the same reason ("WhatsApp chats (up to 3)" on the report page, "WhatsApp
+    // chat with a close friend (optional)" on a first upload).
+    const titles = settings.titles || {};
+    const tags = settings.tags || {};
     for (const row of dialog.querySelectorAll('.mode-option')) {
       const source = row.dataset.datasource;
       row.hidden = !offered.includes(source);
+      for (const [selector, wanted] of [['.mode-title', titles[source]], ['.mode-tag', tags[source]]]) {
+        const node = row.querySelector(selector);
+        if (!node) continue;
+        if (node.dataset.defaultText === undefined) node.dataset.defaultText = node.textContent;
+        node.textContent = wanted || node.dataset.defaultText;
+      }
       const line = row.querySelector('.mode-body > .muted');
       if (!line) continue;
       if (line.dataset.defaultText === undefined) line.dataset.defaultText = line.textContent;
@@ -4464,7 +4496,7 @@
       (digest && digest.whatsapp && (digest.whatsapp.chats || []).length) || 0;
     const showWhatsAppCount = () => {
       const line = rowOf('whatsapp') && rowOf('whatsapp').querySelector('.mode-body > .muted');
-      if (line) line.textContent = waCount() ? TEXT.whatsappRowSome(waCount()) : TEXT.whatsappRowEmpty;
+      if (line) line.textContent = waCount() ? TEXT.whatsappRowSome(waCount(), waMax) : TEXT.whatsappRowEmpty(waMax);
     };
     // Asked only when the chats do not say which sender is the reader:
     // resolves the name picked, or null if the popout closes first.
@@ -4652,10 +4684,11 @@
               onProgress: p => setSourceProgress(source, p.phase === 'done' ? 100
                 : Math.round(10 + (p.total ? p.done / p.total : 0) * 85), p.label),
             });
-            // Up to three chats, added to what is loaded; a fourth starts a fresh set.
+            // Up to waMax chats, added to what is loaded; one more starts a
+            // fresh set (with a limit of one, a new chat replaces the old).
             const held = pendingDataSourceReads.whatsappChats || [];
-            const startOver = held.length + fresh.length > 3 && held.length >= 3;
-            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, 3);
+            const startOver = held.length + fresh.length > waMax && held.length >= waMax;
+            const chats = (startOver ? fresh : held.concat(fresh)).slice(0, waMax);
             const hints = [ownDisplayName(), state.profile && state.profile.card && state.profile.card.name].filter(Boolean);
             let owner = window.PsycheWhatsApp.resolveOwner(chats, hints).owner;
             if (!owner) {
@@ -4669,7 +4702,7 @@
             if (startOver) {
               setBusy(false);
               setSourceProgress(source, null, '');
-              say(TEXT.whatsappFull, '');
+              say(TEXT.whatsappFull(waMax), '');
               markAdded();
               return;
             }

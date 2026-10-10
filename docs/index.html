@@ -1143,7 +1143,7 @@
     </button>
     <button class="mode-option" data-datasource="google" type="button">
       <span class="mode-icon">🔍</span>
-      <span class="mode-body"><strong>Google Takeout <span class="mode-tag">(recommended)</span></strong>
+      <span class="mode-body"><strong><span class="mode-title">Google Takeout</span> <span class="mode-tag">(recommended)</span></strong>
         <span class="muted">Your “My Activity” Takeout .zip</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
@@ -1165,7 +1165,7 @@
          reader's messages are read; see docs/whatsapp.js. -->
     <button class="mode-option" data-datasource="whatsapp" type="button">
       <span class="mode-icon">💬</span>
-      <span class="mode-body"><strong>WhatsApp chats <span class="mode-tag">(up to 3)</span></strong>
+      <span class="mode-body"><strong><span class="mode-title">WhatsApp chats</span> <span class="mode-tag">(up to 3)</span></strong>
         <span class="muted">Load up to 3 exported chats (.zip or .txt), one or several at a time</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
@@ -1204,10 +1204,17 @@
   <details class="supplement-help">
     <summary>See download instructions</summary>
     <div class="supplement-help-body">
-      <h3>Instagram</h3>
-      <ol data-howto="instagram"></ol>
-      <h3>Google Takeout</h3>
-      <ol data-howto="google"></ol>
+      <!-- Each source's steps in a block of its own, so askDataSources can put
+           them in the same order as the rows above and hide the ones whose
+           row is not offered. -->
+      <div class="help-instagram" data-help="instagram">
+        <h3>Instagram</h3>
+        <ol data-howto="instagram"></ol>
+      </div>
+      <div class="help-google" data-help="google">
+        <h3>Google Takeout</h3>
+        <ol data-howto="google"></ol>
+      </div>
       <!-- Facebook's steps live in this same block but are hidden unless the
            Facebook row is on offer — see askDataSources, which already hides
            the row itself per entry point. Removing them outright would leave
@@ -1217,7 +1224,7 @@
         <ol data-howto="facebook"></ol>
       </div>
       <div class="help-whatsapp" data-help="whatsapp">
-        <h3>WhatsApp chats</h3>
+        <h3>WhatsApp</h3>
         <ol data-howto="whatsapp"></ol>
       </div>
       <!-- Written steps are enough for somebody who has done this before; the
@@ -1352,10 +1359,11 @@
 </template>
 
 <template id="howto-whatsapp">
-  <li>In WhatsApp, open the chat → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
+  <li>In WhatsApp, open a chat with a close friend → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
       <span class="ui-label">More</span> → <span class="ui-label">Export chat</span>.</li>
   <li>Choose <span class="ui-label">Without media</span> and save the file it makes (a .zip) to your
-      phone or computer. Load it here — up to three chats, one at a time or together.</li>
+      phone or computer, then load it here. Only your own messages are read, each with a short,
+      de-identified line of the message it answered.</li>
 </template>
 
 <script src="zip.js"></script>

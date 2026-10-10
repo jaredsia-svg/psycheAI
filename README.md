@@ -3740,10 +3740,26 @@ job of the line.
 data"* describes a report that does not exist yet and offers to replace data nobody has loaded, and
 the Instagram row's *"…to replace it"* had the same problem one line down. `askDataSources()` now
 takes a `title`, a `blurb`, `sublines` and a list of `sources`; the welcome page passes **"Add your
-data"** and shows **Instagram and Google only**, while the report page passes nothing and gets all
-three rows and its own wording back. Facebook is not gone, just not offered at the point where a
-reader has uploaded nothing yet — it is one screen away, on the report page, which is where somebody
-who wants it will already be.
+data"**, while the report page passes nothing and gets all four rows and its own wording back.
+Facebook is not gone, just not offered at the point where a reader has uploaded nothing yet — it is
+one screen away, on the report page, which is where somebody who wants it will already be.
+
+**What a new reader is offered.** "Load your data" shows three rows, in this order:
+1. **Instagram (required).**
+2. **WhatsApp chat with a close friend (optional).** One chat only (`whatsappMax: 1`): a second
+   replaces the first (*One chat is the most here — this one replaces the last.*), and the row reads
+   *Chat loaded — tap to load a different one*.
+3. **Google Takeout (optional).**
+
+The download instructions under *See download instructions* follow the same order: Instagram, WhatsApp
+(the chat's ⋮ → More → Export chat → Without media), then Google Takeout.
+
+`askDataSources()` also takes `titles`, `tags` and `whatsappMax`, and puts the rows and their
+instruction blocks (`[data-help]`) in the order of `sources`. Every opening sets the order, labels and
+limit afresh, keeping each label's markup text in `dataset.defaultText` like the sub-lines, so the
+report page still shows *WhatsApp chats (up to 3)*, *Google Takeout (recommended)* and its own order.
+`tools/uitest.mjs` loads Instagram and two chats as a new reader, checks the second replaced the
+first and that one chat reaches the review, and checks the report page still offers three.
 
 Two traps in that, both of which had to be written out rather than assumed. Rows are *hidden*, not
 removed, and `.mode-option`'s own `display: flex` beats the user agent's `[hidden] { display: none }`
