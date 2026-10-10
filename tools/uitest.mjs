@@ -1860,8 +1860,16 @@ try {
           localStorage.getItem('psycheai_invite') !== null && !document.querySelector('#sync-invite').hidden &&
           document.querySelector('#welcome, #view-welcome').hidden));
       await invitePage.click('#sync-invite-open');
-      await invitePage.click('.match-waiting .sync-invite-go');
+      const avaPayload = await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_invite')).payload);
+      // A double tap, as a phone delivers one: two clicks before the working
+      // screen appears. It used to start two syncs, and both landed in the list.
+      await invitePage.dblclick('.match-waiting .sync-invite-go');
       await invitePage.waitForSelector('#view-report:not([hidden])', { timeout: 60000 });
+      await invitePage.waitForTimeout(1500);
+      check('a double tap on Sync runs one sync and saves one row, not two',
+        await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history') || '[]')
+          .filter(e => /Ava/.test(e.withName)).length === 1),
+        await invitePage.evaluate(() => localStorage.getItem('psycheai_history').length + ' chars of history'));
       const synced = await invitePage.evaluate(() => ({
         title: document.querySelector('#report-title').textContent,
         pill: document.querySelector('#report-sub').innerText,
@@ -1871,6 +1879,34 @@ try {
       check('a tap runs the Psyche Sync with the sender, as friends, and spends the invite',
         /Ava/.test(synced.title) && synced.pill.trim() === 'Psyche Sync' && /^\d+% in sync/.test(synced.band) && synced.spent,
         JSON.stringify(synced));
+      // The same friend's link pasted into "Sync with others" is not run again.
+      await invitePage.keyboard.press('Escape');
+      await invitePage.waitForTimeout(300);
+      await invitePage.click('#nav-scan');
+      await invitePage.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
+      const requestsBefore = [];
+      invitePage.on('request', r => { if (/api\/compatibility/.test(r.url())) requestsBefore.push(r.url()); });
+      await invitePage.fill('#paste-input', 'https://psycheai.io/#p=' + avaPayload);
+      await invitePage.click('#paste-go');
+      await invitePage.waitForTimeout(800);
+      check('pasting a link already synced with says so and does not sync again',
+        /already synced with Ava/.test(await invitePage.locator('#scan-alert').innerText()) && requestsBefore.length === 0 &&
+          await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history')).filter(e => /Ava/.test(e.withName)).length === 1),
+        await invitePage.locator('#scan-alert').innerText());
+      // A list saved with the same sync twice, before this was fixed, is
+      // tidied to one row when the page next opens.
+      await invitePage.evaluate(() => {
+        const history = JSON.parse(localStorage.getItem('psycheai_history'));
+        const copy = Object.assign({}, history[0], { when: '2026-10-09T10:00:00.000Z' });
+        localStorage.setItem('psycheai_history', JSON.stringify([history[0], copy].concat(history.slice(1))));
+      });
+      await invitePage.reload();
+      await invitePage.waitForTimeout(800);
+      check('duplicates already saved are tidied to one row per card, keeping the newest',
+        await invitePage.evaluate(() => {
+          const ava = JSON.parse(localStorage.getItem('psycheai_history')).filter(e => /Ava/.test(e.withName));
+          return ava.length === 1 && ava[0].when !== '2026-10-09T10:00:00.000Z';
+        }));
     } finally {
       await invitePage.close();
     }

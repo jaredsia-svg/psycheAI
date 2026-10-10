@@ -9056,6 +9056,14 @@
   }
 
   $('#paste-go').addEventListener('click', async () => {
+    // A link already synced with is not run again: its result is in the list.
+    const pasted = state.profile ? await Card.decodeCard(Card.extractPayload($('#paste-input').value)) : null;
+    if (pasted && alreadySynced(pasted)) {
+      renderScan();
+      flash('#scan-alert', TEXT.syncAlreadyDone(firstName(pasted.name) || pasted.name));
+      $('#scan-alert').classList.add('is-note');
+      return;
+    }
     if (!(await runMatch($('#paste-input').value))) {
       flash('#scan-alert', 'That is not a PsycheAI link. Copy the whole link they sent you.');
     }
@@ -9077,8 +9085,13 @@
     return chosen ? Copy.stanceText(chosen.heading, otherName) : MODE_HEADINGS[mode];
   }
 
+  // One sync at a time. A second tap on Sync (a double tap on a phone, before
+  // the working screen appears) used to start a second, identical sync, and
+  // both landed in the list. Cleared when the first one finishes either way.
+  let syncInFlight = false;
   async function runMatch(rawText) {
     if (!state.profile) return false;
+    if (syncInFlight) return true;
     const other = await Card.decodeCard(Card.extractPayload(rawText));
     if (!other) return false;
 
@@ -9093,7 +9106,12 @@
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
-    await runComparison(other, mode, stance, auth);
+    syncInFlight = true;
+    try {
+      await runComparison(other, mode, stance, auth);
+    } finally {
+      syncInFlight = false;
+    }
     return true;
   }
 
@@ -9183,6 +9201,29 @@
       (entry.with ? entry.with === key : entry.withName === card.name));
   }
 
+  /**
+   * One row per card in the saved list. Lists saved before the fix above can
+   * hold the same sync twice (a double tap, or a pasted link run again): the
+   * newest row is kept. Rows from before cards were fingerprinted are matched
+   * by name and identical result instead, so two different syncs with one
+   * friend are never merged.
+   */
+  function dedupeHistory() {
+    const history = store.read(KEYS.history, []);
+    if (!Array.isArray(history) || history.length < 2) return;
+    const seen = new Set();
+    const kept = history.filter(entry => {
+      if (!entry) return false;
+      const id = entry.with ? 'card:' + entry.with
+        : 'legacy:' + entry.withName + ':' + JSON.stringify(entry.report || null);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    if (kept.length !== history.length) store.write(KEYS.history, kept);
+  }
+  dedupeHistory();
+
   function adoptComparison(result, other, mode, stance) {
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
@@ -9198,9 +9239,12 @@
     clearJob();
     const basis = mode || result.data.mode;
     const report = { ...result.data, mode: result.data.mode || basis, stance };
-    const history = store.read(KEYS.history, []);
+    // A sync with a card already in the list replaces it, at the top, rather
+    // than adding a second row for the same person.
+    const key = syncCardKey(other);
+    const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
     history.unshift({
-      when: new Date().toISOString(), withName: other.name, with: syncCardKey(other), mode: report.mode, stance, report,
+      when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
     });
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name);
@@ -9587,8 +9631,14 @@
     if (!button) return;
     const invite = allInvites()[Number(button.dataset.i) || 0];
     if (!invite || !state.profile) { renderScan(); return; }
+    if (syncInFlight) return;
+    button.disabled = true;
     syncingInvite = invite.payload;
-    if (!(await runMatch(invite.payload))) syncingInvite = null;
+    try {
+      if (!(await runMatch(invite.payload))) syncingInvite = null;
+    } finally {
+      button.disabled = false;
+    }
   });
 
   $('#invite-guide').addEventListener('click', () => {

@@ -2067,6 +2067,16 @@ A sync from a waiting row opens in the same popout. Behind it, that friend has a
 waiting rows to the past syncs. The popout closes with its ✕, **Close**, Esc, a click outside it, or
 Back.
 
+**One row per friend in the list.** A double tap on **Sync** used to start two syncs before the
+working screen appeared. Both finished, the second got the server's cached answer, and the list showed
+the same friend twice with the same score. Now:
+- One sync runs at a time (`syncInFlight`), and the waiting row's button greys out while it runs.
+- A result for a card already in the list replaces that row and moves it to the top.
+- A link pasted into *Sync with others* that has already been synced says so instead of running again.
+- Lists already saved with duplicates are tidied when the page opens (`dedupeHistory`). The newest row
+  for each card is kept. Rows from before cards were fingerprinted are only merged when the name and
+  the whole result match.
+
 **A link already synced is not taken again.** Each past sync stores a fingerprint of the friend's
 card (`with`, from `syncCardKey`: a hash of the card's shape). Opening a friend's link checks it
 (`alreadySynced`). A card synced before is not added to the waiting rows: the reader lands on My
