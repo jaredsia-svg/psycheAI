@@ -1,0 +1,144 @@
+{
+  "_comment": "The four premium sections for the fictional person in docs/sample.json, hand-written. Used by tools/uitest.mjs to render a fully unlocked structured report and by the screenshot tool. Not generated, and not anybody's real data.",
+  "wellness": {
+    "lifeTrajectory": {
+      "band": "steady",
+      "confidence": "moderate",
+      "reading": "Four years read as building rather than drifting: the same circle, more events each year, and a running habit that has held since 2021.",
+      "evidence": [
+        "Events organised rose from 6 in 2022 to 11 in 2025",
+        "Running posts every year since 2021"
+      ]
+    },
+    "outlook": {
+      "band": "mixed",
+      "confidence": "low",
+      "reading": "Your writing is warm about other people and almost silent about yourself, so there is little to read an outlook from beyond a steady, practical register.",
+      "evidence": [
+        "3 of 60 sampled captions about your own feelings"
+      ]
+    },
+    "socialConnection": {
+      "band": "steady",
+      "confidence": "moderate",
+      "reading": "A close circle you have tended for years, and contact that runs both ways – people come back to your posts as often as you go to theirs.",
+      "evidence": [
+        "Comments on 64 different people's posts in a year",
+        "The same 9 people most engaged with since 2022"
+      ]
+    },
+    "cognitiveLoad": {
+      "band": "under strain",
+      "confidence": "moderate",
+      "reading": "Plans accumulate around you. Most close out, but the stretches after big events are long and quiet, which reads as a load being carried rather than set down.",
+      "evidence": [
+        "47 deadlines named, 41 closed",
+        "Typical quiet stretch after an event: 13 days"
+      ]
+    },
+    "meaning": {
+      "band": "steady",
+      "confidence": "moderate",
+      "reading": "What gives your activity its point is plain and consistent: bringing your people together and doing it properly.",
+      "evidence": [
+        "Group plans in 38 of 60 sampled captions"
+      ]
+    },
+    "rhythmAndActivity": {
+      "band": "steady",
+      "confidence": "moderate",
+      "reading": "An early, consistent window – most activity before 9am and on Sunday evenings – and running that shows up year-round rather than seasonally.",
+      "evidence": [
+        "62% of activity between 6am and 9am",
+        "Running posts in every month of 2024"
+      ]
+    },
+    "overall": "Mostly steady, with one dimension worth your attention: how much you carry at once. The quiet after each event looks like recovery, and it is getting longer.",
+    "suggestions": [
+      {
+        "title": "Leave one event unorganised",
+        "detail": "Let someone else plan the next gathering and arrive as a guest. Notice how long the recovery is afterwards."
+      },
+      {
+        "title": "Say one true thing about your week",
+        "detail": "In one message to someone close, say how the week actually went, not how the plan went."
+      }
+    ]
+  },
+  "attachment": {
+    "style": "Leans secure, with avoidant defences under strain",
+    "styleTone": "You are steady in a relationship, you keep your word, and people feel safe around you.",
+    "why": "Contact with the same small circle is consistent and runs both ways over years, which is the clearest secure signal here. The avoidant edge is in what you do not do: in four years you almost never ask for anything or say you are struggling. I considered avoidant-leaning and set it aside because your contact does not retreat when it gets close – it only stays one-sided. Seeing you go quiet with people during hard stretches would have moved me.",
+    "derivedFrom": [
+      "Same 9 people most engaged with since 2022",
+      "3 of 60 captions about your own feelings",
+      "No drop in contact after conflicts in the sample"
+    ],
+    "implications": [
+      {
+        "title": "You are easy to rely on",
+        "detail": "Partners will feel looked after and rarely wonder where they stand with you."
+      },
+      {
+        "title": "You may be hard to look after",
+        "detail": "A partner can feel shut out of your hard weeks. Letting them help once, early, does more than any explanation later."
+      }
+    ],
+    "caveat": "Attachment style cannot be read reliably from social media data; treat this as a guess."
+  },
+  "idealPartner": {
+    "needs": [
+      {
+        "title": "Someone who notices the work",
+        "detail": "You do a lot quietly. You need a partner who sees it without being told, and says so."
+      },
+      {
+        "title": "Room to recover",
+        "detail": "After a big week you go quiet. A partner who reads that as recovery rather than distance will suit you."
+      }
+    ],
+    "carefulOf": [
+      {
+        "title": "Partners who let you carry everything",
+        "detail": "Someone happy to be organised will feel easy at first and leave you doing it all within a year."
+      }
+    ],
+    "summary": "You suit someone steady and observant, who likes being looked after but insists on looking after you too."
+  },
+  "careerAssessment": {
+    "situation": "The export shows someone who runs things – events, plans, groups – whatever the job title. There is no CV here, so this is an inference from how you work, not a statement of your role.",
+    "edge": {
+      "headline": "You finish what other people announce",
+      "detail": "Forty-one of forty-seven named deadlines closed is a follow-through rate most teams would build around. Paired with the trust of a close circle, it makes you the person things get handed to.",
+      "evidence": [
+        "47 deadlines named, 41 closed",
+        "Group plans in 38 of 60 captions"
+      ]
+    },
+    "underused": {
+      "headline": "Your organising, unseen",
+      "detail": "You do the coordination work of a lead without the title or the credit, because you never write it down as yours."
+    },
+    "holdingBack": {
+      "headline": "Invisible by default",
+      "detail": "Because you never write your part down, the people deciding who leads next see the outcome and not you."
+    },
+    "actions": [
+      {
+        "horizon": "this week",
+        "title": "Name your edge out loud",
+        "detail": "In your next one-to-one, say in one sentence that you are the person who closes things out, with 41 of 47 as the example."
+      },
+      {
+        "horizon": "this quarter",
+        "title": "Own one project end to end",
+        "detail": "Take a project from announcement to close under your own name, rather than finishing someone else's."
+      },
+      {
+        "horizon": "this year",
+        "title": "Move to where coordinating is the job",
+        "detail": "Look for the role where running things is the work, not the overflow on top of it."
+      }
+    ]
+  }
+}
