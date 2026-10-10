@@ -1123,6 +1123,9 @@
     nothingYet: 'Nothing here yet.',
     // The merged sections' own headings.
     howYouAttach: 'Attachment style',
+    // How they handle disagreement: the card's conflict style, which the
+    // attachment read explains (attachment.conflict). A chip and an unlock row.
+    conflictStyle: 'Conflict style',
     // "Beyond your card": the card's other lines, under it on a free report.
     // They are what travels in the compatibility link beside what the card
     // shows, and each is one the full report explains.
@@ -1209,6 +1212,8 @@
     explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
       'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
     // MBTI and the Big Five as one row of the unlock offer.
+    explainConflict: 'How you handle disagreement with the people close to you – whether you raise it, smooth ' +
+      'it over, go quiet or come in hot, and what that does to the other person.',
     explainTypeTraitsTitle: 'MBTI & Big Five',
     explainTypeTraits: 'Your four letters and your five traits taken apart – the behaviours behind each, the ' +
       'evidence that pulls the other way, how firmly each one holds, and what it looks like in your ordinary week.',

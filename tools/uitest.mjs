@@ -3188,11 +3188,15 @@ try {
       parts: tier ? [...tier.querySelectorAll('.insight-part h4')].map(n => n.textContent.trim()) : [],
       want: ['who', 'drives', 'connect', 'together'].map(key => S.parts[key].title),
       nums: tier ? [...tier.querySelectorAll('.insight-part-num')].map(n => n.textContent) : [],
+      connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
     };
   });
   check('the premium tier is the full report, by its four numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04',
     JSON.stringify(premiumTier));
+  check('and How you connect & work carries a Conflict style pill, after Attachment style',
+    premiumTier.connectChips.join('|') === 'Your love languages|Attachment style|Conflict style|Who suits you|How you work',
+    premiumTier.connectChips.join('|'));
   check('and Psyche Sync is offered as free',
     /Psyche Sync, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
 
@@ -11642,7 +11646,13 @@ try {
       });
       check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
         offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together' &&
-          offerParts.counts.join() === '4,2,4,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+          offerParts.counts.join() === '4,2,5,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+      check('structured: How you connect & work in the unlock offer names Conflict style, after Attachment style',
+        await sp.evaluate(() => {
+          const part = document.querySelectorAll('#profile-body .full-report-locked .unlock-part')[2];
+          return [...part.querySelectorAll('.premium-tier-item strong')].map(n => n.textContent).join('|') ===
+            'In relationships & at work|Attachment style|Conflict style|Ideal partner traits|Career assessment';
+        }));
       check('structured: beside the plan\'s part, a secret bonus in a box of its own, naming nothing',
         offerParts.secret && !/roast/i.test(offerParts.secretText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',

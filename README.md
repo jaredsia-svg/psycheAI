@@ -1070,7 +1070,9 @@ sliding in from the side stepped towards; closing it leaves the deck on the card
 sample report's own card opens in the same dialog without the arrows. The
 premium tier is the full report by its four numbered parts — named from `Copy.STRUCTURED.parts`, with
 each part's sections as chips from the report's own titles (Part 1 leads with **Your character** and
-**Your signature patterns**, as the report itself does) — its price (`premiumPriceLabel`) and what
+**Your signature patterns**, as the report itself does; Part 3 carries **Conflict style** after
+**Attachment style**, since the attachment read explains the card's conflict style in its
+`conflict` field) — its price (`premiumPriceLabel`) and what
 comes with it, closed by **See sample report** (`#insight-sample`) at its bottom right. Under both, a line saying compatibility is free. The words around the names live in
 `Copy.STRUCTURED.insights`.
 
@@ -1079,7 +1081,9 @@ layout it runs as **four of the report's parts** (`explainedParts()`, `unlockPar
 panel led by its numeral (01–04) and the part's title from `Copy.STRUCTURED.parts` — no line under the
 title — then its sections with their blurbs (`explainedSections()`), the paid
 ones where they sit in the report. Part 1 has four rows — the portrait, the signature patterns, **MBTI &
-Big Five as one row** (`explainTypeTraits`) and wellbeing. There is no appendix in the offer: Part 4's panel
+Big Five as one row** (`explainTypeTraits`) and wellbeing. Part 3 has five: relationships, attachment,
+**Conflict style** (`explainConflict`, describing what `attachment.conflict` writes), ideal partner and
+the career assessment. There is no appendix in the offer: Part 4's panel
 takes the left half of its row (`.unlock-part-half`), and **a secret bonus** is a panel of its own on the
 right half (`.unlock-secret`, dashed, a gift over its title), naming nothing — the roast, kept a surprise
 until it is unlocked. On a phone the two stack. In the classic layout it is the explanations followed by

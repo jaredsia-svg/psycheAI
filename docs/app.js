@@ -1709,7 +1709,9 @@
       { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns),
         { icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
       { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
-      { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')), by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
+      { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')),
+        { icon: '⚡', title: () => S.conflictStyle, blurb: () => S.explainConflict },
+        by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
       // The plan on the left, and on the right a section the offer does not
       // name — the roast, kept a surprise until it is unlocked.
       { key: 'together', rows: [by(S.titles.development)], secret: true },
@@ -2122,7 +2124,7 @@
     const sectionsOf = {
       who: [I.characterChip, S.titles.patterns, 'MBTI', TEXT.bigFive, S.titles.wellness],
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
-      connect: [TEXT.loveHead, S.howYouAttach, S.whoSuitsYou, S.titles.work],
+      connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou, S.titles.work],
       together: [S.titles.development, S.titles.plan],
     };
     return '<div class="insight-tier insight-free">' +
