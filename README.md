@@ -3930,6 +3930,14 @@ Messenger and WhatsApp):
    Its chats are the densest, most personal text there is. At about half the digest, as it was with
    three chats added at the unlock, they set the tone of the whole report. Room WhatsApp does not use
    goes to the other added sources, or the digest is simply smaller.
+
+   **One chat in the free read is the exception.** A new reader can add one chat, with a close friend,
+   on the first upload. That chat gets a fixed allowance instead of the shares: up to 8,000 characters in
+   all, lines and counts together (`waSoloChatChars`). Under the shares, a tenth of a lighter account's
+   digest (11,000 characters with the test export) cut a long chat to three lines (1,230 characters); it
+   now keeps about 7,800. The whole free digest is still held to 80,000 characters, so the cost ceiling is
+   unchanged. The full report sets the allowance to 0 (`DEEP_LIMITS`) and keeps the shares. Two or three
+   chats in a free re-run from the report page keep them too.
 2. **Spread across time.** Each conversation's span is cut into ten equal stretches, places shared by
    the square root of what was written in each — a two-year chat is read across two years.
 3. **A mix of lengths.** In every stretch about half the places go to substantial messages (120+

@@ -241,6 +241,13 @@
     // WhatsApp as a whole — three chats at most — over three tenths.
     waChatMaxDigestShare: 0.1,
     waMaxDigestShare: 0.3,
+    // The free read with one chat — a close friend's, offered on the first
+    // upload — gives that chat a fixed allowance instead: up to this many
+    // characters in all (its lines and its counts), whatever the rest of the digest
+    // weighs. The share rules above would otherwise cut it to a few lines on
+    // a lighter Instagram account (a tenth of an 11,000-character digest is
+    // 1,100). The premium read turns it off (DEEP_LIMITS) and keeps the shares.
+    waSoloChatChars: 8000,
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -587,7 +594,7 @@
   const DEEP_LIMITS = {
     youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 140,
     fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 600,
-    messageThreadChars: 16000, waThreadChars: 16000,
+    messageThreadChars: 16000, waThreadChars: 16000, waSoloChatChars: 0,
     totalChars: DEEP_DIGEST_CHARS, maxListItems: 800, sourceShares: SOURCE_SHARES,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
@@ -2267,8 +2274,22 @@
     // evenly, a tenth at a time, down to the supplement floor. A digest the
     // premium read was given to keep whole (protect) is left as it is.
     const waEntry = trimmableSupplements.find(entry => entry[0] === 'waOwnMessages');
-    const waShare = LIMITS.waMaxDigestShare;
-    const chatShare = LIMITS.waChatMaxDigestShare;
+    // One chat in the free read: its own fixed allowance, so neither share
+    // applies; it is held to waSoloChatChars below instead.
+    const solo = LIMITS.waSoloChatChars > 0 && digest.whatsapp &&
+      Array.isArray(digest.whatsapp.chats) && digest.whatsapp.chats.length === 1;
+    const waShare = solo ? 0 : LIMITS.waMaxDigestShare;
+    const chatShare = solo ? 0 : LIMITS.waChatMaxDigestShare;
+    if (solo && waEntry) {
+      for (let guard = 0; guard < 200; guard++) {
+        const list = waEntry[1]();
+        if (!Array.isArray(list) || list.length <= 3) break;
+        // The whole WhatsApp block — the lines and the chat's counts — not
+        // the lines alone, so the allowance is what the chat costs in all.
+        if ((sourceSizes(digest).whatsapp || 0) <= LIMITS.waSoloChatChars) break;
+        waEntry[2](dropEvenly(list, Math.max(1, Math.ceil(list.length * 0.05))));
+      }
+    }
     if (digest.whatsapp && waEntry && chatShare > 0) {
       // Each chat first: its lines, tagged [c1]–[c3], thinned evenly until it
       // is no more than a tenth of the evidence.

@@ -3875,6 +3875,29 @@ check('the sample arrives in chronological order',
     share === 0.3 && chatShare === 0.1 && waChars <= total * 0.3 + 50 && chatChars.every(n => n <= total * 0.1 + 10) &&
       whole.whatsapp.ownMessageSample.length >= 10,
     waChars + ' of ' + total + ' characters; per chat ' + chatChars.join(', '));
+  // One chat in the free read — a close friend's, from the first upload —
+  // has a fixed allowance instead of the shares: up to 8,000 characters in
+  // all, however light the rest of the digest. The shares would have cut it
+  // to a tenth of a small digest, a few lines.
+  const waOf = digest => {
+    const without = Object.assign({}, digest);
+    delete without.whatsapp;
+    return Digest.evidenceChars(digest) - Digest.evidenceChars(without);
+  };
+  const soloFree = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000)] } } }, { includeMessages: false });
+  const soloChars = waOf(soloFree);
+  check('WhatsApp: one chat in the free read gets up to 8,000 characters, even past a tenth of a light digest',
+    Digest.LIMITS.waSoloChatChars === 8000 && soloChars <= 8000 && soloChars > 6000 &&
+      soloChars > Digest.evidenceChars(soloFree) * 0.1 && Digest.evidenceChars(soloFree) <= Digest.DIGEST_CHARS,
+    soloChars + ' of ' + Digest.evidenceChars(soloFree) + ' characters');
+  const soloDeep = Digest.withDepth(true, () => Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000)] } } },
+    { includeMessages: false, maxChars: 1e7 }));
+  check('WhatsApp: the full report keeps the shares for one chat too (no fixed allowance there)',
+    Digest.DEEP_LIMITS.waSoloChatChars === 0 && waOf(soloDeep) <= Digest.evidenceChars(soloDeep) * 0.3 + 50,
+    waOf(soloDeep) + ' of ' + Digest.evidenceChars(soloDeep));
+  const twoFree = Digest.build({ ...signals, supplements: { whatsapp: { chats: [chat('c1', 5000), chat('c2', 5000)] } } }, { includeMessages: false });
+  check('WhatsApp: two or three chats in the free read (a re-run from the report page) keep the shares',
+    waOf(twoFree) <= Digest.evidenceChars(twoFree) * 0.3 + 50, waOf(twoFree) + ' of ' + Digest.evidenceChars(twoFree));
 }
 
 // ---------- the floor on a message ----------
