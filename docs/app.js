@@ -7644,8 +7644,12 @@
     clone.style.transform = 'none';
     clone.style.margin = '0';
     // The story card exports at its own size and no larger: one standard
-    // 1080 x 1920 image, whatever screen it was made on.
-    const scale = source.classList.contains('pc-story') ? 1 : CARD_IMAGE_SCALE;
+    // 1080 x 1920 image, whatever screen it was made on. Square-cornered,
+    // so its tinted wash runs to every edge: rounded corners left white
+    // patches there, and a story takes its background from the edges.
+    const story = source.classList.contains('pc-story');
+    if (story) clone.style.borderRadius = '0';
+    const scale = story ? 1 : CARD_IMAGE_SCALE;
     clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
 
     const markup = new XMLSerializer().serializeToString(clone);

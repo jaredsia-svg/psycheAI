@@ -3008,7 +3008,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 .psyche-card.pc-story {
   width: 1080px; height: 1920px; padding: 56px 60px 44px; gap: 0; border-radius: 44px;
   text-align: left; overflow: hidden;
-  background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
+  /* My Syncs' light wash: pink from the top right, purple from the bottom
+     left, over a lightly tinted base, so no edge of the card is white. Every
+     edge carries colour because Instagram picks a story's background from
+     the image's edges, and a white edge gave a white background. Mixed from
+     the theme's own colours, so it is a light wash in the image (always
+     drawn in the light theme) and a dark one on screen in dark mode. */
+  background:
+    radial-gradient(120% 60% at 100% 0%, color-mix(in srgb, var(--accent-2) 20%, transparent), transparent 62%),
+    radial-gradient(120% 60% at 0% 100%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent-2) 11%, var(--bg-alt)) 0%,
+      color-mix(in srgb, var(--accent) 12%, var(--bg-alt)) 100%);
 }
 .pc-story-in { display: flex; flex-direction: column; gap: 18px; height: 100%; }
 .pc-stop { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; font-size: 30px; }

@@ -11701,6 +11701,26 @@ try {
       ]);
       check('structured: Download beside the card saves the card as a PNG',
         /\.png$/.test(cardImage.suggestedFilename()), cardImage.suggestedFilename());
+      // Instagram takes a story's background from the image's edges, so no
+      // edge of the card image may be white: the wash runs to every edge,
+      // corners included (the image is square-cornered for exactly that).
+      {
+        const bytes = readFileSync(await cardImage.path());
+        const edges = await sp.evaluate(async data => {
+          const bitmap = await createImageBitmap(new Blob([new Uint8Array(data)], { type: 'image/png' }));
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width; canvas.height = bitmap.height;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          ctx.drawImage(bitmap, 0, 0);
+          const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
+          const w = bitmap.width, h = bitmap.height;
+          return { size: w + 'x' + h, points: [at(1, 1), at(w >> 1, 1), at(w - 2, 1), at(1, h >> 1), at(w - 2, h >> 1),
+            at(1, h - 2), at(w >> 1, h - 2), at(w - 2, h - 2)] };
+        }, [...bytes]);
+        check('structured: the card image is tinted to every edge and corner, never white, so a story\'s background is not white',
+          edges.size === '1080x1920' && edges.points.every(([r, g, b]) => !(r >= 252 && g >= 252 && b >= 252) && Math.max(r, g, b) - Math.min(r, g, b) >= 6),
+          JSON.stringify(edges));
+      }
       // Share falls back to the same download where a browser cannot share files.
       const [shared] = await Promise.all([
         sp.waitForEvent('download', { timeout: 15000 }),

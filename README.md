@@ -4215,6 +4215,19 @@ art or logo. A report from before the catalogue keeps its emoji. The summary car
 1080 × 1920 story, the same on screen and in the export; a report whose content runs long is scaled
 down just enough to fit, rather than clipped.
 
+**The card has My Syncs' light wash, edge to edge.** It used to fade from white at the top to a
+near-white pink, and the exported image filled its rounded corners with white. Instagram picks a
+story's background from the image's edges, so it picked white. Now:
+- **The wash.** `.psyche-card.pc-story` has pink from the top right and purple from the bottom left
+  over a lightly tinted base, mixed with `color-mix()` from the theme's own colours. It is a light wash
+  in the image, which is always drawn in the light theme, and a matching dark one on screen in dark mode.
+- **Square corners.** `cardImageBlob` exports the story card square-cornered, so the tint reaches every
+  edge and corner.
+- **The test.** `tools/uitest.mjs` downloads the image and checks eight points along its edges, corners
+  included: none may be white, and each must carry colour.
+- **Everywhere else.** The front page's sample cards use the same design, and the link preview
+  (`og-card.jpg`) was redrawn from it.
+
 **The catalogue is balanced: twelve women, twelve men, five who are neither.** It started with seven
 women out of 28. Each character holds a temperament nobody else in the list does:
 
