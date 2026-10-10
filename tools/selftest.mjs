@@ -2329,9 +2329,20 @@ for (const [label, needle] of [
   ['is about friends only', /# Friends only/],
   ['tells the model not to inflate', /Do not inflate/],
   ['respects the confidence figure', /respect it/],
+  ['writes warmly, like the Psyche Card, and at least neutral', /# Tone[\s\S]*warm, and at least neutral/],
+  ['frames each difference with a way to make it work, never as a fault', /frame each as a difference with a way to make it work/],
+  ['bans fault labels and predictions of struggle', /no labels such as needy, cold, flaky or stubborn, and no prediction/],
+  ['says a low score kindly', /different, not incompatible/],
 ]) {
   check('compatibility prompt ' + label, needle.test(prompts.COMPATIBILITY_SYSTEM));
 }
+check('compatibility prompt no longer coaches negative wording',
+  !/grates|running negotiation|off-wavelength|reliably brings friction|costs most in arguments/.test(prompts.COMPATIBILITY_SYSTEM));
+check('the sync schema asks for a warm band and constructive things to look out for',
+  /never "Constant clashes"/.test(prompts.COMPATIBILITY_SCHEMA.properties.frictions.description) &&
+    /warm or neutral even for a low score/.test(prompts.COMPATIBILITY_SCHEMA.properties.band.description) &&
+    !/Hard going"\.?' *$/.test(prompts.COMPATIBILITY_SCHEMA.properties.band.description) &&
+    /truest warm thing/.test(prompts.COMPATIBILITY_SCHEMA.properties.verdict.description));
 
 // The instruction to draw on the photographs rides on the summary field's
 // description rather than on the system prompt, so it is checked against the

@@ -5609,6 +5609,21 @@ its **Sync** goes to My Syncs, and the sync runs only when they tap it there. Th
 if the run fails. A reader who already has a card and opens a friend's link lands the same way. The
 result stays on the friend's device.
 
+**Written warmly, like the Psyche Card.** Both friends read a sync and may share it, so
+`COMPATIBILITY_SYSTEM` has a `# Tone` section: warm, and at least neutral.
+- **Differences, not faults.** Each one is framed with a way to make it work (*"Mei likes plans set
+  early; Jun likes to decide on the day — agree a time, leave the rest open"*), with no fault labels
+  (needy, cold, flaky, stubborn) and no prediction that the friendship will struggle.
+- **Low scores said kindly.** A low score means *different, not incompatible*.
+- **Schema wording.** The band is warm or neutral at every score (*Easy company*, *Good balance*,
+  *Different rhythms*, never *Hard going*). The verdict opens with the truest warm thing. *What to
+  look out for* names each difference neutrally (*Different paces*, never *Constant clashes*).
+- **Type and trait notes.** These now describe what to agree on rather than what grates.
+- **Honesty is kept.** The score is still not inflated: tone changes how a difference is said, not
+  whether it is said.
+
+`tools/selftest.mjs` pins these rules. The mock uses the same warm bands.
+
 **The report is three blocks, on the page and in the PDF.** It had grown long and repetitive — five
 scored dimensions, a biggest upside and a biggest risk that restated the verdict, and conversation
 starters — and all of that is gone, from the schema as well as the page, so the model is not asked to
