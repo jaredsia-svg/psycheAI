@@ -108,6 +108,10 @@
     // the analysis and counted by the server as a daily total, never stored
     // there with anything else. See lib/stats.js.
     via: 'psycheai_via',
+    // A promo code that came in the address (?promo=AVA), kept for
+    // LINK_PROMO_DAYS so it survives the wait for an export, and applied when
+    // the reader opens the full report's payment sheet. See linkPromo().
+    linkPromo: 'psycheai_link_promo',
     // The invite-friends code: a random secret, and the public code in the
     // reader's links (the first 12 hex of the secret's SHA-256). See
     // lib/referral.js.
@@ -1628,7 +1632,14 @@
       '<ul class="premium-tier-list">' + items + '</ul>' +
       '<button class="btn premium-unlock" type="button" aria-expanded="false"' +
       (sample ? ' disabled' : '') + '>' + premiumUnlockLabel(sample) + '</button>' +
+      (sample ? '' : linkPromoNoteHtml()) +
       '</div>';
+  }
+
+  /** Under the unlock button: the promo code from the reader's link, if one came with it. */
+  function linkPromoNoteHtml() {
+    const code = linkPromo();
+    return code && !hasUnfetchedUnlock() ? '<p class="premium-link-promo">' + esc(TEXT.linkPromoNote(code)) + '</p>' : '';
   }
 
   /**
@@ -1990,6 +2001,8 @@
       // The other way in, under the price: three friends' cards from their link.
       (hasUnfetchedUnlock() ? '' : '<span class="premium-unlock-alt">' + esc(TEXT.premiumUnlockFriends) + '</span>') +
       '</button>' +
+      // A code from the link this reader came in on, said before they tap.
+      linkPromoNoteHtml() +
       '</div>';
   }
 
@@ -8735,6 +8748,11 @@
       const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
       if (!intent) throw new Error(TEXT.premiumNotConfigured);
       await mountIntent(intent, dialog);
+      // The code from the reader's link, filled in and applied for them.
+      if (kind === 'unlock' && linkPromo()) {
+        $('#premium-promo-input').value = linkPromo();
+        await applyPromoCode({ fromLink: true });
+      }
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
     } finally {
@@ -8857,7 +8875,12 @@
   // and the sheet is re-mounted to pay that instead. A code the server
   // refuses says why, here, before any report is asked for. The extra
   // analysis's sheet keeps the old path: discounts are for the full report.
-  async function applyPromoCode() {
+  // `fromLink`: the code came in the reader's link and is applied as the
+  // sheet opens. A discount is shown at once; a code that opens the report
+  // free waits for the reader's tap rather than starting it unasked; and a
+  // code the server refuses is forgotten, so it is not offered again.
+  async function applyPromoCode(options) {
+    const fromLink = Boolean(options && options.fromLink);
     const input = $('#premium-promo-input');
     const code = input.value.trim();
     if (!code) return;
@@ -8874,7 +8897,8 @@
         { product: 'unlock', currency: CURRENCY, promoCode: code });
     } catch (error) {
       if (error && error.status === 402) {
-        premiumStatus(error.message, 'bad');
+        premiumStatus(fromLink ? TEXT.linkPromoRefused(code, error.message) : error.message, 'bad');
+        if (fromLink) { store.remove(KEYS.linkPromo); input.value = ''; }
         return;
       }
       // A server that could not price it (no Stripe keys, an older server):
@@ -8889,9 +8913,13 @@
       await mountIntent(answer, dialog);
       return;
     }
+    if (fromLink) {
+      premiumStatus(TEXT.linkPromoFree(code), 'good');
+      return;
+    }
     onPaymentAuthorised({ promoCode: code }, dialog);
   }
-  $('#premium-promo-apply').addEventListener('click', applyPromoCode);
+  $('#premium-promo-apply').addEventListener('click', () => applyPromoCode());
   // Promo codes are capitals, digits and hyphens only: a lower-case letter is
   // made a capital as it is typed or pasted, and anything else is dropped.
   $('#premium-promo-input').addEventListener('input', event => {
@@ -9589,6 +9617,31 @@
       history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
     } catch (error) { /* no storage or no history: nothing is counted */ }
   })();
+
+  // A promo code in the address: psycheai.io/?promo=AVA, or on a personal
+  // link, /c/<id>?promo=AVA#<key>. Kept, taken out of the address, and filled
+  // in on the full report's payment sheet. The server still judges it there,
+  // so a made-up or expired code in a link opens nothing.
+  const LINK_PROMO_DAYS = 30;
+  const LINK_PROMO_PATTERN = /^[A-Z0-9-]{3,32}$/;
+  (function captureLinkPromo() {
+    try {
+      const params = new URLSearchParams(location.search);
+      if (!params.has('promo')) return;
+      const code = String(params.get('promo') || '').trim().toUpperCase();
+      if (LINK_PROMO_PATTERN.test(code)) store.write(KEYS.linkPromo, { code, at: Date.now() });
+      params.delete('promo');
+      const query = params.toString();
+      history.replaceState(null, '', location.pathname + (query ? '?' + query : '') + location.hash);
+    } catch (error) { /* no storage: the code can still be typed in */ }
+  })();
+  /** The promo code this browser arrived with, if it is still fresh; '' otherwise. */
+  function linkPromo() {
+    const saved = store.read(KEYS.linkPromo, null);
+    if (!saved || typeof saved.code !== 'string' || !LINK_PROMO_PATTERN.test(saved.code)) return '';
+    if (!(Date.now() - Number(saved.at) < LINK_PROMO_DAYS * 86400000)) { store.remove(KEYS.linkPromo); return ''; }
+    return saved.code;
+  }
 
   // ---------- the journey, the account and the invite-friends code ----------
   //

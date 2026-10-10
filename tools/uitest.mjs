@@ -765,6 +765,74 @@ try {
     }
   }
 
+  // ---- a promo code in the link ----
+  //
+  // psycheai.io/?promo=UIHALF: the code is kept and taken out of the address,
+  // named under the unlock button, and filled in and applied as the sheet
+  // opens. A made-up code in a link is refused there, said, and forgotten.
+  {
+    const linkPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await linkPage.goto('http://localhost:' + PORT + '/?promo=uihalf', { waitUntil: 'load' });
+      await linkPage.waitForTimeout(300);
+      check('a ?promo= code is kept for later and taken out of the address',
+        !/promo=/.test(linkPage.url()) &&
+          await linkPage.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_link_promo') || '{}').code) === 'UIHALF'),
+        linkPage.url());
+      const sample = await linkPage.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await linkPage.evaluate(report => {
+        localStorage.setItem('psycheai_profile', JSON.stringify({
+          report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString(),
+        }));
+        localStorage.setItem('psycheai_digest', JSON.stringify({
+          coverage: { sources: ['instagram', 'google'], digestChars: 1000 }, google: { activity: [] },
+        }));
+      }, sample);
+      await linkPage.reload();
+      await linkPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      check('the unlock box says the link\'s code will be applied at checkout',
+        /Promo code UIHALF from your link is applied at checkout\./.test(await linkPage.locator('.premium-link-promo').first().innerText().catch(() => '')));
+      const unlock = linkPage.locator('.premium-unlock').first();
+      await unlock.scrollIntoViewIfNeeded();
+      await unlock.click();
+      await skipPremiumDataOffer(linkPage);
+      await linkPage.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 20000 })
+        .catch(() => {});
+      const net = await linkPage.$$eval('#premium-price .premium-price-row', rows => rows.map(row =>
+        [row.querySelector('dt').textContent.trim(), row.querySelector('dd').textContent.trim()]));
+      check('opening the sheet fills in the link\'s code and applies it: the friend sees the discount without typing',
+        (await linkPage.inputValue('#premium-promo-input')) === 'UIHALF' &&
+          JSON.stringify(net) === JSON.stringify([['Price', 'US$5'], ['Promo UIHALF (50% off)', '−US$2.50'], ['You pay', 'US$2.50']]),
+        JSON.stringify(net));
+      await linkPage.keyboard.press('Escape');
+      await linkPage.waitForTimeout(300);
+
+      // A code that is not a code, arriving the same way.
+      await linkPage.goto('http://localhost:' + PORT + '/?promo=NOSUCHCODE', { waitUntil: 'load' });
+      await linkPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      const again = linkPage.locator('.premium-unlock').first();
+      await again.scrollIntoViewIfNeeded();
+      await again.click();
+      await skipPremiumDataOffer(linkPage);
+      await linkPage.waitForFunction(() => /could not be used/.test(document.querySelector('#premium-status').textContent), null, { timeout: 20000 })
+        .catch(() => {});
+      check('a code in the link that the server refuses is said, cleared from the field, and forgotten',
+        /The promo code in your link \(NOSUCHCODE\) could not be used: it is not valid\./.test(await linkPage.locator('#premium-status').innerText()) &&
+          (await linkPage.inputValue('#premium-promo-input')) === '' &&
+          await linkPage.evaluate(() => localStorage.getItem('psycheai_link_promo') === null),
+        await linkPage.locator('#premium-status').innerText());
+    } finally {
+      await linkPage.close();
+    }
+  }
+  // A personal short link keeps the code through its redirect.
+  {
+    const { request: rawGet } = await import('node:http');
+    const location = await new Promise((resolve, reject) => rawGet({ host: 'localhost', port: PORT, path: '/c/AbCdEfGhIj?promo=AVA' },
+      response => { response.resume(); resolve(response.headers.location); }).on('error', reject).end());
+    check('/c/<id>?promo=AVA redirects with the code still on it', location === '/?c=AbCdEfGhIj&promo=AVA', location);
+  }
+
   // ---- local prices ----
   //
   // A reader in Singapore sees S$7 and S$3, and the payment it starts is asked

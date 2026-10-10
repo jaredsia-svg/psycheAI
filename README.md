@@ -422,6 +422,35 @@ client never loads `js.stripe.com` at all — a "Simulate payment (mock mode)" b
 whole wallet round trip, the same way mock mode already stands in for a real model call. This is what
 `tools/uitest.mjs` drives to test the unlock and the paid model call end to end without a real card.
 
+**A promo code in a link.** Add `?promo=CODE` to any link to the site, and whoever opens it gets the
+code without typing it. It works on any `PSYCHEAI_PROMO_CODES` or `PSYCHEAI_PROMO_CODE` code:
+
+```
+https://psycheai.io/?promo=HALF                      the front page
+https://psycheai.io/?promo=HALF&via=ava              with a campaign tag too
+https://psycheai.io/c/k7Qm2xPa1Z?promo=HALF#<key>    a personal link: ?promo= goes before the #
+```
+
+- **Kept and cleared from the address.** The page keeps the code for 30 days (`psycheai_link_promo`
+  in local storage), so it survives the hours an Instagram export takes, and takes it out of the
+  address bar. Delete everything clears it with the rest.
+- **Named before the tap.** Under the full report's unlock button: *Promo code HALF from your link is
+  applied at checkout.*
+- **Applied as the payment sheet opens.** The code is filled in and asked about at once.
+  - A **discount** re-prices the sheet straight away: price struck through, the discount, then *You
+    pay*.
+  - A **100% code** waits for the reader to tap **Apply**: *Promo code X unlocks the full report free.
+    Tap Apply to start it.*
+  - A code the server **refuses** (unknown, expired or used up) is said, cleared from the field and
+    forgotten: *The promo code in your link (X) could not be used: it has expired.*
+- **Nothing is trusted from the link.** The server judges the code exactly as if it were typed, so a
+  made-up code in an address opens nothing. Caps, last days and redemption counts all apply as usual.
+- **Short links keep it.** The `/c/<id>` redirect now carries the rest of the query string (`?promo=`,
+  `?via=`) onto the page.
+
+`tools/uitest.mjs` checks the whole path: the code kept and removed from the address, the note, the
+sheet re-priced to US$2.50, a refused code forgotten, and the redirect keeping it.
+
 **Prices are in the reader's own currency in the major markets, US dollars everywhere else.**
 One table, `docs/prices.js`, is read by both sides — the page shows its prices from it and
 `lib/stripe.js` charges and verifies only amounts from it:

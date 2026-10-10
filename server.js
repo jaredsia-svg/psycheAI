@@ -1449,7 +1449,12 @@ function routeRequest(route, url, request, response) {
   // and never reaches here.
   const short = /^\/c\/([A-Za-z0-9_-]{10})\/?$/.exec(route);
   if (short && (request.method === 'GET' || request.method === 'HEAD')) {
-    response.writeHead(302, { Location: '/?c=' + short[1], 'Cache-Control': 'no-store' });
+    // Anything else in the address goes with it (a ?promo= code, a ?via=
+    // tag), so /c/<id>?promo=AVA#<key> arrives with the code still on it.
+    const rest = new URLSearchParams(url.search);
+    rest.delete('c');
+    const extra = rest.toString();
+    response.writeHead(302, { Location: '/?c=' + short[1] + (extra ? '&' + extra : ''), 'Cache-Control': 'no-store' });
     response.end();
     return;
   }

@@ -4162,6 +4162,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .scan-waiting-list .match-face { flex: none; }
 /* The unlock button's second line: the other way in, three friends' cards. */
 .premium-unlock-alt { display: block; margin-top: .2rem; font-size: .8rem; font-weight: 500; opacity: .9; }
+/* A promo code from the reader's link, under the unlock button. */
+.premium-link-promo { margin: .6rem 0 0; text-align: center; font-size: .82rem; font-weight: 600; color: var(--good, #2f7d5b); }
 .invite-banner .invite-also { margin: .7rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent); }
 .invite-banner .invite-also[hidden] { display: none; }
 

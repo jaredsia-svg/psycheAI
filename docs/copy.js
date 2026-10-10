@@ -658,6 +658,11 @@
     premiumPromoApply: 'Apply',
     // A discount code, accepted: what it took off and what is left to pay.
     premiumPromoDiscount: (code, percent) => 'Promo code ' + code + ' applied: ' + percent + '% off.',
+    // A code that came in the reader's link (?promo=), on the unlock box and
+    // the payment sheet.
+    linkPromoNote: (code) => 'Promo code ' + code + ' from your link is applied at checkout.',
+    linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the full report free. Tap Apply to start it.',
+    linkPromoRefused: (code, reason) => 'The promo code in your link (' + code + ') could not be used: ' + String(reason || '').replace(/\.$/, '').replace(/^That code/, 'it') + '.',
     // The price on the payment sheet: the full price, and with a discount
     // code the discount and what is left to pay.
     premiumPriceFull: 'Price',
