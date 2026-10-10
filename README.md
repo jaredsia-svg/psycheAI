@@ -2627,10 +2627,12 @@ a step most readers skip. Left in the document while closed, they stay findable 
 and reachable by a
 screen reader navigating headings; the checks read `textContent` for the content and visibility for
 the disclosure, since `innerText` reports nothing for a closed `<details>` and would prove neither.
-Facebook's own instructions no longer live here: the welcome page now recommends Google specifically
-("Recommended: Also add Google data for a more complete analysis") rather than offering either
-option neutrally, and Facebook's steps live only in the supplement dialog's own disclosure, opened
-after Instagram has already been read. A check on the welcome page's card asserts the word "Facebook"
+Facebook's own instructions no longer live here. The welcome page's card now reads *"Optional: Also
+add a WhatsApp chat or Google data for a fuller analysis"* and holds the WhatsApp steps (a chat with a
+close friend: ⋮ → More → Export chat → Without media), then Google's. That matches the order and the
+*optional* tags of the "Load your data" popout. "How it works" step 1 says *a WhatsApp chat and Google
+data are optional*, where it used to call Google recommended. Facebook's steps live only in the
+supplement dialog's own disclosure, opened after Instagram has already been read. A check on the welcome page's card asserts the word "Facebook"
 does not appear in it at all, so the two cannot quietly drift back into sync by somebody restoring the
 old copy without noticing the dialog now carries it alone.
 

@@ -479,8 +479,13 @@ try {
   check('the optional-sources card is collapsed until the reader opens it',
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
-  check('its summary recommends Google rather than merely offering it',
-    /Recommended: Also add Google data for a more complete analysis/.test(optionalCard));
+  check('its summary offers a WhatsApp chat and Google as optional, WhatsApp first as in "Load your data"',
+    /Optional: Also add a WhatsApp chat or Google data for a fuller analysis/.test(optionalCard) &&
+      optionalCard.indexOf('WhatsApp chat with a close friend') < optionalCard.indexOf('Google Takeout') &&
+      /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
+  check('and "How it works" no longer calls Google recommended',
+    /a WhatsApp chat and Google data are optional/.test(await page.locator('#view-welcome').innerText()) &&
+      !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
 
@@ -2627,8 +2632,8 @@ try {
   check('the optional sources underline their menu labels too',
     (await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | '))) ===
-    ['Deselect all', 'My Activity', 'Multiple formats', 'Next step', 'Export once',
-      'Create export'].join(' | '),
+    ['⋮', 'More', 'Export chat', 'Without media', 'Deselect all', 'My Activity', 'Multiple formats', 'Next step',
+      'Export once', 'Create export'].join(' | '),
     await page.evaluate(() => [...document.querySelectorAll('.optional-card .ui-label')]
       .map(n => n.textContent.trim()).join(' | ')));
   // The one genuine link in the how-to: takeout.google.com is where the whole
