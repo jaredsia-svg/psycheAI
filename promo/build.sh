@@ -51,10 +51,11 @@ for V in $VERSIONS; do
       # 720 wide and about 4 MB, straight into the site: docs/media is what the front page plays.
       "$FF" -y -v error -i build/site/video.mp4 -vf scale=720:-2 -c:v libx264 -preset slow -crf 27 -pix_fmt yuv420p \
         -c:a aac -b:a 96k -movflags +faststart out/PsycheAI-site.mp4
-      "$FF" -y -v error -ss "$COVER" -i build/site/video.mp4 -frames:v 1 -vf scale=720:-2 -q:v 4 out/PsycheAI-site-poster.jpg
+      # The poster as WebP, which is what the front page loads (a third smaller than the JPEG).
+      "$FF" -y -v error -ss "$COVER" -i build/site/video.mp4 -frames:v 1 -vf scale=720:-2 -c:v libwebp -quality 85 out/PsycheAI-site-poster.webp
       mkdir -p ../docs/media
       cp out/PsycheAI-site.mp4 ../docs/media/psycheai-intro.mp4
-      cp out/PsycheAI-site-poster.jpg ../docs/media/psycheai-intro-poster.jpg
+      cp out/PsycheAI-site-poster.webp ../docs/media/psycheai-intro-poster.webp
       ;;
     *)
       cp "build/$V/video.mp4" "out/PsycheAI-$V.mp4"
