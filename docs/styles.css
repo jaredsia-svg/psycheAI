@@ -2983,6 +2983,82 @@ details.more[open] > summary::after { content: ' ▴'; }
 .layout-structured .bonus-body:not([hidden]) { animation: roast-in .5s ease both; }
 @keyframes roast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+/* My Psyche's roast, under the card: a secret bonus rather than a section.
+   A gradient frame and a soft glow while it is shut, a few sparks drifting
+   up behind the title, and one bright button. Once revealed it settles to a
+   plain card, so the writing reads as easily as the rest of the page. */
+.bonus-card.secret-roast {
+  position: relative; overflow: hidden; text-align: center;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 70%, var(--bg-alt)), var(--bg-alt) 70%) padding-box,
+    linear-gradient(120deg, var(--accent), var(--accent-2), var(--warn), var(--accent)) border-box;
+  background-size: 100% 100%, 300% 300%;
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--accent-2) 22%, transparent), var(--shadow);
+  animation: secret-frame 6s linear infinite;
+}
+@keyframes secret-frame { to { background-position: 0 0, 300% 0; } }
+.secret-roast-badge {
+  display: inline-flex; align-items: center; gap: .4rem; margin: 0 0 .6rem;
+  padding: .3rem .8rem; border-radius: 999px;
+  font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  /* Fixed brand colours, not the tokens: white text needs the deep pair in dark mode too. */
+  color: #fff; background: linear-gradient(90deg, #7b3fa0, #d1477a);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent-2) 35%, transparent);
+}
+.secret-roast-title {
+  margin: 0 0 .4rem; font-size: clamp(1.5rem, 5vw, 2rem); line-height: 1.15;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.secret-roast-title span { color: initial; -webkit-text-fill-color: initial; }
+/* Not clipped, so the button's glow is not cut off at the cover's edge. */
+.bonus-card.secret-roast .secret-roast-cover {
+  border: 0; background: none; padding: .2rem 0 .4rem; overflow: visible;
+}
+.secret-roast-lede { margin: 0 auto .5rem; max-width: 46ch; font-size: 1.02rem; color: var(--ink); }
+.secret-roast-warn { margin: 0 auto 1.1rem; max-width: 46ch; font-size: .82rem; color: var(--ink-soft); }
+.secret-roast-reveal {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .8rem 1.6rem; font-size: 1.02rem; font-weight: 700; border: 0;
+  color: #fff; background: linear-gradient(90deg, #d1477a, #7b3fa0);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-2) 40%, transparent);
+  animation: secret-pulse 2.4s ease-in-out infinite;
+}
+.secret-roast-reveal:hover { filter: brightness(1.08); }
+/* A glow rather than a grow: the button never moves under the pointer. */
+@keyframes secret-pulse { 50% { box-shadow: 0 6px 30px 4px color-mix(in srgb, var(--accent-2) 60%, transparent); } }
+.secret-roast-sparks { position: absolute; inset: 0; pointer-events: none; }
+.secret-roast-sparks i {
+  position: absolute; bottom: -10px; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent-2); opacity: 0; animation: secret-spark 5s ease-in infinite;
+}
+.secret-roast-sparks i:nth-child(1) { left: 12%; }
+.secret-roast-sparks i:nth-child(2) { left: 30%; animation-delay: 1.2s; background: var(--warn); }
+.secret-roast-sparks i:nth-child(3) { left: 52%; animation-delay: 2.6s; background: var(--accent); }
+.secret-roast-sparks i:nth-child(4) { left: 71%; animation-delay: .6s; }
+.secret-roast-sparks i:nth-child(5) { left: 88%; animation-delay: 3.4s; background: var(--warn); }
+@keyframes secret-spark {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: .7; }
+  100% { transform: translateY(-260px); opacity: 0; }
+}
+.secret-roast > * { position: relative; }
+.secret-roast > .secret-roast-sparks { position: absolute; }
+/* Opened: a plain card in the page's own colours, the writing left-aligned. */
+.bonus-card.secret-roast.is-revealed {
+  animation: none; text-align: left;
+  background:
+    linear-gradient(var(--bg-alt), var(--bg-alt)) padding-box,
+    linear-gradient(120deg, var(--accent), var(--accent-2)) border-box;
+}
+.secret-roast.is-revealed .secret-roast-sparks { display: none; }
+.secret-roast .bonus-body:not([hidden]) { animation: roast-in .5s ease both; margin-top: .6rem; }
+@media (prefers-reduced-motion: reduce) {
+  .bonus-card.secret-roast, .secret-roast-reveal, .secret-roast .bonus-body:not([hidden]) { animation: none; }
+  .secret-roast-sparks { display: none; }
+}
+
 /* Charts grow when a section opens. Held at zero while shut — the
    !important outranks the inline width the data attribute writes — and
    animated to their value on opening. */
@@ -3942,23 +4018,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .deid-icon { font-size: .9rem; line-height: 1.35; flex: none; }
 .deid-note p { margin: 0; font-size: .76rem; line-height: 1.4; color: var(--ink); }
 .deid-note strong { color: var(--good); }
-/* Beside the plan's part in the unlock offer: a section it keeps secret, as
-   a panel of its own. The two share a row where there is room for it. */
-@media (min-width: 560px) {
-  .unlock-parts { grid-template-columns: 1fr 1fr; }
-  .unlock-parts > .unlock-part:not(.unlock-part-half) { grid-column: 1 / -1; }
-  .unlock-part-half .premium-tier-list { grid-template-columns: 1fr; }
-}
-.unlock-secret {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
-  padding: 1rem 1.1rem; border-radius: 14px; text-align: center;
-  border: 1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 75%, var(--bg-alt)), color-mix(in srgb, var(--accent-2) 12%, var(--bg-alt)));
-}
-.unlock-secret-icon { font-size: 1.9rem; line-height: 1; }
-.unlock-secret strong { font-size: 1rem; color: var(--accent); }
-.unlock-secret span:last-child { font-size: .84rem; line-height: 1.45; color: var(--ink-soft); max-width: 22rem; }
-
 /* ---- the guides (/instagram-personality-test and its siblings) ----
    Static pages for search: the site's nav, hero band, cards and buttons, and
    a closing call to start. */

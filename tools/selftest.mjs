@@ -1422,8 +1422,9 @@ function inlineRefs(node, defs) {
 }
 const sampleSchema = {
   ...prompts.PROFILE_SCHEMA,
-  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS, ['topMotivators', 'premiumAnalysis']),
-  properties: Object.assign({}, prompts.PROFILE_SCHEMA.properties,
+  required: prompts.PROFILE_SCHEMA.required.concat(prompts.STRUCTURED_KEYS, ['topMotivators', 'premiumAnalysis', 'bonus']),
+  // The roast is the free call's now, carried into the full report.
+  properties: Object.assign({ bonus: prompts.FREE_SCHEMA.properties.bonus }, prompts.PROFILE_SCHEMA.properties,
     Object.fromEntries(prompts.STRUCTURED_KEYS.map(key => [key, prompts.STRUCTURED_FULL_SCHEMA.properties[key]])),
     { topMotivators: prompts.STRUCTURED_FREE_SCHEMA.properties.topMotivators,
       premiumAnalysis: inlineRefs(prompts.PREMIUM_SCHEMA, prompts.PREMIUM_SCHEMA.$defs || {}) }),
@@ -1984,45 +1985,52 @@ check('premiumBlocks resends the same digest shape profileBlocks does, not a sum
     /Instagram and Google/.test(blocks[0].text) && /the four sections the free report does not carry/.test(blocks[0].text);
 })());
 
-// The roast is back in the free schema and prompt, and gone from the paid
-// pair — moved, not duplicated. A stray copy left in PREMIUM_SCHEMA would be
-// paid for twice and rendered from whichever the UI happened to read, the
+// The roast is written by the free card call only, for My Psyche, and by no
+// paid call — moved, not duplicated. A stray copy left in a paid schema would
+// be paid for twice and rendered from whichever the UI happened to read, the
 // same failure mode the wellness/attachment/idealPartner/careerAssessment
-// pair is held to above.
-const bonusProps = prompts.PROFILE_SCHEMA.properties.bonus.properties;
-check('the roast is in the free report schema, not the paid one',
+// pair is held to above. The browser carries the free roast into the full
+// report (overlayCard), where the PDF prints it.
+const bonusProps = prompts.FREE_SCHEMA.properties.bonus.properties;
+check('the roast is in the free card schema, and in no paid one',
   ['harsh', 'advice'].every(k => k in bonusProps) &&
-  !('harsh' in premiumProps) && !('advice' in premiumProps) && !('bonus' in premiumProps));
+  prompts.CLASSIC_FREE_SCHEMA.properties.bonus === prompts.STRUCTURED_FREE_SCHEMA.properties.bonus &&
+  !('harsh' in premiumProps) && !('advice' in premiumProps) && !('bonus' in premiumProps) &&
+  ['PROFILE_SCHEMA', 'FULL_SCHEMA', 'CLASSIC_FULL_SCHEMA', 'STRUCTURED_FULL_SCHEMA']
+    .every(key => !('bonus' in prompts[key].properties)));
+check('and no paid prompt asks for a roast or mentions one',
+  ['PROFILE_SYSTEM', 'FULL_SYSTEM', 'CLASSIC_FULL_SYSTEM', 'STRUCTURED_FULL_SYSTEM']
+    .every(key => !/roast|`bonus`/i.test(prompts[key])));
 
 // The register is stated outright rather than left implied by "accurate
 // without being kind" — the page calls it a roast, so the prompt has to ask
 // for one or the two drift apart.
 check('the roast is asked for as a roast, not just as an unkind read',
-  /`bonus` is a roast: written to be accurate without being kind/.test(prompts.PROFILE_SYSTEM) &&
+  /`bonus` is a roast: written to be accurate without being kind/.test(prompts.FREE_SYSTEM) &&
   /Roast them/.test(bonusProps.harsh.description));
 // The register change has to be named explicitly: everything else in
 // PROFILE_SYSTEM is written to be fair, and a report that drifted toward the
 // roast's tone before the reader ever clicked the cover open would be
 // showing them the unkind version without their consent.
 check('the register change is named both ways — the roast must not leak backward either',
-  /The register change has to be real, and it has to be contained/.test(prompts.PROFILE_SYSTEM) &&
-  /nothing written above this point should anticipate or lean toward the roast's tone/.test(prompts.PROFILE_SYSTEM));
+  /The register change has to be real, and it has to be contained/.test(prompts.FREE_SYSTEM) &&
+  /nothing written above this point should anticipate or lean toward the roast's tone/.test(prompts.FREE_SYSTEM));
 // The load-bearing half of that instruction. A roast that stops being
 // evidence-bound is abuse from a stranger who read somebody's captions, and
 // the licence to be funny is exactly where that would slip.
 check('the roast is still held to the evidence, and told why that matters',
-  /a licence to drop the softening, not a licence to make things up/.test(prompts.PROFILE_SYSTEM) &&
-  /the target recognising themselves/.test(prompts.PROFILE_SYSTEM) &&
-  /Generic insults are not roasting/.test(prompts.PROFILE_SYSTEM));
+  /a licence to drop the softening, not a licence to make things up/.test(prompts.FREE_SYSTEM) &&
+  /the target recognising themselves/.test(prompts.FREE_SYSTEM) &&
+  /Generic insults are not roasting/.test(prompts.FREE_SYSTEM));
 // Three named seams rather than "be harsh and see what turns up". They are
 // the things the export shows unusually clearly, so pointing the model at them
 // is the difference between a roast about this person and a roast about
 // anybody: announced plans against finished ones, what they take against what
 // they give back, and whatever else is plainly going badly.
 check('the roast is pointed at follow-through, reciprocity and the rest',
-  /the distance between what they announced and what they finished/.test(prompts.PROFILE_SYSTEM) &&
-  /who shows up for them against who they show up for/.test(prompts.PROFILE_SYSTEM) &&
-  /anything else they are plainly doing badly/.test(prompts.PROFILE_SYSTEM));
+  /the distance between what they announced and what they finished/.test(prompts.FREE_SYSTEM) &&
+  /who shows up for them against who they show up for/.test(prompts.FREE_SYSTEM) &&
+  /anything else they are plainly doing badly/.test(prompts.FREE_SYSTEM));
 check('those seams are named in the field the writing comes out of, too',
   /plans announced and never closed out, things saved and never acted on/
     .test(bonusProps.harsh.description) &&
@@ -2032,7 +2040,7 @@ check('those seams are named in the field the writing comes out of, too',
 // insult the rest of this section exists to prevent.
 check('a seam with no evidence behind it is dropped rather than filled in',
   /Where the evidence is not there, drop the seam rather than inventing a case for it/
-    .test(prompts.PROFILE_SYSTEM));
+    .test(prompts.FREE_SYSTEM));
 check('the harsh read stays inside what the evidence supports',
   /the least charitable reading of this person that the evidence still fully supports/i
     .test(bonusProps.harsh.description) &&
@@ -2049,18 +2057,18 @@ check('the advice half draws on the whole digest, not just the posting habits th
 // licence to go deeper on a deliberately unsparing section is exactly the
 // kind of licence a ban like this could erode under.
 check('being unkind is explicitly not a licence to diagnose',
-  /This holds in the roast too, and it holds hardest there/.test(prompts.PROFILE_SYSTEM) &&
-  /being unkind is not a licence to become one/.test(prompts.PROFILE_SYSTEM));
+  /This holds in the roast too, and it holds hardest there/.test(prompts.FREE_SYSTEM) &&
+  /being unkind is not a licence to become one/.test(prompts.FREE_SYSTEM));
 check('the diagnosis ban covers the roast by name, not just by inheriting the general one above it',
   /never name, imply, predict or gesture at a specific mental or physical health condition/
-    .test(prompts.PROFILE_SYSTEM));
+    .test(prompts.FREE_SYSTEM));
 check('the clinical vocabulary is named and banned for the roast specifically',
-  /not depression, not anxiety, not ADHD, not burnout as a clinical state/.test(prompts.PROFILE_SYSTEM));
+  /not depression, not anxiety, not ADHD, not burnout as a clinical state/.test(prompts.FREE_SYSTEM));
 check('the ban survives the reader having asked for exactly this framing',
-  /however directly the reader framed what they wanted/.test(prompts.PROFILE_SYSTEM) &&
-  /requested literally as "what mental illness or disorders to look out for"/.test(prompts.PROFILE_SYSTEM));
+  /however directly the reader framed what they wanted/.test(prompts.FREE_SYSTEM) &&
+  /requested literally as "what mental illness or disorders to look out for"/.test(prompts.FREE_SYSTEM));
 check('something worth a professional is named as exactly that, not diagnosed',
-  /worth raising with someone qualified to actually assess it/.test(prompts.PROFILE_SYSTEM));
+  /worth raising with someone qualified to actually assess it/.test(prompts.FREE_SYSTEM));
 
 check('relationship section has strengths and weaknesses',
   ['strengths', 'weaknesses'].every(k => k in prompts.PROFILE_SCHEMA.properties.relationship.properties));
@@ -2301,8 +2309,8 @@ for (const [label, needle] of [
   check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
 }
 
-// The roast's logic test, against PROFILE_SYSTEM — the roast moved to
-// premium once and has moved back to the free report for good. Its failure
+// The roast's logic test, against FREE_SYSTEM — the free card call is the
+// only one that writes the roast now, for My Psyche. Its failure
 // mode is not the invented insult the rules above already cover — the facts
 // are true — it is two unrelated ones joined by a "yet" that implies a
 // hypocrisy neither supports, which reads as a compilation of odd details
@@ -2322,7 +2330,7 @@ for (const [label, needle] of [
   ['prefers a defensible few to an undefendable pile',
     /a pile of odd details is not an argument/],
 ]) {
-  check('profile prompt ' + label, needle.test(prompts.PROFILE_SYSTEM));
+  check('card prompt ' + label, needle.test(prompts.FREE_SYSTEM));
 }
 
 for (const [label, needle] of [
@@ -2370,14 +2378,14 @@ for (const [label, needle] of [
 }
 
 // The nameable-contradiction rule, pinned on the roast field within
-// PROFILE_SCHEMA — back where the roast itself lives now.
+// FREE_SCHEMA — where the roast itself lives now.
 for (const [label, needle] of [
   ['makes the roast field itself demand a nameable contradiction',
     /Every hard line must name a contradiction you could state plainly/],
   ['rates a hollow contradiction as the worst of the three failures',
     /a hollow contradiction is worse than both/],
 ]) {
-  check('profile schema ' + label, needle.test(profileSchemaText));
+  check('card schema ' + label, needle.test(JSON.stringify(prompts.FREE_SCHEMA)));
 }
 
 // ---------- parse the synthetic export ----------
@@ -4880,12 +4888,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Digest.DIGEST_CHARS === 80000 && DIG === 80000 && Digest.LIMITS.freeTotalChars === undefined &&
     Digest.FREE_LIMITS === undefined && Digest.forFree === undefined,
     String(DIG));
-  check('with it, the free card costs at most 5.3 cents',
-    Digest.FREE_COST_CAP === 0.053 && freeWorst <= 0.053 + 1e-6, '$' + freeWorst.toFixed(4));
+  check('with it, the free card and its roast cost at most 6.2 cents',
+    Digest.FREE_COST_CAP === 0.062 && freeWorst <= 0.062 + 1e-6, '$' + freeWorst.toFixed(4));
   check('and the full premium report at most 15.1 cents',
     Digest.COST_CAP === 0.151 && fullWorst <= 0.151 + 1e-6, '$' + fullWorst.toFixed(4));
   check('both ceilings are what the calls can really cost, not padding',
-    freeWorst > 0.051 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
+    freeWorst > 0.060 && fullWorst > 0.147, '$' + freeWorst.toFixed(4) + ' / $' + fullWorst.toFixed(4));
   check('and each ceiling still covers the digest, so neither call outgrows its price',
     Digest.charBudget(Digest.COST_CAP) >= DIG &&
     Digest.charBudget(Digest.FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= DIG,
@@ -5297,13 +5305,24 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   const freeSchema = JSON.stringify(prompts.FREE_SCHEMA);
   check('the card prompt says up front that it writes conclusions, not explanations',
     free.indexOf('the conclusions only') > 0 && free.indexOf('the conclusions only') < 600);
-  check('the roast is not in the card prompt at all',
-    !/# The roast/.test(free) && /# The roast/.test(prompts.PROFILE_SYSTEM));
+  // The roast is written by the free call now, for My Psyche: the full
+  // report's roast section, cut whole, so the two cannot drift apart.
+  const roastAt = text => text.slice(text.indexOf('# The roast'), text.indexOf('# Hard limits', text.indexOf('# The roast')));
+  const freeRoast = roastAt(free);
+  check('the roast is in the card prompt, as a section of its own before the hard limits',
+    /# The roast — a different register entirely/.test(free) && freeRoast.length > 3000 &&
+    free.indexOf('# The roast') < free.indexOf('# Hard limits') && !/# The roast/.test(prompts.PROFILE_SYSTEM));
+  check('and the card prompt\'s hard limits name the roast, with its no-diagnosis paragraph',
+    /Every one of these holds in the roast too, and hardest there/.test(free) &&
+    /being unkind is not a licence to become one/.test(free) && /worth raising with someone qualified to actually assess it/.test(free) &&
+    free.indexOf('being unkind is not a licence') > free.indexOf('# Hard limits'));
   check('the hard limits are', /# Hard limits/.test(free));
   // Its own prompt, and a short one — the premium report keeps the long one.
-  check('the card prompt is its own and short: under a fifth of the full report\'s',
-    free.length < prompts.PROFILE_SYSTEM.length / 5 && free.length > 4000,
-    free.length + ' vs ' + prompts.PROFILE_SYSTEM.length);
+  const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '');
+  // A quarter now the full report's prompt has lost the roast to this one.
+  check('the card prompt is its own and short: its rules under a quarter of the full report\'s',
+    freeRules.length < prompts.PROFILE_SYSTEM.length / 4 && freeRules.length > 4000,
+    freeRules.length + ' vs ' + prompts.PROFILE_SYSTEM.length);
   // The price of a second, shorter prompt is two copies of the rules that
   // decide a letter or a score. These are the ones that have each been the
   // fix for a reported wrong answer; each must be in both prompts.
@@ -5325,8 +5344,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     missing.length === 0, missing.join('; '));
   // The classic card, which the structured one is built from.
   const props = prompts.CLASSIC_FREE_SCHEMA.properties;
-  check('the card schema asks for no writing: no summary, no roast, no readings, no reasons',
-    !props.summary && !props.bonus && !props.activity && !props.career &&
+  check('the card schema asks for no writing but the roast: no summary, no readings, no reasons',
+    !props.summary && Boolean(props.bonus && props.bonus.properties.harsh) && !props.activity && !props.career &&
     !props.bigFive.properties.openness.properties.reading &&
     !props.mbti.properties.letters.items.properties.why &&
     !props.essence.properties.why,
@@ -5351,7 +5370,13 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     prompts.STRUCTURED_FREE_SYSTEM.length > prompts.CLASSIC_FREE_SYSTEM.length - 400 &&
     prompts.CLASSIC_FREE_SYSTEM.split('# ')
       .every(part => prompts.STRUCTURED_FREE_SYSTEM.includes(part.split('\n')[0])));
-  check('the card schema is small next to the full one', freeSchema.length < JSON.stringify(prompts.PROFILE_SCHEMA).length / 2);
+  // Roast aside on both sides: it moved from the full schema to this one.
+  const roastChars = JSON.stringify(prompts.FREE_SCHEMA.properties.bonus).length;
+  check('the card schema is small next to the full one, roast aside',
+    freeSchema.length - roastChars < (JSON.stringify(prompts.PROFILE_SCHEMA).length + roastChars) / 2);
+  check('and the roast is the last thing the card call writes, after the card itself',
+    Object.keys(prompts.FREE_SCHEMA.properties).slice(-2).join() === 'card,bonus',
+    Object.keys(prompts.FREE_SCHEMA.properties).join());
 
   // -- the card writes only what is new on it --
   const cardProps = prompts.FREE_SCHEMA.properties.card.properties;
@@ -5492,8 +5517,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
 // ---------- the full premium report: one call ----------
 {
   const full = prompts.FULL_SYSTEM;
-  check('the unlock\'s prompt is the whole profile prompt and the premium sections, in one',
-    full.includes('# The roast') && full.includes('# The four premium sections') &&
+  check('the unlock\'s prompt is the whole profile prompt and the premium sections, in one — and no roast, which is the card call\'s',
+    full.startsWith(prompts.PROFILE_SYSTEM.slice(0, 2000)) && !full.includes('# The roast') && full.includes('# The four premium sections') &&
     full.includes('# Hard limits for the four premium sections') &&
     /wellness section is a behavioural read, not a health assessment/i.test(full));
   check('and no longer tells either half that the other is a separate call it never sees',
@@ -5589,9 +5614,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       Object.keys(routes.status).sort().join() === 'build,freeAnalyses,mock,ready,reportLayout,shortLinks' &&
       !/gemini|claude|anthropic|grok|render|commit|branch|stripe|pk_|sk_|_KEY/i.test(JSON.stringify(routes.status)),
     JSON.stringify(routes.status));
-  check('a free request gets the card: conclusions, and no writing',
+  check('a free request gets the card: conclusions, the roast, and no other writing',
     Boolean(routes.free) && routes.free.status === 200 && Boolean(data(routes.free).mbti) &&
-    data(routes.free).summary === undefined && data(routes.free).bonus === undefined &&
+    data(routes.free).summary === undefined && Boolean(data(routes.free).bonus && data(routes.free).bonus.harsh) &&
     !(data(routes.free).mbti.letters || []).some(letter => letter.why),
     JSON.stringify(routes.free && Object.keys(data(routes.free))));
   // The mock reports how many captions it was shown, which is what makes this
@@ -5613,9 +5638,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     JSON.stringify(routes.unpaid));
   check('and so is asking with a code that is not the code',
     Boolean(routes.wrongCode) && routes.wrongCode.status === 402, JSON.stringify(routes.wrongCode));
-  check('with a real code it is the full premium report in one response — roast, and all four sections',
+  check('with a real code it is the full premium report in one response — all four sections, and no roast (the card call\'s)',
     Boolean(routes.full) && routes.full.status === 200 && typeof data(routes.full).summary === 'string' &&
-    Boolean(data(routes.full).bonus) && prompts.PREMIUM_KEYS.every(key => Boolean(data(routes.full)[key])),
+    data(routes.full).bonus === undefined && prompts.PREMIUM_KEYS.every(key => Boolean(data(routes.full)[key])),
     JSON.stringify(routes.full && Object.keys(data(routes.full))));
   // Classic writes the card's conclusions back out; structured is sent the
   // pinned schema and leaves them to the card — which it only does when it

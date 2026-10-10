@@ -69,12 +69,13 @@ here is the *gate*, not the ability to ever ask again.
 
 ### The free run is the summary card; everything that explains it is the unlock
 
-**The free tier costs at most about US$0.05 a run**, and it gets there by changing what the free run is
+**The free tier costs at most about US$0.06 a run**, and it gets there by changing what the free run is
 rather than how hard the model thinks about it. A free run returns the **summary card** — the
 character, the MBTI type and its four letters, the five Big Five scores and bands, the
 interests, values, beliefs and love languages, the four-sentence highlights, and the shareable
-card — and nothing else. Every explanation of those conclusions, the roast, and the four premium
-sections are the **US$5 unlock: the full premium report**, written by **one** model call.
+card — and the roast, shown on My Psyche as a secret bonus (see "The roast moves onto My Psyche"
+below). Every explanation of those conclusions and the four premium sections are the **US$5 unlock:
+the full premium report**, written by **one** model call.
 
 **Two calls in total, one digest, one set of conclusions.** Both calls read the same digest — the
 same file, byte for byte — so the only difference between them is what they are asked to write.
@@ -146,10 +147,10 @@ At $0.75 / $3.75 per million tokens, worst case:
 
 | | free card | full premium report |
 |---|---|---|
-| output cap (thinking included) | 8,000 → $0.0300 | 28,000 → $0.1050 |
-| prompt plus schema | 6,700 → $0.0050 | 38,100 → $0.0286 |
+| output cap (thinking included) | 10,000 → $0.0375 | 28,000 → $0.1050 |
+| prompt plus schema | 9,000 → $0.0068 | 38,100 → $0.0286 |
 | the digest, 80,000 characters | 22,857 → $0.0171 | 22,857 → $0.0171 |
-| **at most** | **$0.0521** (`FREE_COST_CAP` $0.053) | **$0.1507** (`COST_CAP` $0.151) |
+| **at most** | **$0.0614** (`FREE_COST_CAP` $0.062) | **$0.1507** (`COST_CAP` $0.151) |
 
 **The standard read fills its spare room with the reader's own words** (`buildFilled`). A reader with
 no Google or Facebook data, or a lighter account, used to land well under 80,000 and the room went
@@ -265,7 +266,7 @@ Facebook posts and messages, 600 WhatsApp messages…) are wide enough that the 
 The paid call sends `deep: true` only when something was added; the server allows the larger digest
 only on a paid unlock that asks for it, rebuilds it field by field and re-applies the weights if
 anything is over. The premium digest is not kept afterwards: the next unlock starts from the standard
-digest again. The two calls an unlock can make are held to **$0.238 together** at their worst: $0.070
+digest again. The two calls an unlock can make are held to **$0.247 together** at their worst: $0.079
 for the card and $0.168 for the full report (`DEEP_FREE_COST_CAP`, `DEEP_COST_CAP`), against a US$5
 payment.
 
@@ -5451,6 +5452,49 @@ prompt guidance grew `PROFILE_SYSTEM` + `PROFILE_SCHEMA` to roughly 16,584 real 
 16,600 reserve — a margin of 16, tight enough that one more sentence of guidance anywhere in this
 schema would have put the free call over its own reserve. The new figure restores the ~200-token
 headroom the reserve is meant to carry.
+
+### The roast moves onto My Psyche, written by the free call
+
+The roast ("Let us roast you") used to be Part 05 of My Report, the appendix, after Evidence and
+method — which on the reader's own page made the appendix the roast and nothing else. It is now
+**free, written by the card call, and shown on My Psyche straight under the card**, above "Beyond your
+card", as a secret bonus: a gradient-framed box with a "Secret bonus unlocked" badge, a few sparks
+drifting up, and one "Reveal my roast" button (`secretRoastHtml()` in `docs/app.js`, `.secret-roast`
+in `styles.css`, the words in `Copy.secretRoast`). It works the old cover's way: the writing is not in
+the page until the reader reveals it, `revealRoast()`/`hideRoast()` put it in and take it out, the
+caveat sits above it and the reader can share its opening as a story image. Once opened the box
+settles to a plain card so the writing reads like the rest of the page. The pulse on the button is a
+glow, not a scale, so the button never moves under the pointer. Movement stops under
+`prefers-reduced-motion`. The badge and button use the fixed brand pair rather than the tokens, so
+their white text keeps its contrast in dark mode.
+
+**Part 05 is gone.** My Report is Parts 00–04. Evidence and method was already on My Psyche for the
+reader's own report; the sample, which has no My Psyche, keeps it at the end of Part 04. The PDF is
+unchanged and still prints its appendix with the roast.
+
+**The prompt moved, it was not copied.** The "The roast — a different register entirely" section
+(`FREE_ROAST_SECTION`), the roast's no-diagnosis paragraph (`ROAST_LIMIT`) and the two fields
+(`ROAST_SCHEMA`) came out of `PROFILE_SYSTEM` and `PROFILE_SCHEMA` and into the free call: the section
+before its hard limits, the paragraph joined to them. `bonus` is the last field of both free schemas,
+after `card`, so the card is written fair before the register changes. **The paid call writes no
+roast**: no paid prompt mentions one and no paid schema has `bonus` (selftest checks both). Its
+evidence-bound rules are pinned against `FREE_SYSTEM` now.
+
+**The cost.** The free prompt grew from 6,680 to 9,120 tokens (`FREE_FIXED_INPUT_TOKENS` 6,700 → 9,300)
+and the card call's output cap from 8,000 to 10,000 (`CARD_MAX_OUTPUT_TOKENS`, `FREE_MAX_OUTPUT_TOKENS`):
+the roast is about 1,200 tokens and needs room to think. Worst case per free run goes from $0.0521 to
+$0.0616 (`FREE_COST_CAP` $0.053 → $0.062), about **1 cent more**; the deep card on an unlock from
+$0.070 to $0.079. The paid call is cheaper by the same section and the roast's output, about half a
+cent a run. At the 200-a-day ceiling that is about US$12.40 a day at worst, up from US$10.60.
+A typical run adds about half a cent.
+
+**The unlock.** `overlayCard` carries the free card's roast into the full report, and
+`adoptFullReport` keeps the one already stored when a reader who added data is given a report with no
+card beside it (the classic layout's unanchored path), so the roast a reader opened before paying is
+the one they keep and the one the PDF prints. A free report saved before this change has no roast, and
+neither will its full report. The unlock offer no longer promises "a secret
+bonus" beside the plan, and the front page's premium extras drop "A secret bonus section": the roast
+is not what the US$5 buys any more.
 
 ## The compatibility link
 

@@ -444,6 +444,14 @@
     // section on the page whose heading carries no marker at all, and it sits
     // among four that do.
     bonusBadge: 'Bonus',
+    // My Psyche's roast, under the card: a free secret bonus that comes with
+    // every Psyche Card. See secretRoastHtml() in docs/app.js.
+    secretRoast: {
+      badge: 'Secret bonus unlocked',
+      lede: 'Your card is the nice version. This is the other one: what your data says when nobody is being polite.',
+      warn: 'Deliberately unkind, and just for you. It is not on your card and is never in your link.',
+      reveal: 'Reveal my roast',
+    },
 
     // The premium tier block, shown twice on the way in — the insight diagram
     // and "What you can expect?" — and built once in docs/app.js from
@@ -487,9 +495,6 @@
     explainActivity: 'What your posting rhythm, timing and feed say about you – when you are active, how ' +
       'that has changed over the years, what you consume against what you publish, and what your habits ' +
       'show that you would not have said yourself.',
-    explainRoast: 'The least charitable, most honest-friend read of you – the patterns you would rather not ' +
-      'see, said plainly, with the advice nobody softens. Kept behind a cover of its own, so you only read ' +
-      'it when you want to.',
     // The sample report's paid sections show their real covers now — same
     // title, same blurb, same price mentioned in the blurb — but the button
     // underneath is inert (see paidCard's `sample` option) and disabled, so it
@@ -1012,7 +1017,7 @@
       },
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
-      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding'], ['🎁', 'A secret bonus section']],
+      extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
       compatTitle: 'Psyche Sync, free',
       compatBlurb: 'Send a friend your link and see how in sync you are — your Psyche Sync score and how to relate better to each other.',
     },
@@ -1217,9 +1222,6 @@
     explainTypeTraitsTitle: 'MBTI & Big Five',
     explainTypeTraits: 'Your four letters and your five traits taken apart – the behaviours behind each, the ' +
       'evidence that pulls the other way, how firmly each one holds, and what it looks like in your ordinary week.',
-    // Beside the plan in the unlock offer: a section it does not name.
-    unlockSecretTitle: 'A secret bonus',
-    unlockSecretText: 'One more section, kept under wraps. Unlock the full report to find out what it is.',
   };
 
   // ---------- character emblems (the structured layout's catalogue) ----------

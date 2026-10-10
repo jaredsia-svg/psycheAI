@@ -653,9 +653,9 @@
   // Worst case, not average: every token of each output cap reserved as if
   // the model thinks for all of it, against a digest at its full 80,000.
   //
-  //   free card     8,000 out  × $3.75/M = $0.0300
-  //                  6,700 prompt + 22,857 digest × $0.75/M = $0.0222
-  //                 at most $0.0522                    → FREE_COST_CAP $0.053
+  //   free card    10,000 out  × $3.75/M = $0.0375
+  //                  9,300 prompt + 22,857 digest × $0.75/M = $0.0241
+  //                 at most $0.0616                    → FREE_COST_CAP $0.062
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
@@ -674,15 +674,19 @@
   // report's prompt became about 2,300 written for this call, and the card
   // schema stopped asking for ten fields it already had answers to.
   // $0.053 once the card's prompt gained the character-side rule.
-  const FREE_COST_CAP = 0.053;
-  const FREE_MAX_OUTPUT_TOKENS = 8000;
+  // $0.062 once the free call wrote the roast for My Psyche: about 2,200
+  // tokens more prompt and 2,000 more output room.
+  const FREE_COST_CAP = 0.062;
+  const FREE_MAX_OUTPUT_TOKENS = 10000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117
   // once the card gained its conflict style and work costs (5,678 before; it
   // was 16,655 while the card's prompt was the full report's, cut down).
   // Raised to 6,700 for the rule that picks the character's side of the
   // catalogue (CHARACTER_SIDE_RULE in lib/prompts.js). Measured at 6,553.
-  const FREE_FIXED_INPUT_TOKENS = 6700;
+  // Raised to 9,300 for the roast (FREE_ROAST_SECTION, ROAST_LIMIT and
+  // ROAST_SCHEMA). Measured at 9,120.
+  const FREE_FIXED_INPUT_TOKENS = 9300;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -690,17 +694,17 @@
   // the unlock adds data the card is redrawn from it as well, so both calls
   // can read it, and the two together are held under $0.25:
   //
-  //   card          8,000 out  × $3.75/M = $0.0300
-  //                  6,700 prompt + 45,714 digest × $0.75/M = $0.0393
-  //                 at most $0.0693                    → DEEP_FREE_COST_CAP $0.070
+  //   card         10,000 out  × $3.75/M = $0.0375
+  //                  9,300 prompt + 45,714 digest × $0.75/M = $0.0413
+  //                 at most $0.0788                    → DEEP_FREE_COST_CAP $0.079
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 45,714 digest × $0.75/M = $0.0629
   //                 at most $0.1679                    → DEEP_COST_CAP $0.168
   //
-  // $0.238 for the whole unlock at most, against a US$5 payment. Held by the
+  // $0.247 for the whole unlock at most, against a US$5 payment. Held by the
   // same selftest check as the standard caps.
-  const DEEP_FREE_COST_CAP = 0.070;
+  const DEEP_FREE_COST_CAP = 0.079;
   const DEEP_COST_CAP = 0.168;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));

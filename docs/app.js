@@ -1221,6 +1221,9 @@
     });
     if (card.cardHighlights) out.cardHighlights = card.cardHighlights;
     if ((card.topMotivators || []).length) out.topMotivators = card.topMotivators;
+    // The roast is the free call's, read on My Psyche before paying: the one
+    // the reader has already seen stays.
+    if (card.bonus && card.bonus.harsh) out.bonus = card.bonus;
     // The structured paid call no longer writes the shareable card at all —
     // it is the free one's, whole.
     if (card.card && !out.card) out.card = card.card;
@@ -1318,10 +1321,14 @@
     const freshCard = written.freeCard || null;
     delete written.freeCard;
     result = Object.assign({}, result, { data: written });
+    // The paid call writes no roast: the one the card call wrote, and the
+    // reader may already have read on My Psyche, is the one they keep.
+    const roast = (state.profile.report || {}).bonus;
     if (replaceCard) {
       let cardFields = Object.assign({}, (freshCard || result.data).card);
       if (isPlaceholder(cardFields.name) && ownNameFrom(savedName)) cardFields.name = ownNameFrom(savedName);
       state.profile.report = freshCard ? overlayCard(result.data, freshCard) : result.data;
+      if (!state.profile.report.bonus && roast) state.profile.report.bonus = roast;
       cardFields = cardFieldsFrom(cardFields, state.profile.report);
       if (freshCard) state.profile.freeReport = freshCard;
       state.profile.card = Card.shape(cardFields);
@@ -1656,7 +1663,6 @@
     { icon: '✨', title: () => TEXT.explainListsTitle, blurb: () => TEXT.explainLists },
     { icon: '💞', title: () => TEXT.explainPeopleTitle, blurb: () => TEXT.explainPeople },
     { icon: '📱', title: () => TEXT.activity, blurb: () => TEXT.explainActivity },
-    { icon: '🕳️', title: () => TEXT.bonus, blurb: () => TEXT.explainRoast },
   ];
 
   /**
@@ -1664,7 +1670,7 @@
    * structured layout's list is its own: the overview, then each part's
    * sections with the paid ones where they sit in the report (wellbeing ends
    * Part 1, attachment, partner and the coach's read join Part 3), then the
-   * plan and the roast — and no digital footprint, which that report has not
+   * plan — and no digital footprint, which that report has not
    * got. Each row carries its own blurb, so the paid ones need no second list.
    */
   function explainedSections() {
@@ -1689,7 +1695,6 @@
       paidRow('idealPartner'),
       paidRow('careerAssessment'),
       { icon: '🌱', title: () => S.titles.development, blurb: () => S.explainDevelopment },
-      own(TEXT.bonus),
     ];
   }
 
@@ -1712,24 +1717,20 @@
       { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')),
         { icon: '⚡', title: () => S.conflictStyle, blurb: () => S.explainConflict },
         by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
-      // The plan on the left, and on the right a section the offer does not
-      // name — the roast, kept a surprise until it is unlocked.
-      { key: 'together', rows: [by(S.titles.development)], secret: true },
+      // No secret bonus beside the plan any more: the roast is free, on My
+      // Psyche, so the unlock cannot promise it.
+      { key: 'together', rows: [by(S.titles.development)] },
     ].map((part, i) => Object.assign(part, { number: String(i + 1).padStart(2, '0'), rows: part.rows.filter(Boolean) }));
   }
 
   function unlockPartsHtml() {
     const S = Copy.STRUCTURED;
-    // The part with a secret beside it takes half the width, and the secret
-    // the other half as a panel of its own.
     return '<ol class="unlock-parts">' + explainedParts().map(part =>
-      '<li class="unlock-part' + (part.secret ? ' unlock-part-half' : '') + '">' +
+      '<li class="unlock-part">' +
         '<div class="unlock-part-head"><span class="unlock-part-num" aria-hidden="true">' + part.number + '</span>' +
         '<h4>' + esc(S.parts[part.key].title) + '</h4></div>' +
         '<ul class="premium-tier-list">' + tierItemsHtml(part.rows, row => row.blurb()) + '</ul>' +
-      '</li>' +
-      (part.secret ? '<li class="unlock-secret"><span class="unlock-secret-icon" aria-hidden="true">🎁</span>' +
-        '<strong>' + esc(S.unlockSecretTitle) + '</strong><span>' + esc(S.unlockSecretText) + '</span></li>' : '')).join('') + '</ol>';
+      '</li>').join('') + '</ol>';
   }
 
   function tierItemsHtml(rows, blurbOf) {
@@ -1980,7 +1981,8 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    return beyondCardHtml(state.profile && state.profile.card) + methodCardHtml(report, false) + referralCardHtml(true);
+    return secretRoastHtml(report.bonus) + beyondCardHtml(state.profile && state.profile.card) +
+      methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2044,6 +2046,27 @@
       '<button class="btn btn-ghost bonus-reveal" type="button" aria-expanded="false">' +
       esc(TEXT.bonusReveal) + '</button></div>' +
       '<div class="bonus-body" hidden></div></div>';
+  }
+
+  /**
+   * My Psyche's roast: the free call's, straight under the card and above
+   * "Beyond your card", dressed as a secret bonus. Same cover rules as
+   * roastBlock: the writing is not in the page until "Reveal my roast", and
+   * revealRoast()/hideRoast() work it exactly the same way.
+   */
+  function secretRoastHtml(bonus) {
+    if (!bonus || !bonus.harsh) return '';
+    const R = TEXT.secretRoast;
+    return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
+      '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
+      '<p class="secret-roast-badge"><span aria-hidden="true">🎁</span> ' + esc(R.badge) + '</p>' +
+      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">🔥</span></h2>' +
+      '<div class="bonus-cover secret-roast-cover">' +
+      '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
+      '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
+      '<button class="btn bonus-reveal secret-roast-reveal" type="button" aria-expanded="false">' +
+      '<span aria-hidden="true">🔥</span> ' + esc(R.reveal) + '</button></div>' +
+      '<div class="bonus-body" hidden></div></section>';
   }
 
   /** Fills a cover's sibling body with the writing it was hiding. */
@@ -5637,7 +5660,9 @@
     return list.map(name => '<span class="section-chip">' + esc(name) + '</span>').join('');
   }
 
-  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together', 'appendix'];
+  // No appendix any more: Evidence and method is on My Psyche (the sample
+  // keeps it at the end of Part 04), and so is the roast.
+  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
   // Below this width a full report opens with its parts shut (renderProfile).
   const PHONE_REPORT = '(max-width: 759px)';
 
@@ -5672,7 +5697,7 @@
     const R = Copy.STRUCTURED.reportPage;
     const name = essenceName(report.essence || {});
     const emblem = name ? Copy.emblemSvg(name, 'report-hero-emblem') : '';
-    const parts = PART_ORDER.filter(key => key !== 'appendix').length;
+    const parts = PART_ORDER.length;
     return '<header class="scan-hero report-hero">' +
       (emblem ? '<span class="report-hero-mark" aria-hidden="true">' + emblem + '</span>' : '') +
       '<p class="scan-eyebrow" id="report-hero-pill">' + esc(R.pill(parts, reportPdfPages())) + '</p>' +
@@ -5697,7 +5722,7 @@
             reportPages = (text.match(/\/Type \/Page[^s]/g) || []).length;
             const pill = $('#report-hero-pill');
             if (pill && reportPages) {
-              pill.textContent = Copy.STRUCTURED.reportPage.pill(PART_ORDER.filter(k => k !== 'appendix').length, reportPages);
+              pill.textContent = Copy.STRUCTURED.reportPage.pill(PART_ORDER.length, reportPages);
             }
           }).catch(() => {});
         } catch (error) { /* the pill keeps the parts alone */ }
@@ -5708,12 +5733,11 @@
     return 0;
   }
 
-  function partNavHtml(hasRoast, ownPage) {
+  function partNavHtml(ownPage) {
     const S = Copy.STRUCTURED;
-    // Evidence and method and the roast sit inside part 05, the appendix.
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
     // On a phone it is one thin row under the site's header: the name of the
-    // part being read, then the numerals 00 … 05.
+    // part being read, then the numerals 00 … 04.
     return '<nav class="part-nav' + (ownPage ? ' is-report' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
       '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
@@ -6380,13 +6404,12 @@
     const head = (icon, title, defKey) =>
       sectionHead(icon, title, defKey ? esc(S.definitions[defKey]) : '', false, '');
     // The sample shows the full premium report — its own premium sections,
-    // never the reader's — and no roast: that stays the secret bonus.
+    // never the reader's — and no roast: that is on My Psyche, under the card.
     const unlocked = sample ? sampleUnlocked(report) : paidAnalysis();
     const paid = key => PAID_SECTIONS.find(section => section.key === key);
-    const roast = sample ? null : report.bonus;
     // My Report opens with its own header, as My Syncs does; the part nav
     // under it (or down the left) carries no title of its own.
-    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(Boolean(roast), ownPage);
+    let html = (ownPage ? reportHeroHtml(report) : '') + partNavHtml(ownPage);
 
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
@@ -6465,17 +6488,11 @@
       part += '<div class="card section-card pressure-card">' + head('⚖️', esc(S.titles.pressurePoints), 'pressurePoints') +
         pressurePointsHtml(report.pressurePoints) + '</div>';
     }
+    // Evidence and method lives on My Psyche, beside the card it rates; the
+    // sample, which has no My Psyche, keeps it at the end of Part 04. There
+    // is no Part 05 any more: the roast is on My Psyche too.
+    if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part);
-
-    // Part 05, the appendix: how the report was made, then the roast — after
-    // the method rather than in the middle of the report, so the professional
-    // read is whole before the unkind one starts.
-    // A part like the others, that opens and shuts.
-    html += partCardHtml('appendix',
-      // Evidence and method lives on My Psyche now, beside the card it rates;
-      // the sample, which has no My Psyche, keeps it here.
-      (ownPage ? '' : methodCardHtml(report, sample)) +
-      (roast ? roastBlock(roast, { flat: true }).replace('class="card section-card bonus-card"', 'class="card section-card bonus-card" data-part="roast"') : ''));
     return html;
   }
 
@@ -6575,7 +6592,7 @@
       // unlock asks for it before the run.
       // Their link right under their card, while the card is all they have.
       // Their link last, after Evidence and method.
-      return beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
+      return secretRoastHtml(report.bonus) + beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false)) +

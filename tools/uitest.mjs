@@ -120,6 +120,8 @@ async function explainStoredProfile(page) {
     // response, and are dropped so the checks that unlock them still can.
     for (const key of ['wellness', 'attachment', 'idealPartner', 'careerAssessment']) delete full.data[key];
     profile.freeReport = profile.report;
+    // The paid call writes no roast; the app keeps the card call's (overlayCard).
+    if (profile.report.bonus) full.data.bonus = profile.report.bonus;
     profile.report = full.data;
     profile.explained = true;
     localStorage.setItem('psycheai_profile', JSON.stringify(profile));
@@ -3283,7 +3285,7 @@ try {
     });
     check('on a laptop "See sample" shares the last line of what comes with the report',
       row.sameLine && row.text === 'See sample' &&
-        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding|🎁A secret bonus section', JSON.stringify(row));
+        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding', JSON.stringify(row));
   }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
@@ -4234,7 +4236,7 @@ try {
       lists: body.querySelectorAll('.full-report-locked .premium-tier-list').length,
       lockedText: body.querySelector('.full-report-locked').innerText,
       want: [T.whoYouAre, T.bigFive, T.explainTypesTitle, T.explainListsTitle,
-        T.explainPeopleTitle, T.activity, T.bonus,
+        T.explainPeopleTitle, T.activity,
         T.wellness, T.attachment, T.idealPartner, T.careerAssessment],
       stored: JSON.parse(localStorage.getItem('psycheai_profile')),
     };
@@ -4244,9 +4246,9 @@ try {
   check('and under it one locked block offering the full report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only "Beyond your card", the card that holds the controls, then "Your link"',
-    freeState.sections.length === 3 && /beyond-card/.test(freeState.sections[0]) && /confidence-card/.test(freeState.sections[1]) &&
-      /referral-card/.test(freeState.sections[2]),
+  check('no written section is on the page — only the secret roast, "Beyond your card", the card that holds the controls, then "Your link"',
+    freeState.sections.length === 4 && /secret-roast/.test(freeState.sections[0]) && /beyond-card/.test(freeState.sections[1]) &&
+      /confidence-card/.test(freeState.sections[2]) && /referral-card/.test(freeState.sections[3]),
     JSON.stringify(freeState.sections));
   // "Beyond your card": the card's other lines, between the card and the
   // unlock box, read from the card the link carries.
@@ -4294,19 +4296,63 @@ try {
   check('and it opens the sample report', await page.locator('#sample-dialog').isVisible());
   await page.click('#sample-close');
   await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, null, { timeout: 15000 });
-  check('the roast is not on a free page at all', freeState.roast === 0);
+  // The roast is free: the card call writes it, and My Psyche shows it under
+  // the card as a secret bonus, its writing out of the page until revealed.
+  check('the roast is on the free page, once, as the secret bonus', freeState.roast === 1);
+  {
+    const roast = await page.evaluate(() => {
+      const block = document.querySelector('#profile-body .secret-roast');
+      const beyondCard = document.querySelector('#profile-body .beyond-card');
+      const harsh = JSON.parse(localStorage.getItem('psycheai_profile')).report.bonus.harsh;
+      return {
+        first: document.querySelector('#profile-body > .section-card') === block,
+        beforeBeyond: Boolean(block && beyondCard && (block.compareDocumentPosition(beyondCard) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        badge: block.querySelector('.secret-roast-badge').textContent.trim(),
+        title: block.querySelector('.secret-roast-title').textContent.trim(),
+        button: block.querySelector('.secret-roast-reveal').textContent.trim(),
+        expanded: block.querySelector('.secret-roast-reveal').getAttribute('aria-expanded'),
+        absent: !block.innerHTML.includes(harsh.slice(0, 30)) && block.querySelector('.bonus-body').hidden,
+      };
+    });
+    check('it sits straight under the card, above "Beyond your card"', roast.first && roast.beforeBeyond, JSON.stringify(roast));
+    check('dressed as a secret bonus: badge, title and one reveal button',
+      roast.badge === '🎁 Secret bonus unlocked' && roast.title === 'Let us roast you 🔥' &&
+        roast.button === '🔥 Reveal my roast' && roast.expanded === 'false', JSON.stringify(roast));
+    check('and its writing is not in the page until the reader asks for it', roast.absent, JSON.stringify(roast));
+    await page.click('#profile-body .secret-roast-reveal');
+    const opened = await page.evaluate(() => {
+      const block = document.querySelector('#profile-body .secret-roast');
+      const harsh = JSON.parse(localStorage.getItem('psycheai_profile')).report.bonus.harsh;
+      return {
+        shown: !block.querySelector('.bonus-body').hidden && block.querySelector('.bonus-body').innerText.includes(harsh.split('\n')[0]),
+        cover: block.querySelector('.bonus-cover').hidden,
+        revealed: block.classList.contains('is-revealed'),
+        caveat: Boolean(block.querySelector('.bonus-caveat')),
+        share: Boolean(block.querySelector('.bonus-share')),
+      };
+    });
+    check('"Reveal my roast" opens it, with the caveat above it and a way to share it',
+      opened.shown && opened.cover && opened.revealed && opened.caveat && opened.share, JSON.stringify(opened));
+    await page.click('#profile-body .secret-roast .bonus-hide');
+    check('and "Hide this again" takes the writing back out of the page',
+      await page.evaluate(() => {
+        const block = document.querySelector('#profile-body .secret-roast');
+        return block.querySelector('.bonus-body').hidden && block.querySelector('.bonus-body').innerHTML === '' &&
+          !block.querySelector('.bonus-cover').hidden && !block.classList.contains('is-revealed');
+      }));
+  }
   check('the block names every explanation and every premium section the unlock opens',
     JSON.stringify(freeState.titles) === JSON.stringify(freeState.want), freeState.titles.join(' | '));
   // One list, not the explanations and then "four sections the card does not
   // cover" as an afterthought — and the block's dashes are en dashes.
-  check('as one list of all eleven, with no second heading splitting it',
+  check('as one list of all ten, with no second heading splitting it',
     freeState.lists === 1 && !/four sections the card does not cover/i.test(freeState.lockedText),
     String(freeState.lists));
   check('and its copy uses en dashes, not em dashes',
     !/—/.test(freeState.lockedText) && /–/.test(freeState.lockedText),
     (freeState.lockedText.match(/.{0,30}—.{0,30}/) || ['none'])[0]);
-  check('and the explanations never reached this browser — the stored report is the card alone',
-    !freeReport.summary && !freeReport.bonus && !freeReport.activity && !freeReport.career &&
+  check('and the explanations never reached this browser — the stored report is the card and its roast alone',
+    !freeReport.summary && Boolean(freeReport.bonus && freeReport.bonus.harsh) && !freeReport.activity && !freeReport.career &&
     !freeReport.bigFive.openness.reading && !(freeReport.mbti.letters[0] || {}).why &&
     !freeReport.essence.why && freeState.stored.explained !== true,
     Object.keys(freeReport).join(','));
@@ -10772,7 +10818,7 @@ try {
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
       check('structured: the report runs the overview, then four parts',
-        parts.join() === 'overview,who,drives,connect,together,appendix', parts.join());
+        parts.join() === 'overview,who,drives,connect,together', parts.join());
       const shape = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
         const parts = Array.from(body.querySelectorAll('.part-card'));
@@ -10788,10 +10834,11 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview, the four parts and the appendix are the only disclosures, and on a laptop all six start open',
-        shape.toggles === 6 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open,appendix:open' &&
-        (await sp.locator('#profile-body .part-card[data-part-card="appendix"] .card-chevron').count()) === 1, JSON.stringify(shape));
+      check('structured: the overview and the four parts are the only disclosures — no appendix — and on a laptop all five start open',
+        shape.toggles === 5 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open' &&
+        (await sp.locator('#profile-body .part-card[data-part-card="appendix"]').count()) === 0 &&
+        (await sp.locator('#profile-body .bonus-card').count()) === 0, JSON.stringify(shape));
       check('structured: on a laptop the left column\'s box starts level with the report\'s header',
         await sp.evaluate(() => Math.abs(document.querySelector('#profile-body .part-nav').getBoundingClientRect().top -
           document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
@@ -10815,7 +10862,7 @@ try {
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: the plan shows only the horizons that have steps — never "Nothing here yet"',
         (await sp.locator('#profile-body .timeline-empty').count()) === 0 && (await sp.locator('#profile-body .timeline-col').count()) >= 1);
-      check('structured: My Report is Parts 00-04 and the appendix only — no link card, no card, a Back button',
+      check('structured: My Report is Parts 00-04 only — no link card, no card, a Back button',
         (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
           await sp.locator('#report-back').isVisible());
       // My Psyche, unlocked: the card, the link right under it, what it
@@ -10824,7 +10871,7 @@ try {
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
-          n.matches('.referral-card') ? 'link' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
+          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
             n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
@@ -10851,8 +10898,8 @@ try {
             r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
-      check('structured: Back lands on My Psyche: card, Beyond your card, Evidence and method, then Your link — no "Your full report" box, no parts',
-        hubShape.order === 'beyond,method,link' && hubShape.card && hubShape.parts === 0 &&
+      check('structured: Back lands on My Psyche: card, the secret roast, Beyond your card, Evidence and method, then Your link — no "Your full report" box, no parts',
+        hubShape.order === 'roast,beyond,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
@@ -10877,8 +10924,8 @@ try {
         check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
-        check('structured, on a phone: a full report opens with Part 00 open and parts 01 to 05 shut',
-          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,together:shut,appendix:shut', await states());
+        check('structured, on a phone: a full report opens with Part 00 open and parts 01 to 04 shut',
+          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,together:shut', await states());
         check('structured, on a phone: no part nav floats over the report; the header leads straight into Part 00',
           await sp.evaluate(() => {
             const nav = document.querySelector('#profile-body .part-nav');
@@ -10888,7 +10935,7 @@ try {
           }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
-          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut,appendix:shut', await states());
+          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut', await states());
         await sp.click('#profile-body .part-card[data-part-card="drives"] .card-toggle');
         await sp.waitForTimeout(900);
         const opened = await sp.evaluate(() => {
@@ -10897,11 +10944,11 @@ try {
           return { top: Math.round(card.top), navBottom: Math.round(nav.bottom) };
         });
         check('opening another shuts the one before, and brings the opened part\'s top to the top of the screen',
-          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,together:shut,appendix:shut' &&
+          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,together:shut' &&
             opened.top >= opened.navBottom - 2 && opened.top < opened.navBottom + 60, (await states()) + ' ' + JSON.stringify(opened));
-        await sp.click('#profile-body .part-card[data-part-card="appendix"] .card-toggle');
-        check('and the appendix opens and shuts like the others',
-          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:shut,appendix:open', await states());
+        await sp.click('#profile-body .part-card[data-part-card="together"] .card-toggle');
+        check('and the last part opens and shuts like the others',
+          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:open', await states());
         await sp.setViewportSize(wide);
         await seed(true);
       }
@@ -11015,9 +11062,9 @@ try {
       check('structured: no Connects to rows in the parts, only where each pattern shows up in the overview',
         (await sp.locator('#profile-body .connects').count()) === 0 &&
         !/Connects to/i.test(await sp.locator('#profile-body').textContent()));
-      check('structured: no digital footprint section, the appendix is part 05, no MBTI caveat line',
+      check('structured: no digital footprint section, no appendix part, no MBTI caveat line',
         !/Your digital footprint|Digital footprint|The unvarnished read/.test(await sp.locator('#profile-body').textContent()) &&
-        (await sp.locator('#profile-body .report-part[data-part="appendix"]').count()) === 1 &&
+        (await sp.locator('#profile-body .report-part[data-part="appendix"]').count()) === 0 &&
         !(await sp.locator('#profile-body .mbti-card').textContent()).includes(sampleReport.mbti.caveat));
       check('structured: neither the plan nor the pressure points name a pattern under each item',
         (await sp.locator('#profile-body .origin, #profile-body .pattern-chip').count()) === 0 &&
@@ -11080,8 +11127,9 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: after Part 4 comes part 05, the appendix, with the roast — Evidence and method is on My Psyche',
-        order[0] >= 0 && order[0] < order[1] && order[2] === 'roast' && order[3] === 0, order.join());
+      check('structured: Part 4 is the last part — no appendix, no roast; Evidence and method is on My Psyche',
+        order[0] >= 0 && order[1] === -1 && order[2] === '' && order[3] === 0 &&
+          (await sp.locator('#profile-body .bonus-card').count()) === 0, order.join());
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       // Without a digest on the device, "Read from" is the model's own summary.
@@ -11178,8 +11226,8 @@ try {
       });
       check('structured: numbered part headings, and a nav bar that names them as they are headed',
         visuals.structuredClass && visuals.nav.join('|') ===
-          '00Overview|01Who you are|02What drives you|03How you connect & work|04Putting it together|05Appendix' &&
-        visuals.numerals.join() === '00,01,02,03,04,05', JSON.stringify([visuals.nav, visuals.numerals]));
+          '00Overview|01Who you are|02What drives you|03How you connect & work|04Putting it together' &&
+        visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
       check('structured: sections inside a part carry no one-line result of their own — they are open',
@@ -11303,32 +11351,10 @@ try {
         check('structured: on a ' + label + ' screen a nav jump shows the part\'s whole heading',
           landed.every(entry => entry.endsWith(':true')), landed.join(' '));
       }
-      // The roast is grey while covered, and in the page's own colours once read.
-      {
-        const shade = () => sp.evaluate(() => {
-          const card = document.querySelector('#profile-body .bonus-card');
-          // color-mix() comes back as color(srgb 0-1 …), a plain colour as rgb(0-255 …).
-          const raw = getComputedStyle(card).backgroundColor;
-          const scale = /^color\(/.test(raw) ? 255 : 1;
-          const [r, g, b] = raw.replace(/^color\(srgb/, '').match(/\d*\.?\d+/g).map(n => Number(n) * scale);
-          const body = getComputedStyle(document.querySelector('#profile-body .part-card')).backgroundColor;
-          return { rgb: [r, g, b], grey: Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 150 && r < 240,
-            // Inside its part, a read roast shows the part's own colour through it.
-            same: raw === body || /rgba\(0, 0, 0, 0\)|transparent/.test(raw) };
-        });
-        const covered = await shade();
-        // On a phone the parts are an accordion: the appendix may be shut.
-        if (await sp.locator('#profile-body .part-card[data-part-card="appendix"].is-collapsed').count()) {
-          await sp.click('#profile-body .part-card[data-part-card="appendix"] .card-toggle');
-        }
-        await sp.locator('#profile-body .bonus-reveal').scrollIntoViewIfNeeded();
-        await sp.click('#profile-body .bonus-reveal');
-        await sp.waitForTimeout(300);
-        const read = await shade();
-        check('structured: the roast is grey while covered, not black, and turns the page\'s own colour once read',
-          covered.grey && !covered.same && read.same, JSON.stringify([covered, read]));
-        await sp.click('#profile-body .bonus-hide');
-      }
+      // The roast is not in My Report any more: it is on My Psyche, under the
+      // card (see "the roast is on the free page, once, as the secret bonus").
+      check('structured: My Report carries no roast at all',
+        (await sp.locator('#profile-body .bonus-card, #profile-body .bonus-reveal').count()) === 0);
       // On a phone My Report has no part nav at all: nothing floats over it.
       {
         await sp.setViewportSize({ width: 390, height: 844 });
@@ -11632,16 +11658,8 @@ try {
         return { parts: parts.map(p => p.querySelector('.unlock-part-num').textContent + ' ' + p.querySelector('h4').textContent),
           counts: parts.map(p => p.querySelectorAll('.premium-tier-item').length),
           typeTraits: [...parts[0].querySelectorAll('.premium-tier-item strong')].some(n => n.textContent === 'MBTI & Big Five'),
-          // A panel of its own, beside the plan's part rather than inside it,
-          // the two sharing a row.
-          secret: (() => {
-            const part = parts[3];
-            const box = document.querySelector('#profile-body .full-report-locked .unlock-secret');
-            if (!part || !box || part.contains(box)) return false;
-            const a = part.getBoundingClientRect(), b = box.getBoundingClientRect();
-            return b.left > a.right - 1 && Math.abs(b.top - a.top) < 2 && Math.abs(b.height - a.height) < 2;
-          })(),
-          secretText: (document.querySelector('#profile-body .full-report-locked .unlock-secret') || {}).textContent || '',
+          secret: document.querySelectorAll('#profile-body .full-report-locked .unlock-secret').length,
+          lockedText: document.querySelector('#profile-body .full-report-locked').textContent,
           intro: document.querySelector('#profile-side .cx-home-intro').textContent };
       });
       check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
@@ -11653,8 +11671,10 @@ try {
           return [...part.querySelectorAll('.premium-tier-item strong')].map(n => n.textContent).join('|') ===
             'In relationships & at work|Attachment style|Conflict style|Ideal partner traits|Career assessment';
         }));
-      check('structured: beside the plan\'s part, a secret bonus in a box of its own, naming nothing',
-        offerParts.secret && !/roast/i.test(offerParts.secretText), JSON.stringify(offerParts));
+      // The roast is free, on My Psyche, so the unlock no longer promises a
+      // secret bonus.
+      check('structured: the unlock offer promises no secret bonus and names no roast',
+        offerParts.secret === 0 && !/secret bonus|roast/i.test(offerParts.lockedText), JSON.stringify(offerParts));
       check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
@@ -12006,8 +12026,11 @@ try {
           free: p.freeReport && { character: p.freeReport.essence.character, type: p.freeReport.mbti.type,
             openness: p.freeReport.bigFive.openness.score },
           patterns: (r.patterns || []).length, development: Boolean(r.development),
+          // The paid call writes no roast: the card call's carries over.
+          roast: Boolean(r.bonus && r.bonus.harsh) && JSON.stringify(r.bonus) === JSON.stringify(p.freeReport.bonus),
         };
       });
+      check('structured unlock: the roast read before paying is the one kept after', held.roast, JSON.stringify(held));
       check('structured unlock: the pinned paid report is whole once the card is laid over it',
         Boolean(held.free) && held.character === held.free.character && held.type === held.free.type &&
         held.openness === held.free.openness && Number.isFinite(held.score) && held.card && held.why && held.reading &&
