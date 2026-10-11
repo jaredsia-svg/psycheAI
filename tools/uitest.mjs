@@ -3265,15 +3265,9 @@ try {
   // truth, so it could never be wrong, where a sentence can be — but the
   // welcome page still carries the generated block, which is where somebody
   // deciding whether to pay actually meets it.
-  // The release, in the footer, so a reader reporting a problem can name it —
-  // the version number only, with no commit, branch or link.
-  const footerBuild = await page.evaluate(() => {
-    const el = document.querySelector('#footer-version');
-    return el ? { hidden: el.hidden, text: el.textContent, links: el.querySelectorAll('a').length } : null;
-  });
-  check('the footer gives the version and nothing finer: no commit, no link',
-    Boolean(footerBuild) && !footerBuild.hidden && /^v\d+\.\d+\.\d+$/.test(footerBuild.text.trim()) && footerBuild.links === 0,
-    JSON.stringify(footerBuild));
+  // The footer no longer shows a release number.
+  check('the footer shows no version number',
+    (await page.locator('#footer-version').count()) === 0 && !/\bv\d+\.\d+\.\d+\b/.test(await page.locator('.footer').innerText()));
   // The price is the one number on this page a reader makes a decision on, so
   // it is pinned against the same string the unlock button renders rather than
   // against a literal — two places showing different prices is worse than
@@ -7920,14 +7914,13 @@ try {
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
   const contentFoot = await page.evaluate(() => ({
     note: getComputedStyle(document.querySelector('.footer-note')).display,
-    version: getComputedStyle(document.querySelector('#footer-version')).display,
     links: getComputedStyle(document.querySelector('.footer > p')).fontSize,
   }));
   await page.click('#nav-about');
   await page.waitForSelector('#view-about:not([hidden])', { timeout: 15000 });
   const faqFoot = await page.evaluate(() => getComputedStyle(document.querySelector('.footer-note')).display);
-  check('the independence note and the version show on the front page and the FAQ, not on My Psyche; the links are small',
-    contentFoot.note === 'none' && contentFoot.version === 'none' && faqFoot !== 'none' && parseFloat(contentFoot.links) <= 12.6,
+  check('the independence note shows on the front page and the FAQ, not on My Psyche; the links are small',
+    contentFoot.note === 'none' && faqFoot !== 'none' && parseFloat(contentFoot.links) <= 12.6,
     JSON.stringify({ contentFoot, faqFoot }));
   await page.click('.brand[data-nav="main"]');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });

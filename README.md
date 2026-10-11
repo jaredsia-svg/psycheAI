@@ -5654,6 +5654,21 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### Closeness on the card is never a gate
+
+A real card read "fierce, generous loyalty to the few people who pass your screening". Every word was
+meant kindly, but "screening" casts the reader as someone who filters and excludes. The card's wording
+rule (shared by both free prompts) now adds that, in the headline and the write-up, closeness is never framed as a gate — no screening,
+vetting, testing or filtering, no "select few", nobody having to earn or pass anything — and says what
+to write instead: what they give, to whom ("deep loyalty to the people you are closest to"). It covers the
+card's headline and write-up only: how selective someone is may still be named in the weaknesses under
+the card and in the paid report, whose prompts are untouched.
+
+### No version number in the footer
+
+The footer's "v3.0.0" is gone (`#footer-version` and `renderBuild` removed). `/api/status` still reports
+`build.version`, so a deploy can still be told apart from the server side.
+
 ### The list clamp thins evenly, at 1,000
 
 Four real digests (Instagram alone; with one chat; with one chat and Google; with two chats and Google)

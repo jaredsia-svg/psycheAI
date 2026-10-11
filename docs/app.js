@@ -10021,14 +10021,6 @@
    * (see handleStatus), so neither does the page.
    * Hidden when the server did not say, rather than showing a blank version.
    */
-  function renderBuild(build) {
-    const slot = $('#footer-version');
-    if (!slot) return;
-    const version = build && typeof build === 'object' && /^[\w.+-]{1,40}$/.test(build.version || '') ? build.version : '';
-    slot.textContent = version ? 'v' + version : '';
-    slot.hidden = !version;
-  }
-
   async function boot() {
     state.server = await LLM.status();
     // The server owns this number; the constant above is only what applies
@@ -10037,7 +10029,6 @@
     // setting the allowance to undefined and making every run look free.
     if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
     renderServerStatus();
-    renderBuild(state.server.build);
     // The welcome page's sample card was drawn before the server said which
     // layout it writes; redrawn once it has, so it is the card readers get.
     drawInsightPreview();

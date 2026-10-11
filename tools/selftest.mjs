@@ -5874,6 +5874,15 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     Boolean(routes.notObject) && routes.notObject.status === 400, JSON.stringify(routes.notObject));
 }
 
+// The card never frames closeness as a gate: a real card said "fierce,
+// generous loyalty to the few people who pass your screening", which reads
+// as someone who filters and excludes.
+check('the card\'s headline and write-up never write closeness as screening or a gate; the paid report still may',
+  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
+    text.includes('**In the headline and the write-up, closeness is never framed as a gate**') && text.includes('"the few who pass your screening"') &&
+      text.includes('may still be named in the weaknesses below and in the paid report') &&
+    text.includes('"deep loyalty to the people you are closest to"')));
+
 // ---------- tools/compare.mjs: the arithmetic it reports ----------
 //
 // The comparison tool's numbers are what a decision about thinking level or
