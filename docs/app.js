@@ -559,7 +559,7 @@
         cardLoveBlock(CARD_ICONS.loveIn, TEXT.cardLoveIn,
           (love.receiving || []).slice(0, 2).map(l => l && l.language)) +
         cardLoveBlock(CARD_ICONS.loveOut, TEXT.cardLoveOut,
-          (love.giving || []).slice(0, 2).map(l => l && l.language)) +
+          Copy.givingLove(love.giving).slice(0, 2).map(l => l && l.language)) +
       '</div>' +
       // The reader's own card only: the QR code for their link (fillCardQr).
       (own ? '<div class="pc-qr-slot"></div>' : '') +
@@ -682,7 +682,7 @@
       // the point, and two boxes for four short lines looked empty.
       '<div class="pc-spanel pc-slove-panel">' +
         '<div>' + label(CARD_ICONS.loveIn, TEXT.cardLoveIn) + '<ul class="pc-slove">' + loveList(love.receiving) + '</ul></div>' +
-        '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(love.giving) + '</ul></div>' +
+        '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(Copy.givingLove(love.giving)) + '</ul></div>' +
       '</div>' +
       // On the reader's own card the foot carries the QR code for their link
       // once it is saved (fillCardQr), and the line moves in beside it.
@@ -855,7 +855,7 @@
     const blurbs = !options || options.blurbs !== false;
     const columns =
       loveLanguageColumn(TEXT.loveReceiving, blurbs ? TEXT.loveReceivingBlurb : '', languages.receiving) +
-      loveLanguageColumn(TEXT.loveGiving, blurbs ? TEXT.loveGivingBlurb : '', languages.giving);
+      loveLanguageColumn(TEXT.loveGiving, blurbs ? TEXT.loveGivingBlurb : '', Copy.givingLove(languages.giving));
     if (!columns) return '';
     return '<h3 class="love-head">' + esc(TEXT.loveHead) + '</h3><div class="split love-split">' + columns + '</div>' +
       (withCaveat && languages.caveat ? '<p class="fineprint">' + esc(languages.caveat) + '</p>' : '');
@@ -1707,16 +1707,15 @@
     const S = Copy.STRUCTURED;
     const rows = explainedSections();
     const by = title => rows.find(row => row.title() === title);
-    const paidTitle = key => PAID_SECTIONS.find(row => row.key === key).title();
     return [
       // MBTI and the Big Five as one row: both are the reading of the scores
       // on the card, and four rows read better than five.
       { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns),
         { icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
       { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
-      { key: 'connect', rows: [by(TEXT.explainPeopleTitle), by(paidTitle('attachment')),
-        { icon: '⚡', title: () => S.conflictStyle, blurb: () => S.explainConflict },
-        by(paidTitle('idealPartner')), by(paidTitle('careerAssessment'))] },
+      // Four rows: relationships with who suits them, attachment with
+      // conflict, work, and the career assessment.
+      { key: 'connect', rows: S.offerConnect.map(([icon, title, blurb]) => ({ icon, title: () => title, blurb: () => blurb })) },
       // No secret bonus beside the plan any more: the roast is free, on My
       // Psyche, so the unlock cannot promise it.
       { key: 'together', rows: [by(S.titles.development)] },
@@ -2079,14 +2078,10 @@
   function revealRoast(cover, bonus) {
     const card = cover.closest('.bonus-card');
     const body = card.querySelector('.bonus-body');
-    // Sharing is offered on the reader's own roast only, never the sample's.
-    const own = !card.closest('#sample-body');
+    // No share button: the roast is for the reader alone.
     setHtml(body, bonusBodyHtml(bonus) +
       '<div class="btn-row bonus-actions">' +
-      (own ? '<button class="btn bonus-share" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span class="cta-label">' +
-        esc(TEXT.roastShare) + '</span></button>' : '') +
-      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>' +
-      (own ? '<p class="fineprint link-status bonus-share-status" role="status"></p>' : ''));
+      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>');
     body.hidden = false;
     cover.hidden = true;
     // Read in the page's own colours once opened; grey only while covered.
@@ -2493,6 +2488,10 @@
     // is read.
     const guides = $('.footer-guides');
     if (guides) guides.hidden = !(view === 'welcome' && !state.profile);
+    // The independence note and the release number only on the front page
+    // and the FAQ, not under a reader's own card, report or syncs.
+    const footer = $('.footer');
+    if (footer) footer.classList.toggle('is-content', view !== 'welcome' && view !== 'about');
     if (view === 'welcome') {
       refreshStartHere();
       $('#view-welcome').classList.toggle('is-returning', Boolean(state.profile));
@@ -3420,11 +3419,6 @@
     }
     const hide = event.target.closest('.bonus-hide');
     if (hide) hideRoast(hide);
-    const share = event.target.closest('.bonus-share');
-    if (share && state.profile && state.profile.report && state.profile.report.bonus) {
-      shareStoryImage(roastImageCanvas(state.profile.report.bonus), 'PsycheAI roast.png',
-        shareMessage(), share.closest('.bonus-card').querySelector('.bonus-share-status'));
-    }
   });
 
   // The part nav: jump to a part — opening it if the reader had shut it — in
@@ -5473,9 +5467,9 @@
     const digest = state.digest;
     return [
       { icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
+      { icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
       { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
-      { icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
     ].map(row =>
       '<li class="source-row"><span class="source-name">' + esc(row.icon) + ' ' + esc(row.label) + '</span>' +
       (row.loaded
@@ -6389,10 +6383,12 @@
     const paid = Object.keys(paidAnalysis()).length > 0;
     const by = countedBySource(digest);
     const rows = [
+      // WhatsApp second, after Instagram, as in Load your data.
       { key: 'instagram', icon: '📷', label: TEXT.sourceInstagram, loaded: Boolean(digest) },
+      { key: 'whatsapp', icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp),
+        hint: S.sourceWhatsAppHint },
       { key: 'google', icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { key: 'facebook', icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
-      { key: 'whatsapp', icon: '💬', label: TEXT.sourceWhatsApp, loaded: Boolean(digest && digest.whatsapp) },
     ];
     const note = !paid ? S.sourcesFreeNote
       : TEXT.analysisPriceNoteUnlocked;
@@ -6406,7 +6402,8 @@
             ' data-source="' + row.key + '" data-flow="' + (paid ? 'rerun' : 'unlock') + '">' +
           '<span class="source-read-icon" aria-hidden="true">' + row.icon + '</span>' +
           '<span class="source-read-body"><span class="source-read-name">' + esc(row.label) + '</span>' +
-            '<span class="source-read-what">' + esc(what) + '</span></span>' +
+            '<span class="source-read-what">' + esc(what) + '</span>' +
+            (row.hint ? '<span class="source-read-hint">' + esc(row.hint) + '</span>' : '') + '</span>' +
           '<span class="source-read-action">' + esc(row.loaded ? S.sourceChange : '+ ' + S.sourceAdd) + '</span>' +
         '</button></li>';
       }).join('') + '</ul>' +
@@ -6851,7 +6848,7 @@
       trait: standout ? TRAIT_LABELS[standout] : '', traitScore: standout ? Math.round(Number(five[standout].score) || 0) : 0,
       value: titlesOf(report.values, 1)[0] || titlesOf(report.beliefs, 1)[0] || '',
       interest: titlesOf(report.interests, 1)[0] || '',
-      loveIn: first(love.receiving), loveOut: first(love.giving),
+      loveIn: first(love.receiving), loveOut: first(Copy.givingLove(love.giving)),
     };
   }
 
@@ -7797,166 +7794,6 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(href), 10000);
-  }
-
-  // ---------- story images: the roast and the compatibility result ----------
-  //
-  // Drawn straight onto a canvas at 1080 x 1920, the size of a phone story,
-  // rather than captured from the page: each is a poster, not a copy of a
-  // section. Every one carries the address, because an image is the one
-  // thing shared that cannot carry a link.
-  const STORY_IMAGE_W = 1080;
-  const STORY_IMAGE_H = 1920;
-  const STORY_INK = '#2a1238';
-  const STORY_PURPLE = '#7b3fa0';
-
-  function storyFont(weight, size, italic) {
-    const family = getComputedStyle(document.body).fontFamily || LABEL_FONT_STACK;
-    return (italic ? 'italic ' : '') + weight + ' ' + size + 'px ' + family;
-  }
-
-  // Greedy word wrap; a single word wider than the line is left to overflow
-  // rather than broken mid-word.
-  function wrapCanvasText(context, text, maxWidth) {
-    const lines = [];
-    for (const paragraph of String(text).split(/\n+/)) {
-      let line = '';
-      for (const word of paragraph.split(/\s+/).filter(Boolean)) {
-        const next = line ? line + ' ' + word : word;
-        if (line && context.measureText(next).width > maxWidth) { lines.push(line); line = word; }
-        else line = next;
-      }
-      if (line) lines.push(line);
-    }
-    return lines;
-  }
-
-  // The largest size, stepping down from `from`, at which `text` fits the box.
-  function fitCanvasText(context, text, box, from, to, weight, italic) {
-    for (let size = from; size >= to; size -= 2) {
-      context.font = storyFont(weight, size, italic);
-      const lines = wrapCanvasText(context, text, box.width);
-      if (lines.length * size * 1.3 <= box.height) return { size, lines };
-    }
-    context.font = storyFont(weight, to, italic);
-    return { size: to, lines: wrapCanvasText(context, text, box.width) };
-  }
-
-  function drawCanvasLines(context, fit, x, y, align) {
-    context.textAlign = align || 'left';
-    context.textBaseline = 'top';
-    fit.lines.forEach((line, index) => context.fillText(line, x, y + index * fit.size * 1.3));
-    return y + fit.lines.length * fit.size * 1.3;
-  }
-
-  function roundedRect(context, x, y, width, height, radius) {
-    context.beginPath();
-    context.moveTo(x + radius, y);
-    context.arcTo(x + width, y, x + width, y + height, radius);
-    context.arcTo(x + width, y + height, x, y + height, radius);
-    context.arcTo(x, y + height, x, y, radius);
-    context.arcTo(x, y, x + width, y, radius);
-    context.closePath();
-  }
-
-  // The page's light gradient, the mark and the wordmark at the top, and the
-  // address in a pill at the foot.
-  function storyCanvas(footer) {
-    const canvas = document.createElement('canvas');
-    canvas.width = STORY_IMAGE_W;
-    canvas.height = STORY_IMAGE_H;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#fdf7fc';
-    context.fillRect(0, 0, STORY_IMAGE_W, STORY_IMAGE_H);
-    for (const [x, y, r, colour] of [[160, 220, 900, 'rgba(232, 196, 255, .55)'], [960, 1700, 900, 'rgba(255, 200, 222, .55)']]) {
-      const glow = context.createRadialGradient(x, y, 0, x, y, r);
-      glow.addColorStop(0, colour);
-      glow.addColorStop(1, 'rgba(253, 247, 252, 0)');
-      context.fillStyle = glow;
-      context.fillRect(0, 0, STORY_IMAGE_W, STORY_IMAGE_H);
-    }
-    context.font = storyFont(800, 46);
-    const word = 'PsycheAI';
-    const markSize = 72;
-    const rowWidth = markSize + 18 + context.measureText(word).width;
-    const left = (STORY_IMAGE_W - rowWidth) / 2;
-    drawBrandMark(context, left, 120, markSize);
-    context.fillStyle = STORY_PURPLE;
-    context.textAlign = 'left';
-    context.textBaseline = 'middle';
-    context.fillText(word, left + markSize + 18, 120 + markSize / 2);
-
-    context.font = storyFont(800, 40);
-    const pillWidth = context.measureText(footer).width + 96;
-    const pillLeft = (STORY_IMAGE_W - pillWidth) / 2;
-    const pill = context.createLinearGradient(pillLeft, 0, pillLeft + pillWidth, 0);
-    pill.addColorStop(0, '#ff7eb3');
-    pill.addColorStop(1, '#8a3fd0');
-    context.fillStyle = pill;
-    roundedRect(context, pillLeft, 1700, pillWidth, 104, 52);
-    context.fill();
-    context.fillStyle = '#ffffff';
-    context.textAlign = 'center';
-    context.fillText(footer, STORY_IMAGE_W / 2, 1752);
-    return { canvas, context };
-  }
-
-  // The opening of the roast, a sentence or two: what would be quoted, not
-  // the whole of it, which runs to paragraphs and turns personal further in.
-  function roastExcerpt(text) {
-    const sentences = String(text || '').replace(/\s+/g, ' ').trim().match(/[^.!?]+[.!?]+(\s|$)/g) || [String(text || '')];
-    let out = '';
-    for (const sentence of sentences) {
-      if (out && (out + sentence).length > 260) break;
-      out += sentence;
-      if (out.length > 120 && /[.!?]\s*$/.test(out) && sentences.indexOf(sentence) >= 1) break;
-    }
-    return out.trim().length > 320 ? out.trim().slice(0, 317).replace(/\s+\S*$/, '') + '…' : out.trim();
-  }
-
-  function roastImageCanvas(bonus) {
-    const { canvas, context } = storyCanvas(TEXT.roastImageFooter);
-    context.fillStyle = STORY_INK;
-    const lead = fitCanvasText(context, TEXT.roastImageLead, { width: 900, height: 230 }, 76, 56, 850);
-    let y = drawCanvasLines(context, lead, STORY_IMAGE_W / 2, 330, 'center');
-    // The quote in a white panel, so it reads as something said.
-    const quote = fitCanvasText(context, '“' + roastExcerpt(bonus.harsh) + '”', { width: 820, height: 900 }, 64, 40, 650, true);
-    const panelHeight = quote.lines.length * quote.size * 1.3 + 140;
-    const panelTop = Math.max(y + 60, 560 + (900 - panelHeight) / 3);
-    context.fillStyle = 'rgba(255, 255, 255, .92)';
-    context.shadowColor = 'rgba(90, 40, 120, .18)';
-    context.shadowBlur = 50;
-    context.shadowOffsetY = 18;
-    roundedRect(context, 80, panelTop, 920, panelHeight, 44);
-    context.fill();
-    context.shadowColor = 'transparent';
-    context.fillStyle = STORY_INK;
-    context.font = storyFont(650, quote.size, true);
-    drawCanvasLines(context, quote, 130, panelTop + 70, 'left');
-    context.fillStyle = STORY_PURPLE;
-    context.font = storyFont(700, 36);
-    context.textAlign = 'center';
-    context.textBaseline = 'top';
-    context.fillText(TEXT.roastImageCredit, STORY_IMAGE_W / 2, panelTop + panelHeight + 48);
-    return canvas;
-  }
-
-  // Share sheet with the image where the browser can take a file; a download
-  // everywhere else.
-  async function shareStoryImage(canvas, fileName, text, statusSelector) {
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    if (!blob) { linkStatus(statusSelector, TEXT.cardImageError); return; }
-    const file = new File([blob], fileName, { type: 'image/png' });
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], text });
-        return;
-      } catch (error) {
-        if (error && error.name === 'AbortError') return;
-      }
-    }
-    triggerDownload(blob, fileName);
-    linkStatus(statusSelector, TEXT.storyImageSaved);
   }
 
   // Shared by both icon buttons: neither carries visible text of its own any

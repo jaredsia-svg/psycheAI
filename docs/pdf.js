@@ -1271,7 +1271,7 @@
     const half = innerW / 2;
     const loveCells = [
       { label: TEXT.cardLoveIn, lines: wrapCell(loveNames(love.receiving), half, smallStyle), style: smallStyle },
-      { label: TEXT.cardLoveOut, lines: wrapCell(loveNames(love.giving), half, smallStyle), style: smallStyle },
+      { label: TEXT.cardLoveOut, lines: wrapCell(loveNames(Copy.givingLove(love.giving)), half, smallStyle), style: smallStyle },
     ];
 
     const rowHeight = cells => Math.max(...cells.map(c =>
@@ -1778,7 +1778,7 @@
         if (love) {
           const columns = [
             [TEXT.loveReceiving, TEXT.loveReceivingBlurb, love.receiving],
-            [TEXT.loveGiving, TEXT.loveGivingBlurb, love.giving],
+            [TEXT.loveGiving, TEXT.loveGivingBlurb, Copy.givingLove(love.giving)],
           ].filter(entry => (entry[2] || []).some(item => item && item.language));
           if (columns.length) {
             out.h3(TEXT.loveHead);
@@ -2541,7 +2541,7 @@
     }
     const loveNames = side => (side || []).slice(0, 2).map(l => l && l.language).filter(Boolean);
     const loveIn = loveNames(love.receiving);
-    const loveOut = loveNames(love.giving);
+    const loveOut = loveNames(Copy.givingLove(love.giving));
     if (loveIn.length || loveOut.length) {
       const list = items => ({
         height: Math.max(1, items.length) * 12.5 - 2,
@@ -2942,7 +2942,7 @@
         out.subhead(TEXT.loveHead);
         out.pairedPanels(
           { title: TEXT.loveReceiving, color: ACCENT, fill: WASH, rows: loveRows(love.receiving) },
-          { title: TEXT.loveGiving, color: ACCENT_2, fill: WASH, rows: loveRows(love.giving) });
+          { title: TEXT.loveGiving, color: ACCENT_2, fill: WASH, rows: loveRows(Copy.givingLove(love.giving)) });
         out.fineprint(S.touchNote);
       }
     });

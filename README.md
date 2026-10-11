@@ -5557,6 +5557,33 @@ answer drops its paragraph on who might recognise it, the one-free-card question
 clause in the access answer), the Psyche Sync answer is two short paragraphs, and "What does it cost?"
 no longer promises a secret bonus section in the paid report.
 
+### Your data's order, a quieter footer, and no roast sharing
+
+**Your data** under Evidence and method runs Instagram, WhatsApp, Google, Facebook (the order Load your
+data uses), and the WhatsApp row carries a line of its own: "Up to 3 chats with close connections are
+recommended." (`sourceWhatsAppHint`; three is the digest's own limit, `supplements.whatsapp.chats.slice(0,
+3)`).
+
+**The footer** shows the independence note and the release number (`v3.0.0`, `package.json`'s version,
+there so a problem report can name the build) only on the front page and the FAQ: `show()` sets
+`.footer.is-content` on every other view, and CSS hides the two lines there. The static pages keep the
+note in their own footers. The footer's links are a size down (.78rem) and the guide links under them
+(.74rem).
+
+**The roast has no share button.** "Share this roast" and the story image behind it are gone, along with
+the canvas helpers that only it used; the roast is for the reader alone. The PDF still prints it.
+
+### Part 3 of the unlock offer in four rows, and gifts that are given
+
+The unlock offer's **How you connect & work** is four rows (`Copy.STRUCTURED.offerConnect`): In
+relationships & ideal partner traits; Attachment style & conflict style; How you are at work; Career
+assessment (which now names the careers that suit and drain).
+
+**Gifts, given.** The schema has one name for gifts, "Receiving gifts", on both sides, so "Shows care as"
+used to read "Receiving gifts". `Copy.givingLove()` shows it as **Giving gifts** wherever the giving side
+is drawn (the card, the report, the PDF, the card guide), and `withCard` writes it that way into the
+shared card, so a Psyche Sync reads it right too. The data itself is unchanged.
+
 ## The compatibility link
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short

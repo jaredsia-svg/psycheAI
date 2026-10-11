@@ -67,8 +67,14 @@
     'Acts of service': '🛠️',
     'Quality time': '⏳',
     'Receiving gifts': '🎁',
+    'Giving gifts': '🎁',
     'Physical touch': '🫂',
   };
+  // The model has one name for gifts, "Receiving gifts", on both sides. On
+  // the giving side ("Shows care as") it is giving them, so it is shown that
+  // way wherever that side is drawn: the card, the report and the PDF.
+  const givingLove = list => (Array.isArray(list) ? list : []).map(item =>
+    item && item.language === 'Receiving gifts' ? Object.assign({}, item, { language: 'Giving gifts' }) : item);
 
   // Label, then the key it reads from the activity object. The order is the
   // order the reader meets them in.
@@ -360,12 +366,6 @@
     compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
     compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
       ' does not have this report. Send them your link and they get their own, free.',
-    // The roast and compatibility story images, and what goes with them.
-    roastShare: 'Share this roast',
-    roastImageLead: 'I let AI read my Instagram. It said:',
-    roastImageCredit: 'My PsycheAI roast',
-    roastImageFooter: 'Get roasted free · psycheai.io',
-    storyImageSaved: 'Image saved. Post it to your story.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
     linkCopied: 'Link copied.',
@@ -1185,6 +1185,8 @@
     sourceChange: 'Change',
     sourceAdd: 'Add',
     sourceNotAdded: 'Not added – adding it raises confidence',
+    // Under the WhatsApp row of Your data.
+    sourceWhatsAppHint: 'Up to 3 chats with close connections are recommended.',
     sourceLoaded: 'Loaded',
     sourcesFreeNote: 'Adding or changing data comes with the full premium report (US$5).',
     // "Read from": what the model actually read of each source, beside what
@@ -1231,6 +1233,17 @@
     explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
       'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
     // MBTI and the Big Five as one row of the unlock offer.
+    // The unlock offer's Part 3, as four rows.
+    offerConnect: [
+      ['💞', 'In relationships & ideal partner traits', 'How you are to be close to – your real strengths and the ' +
+        'blind spots that cost you, how you show love and want to receive it, and what you actually need in a partner.'],
+      ['🔗', 'Attachment style & conflict style', 'Your likely attachment style with the working shown, and how you ' +
+        'handle disagreement with the people close to you – whether you raise it, smooth it over, go quiet or come in hot.'],
+      ['💼', 'How you are at work', 'How you work, the strengths you bring and what holds you back, each with the ' +
+        'evidence behind it.'],
+      ['🪜', 'Career assessment', 'Your edge, what you are not yet using, the careers that suit you and the ones that ' +
+        'would drain you – and actions for this week, this quarter and this year.'],
+    ],
     explainConflict: 'How you handle disagreement with the people close to you – whether you raise it, smooth ' +
       'it over, go quiet or come in hot, and what that does to the other person.',
     explainTypeTraitsTitle: 'MBTI & Big Five',
@@ -1336,7 +1349,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, CARD_ICONS,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
     CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, gentleAttachment,
   };

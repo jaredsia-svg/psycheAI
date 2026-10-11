@@ -4344,10 +4344,11 @@ try {
         revealed: block.classList.contains('is-revealed'),
         caveat: Boolean(block.querySelector('.bonus-caveat')),
         share: Boolean(block.querySelector('.bonus-share')),
+        hide: Boolean(block.querySelector('.bonus-hide')),
       };
     });
-    check('"Reveal my roast" opens it, with the caveat above it and a way to share it',
-      opened.shown && opened.cover && opened.revealed && opened.caveat && opened.share, JSON.stringify(opened));
+    check('"Reveal my roast" opens it, with the caveat above it, a way to hide it and no way to share it',
+      opened.shown && opened.cover && opened.revealed && opened.caveat && !opened.share && opened.hide, JSON.stringify(opened));
     await page.click('#profile-body .secret-roast .bonus-hide');
     check('and "Hide this again" takes the writing back out of the page',
       await page.evaluate(() => {
@@ -5743,27 +5744,9 @@ try {
   await page.click('#profile-body .bonus-reveal');
   check('opening it a second time reveals the writing again, proving the gate is not a one-shot',
     /uncharitable reading/i.test(await page.locator('#profile-body .bonus-card').innerText()));
-  // Once read, the roast can go out as a story image: its opening lines in a
-  // panel, at 1080 x 1920, with the address on it and in the caption.
-  const roastImage = await page.evaluate(async () => {
-    window.__storyShare = null;
-    const before = { canShare: navigator.canShare, share: navigator.share };
-    navigator.canShare = () => true;
-    navigator.share = data => { window.__storyShare = data; return Promise.resolve(); };
-    document.querySelector('#profile-body .bonus-share').click();
-    for (let i = 0; i < 50 && !window.__storyShare; i++) await new Promise(r => setTimeout(r, 100));
-    navigator.canShare = before.canShare;
-    navigator.share = before.share;
-    const data = window.__storyShare;
-    if (!data) return null;
-    const bitmap = await createImageBitmap(data.files[0]);
-    return { width: bitmap.width, height: bitmap.height, type: data.files[0].type, text: data.text };
-  });
-  check('"Share this roast" hands the share sheet a 1080 x 1920 image and the one share message with the address',
-    Boolean(roastImage) && roastImage.width === 1080 && roastImage.height === 1920 && roastImage.type === 'image/png' &&
-      /^I got .+ for my Psyche Card\. Get yours now for free: /.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
-      '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)),
-    JSON.stringify(roastImage).slice(0, 300));
+  check('the roast has no share button: it is for the reader alone',
+    (await page.locator('#profile-body .bonus-share, #profile-body .bonus-share-status').count()) === 0 &&
+      !/Share this roast/.test(await page.locator('#profile-body .bonus-card').innerText()));
   await page.click('#profile-body .bonus-hide');
 
   await clickClear(page, '#profile-body .premium-unlock');
@@ -7837,6 +7820,23 @@ try {
     }));
   check('the guide links at the foot show only to a new reader, so not here',
     !(await page.locator('.footer-guides').isVisible()));
+  // The independence note and the version only on the front page and the
+  // FAQ; under a reader's own card they are left out.
+  await page.click('[data-nav="profile"]');
+  await page.waitForSelector('#view-profile:not([hidden])', { timeout: 15000 });
+  const contentFoot = await page.evaluate(() => ({
+    note: getComputedStyle(document.querySelector('.footer-note')).display,
+    version: getComputedStyle(document.querySelector('#footer-version')).display,
+    links: getComputedStyle(document.querySelector('.footer > p')).fontSize,
+  }));
+  await page.click('#nav-about');
+  await page.waitForSelector('#view-about:not([hidden])', { timeout: 15000 });
+  const faqFoot = await page.evaluate(() => getComputedStyle(document.querySelector('.footer-note')).display);
+  check('the independence note and the version show on the front page and the FAQ, not on My Psyche; the links are small',
+    contentFoot.note === 'none' && contentFoot.version === 'none' && faqFoot !== 'none' && parseFloat(contentFoot.links) <= 12.6,
+    JSON.stringify({ contentFoot, faqFoot }));
+  await page.click('.brand[data-nav="main"]');
+  await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
   check('where the data steps and the Start here card are not shown to them',
     await page.evaluate(() => document.querySelector('#view-welcome').classList.contains('is-returning')) &&
       !(await page.locator('#view-welcome .help-card').isVisible()) &&
@@ -10993,6 +10993,29 @@ try {
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
       await sp.waitForTimeout(300);
+      // Gifts, given: the schema has one name for gifts ("Receiving gifts"),
+      // and on the Shows care as side it reads as giving them.
+      {
+        await sp.evaluate(() => {
+          const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
+          stored.report.relationship.loveLanguages.giving = [{ language: 'Receiving gifts', strength: 'primary' }];
+          stored.report.relationship.loveLanguages.receiving = [{ language: 'Receiving gifts', strength: 'primary' }];
+          localStorage.setItem('psycheai_profile', JSON.stringify(stored));
+        });
+        await sp.reload({ waitUntil: 'load' });
+        await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
+        const gifts = await sp.evaluate(() => {
+          const halves = [...document.querySelectorAll('#psyche-card .pc-slove')].map(ul => ul.textContent.trim());
+          return halves;
+        });
+        check('structured: gifts read as "Receiving gifts" under Receives care as and "Giving gifts" under Shows care as',
+          gifts.length === 2 && /Receiving gifts/.test(gifts[0]) && /Giving gifts/.test(gifts[1]) && !/Receiving/.test(gifts[1]),
+          JSON.stringify(gifts));
+        await seed(true);
+        await sp.click('#nav-profile');
+        await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
+        await sp.waitForTimeout(300);
+      }
       const cardFace = await sp.evaluate(() => {
         const card = document.querySelector('#psyche-card');
         const fits = Array.from(card.querySelectorAll('.pc-straits .pc-sbar-fill')).map(r => r.getAttribute('width'));
@@ -11194,10 +11217,15 @@ try {
           text: card.textContent,
           full: Array.from(card.querySelectorAll('.source-read-what')).flatMap(n => n.textContent.split(' · ')),
           google: (card.querySelector('.source-read[data-source="google"] .source-read-what') || {}).textContent || '',
+          order: Array.from(card.querySelectorAll('.source-read')).map(n => n.getAttribute('data-source')).join(),
+          hint: (card.querySelector('.source-read[data-source="whatsapp"] .source-read-hint') || {}).textContent || '',
           bars: card.querySelectorAll('.coverage-row, .bar').length,
           summaryChips: card.querySelectorAll('.trait-evidence .ev').length,
         };
       });
+      check('structured: Your data runs Instagram, WhatsApp, Google, Facebook, and recommends up to 3 close chats',
+        evidence.order === 'instagram,whatsapp,google,facebook' &&
+          evidence.hint === 'Up to 3 chats with close connections are recommended.', JSON.stringify({ order: evidence.order, hint: evidence.hint }));
       check('structured: with the digest, each source row lists what was read and counted from it',
         // Totals rounded to read at a glance; what was read stays exact.
         evidence.full.includes('180 of your 9.7k messages read, from 38 conversations') &&
@@ -11715,12 +11743,12 @@ try {
       });
       check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
         offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together' &&
-          offerParts.counts.join() === '4,2,5,1' && offerParts.typeTraits, JSON.stringify(offerParts));
-      check('structured: How you connect & work in the unlock offer names Conflict style, after Attachment style',
+          offerParts.counts.join() === '4,2,4,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+      check('structured: How you connect & work in the unlock offer is four rows: relationships & partner, attachment & conflict, work, career',
         await sp.evaluate(() => {
           const part = document.querySelectorAll('#profile-body .full-report-locked .unlock-part')[2];
           return [...part.querySelectorAll('.premium-tier-item strong')].map(n => n.textContent).join('|') ===
-            'In relationships & at work|Attachment style|Conflict style|Ideal partner traits|Career assessment';
+            'In relationships & ideal partner traits|Attachment style & conflict style|How you are at work|Career assessment';
         }));
       // The roast is free, on My Psyche, so the unlock no longer promises a
       // secret bonus.

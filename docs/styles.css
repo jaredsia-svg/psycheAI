@@ -168,7 +168,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 .container { max-width: var(--page-w); margin: 0 auto; padding: clamp(1.2rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
 .view[hidden] { display: none; }
-.footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align: center; color: var(--ink-soft); font-size: .85rem; }
+.footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align: center; color: var(--ink-soft); font-size: .78rem; }
+.footer.is-content .footer-note, .footer.is-content .footer-version { display: none; }
 /* Small and quiet: it is for whoever is reporting a problem, not for every reader. */
 /* Every page: PsycheAI is independent of the platforms it reads exports from. */
 .footer-note { margin: .4rem auto 0; max-width: 40rem; font-size: .72rem; opacity: .8; }
@@ -3783,7 +3784,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* Icon on the left; name and Change/Add on one line; what was read beneath,
    across the full width, so a phone does not squeeze it into a column. */
 .source-read {
-  display: grid; grid-template-columns: 2.1rem 1fr auto; grid-template-areas: "icon name action" "icon what what";
+  display: grid; grid-template-columns: 2.1rem 1fr auto; grid-template-areas: "icon name action" "icon what what" "icon hint hint";
   column-gap: .8rem; row-gap: .1rem; align-items: center; width: 100%; margin: 0;
   padding: .75rem .9rem; border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
   transition: background .15s ease;
@@ -3798,6 +3799,8 @@ details.more[open] > summary::after { content: ' ▴'; }
 .source-read.is-missing .source-read-icon { filter: grayscale(1); opacity: .6; }
 .source-read-name { grid-area: name; min-width: 0; font-weight: 650; font-size: .95rem; }
 .source-read-what { grid-area: what; min-width: 0; font-size: .72rem; line-height: 1.4; color: var(--ink-soft); }
+/* The WhatsApp row's recommendation, a line of its own in the accent. */
+.source-read-hint { grid-area: hint; min-width: 0; font-size: .72rem; line-height: 1.4; color: var(--accent); font-weight: 600; }
 .source-read-action { grid-area: action; justify-self: end; font-size: .8rem; font-weight: 650; color: var(--accent); white-space: nowrap; }
 .source-read.is-loaded .source-read-action::after { content: ' ›'; }
 .source-read.is-missing .source-read-action {
@@ -4100,7 +4103,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .guide-cta { text-align: center; padding: 1.6rem 1rem 2rem; border-radius: 22px; background: var(--accent-soft); margin: 1.5rem 0 2rem; }
 .guide-cta h2 { margin: 0 0 .4rem; }
 .guide-cta p { margin: .3rem 0; }
-.footer-guides { margin: .4rem 0 0; font-size: .8rem; }
+.footer-guides { margin: .4rem 0 0; font-size: .74rem; }
 
 /* "Beyond your card", under a free card and above the unlock box: the card's
    other lines in three columns — relationships, day to day, work — that stack
