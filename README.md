@@ -6140,6 +6140,9 @@ if the person who synced chooses (`lib/syncbox.js`, `sendSyncBack` and `collectS
   the same question with **Not now**. Once shared, the row reads *Synced · Shared* and the button
   goes; My Syncs says *Shared with Jean, with your Psyche Card.* A long `#p=` link has no key and no
   owner, so it is never asked and has no Share button.
+- **Older syncs.** A sync saved before links were kept with it has only **Results**. Opening or
+  pasting that person's personal link again, which lands on the list as *already synced*, keeps the
+  link with that row (`keepLinkForSharing`), and its **Share** button appears.
 - **Wording.** The waiting rows lose "only you see it". The FAQ, the privacy page and the Psyche Sync
   guide say the result reaches the link's owner, locked, if the sender chooses to share it, and that it is
   deleted once collected or after 30 days. A selftest holds them to `syncbox.KEEP_DAYS`.

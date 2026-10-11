@@ -12740,6 +12740,28 @@ try {
             .catch(() => {});
           check('and Yes shares it then: it waits for the link\'s owner, and the Share button goes',
             (await ownerInbox()).items.length === 1 && !(await friendPage.locator('#scan-history .match-share').count()));
+
+          // A sync from before links were kept with it: no Share button, until
+          // that person's link is opened or pasted again.
+          await friendPage.evaluate(() => {
+            const history = JSON.parse(localStorage.getItem('psycheai_history'));
+            delete history[0].back; delete history[0].shared;
+            localStorage.setItem('psycheai_history', JSON.stringify(history));
+          });
+          await friendPage.reload({ waitUntil: 'load' });
+          await friendPage.click('#nav-scan');
+          await friendPage.waitForSelector('#scan-history .match-row', { timeout: 10000 });
+          const before = await friendPage.locator('#scan-history .match-share').count();
+          await friendPage.fill('#paste-input', copied);
+          await friendPage.click('#paste-go');
+          await friendPage.waitForFunction(() => /already synced/.test(document.querySelector('#scan-alert').textContent), null, { timeout: 15000 })
+            .catch(() => {});
+          check('an older sync gains its Share button once that person\'s link is pasted again, without syncing twice',
+            before === 0 && (await friendPage.locator('#scan-history .match-share[data-share]').count()) === 1 &&
+              await friendPage.evaluate(() => {
+                const history = JSON.parse(localStorage.getItem('psycheai_history'));
+                return history.length === 1 && Boolean(history[0].back) && history[0].shared === false;
+              }));
           await friendPage.goto('about:blank');
         }
         await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });

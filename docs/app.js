@@ -9284,6 +9284,7 @@
     const link = state.profile ? await readLinkText($('#paste-input').value) : null;
     const pasted = link ? await Card.decodeCard(link.payload) : null;
     if (pasted && alreadySynced(pasted)) {
+      if (link.link) keepLinkForSharing(pasted, link.link, link.ref);
       renderScan();
       flash('#scan-alert', TEXT.syncAlreadyDone(firstName(pasted.name) || pasted.name));
       $('#scan-alert').classList.add('is-note');
@@ -9567,6 +9568,21 @@
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
     });
+  }
+  /**
+   * A sync saved before links were kept with it (or from a long link) has
+   * nowhere to be shared to. Opening or pasting that person's personal link
+   * again gives it one, and its row a Share button.
+   */
+  function keepLinkForSharing(card, link, ref) {
+    if (!link || !LINK_ID.test(link.id || '') || !LINK_KEY.test(link.key || '')) return;
+    const key = syncCardKey(card);
+    const history = store.read(KEYS.history, []) || [];
+    const entry = history.find(e => e && (e.with ? e.with === key : e.withName === card.name));
+    if (!entry || entry.received || entry.back) return;
+    entry.back = { link: { id: link.id, key: link.key }, ref: /^[0-9a-f]{12}$/.test(ref || '') ? ref : '' };
+    entry.shared = false;
+    store.write(KEYS.history, history);
   }
   /** Sends one saved sync back to the person whose link it was, and marks it shared. */
   async function shareSyncEntry(key) {
@@ -9857,6 +9873,7 @@
     // A link already synced with is not a friend waiting again: it opens the
     // list, where that sync is.
     if (state.profile && alreadySynced(card)) {
+      if (backLink) keepLinkForSharing(card, backLink, fromRef);
       renderScan();
       show('scan');
       flash('#scan-alert', TEXT.syncAlreadyDone(firstName(card.name) || card.name));
