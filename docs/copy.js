@@ -199,32 +199,32 @@
     // With their card beside it: the hook is the character, and what the
     // reader's own card would say.
     // By first name only: "Jared", not "Jared Tan".
-    inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your friend') + ' Psyche Card',
+    inviteTitle: (name) => '⭐ This is ' + possessive(name || 'your connection') + ' Psyche Card',
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
     inviteCardHint: 'Tap to explore',
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
-    syncInviteTitle: () => 'You have a friend waiting to sync with you',
+    syncInviteTitle: () => 'You have a connection waiting to sync with you',
     // Opening a friend's link that was already synced on this device.
-    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this friend') + ' — it is in your list below.',
+    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this connection') + ' — it is in your list below.',
     syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
     syncInviteOpen: 'Sync',
     syncWaitingMeta: 'Waiting to sync with you · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
-    syncInviteTitleMany: () => 'You have friends waiting to sync with you',
+    syncInviteTitleMany: () => 'You have connections waiting to sync with you',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
       ' — you can sync with everyone once your card is ready.',
-    inviteCardOpen: (name) => 'See ' + possessive(name || 'your friend') + ' Psyche Card full screen',
+    inviteCardOpen: (name) => 'See ' + possessive(name || 'your connection') + ' Psyche Card full screen',
     // The one share message, everywhere: Share Card, Copy link, a sync's
     // result, the roast. It carries the reader's one link (myLinkUrl in
     // app.js): the same link for a bio, an invite and a comparison.
-    cardShareText: (character, url) => (character ? 'I got ' + character + ' on my Psyche Card. ' : 'My Psyche Card. ') +
-      'Get yours free, no questionnaire: ' + (url || 'https://psycheai.io'),
+    cardShareText: (character, url) => (character ? 'I got ' + character + ' for my Psyche Card. ' : 'My Psyche Card. ') +
+      'Get yours now for free: ' + (url || 'https://psycheai.io'),
     cardHint: 'Tap to open full screen',
     // The QR code in the foot of the reader's own card: their one link.
     cardQrCall: 'Scan to see how in sync we are',
@@ -376,6 +376,11 @@
     matchWith: 'With',
     matchBasis: 'Basis',
     matchScore: 'Score',
+    // My Syncs: each past sync's two buttons.
+    matchCardLabel: 'Card',
+    matchSyncLabel: 'Sync',
+    matchOpenCard: (name) => name ? 'Open ' + possessive(name) + ' Psyche Card' : 'Open their Psyche Card',
+    matchOpenSync: (name) => 'Open your Psyche Sync with ' + (name || 'them'),
     matchWhen: 'When',
 
     // Cover copy for the three sections behind the paywall. Each says
@@ -800,6 +805,10 @@
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
     compatCommon: 'What you share',
+    // The sync's sections, in order: the summary leads, then these.
+    compatAlign: 'Where you align',
+    compatDiffer: 'Where you differ',
+    compatRelate: 'How to relate better',
     // Over What works and What to look out for, which sit side by side under it.
     compatHowItPlays: 'How it plays out',
     compatWorks: 'What works',
@@ -1007,7 +1016,7 @@
       galleryPrev: 'Previous card',
       galleryNext: 'Next card',
       sampleButton: 'See sample',
-      premiumTitle: 'The full premium report',
+      premiumTitle: 'Your Psyche Report',
       premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
@@ -1019,7 +1028,7 @@
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
       compatTitle: 'Psyche Sync, free',
-      compatBlurb: 'Send a friend your link and see how in sync you are — your Psyche Sync score and how to relate better to each other.',
+      compatBlurb: 'Send a connection your link and see how in sync you are — what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
@@ -1156,6 +1165,11 @@
     inPractice: 'In practice',
     otherStrengths: 'Your other strengths',
     whatHoldsYouBack: 'What holds you back',
+    // Under How you work: the kinds of work that suit them and that drain
+    // them (careerAssessment.fit).
+    careerFitTitle: 'Careers that suit you',
+    careerFitSuits: 'Suits you best',
+    careerFitDraining: 'Likely to drain you',
     whereItGoesWrong: 'Where it goes wrong',
     // Where an action on the plan came from, when it is not a develop area.
     fromWork: 'How you work',

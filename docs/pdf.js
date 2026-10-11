@@ -1079,10 +1079,9 @@
   /** The match history table, minus the screen's "Open" link column. */
   Report.prototype.matchTable = function (history) {
     const columns = [
-      { label: TEXT.matchWith, width: COLUMN * 0.34 },
-      { label: TEXT.matchBasis, width: COLUMN * 0.3 },
-      { label: TEXT.matchScore, width: COLUMN * 0.16 },
-      { label: TEXT.matchWhen, width: COLUMN * 0.2 },
+      { label: TEXT.matchWith, width: COLUMN * 0.4 },
+      { label: TEXT.matchBasis, width: COLUMN * 0.34 },
+      { label: TEXT.matchWhen, width: COLUMN * 0.26 },
     ];
     this.need(48);
     this.space(4);
@@ -1098,11 +1097,9 @@
     for (const entry of history) {
       this.need(22);
       const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
-      const score = Math.round(Number(entry.report && entry.report.score) || 0);
       const cells = [
         { text: entry.withName || '', bold: true, color: INK },
         { text: MODE_LABELS[mode] || mode, color: SOFT },
-        { text: String(score), bold: true, color: ACCENT },
         { text: entry.when ? new Date(entry.when).toLocaleDateString() : '', color: SOFT },
       ];
       x = MARGIN;
@@ -3013,6 +3010,21 @@
     out.pairedPanels(
       { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, color: GOOD, fill: GOOD_WASH, rows: pointRows(strengths) },
       { title: S.whatHoldsYouBack, color: WARN, fill: WARN_WASH, rows: pointRows(holding) });
+    // Careers that suit you, and the ones that would drain you: each written
+    // "Kind of work: why", split there as the page does.
+    const fitRows = list => (Array.isArray(list) ? list : []).map(String).filter(Boolean).map(text => {
+      const at = text.indexOf(': ');
+      return at > 0 ? { title: text.slice(0, at), detail: text.slice(at + 2) } : { title: text };
+    });
+    const fit = coaching && coaching.fit;
+    if (fit && (fitRows(fit.suits).length || fitRows(fit.draining).length)) {
+      out.space(6);
+      out.keep(() => out.h3(S.careerFitTitle, ACCENT));
+      out.space(4);
+      out.pairedPanels(
+        { title: S.careerFitSuits, color: GOOD, fill: GOOD_WASH, rows: pointRows(fitRows(fit.suits)) },
+        { title: S.careerFitDraining, color: WARN, fill: WARN_WASH, rows: pointRows(fitRows(fit.draining)) });
+    }
 
     // 04: putting it together.
     out.part(S.parts.together, numeral('together'));
@@ -3191,36 +3203,9 @@
   }
 
   /**
-   * The score in the band: a white disc with a ring filled clockwise from
-   * the top to the score, the number in its middle — the same disc the
-   * premium report's cover sets its confidence in.
-   */
-  function syncRing(doc, cx, cy, value) {
-    doc.circle(cx, cy, 47, WHITE);
-    doc.circle(cx, cy, 40, mix(ACCENT, WHITE, 0.82));
-    if (value > 0) {
-      const steps = Math.max(2, Math.round(72 * value / 100));
-      const ops = [num(cx) + ' ' + num(PAGE.height - cy) + ' m'];
-      for (let i = 0; i <= steps; i++) {
-        const angle = -Math.PI / 2 + (Math.PI * 2 * value / 100) * i / steps;
-        ops.push(num(cx + 40 * Math.cos(angle)) + ' ' + num(PAGE.height - (cy + 40 * Math.sin(angle))) + ' l');
-      }
-      doc.setFill(ACCENT);
-      for (const op of ops) doc.op(op);
-      doc.op('h f');
-    }
-    doc.circle(cx, cy, 31, WHITE);
-    const text = toWinAnsi(String(value) + '%');
-    doc.draw(text, cx - measure(text, 21, true) / 2, cy + 4, { size: 21, bold: true, color: ACCENT });
-    const of = toWinAnsi('in sync');
-    doc.draw(of, cx - measure(of, 7, true) / 2, cy + 15, { size: 7, bold: true, color: SOFT });
-  }
-
-  /**
    * A Psyche Sync on one page, in the premium report's design: the plum band
-   * with the pair and the score, the verdict in the gradient "one line" box,
-   * what they share, how it plays out side by side, and how to relate to
-   * each other. Laid out at the most generous of three settings
+   * with the pair, the summary in the gradient "one line" box, where they
+   * align and differ side by side, and how to relate better. Laid out at the most generous of three settings
    * that keeps it to one page; the last drops the evidence lines.
    */
   const SYNC_FITS = [
@@ -3257,40 +3242,37 @@
     });
     doc.svgPaths(Copy.BRAND_MARK, { x: MARGIN, top: 32, size: 19, color: WHITE });
     doc.draw(toWinAnsi('PsycheAI'), MARGIN + 26, 47, { size: 13, bold: true, color: WHITE });
-    const score = Math.max(0, Math.min(100, Math.round(Number(source.score) || 0)));
-    const ringX = PAGE.width - MARGIN - 44;
-    syncRing(doc, ringX, 78, score);
+    // No score ring: a sync is read, not rated (see COMPATIBILITY_SCHEMA).
+    // A sync saved before that keeps its old fields, read the new way.
+    const read = {
+      summary: String(source.summary || source.verdict || ''),
+      align: source.align || source.strengths || [],
+      differ: source.differ || source.frictions || [],
+    };
     const titleStyle = { size: 26, bold: true, color: WHITE };
     let y = 86;
-    for (const line of wrap(toWinAnsi(a + ' & ' + b), ringX - 70 - MARGIN, titleStyle).slice(0, 2)) {
+    for (const line of wrap(toWinAnsi(a + ' & ' + b), COLUMN, titleStyle).slice(0, 2)) {
       doc.draw(line, MARGIN, y, titleStyle);
       y += 28;
     }
-    const line = [TEXT.syncName, source.band, 'Generated ' + (stamp.date || '')].filter(Boolean).join('  ·  ');
+    const line = [TEXT.syncName, 'Generated ' + (stamp.date || '')].filter(Boolean).join('  ·  ');
     doc.draw(toWinAnsi(line), MARGIN, y - 8, { size: 8.8, color: mix(WHITE, ACCENT, 0.18) });
     doc.y = bandH + 16;
 
-    // ---- the verdict, in the gradient box ----
-    if (source.verdict) {
+    // ---- the summary, in the gradient box ----
+    if (read.summary) {
       const style = { size: 11.2, bold: true, color: WHITE };
-      const lines = wrap(toWinAnsi(source.verdict), COLUMN - 44, style);
+      const lines = wrap(toWinAnsi(read.summary), COLUMN - 44, style);
       const h = 20 + 12 + lines.length * 15 + 12;
       const top = doc.y;
       doc.gradientBox(MARGIN, top, COLUMN, h, 13, ACCENT, ACCENT_2, () => {
         doc.circle(MARGIN + COLUMN - 20, top + 4, 40, mix(ACCENT_2, WHITE, 0.15));
       });
-      doc.draw(toWinAnsi('THE VERDICT'), MARGIN + 22, top + 21, { size: 7, bold: true, color: mix(WHITE, ACCENT, 0.15), tracking: 1.6 });
+      doc.draw(toWinAnsi('IN ONE LINE'), MARGIN + 22, top + 21, { size: 7, bold: true, color: mix(WHITE, ACCENT, 0.15), tracking: 1.6 });
       lines.forEach((l, i) => doc.draw(l, MARGIN + 22, top + 40 + i * 15, style));
       doc.y = top + h + fit.gap + 2;
     }
 
-    const shared = (source.sharedGround || []).filter(Boolean);
-
-    // ---- what they share ----
-    if (shared.length) {
-      out.eyebrow(TEXT.compatCommon, ACCENT);
-      out.tags(shared, { small: true, color: ACCENT, fill: mix(ACCENT, WHITE, 0.88) });
-    }
 
     // A section head, smaller than the report's: the same rule under it.
     const heading = text => {
@@ -3309,11 +3291,10 @@
       fit.ev && (item.evidence || []).filter(Boolean).length &&
         { text: (item.evidence || []).filter(Boolean).join('  ·  '), style: { size: 7.2, italic: true, color: SOFT }, leading: 9.6, before: 2 },
     ]).filter(Boolean);
-    if ((source.strengths || []).length || (source.frictions || []).length) {
-      heading(TEXT.compatHowItPlays);
+    if (read.align.length || read.differ.length) {
       out.pairedPanels(
-        { title: TEXT.compatWorks, color: GOOD, fill: GOOD_WASH, rows: pointRows(source.strengths) },
-        { title: TEXT.compatRubs, color: WARN, fill: WARN_WASH, rows: pointRows(source.frictions) },
+        { title: TEXT.compatAlign, color: GOOD, fill: GOOD_WASH, rows: pointRows(read.align) },
+        { title: TEXT.compatDiffer, color: ACCENT, fill: WASH, rows: pointRows(read.differ) },
         { whole: true });
     }
 

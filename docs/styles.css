@@ -779,6 +779,14 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   #view-profile.profile-paid .cta-row .btn.danger { color: #b3261e; }
   #view-profile.profile-paid .cta-row .btn.danger .cta-icon { color: #b3261e; }
   #view-profile.profile-paid .cta-row .btn:active { transform: translateY(1px); }
+  /* Delete first, a narrow red bin with no words (its name still read out);
+     Back to card last, on the right. */
+  #view-profile.profile-paid .cta-row { grid-template-columns: 52px; }
+  #view-profile.profile-paid .cta-row #delete-profile { order: -1; justify-content: center; padding-inline: 0; }
+  #view-profile.profile-paid .cta-row #delete-profile .cta-label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  #view-profile.profile-paid .cta-row #report-back { order: 1; }
 }
 
 /* ---------- upload ---------- */
@@ -1146,6 +1154,18 @@ textarea { resize: vertical; }
 .compat-head #report-sub { margin: 0; font-size: .86rem; }
 /* The answer: the ring, the band in words, the verdict. */
 .compat-lead { align-items: center; }
+/* The sync's one-line summary, leading the page: a quote on the brand wash. */
+.compat-summary {
+  display: flex; gap: .9rem; align-items: flex-start; padding: 1.3rem clamp(1rem, 4vw, 1.6rem);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 10%, var(--bg-alt)));
+}
+.compat-summary-mark { font-size: 1.5rem; line-height: 1.2; flex: none; }
+.compat-summary .compat-verdict { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.5; color: var(--ink); }
+/* Where they differ is not a warning: the brand's own colour, not amber. */
+.partner-careful.compat-differ { border-top-color: var(--accent); }
+.partner-careful.compat-differ .partner-badge { background: var(--accent-soft); color: var(--accent); }
+.partner-careful.compat-differ .partner-items li::before { color: var(--accent); background: var(--accent-soft); }
 .compat-lead .ring { width: 116px; height: 116px; }
 .compat-band { font-size: 1.2rem; margin: 0 0 .35rem; }
 .score-card .compat-verdict { font-size: 1rem; color: var(--ink); line-height: 1.6; margin: 0; }
@@ -1276,15 +1296,21 @@ textarea { resize: vertical; }
 .match-who { flex: 1; min-width: 0; display: grid; }
 .match-who strong { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .match-meta { font-size: .82rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.match-score {
-  --pct: 0; flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
-  background: conic-gradient(var(--accent-2), var(--accent) calc(var(--pct) * 1%), var(--accent-soft) 0);
+.match-row:not(.is-waiting):hover { transform: none; }
+/* A past sync's two buttons: their Psyche Card, and the Sync. */
+.match-actions { flex: none; display: flex; gap: .4rem; }
+.match-btn {
+  display: grid; justify-items: center; gap: .15rem; min-width: 3.4rem; padding: .45rem .55rem;
+  border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt); color: var(--accent);
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
 }
-.match-score span {
-  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--bg); font-size: .9rem; font-weight: 800; font-variant-numeric: tabular-nums;
+.match-btn svg { width: 20px; height: 20px; }
+.match-btn:hover, .match-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); outline: none;
 }
-.match-go { flex: none; width: 18px; height: 18px; color: var(--ink-soft); }
+.match-btn.match-sync { color: #fff; border-color: transparent; background: linear-gradient(135deg, #7b3fa0, #d1477a); }
+.match-btn.match-sync:hover, .match-btn.match-sync:focus-visible { filter: brightness(1.08); background: linear-gradient(135deg, #7b3fa0, #d1477a); }
 
 /* Checking someone's link and sending your own: side by side where there is
    room, each under an icon of its own. */
@@ -1297,6 +1323,11 @@ textarea { resize: vertical; }
 @media (max-width: 660px) {
   .scan-actions .scan-action + .scan-action { border-left: 0; border-top: 1px solid var(--line); }
 }
+/* What your link contains: a row of its own across the whole box, under My
+   link and Sync with others, the hairline above it. */
+.scan-actions > .scan-link-contents { grid-column: 1 / -1; padding: .2rem 1.1rem 1rem; border-top: 1px solid var(--line); }
+.scan-actions > .scan-link-contents:empty { display: none; }
+.scan-link-contents .link-fields-label { margin-top: .75rem; }
 .link-fields-label { margin: .8rem 0 .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
 /* Each only as tall as it needs; the paste field and its button on one row. */
 .scan-actions { align-items: start; }
@@ -3054,6 +3085,36 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .secret-roast.is-revealed .secret-roast-sparks { display: none; }
 .secret-roast .bonus-body:not([hidden]) { animation: roast-in .5s ease both; margin-top: .6rem; }
+/* The revealed roast: the caveat as a soft note, then the two halves as
+   panels under an icon each — rose for the roast, the brand's purple for the
+   honest friend — with roomy, readable paragraphs. */
+.secret-roast .bonus-caveat {
+  display: flex; gap: .6rem; align-items: flex-start; margin: 0 0 1rem; padding: .7rem .9rem;
+  border: 0; border-radius: 12px; font-size: .8rem; line-height: 1.5; color: var(--ink-soft);
+  background: color-mix(in srgb, var(--warn-soft) 80%, var(--bg-alt));
+}
+.secret-roast .bonus-caveat-mark { font-size: 1.05rem; line-height: 1.3; flex: none; }
+.roast-half { margin: 0 0 .9rem; padding: 1rem 1.1rem 1.05rem; border-radius: 16px; border: 1px solid var(--line); }
+.roast-half h3 {
+  display: flex; align-items: center; gap: .55rem; margin: 0 0 .6rem;
+  font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.roast-half-icon {
+  display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 10px;
+  font-size: 1rem; letter-spacing: 0; background: var(--bg-alt); box-shadow: var(--shadow);
+}
+.roast-half p { margin: 0 0 .7rem; font-size: .98rem; line-height: 1.7; color: var(--ink); }
+.roast-half p:last-child { margin-bottom: 0; }
+.roast-harsh {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent-2) 12%, var(--bg-alt)), var(--bg-alt) 75%);
+  border-color: color-mix(in srgb, var(--accent-2) 30%, var(--line));
+}
+.roast-harsh h3 { color: var(--accent-2); }
+.roast-advice {
+  background: linear-gradient(160deg, var(--accent-soft), var(--bg-alt) 75%);
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+}
+.roast-advice h3 { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .bonus-card.secret-roast, .secret-roast-reveal, .secret-roast .bonus-body:not([hidden]) { animation: none; }
   .secret-roast-sparks { display: none; }
@@ -3987,16 +4048,16 @@ details.more[open] > summary::after { content: ' ▴'; }
 #view-profile.profile-free .profile-foot .cta-row .btn { min-height: 0; padding-block: .45rem; }
 #view-profile.profile-free .profile-foot .provenance { margin: 0; }
 #view-profile.profile-free .profile-foot .provenance-box { align-content: center; }
-/* On a phone there is no room for both at full width, so the delete button
-   becomes its red bin alone — its name still read out, and still asked about
-   before anything goes — and the stamp takes the rest of the line. */
+/* The delete button is its red bin alone at every width — its name still
+   read out, and still asked about before anything goes. On a phone the stamp
+   takes the rest of the line. */
+#view-profile.profile-free .profile-foot .cta-row .btn { padding-inline: .8rem; }
+#view-profile.profile-free .profile-foot .cta-label {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
 @media (max-width: 559px) {
   #view-profile.profile-free .profile-foot { flex-wrap: nowrap; }
   #view-profile.profile-free .profile-foot .cta-row { flex: none; }
-  #view-profile.profile-free .profile-foot .cta-row .btn { padding-inline: .8rem; }
-  #view-profile.profile-free .profile-foot .cta-label {
-    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  }
   #view-profile.profile-free .profile-foot .provenance { flex: 1 1 auto; min-width: 0; }
   #view-profile.profile-free .profile-foot .provenance-box { width: 100%; }
 }
@@ -4121,12 +4182,13 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
 .referral-blurb { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--ink-soft); }
-.referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin: .9rem 0 .4rem; padding: 0; list-style: none; }
+/* Compact: the number and its label, tight, no icon. */
+.referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; margin: .7rem 0 .3rem; padding: 0; list-style: none; }
 .referral-stat {
-  display: grid; justify-items: center; align-content: start; gap: .1rem; padding: .7rem .4rem; border-radius: 14px; text-align: center;
-  background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .78rem; color: var(--ink-soft);
+  display: grid; justify-items: center; align-content: center; gap: 0; padding: .4rem .35rem; border-radius: 12px; text-align: center;
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .72rem; line-height: 1.25; color: var(--ink-soft);
 }
-.referral-stat .referral-n { font-size: 1.5rem; font-weight: 800; color: var(--ink); line-height: 1.1; }
+.referral-stat .referral-n { font-size: 1.15rem; font-weight: 800; color: var(--ink); line-height: 1.15; }
 .referral-ready-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .7rem; margin: .8rem 0 0; }
 .referral-ready-row[hidden] { display: none; }
 .referral-ready { font-weight: 800; flex: 1 1 100%; }

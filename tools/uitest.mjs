@@ -486,8 +486,22 @@ try {
       optionalCard.indexOf('WhatsApp chat with a close friend') < optionalCard.indexOf('Google Takeout') &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
   check('and "How it works" no longer calls Google recommended',
-    /a WhatsApp chat and Google data are optional/.test(await page.locator('#view-welcome').innerText()) &&
+    /Download your data from Instagram \(WhatsApp and Google data are optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
+  {
+    // "below" is a link to "Request your Instagram data first", on this page.
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.click('#view-welcome .steps-row a.step-below');
+    await page.waitForTimeout(900);
+    const landed = await page.evaluate(() => ({
+      text: document.querySelector('#view-welcome .steps-row a.step-below').textContent,
+      top: Math.round(document.querySelector('#request-data').getBoundingClientRect().top),
+      hash: location.hash,
+    }));
+    check('and its "below" goes to "Request your Instagram data first", without touching the link in the address bar',
+      landed.text === 'below' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   check('the instructions stay in the document while collapsed, so they can still be found',
     /Deselect all/.test(optionalCard) && /Multiple formats/.test(optionalCard));
 
@@ -1910,7 +1924,7 @@ try {
       }));
       check('the first card made on this device opens on the reader\'s own card, with the sync one tap away',
         waiting.profile && waiting.kept && waiting.reports === 0 &&
-          /You have a friend waiting to sync with you/.test(waiting.text) && !/sent you their link/.test(waiting.text),
+          /You have a connection waiting to sync with you/.test(waiting.text) && !/sent you their link/.test(waiting.text),
         JSON.stringify(waiting));
       check('the sync bar sits at the top of My Psyche, above the card, with one button, Sync, and no sync runs there',
         await invitePage.evaluate(() => {
@@ -1955,10 +1969,11 @@ try {
         title: document.querySelector('#report-title').textContent,
         pill: document.querySelector('#report-sub').innerText,
         band: (document.querySelector('#report-body .compat-band') || {}).textContent || '',
+        summary: Boolean(document.querySelector('#report-body .compat-summary')),
         spent: localStorage.getItem('psycheai_invite') === null,
       }));
       check('a tap runs the Psyche Sync with the sender, as friends, and spends the invite',
-        /Ava/.test(synced.title) && synced.pill.trim() === 'Psyche Sync' && /^\d+% in sync/.test(synced.band) && synced.spent,
+        /Ava/.test(synced.title) && synced.pill.trim() === 'Psyche Sync' && synced.band === '' && synced.summary && synced.spent,
         JSON.stringify(synced));
       // The same friend's link pasted into "Sync with others" is not run again.
       await invitePage.keyboard.press('Escape');
@@ -3492,7 +3507,7 @@ try {
   const stepFour = (await page.locator('.step-card').nth(3).locator('p').innerText())
     .replace(/\s+/g, ' ').trim();
   check('step four is Psyche Sync, between friends, started by sending your link, and free',
-    /^send friends your link and see how in sync you are/i.test(stepFour) && /Free\.$/.test(stepFour) &&
+    /^send connections your link and see what clicks between you/i.test(stepFour) && /Free\.$/.test(stepFour) &&
       !/partner|colleague|romantic/i.test(stepFour), stepFour);
 
   // Until a profile exists both of these lead straight back to the upload
@@ -5351,7 +5366,7 @@ try {
   await page.click('#share-link');
   const sharedData = await page.evaluate(() => window.__shared);
   check('"Send my link" opens the share sheet with the one share message, carrying the link',
-    Boolean(sharedData) && /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(sharedData.text) &&
+    Boolean(sharedData) && /^I got .+ for my Psyche Card\. Get yours now for free: /.test(sharedData.text) &&
       sharedData.text.endsWith(myLink) && !/compare/i.test(sharedData.text), JSON.stringify(sharedData).slice(0, 200));
   // Without one, as on most desktops, the same message goes to the clipboard.
   await page.evaluate(() => {
@@ -5746,7 +5761,7 @@ try {
   });
   check('"Share this roast" hands the share sheet a 1080 x 1920 image and the one share message with the address',
     Boolean(roastImage) && roastImage.width === 1080 && roastImage.height === 1920 && roastImage.type === 'image/png' &&
-      /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
+      /^I got .+ for my Psyche Card\. Get yours now for free: /.test(roastImage.text) && roastImage.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)),
     JSON.stringify(roastImage).slice(0, 300));
   await page.click('#profile-body .bonus-hide');
@@ -6651,7 +6666,7 @@ try {
   // for that path.
   check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Back | Download full report | Psyche Sync | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Back to card | Download full report | Psyche Sync | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -9826,30 +9841,35 @@ try {
       !JSON.parse(compatBodies[compatBodies.length - 1]).stance,
     compatBodies[compatBodies.length - 1]);
   check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
-  check('report shows one score', (await page.locator('.ring').count()) === 1);
-  check('report is labelled Psyche Sync, and the score is said as a percentage in sync',
+  // No score: a sync is read, not rated.
+  check('report shows no score at all — no ring, no percentage, no band',
+    (await page.locator('#view-report .ring, #report-body .compat-band').count()) === 0 &&
+      !/% in sync|\b\d{1,3}%/.test(reportText), reportText.slice(0, 200));
+  check('report is labelled Psyche Sync, and opens on its one-line summary',
     (await page.locator('#report-sub').innerText()).trim() === 'Psyche Sync' &&
-      /^\d+% in sync/.test(await page.locator('#report-body .compat-band').innerText()),
+      /summary for/.test(await page.locator('#report-body .compat-summary .compat-verdict').innerText()),
     await page.locator('#report-sub').innerText());
   check('nothing in it is romantic or about work',
     !/Romantic|Professional|partner|colleague/i.test(reportText), reportText.slice(0, 200));
-  check('the playbook is about being close to each other',
-    /How to relate to each other/i.test(reportText), reportText.slice(0, 200));
+  check('the playbook is about relating better to each other',
+    /How to relate better/i.test(reportText), reportText.slice(0, 200));
   check('report gives each person their own advice',
     (await page.locator('#report-body .playbook > div').count()) === 2);
   check('report states its caveats', /inferences from social-media behaviour/i.test(reportText));
   check('no raw undefined in the report', !/\bundefined\b/.test(reportText));
   check('the old two-tab report is gone', (await page.locator('#report-body .tab').count()) === 0);
 
-  // Four blocks and no more: the answer (with what they share), the two types,
-  // how it plays out, and what to do. The sections that made it long and
+  // Three blocks and no more: the summary, where they align and differ, and
+  // how to relate better. The sections that made it long and
   // repetitive — the five scored dimensions, the upside and risk, the
   // conversation starters — are gone from the page.
-  check('the report is three blocks: the answer, how it plays out, what to do',
+  check('the report is three blocks: the summary, where you align and differ, how to relate better',
     (await page.locator('#report-body > .card').count()) === 3 &&
-      (await page.locator('#report-body .compat-lead .compat-common').count()) === 1 &&
-      (await page.locator('#report-body .compat-plays').count()) === 1 &&
-      (await page.locator('#report-body .compat-playbook').count()) === 1,
+      (await page.locator('#report-body .compat-plays-out').count()) === 0 && !/How this usually plays out/.test(reportText) &&
+      (await page.locator('#report-body > .card').first().locator('.compat-verdict').count()) === 1 &&
+      (await page.locator('#report-body .compat-plays .partner-need .partner-col-head').innerText()).includes('Where you align') &&
+      (await page.locator('#report-body .compat-plays .compat-differ .partner-col-head').innerText()).includes('Where you differ') &&
+      (await page.locator('#report-body .compat-playbook h2').innerText()) === 'How to relate better',
     String(await page.locator('#report-body > .card').count()) + ' cards');
   check('with no dimensions, no upside and risk, and nothing to talk about',
     !/Where it holds and where it does not|Biggest upside|Biggest risk|Things to actually talk about/.test(reportText) &&
@@ -9861,22 +9881,9 @@ try {
   // The friendship focus areas steer what is written: the mock titles its
   // strengths with them.
   check('what it says is about the friendship focus areas',
-    /Shared interests/.test(reportText) && /Friction load/.test(reportText), reportText.slice(0, 300));
+    /Shared interests|Both into/.test(reportText) && /How easily things flow/.test(reportText), reportText.slice(0, 300));
   check('and none of the old romantic or work ones',
     !/Emotional safety|Load balance|Briefing and direction/.test(reportText));
-  // The ring is the same problem in a custom property rather than a width:
-  // --pct drives a conic-gradient, and an unset one is a ring drawn empty
-  // around a number that says 82.
-  const ringPct = await page.evaluate(() => {
-    const ring = document.querySelector('#report-body .ring, #view-report .ring');
-    if (!ring) return null;
-    return {
-      shown: Number((ring.querySelector('span') || {}).textContent),
-      pct: Number(getComputedStyle(ring).getPropertyValue('--pct')),
-    };
-  });
-  check('and the score ring carries the percentage it displays',
-    ringPct && ringPct.shown > 0 && ringPct.pct === ringPct.shown, JSON.stringify(ringPct));
 
   // Strengths and frictions used to be assertable with nothing behind them.
   // ---- the compatibility PDF ----
@@ -9901,8 +9908,8 @@ try {
     compatDownload.suggestedFilename());
   check('the comparison is a real PDF', compatText.startsWith('%PDF-1.') &&
     compatText.trimEnd().endsWith('%%EOF'));
-  check('the sync fits on one page, in the premium report\'s design: the plum band and the verdict box',
-    (compatText.match(/\/Type \/Page[^s]/g) || []).length === 1 && compatText.includes('(THE VERDICT)') && compatText.includes('(in sync)'),
+  check('the sync fits on one page, in the premium report\'s design: the plum band and the summary box, no score',
+    (compatText.match(/\/Type \/Page[^s]/g) || []).length === 1 && compatText.includes('(IN ONE LINE)') && !compatText.includes('(in sync)'),
     String((compatText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
   check('the comparison PDF is titled for the pair, not for one person',
     /\/Title \(Ale\xe7 & Jordan/.test(compatText), (/\/Title \(([^)]*)/.exec(compatText) || [])[1]);
@@ -9918,14 +9925,15 @@ try {
     ['both names on the cover', 'Ale\xe7 & Jordan'],
     ['what it is', 'Psyche Sync'],
     ['a friendship focus area', 'Shared interests'],
-    ['what works', 'What works'],
-    ['what to look out for', 'What to look out for'],
-    ['the playbook heading', 'How to relate to each other'],
+    ['where they align', 'Where you align'],
+    ['where they differ', 'Where you differ'],
+    ['the playbook heading', 'How to relate better'],
     ['advice addressed to each person', 'For Ale\xe7'],
   ]) {
     check('the comparison PDF carries ' + label, compatDrawn.includes(needle),
       needle.slice(0, 40));
   }
+  check('the comparison PDF has no plays-out section', !compatDrawn.includes('How this usually plays out'));
   check('the comparison PDF prints nothing romantic or about work',
     !compatDrawn.includes('Load balance') && !compatDrawn.includes('Romantic') && !compatDrawn.includes('Professional'));
   check('nor the sections taken out of the page',
@@ -9965,7 +9973,7 @@ try {
   check('"Share PDF" hands the share sheet the same PDF as Download PDF, with the one share message carrying the address',
     Boolean(compatShared) && compatShared.type === 'application/pdf' && compatShared.head.startsWith('%PDF-1.') &&
       compatShared.name === compatDownload.suggestedFilename() &&
-      /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(compatShared.text) &&
+      /^I got .+ for my Psyche Card\. Get yours now for free: /.test(compatShared.text) &&
       compatShared.text.endsWith(await page.evaluate(() => location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatShared).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
@@ -10021,7 +10029,6 @@ try {
       'Can the digest be linked back to me?',
       'Can anyone else access my data?',
       'Does PsycheAI count anything?',
-      'Why is there one free card per Instagram account?',
       'Can I verify this?',
       'How accurate is it?',
       'What does it cost?',
@@ -10063,8 +10070,8 @@ try {
   check('and says plainly that no copy is kept on the server',
     /keeps no copy of the zip, the digest or the report/i.test(about));
   check('the page is honest that hosting and payment providers see something',
-    /Hosting and payment providers can see/i.test(about) &&
-    /They do not receive the data/i.test(about));
+    /hosting and payment providers can see/i.test(about) &&
+    /they never receive your data/i.test(about));
 
   // The two claims most likely to be quietly overstated later.
   check('the page does not claim the digest skips the PsycheAI server',
@@ -10076,17 +10083,18 @@ try {
   // legible at a glance, which is what the labels carry now — so both are
   // checked as labels rather than as list items, and the never-sent side is
   // held to naming the three things a reader is most anxious about.
-  check('never-sent and sent-after-review are both labelled, in that order',
+  // In full sentences now: what never leaves first, then the one thing that
+  // is sent, after review.
+  check('what never leaves and what is sent after review are both said, in that order',
     await page.evaluate(() => {
       const text = document.querySelector('#view-about').innerText;
-      const never = text.indexOf('Never sent:');
-      const sent = text.indexOf('Sent, after you review it:');
-      return never > -1 && sent > never;
+      const never = text.indexOf('never leave this');
+      const sent = text.indexOf('The only thing sent is a short digest');
+      return never > -1 && sent > never && /can review it before anything goes/.test(text);
     }), about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
-  check('the media, the zip and the finished report are named as never sent',
-    /Never sent:[^]{0,200}?images \/ videos[^]{0,200}?finished report/i.test(about) &&
-    /Never sent:[^]{0,80}?Instagram zip/i.test(about),
-    about.slice(about.indexOf('Never sent'), about.indexOf('Never sent') + 200));
+  check('the media, the zip and the finished report are named as never leaving',
+    /Your Instagram zip file, your photos and videos, and your finished report never leave this\s+device/i.test(about),
+    about.slice(about.indexOf('What data leaves'), about.indexOf('What data leaves') + 260));
 
   // The answer to "what file do I need" ends by offering the pictures, for a
   // reader who came to the FAQ to find out rather than to load anything yet.
@@ -10140,16 +10148,20 @@ try {
   check('the FAQ says exactly what is counted, and that other visits and identities are not',
     /Only totals for each day/.test(about) && /\?via=/.test(about) && /Other\s+visits are not counted/.test(about) &&
       /identifies you, your device or anything you\s+uploaded/.test(about));
-  check('and says plainly why there is one free card per account, and what is kept for it',
-    /one-way scrambled code/.test(about) && /cannot be turned back into your username/.test(about));
+  check('the one-free-card question is gone, and what is kept for it is said in a clause',
+    !/Why is there one free card/.test(about) && /scrambled code that lets each Instagram account have one free card/.test(about));
+  check('the digest answer no longer explains who might recognise it',
+    !/de-identified rather than anonymous/.test(about) && !/someone who already knows you well/.test(about));
   check('the Psyche Sync answer says what the link actually is, and that it is about friends only',
     /How does Psyche Sync work\?/.test(about) && /about friendship only, never romance/.test(about) &&
-    /you do not\s+see it unless they send it to you/.test(about) &&
-    /locked copy of your card’s short summary/.test(about) && /never sends\s+to a server/.test(about) &&
-    /cannot read it/.test(about) && /never your\s+export, messages or report/.test(about));
+    /the result stays on their device unless\s+they send it to you/.test(about) &&
+    /carries only your card’s short summary, never your export, messages or report/.test(about) &&
+    /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
-    /locked copy of your card’s short\s+summary/.test(about) && /None of it names you/.test(about));
+    /the short summary your link shows, which only\s+your link can open/.test(about) && /none of them names you/.test(about));
+  check('and the full report no longer promises a secret bonus: the roast is free',
+    !/secret bonus/i.test(about));
   check('the FAQ gives a contact address',
     /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
   check('the prices are named, once, with what each buys — and Psyche Sync is free',
@@ -10272,7 +10284,7 @@ try {
   check('the intro is about friends, and nothing romantic or about work',
     /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
-    /score/i.test(scanText) && /what may grate/i.test(scanText) && /relate better to each other/.test(scanText), scanText.slice(0, 500));
+    /for your Psyche Sync:/.test(scanText) && !/score/i.test(scanText) && /what to look out for/i.test(scanText) && /relate better to each other/.test(scanText), scanText.slice(0, 500));
   check('the paste box says what it is for, and sits right of My link', await page.evaluate(() => {
     const box = document.querySelector('#view-scan .paste-card');
     const heading = box && box.querySelector('h2');
@@ -10315,14 +10327,15 @@ try {
   // A row per result, the whole row the link, with its score drawn as a ring
   // filled to that score — the --pct a strict CSP only lets through as a
   // data attribute applied afterwards.
-  check('each past result is one row that opens it, its score drawn as a filled ring',
+  // A row per past sync, no score: their Psyche Card and the Sync, a button each.
+  check('each past sync is one row with a Card button and a Sync button, and no score',
     await page.evaluate(() => {
-      const rows = [...document.querySelectorAll('#scan-history .match-row[data-report]')];
-      return rows.length >= 1 && rows.every(row => {
-        const ring = row.querySelector('.match-score');
-        return ring && ring.style.getPropertyValue('--pct') === ring.textContent.trim() &&
-          row.getBoundingClientRect().right <= window.innerWidth + 1;
-      });
+      const rows = [...document.querySelectorAll('#scan-history .match-list:not(.match-waiting) .match-row')];
+      return rows.length >= 1 && rows.every(row => !row.querySelector('.match-score') &&
+        Boolean(row.querySelector('button.match-card[data-card]')) && Boolean(row.querySelector('button.match-sync[data-report]')) &&
+        row.querySelector('.match-card').textContent === 'Card' && row.querySelector('.match-sync').textContent === 'Sync' &&
+        /Psyche Card/.test(row.querySelector('.match-card').getAttribute('aria-label')) &&
+        row.getBoundingClientRect().right <= window.innerWidth + 1);
     }));
   check('the header carries this reader\'s initial beside an open seat for the next link',
     (await page.locator('#scan-initial').innerText()) === 'A' &&
@@ -10348,10 +10361,10 @@ try {
     })));
   check('the My Syncs intro says what a sync gives, in a line',
     (await page.locator('.scan-lede').innerText()) ===
-      'Open a friend\'s PsycheAI link for your Psyche Sync score: what clicks between you, what may grate, and how to relate better to each other.',
+      'Open a connection\'s PsycheAI link for your Psyche Sync: what clicks between you, what to look out for, and how to relate better to each other.',
     await page.locator('.scan-lede').innerText());
   check('and it says, in a line, what the link is for',
-    /Send it to a friend so they can sync with you/.test(await page.locator('#view-scan .link-panel').innerText()));
+    /Send it to a connection so they can sync with you/.test(await page.locator('#view-scan .link-panel').innerText()));
   const ownLink = await page.evaluate(() =>
     location.origin + location.pathname + '?ref=' + JSON.parse(localStorage.getItem('psycheai_referral')).code +
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload);
@@ -10362,7 +10375,7 @@ try {
   });
   await page.click('#copy-link-scan');
   check('"Copy link" on My Syncs copies the share message with this person\'s actual link',
-    /^(I got .+ on my|My) Psyche Card\. Get yours free, no questionnaire: /.test(await page.evaluate(() => window.__copied)) &&
+    /^(I got .+ for my|My) Psyche Card\. Get yours now for free: /.test(await page.evaluate(() => window.__copied)) &&
       (await page.evaluate(() => window.__copied)).endsWith(ownLink),
     await page.evaluate(() => window.__copied));
   check('the button confirms the copy', (await page.locator('#copy-link-scan').innerText()) === 'Copied ✓',
@@ -10374,9 +10387,15 @@ try {
 
   // "What your link contains": about the link someone is about to send from
   // this page, not about the report itself.
-  check('what the link contains sits inside My link, in the one box with Sync with others',
+  check('what the link contains spans the whole box, under both My link and Sync with others',
     (await page.locator('#link-contents .link-fields-label').innerText()).trim().toLowerCase() === 'what your link contains' &&
-      (await page.locator('#view-scan .scan-actions.card .link-panel #link-contents').count()) === 1 &&
+      (await page.locator('#view-scan .scan-actions.card > #link-contents').count()) === 1 &&
+      await page.evaluate(() => {
+        const box = document.querySelector('#view-scan .scan-actions').getBoundingClientRect();
+        const row = document.querySelector('#link-contents').getBoundingClientRect();
+        const paste = document.querySelector('#view-scan .paste-card').getBoundingClientRect();
+        return Math.abs(row.left - box.left) <= 2 && Math.abs(row.right - box.right) <= 2 && row.top >= paste.bottom - 1;
+      }) &&
       (await page.locator('#view-scan .scan-actions.card .paste-card').count()) === 1 &&
       (await page.locator('#view-scan .scan-actions .card').count()) === 0,
     await page.locator('#link-contents').innerText());
@@ -10423,7 +10442,7 @@ try {
   await page.waitForSelector('#sync-invite:not([hidden])', { timeout: 30000 });
   check('a friend\'s link lands on the reader\'s own card, with the sync one tap away',
     await page.locator('#view-profile').isVisible() &&
-      /You have a friend waiting to sync with you/.test(await page.locator('#sync-invite').innerText()) &&
+      /You have a connection waiting to sync with you/.test(await page.locator('#sync-invite').innerText()) &&
       compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
   // A second friend's link too: both wait, in one bar with one Sync button
   // to My Syncs, where each has a button of their own, latest first.
@@ -10431,14 +10450,14 @@ try {
     await page.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card)));
   await page.goto('about:blank');
   await page.goto('http://localhost:' + PORT + '/#p=' + meiPayload, { waitUntil: 'load' });
-  await page.waitForFunction(() => /friends waiting/.test(document.querySelector('#sync-invite-title').textContent) &&
+  await page.waitForFunction(() => /connections waiting/.test(document.querySelector('#sync-invite-title').textContent) &&
     !document.querySelector('#sync-invite').hidden, null, { timeout: 30000 });
   const many = await page.evaluate(() => ({
     title: document.querySelector('#sync-invite-title').textContent,
     buttons: [...document.querySelectorAll('#sync-invite button:not(.sync-invite-close)')].map(b => b.textContent),
   }));
   check('two friends\' links wait in one bar, with one Sync button',
-    many.title === 'You have friends waiting to sync with you' && many.buttons.join('|') === 'Sync' &&
+    many.title === 'You have connections waiting to sync with you' && many.buttons.join('|') === 'Sync' &&
 
       (await page.locator('#sync-invite-count').innerText()) === '2',
     JSON.stringify(many));
@@ -10511,11 +10530,22 @@ try {
   await page.waitForFunction(() => !document.querySelector('#sync-dialog').open, null, { timeout: 5000 });
   check('a click outside the popout closes it, leaving My Syncs', await page.locator('#view-scan').isVisible() &&
     !(await page.locator('#view-report').isVisible()));
-  await page.click('#scan-history .match-row[data-report]');
+  await page.click('#scan-history .match-sync[data-report]');
   await page.waitForSelector('#sync-dialog[open] #view-report:not([hidden])', { timeout: 10000 });
   check('a sync in the Syncs list opens in the popout too', (await page.locator('#report-body').innerText()).length > 50);
   await page.click('#sync-dialog-close');
   check('and its ✕ closes it', !(await page.evaluate(() => document.querySelector('#sync-dialog').open)));
+  // Their Psyche Card, from the same row: drawn from the card their link carried.
+  await page.click('#scan-history .match-card[data-card]');
+  await page.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full .pc-name, #sample-card-dialog[open] #sample-psyche-card-full *', { timeout: 10000 });
+  check('the Card button opens their Psyche Card full screen, with their name on it',
+    await page.evaluate(() => {
+      const entry = JSON.parse(localStorage.getItem('psycheai_history'))[0];
+      const card = document.querySelector('#sample-psyche-card-full');
+      return Boolean(entry.card) && card.textContent.includes(entry.withName.split(' ')[0]);
+    }));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('#sample-card-dialog').open, null, { timeout: 5000 });
 
   // ---- mobile ----
   await page.setViewportSize({ width: 390, height: 844 });
@@ -11107,6 +11137,16 @@ try {
         /Finishes things/.test(work) && /You finish what other people announce/.test(work) &&
         (await sp.locator('#profile-body .work-card[data-paid="careerAssessment"]').count()) === 1 &&
         (await sp.locator('#profile-body .paid-card[data-paid="careerAssessment"]').count()) === 1);
+      check('structured: How you work closes on Careers that suit you — three that suit, two that would drain, each with its reason',
+        await sp.evaluate(() => {
+          const fit = document.querySelector('#profile-body .work-card .career-fit');
+          if (!fit) return false;
+          const need = fit.querySelectorAll('.partner-need li'), careful = fit.querySelectorAll('.partner-careful li');
+          return fit.querySelector('h3').textContent === 'Careers that suit you' && need.length === 3 && careful.length === 2 &&
+            need[0].querySelector('strong').textContent === 'Operations in a small, fast team' &&
+            /41 of 47/.test(need[0].querySelector('span').textContent) &&
+            fit.querySelector('.partner-careful .partner-col-head').textContent.includes('Likely to drain you');
+        }));
       // Evidence and method is on My Psyche, beside the card it rates.
       await sp.click('#nav-profile');
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
@@ -11371,19 +11411,26 @@ try {
         // now — one row across the phone, an icon over a small label each.
         const phoneActions = await sp.evaluate(() => {
           const row = document.querySelector('#view-profile .cta-row');
-          const buttons = [...row.querySelectorAll('.btn')].filter(b => getComputedStyle(b).display !== 'none');
+          const buttons = [...row.querySelectorAll('.btn')].filter(b => getComputedStyle(b).display !== 'none')
+            .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
           const boxes = buttons.map(b => b.getBoundingClientRect());
           const r = row.getBoundingClientRect();
+          const del = document.querySelector('#delete-profile');
+          const delLabel = del.querySelector('.cta-label').getBoundingClientRect();
           return { two: buttons.length === 3, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
-            sameSize: boxes.every(b => Math.abs(b.width - boxes[0].width) <= 1 && Math.abs(b.height - boxes[0].height) <= 1),
+            sameHeight: boxes.every(b => Math.abs(b.height - boxes[0].height) <= 1),
+            // Delete is the narrow one, on the left; the other two share the rest.
+            narrowDelete: buttons[0] === del && boxes[0].width < 60 && Math.abs(boxes[1].width - boxes[2].width) <= 1,
+            iconOnly: delLabel.width <= 1 && del.querySelector('.cta-label').textContent === 'Delete everything',
             across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
             thinCompat: !document.querySelector('#profile-side .cx-compat'),
-            iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
+            iconAbove: buttons.slice(1).every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone My Report\'s three actions — Back, Download, Delete — sit side by side, each an icon over its label',
-          phoneActions.two && phoneActions.oneRow && phoneActions.sameSize && phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Back|Download full report|Delete everything' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+        check('structured: on a phone My Report\'s three actions sit side by side — Delete as a narrow bin on the left, Download, Back to card on the right',
+          phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.narrowDelete && phoneActions.iconOnly &&
+            phoneActions.across && phoneActions.iconAbove &&
+            phoneActions.labels === 'Delete everything|Download full report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -11646,11 +11693,15 @@ try {
         const del = document.querySelector('#delete-profile').getBoundingClientRect();
         const stamp = document.querySelector('#analysed-by .provenance-box').getBoundingClientRect();
         return { del: [Math.round(del.left), Math.round(del.top), Math.round(del.height)],
-          stamp: [Math.round(stamp.left), Math.round(stamp.top), Math.round(stamp.height)] };
+          stamp: [Math.round(stamp.left), Math.round(stamp.top), Math.round(stamp.height)],
+          // The bin alone on a laptop too: no words beside it, its name still read out.
+          iconOnly: del.width < 60 && document.querySelector('#delete-profile .cta-label').getBoundingClientRect().width <= 1 &&
+            document.querySelector('#delete-profile').textContent.trim() === 'Delete everything' };
       });
       check('structured: a free report ends with Delete everything and the "generated by" line on one line, the same height',
         freeFoot.stamp[0] > freeFoot.del[0] && Math.abs(freeFoot.del[1] - freeFoot.stamp[1]) <= 1 &&
           Math.abs(freeFoot.del[2] - freeFoot.stamp[2]) <= 1, JSON.stringify(freeFoot));
+      check('structured: on a laptop the delete button at the foot of My Psyche is its bin alone, no words', freeFoot.iconOnly, JSON.stringify(freeFoot));
       // The unlock offer, by the report's five parts, and the panel saying
       // where the reasoning behind the card is.
       const offerParts = await sp.evaluate(() => {
@@ -11698,8 +11749,8 @@ try {
       });
       await sp.click('#profile-side .cx-tool[data-act="copy"]');
       await sp.waitForFunction(() => window.__copied !== null, null, { timeout: 5000 });
-      check('structured: Copy link copies the one share message, "I got <character> on my Psyche Card. Get yours free, no questionnaire: <link>"',
-        await sp.evaluate(() => /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: https?:\/\/\S+$/.test(window.__copied) &&
+      check('structured: Copy link copies the one share message, "I got <character> for my Psyche Card. Get yours now for free: <link>"',
+        await sp.evaluate(() => /^I got .+ for my Psyche Card\. Get yours now for free: https?:\/\/\S+$/.test(window.__copied) &&
           /Copied/.test(document.querySelector('#profile-side .cx-tool[data-act="copy"]').textContent)),
         await sp.evaluate(() => window.__copied));
       // Its "Add / change data" is the US$5 unlock — data first, then payment —
@@ -12115,7 +12166,7 @@ try {
       const copiedMessage = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
       const copied = copiedMessage.replace(/^.*: /, '');
       check('Copy link beside the card copies the one share message, ending in the short personal link, /c/<id>#<key>',
-        /^I got .+ on my Psyche Card\. Get yours free, no questionnaire: /.test(copiedMessage) &&
+        /^I got .+ for my Psyche Card\. Get yours now for free: /.test(copiedMessage) &&
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
       // The same link as a QR code in the foot of the reader's own card, on
@@ -12195,6 +12246,32 @@ try {
           JSON.stringify(arrived.referredBy));
         check('and the key is taken out of the address once read', !/#/.test(arrived.address) && !/[?&]c=/.test(arrived.address),
           arrived.address);
+        // The same short link pasted into "Sync with others" by someone who
+        // already has a card: read the way a tap reads it, so the sync keeps
+        // the face — the character included — and the Card button shows it.
+        {
+          const sample = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
+          await friendPage.evaluate(r => {
+            localStorage.clear();
+            localStorage.setItem('psycheai_profile', JSON.stringify({ report: r, card: Object.assign({}, r.card, { name: 'Pat Doe' }),
+              payload: 'x', model: 'mock', createdAt: new Date().toISOString() }));
+          }, sample);
+          await friendPage.goto(base, { waitUntil: 'load' });
+          await friendPage.click('#nav-scan');
+          await friendPage.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
+          await friendPage.fill('#paste-input', 'Here it is: ' + copied);
+          await friendPage.click('#paste-go');
+          await friendPage.waitForFunction(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length === 1, null, { timeout: 60000 });
+          const pasted = await friendPage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history'))[0]);
+          check('a pasted short link syncs, and the sync keeps the sender\'s card with its character',
+            Boolean(pasted.card) && pasted.face && pasted.face.c === character, JSON.stringify(pasted.face));
+          await friendPage.keyboard.press('Escape');
+          await friendPage.evaluate(() => { const d = document.querySelector('#sync-dialog'); if (d.open) d.close(); });
+          await friendPage.click('#scan-history .match-card[data-card]');
+          await friendPage.waitForTimeout(600);
+          check('and the Card button shows that character',
+            (await friendPage.locator('#sample-psyche-card-full').innerText()).includes(character));
+        }
         await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });
         await friendPage.waitForTimeout(800);
         check('a short link cut short (no key) says so rather than failing silently',

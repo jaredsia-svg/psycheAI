@@ -654,8 +654,8 @@
   // the model thinks for all of it, against a digest at its full 80,000.
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,300 prompt + 22,857 digest × $0.75/M = $0.0241
-  //                 at most $0.0616                    → FREE_COST_CAP $0.062
+  //                  9,500 prompt + 22,857 digest × $0.75/M = $0.0243
+  //                 at most $0.0618                    → FREE_COST_CAP $0.062
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
@@ -685,8 +685,10 @@
   // Raised to 6,700 for the rule that picks the character's side of the
   // catalogue (CHARACTER_SIDE_RULE in lib/prompts.js). Measured at 6,553.
   // Raised to 9,300 for the roast (FREE_ROAST_SECTION, ROAST_LIMIT and
-  // ROAST_SCHEMA). Measured at 9,120.
-  const FREE_FIXED_INPUT_TOKENS = 9300;
+  // ROAST_SCHEMA). Measured at 9,120; 9,500 once the card's wording rules
+  // asked for positive and encouraging (9,334); 9,123 once that rule was
+  // said once and the fields pointed back at it.
+  const FREE_FIXED_INPUT_TOKENS = 9500;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -695,8 +697,8 @@
   // can read it, and the two together are held under $0.25:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                  9,300 prompt + 45,714 digest × $0.75/M = $0.0413
-  //                 at most $0.0788                    → DEEP_FREE_COST_CAP $0.079
+  //                  9,500 prompt + 45,714 digest × $0.75/M = $0.0414
+  //                 at most $0.0789                    → DEEP_FREE_COST_CAP $0.079
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 45,714 digest × $0.75/M = $0.0629

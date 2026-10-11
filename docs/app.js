@@ -1764,13 +1764,14 @@
     // and synced with the reader. No buttons of its own: the card's Share
     // Card and Copy link above carry the same link. "Use it" and "Gift it"
     // appear only once a free report is earned.
-    const stat = (key, icon, label) => '<li class="referral-stat"><span aria-hidden="true">' + icon + '</span>' +
+    // The number and its label, no icon: the small ones could not be seen.
+    const stat = (key, label) => '<li class="referral-stat">' +
       '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
     return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
       '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🔗</span><div>' +
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
         '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
-      '<ul class="referral-stats">' + stat('friends', '🪪', R.cards) + stat('paid', '💳', R.paid) + stat('syncs', '🔄', R.syncs) + '</ul>' +
+      '<ul class="referral-stats">' + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
         '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
         '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
@@ -2010,10 +2011,15 @@
       '</div>';
   }
 
+  // The caveat as a soft note with its own mark, then the two halves, each
+  // a panel of its own under an icon: the roast, and the honest friend.
   function bonusBodyHtml(analysis) {
-    return '<p class="fineprint bonus-caveat">' + esc(TEXT.bonusCaveat) + '</p>' +
-      '<h3>' + esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) +
-      '<h3>' + esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice);
+    return '<p class="fineprint bonus-caveat"><span class="bonus-caveat-mark" aria-hidden="true">🧂</span>' +
+      '<span>' + esc(TEXT.bonusCaveat) + '</span></p>' +
+      '<div class="roast-half roast-harsh"><h3><span class="roast-half-icon" aria-hidden="true">🔥</span>' +
+        esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) + '</div>' +
+      '<div class="roast-half roast-advice"><h3><span class="roast-half-icon" aria-hidden="true">💬</span>' +
+        esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice) + '</div>';
   }
 
   // Free, behind a cover the reader has to click through — not a paid
@@ -3110,6 +3116,14 @@
   $('#hero-start').addEventListener('click', () => {
     if (state.profile) { showGuide(); return; }
     show('welcome');
+    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+  });
+  // "See below for instructions" in How it works: to the same steps, without
+  // the hash the app reads links from.
+  document.addEventListener('click', event => {
+    const below = event.target.closest('a.step-below');
+    if (!below) return;
+    event.preventDefault();
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
@@ -6107,7 +6121,25 @@
     html += '<div class="paired-lists work-pair">' + pairedListsHtml(
       { title: coaching && coaching.edge ? S.otherStrengths : TEXT.strengths, items: strengths },
       { title: S.whatHoldsYouBack, items: holding }) + '</div>';
+    html += careerFitHtml(coaching && coaching.fit);
     return html;
+  }
+
+  /**
+   * The kinds of work that suit them best and the kinds that would drain
+   * them, each written "Kind of work: why" (careerAssessment.fit) and split
+   * there into a title and its reason.
+   */
+  function careerFitHtml(fit) {
+    if (!fit) return '';
+    const S = Copy.STRUCTURED;
+    const rows = list => (Array.isArray(list) ? list : []).map(String).filter(Boolean).map(text => {
+      const at = text.indexOf(': ');
+      return at > 0 ? { title: text.slice(0, at), detail: text.slice(at + 2) } : { title: text };
+    });
+    const pair = pairedListsHtml({ title: S.careerFitSuits, items: rows(fit.suits) },
+      { title: S.careerFitDraining, items: rows(fit.draining) });
+    return pair ? '<div class="career-fit"><h3>' + esc(S.careerFitTitle) + '</h3>' + pair + '</div>' : '';
   }
 
   /**
@@ -7265,10 +7297,11 @@
     refreshGiftBanner();
   }
 
-  // Past results as a list rather than a table: a row each, the whole row the
-  // link. A five-column table scrolled sideways on a phone and cut the date
-  // off; this keeps who, on what basis, when and the score on one line at any
-  // width, with the score drawn as the same ring the report opens on.
+  // Past syncs as a list: a row each, who, on what basis and when, then two
+  // buttons — their Psyche Card (kept with the sync since that was saved) and
+  // the Sync itself. No score: a sync is read, not rated.
+  const CARD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="9" r="2.6"/><path d="M8.8 15h6.4M9.8 18h4.4"/></svg>';
+  const SYNC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg>';
   function historyList(history) {
     const when = value => {
       const date = new Date(value);
@@ -7278,15 +7311,17 @@
       history.map((entry, index) => {
         const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
         const name = String(entry.withName || '?');
-        const score = Math.max(0, Math.min(100, Math.round(Number(entry.report && entry.report.score) || 0)));
-        return '<li><a href="#" class="match-row" data-report="' + index + '">' +
+        const first = firstName(name) || name;
+        return '<li><div class="match-row">' +
           '<span class="match-face m-' + esc(mode) + '" aria-hidden="true">' + esc(name.trim().charAt(0).toUpperCase() || '?') + '</span>' +
           '<span class="match-who"><strong>' + esc(name) + '</strong>' +
           '<span class="match-meta">' + esc(MODE_LABELS[mode] || mode) + ' · ' + esc(when(entry.when)) + '</span></span>' +
-          '<span class="match-score" data-pct="' + score + '"><span>' + score + '</span></span>' +
-          '<span class="visually-hidden">' + 'Open report' + '</span>' +
-          '<svg class="match-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 6l6 6-6 6"/></svg>' +
-          '</a></li>';
+          '<span class="match-actions">' +
+          (entry.card ? '<button type="button" class="match-btn match-card" data-card="' + index + '" aria-label="' +
+            esc(TEXT.matchOpenCard(first)) + '">' + CARD_ICON + '<span>' + esc(TEXT.matchCardLabel) + '</span></button>' : '') +
+          '<button type="button" class="match-btn match-sync" data-report="' + index + '" aria-label="' +
+            esc(TEXT.matchOpenSync(first)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.matchSyncLabel) + '</span></button>' +
+          '</span></div></li>';
       }).join('') +
       '</ul>';
   }
@@ -7303,6 +7338,17 @@
     event.preventDefault();
     const entry = store.read(KEYS.history, [])[Number(link.dataset.report)];
     if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
+  });
+  // Their Psyche Card, from My Syncs: drawn from the card their link carried,
+  // in the same full-screen dialog their link's card opens in.
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-card]');
+    if (!button) return;
+    event.preventDefault();
+    const entry = store.read(KEYS.history, [])[Number(button.dataset.card)];
+    if (!entry || !entry.card) return;
+    const card = Card.shape(entry.card);
+    openFriendCard(reportFromCard(Object.assign({}, card, { name: firstName(card.name) || card.name }), entry.face));
   });
 
   // Compatibility travels as a link and nothing else. The compact card rides
@@ -8069,7 +8115,8 @@
     const value = $('#compat-paste-input').value;
     // Read here first, so a link that is not one is said so in the popout
     // the reader is looking at, not on a page behind it.
-    if (!(await Card.decodeCard(Card.extractPayload(value)))) {
+    const link = await readLinkText(value);
+    if (!(await Card.decodeCard(link.payload))) {
       linkStatus('#compat-paste-status', 'That is not a PsycheAI link. Copy the whole link they sent you.');
       return;
     }
@@ -8078,7 +8125,7 @@
     // Kept in My Syncs' own box too, so a sync that fails can be tried
     // again without pasting again.
     $('#paste-input').value = value;
-    await runMatch(value);
+    await runMatch(link);
   });
   $('#compat-dialog').addEventListener('close', () => {
     $('#compat-paste').hidden = true;
@@ -9028,7 +9075,7 @@
       modeLabel: last.mode === 'platonic' ? TEXT.syncName : MODE_LABELS[last.mode] || '',
       stanceLabel: last.mode === 'professional' && Copy.WORK_STANCES[last.stance]
         ? Copy.stanceText(Copy.WORK_STANCES[last.stance].option, last.otherName) : '',
-      heading: playbookHeading(last.mode, last.stance, last.otherName),
+      heading: TEXT.compatRelate,
       date: when.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }),
       model: (state.profile && state.profile.model) || '',
     });
@@ -9113,14 +9160,15 @@
 
   $('#paste-go').addEventListener('click', async () => {
     // A link already synced with is not run again: its result is in the list.
-    const pasted = state.profile ? await Card.decodeCard(Card.extractPayload($('#paste-input').value)) : null;
+    const link = state.profile ? await readLinkText($('#paste-input').value) : null;
+    const pasted = link ? await Card.decodeCard(link.payload) : null;
     if (pasted && alreadySynced(pasted)) {
       renderScan();
       flash('#scan-alert', TEXT.syncAlreadyDone(firstName(pasted.name) || pasted.name));
       $('#scan-alert').classList.add('is-note');
       return;
     }
-    if (!(await runMatch($('#paste-input').value))) {
+    if (!(await runMatch(link || $('#paste-input').value))) {
       flash('#scan-alert', 'That is not a PsycheAI link. Copy the whole link they sent you.');
     }
   });
@@ -9145,11 +9193,41 @@
   // the working screen appears) used to start a second, identical sync, and
   // both landed in the list. Cleared when the first one finishes either way.
   let syncInFlight = false;
-  async function runMatch(rawText) {
+  /**
+   * A pasted link, read the way a tapped one is. A short link
+   * (psycheai.io/c/<id>#<key>) is fetched and unlocked, which is what carries
+   * the face — the character, its write-up and the card's lists — that the
+   * long #p= payload has no room for; a long link is its payload alone.
+   */
+  async function readLinkText(raw) {
+    const text = String(raw || '').trim();
+    const short = text.match(/(?:\/c\/|[?&]c=)([A-Za-z0-9_-]+)[^#\s]*#(\S+)/);
+    if (short) {
+      try {
+        const response = await fetch('api/link?id=' + encodeURIComponent(short[1]));
+        const found = response.ok ? await response.json() : null;
+        if (found && found.blob) {
+          const opened = openedCard(await unlockCard(found.blob, short[2]));
+          if (opened.payload) {
+            return Object.assign(opened, /^[0-9a-f]{12}$/.test(found.ref || '') ? { ref: found.ref } : {});
+          }
+        }
+      } catch (error) { /* falls through to "not a PsycheAI link" */ }
+      return { payload: '', face: null };
+    }
+    return { payload: Card.extractPayload(text), face: null };
+  }
+
+  // The face and link code of a pasted link, for adoptComparison.
+  let pastedLink = null;
+
+  async function runMatch(link) {
     if (!state.profile) return false;
     if (syncInFlight) return true;
-    const other = await Card.decodeCard(Card.extractPayload(rawText));
+    if (typeof link === 'string') link = await readLinkText(link);
+    const other = await Card.decodeCard(link && link.payload);
     if (!other) return false;
+    pastedLink = syncingInvite ? null : { face: link.face || null, ref: link.ref || '' };
 
     // Psyche Sync is between friends, and only that: no basis to pick, so it
     // starts at once. Free, so there is no payment to ask for either.
@@ -9281,16 +9359,27 @@
   dedupeHistory();
 
   function adoptComparison(result, other, mode, stance) {
+    // The face their link carried (character, write-up, lists), kept with the
+    // sync so their Psyche Card can be opened from My Syncs later.
+    let face = null;
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
       // A sync with a friend's link counts on that friend's "Your link".
       const synced = allInvites().find(i => i.payload === syncingInvite);
+      face = (synced && synced.face) || null;
       const mine = store.read(KEYS.referral, null);
       if (synced && synced.ref && !(mine && mine.code === synced.ref)) trackStep('sync_done', synced.ref);
       spendInvite(syncingInvite);
       syncingInvite = null;
       refreshSyncInvite();
     }
+    if (!face && pastedLink) {
+      face = pastedLink.face;
+      // A pasted short link counts on its owner's "Your link" too.
+      const mine = store.read(KEYS.referral, null);
+      if (pastedLink.ref && !(mine && mine.code === pastedLink.ref)) trackStep('sync_done', pastedLink.ref);
+    }
+    pastedLink = null;
     clearPending();
     clearJob();
     const basis = mode || result.data.mode;
@@ -9301,6 +9390,8 @@
     const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
     history.unshift({
       when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
+      // Their card as their link carried it, to open from My Syncs.
+      card: Card.shape(other), face,
     });
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name);
@@ -9334,30 +9425,28 @@
     $('#compat-return-title').textContent = TEXT.compatReturnTitle(otherName);
     $('#compat-return-text').textContent = TEXT.compatReturnText(otherName);
 
-    // Three blocks, the same order as the PDF: the answer (score, verdict and
-    // what they share), what it looks like day to day, and what each of them
-    // should do about it.
+    // The same order as the PDF: the one-line summary, where they align and
+    // where they differ, and how to relate better.
+    // No score: see COMPATIBILITY_SCHEMA in lib/prompts.js.
     const [labelA, labelB] = window.PsychePDF ? window.PsychePDF.pairLabels(myName, otherName) : [myName, otherName];
-    let html = scoreCard(report);
+    const read = syncSections(report);
+    let html = summaryCard(read);
 
-    // What works and what will rub, side by side in the profile's own two
-    // columns, each point with its evidence on one small line.
+    // Where they align and where they differ, side by side in the profile's
+    // own two columns, each point with its evidence on one small line.
     const plays = (items, kind, title) => {
       const rows = (items || []).filter(item => item && item.title);
       if (!rows.length) return '';
       return '<div class="partner-col partner-' + kind + '"><h4 class="partner-col-head"><span class="partner-badge" aria-hidden="true">' +
-        (kind === 'need' ? '✓' : '!') + '</span>' + esc(title) + '</h4><ol class="partner-items">' + rows.map(item =>
+        (kind === 'need' ? '✓' : '↔') + '</span>' + esc(title) + '</h4><ol class="partner-items">' + rows.map(item =>
         '<li><strong>' + esc(item.title) + '</strong>' + (item.detail ? '<span>' + esc(item.detail) + '</span>' : '') +
           evidenceLine(item.evidence) + '</li>').join('') + '</ol></div>';
     };
-    const playsHtml = plays(report.strengths, 'need', TEXT.compatWorks) + plays(report.frictions, 'careful', TEXT.compatRubs);
-    if (playsHtml) {
-      html += '<div class="card section-card compat-plays"><h2>' + esc(TEXT.compatHowItPlays) + '</h2>' +
-        '<div class="partner-grid">' + playsHtml + '</div></div>';
-    }
+    const playsHtml = plays(read.align, 'need', TEXT.compatAlign) + plays(read.differ, 'careful compat-differ', TEXT.compatDiffer);
+    if (playsHtml) html += '<div class="card section-card compat-plays"><div class="partner-grid">' + playsHtml + '</div></div>';
 
     const play = report.howToPartner || {};
-    html += '<div class="card section-card compat-playbook"><h2>' + esc(playbookHeading(mode, stance, otherName)) + '</h2>' +
+    html += '<div class="card section-card compat-playbook"><h2>' + esc(TEXT.compatRelate) + '</h2>' +
       '<div class="playbook">' +
       '<div class="play-col play-a"><h3>' + esc(TEXT.compatFor + labelA) + '</h3>' + list(play.forA, 'ticks') + '</div>' +
       '<div class="play-col play-b"><h3>' + esc(TEXT.compatFor + labelB) + '</h3>' + list(play.forB, 'ticks') + '</div>' +
@@ -9370,20 +9459,26 @@
     setHtml($('#report-body'), html);
   }
 
-  // The score, the band in words, the verdict, and what the two share: the
-  // answer, before anything else. The basis is the header's pill, so it is
-  // not said again here.
-  function scoreCard(report) {
-    const value = Math.round(Number(report.score) || 0);
-    const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
-    const shared = (report.sharedGround || []).filter(Boolean);
-    return '<div class="card score-card score-single compat-lead tier-' + tier + '">' +
-      '<div class="ring" data-pct="' + value + '"><span>' + value + '</span></div>' +
-      // "78% in sync", the way people say it, then the band in words.
-      '<div><p class="band compat-band">' + esc(TEXT.syncPercent(value) + (report.band ? ' · ' + report.band : '')) + '</p>' +
-      '<p class="compat-verdict">' + esc(report.verdict) + '</p>' +
-      (shared.length ? '<div class="compat-common"><h3>' + esc(TEXT.compatCommon) + '</h3>' + tags(shared) + '</div>' : '') +
-      '</div></div>';
+  /**
+   * A sync's sections, from today's shape or from one saved before the score
+   * went: its verdict as the summary, its strengths and frictions as where
+   * the two align and differ. The old score is never shown.
+   */
+  function syncSections(report) {
+    const r = report || {};
+    return {
+      summary: String(r.summary || r.verdict || ''),
+      align: r.align || r.strengths || [],
+      differ: r.differ || r.frictions || [],
+    };
+  }
+
+  // The one-line summary: the answer, before anything else. The basis is the
+  // header's pill, so it is not said again here.
+  function summaryCard(read) {
+    return '<div class="card compat-lead compat-summary">' +
+      '<span class="compat-summary-mark" aria-hidden="true">✨</span>' +
+      '<p class="compat-verdict">' + esc(read.summary) + '</p></div>';
   }
 
   // Evidence as one small line under what it supports, rather than a row of
@@ -9629,15 +9724,18 @@
 
   /** The friend's card full screen, explained part by part, in the sample cards' dialog. */
   function openInviteCard() {
+    if (inviteReport) openFriendCard(inviteReport);
+  }
+  function openFriendCard(report) {
     const dialog = $('#sample-card-dialog');
-    if (!dialog || dialog.open || !inviteReport) return;
+    if (!dialog || dialog.open || !report) return;
     dialog.classList.remove('is-gallery');
     if (typeof dialog.showModal === 'function') dialog.showModal();
     else dialog.setAttribute('open', '');
     const full = $('#sample-psyche-card-full');
-    full.innerHTML = psycheCardHtml(inviteReport);
+    full.innerHTML = psycheCardHtml(report);
     freshArtIds(full);
-    guideSampleCard(inviteReport);
+    guideSampleCard(report);
     $('#sample-card-count').textContent = '';
     layoutPsycheCard();
   }

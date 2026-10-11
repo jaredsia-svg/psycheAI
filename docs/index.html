@@ -188,13 +188,13 @@
   <h2 class="row-head">How it works</h2>
   <div class="steps-row">
     <div class="step-card"><span class="step-num">1</span><h3>Load your IG data</h3>
-      <p>Download your data from Instagram (a WhatsApp chat and Google data are optional). See below for instructions.</p></div>
+      <p>Download your data from Instagram (WhatsApp and Google data are optional). See <a href="#request-data" class="step-below">below</a> for instructions.</p></div>
     <div class="step-card"><span class="step-num">2</span><h3>PsycheAI reads it</h3>
       <p>Your data is analysed by Gemini or Claude, which creates a report for you. No data is stored by PsycheAI.</p></div>
     <div class="step-card"><span class="step-num">3</span><h3>Gain insights</h3>
       <p>Learn more about your personality, relationships, and career. Your report is private to your device.</p></div>
     <div class="step-card"><span class="step-num">4</span><h3>Psyche Sync</h3>
-      <p>Send friends your link and see how in sync you are, and how to relate better to each other. Free.</p></div>
+      <p>Send connections your link and see what clicks between you, and how to relate better to each other. Free.</p></div>
   </div>
 
   <!-- The four branches are the report's own sections, named as the report
@@ -218,7 +218,7 @@
     <div data-insights></div>
   </div>
 
-  <div class="card help help-card">
+  <div class="card help help-card" id="request-data">
     <div class="help-head">
       <div>
         <h2>Request your Instagram data first</h2>
@@ -476,7 +476,7 @@
          the address after #, which a browser never sends to a server. -->
     <div class="link-panel">
       <h2 class="link-title" id="compat-dialog-title">Psyche Sync</h2>
-      <p class="muted">Send your link to a friend. When they open it and make their free Psyche Card,
+      <p class="muted">Send your link to a connection. When they open it and make their free Psyche Card,
         they see how in sync you are. Free.</p>
       <div class="btn-row">
         <button class="btn" id="share-link" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
@@ -526,7 +526,7 @@
   <div class="profile-foot">
   <div class="cta-row no-print">
     <!-- My Report only: back to the card on My Psyche. -->
-    <button class="btn" id="report-back" type="button" data-nav="profile" data-tip="Back to my Psyche Card" hidden><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back</span></button>
+    <button class="btn" id="report-back" type="button" data-nav="profile" data-tip="Back to my Psyche Card" hidden><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back to card</span></button>
     <button class="btn" id="export-pdf-bottom" data-tip="Download full report"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download full report</span></button>
     <button class="btn" id="test-compat-open" type="button" data-tip="Psyche Sync"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span class="cta-label">Psyche Sync</span></button>
     <button class="btn btn-ghost danger" id="delete-profile" data-tip="Delete everything"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg><span class="cta-label">Delete everything</span></button>
@@ -566,8 +566,8 @@
     </div>
     <p class="scan-eyebrow">Psyche Sync · free, every time</p>
     <div class="h1" id="scan-title" role="heading" aria-level="1">Your Syncs</div>
-    <p class="scan-lede">Open a friend's PsycheAI link for your Psyche Sync score: what clicks between
-      you, what may grate, and how to relate better to each other.</p>
+    <p class="scan-lede">Open a connection's PsycheAI link for your Psyche Sync: what clicks between
+      you, what to look out for, and how to relate better to each other.</p>
   </header>
   <div id="scan-alert" class="alert" hidden></div>
 
@@ -575,18 +575,17 @@
        past syncs, each opening its result in a popout. -->
   <div id="scan-history"></div>
 
-  <!-- One box: this reader's own link with what it carries, and beside it
-       syncing with a link that came some other way. -->
+  <!-- One box: this reader's own link, beside it syncing with a link that
+       came some other way, and under both what the link carries. -->
   <div class="card scan-actions">
     <div class="link-panel scan-action">
       <div class="scan-action-head"><span class="scan-action-icon scan-action-icon-2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg></span>
       <h2 class="link-title">My link</h2></div>
-      <p class="muted">Send it to a friend so they can sync with you, and ask for theirs back.</p>
+      <p class="muted">Send it to a connection so they can sync with you, and ask for theirs back.</p>
       <div class="btn-row">
         <button class="btn btn-soft" id="copy-link-scan" type="button">Copy link</button>
       </div>
       <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
-      <div id="link-contents"></div>
     </div>
 
     <div class="paste-card scan-action">
@@ -598,6 +597,8 @@
       </label>
       <button class="btn btn-soft" id="paste-go">Sync</button>
     </div>
+    <!-- What the link carries, across the whole box under both halves. -->
+    <div id="link-contents" class="scan-link-contents"></div>
   </div>
 </section>
 
@@ -674,16 +675,16 @@
     </div></div>
 
     <h3>What data leaves this device?</h3>
-    <p>Never sent: the Instagram zip data, your media (images / videos), the
-      finished report, and other people’s messages — apart from a short,
-      anonymised line of what some of your replies were answering.</p>
-    <p>Sent, after you review it: a short digest of your words — posts, stories,
-      captions, likes, searches, saves, follows, your messages.</p>
-    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI keeps no
-      copy of the zip, the digest or the report on its servers. The report lives in your browser
+    <p>Your Instagram zip file, your photos and videos, and your finished report never leave this
+      device. Other people’s messages stay here too, apart from a short, anonymised line showing what
+      some of your own replies were answering.</p>
+    <p>The only thing sent is a short digest of your own activity: your posts, stories, captions,
+      likes, searches, saves, follows and messages. You see it and can review it before anything goes.</p>
+    <p>The digest goes to Google Gemini or Anthropic Claude for that one request, and PsycheAI keeps no
+      copy of the zip, the digest or the report on its servers. Your report stays in your browser
       until you press Delete everything.</p>
-    <p>Hosting and payment providers can see that the site was called, or that a payment happened.
-      They do not receive the data. There is no account.</p>
+    <p>Our hosting and payment providers can see that the site was used or that a payment was made,
+      but they never receive your data. There is no account to create.</p>
 
     <h3>Can the digest be linked back to me?</h3>
     <p>The digest is de-identified on your device before it is sent. Your name and
@@ -691,19 +692,14 @@
       removed. Everyone else’s @handles become numbers like [P1], links are dropped, and dates are
       cut to the month. There is no account, login or email address attached to the request, and
       PsycheAI keeps no copy of it.</p>
-    <p>What remains is your own writing and the accounts you engage with most, because that is what
-      the reading is made from. So it is de-identified rather than anonymous: a stranger holding it
-      would not know whose it is, but someone who already knows you well might recognise you in it.</p>
 
     <h3>Can anyone else access my data?</h3>
-    <p>There is no sign-up, no password to create and no email address. Your export, the digest and
+    <p>No. There is no sign-up, no password to create and no email address. Your export, the digest and
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
-    <p>What PsycheAI does keep, in a small database (Upstash): the daily totals below; a one-way
-      scrambled code of your Instagram username, so each account gets one free card; for your link, how
-      many times it was opened and how many friends made a card or bought the full report from it
-      (plain numbers, never who); and, once you share your link, a locked copy of your card’s short
-      summary — locked on your device with a key that is only in the link itself, so PsycheAI holds
-      it but cannot read it. None of it names you.</p>
+    <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below, a
+      scrambled code that lets each Instagram account have one free card, simple counts for your link
+      (such as how many people made a card from it), and the short summary your link shows, which only
+      your link can open.</p>
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only totals for each day: how many Psyche Cards, full reports and Psyche Syncs were
@@ -712,13 +708,6 @@
       many people arrived on it and how far they got (export loaded, card made, full report). Other
       visits are not counted. Nothing in those totals identifies you, your device or anything you
       uploaded.</p>
-
-    <h3>Why is there one free card per Instagram account?</h3>
-    <p>To keep the free card free for everyone. Your browser turns your Instagram username into a
-      one-way scrambled code and sends only that; PsycheAI scrambles it once more and keeps the result,
-      to know the account has had its free card. It cannot be turned back into your username, and it
-      is not linked to anything you uploaded. If you invite friends, the same kind of code is how a
-      friend is counted once.</p>
 
     <h3>Can I verify this?</h3>
     <p>The site is open source, so you can
@@ -741,21 +730,18 @@
     <h3>What does it cost?</h3>
     <p>Your first Psyche Card is free, and so is every Psyche Sync. Running your Psyche
       Card again is <span data-price="analysis">US$2</span>. The full premium report — every section explained, plus your wellbeing,
-      attachment style, ideal partner, career coaching, development plan and a secret bonus section — is a single
+      attachment style, ideal partner, career coaching and development plan — is a single
       <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
 
     <h3>How does Psyche Sync work?</h3>
-    <p>Each reader has one short personal link, like <code>psycheai.io/c/k7Qm2xPa1Z#…</code>, also
-      on their card as a QR code. Send it to a friend and they see your Psyche Card — the same card you
-      can post as an image — with a way to make their own. Once they have, one tap shows how in sync
-      the two of you are as friends: a Psyche Sync score and how to relate better to each other,
-      free. It is about friendship only, never romance. The result stays on their device: you do not
-      see it unless they send it to you. It also counts towards a free full report for you: every 3 friends who make a card from your
-      link, or 2 who buy the full report, earn one, which you can use or gift to someone. My Psyche
-      shows how many friends made a card from your link, bought the full report and synced with you. The link points to
-      a locked copy of your card’s short summary, never your export, messages or report. The key that opens it is the part after the #, which a browser never
-      sends to a server, so PsycheAI stores the locked copy but cannot read it. The link stays the
-      same if your card is redrawn, and shows the new one.</p>
+    <p>You get one personal link, also printed on your Psyche Card as a QR code. Send it to a
+      connection: they see your Psyche Card and can make their own for free. Then one tap shows your
+      Psyche Sync — what clicks between you, where you differ, and how to relate better to each other.
+      It is free, about friendship only, never romance, and the result stays on their device unless
+      they send it to you.</p>
+    <p>Your link carries only your card’s short summary, never your export, messages or report, and
+      PsycheAI cannot read it. Every 3 people who make a card from your link, or 2 who buy the full
+      report, earn you a free full report to use or gift.</p>
 
     <h3>How do I contact PsycheAI?</h3>
     <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> — for questions, payment

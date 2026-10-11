@@ -123,6 +123,17 @@
       "headline": "Invisible by default",
       "detail": "Because you never write your part down, the people deciding who leads next see the outcome and not you."
     },
+    "fit": {
+      "suits": [
+        "Operations in a small, fast team: your 41 of 47 plans closed out is exactly what a lean team runs short of.",
+        "Programme or project leadership: you already coordinate people and deadlines, whatever your title says.",
+        "Event and community work: group plans fill 38 of your 60 captions, and people keep coming back to them."
+      ],
+      "draining": [
+        "Solo, open-ended research with no one to deliver for: your energy comes from closing things out for people.",
+        "Roles built on constant self-promotion: you write every win as \"we\", and selling yourself daily would cost you."
+      ]
+    },
     "actions": [
       {
         "horizon": "this week",

@@ -5496,6 +5496,67 @@ neither will its full report. The unlock offer no longer promises "a secret
 bonus" beside the plan, and the front page's premium extras drop "A secret bonus section": the roast
 is not what the US$5 buys any more.
 
+### Psyche Sync without a score, the friend's card on My Syncs, and a round of polish
+
+**Psyche Sync has no score any more.** A percentage between two friends read as a grade, and the low
+ones as a verdict on the friendship. `COMPATIBILITY_SCHEMA` is now `summary` (one warm line),
+`align` and `differ` (two or three points each, with evidence), then `howToPartner` ("How to relate
+better") and `caveats`. A "How this usually plays out" paragraph was tried between them and taken out. `score`, `band`, `verdict`,
+`strengths`, `frictions` and `sharedGround` are gone, and so is the prompt's "# Score" section. The tone
+section asks for positive and encouraging throughout and bans the words tension, conflict, clash,
+friction, struggle, problem and incompatible (selftest checks the schema and prompt carry none of
+them outside that rule). The page, the PDF and My Syncs show no ring or percentage. "Where you differ"
+is drawn in the brand purple, not the warning amber. A sync saved before this is read the new way by
+`syncSections()` (its verdict as the summary, its strengths and frictions as align and differ) and its
+old score is never shown.
+
+**My Syncs rows have two buttons**: **Card** opens the other person's Psyche Card full screen, in the
+dialog their link's card opens in (`openFriendCard`), and **Sync** opens the sync. To draw the card, each
+new sync keeps the card the link carried (`card`, and the link's `face` when it came from a waiting
+invite) in the saved history on this device; Delete everything clears it with the rest. Syncs saved
+before this have no card, so their row shows only Sync.
+
+**"Your friend" is "your connection"** in the sync wording: the My Syncs intro, the waiting bar, the
+invite card and the front page's step four. The My Syncs intro reads "…for your Psyche Sync: what
+clicks between you…", with no score.
+
+**The Psyche Card is positive and encouraging, with no negative connotation at all.** The headline, the
+two sentences on the character and the pattern names are held to that in `CARD_SCHEMA`,
+`STRUCTURED_CARD_HIGHLIGHTS`, `FREE_PATTERNS` and both card prompts. Anything that could sting belongs in
+the full report. The free prompt reserve went to 9,500 tokens for the longer rules; the cap is unchanged
+at $0.062.
+
+**Careers that suit you**, under How you work in My Report and in the PDF: `careerAssessment.fit` is two
+string lists, `suits` (three kinds of work) and `draining` (two or three), each "Kind of work: why", split
+on the colon for display (`careerFitHtml`). Strings rather than objects because the structured full
+schema sits near the size Gemini will serve. This adds about as much to it as the roast's two fields took
+out, but it has not been run against Gemini from here; `node tools/probe-schema.mjs` with a key checks it.
+The limit is Gemini's and cannot be raised, so `analyseFull` in `lib/gemini.js` has a safety net: a bare
+400 "invalid argument" (`schemaRefused`) is retried once with `withoutCareerFit(schema)`, which costs
+nothing because a refused schema is decided before the model runs. The report then arrives without that
+block, and a second refusal reaches the reader as before.
+
+**A pasted link is read the way a tapped one is.** The character, its write-up and the card's lists are
+not in the long `#p=` payload; they are the short link's `face`, which a tap fetched and unlocked but the
+"Sync with others" box never did. A pasted short link (`psycheai.io/c/<id>#<key>`, even inside a sentence)
+was not recognised at all. `readLinkText()` now fetches and unlocks it, so the sync keeps the face and
+the Card button shows the whole card, and a sync from a pasted short link counts on its owner's "Your
+link" as a tapped one does. A long `#p=` link still has no face to give; links are short wherever short
+links are on.
+
+**Smaller changes.** The share message is "I got X for my Psyche Card. Get yours now for free: <link>".
+Delete everything is its red bin alone (its name still read out): at the foot of My Psyche at every width,
+and on My Report on a phone, where it sits narrow on the left with Download in the middle and **Back to
+card** on the right. "Your link"'s three counts are compact and have no icons. The front page calls the
+paid report **Your Psyche Report**, and step one says "Download your data from Instagram (WhatsApp and
+Google data are optional). See below for instructions.", its "below" scrolling to "Request your
+Instagram data first" without touching the hash. On My Syncs, "What your link contains" is a row across
+the whole box under My link and Sync with others. The revealed roast's caveat is a soft note and its two
+halves are panels under an icon each. The FAQ's two data answers are in full sentences, the digest
+answer drops its paragraph on who might recognise it, the one-free-card question is gone (its code is a
+clause in the access answer), the Psyche Sync answer is two short paragraphs, and "What does it cost?"
+no longer promises a secret bonus section in the paid report.
+
 ## The compatibility link
 
 Along with the long-form report the model produces a compact **card** — the profile reduced to short

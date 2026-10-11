@@ -1651,9 +1651,9 @@ check('the ban on naming private individuals survived it too',
 // separation: the descriptive section must stay descriptive, this one must
 // stay actionable, and the evidence limits have to survive an edit.
 const coachProps = prompts.PREMIUM_SCHEMA.properties.careerAssessment.properties;
-check('the career assessment carries a situation, an edge, two facets and actions',
-  ['situation', 'edge', 'underused', 'holdingBack', 'actions'].every(k => k in coachProps) &&
-  Object.keys(coachProps).length === 5, Object.keys(coachProps).join(', '));
+check('the career assessment carries a situation, an edge, two facets, the work that fits, and actions',
+  ['situation', 'edge', 'underused', 'holdingBack', 'fit', 'actions'].every(k => k in coachProps) &&
+  Object.keys(coachProps).length === 6, Object.keys(coachProps).join(', '));
 // The edge is the finding the section exists for, so it is the one field that
 // has to bring evidence rather than assert.
 check('the edge is evidenced rather than asserted',
@@ -1985,6 +1985,19 @@ check('premiumBlocks resends the same digest shape profileBlocks does, not a sum
     /Instagram and Google/.test(blocks[0].text) && /the four sections the free report does not carry/.test(blocks[0].text);
 })());
 
+// "Careers that suit you", under How you work: the coach's read names the
+// kinds of work that suit them and the kinds that would drain them, each with
+// its reason, as two string lists so the full schema grows no more than the
+// roast's two fields shrank it.
+{
+  const fit = prompts.PREMIUM_SCHEMA.properties.careerAssessment.properties.fit;
+  check('the career read names the work that suits them and the work that would drain them',
+    Boolean(fit) && fit.properties.suits.type === 'array' && fit.properties.suits.items.type === 'string' &&
+      fit.properties.draining.items.type === 'string' && /Kind of work: one sentence on why/.test(fit.properties.suits.description) &&
+      /never a fault in them/.test(fit.properties.draining.description) &&
+      Boolean(prompts.STRUCTURED_FULL_SCHEMA.properties.careerAssessment.properties.fit) && /\*\*`fit`\*\*/.test(prompts.FULL_SYSTEM));
+}
+
 // The roast is written by the free card call only, for My Psyche, and by no
 // paid call — moved, not duplicated. A stray copy left in a paid schema would
 // be paid for twice and rendered from whichever the UI happened to read, the
@@ -2080,9 +2093,16 @@ check('career section has strengths and weaknesses',
 check('Psyche Sync has one basis: friends',
   JSON.stringify(Object.keys(prompts.COMPATIBILITY_MODES)) === '["platonic"]' &&
   prompts.COMPATIBILITY_MODES.platonic.label === 'Friends');
-check('the answer is scored once, and echoes the one basis',
-  ['mode', 'score', 'band', 'verdict'].every(k => k in prompts.COMPATIBILITY_SCHEMA.properties) &&
-  prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'platonic');
+// No score: a summary, where they align, where they differ, how it usually
+// and how to relate better — in that order.
+check('the answer is a summary, align, differ and how to relate — no score, band, verdict or plays-out paragraph',
+  Object.keys(prompts.COMPATIBILITY_SCHEMA.properties).join() === 'mode,summary,align,differ,howToPartner,caveats' &&
+  !/playsOut/.test(prompts.COMPATIBILITY_SYSTEM) &&
+  prompts.COMPATIBILITY_SCHEMA.properties.mode.enum.join() === 'platonic',
+  Object.keys(prompts.COMPATIBILITY_SCHEMA.properties).join());
+check('and the prompt asks for no score of any kind',
+  !/# Score/.test(prompts.COMPATIBILITY_SYSTEM) && /no score or percentage of any kind/.test(prompts.COMPATIBILITY_SYSTEM) &&
+  !/0–100|0-100/.test(prompts.COMPATIBILITY_SYSTEM + JSON.stringify(prompts.COMPATIBILITY_SCHEMA)));
 check('whatever basis an older page asks for, the sync is between friends',
   ['romantic', 'professional', 'nonsense', undefined].every(m => prompts.resolveMode(m) === 'platonic'));
 check('the user turn asks how in sync two friends are, with the friendship dimensions',
@@ -2335,22 +2355,24 @@ for (const [label, needle] of [
 
 for (const [label, needle] of [
   ['is about friends only', /# Friends only/],
-  ['tells the model not to inflate', /Do not inflate/],
   ['respects the confidence figure', /respect it/],
-  ['writes warmly, like the Psyche Card, and at least neutral', /# Tone[\s\S]*warm, and at least neutral/],
+  ['writes positively and encouragingly, like the Psyche Card', /# Tone[\s\S]*positive and encouraging throughout/],
   ['frames each difference with a way to make it work, never as a fault', /frame each as a difference with a way to make it work/],
+  ['never makes one of them the problem', /never with one of them as the problem/],
   ['bans fault labels and predictions of struggle', /no labels such as needy, cold, flaky or stubborn, and no prediction/],
-  ['says a low score kindly', /different, not incompatible/],
+  ['bans the words tension, conflict and the like', /Never use the words tension, conflict, clash, friction, struggle, problem or incompatible/],
 ]) {
   check('compatibility prompt ' + label, needle.test(prompts.COMPATIBILITY_SYSTEM));
 }
 check('compatibility prompt no longer coaches negative wording',
   !/grates|running negotiation|off-wavelength|reliably brings friction|costs most in arguments/.test(prompts.COMPATIBILITY_SYSTEM));
-check('the sync schema asks for a warm band and constructive things to look out for',
-  /never "Constant clashes"/.test(prompts.COMPATIBILITY_SCHEMA.properties.frictions.description) &&
-    /warm or neutral even for a low score/.test(prompts.COMPATIBILITY_SCHEMA.properties.band.description) &&
-    !/Hard going"\.?' *$/.test(prompts.COMPATIBILITY_SCHEMA.properties.band.description) &&
-    /truest warm thing/.test(prompts.COMPATIBILITY_SCHEMA.properties.verdict.description));
+check('the sync schema asks for a warm summary and neutral differences, each with how it can work',
+  /titled neutrally \("Different paces"\)/.test(prompts.COMPATIBILITY_SCHEMA.properties.differ.description) &&
+    /how the difference can work for them \(see # Tone\)/.test(prompts.COMPATIBILITY_SCHEMA.properties.differ.description) &&
+    /truest warm thing/.test(prompts.COMPATIBILITY_SCHEMA.properties.summary.description));
+check('the sync\'s own words carry none of the banned ones, outside the rule that bans them',
+  !/tension|conflict|clash|friction/i.test(JSON.stringify(prompts.COMPATIBILITY_SCHEMA)) &&
+  !/tension|friction/i.test(prompts.COMPATIBILITY_SYSTEM.replace(/\*\*Never use the words[^*]*\*\*/, '')));
 
 // The instruction to draw on the photographs rides on the summary field's
 // description rather than on the system prompt, so it is checked against the
@@ -4911,6 +4933,40 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   check('and is not wildly over-reserved either',
     Digest.FREE_FIXED_INPUT_TOKENS <= freeFixedActual * 1.15,
     Digest.FREE_FIXED_INPUT_TOKENS + ' reserved vs ' + freeFixedActual + ' real');
+  // Gemini's schema size limit is its own and unstated. If it refuses the
+  // full schema, the paid call goes once more without careerAssessment.fit
+  // rather than failing a report somebody paid for; anything else still fails.
+  {
+    const sent = [];
+    let refuse = 1;
+    gemini.__testing.setClient({
+      caches: { create: async () => { throw new Error('no cache in this test'); } },
+      models: { generateContentStream: async request => {
+        sent.push(request.config.responseJsonSchema);
+        if (refuse-- > 0) throw new Error('[400 Bad Request] Request contains an invalid argument.');
+        return (async function* () {
+          yield { text: '{"summary":"ok"}', candidates: [{ finishReason: 'STOP' }], usageMetadata: {} };
+        })();
+      } },
+    });
+    const keyBefore = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = keyBefore || 'test-key';
+    const anchor = { mbtiType: 'ISTJ' };
+    const answer = await gemini.analyseFull({ profile: {} }, anchor).catch(error => error);
+    const coach = schema => schema && schema.properties.careerAssessment.properties;
+    check('a refused full schema is retried once without Careers that suit you, and the report still arrives',
+      sent.length === 2 && 'fit' in coach(sent[0]) && !('fit' in coach(sent[1])) && answer && answer.data &&
+        answer.data.summary === 'ok' && 'fit' in prompts.fullSchemaFor(anchor).properties.careerAssessment.properties,
+      sent.length + ' calls');
+    sent.length = 0;
+    refuse = 5;
+    const failed = await gemini.analyseFull({ profile: {} }, anchor).catch(error => error);
+    check('and a second refusal is not retried again: the error reaches the reader',
+      sent.length === 2 && failed instanceof Error && failed.schemaRefused === true, sent.length + ' calls');
+    process.env.GEMINI_API_KEY = keyBefore;
+    if (keyBefore === undefined) delete process.env.GEMINI_API_KEY;
+    gemini.__testing.reset();
+  }
   // Thinking stays where the full report has it. The free call is cheaper
   // because it reads less and writes less, not because it thinks less.
   {
@@ -5317,6 +5373,17 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     /being unkind is not a licence to become one/.test(free) && /worth raising with someone qualified to actually assess it/.test(free) &&
     free.indexOf('being unkind is not a licence') > free.indexOf('# Hard limits'));
   check('the hard limits are', /# Hard limits/.test(free));
+  // Everything printed on the card is positive and encouraging, with no
+  // negative connotation at all; the costs belong in the full report.
+  check('what the card prints is positive and encouraging, with no negative connotation at all',
+    /\*\*What is printed on the card itself is positive and encouraging, with no negative connotation at all\*\*/.test(free) &&
+    // Said once, in the prompt's card section; the fields point back at it.
+    (free.match(/no negative connotation/g) || []).length === 1 &&
+    /so it follows the card rule below/.test(prompts.STRUCTURED_FREE_SYSTEM) &&
+    /positive \(the card rule\)/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.cardHighlights.description) &&
+    /positive \(the card rule\)/.test(prompts.STRUCTURED_FREE_SCHEMA.properties.patterns.items.properties.name.description) &&
+    /positive, with no negative connotation/.test(prompts.CARD_SCHEMA.properties.headline.description) &&
+    !/neutral or positive|neutrally or positively/.test(free + JSON.stringify(prompts.FREE_SCHEMA)));
   // Its own prompt, and a short one — the premium report keeps the long one.
   const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '');
   // A quarter now the full report's prompt has lost the roast to this one.
@@ -6568,10 +6635,10 @@ const compat = (await mock.analyseCompatibility(decoded, other, 'professional'))
 
 check('compatibility fills every section',
   Object.keys(prompts.COMPATIBILITY_SCHEMA.properties).every(key => key in compat));
-check('a sync is scored between friends, whatever basis is asked for',
-  Number.isInteger(compat.score) && compat.mode === 'platonic');
+check('a sync is between friends, whatever basis is asked for, and carries no score',
+  compat.score === undefined && compat.mode === 'platonic');
 check('compatibility names both people',
-  compat.verdict.includes(decoded.name) && compat.verdict.includes('Jordan'));
+  compat.summary.includes(decoded.name) && compat.summary.includes('Jordan'));
 check('compatibility gives each person their own advice',
   compat.howToPartner.forA.length > 0 && compat.howToPartner.forB.length > 0);
 
@@ -6595,20 +6662,20 @@ check('and to weigh the types in the score and writing, in a sentence or two, no
 {
   const named = Object.values(prompts.COMPATIBILITY_MODES).flatMap(m => m.dimensions);
   const repeated = [...new Set(named.filter((d, i) => named.indexOf(d) !== i))];
-  check('the friendship read is scored on five distinct dimensions',
+  check('the friendship read weighs five distinct dimensions',
     named.length === 5 && repeated.length === 0, named.join(', '));
 }
-check('every basis scores the same number of dimensions',
+check('every basis weighs the same number of dimensions',
   Object.values(prompts.COMPATIBILITY_MODES).every(m => m.dimensions.length === 5));
 
 // Claims used to be assertable with nothing behind them. Now every strength
 // and friction has to name what in the two profiles put it there.
-check('strengths cite their evidence', compat.strengths.every(s => s.evidence && s.evidence.length));
-check('frictions cite their evidence', compat.frictions.every(f => f.evidence && f.evidence.length));
-check('the schema requires evidence on strengths and frictions',
+check('where they align cites its evidence', compat.align.every(s => s.evidence && s.evidence.length));
+check('where they differ cites its evidence', compat.differ.every(f => f.evidence && f.evidence.length));
+check('the schema requires evidence on where they align and differ',
   ['title', 'detail', 'evidence'].every(key =>
-    key in prompts.COMPATIBILITY_SCHEMA.properties.strengths.items.properties &&
-    key in prompts.COMPATIBILITY_SCHEMA.properties.frictions.items.properties));
+    key in prompts.COMPATIBILITY_SCHEMA.properties.align.items.properties &&
+    key in prompts.COMPATIBILITY_SCHEMA.properties.differ.items.properties));
 
 // ---------- derived facts ----------
 //
