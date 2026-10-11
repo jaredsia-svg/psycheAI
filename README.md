@@ -5654,6 +5654,18 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### The roast goes gentle on someone who is struggling
+
+A stress test of five profiles found the roast the riskiest part of the free card: its brief is the least
+charitable reading the evidence supports, and for a reader whose data shows depression or acute anxiety
+that reads as kicking someone who is down. The roast section (both free prompts) and `ROAST_SCHEMA` now
+say to read for clear distress first — recurring sadness or low mood, grief, withdrawal, sleeplessness,
+being hard on themselves, dread or panic — and where the digest shows it, to tease only a few small,
+harmless habits, affectionately and briefly, never the struggle itself; `advice` turns kind and practical
+and may suggest talking to someone they trust or someone qualified. One sad post is not a pattern. No
+condition is ever named. The longer prompt measured 9,688 tokens, so `FREE_FIXED_INPUT_TOKENS` is 9,800
+and `DEEP_FREE_COST_CAP` $0.084; the free and Instagram-only caps still cover their lines.
+
 ### The privacy page in the FAQ's words, and a clearer first data popout
 
 The privacy page is now questions and plain answers, the way the FAQ's "Your data" section reads: what

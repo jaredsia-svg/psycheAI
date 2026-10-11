@@ -5296,7 +5296,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the premium read\'s two calls each fit their own cost cap at its 179,000-character line',
       Digest.DEEP_DIGEST_CHARS === 179000 && Digest.charBudget(Digest.DEEP_COST_CAP) >= Digest.DEEP_DIGEST_CHARS &&
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS) >= Digest.DEEP_DIGEST_CHARS &&
-        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.083,
+        Digest.DEEP_COST_CAP === 0.172 && Digest.DEEP_FREE_COST_CAP === 0.084,
       Digest.charBudget(Digest.DEEP_COST_CAP) + ' / ' +
         Digest.charBudget(Digest.DEEP_FREE_COST_CAP, Digest.FREE_FIXED_INPUT_TOKENS, Digest.FREE_MAX_OUTPUT_TOKENS));
     check('and together cost no more than twenty-six cents',
@@ -5894,6 +5894,13 @@ check('every prompt that writes for the reader calls their data "your data", nev
 check('and the server rewrites any that still come back',
   /function readerText/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
     /return readerText\(cleaned\)/.test(readFileSync(join(root, 'server.js'), 'utf8')));
+
+// The roast goes gentle when the evidence shows the reader struggling.
+check('the roast goes gentle, teasing only harmless habits, when the evidence shows someone struggling',
+  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>
+    text.includes('**When the evidence shows someone struggling, the roast goes gentle.**') &&
+      text.includes('do not roast the struggle and do not roast hard at all') && text.includes('Never name or hint at a condition.')) &&
+    /unless the evidence clearly shows them struggling/.test(JSON.stringify(prompts.FREE_SCHEMA)));
 
 // ---------- tools/compare.mjs: the arithmetic it reports ----------
 //

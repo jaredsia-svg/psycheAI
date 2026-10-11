@@ -833,8 +833,8 @@
   // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,500 prompt + 36,000 digest × $0.75/M = $0.0341
-  //                 at most $0.0716                    → FREE_COST_CAP $0.072
+  //                  9,800 prompt + 36,000 digest × $0.75/M = $0.0344
+  //                 at most $0.0719                    → FREE_COST_CAP $0.072
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 36,000 digest × $0.75/M = $0.0556
@@ -864,8 +864,8 @@
   // Instagram alone, at its 82,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,500 prompt + 23,429 digest × $0.75/M = $0.0247
-  //                 at most $0.0622                    → SOLO_FREE_COST_CAP $0.063
+  //                  9,800 prompt + 23,429 digest × $0.75/M = $0.0249
+  //                 at most $0.0624                    → SOLO_FREE_COST_CAP $0.063
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
@@ -883,7 +883,9 @@
   // ROAST_SCHEMA). Measured at 9,120; 9,500 once the card's wording rules
   // asked for positive and encouraging (9,334); 9,123 once that rule was
   // said once and the fields pointed back at it.
-  const FREE_FIXED_INPUT_TOKENS = 9500;
+  // 9,800 once the roast learned to go gentle on a reader who is struggling
+  // (9,688 measured).
+  const FREE_FIXED_INPUT_TOKENS = 9800;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -892,17 +894,17 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                  9,500 prompt + 51,143 digest × $0.75/M = $0.0455
-  //                 at most $0.0830                    → DEEP_FREE_COST_CAP $0.083
+  //                  9,800 prompt + 51,143 digest × $0.75/M = $0.0457
+  //                 at most $0.0832                    → DEEP_FREE_COST_CAP $0.084
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
   //                 at most $0.1719                    → DEEP_COST_CAP $0.172
   //
-  // $0.255 for the whole unlock at most, against a US$5 payment; $0.172 when
+  // $0.256 for the whole unlock at most, against a US$5 payment; $0.172 when
   // nothing is added and the card stands. Held by the same selftest check as
   // the standard caps.
-  const DEEP_FREE_COST_CAP = 0.083;
+  const DEEP_FREE_COST_CAP = 0.084;
   const DEEP_COST_CAP = 0.172;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
