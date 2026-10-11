@@ -6109,6 +6109,16 @@ version of this feature, so the romantic and work comparisons were removed outri
 - **Old reports:** reports saved on the old bases still open on the reader's device, labelled as
   they were.
 
+### De-identified, as the card is
+
+The free card and the report have always blanked the reader's name before anything is sent. A Psyche
+Sync sent both cards with the names on them, and the model wrote with them. Now each card goes as
+**Person A** (the reader) or **Person B** (the other person), so no name reaches PsycheAI or the
+model, and the prompt keeps those stand-ins unchanged. `restoreSyncNames` in `docs/app.js` puts the
+first names back on the device before the result is shown or saved. Two people who share a first
+name become *Jean A* and *Jean B*. A result written before this already has the names in it, and
+passes through unchanged.
+
 ### The result goes back to the person whose link it was
 
 A sync ran on the device of whoever opened the link, and the result stayed there, so the person who
@@ -6140,6 +6150,12 @@ if the person who synced chooses (`lib/syncbox.js`, `sendSyncBack` and `collectS
   the same question with **Not now**. Once shared, the row reads *Synced · Shared* and the button
   goes; My Syncs says *Shared with Jean, with your Psyche Card.* A long `#p=` link has no key and no
   owner, so it is never asked and has no Share button.
+- **Under the results.** The panel at the foot of a sync's results says first whether the other person
+  can see them (`refreshCompatReturn`). Not yet, and it can be shared: *Share the results with Jean?*,
+  *Jean cannot see these results yet…*, with **Yes, share with Jean**. Shared: *Shared with Jean*.
+  Sent by them: *Jean shared these results with you*. From a long link, which cannot be shared:
+  *Jean cannot see these results yet*, with **Send my link** so they make their own. It read *Want
+  Jean to see it too?*, which did not say whether Jean already could.
 - **Older syncs.** A sync saved before links were kept with it has only **Results**. Opening or
   pasting that person's personal link again, which lands on the list as *already synced*, keeps the
   link with that row (`keepLinkForSharing`), and its **Share** button appears.

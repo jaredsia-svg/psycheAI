@@ -1963,6 +1963,8 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
 .compat-dialog .link-title { padding-right: 2.2rem; }
 .compat-paste { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .compat-paste[hidden] { display: none; }
+/* Under a sync: one button at a time, Share or Send my link (app.js, refreshCompatReturn). */
+.compat-return .btn[hidden] { display: none; }
 .compat-paste .field { margin-bottom: .6rem; }
 .compat-dialog-close {
   position: absolute; top: 14px; right: 14px; width: 32px; height: 32px;

@@ -7418,7 +7418,7 @@
       link.closest('.match-row') && link.closest('.match-row').querySelector('.match-new') &&
         link.closest('.match-row').querySelector('.match-new').remove();
     }
-    if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
+    if (entry) { renderReport(entry.report, entry.withName, entry.when, entry.with); show('report'); }
   });
   // Their Psyche Card, from My Syncs: drawn from the card their link carried,
   // in the same full-screen dialog their link's card opens in.
@@ -9407,7 +9407,10 @@
       // Re-shaped on the way out, so a card saved before the link format last
       // changed is sent in today's shape, with nothing the comparison no
       // longer reads.
-      const result = await LLM.analyseCompatibility(Card.shape(state.profile.card), other, mode, stance, auth,
+      // De-identified on the way out: each card goes as Person A or Person B,
+      // with no name, and adoptComparison puts the first names back here.
+      const result = await LLM.analyseCompatibility(Object.assign(Card.shape(state.profile.card), { name: SYNC_A }),
+        Object.assign(Card.shape(other), { name: SYNC_B }), mode, stance, auth,
         { onJob: key => rememberJob(key, 'compatibility', auth, { other, mode, stance }) });
       adoptComparison(result, other, mode, stance);
     } catch (error) {
@@ -9521,7 +9524,8 @@
     clearPending();
     clearJob();
     const basis = mode || result.data.mode;
-    const report = { ...result.data, mode: result.data.mode || basis, stance };
+    const data = restoreSyncNames(result.data, state.profile ? state.profile.card.name : '', other.name);
+    const report = { ...data, mode: data.mode || basis, stance };
     // A sync with a card already in the list replaces it, at the top, rather
     // than adding a second row for the same person.
     const key = syncCardKey(other);
@@ -9534,10 +9538,27 @@
     // Where the result can still be shared to later, from its row.
     }, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null));
     store.write(KEYS.history, history.slice(0, 25));
-    renderReport(report, other.name);
+    renderReport(report, other.name, undefined, key);
     show('report');
     if (canShare && shareSync) shareSyncEntry(key);
     shareSync = false;
+  }
+
+  // A sync is written about Person A (this reader) and Person B (the other),
+  // never their names, which the model is not sent. Their first names go back
+  // in here, on this device; two who share one become "Jean A" and "Jean B".
+  // A result written before this, with the names in it, passes through as it is.
+  const SYNC_A = 'Person A';
+  const SYNC_B = 'Person B';
+  function restoreSyncNames(value, mine, theirs) {
+    let a = firstName(mine) || mine || 'You';
+    let b = firstName(theirs) || theirs || 'They';
+    if (a === b) { a += ' A'; b += ' B'; }
+    const swap = text => text.replace(/\b[Pp]erson A\b/g, a).replace(/\b[Pp]erson B\b/g, b);
+    const walk = item => typeof item === 'string' ? swap(item)
+      : Array.isArray(item) ? item.map(walk)
+      : item && typeof item === 'object' ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)])) : item;
+    return walk(value);
   }
 
   // Whether the reader chose, in the popout before this sync, to share it.
@@ -9584,6 +9605,37 @@
     entry.shared = false;
     store.write(KEYS.history, history);
   }
+  /**
+   * The panel under a sync's results says, first, whether the other person
+   * can see them. Not yet, and it can be shared: the share popout's question,
+   * with its Yes. Shared, or sent to this reader by them: says so. A sync from
+   * a long link, which cannot be shared: not yet, and their own is a link away.
+   */
+  let compatReturnKey = null;
+  function refreshCompatReturn() {
+    const panel = $('#compat-return');
+    const last = state.lastReport;
+    if (!panel || !last) return;
+    panel.hidden = !state.profile;
+    const name = firstName(last.otherName) || last.otherName;
+    const entry = compatReturnKey ? (store.read(KEYS.history, []) || []).find(e => e && e.with === compatReturnKey) : null;
+    const canShare = Boolean(entry && entry.back && !entry.shared && !entry.received && state.server && state.server.shortLinks);
+    const status = entry && entry.received ? 'received' : entry && entry.shared ? 'shared' : canShare ? 'share' : 'link';
+    $('#compat-return-title').textContent = TEXT.compatReturnTitle(name, status);
+    $('#compat-return-text').textContent = TEXT.compatReturnText(name, status);
+    const share = $('#compat-return-share');
+    share.hidden = status !== 'share';
+    share.disabled = false;
+    $('#compat-return-share-label').textContent = TEXT.syncShareYes(name);
+    $('#share-link-report').hidden = status !== 'link';
+    panel.dataset.state = status;
+  }
+  $('#compat-return-share').addEventListener('click', async () => {
+    if (!compatReturnKey) return;
+    $('#compat-return-share').disabled = true;
+    await shareSyncEntry(compatReturnKey);
+    refreshCompatReturn();
+  });
   /** Sends one saved sync back to the person whose link it was, and marks it shared. */
   async function shareSyncEntry(key) {
     const entry = (store.read(KEYS.history, []) || []).find(e => e && e.with === key);
@@ -9596,6 +9648,7 @@
       if (saved) { saved.shared = true; store.write(KEYS.history, history); }
     }
     if (!$('#view-scan').hidden) renderScan();
+    if (compatReturnKey === key) refreshCompatReturn();
     flash('#scan-alert', sent ? TEXT.syncSentBack(name) : TEXT.syncShareFailed(name));
     $('#scan-alert').classList.toggle('is-note', sent);
     return sent;
@@ -9709,7 +9762,7 @@
 
   // ══════════════ 4. compatibility report ══════════════
 
-  function renderReport(report, otherName, when) {
+  function renderReport(report, otherName, when, entryKey) {
     const myName = state.profile ? state.profile.card.name : 'You';
     // Friends unless the report says otherwise: one saved before Psyche Sync
     // was friends-only keeps the basis it was run on.
@@ -9730,9 +9783,8 @@
       (stanceLabel ? ' <span class="pill pill-clear">' + esc(stanceLabel) + '</span>' : '');
     // Kept for the PDF, which is built from whatever was last rendered.
     state.lastReport = { report, otherName, myName, mode, stance, when };
-    $('#compat-return').hidden = !state.profile;
-    $('#compat-return-title').textContent = TEXT.compatReturnTitle(otherName);
-    $('#compat-return-text').textContent = TEXT.compatReturnText(otherName);
+    compatReturnKey = entryKey || null;
+    refreshCompatReturn();
 
     // The same order as the PDF: the one-line summary, where they align and
     // where they differ, and how to relate better.

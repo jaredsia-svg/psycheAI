@@ -378,9 +378,19 @@
     linkContentsFields: ['First name', 'Who you are most like', 'Tagline', 'MBTI', 'Big Five', 'Top motivators',
       'Patterns', 'Values & beliefs', 'Interests', 'How you show care', 'With connections & at work', 'Rhythm & energy'],
 
-    compatReturnTitle: (name) => 'Want ' + name + ' to see it too?',
-    compatReturnText: (name) => 'The sync runs on the side of whoever opens the link, so ' + name +
-      ' does not have this report. Send them your link and they get their own, free.',
+    // Under a sync's results: first, whether the other person can see them
+    // (app.js, refreshCompatReturn). 'share': not yet, and it can be shared;
+    // 'shared'; 'received': they sent it; 'link': a long link, not shareable.
+    compatReturnTitle: (name, state) => state === 'shared' ? 'Shared with ' + name
+      : state === 'received' ? name + ' shared these results with you'
+      : state === 'share' ? 'Share the results with ' + name + '?' : name + ' cannot see these results yet',
+    compatReturnText: (name, state) => state === 'shared'
+      ? name + ' can see these results and your Psyche Card in their Sync list.'
+      : state === 'received' ? 'They synced with your link and chose to share the results with you.'
+      : state === 'share'
+        ? name + ' cannot see these results yet. If you share them, ' + name + ' will see the results and your Psyche Card in their Sync list. They are locked on the way, so PsycheAI cannot read them.'
+        : 'The sync runs on the side of whoever opens the link, so ' + name +
+          ' does not have this report. Send them your link and they get their own, free.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
     linkCopied: 'Link copied.',

@@ -10118,6 +10118,15 @@ try {
       !JSON.parse(compatBodies[compatBodies.length - 1]).stance,
     compatBodies[compatBodies.length - 1]);
   check('report names both people', reportText.includes('Aleç') && reportText.includes('Jordan'));
+  // De-identified: the two cards go as Person A and Person B, with no name
+  // anywhere in the request, and the first names come back on this device.
+  {
+    const sent = compatBodies[compatBodies.length - 1];
+    const body = JSON.parse(sent);
+    check('the sync is sent with no names: each card is Person A or Person B, and the names come back on this device',
+      body.a.name === 'Person A' && body.b.name === 'Person B' && !/Aleç|Jordan/.test(sent) &&
+        !/Person [AB]/.test(reportText) && /Jordan/.test(reportText), sent.slice(0, 200));
+  }
   // No score: a sync is read, not rated.
   check('report shows no score at all — no ring, no percentage, no band',
     (await page.locator('#view-report .ring, #report-body .compat-band').count()) === 0 &&
@@ -10255,7 +10264,7 @@ try {
       '#p=' + JSON.parse(localStorage.getItem('psycheai_profile')).payload)), JSON.stringify(compatShared).slice(0, 300));
   check('the report offers to send the other person this reader\'s link, so they get theirs',
     await page.locator('#compat-return').isVisible() &&
-      /Want Jordan to see it too\?/.test(await page.locator('#compat-return').innerText()) &&
+      /Jordan cannot see these results yet/.test(await page.locator('#compat-return').innerText()) &&
       /does not have this report/.test(await page.locator('#compat-return').innerText()),
     await page.locator('#compat-return').innerText());
   await shot('4-report');
@@ -10437,8 +10446,9 @@ try {
     /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
-    /the short summary your link shows, which only\s+your link can open/.test(about) &&
-    /any Psyche Sync someone sends you, which only your link can open too\s+and is deleted once your device has it/.test(about) &&
+    /the short summary your link shows, and any Psyche\s+Sync someone sends you, deleted once your device has it/.test(about) &&
+    /Your card summary and any shared Psyche Sync are encrypted on your device, and the key lives\s+only in your link/.test(about) &&
+    /PsycheAI never has the key, so no one at PsycheAI can read them/.test(about) &&
     /none of them names you/.test(about));
   check('and the full report no longer promises a secret bonus: the roast is free',
     !/secret bonus/i.test(about));
@@ -12692,6 +12702,9 @@ try {
             row && /^NewSynced with you · /.test(row.meta) && row.emblem, JSON.stringify(row));
           await rp.click('#scan-history .match-row:has(.match-new) .match-results');
           await rp.waitForTimeout(500);
+          check('and its results say Pat shared them, with nothing to send',
+            (await rp.locator('#compat-return-title').innerText()) === 'Pat shared these results with you' &&
+              await rp.evaluate(() => document.querySelector('#compat-return-share').hidden && document.querySelector('#share-link-report').hidden));
           check('opening its Results clears New and the dot',
             await rp.evaluate(() => !document.querySelector('#scan-history .match-new') &&
               !document.querySelector('#nav-scan').classList.contains('has-new') &&
@@ -12718,6 +12731,16 @@ try {
           check('"Sync without sharing" syncs, and the result stays on this device: nothing waits for the link\'s owner',
             (await ownerInbox()).items.length === 0 &&
               await friendPage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history'))[0].shared === false));
+          const panel = await friendPage.evaluate(() => ({
+            title: document.querySelector('#compat-return-title').textContent,
+            text: document.querySelector('#compat-return-text').textContent,
+            share: !document.querySelector('#compat-return-share').hidden && document.querySelector('#compat-return-share').textContent,
+            link: !document.querySelector('#share-link-report').hidden,
+          }));
+          check('under the results, the panel asks the share question, first saying they cannot see them yet',
+            panel.title === 'Share the results with ' + ownerFirst + '?' &&
+              panel.text.startsWith(ownerFirst + ' cannot see these results yet. If you share them') &&
+              panel.share === 'Yes, share with ' + ownerFirst && !panel.link, JSON.stringify(panel));
           await friendPage.keyboard.press('Escape');
           await friendPage.waitForTimeout(400);
           const shareButton = await friendPage.evaluate(() => {

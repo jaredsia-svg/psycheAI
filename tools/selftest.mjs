@@ -2357,6 +2357,11 @@ for (const [label, needle] of [
   check('card prompt ' + label, needle.test(prompts.FREE_SYSTEM));
 }
 
+// De-identified: the page sends each card as Person A or Person B, and the
+// prompt keeps those stand-ins rather than inventing names.
+check('the sync prompt writes about the stand-ins it is given, Person A and Person B',
+  /Call each person exactly by the name their profile gives, unchanged: usually a stand-in, Person A or Person B/.test(prompts.COMPATIBILITY_SYSTEM) &&
+    !/Call each person by their first name/.test(prompts.COMPATIBILITY_SYSTEM));
 for (const [label, needle] of [
   ['is about any two connections, never assuming the relationship', /# Any two connections[\s\S]*never assume it/],
   ['never calls them friends or a friendship', /Never call them friends or what they share a friendship/],
