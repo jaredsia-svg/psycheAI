@@ -5669,6 +5669,17 @@ advice says plainly, without labels, that it is worth taking seriously and that 
 help. The card stays positive and non-romantic. The card prompt measured 9,898 tokens with it, so
 `FREE_FIXED_INPUT_TOKENS` is 9,900; every cap still covers its line.
 
+A second stress run (a married lurker and a playboy, on a kit built just before the rule) showed what
+the roast does without it: "covert operation", "burner chats", "cover stories", a quoted "she can never
+find out", and advice as an ultimatum ("cut the burner chats", "your luck runs out"). That was too harsh
+and read as a verdict. Silence is not the answer either, since the gap between the public picture and
+the private one is real. The rule therefore says how to name it. Where posts and private activity pull
+apart, it is noted once, neutrally, and as one possible reading, never a verdict: "Your posts put family
+first; your searches and messages show privacy questions and contact outside that circle." There is no
+spy, double-life or cover-story language. The advice invites self-reflection and never orders or warns,
+and nothing of it reaches the card. The card prompt measured 9,998 tokens with this, which is the most
+the 7.2-cent free cap leaves room for, so `FREE_FIXED_INPUT_TOKENS` is 9,998.
+
 ### Extra Instagram lists fill the public pool's spare room
 
 The Instagram export holds more than the reader's own words, and the digest used little of it: Instagram
@@ -5739,8 +5750,11 @@ Once a reader has a free card that is not yet unlocked, one slim line under the 
 report: "✨ See the full story behind your card · Unlock your Psyche Report →", and on a phone only the
 offer, so it stays one line. It shows on the front page, My Psyche, My Syncs and the FAQ. It is not shown
 on My Report, while an analysis runs, or once anything is unlocked. A tap opens My Psyche at the
-"Unlock your Psyche Report" section, scrolled clear of the sticky navigation. Its ✕ puts it away for the
-rest of the visit (sessionStorage, so it is back next visit). It never shows beside a friend's sync
+"Unlock your Psyche Report" section, scrolled clear of the sticky navigation. It has no close button:
+until something is unlocked it stays, since the report is the one thing PsycheAI charges for. With the
+bar showing, every page starts about 10px below it: My Psyche's card had sat 20–40px down (the page's
+usual top padding), and the front page's banner, which runs up to the navigation, had touched the bar,
+so it steps down by the same gap and rounds its top corners. It never shows beside a friend's sync
 invite: while a friend's link is waiting, that comes first, and the bar appears once the invite is closed
 or the sync is done (`refreshReportPromo`, `syncInviteShowing` in `docs/app.js`).
 

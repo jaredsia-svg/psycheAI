@@ -4353,11 +4353,11 @@ details.more[open] > summary::after { content: ' ▴'; }
 .report-promo-go:hover { border-color: var(--accent); }
 .report-promo-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .report-promo-cta { color: var(--accent); font-weight: 650; white-space: nowrap; }
-.report-promo-close {
-  flex: none; font: inherit; font-size: .8rem; line-height: 1; color: var(--ink-soft);
-  background: none; border: 0; padding: .4rem; cursor: pointer; border-radius: 999px;
-}
-.report-promo-close:hover { color: var(--ink); }
+/* With the bar showing, the page starts a small, even gap below it: My
+   Psyche's card comes up close, and the front page's banner, which otherwise
+   runs up to the navigation, steps down by the same gap and rounds its top. */
+.report-promo:not([hidden]) + main.container { padding-top: .6rem; }
+.report-promo:not([hidden]) + main .hero { margin-top: 0; border-radius: 28px; }
 /* Reached from the bar above: clear of the sticky navigation. */
 .full-report-locked { scroll-margin-top: 72px; }
 /* One line on a phone: the offer alone. */

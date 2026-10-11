@@ -943,8 +943,10 @@
   // asked for positive and encouraging (9,334); 9,123 once that rule was
   // said once and the fields pointed back at it.
   // 9,800 once the roast learned to go gentle on a reader who is struggling
-  // (9,688 measured); 9,900 with the conduct rule (CONDUCT_RULE, 9,898).
-  const FREE_FIXED_INPUT_TOKENS = 9900;
+  // (9,688 measured); 9,900 with the conduct rule (CONDUCT_RULE, 9,898);
+  // 9,998 once it said how to name a gap between posts and private
+  // activity (9,998 measured: the most the 7.2-cent cap leaves room for).
+  const FREE_FIXED_INPUT_TOKENS = 9998;
 
   // ---------- what the premium read can cost, at most ----------
   //

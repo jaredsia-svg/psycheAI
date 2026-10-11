@@ -9830,11 +9830,9 @@
   // The slim bar offering the Psyche Report, once a free card exists: on the
   // front page, My Psyche, My Syncs and the FAQ, not on My Report or while an
   // analysis runs. Never at the same time as a friend's sync invite: it waits
-  // until that is closed or the sync is done. Closed with its ✕, it stays
-  // away for the rest of the visit.
+  // until that is closed or the sync is done. It has no close: it stays
+  // until something is unlocked.
   const PROMO_VIEWS = ['welcome', 'profile', 'scan', 'about'];
-  let promoClosed = false;
-  try { promoClosed = sessionStorage.getItem('psycheai_promo_closed') === '1'; } catch (error) { /* private window */ }
   function syncInviteShowing() {
     const invites = state.profile ? allInvites() : [];
     const closed = store.read(KEYS.syncBarClosed, []) || [];
@@ -9845,7 +9843,7 @@
     if (!bar) return;
     const view = VIEWS.find(name => !$('#view-' + name).hidden);
     const offered = Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length;
-    bar.hidden = promoClosed || !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing();
+    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing();
     if (bar.hidden) return;
     $('#report-promo-go').innerHTML = '<span class="report-promo-text">' + esc(TEXT.reportPromo) + '</span> ' +
       '<strong class="report-promo-cta">' + esc(TEXT.reportPromoCta) + '</strong>';
@@ -9861,11 +9859,6 @@
     };
     requestAnimationFrame(toOffer);
     setTimeout(toOffer, 350);
-  });
-  $('#report-promo-close').addEventListener('click', () => {
-    promoClosed = true;
-    try { sessionStorage.setItem('psycheai_promo_closed', '1'); } catch (error) { /* private window */ }
-    refreshReportPromo();
   });
 
   $('#sync-invite-close').addEventListener('click', () => {

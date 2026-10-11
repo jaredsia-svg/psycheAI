@@ -5953,6 +5953,14 @@ check('every prompt rules out sexual and infidelity content, accusations and quo
       /"cheater", "abuser", "predator", "harasser"/.test(rule) && /Never quote a message that threatens or pressures someone/.test(rule)) &&
     /Harm to others is never a joke/.test(prompts.CONDUCT_RULE) && !/roast/i.test(prompts.CONDUCT_RULE_REPORT));
 
+// Where the posts and the private activity pull apart: the contrast once, in
+// neutral words, as one possible reading; no spy-novel language; advice that
+// asks them to reflect rather than warns; and none of it on the card.
+check('a gap between posts and private activity is named neutrally, as one reading, with reflective advice',
+  [prompts.CONDUCT_RULE, prompts.CONDUCT_RULE_REPORT].every(rule => /note it once, neutrally, as one possible reading, never a verdict/.test(rule) &&
+    /No spy, double-life or cover-story words/.test(rule) && /invites self-reflection, never orders or warns/.test(rule)) &&
+    /Never on the card\./.test(prompts.CONDUCT_RULE));
+
 // The roast goes gentle when the evidence shows the reader struggling.
 check('the roast goes gentle, teasing only harmless habits, when the evidence shows someone struggling',
   [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text =>

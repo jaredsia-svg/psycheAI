@@ -4313,6 +4313,15 @@ try {
     const promoText = (await page.locator('#report-promo-go').innerText()).replace(/\s+/g, ' ').trim();
     check('once the free card is in, a slim bar offers the Psyche Report',
       /Unlock your Psyche Report/.test(promoText) && (await page.locator('#report-promo').boundingBox()).height < 60, promoText);
+    check('the bar has no close button: it stays until something is unlocked',
+      await page.locator('#report-promo button').count() === 1);
+    // The gap from the bar to what starts the page: small, on My Psyche and the front page alike.
+    const gapBelowPromo = sel => page.evaluate(sel => {
+      const target = [...document.querySelectorAll(sel)].find(el => el.getBoundingClientRect().height > 0);
+      return target ? Math.round(target.getBoundingClientRect().top - document.querySelector('#report-promo').getBoundingClientRect().bottom) : null;
+    }, sel);
+    const profileGap = await gapBelowPromo('#view-profile .profile-top');
+    check('on My Psyche the card sits a small gap below the bar', profileGap >= 4 && profileGap <= 16, String(profileGap));
     const shownOn = {};
     for (const [name, nav] of [['syncs', '#nav-scan'], ['faq', '#nav-about'], ['front', '.brand[data-nav="main"]']]) {
       await page.click(nav);
@@ -4320,6 +4329,8 @@ try {
       shownOn[name] = await page.locator('#report-promo').isVisible();
     }
     check('it shows on the front page, My Syncs and the FAQ too', Object.values(shownOn).every(Boolean), JSON.stringify(shownOn));
+    const frontGap = await gapBelowPromo('#view-welcome .hero');
+    check('on the front page the banner steps down the same small gap, not touching the bar', frontGap >= 4 && frontGap <= 16, String(frontGap));
     await page.click('#report-promo-go');
     await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 });
     // Until the smooth scroll has come to rest: the same place twice, 300ms apart.
