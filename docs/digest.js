@@ -688,12 +688,17 @@
    */
   function trimToPools(digest, fixed, floor) {
     const caps = poolCapsFor(digest);
-    for (const [pool, entries] of Object.entries(POOLS)) {
-      const cap = caps[pool];
+    // Conversations first, so the room they leave is known before the public
+    // pool is held to its ceiling plus that room (publicCeiling).
+    for (const pool of ['conversations', 'public', 'searches']) {
+      const entries = POOLS[pool];
+      const spare = pool === 'public' ? conversationsSpare(digest, caps) : 0;
+      const cap = caps[pool] + spare;
       for (let guard = 0; guard < 600; guard++) {
         const sizes = poolSizes(digest)[pool];
-        // Instagram's own 40,000 of the public pool comes first, in both reads.
-        const igOver = pool === 'public' && cap !== Infinity ? (sizes.instagram || 0) - Math.min(cap, INSTAGRAM_PUBLIC_CHARS) : 0;
+        // Instagram's own share of the public pool comes first, in both reads,
+        // and grows by the same spare.
+        const igOver = pool === 'public' && cap !== Infinity ? (sizes.instagram || 0) - instagramPublicLimit(caps, spare) : 0;
         const over = igOver > 0 ? igOver : sizes.total - cap;
         if (over <= 0) break;
         // Lower rank goes first. Conversations: Instagram DMs and Messenger
@@ -718,6 +723,24 @@
         setPath(digest, pick.path, dropEvenly(pick.list, drop));
       }
     }
+  }
+
+  // ---------- spare room flows one way ----------
+  //
+  // Room the conversations pool leaves unused goes to the public pool, never
+  // the other way round. Public evidence is broad and is what the card mostly
+  // describes, so it may dominate a digest; one or two heavy conversations
+  // should not. Conversations always come first: a chat added later takes its
+  // room back from the public pool's spill before anything of its own is cut.
+  // The line is unchanged — the spill is only room that would sit empty.
+  // Searches neither give nor take.
+  function conversationsSpare(digest, caps) {
+    if (caps.conversations === Infinity) return 0;
+    return Math.max(0, caps.conversations - poolSizes(digest).conversations.total);
+  }
+  /** Instagram's own part of the public pool: up to 40,000 (32,000 alone), plus the spill. */
+  function instagramPublicLimit(caps, spare) {
+    return Math.min(caps.public, INSTAGRAM_PUBLIC_CHARS) + (spare || 0);
   }
 
   // ---------- the premium read ----------
@@ -768,23 +791,34 @@
   function buildFilled(signals, opts) {
     const base = build(signals, Object.assign({}, opts, { fill: false }));
     const caps = poolCapsFor(base);
-    const sizes = poolSizes(base);
+    const per = list => list.length ? listChars(list) / list.length + 1 : 150;
+    const rebuild = raised => {
+      const out = withLimits(raised, () => build(signals, Object.assign({}, opts, { fill: false, maxChars: Infinity })));
+      trimToBudget(out, budgetFor(out));
+      return out;
+    };
     const msgs = (base.directMessages && base.directMessages.ownMessageSample) || [];
     const capsList = base.samples.captions || [];
-    // Only a list its cap actually bound has more to give.
-    const msgRoom = msgs.length >= LIMITS.messages ? caps.conversations - sizes.conversations.total : 0;
-    const capRoom = capsList.length >= LIMITS.captions ? Math.min(caps.public, INSTAGRAM_PUBLIC_CHARS) - sizes.public.instagram : 0;
-    if (msgRoom < FILL_MIN_ROOM && capRoom < FILL_MIN_ROOM) return base;
-    const per = list => list.length ? listChars(list) / list.length + 1 : 150;
-    const raised = {
-      messages: LIMITS.messages + (msgRoom >= FILL_MIN_ROOM ? Math.floor(msgRoom / per(msgs)) : 0),
-      captions: LIMITS.captions + (capRoom >= FILL_MIN_ROOM ? Math.floor(capRoom / per(capsList)) : 0),
-    };
-    // Built with the raised caps; the pools trim any overshoot back evenly.
-    const filled = withLimits(raised, () => build(signals, Object.assign({}, opts, { fill: false, maxChars: Infinity })));
-    filled.__fill = { ownMessages: msgs.length, captions: capsList.length };
-    trimToBudget(filled, budgetFor(filled));
-    return filled;
+    // Messages first, since their pool comes first: only a list its cap
+    // actually bound has more to give.
+    const msgRoom = msgs.length >= LIMITS.messages ? caps.conversations - poolSizes(base).conversations.total : 0;
+    const raised = { messages: LIMITS.messages, captions: LIMITS.captions };
+    let current = base;
+    if (msgRoom >= FILL_MIN_ROOM) {
+      raised.messages += Math.floor(msgRoom / per(msgs));
+      current = rebuild(raised);
+    }
+    // Then captions, into Instagram's public share and whatever room the
+    // conversations left (see "spare room flows one way").
+    const capRoom = capsList.length >= LIMITS.captions
+      ? instagramPublicLimit(caps, conversationsSpare(current, caps)) - poolSizes(current).public.instagram : 0;
+    if (capRoom >= FILL_MIN_ROOM) {
+      raised.captions += Math.floor(capRoom / per(capsList));
+      current = rebuild(raised);
+    }
+    if (current === base) return base;
+    current.__fill = { ownMessages: msgs.length, captions: capsList.length };
+    return current;
   }
 
   // ---------- what each call can cost, at most ----------

@@ -3131,10 +3131,14 @@ try {
         (await page.locator('#request-data ol[data-howto="instagram"] .step-fallback').count()) === 0,
       first);
     const peeks = page.locator('#request-data .ui-peek');
-    check('its three screen names each carry their screenshot from the guide',
-      (await peeks.count()) === 3 &&
-        JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.dataset.peek))) ===
-          JSON.stringify(['guide/01-settings.jpg', 'guide/02-info-permissions.jpg', 'guide/03-export-your-information.jpg']));
+    check('its eight screen names each carry their screenshot from the guide',
+      (await peeks.count()) === 8 &&
+        JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim() + '=' + el.dataset.peek))) ===
+          JSON.stringify(['Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
+            'Export your information=guide/03-export-your-information.jpg', 'Create export=guide/04-create-export.jpg',
+            'Export to device=guide/06-export-to-device.jpg', 'All time=guide/07-confirm-export.jpg',
+            'JSON=guide/07-confirm-export.jpg', 'Lower=guide/07-confirm-export.jpg']),
+      JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim()))));
     await peeks.first().scrollIntoViewIfNeeded();
     await peeks.first().click();
     await page.waitForSelector('.peek-pop img', { timeout: 5000 });

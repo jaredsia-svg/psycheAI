@@ -4381,11 +4381,11 @@ const heavyWithDms = Digest.build({
   },
 }, { includeMessages: true });
 
-// Instagram alone is held to its 32,000 public pool, which this fixture's
-// 200 captions just pass: the cap binds first, then the pool.
-check('heavy account caps captions, then Instagram alone\'s 32,000 public pool holds them',
-  heavy.samples.captions.length <= Digest.LIMITS.captions && heavy.samples.captions.length > 170 &&
-    Digest.poolSizes(heavy).public.total <= 32000 && Digest.poolSizes(heavy).public.total > 31000,
+// This fixture carries no messages, so its public evidence may use the
+// conversations pool's empty room as well: the caption cap binds, not a pool.
+check('heavy account caps captions, its public evidence spilling into the room no messages took',
+  heavy.samples.captions.length === Digest.LIMITS.captions &&
+    Digest.poolSizes(heavy).public.total > 32000 && Digest.poolSizes(heavy).public.total <= 32000 + 46000,
   heavy.samples.captions.length + ' captions, ' + Digest.poolSizes(heavy).public.total);
 check('heavy account caps comments', heavy.samples.comments.length === Digest.LIMITS.comments);
 check('heavy account caps liked accounts', heavy.mostLikedAccounts.length === Digest.LIMITS.likedAuthors);
@@ -4963,6 +4963,37 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         Digest.charBudget(Digest.SOLO_COST_CAP) >= 82000,
       '$' + soloFree.toFixed(4) + ' / $' + soloFull.toFixed(4));
   }
+  // Spare room flows one way: what the conversations leave goes to the
+  // public pool, never the reverse, and a chat added later takes it back.
+  {
+    const longCaption = i => ({ text: 'Caption ' + i + '. ' + 'A longer sentence about the day and the people in it. '.repeat(4), ts: 1500000000 + i * 86400 });
+    const fewDms = {
+      ...heavySignals(),
+      captions: Array.from({ length: 4000 }, (_, i) => longCaption(i)),
+      messages: { total: 200, threads: 2, groupThreads: 0, sent: 100, received: 100, avgSentLength: 60,
+        ownTexts: Array.from({ length: 100 }, (_, i) => ({ text: 'A short message about the plan for the day, number ' + i, ts: 1600000000 + i * 3600, thread: i % 2 })) },
+    };
+    const spilled = Digest.build(fewDms, { includeMessages: true });
+    const sp = Digest.poolSizes(spilled);
+    check('a reader with few DMs gets their public evidence in the room the conversations left',
+      sp.conversations.total < 10000 && sp.public.total > 40000 && sp.public.total <= 32000 + (46000 - sp.conversations.total) &&
+        Digest.evidenceChars(spilled) <= 82000,
+      JSON.stringify({ public: sp.public.total, conversations: sp.conversations.total }));
+    const chat = n => ({ chat: 'c' + n, kind: 'one-to-one', members: 2, span: {}, counts: { messages: 8000, sentByUser: 4000, receivedByUser: 4000 },
+      ownMessages: Array.from({ length: 4000 }, (_, i) => ({ text: 'c' + n + ' message ' + i + ' with enough words to clear it — and a longer thought that runs on, as real messages do, ' + 'w'.repeat(110), ts: 1700000000 + i * 5000, gap: 4000, prevMine: false })) });
+    const merged = Digest.addSupplements(JSON.parse(JSON.stringify(spilled)), { whatsapp: { chats: [chat(1), chat(2), chat(3)] } });
+    const mp = Digest.poolSizes(merged);
+    check('and chats added later take that room back: they go in whole, the public pool gives way',
+      mp.conversations.whatsapp > 3 * 11000 && mp.public.total < sp.public.total + 8000 &&
+        mp.public.total <= 40000 + (72000 - mp.conversations.total) && Digest.evidenceChars(merged) <= 126000,
+      JSON.stringify({ whatsapp: mp.conversations.whatsapp, public: mp.public.total, total: Digest.evidenceChars(merged) }));
+    const heavyDms = Digest.build({ ...fewDms, messages: { ...fewDms.messages, sent: 15000,
+      ownTexts: Array.from({ length: 15000 }, (_, i) => ({ text: 'A message of my own, a sentence or two about the plan, number ' + i + ' ' + 'w'.repeat(100), ts: 1500000000 + i * 3600, thread: i % 40 })) } },
+      { includeMessages: true });
+    check('but conversations never spill into the public pool: a heavy inbox stays at its 46,000',
+      Digest.poolSizes(heavyDms).conversations.total <= 46000 && Digest.poolSizes(heavyDms).public.total > 30000,
+      JSON.stringify(Digest.poolSizes(heavyDms)));
+  }
   // The tier is read off the digest: a source unticked at the review does not count.
   check('a source that is in counts; one emptied at the review does not',
     Digest.carriesSecondSource({ whatsapp: { chats: [{}] } }) &&
@@ -5188,16 +5219,19 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const capped = Digest.build(ig, { includeMessages: true });
     const filled = buildFilled(ig, { includeMessages: true, fill: true });
     const added = filled.directMessages.ownMessageSample.length - capped.directMessages.ownMessageSample.length;
-    check('with room under the line, the standard read takes more of the reader\'s own messages and captions',
-      added > 0 && filled.samples.captions.length >= capped.samples.captions.length,
+    // The messages fill their pool first, and the captions give back what
+    // they had borrowed of it (see "spare room flows one way").
+    check('with room under the line, the standard read takes more of the reader\'s own messages, conversations first',
+      added > 0 && filled.samples.captions.length > 150,
       JSON.stringify({ capped: [capped.directMessages.ownMessageSample.length, capped.samples.captions.length],
         filled: [filled.directMessages.ownMessageSample.length, filled.samples.captions.length] }));
     // Each pool on its own, at Instagram alone's tier: the messages close to
     // its 46,000, the captions to its 32,000.
     const filledPools = Digest.poolSizes(filled);
-    check('and fills each pool close to its ceiling without passing it',
+    const filledSpare = 46000 - filledPools.conversations.total;
+    check('and fills each pool close to its ceiling without passing it, public with what conversations left',
       Digest.evidenceChars(filled) <= 82000 && filledPools.conversations.total <= 46000 && filledPools.conversations.total > 46000 * 0.95 &&
-        filledPools.public.total <= 32000 && filledPools.public.total > 32000 * 0.9,
+        filledPools.public.total <= 32000 + filledSpare && filledPools.public.total > 32000 * 0.9,
       JSON.stringify(filledPools));
     check('the extra it took is recorded and never sent',
       filled.__fill && filled.__fill.ownMessages === capped.directMessages.ownMessageSample.length &&
@@ -5296,11 +5330,14 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const sameList = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     check('the base digest is full: the conversations pool near its 72,000, Instagram\'s public part near its 40,000',
       before.conversations.total > 72000 * 0.9 && before.conversations.total <= 72000 &&
-        before.public.total > 40000 * 0.9 && before.public.total <= 40000 &&
+        before.public.total > 40000 * 0.9 && before.public.total <= 40000 + (72000 - before.conversations.total) &&
         before.searches.total <= 8000 && Digest.evidenceChars(base) <= Digest.budgetFor(base), JSON.stringify(before));
     // Public: Instagram's 40,000 left alone, Facebook in the 30,000 above it.
-    check('Facebook goes into the public pool\'s room above Instagram, which keeps every caption',
-      sameList(added.samples, base.samples) && sameList(added.mostLikedAccounts, base.mostLikedAccounts) &&
+    // Instagram keeps its 40,000; only what it had borrowed of the
+    // conversations' room goes back, now the chats and Messenger fill it.
+    check('Facebook goes into the public pool\'s room above Instagram, which keeps its 40,000',
+      after.public.instagram >= 39000 && after.public.instagram <= 40000 + 1000 &&
+        added.samples.captions.length >= base.samples.captions.length - 10 && sameList(added.mostLikedAccounts, base.mostLikedAccounts) &&
         sameList(added.google, base.google) && after.public.facebook > 25000 && after.public.total <= 70000,
       JSON.stringify(after.public));
     // Conversations: the chats go first, and the Instagram DMs and Messenger

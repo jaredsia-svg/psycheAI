@@ -5641,6 +5641,19 @@ reads the tier the same way. A digest built with a second source fills Instagram
 premium read keeps its own pools for every reader. A heavy Instagram-only account's 200 captions now
 just pass the 32,000, so its captions are cut to about 180.
 
+### Spare room flows one way: conversations to public, never back
+
+Room the conversations pool leaves unused goes to the public pool; the reverse never happens
+(`conversationsSpare`, `instagramPublicLimit` in `docs/digest.js`). Public evidence is broad and is what
+the card mostly describes, so it may dominate a digest; one or two heavy conversations should not. The
+conversations pool is trimmed first, then the public pool is held to its ceiling plus that spare (and
+Instagram's own share of it grows by the same spare), so a chat added later takes its room back from the
+public pool before anything of its own is cut. `buildFilled` fills the messages first, then the captions
+into Instagram's share plus the spare. The line does not move — the spill is only room that would sit
+empty — and Google's searches neither give nor take. Measured: Instagram alone with few DMs, public
+72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
+the public pool gives back what it borrowed.
+
 ### Instagram's steps stay inside the app
 
 Step 1 no longer sends the reader to an outside link — a link to another site is one more thing to
@@ -5648,8 +5661,10 @@ trust. The steps are now "Open your Instagram app > Go to your Profile > tap the
 Accounts Centre", then "Tap Your information and permissions > Export your information > Create export >
 your Instagram account > Export to device", the same in the illustrated guide (whose first screenshot is
 captioned "Settings → tap Accounts Centre") and on `/download-instagram-data`, which also lost its "Open
-Download your information" button and its computer answer's link. The three screen names still show their
-screenshots on hover or tap (`mountPeeks`).
+Download your information" button and its computer answer's link. Every screen name in the steps now
+shows its screenshot on hover or tap (`mountPeeks`): Accounts Centre, Your information and permissions,
+Export your information, Create export and Export to device their own, and All time, JSON and Lower the
+Confirm your export screen, where those three rows are ringed.
 
 ### Privacy wording: no access, and the four-hour hold explained
 
