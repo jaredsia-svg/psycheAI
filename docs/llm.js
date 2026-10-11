@@ -34,10 +34,10 @@
     // that the work may already be done, because a retry inside the result
     // cache's window returns the finished report for free.
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-      return new Error('Your device is offline. Reconnect and try again — your data is still loaded.');
+      return new Error('Your device is offline. Reconnect and try again – your data is still loaded.');
     }
     return new Error('The connection dropped before the analysis came back. ' +
-      'Try again — if it had already finished, you will get it straight away.');
+      'Try again – if it had already finished, you will get it straight away.');
   }
 
   /**
@@ -141,7 +141,7 @@
       throw new Error('This request is missing a valid one-time token. Reload the page and try again.');
     }
     throw new Error('The connection dropped before the analysis came back. ' +
-      'Try again — if it had already finished, you will get it straight away.');
+      'Try again – if it had already finished, you will get it straight away.');
   }
 
   async function postOnce(path, body, retryOnDrop) {
@@ -324,7 +324,7 @@
         failures += 1;
         if (failures > POLL_FAILURES_TOLERATED) {
           throw new Error('The connection dropped before the analysis came back. ' +
-            'Try again — if it had already finished, you will get it straight away.');
+            'Try again – if it had already finished, you will get it straight away.');
         }
         continue;
       }

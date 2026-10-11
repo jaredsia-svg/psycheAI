@@ -4337,3 +4337,31 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 /* My Report has no card at its head: its display: grid would beat [hidden]. */
 #view-profile .profile-top[hidden] { display: none; }
+
+/* The slim offer of the Psyche Report under the navigation (app.js,
+   refreshReportPromo): one line, small, a tap away from the offer itself. */
+.report-promo {
+  display: flex; align-items: center; justify-content: center; gap: .25rem;
+  max-width: var(--page-w); margin: .5rem auto 0; padding: 0 16px;
+}
+.report-promo[hidden] { display: none; }
+.report-promo-go {
+  flex: 0 1 auto; display: inline-flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: .15rem .4rem;
+  font: inherit; font-size: .82rem; line-height: 1.35; color: var(--ink); cursor: pointer;
+  background: var(--accent-soft); border: 1px solid var(--line); border-radius: 999px; padding: .38rem .9rem;
+}
+.report-promo-go:hover { border-color: var(--accent); }
+.report-promo-go:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.report-promo-cta { color: var(--accent); font-weight: 650; white-space: nowrap; }
+.report-promo-close {
+  flex: none; font: inherit; font-size: .8rem; line-height: 1; color: var(--ink-soft);
+  background: none; border: 0; padding: .4rem; cursor: pointer; border-radius: 999px;
+}
+.report-promo-close:hover { color: var(--ink); }
+/* Reached from the bar above: clear of the sticky navigation. */
+.full-report-locked { scroll-margin-top: 72px; }
+/* One line on a phone: the offer alone. */
+@media (max-width: 520px) {
+  .report-promo-text { display: none; }
+  .report-promo-cta::before { content: '✨ '; }
+}

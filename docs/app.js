@@ -1486,7 +1486,12 @@
     if (!$('#view-profile').hidden) renderProfile();
   }
 
+  // The job a call in this very tab is waiting on. Coming back to the tab
+  // must not rejoin it a second time (see resumeRunningJob): that restarted
+  // the seconds counter at zero and started a second poll on the same job.
+  let liveJobKey = null;
   function rememberJob(key, kind, auth, context) {
+    liveJobKey = key;
     const ownName = ownNameFrom();
     store.write(KEYS.job, {
       key,
@@ -1501,6 +1506,7 @@
   }
 
   function clearJob() {
+    liveJobKey = null;
     store.remove(KEYS.job);
   }
 
@@ -2149,7 +2155,7 @@
       who: [I.characterChip, S.titles.patterns, 'MBTI', TEXT.bigFive, S.titles.wellness],
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
       connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou, S.titles.work],
-      together: [S.titles.development, S.titles.plan],
+      together: [S.titles.development],
     };
     return '<div class="insight-tier insight-free">' +
       '<div class="insight-free-copy">' +
@@ -2478,6 +2484,7 @@
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
     syncNav();
+    refreshReportPromo();
     // The psyche card is scaled from the width of the column it sits in, and a
     // hidden view measures zero — so a card rendered before its view was shown
     // would be scaled to nothing. Re-fit here, where the width is real.
@@ -2807,7 +2814,7 @@
       renderProfile(); show('profile'); return;
     }
     if (target === 'scan') {
-      if (!state.profile) return showUploadError('Build your own profile first — a report needs two people.');
+      if (!state.profile) return showUploadError('Build your own profile first – a report needs two people.');
       renderScan(); show('scan'); return;
     }
     if (target === 'about') { renderAbout(); show('about'); return; }
@@ -3039,7 +3046,7 @@
           whatsappMax: 3,
         });
       } catch (error) {
-        showUploadError((error && error.message) || 'Could not read that export.');
+        showUploadError((error && error.message) || 'Could not read that file.');
         return;
       }
       // Back or Escape at the popout: nothing touched, and the reader is put
@@ -3656,15 +3663,16 @@
   // The model call has no progress to report, so show elapsed time instead of
   // a bar that lies.
   let elapsedTimer = null;
-  function startElapsed(label) {
-    const started = Date.now();
+  // `since`: when the work began, so a rejoined job keeps counting from then.
+  function startElapsed(label, since) {
+    const started = Number.isFinite(since) && since <= Date.now() ? since : Date.now();
     $('#progress-bar').classList.add('indeterminate');
     stopElapsed();
     elapsedTimer = setInterval(() => {
       const seconds = Math.round((Date.now() - started) / 1000);
-      $('#progress-label').textContent = label + ' — ' + seconds + 's';
+      $('#progress-label').textContent = label + ' – ' + seconds + 's';
     }, 1000);
-    $('#progress-label').textContent = label + ' — 0s';
+    $('#progress-label').textContent = label + ' – ' + Math.round((Date.now() - started) / 1000) + 's';
   }
   function stopElapsed() {
     if (elapsedTimer) { clearInterval(elapsedTimer); elapsedTimer = null; }
@@ -3906,9 +3914,9 @@
       // here, where Skip is not shown at all. Set on every open rather than
       // once, because the same markup serves both callers.
       $('#supplement-dialog-blurb').textContent = requireAtLeastOne
-        ? 'Add a Google or Facebook export and PsycheAI will write your report again, using it '
+        ? 'Add your Google or Facebook data and PsycheAI will write your report again, using it '
           + 'alongside the Instagram data it already has.'
-        : 'You can add a Google or Facebook export to deepen the analysis, or skip straight to it.';
+        : 'You can add your Google or Facebook data to deepen the analysis, or skip straight to it.';
       dialog.querySelector('.supplement-help').open = false;
       // Back stays live mid-read, so a reader can leave with a bar still
       // running and a read still resolving into a dialog nobody is looking at.
@@ -4007,7 +4015,7 @@
       '<table><thead><tr><th>Category</th><th>Status</th><th>Detail</th></tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table>' +
       '<h2>Full digest</h2>' +
-      '<p class="muted">The exact object that is sent. Nothing accompanies it — no photographs, no ' +
+      '<p class="muted">The exact object that is sent. Nothing accompanies it – no photographs, no ' +
       'files, nothing from your archive that is not written out below.</p>' +
       '<p class="muted digest-size">' + esc(sizeNote) + '</p>' +
       '<pre>' + esc(JSON.stringify(preview, null, 2)) + '</pre>' +
@@ -4063,9 +4071,9 @@
     const n = (count, one, many) => count + ' ' + (count === 1 ? one : many);
     const rows = [
       ['review-captions', 'includeCaptions', captionsCount + commentsCount,
-        'Your captions & comments', 'Your captions & comments — none found',
+        'Your captions & comments', 'Your captions & comments – none found',
         n(captionsCount, 'caption', 'captions') + ', ' + n(commentsCount, 'comment', 'comments') +
-        ' — a sample of your own words. Needed for any read at all.'],
+        ' – a sample of your own words. Needed for any read at all.'],
       ['review-activity', 'includeActivity', 1,
         'Activity & timing', 'Activity & timing',
         'Post counts, likes, saves and when you tend to be active. Numbers only, no text.'],
@@ -4082,23 +4090,23 @@
       // mirror image of the mistake the note below warns about, and the worse
       // direction to make it in.
       ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount + likedTagsCount,
-        'Posts you liked', 'Posts you liked — none found',
+        'Posts you liked', 'Posts you liked – none found',
         likedCaptionsCount + likedTagsCount ? n(likedCaptionsCount, 'caption', 'captions') + ' from posts you liked in ' +
           'the last year' + (likedTagsCount ? ', and the ' + n(likedTagsCount, 'hashtag', 'hashtags') +
-          ' that came up most across all of them' : '') + ' — ' +
+          ' that came up most across all of them' : '') + ' – ' +
           'written by other people, kept because what you reach for says something about you.' :
-          'This export did not include captions on the posts you liked.'],
+          'Your data did not include captions on the posts you liked.'],
       ['review-accounts', 'includeAccounts', engagedCount,
-        'Accounts you engage with', 'Accounts you engage with — none found',
+        'Accounts you engage with', 'Accounts you engage with – none found',
         n(engagedCount, 'name', 'names') + ' among who you like, save and comment on most.'],
       ['review-topics', 'includeTopics', topicsCount,
-        'Instagram’s own inferred topics', 'Instagram’s own inferred topics — none found',
+        'Instagram’s own inferred topics', 'Instagram’s own inferred topics – none found',
         n(topicsCount, 'topic', 'topics') + ' Instagram has already guessed you are interested in.'],
       ['review-dms', 'includeMessages', dmCount,
-        'Direct messages', 'Direct messages — none found',
+        'Direct messages', 'Direct messages – none found',
         dmCount ? dmCount + ' of your own ' + (dmCount === 1 ? 'message' : 'messages') + ' sampled out of ' + dmTotal + ' total. Some show a short, ' +
           'anonymised line of the message they answered; nothing else from the other side is included.' :
-          'This export did not include any direct messages to sample.'],
+          'Your data did not include any direct messages to sample.'],
     ];
 
     // Supplementary rows are appended only when that source was actually
@@ -4114,28 +4122,28 @@
       const visits = g.counts.visits || 0;
       rows.push(
         ['review-yt-watched', 'includeYouTube', watched,
-          'YouTube watch history', 'YouTube watch history — none found',
+          'YouTube watch history', 'YouTube watch history – none found',
           watched ? g.topChannels.length + ' channels you watch most, from ' + watched +
             ' videos, plus a sample of titles. Not the full history.' :
-            'No watch history was found in this export.'],
+            'No watch history was found in your data.'],
         ['review-yt-searches', 'includeYouTubeSearches', ytSearches,
-          'YouTube searches', 'YouTube searches — none found',
+          'YouTube searches', 'YouTube searches – none found',
           ytSearches ? ytSearches + ' of your most repeated YouTube searches.' :
-            'No YouTube searches were found in this export.'],
+            'No YouTube searches were found in your data.'],
         ['review-google-searches', 'includeGoogleSearches', gSearches,
-          'Google searches', 'Google searches — none found',
+          'Google searches', 'Google searches – none found',
           gSearches ? g.topGoogleSearches.length + ' of your most repeated searches out of ' +
             gSearches + ', plus a sample of others.' :
-            'No Google searches were found in this export.'],
+            'No Google searches were found in your data.'],
         // The list of site names is gone — on a real export it was
         // "google.com" 18,255 times and almost nothing else — so what this row
         // now offers is two numbers. Still its own switch, because a count of
         // how much somebody browses is still something to be asked about.
         ['review-chrome', 'includeChrome', visits,
-          'Chrome browsing history', 'Chrome browsing history — none found',
+          'Chrome browsing history', 'Chrome browsing history – none found',
           visits ? visits + ' visits across ' + (g.counts.distinctDomains || 0) +
             ' different sites, as two numbers. No site name, page, address or time.' :
-            'No browsing history was found in this export.'],
+            'No browsing history was found in your data.'],
       );
     }
 
@@ -4146,19 +4154,19 @@
       const fbMessages = fb.ownMessageSample.length;
       rows.push(
         ['review-fb-posts', 'includeFacebookPosts', fbWriting,
-          'Facebook posts & comments', 'Facebook posts & comments — none found',
+          'Facebook posts & comments', 'Facebook posts & comments – none found',
           fbWriting ? n(fb.postSample.length, 'post', 'posts') + ' and ' + n(fb.commentSample.length, 'comment', 'comments') +
-            ' — a sample of your own words on Facebook.' :
-            'No Facebook posts or comments were found in this export.'],
+            ' – a sample of your own words on Facebook.' :
+            'No Facebook posts or comments were found in your data.'],
         ['review-fb-connections', 'includeFacebookConnections', fbFriends,
-          'Facebook friends & follows', 'Facebook friends & follows — none found',
+          'Facebook friends & follows', 'Facebook friends & follows – none found',
           fbFriends ? fbFriends + ' names, sampled evenly across the list.' :
-            'No Facebook connections were found in this export.'],
+            'No Facebook connections were found in your data.'],
         ['review-fb-messages', 'includeFacebookMessages', fbMessages,
-          'Facebook Messenger', 'Facebook Messenger — none found',
+          'Facebook Messenger', 'Facebook Messenger – none found',
           fbMessages ? fbMessages + ' of your own messages sampled out of ' + fb.counts.messages +
             ' total. Some show a short, anonymised line of the message they answered; nothing else from the other side is included.' :
-            'No Messenger history was found in this export.'],
+            'No Messenger history was found in your data.'],
       );
     }
 
@@ -4169,7 +4177,7 @@
       const chats = (wa.chats || []).length;
       const waOwn = (wa.ownMessageSample || []).length;
       rows.push(['review-whatsapp', 'includeWhatsApp', chats,
-        'WhatsApp chats', 'WhatsApp chats — none found',
+        'WhatsApp chats', 'WhatsApp chats – none found',
         chats + (chats === 1 ? ' chat' : ' chats') + ': ' + waOwn + ' of your own messages, plus counts and timings. ' +
           'Some show a short, anonymised line of the message they answered; otherwise other people\u2019s messages ' +
           'were only counted, and nobody is named.']);
@@ -4262,11 +4270,11 @@
     const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
     flash('#upload-error', '');
     if (!chosen.length) {
-      flash('#upload-error', 'That does not look like a .zip file. Instagram sends your export as one or more .zip archives.');
+      flash('#upload-error', 'That does not look like a .zip file. Instagram sends your data as one or more .zip files.');
       return;
     }
     if (!state.server.ready) {
-      flash('#upload-error', 'The server is not ready to analyse yet — see the note above.');
+      flash('#upload-error', 'The server is not ready to analyse yet – see the note above.');
       return;
     }
 
@@ -4851,7 +4859,7 @@
       try {
         collected = await askDataSources({ cardNote: true });
       } catch (error) {
-        flash('#profile-alert', (error && error.message) || 'Could not read that export.');
+        flash('#profile-alert', (error && error.message) || 'Could not read that file.');
         return;
       }
       if (!collected) return; // Back at the popout — nothing touched.
@@ -5165,6 +5173,8 @@
   async function resumeRunningJob() {
     const job = runningJob();
     if (!job || resuming) return false;
+    // Already being waited on by a call in this tab: nothing to rejoin.
+    if (job.key && job.key === liveJobKey) return false;
     // A comparison needs the other person's card to render at all, and a paid
     // section needs a profile to attach to. Neither survives without them, so
     // a record missing what its kind requires is dropped rather than resumed
@@ -5181,8 +5191,9 @@
       ? modelName() + ' is comparing you'
       : modelName() + ' is reading your profile';
     $('#working-note').textContent = TEXT.resumingJob;
+    // Counting from when the job began, not from the return to it.
     startElapsed(comparing ? 'Assessing ' + state.profile.card.name + ' and ' + job.other.name
-      : 'Analysing');
+      : 'Analysing', job.at);
     show('working');
     // So the retry offer has something to repeat if this job turns out to be
     // gone. Only for the free report: the other two have offers of their own
@@ -7194,6 +7205,8 @@
   }
 
   function renderProfile() {
+    // An unlock that lands without a change of view still takes the bar away.
+    requestAnimationFrame(refreshReportPromo);
     const profile = state.profile;
     if (!profile) return;
     const report = profile.report;
@@ -8166,7 +8179,7 @@
       try {
         collected = await askDataSources({ title: TEXT.premiumSourcesTitle, blurb: TEXT.premiumSourcesBlurb, cardNote: true });
       } catch (error) {
-        flash('#profile-alert', (error && error.message) || 'Could not read that export.');
+        flash('#profile-alert', (error && error.message) || 'Could not read that file.');
         return null;
       }
       if (!collected) return null;
@@ -9213,7 +9226,7 @@
     const auth = {};
 
     $('#working-title').textContent = modelName() + ' is syncing you';
-    $('#working-note').textContent = 'Psyche Sync. Two profile cards were sent — nothing else.';
+    $('#working-note').textContent = 'Psyche Sync. Two profile cards were sent – nothing else.';
     startElapsed('Assessing ' + state.profile.card.name + ' and ' + other.name);
     show('working');
 
@@ -9472,7 +9485,7 @@
     $('#about-status').textContent = state.server.unreachable
       ? 'This page cannot reach the PsycheAI server right now.'
       : state.server.mock
-        ? 'This server is running in mock mode — analyses are canned, and no API calls are made.'
+        ? 'This server is running in mock mode – analyses are canned, and no API calls are made.'
         : state.server.ready
           ? ''
           : 'Analyses are unavailable right now. Please try again later.';
@@ -9731,12 +9744,13 @@
     const closed = store.read(KEYS.syncBarClosed, []) || [];
     const fresh = invites.some(invite => !closed.includes(invite.payload));
     box.hidden = !invites.length || !fresh || reportPageOn();
-    if (!invites.length) return;
+    if (!invites.length) { refreshReportPromo(); return; }
     const names = invites.map(i => firstName(i.name) || i.name);
     $('#sync-invite-title').textContent = invites.length === 1 ? TEXT.syncInviteTitle(names[0]) : TEXT.syncInviteTitleMany(names);
     $('#sync-invite-open').textContent = TEXT.syncInviteOpen;
     // How many are waiting, in the ring.
     $('#sync-invite-count').textContent = String(invites.length);
+    refreshReportPromo();
   }
   /** Syncs list: each friend whose link is waiting, with a Sync button of their own. */
   function syncWaitingHtml() {
@@ -9751,6 +9765,47 @@
           esc(TEXT.syncInviteOpen) + '</button></div></li>';
     }).join('') + '</ul>';
   }
+  // The slim bar offering the Psyche Report, once a free card exists: on the
+  // front page, My Psyche, My Syncs and the FAQ, not on My Report or while an
+  // analysis runs. Never at the same time as a friend's sync invite: it waits
+  // until that is closed or the sync is done. Closed with its ✕, it stays
+  // away for the rest of the visit.
+  const PROMO_VIEWS = ['welcome', 'profile', 'scan', 'about'];
+  let promoClosed = false;
+  try { promoClosed = sessionStorage.getItem('psycheai_promo_closed') === '1'; } catch (error) { /* private window */ }
+  function syncInviteShowing() {
+    const invites = state.profile ? allInvites() : [];
+    const closed = store.read(KEYS.syncBarClosed, []) || [];
+    return invites.some(invite => !closed.includes(invite.payload));
+  }
+  function refreshReportPromo() {
+    const bar = $('#report-promo');
+    if (!bar) return;
+    const view = VIEWS.find(name => !$('#view-' + name).hidden);
+    const offered = Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length;
+    bar.hidden = promoClosed || !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing();
+    if (bar.hidden) return;
+    $('#report-promo-go').innerHTML = '<span class="report-promo-text">' + esc(TEXT.reportPromo) + '</span> ' +
+      '<strong class="report-promo-cta">' + esc(TEXT.reportPromoCta) + '</strong>';
+  }
+  $('#report-promo-go').addEventListener('click', () => {
+    go('profile');
+    // The offer itself, on My Psyche, once it is drawn — and after the Back
+    // entry the move to My Psyche gives back has landed, since that lands
+    // later and puts the page at its top (show, popstate).
+    const toOffer = () => {
+      const offer = document.querySelector('#view-profile .full-report-locked');
+      if (offer) offer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    requestAnimationFrame(toOffer);
+    setTimeout(toOffer, 350);
+  });
+  $('#report-promo-close').addEventListener('click', () => {
+    promoClosed = true;
+    try { sessionStorage.setItem('psycheai_promo_closed', '1'); } catch (error) { /* private window */ }
+    refreshReportPromo();
+  });
+
   $('#sync-invite-close').addEventListener('click', () => {
     store.write(KEYS.syncBarClosed, allInvites().map(invite => invite.payload));
     refreshSyncInvite();

@@ -5654,6 +5654,48 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### A slim Psyche Report bar once the free card is in
+
+Once a reader has a free card that is not yet unlocked, one slim line under the navigation offers the
+report: "✨ See the full story behind your card · Unlock your Psyche Report →", and on a phone only the
+offer, so it stays one line. It shows on the front page, My Psyche, My Syncs and the FAQ. It is not shown
+on My Report, while an analysis runs, or once anything is unlocked. A tap opens My Psyche at the
+"Unlock your Psyche Report" section, scrolled clear of the sticky navigation. Its ✕ puts it away for the
+rest of the visit (sessionStorage, so it is back next visit). It never shows beside a friend's sync
+invite: while a friend's link is waiting, that comes first, and the bar appears once the invite is closed
+or the sync is done (`refreshReportPromo`, `syncInviteShowing` in `docs/app.js`).
+
+### "Your data", never "the export"
+
+A report said "the export reveals you are a …", which reads as a file talking about the reader. Everything
+a reader sees now calls the exported file "your data" (or names it: "your Instagram data", "your WhatsApp
+chats"): the app's copy, error messages, the review sheet's empty rows, the PDF's subtitle, the FAQ, the
+privacy and terms pages and the guides. The model is told the same in every prompt that writes for the
+reader (`DATA_WORDS` in `lib/prompts.js`, in the free, full and premium prompts' hard limits), and the
+server rewrites any "the/your/an (Instagram) export" or "archive" that still comes back (`readerText`
+in `server.js`, beside the en-dash pass). Instagram's, Google's and WhatsApp's own button names — Export
+your information, Create export, Export to device, Start export, Export once, Export chat — are left as
+they are, because they are the words the reader has to find on screen.
+
+### The waiting counter keeps counting
+
+Coming back to the tab during an analysis restarted "Analysing – 0s". The return to the tab rejoined the
+job the page was already waiting on (`resumeRunningJob` on `visibilitychange`), which restarted the
+counter and started a second poll on the same job. A job this tab's own call is waiting on is now never
+rejoined (`liveJobKey`), and a job that really is rejoined after a reload counts from when it began
+(`startElapsed(label, job.at)`).
+
+### En dashes, not em dashes, and a shorter Part 4 blurb
+
+Every em dash (—) a reader sees is now an en dash (–). That covers the site's own text: the strings in
+`docs/copy.js`, `docs/app.js` and `docs/pdf.js`, the text of `docs/index.html` and the static pages, the
+in-browser error messages and the server's own user-facing messages, including the Stripe product
+labels. The model's output is handled on its way back: `enDashes` in `server.js` converts every dash in
+the card, the report and the Sync read. Code comments, and the digest's own notes to the model, keep
+theirs. On the front page, "Your Psyche Report"'s Part 4 row now reads "A development plan built from
+everything above." It no longer mentions the plan to tick off or how strengths behave under pressure, and
+its section tags no longer list "Your plan". The report itself still has both sections.
+
 ### Closeness on the card is never a gate
 
 A real card read "fierce, generous loyalty to the few people who pass your screening". Every word was

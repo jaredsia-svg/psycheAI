@@ -41,7 +41,7 @@
     '€': 128, '‚': 130, 'ƒ': 131, '„': 132, '…': 133,
     '†': 134, '‡': 135, 'ˆ': 136, '‰': 137, 'Š': 138,
     '‹': 139, 'Œ': 140, 'Ž': 142, '‘': 145, '’': 146,
-    '“': 147, '”': 148, '•': 149, '–': 150, '—': 151,
+    '“': 147, '”': 148, '•': 149, '–': 150, '–': 151,
     '˜': 152, '™': 153, 'š': 154, '›': 155, 'œ': 156,
     'ž': 158, 'Ÿ': 159,
   };
@@ -1885,7 +1885,7 @@
     coverContents(doc, out, cardBottom);
 
     return serialise(doc, (who.name || 'Your') + '\u2019s psyche',
-      'Personality analysis from an Instagram data export');
+      'Personality analysis from your Instagram data');
   }
 
   // ---------- the structured report layout ----------
@@ -3121,7 +3121,7 @@
 
     storyContents(doc, out, cardBottom);
     return serialise(doc, (who.name || 'Your') + '’s psyche',
-      'Personality analysis from an Instagram data export');
+      'Personality analysis from your Instagram data');
   }
 
   /**
@@ -3224,7 +3224,7 @@
       doc = laySync(source, stamp, a, b, fit);
       if (doc.pages.length === 1) break;
     }
-    return serialise(doc, a + ' & ' + b + ' — Psyche Sync', 'Psyche Sync from two PsycheAI profiles');
+    return serialise(doc, a + ' & ' + b + ' – Psyche Sync', 'Psyche Sync from two PsycheAI profiles');
   }
 
   function laySync(source, stamp, a, b, fit) {

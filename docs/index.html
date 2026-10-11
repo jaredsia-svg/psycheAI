@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PsycheAI — free personality test from your Instagram data</title>
+<title>PsycheAI – free personality test from your Instagram data</title>
 <meta name="description" content="No questionnaire. PsycheAI reads your own Instagram data for a free Psyche Card: MBTI, Big Five, love languages and the character you're most like.">
 <!-- One address for everything: psycheai.io, whichever host served the page. -->
 <link rel="canonical" href="https://psycheai.io/">
@@ -14,14 +14,14 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PsycheAI">
 <meta property="og:url" content="https://psycheai.io/">
-<meta property="og:title" content="PsycheAI — your personality, read from your Instagram">
+<meta property="og:title" content="PsycheAI – your personality, read from your Instagram">
 <meta property="og:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Your first Psyche Card is free.">
 <meta property="og:image" content="https://psycheai.io/media/og-card.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="A sample Psyche Card: most like Mulan, with MBTI, Big Five, values, interests and love languages">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="PsycheAI — your personality, read from your Instagram">
+<meta name="twitter:title" content="PsycheAI – your personality, read from your Instagram">
 <meta name="twitter:description" content="MBTI, Big Five, love languages and the character you're most like. No questionnaire. Free.">
 <meta name="twitter:image" content="https://psycheai.io/media/og-card.jpg">
 <link rel="manifest" href="manifest.webmanifest">
@@ -38,7 +38,7 @@
       "url": "https://psycheai.io/",
       "applicationCategory": "LifestyleApplication",
       "operatingSystem": "Any (web browser)",
-      "description": "A personality analysis read from your own Instagram, Google and Facebook data exports, with no questionnaire: MBTI, Big Five, love languages, values, interests and the character you are most like, plus Psyche Sync: how in sync you are with your friends.",
+      "description": "A personality analysis read from your own Instagram, Google and Facebook data, with no questionnaire: MBTI, Big Five, love languages, values, interests and the character you are most like, plus Psyche Sync: how in sync you are with your friends.",
       "offers": [
         { "@type": "Offer", "name": "Psyche Card", "price": "0", "priceCurrency": "USD" },
         { "@type": "Offer", "name": "Full premium report", "price": "5", "priceCurrency": "USD" }
@@ -81,6 +81,13 @@
     <a href="#" data-nav="about" id="nav-about">FAQ</a>
   </div>
 </nav>
+<!-- Once a reader has a free card: one slim line offering the Psyche Report,
+     on every page but My Report. Not while a friend's link waits to sync
+     (app.js, refreshReportPromo). -->
+<div class="report-promo no-print" id="report-promo" hidden>
+  <button class="report-promo-go" id="report-promo-go" type="button"></button>
+  <button class="report-promo-close" id="report-promo-close" type="button" aria-label="Close">✕</button>
+</div>
 
 <main class="container">
 
@@ -313,7 +320,7 @@
          you visited", which was not true — the host sees an IP address, and
          PsycheAI counts daily totals — so that promise is gone. -->
     <p class="eyebrow"><strong>Your Instagram file never leaves your device.</strong> Only a de-identified
-      summary, which you check first, is sent to Gemini or Claude to write your card — and PsycheAI keeps
+      summary, which you check first, is sent to Gemini or Claude to write your card – and PsycheAI keeps
       no copy of it or your report. No sign-up, no cookies, no trackers or third-party analytics.
       <a href="/privacy">How your data is handled</a></p>
 
@@ -662,10 +669,10 @@
 
     <h3>How long does it take?</h3>
     <p>Instagram often takes a few hours to prepare the data zip file. The analysis takes a few
-      minutes. Request the export first and come back when the email arrives.</p>
+      minutes. Request your data first and come back when the email arrives.</p>
 
     <h3>What file do I need?</h3>
-    <p>Your Instagram export as a .zip, in JSON format (not HTML).
+    <p>Your Instagram data as a .zip, in JSON format (not HTML).
       <a href="#" id="faq-guide-open">See the illustration</a> for every step.</p>
   </div>
 
@@ -694,7 +701,7 @@
       PsycheAI keeps no copy of it.</p>
 
     <h3>Can anyone else access my data?</h3>
-    <p>No. There is no sign-up, no password to create and no email address. Your export, the digest and
+    <p>No. There is no sign-up, no password to create and no email address. Your data, the digest and
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
     <p>Not even PsycheAI’s administrator can see your data or your results: there is no admin view of
       them, and nothing from your digest or report is stored or logged.</p>
@@ -705,9 +712,9 @@
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only totals for each day: how many Psyche Cards, full reports and Psyche Syncs were
-      made, how many cards followed a friend’s link, how many promo codes were used, and — for an
-      address a creator shares (its <code>?via=</code> part, which this device keeps for 14 days) — how
-      many people arrived on it and how far they got (export loaded, card made, full report). Other
+      made, how many cards followed a friend’s link, how many promo codes were used, and – for an
+      address a creator shares (its <code>?via=</code> part, which this device keeps for 14 days) – how
+      many people arrived on it and how far they got (data loaded, card made, full report). Other
       visits are not counted. Nothing in those totals identifies you, your device or anything you
       uploaded.</p>
 
@@ -726,27 +733,27 @@
     <h3>How accurate is it?</h3>
     <p>It is a large language model reading traces and patterns in your data, not a lab result. You
       can raise the report’s confidence by adding more sources. Instagram and Google together are
-      the ideal combination — Instagram reads your outward persona, the self you present; Google
+      the ideal combination – Instagram reads your outward persona, the self you present; Google
       reads your inward self, what you search and watch when no one is looking.</p>
 
     <h3>What does it cost?</h3>
     <p>Your first Psyche Card is free, and so is every Psyche Sync. Running your Psyche
-      Card again is <span data-price="analysis">US$2</span>. The full premium report — every section explained, plus your wellbeing,
-      attachment style, ideal partner, career coaching and development plan — is a single
+      Card again is <span data-price="analysis">US$2</span>. The full premium report – every section explained, plus your wellbeing,
+      attachment style, ideal partner, career coaching and development plan – is a single
       <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
 
     <h3>How does Psyche Sync work?</h3>
     <p>You get one personal link, also printed on your Psyche Card as a QR code. Send it to a
       connection: they see your Psyche Card and can make their own for free. Then one tap shows your
-      Psyche Sync — what clicks between you, where you differ, and how to relate better to each other.
+      Psyche Sync – what clicks between you, where you differ, and how to relate better to each other.
       It is free, about friendship only, never romance, and the result stays on their device unless
       they send it to you.</p>
-    <p>Your link carries only your card’s short summary, never your export, messages or report, and
+    <p>Your link carries only your card’s short summary, never your data, messages or report, and
       PsycheAI cannot read it. Every 3 people who make a card from your link, or 2 who buy the full
       report, earn you a free full report to use or gift.</p>
 
     <h3>How do I contact PsycheAI?</h3>
-    <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> — for questions, payment
+    <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> – for questions, payment
       problems or anything about your data. Any payment is refunded in full if you ask within 24 hours.
       The <a href="/privacy">privacy policy</a>, <a href="/terms">terms</a> and
       <a href="/refunds">refund policy</a> are each a page.</p>
@@ -916,23 +923,23 @@
       </li>
 
       <li class="guide-step">
-        <h3><span class="guide-num">3</span>Change three settings, then start the export</h3>
+        <h3><span class="guide-num">3</span>Change three settings, then start the download</h3>
         <ul class="guide-settings">
           <li>
             <span class="guide-setting-name">Date range</span> &rarr;
             <span class="guide-setting-value ui-label">All time</span>
-            <span class="guide-setting-why">&mdash; the whole history, not a recent slice</span>
+            <span class="guide-setting-why">&ndash; the whole history, not a recent slice</span>
           </li>
           <li class="is-warning">
             <span class="guide-setting-name">Format</span> &rarr;
             <span class="guide-setting-value ui-label">JSON</span>
-            <span class="guide-setting-why">&mdash; <strong>not HTML</strong>. An HTML export cannot
+            <span class="guide-setting-why">&ndash; <strong>not HTML</strong>. Data in HTML cannot
               be read at all, and you only find out hours later</span>
           </li>
           <li>
             <span class="guide-setting-name">Media quality</span> &rarr;
             <span class="guide-setting-value ui-label">Lower quality</span>
-            <span class="guide-setting-why">&mdash; your photos are never read, so full resolution
+            <span class="guide-setting-why">&ndash; your photos are never read, so full resolution
               is gigabytes for nothing</span>
           </li>
         </ul>
@@ -1043,7 +1050,7 @@
   <!-- Rewritten by askSupplement for the re-run path, where there is no Skip
        button and so nothing to skip to. Left as the first-upload wording here
        so the markup still reads correctly on its own. -->
-  <p class="muted" id="supplement-dialog-blurb">You can add a Google or Facebook export to deepen the
+  <p class="muted" id="supplement-dialog-blurb">You can add your Google or Facebook data to deepen the
     analysis, or skip straight to it.</p>
   <div class="mode-options">
     <!-- The reading bar lives on the row that is being read, rather than in one
@@ -1114,7 +1121,7 @@
      picker has to open synchronously from the row's own click. -->
 <dialog id="datasources-dialog" class="mode-dialog datasources-dialog" aria-labelledby="datasources-dialog-title">
   <h2 id="datasources-dialog-title">Add or change your data</h2>
-  <p class="muted" id="datasources-dialog-blurb">Load a fresh export to replace a source, or add one
+  <p class="muted" id="datasources-dialog-blurb">Load newer data to replace a source, or add one
     you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
   <div class="mode-options">
     <button class="mode-option" data-datasource="instagram" type="button">
@@ -1124,7 +1131,7 @@
              re-run replaces Instagram wholesale, so a reader who picks only
              part 1 of a split export replaces a complete archive with half of
              one. See dataSourcesFirstInstagram in copy.js. -->
-        <span class="muted">A new export .zip replaces it — select multiple files as needed.</span>
+        <span class="muted">A new .zip of your data replaces it – select multiple files as needed.</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1144,7 +1151,7 @@
     <button class="mode-option" data-datasource="facebook" type="button">
       <span class="mode-icon">📘</span>
       <span class="mode-body"><strong>Facebook</strong>
-        <span class="muted">Your Facebook export .zip</span>
+        <span class="muted">Your Facebook data .zip</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1156,7 +1163,7 @@
     <button class="mode-option" data-datasource="whatsapp" type="button">
       <span class="mode-icon">💬</span>
       <span class="mode-body"><strong><span class="mode-title">WhatsApp chats</span> <span class="mode-tag">(up to 3)</span></strong>
-        <span class="muted">Load up to 3 exported chats (.zip or .txt), one or several at a time</span>
+        <span class="muted">Load up to 3 chats (.zip or .txt), one or several at a time</span>
         <span class="mode-progress" hidden>
           <span class="progress slim"><span class="progress-bar"></span></span>
           <span class="mode-progress-label muted"></span>
@@ -1175,7 +1182,7 @@
        or Facebook data cannot always be carried forward automatically onto a
        replaced Instagram export. -->
   <p class="alert" id="datasources-instagram-note" hidden>Replacing Instagram starts your Google,
-    Facebook and WhatsApp data fresh too — reload them here as well if you want them included in this run.</p>
+    Facebook and WhatsApp data fresh too – reload them here as well if you want them included in this run.</p>
   <!-- At the unlock, over an existing card: the first tap on a source asks
        this before the file picker opens, once per opening. "Choose file" is a
        click of its own, so it can open the picker directly (a picker opened
@@ -1222,7 +1229,7 @@
            welcome page's "See illustration" opens, reachable from inside the
            popout so nobody has to close it and go hunting. -->
       <p class="help-illustrated"><a href="#" id="datasources-guide-open">See the illustrated
-        walkthrough</a> — every screen, with each tap ringed on it.</p>
+        walkthrough</a> – every screen, with each tap ringed on it.</p>
     </div>
   </details>
 
@@ -1298,7 +1305,7 @@
   <div class="btn-row">
     <button class="btn btn-ghost btn-block" id="analysis-error-close" type="button">Not now</button>
   </div>
-  <p class="fineprint">Your data is still loaded — nothing needs uploading again, and a report that
+  <p class="fineprint">Your data is still loaded – nothing needs uploading again, and a report that
     already finished will come straight back.</p>
 </dialog>
 
@@ -1345,7 +1352,7 @@
       <strong><button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
         data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">JSON</button> (not HTML)</strong>, and Media quality to
       <button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
-        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">Lower</button>. Start the export. Password is required.</li>
+        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">Lower</button>. Start the download. Password is required.</li>
   <li>Instagram emails a link, usually within a few hours. Download the .zip to this device and
       load it into PsycheAI.</li>
 </template>

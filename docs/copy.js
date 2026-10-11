@@ -213,8 +213,11 @@
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
     syncInviteTitle: () => 'You have a connection waiting to sync with you',
+    // The slim bar under the navigation once a free card exists.
+    reportPromo: '✨ See the full story behind your card',
+    reportPromoCta: 'Unlock your Psyche Report →',
     // Opening a friend's link that was already synced on this device.
-    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this connection') + ' — it is in your list below.',
+    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this connection') + ' – it is in your list below.',
     syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
@@ -224,7 +227,7 @@
     syncInviteTitleMany: () => 'You have connections waiting to sync with you',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
       : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' also sent you their cards') +
-      ' — you can sync with everyone once your card is ready.',
+      ' – you can sync with everyone once your card is ready.',
     inviteCardOpen: (name) => 'See ' + possessive(name || 'your connection') + ' Psyche Card full screen',
     // The one share message, everywhere: Share Card, Copy link, a sync's
     // result, the roast. It carries the reader's one link (myLinkUrl in
@@ -278,9 +281,9 @@
     valuesBeliefs: 'Values & Beliefs',
     valuesBeliefsSub: 'What you appear to hold to, and how firmly the data actually says so.',
     values: 'Values',
-    valuesEmpty: 'The export did not support any confident read here.',
+    valuesEmpty: 'Your data did not support any confident read here.',
     beliefs: 'Beliefs',
-    beliefsEmpty: 'Nothing in the export supported a confident read on beliefs — which is a ' +
+    beliefsEmpty: 'Nothing in your data supported a confident read on beliefs – which is a ' +
       'perfectly ordinary result.',
     confidenceSuffix: ' confidence',
 
@@ -294,7 +297,7 @@
     // that already carried two other things. `attachmentPrefix` still leads
     // the heading, so the style itself is what the reader sees first.
     attachment: 'Attachment style',
-    attachmentSub: 'How you are likely to behave when you are close to someone — a guess from ' +
+    attachmentSub: 'How you are likely to behave when you are close to someone – a guess from ' +
       'behaviour, shown with the working.',
     attachmentPrefix: 'Attachment: ',
     readFrom: 'Read from',
@@ -346,7 +349,7 @@
     // softened section they were not warned about.
     wellness: 'Mental wellness',
     wellnessSub: 'Six dimensions read from how you actually use these accounts. This is a behavioural ' +
-      'read, not a health assessment — there is no score here, and there is not meant to be. It is ' +
+      'read, not a health assessment – there is no score here, and there is not meant to be. It is ' +
       'written to be honest rather than gentle, including about the harder stretches.',
     wellnessOverall: 'Taken together',
     wellnessSuggestions: 'What might actually help',
@@ -369,7 +372,7 @@
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
     linkCopied: 'Link copied.',
-    shortLinkUnreadable: 'That PsycheAI link could not be opened — it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
+    shortLinkUnreadable: 'That PsycheAI link could not be opened – it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
@@ -402,7 +405,7 @@
     // section immediately above it, so the two have to stay adjacent.
     idealPartner: 'Ideal partner traits',
     idealPartnerSub: 'What you actually need in a partner, argued from your attachment style rather ' +
-      'than guessed at — and what to be careful of.',
+      'than guessed at – and what to be careful of.',
     idealPartnerCoverTitle: 'What kind of partner truly suits you',
     idealPartnerCoverBlurb: 'What you actually need in a partner to be well, argued from your ' +
       'attachment style rather than a wishlist of adjectives – what to be careful of, and an honest ' +
@@ -511,7 +514,7 @@
     // cover is a consent gate, not a paywall, so what it says is what is
     // behind it and why somebody might want to skip it, not what it costs.
     bonusCoverTitle: 'This roast is deliberately unkind',
-    bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above — ' +
+    bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above – ' +
       'deliberately unkind, not a diagnosis, and part of your full report. Read it if you ' +
       'want the truth without the softening; skip it if you do not.',
     // The button that opens the cover, and the one that puts it back. Unlike
@@ -548,7 +551,7 @@
     // The premium read rebuilt from the export still open in the tab: the
     // same sources, more of each.
     deepRebuiltNote: 'This is what the full premium report is written from: the data your card was read from, read in more depth, with anything you just added.',
-    premiumSourcesBlurb: 'Add a source or replace one with a fresh export — more data, a fuller report. ' +
+    premiumSourcesBlurb: 'Add a source or replace one with newer data – more data, a fuller report. ' +
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
     // Under the price on the free card's unlock button: the other way in.
@@ -579,12 +582,12 @@
     pendingAnalysisLabel: 'Get the analysis you paid for',
     pendingCompatText: 'Your payment went through but the report didn’t arrive. Fetching it again is free – no need to scan again.',
     pendingCompatLabel: 'Get the report you paid for',
-    pendingNeedsInstagram: 'Your payment is still good. Load your Instagram export again and the analysis will run at no charge.',
+    pendingNeedsInstagram: 'Your payment is still good. Load your Instagram data again and the analysis will run at no charge.',
     // Shown to somebody who put their phone down mid-analysis and came back.
     // It says the two things they need: nothing was lost, and there is nothing
     // for them to do — because the instinct on returning to a waiting screen
     // is to assume it has been stuck there the whole time and to start again.
-    resumingJob: 'Your analysis kept running while you were away — it does not need this page to ' +
+    resumingJob: 'Your analysis kept running while you were away – it does not need this page to ' +
       'be open. Picking it back up now; it will appear as soon as it is finished.',
     premiumResumeLabel: 'Get the premium report you paid for',
     premiumResumeTitle: 'You have already paid',
@@ -604,7 +607,7 @@
     // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
     analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$5 and ' +
-      'refreshes everything — your card and the full premium report.',
+      'refreshes everything – your card and the full premium report.',
     analysisFreeNote: 'Your first Psyche Card is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
@@ -638,12 +641,12 @@
     // charge itself is not in question, only the writing. A promo code that
     // authorised the call but hit the same failure reads the same way, since
     // "went through" is true of either kind of authorisation.
-    premiumGenerationFailed: 'That went through, but the analysis could not be generated. Try again — ' +
+    premiumGenerationFailed: 'That went through, but the analysis could not be generated. Try again – ' +
       'the same payment can be used a few more times before it needs a new one.',
     // Shown between the two calls an unlock-with-added-data makes. Says
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
-    premiumRefreshingFree: 'Writing your full premium report from the new data — your card is redrawn with it at no extra charge…',
+    premiumRefreshingFree: 'Writing your full premium report from the new data – your card is redrawn with it at no extra charge…',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
@@ -653,8 +656,8 @@
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
       title: 'Your link',
-      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — use it yourself or gift it.',
-      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report — gift it, or use it for a re-run with new data.',
+      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report – use it yourself or gift it.',
+      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report – gift it, or use it for a re-run with new data.',
       shareHint: 'Share your card or link above to start.',
       cards: 'made a card',
       paid: 'bought the full report',
@@ -664,15 +667,15 @@
       claim: 'Use it',
       claimPaid: 'Use it for a re-run',
       gift: 'Gift it',
-      useFree: 'Use your free full report — from your link',
+      useFree: 'Use your free full report – from your link',
       useGift: 'Use your gifted free full report',
       claimFailed: 'There is no free report to claim yet.',
       giftShareText: 'A free PsycheAI full report, from me 🎁 Make your free Psyche Card, then unlock the full report with this link:',
       giftCopied: 'Gift link copied. It unlocks one full report, once, within 60 days.',
       giftsHead: 'Gift links you have made (each works once, for 60 days)',
       giftArrivedTitle: 'You’ve been gifted a free full report',
-      giftArrivedNew: 'Make your free Psyche Card first, then unlock the full report with it — no payment needed.',
-      giftArrivedHave: 'Unlock your full report with it — no payment needed.',
+      giftArrivedNew: 'Make your free Psyche Card first, then unlock the full report with it – no payment needed.',
+      giftArrivedHave: 'Unlock your full report with it – no payment needed.',
       giftUse: 'Unlock with my gift',
     },
     premiumPromoPlaceholder: 'Promo code',
@@ -716,32 +719,32 @@
     trajectoryNote: 'The most recent year this shows up in your data',
     sourcesUsed: 'Data sources',
     sourcesUsedHint: 'You can raise this report’s confidence by adding more sources of data. ' +
-      'Instagram and Google together are the ideal combination — Instagram reads your outward ' +
+      'Instagram and Google together are the ideal combination – Instagram reads your outward ' +
       'persona, the self you present; Google reads your inward self, what you search and watch when ' +
       'no one is looking.',
     // Shown in place of the hint above when the digest itself has gone — the
     // report survives in its own localStorage entry, the evidence behind it
     // does not. Says what re-running will ask for rather than leaving a
     // reader to discover it by pressing the button.
-    sourcesInstagramLost: 'The evidence this report was written from is no longer on this device — ' +
+    sourcesInstagramLost: 'The evidence this report was written from is no longer on this device – ' +
       'your browser may have cleared it to free space. The report itself is safe. To run the ' +
-      'analysis again, load your Instagram export once more below.',
+      'analysis again, load your Instagram data once more below.',
     sourceInstagram: 'Instagram',
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
     sourceWhatsApp: 'WhatsApp chats',
     // The WhatsApp row: up to three chats, each exported on its own.
     // `max` is 3 from the report page, 1 on a first upload.
-    whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat, exported from WhatsApp (.zip or .txt)'
-      : 'Up to ' + max + ' exported chats (.zip or .txt)',
-    whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded — tap to load a different one'
-      : n + ' of ' + max + ' chats loaded — tap to ' + (n >= max ? 'start over' : 'add another'),
+    whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat from WhatsApp (.zip or .txt)'
+      : 'Up to ' + max + ' chats (.zip or .txt)',
+    whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
+      : n + ' of ' + max + ' chats loaded – tap to ' + (n >= max ? 'start over' : 'add another'),
     // The first upload's WhatsApp row and the tag on its two optional rows.
     whatsappFirstTitle: 'WhatsApp chats with close connections',
     sourceOptional: '(optional)',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
-    whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here — this one replaces the last.'
-      : 'Three chats is the most — these start a fresh set.',
+    whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here – this one replaces the last.'
+      : 'Three chats is the most – these start a fresh set.',
     sourceLoaded: 'Loaded',
     sourceMissing: 'Not loaded',
     rerunAnalysis: 'Add / change data & re-run analysis',
@@ -754,23 +757,23 @@
     // and "Load your data" would read as "do it all again".
     startLoad: 'Load your data',
     startContinue: 'Continue with your data',
-    startLoadedSuffix: ' already loaded — nothing to upload again.',
-    startNeedsInstagram: 'Load your Instagram export to get started.',
-    rerunNeedsInstagram: 'Your Instagram export is no longer on this device, so there is nothing to ' +
+    startLoadedSuffix: ' already loaded – nothing to upload again.',
+    startNeedsInstagram: 'Load your Instagram data to get started.',
+    rerunNeedsInstagram: 'Your Instagram data is no longer on this device, so there is nothing to ' +
       're-analyse. Load it again in the popout and your report will be rewritten from it.',
     // The digest failed to save — almost always a full localStorage. Said at
     // the moment it happens rather than left for the reader to discover when
     // a re-run has nothing to work from. The report itself is stored
     // separately and is usually fine, so this does not claim otherwise.
     digestTooLarge: 'Your report is saved, but the evidence summary behind it was too large for this ' +
-      'browser’s storage. Re-running the analysis later will ask for your Instagram export again.',
+      'browser’s storage. Re-running the analysis later will ask for your Instagram data again.',
 
     // The popout #rerun-with-data now opens, ahead of the review — see
     // askDataSources() in app.js. Every source already loaded is ticked but
     // stays clickable, so a reader can replace any one of them, Instagram
     // included, without starting the whole report over.
     dataSourcesTitle: 'Add or change your data',
-    dataSourcesBlurb: 'Add a source or replace one with a fresh export. Nothing is sent until you ' +
+    dataSourcesBlurb: 'Add a source or replace one with newer data. Nothing is sent until you ' +
       'review it on the next screen.',
     // The same popout opened from the welcome page, where there is nothing to
     // change yet — "Add or change" describes a report that does not exist and
@@ -802,13 +805,13 @@
     // — the tick looks identical either way, and a half-loaded export usually
     // still clears the recognition check and produces a confident report from
     // half the evidence. Saying it here is the cheap half of the fix.
-    dataSourcesFirstInstagram: 'Load your Instagram export .zip file here. ' +
+    dataSourcesFirstInstagram: 'Load your Instagram data .zip file here. ' +
       'Select multiple files as needed.',
     // Only shown once a fresh Instagram export is actually picked — see the
     // reasoning at the call site in app.js for why this cannot always be
     // carried forward automatically.
     dataSourcesInstagramReplaceNote: 'Replacing Instagram starts your Google, Facebook and WhatsApp data fresh ' +
-      'too — reload them here as well if you want them included in this run.',
+      'too – reload them here as well if you want them included in this run.',
     dataSourcesContinue: 'Continue',
     dataSourcesBack: 'Back',
 
@@ -968,7 +971,7 @@
     // person, so it is the same for everyone and costs nothing to generate.
     about: [
       ['What this is',
-        'A behavioural portrait written from your own data exports. It reads what you posted, wrote, ' +
+        'A behavioural portrait written from your own data. It reads what you posted, wrote, ' +
         'searched and kept coming back to, rather than answers to a questionnaire, and every finding ' +
         'cites the evidence behind it.'],
       ['How it is organised',
@@ -981,7 +984,7 @@
         'estimate, not a comparison with a measured group. Confidence labels say how firmly the evidence supports each read.'],
       ['What it cannot see',
         'Anything that happens away from these platforms: your conversations in person, your work, ' +
-        'your history before the export begins. It is generated automatically, it is not a clinical or ' +
+        'your history before your data begins. It is generated automatically, it is not a clinical or ' +
         'diagnostic tool, and the person best placed to judge it is you. Treat each finding as a ' +
         'hypothesis to test against your own experience.'],
     ],
@@ -1008,7 +1011,7 @@
     insights: {
       freeBadge: 'Free',
       freeTitle: 'Your Psyche Card',
-      freeBlurb: 'One card that sums you up, ready to share — read from your own data in a few minutes.',
+      freeBlurb: 'One card that sums you up, ready to share – read from your own data in a few minutes.',
       cardItems: [
         ['🦸', 'Your character / superhero'],
         ['🧵', 'Your signature patterns'],
@@ -1028,18 +1031,18 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts — plus the sections only the full report has.',
+      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts – plus the sections only the full report has.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
         connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
-        together: 'A development plan built from everything above, a step-by-step plan you can tick off, and how your strengths behave under pressure.',
+        together: 'A development plan built from everything above.',
       },
       // Part 1's first section tag, for the character comparison.
       characterChip: 'Your character',
       extras: [['📄', 'A PDF to keep'], ['🔍', 'Evidence behind every finding']],
       compatTitle: 'Psyche Sync, free',
-      compatBlurb: 'Send a connection your link and see how in sync you are — what clicks between you and how to relate better to each other.',
+      compatBlurb: 'Send a connection your link and see how in sync you are – what clicks between you and how to relate better to each other.',
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
@@ -1094,7 +1097,7 @@
           yours: f => f.character + (f.franchise ? ' (' + f.franchise + ')' : '') + '. The two lines under the name say why.' },
         { key: 'confidence', icon: '🎯', title: 'The number in the ring', when: f => f.score,
           about: 'How much evidence stands behind the card: how much data there was, how much was read, and how consistently it agreed. High is a confident reading, low a first draft – adding Google or Facebook usually raises it.',
-          yours: f => f.score + ' out of 100' + (f.level ? ' — ' + f.level + '.' : '.') },
+          yours: f => f.score + ' out of 100' + (f.level ? ' – ' + f.level + '.' : '.') },
         { key: 'patterns', icon: '🧵', title: 'Your patterns', when: f => f.pattern,
           about: 'The two or three behaviours that repeat across years of what you post and say. Your strengths and blind spots both come from them – naming them helps you catch them in the moment.',
           yours: f => 'Number 1, "' + f.pattern + '", explains the most about you.' },
@@ -1114,7 +1117,7 @@
             ['J', 'P', 'Lifestyle', 'planned and settled (J), or flexible and open (P).'],
           ],
           yours: f => f.type + (f.letters.length ? ': ' + f.letters.join(', ') + '.' : '.') +
-            ' A slight letter sits near the middle — you can go either way.' },
+            ' A slight letter sits near the middle – you can go either way.' },
         { key: 'bigFive', icon: '📊', title: 'Big Five', when: f => f.trait,
           about: 'The most researched model of personality. The four traits on your card:',
           // The traits the card shows, each in a line.

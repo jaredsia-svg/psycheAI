@@ -389,7 +389,7 @@ try {
   // The tab title is also the search result's headline, so it says what
   // people search for rather than repeating the page's tagline.
   check('the tab title names the app and what people search for',
-    /^PsycheAI — free personality test from your Instagram data/.test(await page.title()));
+    /^PsycheAI – free personality test from your Instagram data/.test(await page.title()));
   check('mock mode is disclosed to the user',
     (await page.locator('#server-status').innerText()).includes('Mock mode'));
   check('the status endpoint says mock mode, and does not name the provider or the model',
@@ -1762,7 +1762,7 @@ try {
       await seed({ kind: 'analysis', auth: { promoCode: UITEST_PROMO }, at: Date.now() }, false);
       const noExport = await banner();
       check('with the export gone, the offer says so and offers no button to press',
-        noExport.shown && !noExport.canPress && /load your instagram export again/i.test(noExport.text),
+        noExport.shown && !noExport.canPress && /load your instagram data again/i.test(noExport.text),
         JSON.stringify(noExport));
 
       // Coming back is not always a page load. A phone that suspends a tab and
@@ -4256,6 +4256,41 @@ try {
 
   await page.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
   check('profile view appears after upload', await page.locator('#view-profile').isVisible());
+
+  // ---- the Psyche Report bar ----
+  // Once the free card is in: one slim line under the navigation on every
+  // page but My Report, a tap away from the offer itself.
+  {
+    await page.waitForSelector('#report-promo:not([hidden])', { timeout: 10000 });
+    const promoText = (await page.locator('#report-promo-go').innerText()).replace(/\s+/g, ' ').trim();
+    check('once the free card is in, a slim bar offers the Psyche Report',
+      /Unlock your Psyche Report/.test(promoText) && (await page.locator('#report-promo').boundingBox()).height < 60, promoText);
+    const shownOn = {};
+    for (const [name, nav] of [['syncs', '#nav-scan'], ['faq', '#nav-about'], ['front', '.brand[data-nav="main"]']]) {
+      await page.click(nav);
+      await page.waitForTimeout(150);
+      shownOn[name] = await page.locator('#report-promo').isVisible();
+    }
+    check('it shows on the front page, My Syncs and the FAQ too', Object.values(shownOn).every(Boolean), JSON.stringify(shownOn));
+    await page.click('#report-promo-go');
+    await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 });
+    await page.waitForFunction(() => {
+      const offer = document.querySelector('#view-profile .full-report-locked');
+      return offer && Math.abs(offer.getBoundingClientRect().top - 72) < 40;
+    }, null, { timeout: 5000 }).catch(() => {});
+    // Scrolled to it: its head near the top, or as near as the page's end allows.
+    const landed = await page.evaluate(() => {
+      const offer = document.querySelector('#view-profile .full-report-locked');
+      const top = offer ? Math.round(offer.getBoundingClientRect().top) : null;
+      const atEnd = Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 2;
+      return { top, scrollY: Math.round(scrollY), atEnd, title: offer ? offer.querySelector('h3').textContent : '' };
+    });
+    check('and a tap on it opens My Psyche at "Unlock your Psyche Report"',
+      landed.top !== null && landed.scrollY > 0 && (Math.abs(landed.top - 72) < 40 || (landed.atEnd && landed.top >= 0 && landed.top < 600)) &&
+        /Unlock your Psyche Report/.test(landed.title),
+      JSON.stringify(landed));
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
 
   // ---- the free report is the summary card, and only the card ----
   //
@@ -10254,7 +10289,7 @@ try {
   check('the Psyche Sync answer says what the link actually is, and that it is about friends only',
     /How does Psyche Sync work\?/.test(about) && /about friendship only, never romance/.test(about) &&
     /the result stays on their device unless\s+they send it to you/.test(about) &&
-    /carries only your card’s short summary, never your export, messages or report/.test(about) &&
+    /carries only your card’s short summary, never your data, messages or report/.test(about) &&
     /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
@@ -10543,6 +10578,9 @@ try {
     await page.locator('#view-profile').isVisible() &&
       /You have a connection waiting to sync with you/.test(await page.locator('#sync-invite').innerText()) &&
       compatBodies.length === syncsBefore, await page.locator('#sync-invite').innerText());
+  // The Psyche Report bar waits while a friend's link does.
+  check('while a friend\'s sync invite shows, the Psyche Report bar does not',
+    await page.locator('#report-promo').isHidden());
   // A second friend's link too: both wait, in one bar with one Sync button
   // to My Syncs, where each has a button of their own, latest first.
   const meiPayload = await page.evaluate(card => window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Mei Lin' })),
@@ -10563,6 +10601,12 @@ try {
   // Its ✕ closes it until a new friend's link arrives; the friends still wait on My Syncs.
   await page.click('#sync-invite-close');
   check('the sync bar\'s ✕ closes it', await page.locator('#sync-invite').isHidden());
+  // Then the Psyche Report bar takes its place, for a card not yet unlocked.
+  {
+    const free = await page.evaluate(() => Boolean(document.querySelector('#view-profile .full-report-locked')));
+    check('and once it is closed, the Psyche Report bar shows for a card not yet unlocked',
+      (await page.locator('#report-promo').isVisible()) === free, String(free));
+  }
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#view-profile:not([hidden])');
   check('and it stays closed after a reload, while those links still wait', await page.locator('#sync-invite').isHidden() &&

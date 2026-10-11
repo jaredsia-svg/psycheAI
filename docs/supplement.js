@@ -397,14 +397,14 @@
     if (!seen.sawJson) {
       throw new Error(seen.sawHtml
         ? 'This Takeout is in HTML format. Re-request it from Google Takeout, choose ' +
-          '"Multiple formats" and set My Activity to JSON — PsycheAI cannot read the HTML version.'
-        : 'No JSON files found in this archive — is it a Google Takeout export?');
+          '"Multiple formats" and set My Activity to JSON – PsycheAI cannot read the HTML version.'
+        : 'No JSON files found in this file – is it the data Google Takeout sent you?');
     }
 
     const kinds = Object.keys(out.kinds);
     if (kinds.length < SUPPLEMENT_MINIMUM) {
       throw new Error('Only ' + kinds.length + ' kind' + (kinds.length === 1 ? '' : 's') +
-        ' of Google activity could be read from this archive. Make sure you exported ' +
+        ' of Google activity could be read from this archive. Make sure you downloaded ' +
         '"My Activity" in JSON format, with YouTube, Search, Chrome or Gemini Apps included.');
     }
 
@@ -598,14 +598,14 @@
     }, report);
 
     if (instagramRoutes >= 4) {
-      throw new Error('That looks like your Instagram export, which is already included. ' +
-        'Choose the archive Facebook sent you instead.');
+      throw new Error('That looks like your Instagram data, which is already included. ' +
+        'Choose the file Facebook sent you instead.');
     }
 
     if (!seen.sawJson) {
       throw new Error(seen.sawHtml
-        ? 'This export is in HTML format. Re-request your download from Facebook and choose JSON.'
-        : 'No JSON files found in this archive — is it a Facebook export?');
+        ? 'This data is in HTML format. Request your data from Facebook again and choose JSON.'
+        : 'No JSON files found in this file – is it the data Facebook sent you?');
     }
 
     for (const job of routed) {

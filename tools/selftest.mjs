@@ -2618,7 +2618,7 @@ try {
   againError = error;
 }
 check('re-picking the Instagram export as a Facebook supplement is refused by name',
-  Boolean(againError) && /looks like your Instagram export/.test(againError.message),
+  Boolean(againError) && /looks like your Instagram data/.test(againError.message),
   againError && againError.message);
 
 // And an archive with nothing in it at all is refused rather than silently
@@ -5882,6 +5882,15 @@ check('the card\'s headline and write-up never write closeness as screening or a
     text.includes('**In the headline and the write-up, closeness is never framed as a gate**') && text.includes('"the few who pass your screening"') &&
       text.includes('may still be named in the weaknesses below and in the paid report') &&
     text.includes('"deep loyalty to the people you are closest to"')));
+
+// The reader's data is "your data" in anything they read, never "the export".
+check('every prompt that writes for the reader calls their data "your data", never "the export"',
+  /never call their data "the export"/.test(prompts.DATA_WORDS) && /"your data"/.test(prompts.DATA_WORDS) &&
+    [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM, prompts.CLASSIC_FULL_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM,
+      prompts.PREMIUM_SYSTEM].every(text => text.includes(prompts.DATA_WORDS)));
+check('and the server rewrites any that still come back',
+  /function readerText/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
+    /return readerText\(cleaned\)/.test(readFileSync(join(root, 'server.js'), 'utf8')));
 
 // ---------- tools/compare.mjs: the arithmetic it reports ----------
 //

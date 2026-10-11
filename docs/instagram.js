@@ -713,8 +713,8 @@
 
     if (!sawJson) {
       throw new Error(sawHtml
-        ? 'This export is in HTML format. Re-request your download from Instagram and choose JSON.'
-        : 'No JSON files found in this archive — is it an Instagram export?');
+        ? 'This data is in HTML format. Request your data from Instagram again and choose JSON.'
+        : 'No JSON files found in this file – is it the data Instagram sent you?');
     }
 
     let done = 0;
@@ -760,9 +760,9 @@
     const sources = Object.keys(signals.files.byRoute).filter(route => route !== 'messages');
     if (sources.length < RECOGNISED_MINIMUM) {
       throw new Error('Only ' + sources.length + ' kind' + (sources.length === 1 ? '' : 's') +
-        ' of Instagram activity could be read from this archive. If your export arrived as ' +
-        'several .zip parts, choose all of them together. Otherwise this may not be an Instagram ' +
-        'export — a Facebook or WhatsApp download cannot be read here.');
+        ' of Instagram activity could be read from this archive. If your data arrived as ' +
+        'several .zip parts, choose all of them together. Otherwise this may not be your Instagram ' +
+        'data – a Facebook or WhatsApp download cannot be read here.');
     }
 
     signals.events.sort((a, b) => a.ts - b.ts);

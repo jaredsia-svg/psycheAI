@@ -469,7 +469,31 @@ function requirePremiumEngine(response) {
 function scrubbed(result, digest, kind) {
   const cleaned = privacy.scrubResult(result, digest);
   if (cleaned !== result) console.log('privacy: removed private names from a ' + kind + ' report');
-  return cleaned;
+  return readerText(cleaned);
+}
+
+// The site's own style in whatever the model writes, in the card, the report
+// and the Sync read alike: every em dash (—) shown as an en dash (–), and the
+// reader's data never called "the export" — "the export reveals you are …"
+// read as a file talking about them. The prompts ask for both (DATA_WORDS in
+// lib/prompts.js); this is the backstop.
+const EXPORT_WORDS = /\b(the|this|that|your|an?) ((?:Instagram|Google Takeout|Google|Facebook|WhatsApp) )?(?:data )?(?:exports?|archives?)\b(?! your information)/gi;
+function dataWords(text) {
+  return text.replace(EXPORT_WORDS, (match, lead, source) =>
+    (lead.charAt(0) === lead.charAt(0).toUpperCase() ? 'Your' : 'your') + ' ' + (source || '') + 'data');
+}
+function readerText(value) {
+  if (typeof value === 'string') {
+    const dashed = value.indexOf('\u2014') < 0 ? value : value.replace(/\u2014/g, '\u2013');
+    return /export|archive/i.test(dashed) ? dataWords(dashed) : dashed;
+  }
+  if (Array.isArray(value)) return value.map(readerText);
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const key of Object.keys(value)) out[key] = readerText(value[key]);
+    return out;
+  }
+  return value;
 }
 
 async function handleAnalyse(request, response) {
@@ -543,7 +567,7 @@ async function handleAnalyse(request, response) {
   // nothing rather than one more analysis. Paid calls skip the gate entirely.
   if (!paying && !budget.canSpend()) {
     sendJson(response, 503, {
-      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC — ' +
+      error: 'PsycheAI has reached its free analysis limit for today. It resets at midnight UTC – ' +
         'or you can run one now for a small fee.',
       budgetExhausted: true,
     });
@@ -770,7 +794,7 @@ async function handleCreatePaymentIntent(request, response) {
   // fallback to the cheaper one.
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
-  const label = product === 'analysis' ? 'PsycheAI — additional analysis' : 'PsycheAI — full premium report';
+  const label = product === 'analysis' ? 'PsycheAI – additional analysis' : 'PsycheAI – full premium report';
   // The currency the page showed its price in, from the shared table; an
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';
@@ -1058,7 +1082,7 @@ async function handleCompatibility(request, response) {
       // Recorded only once the model came back, as the free card's is.
       budget.record('compatibility');
       stats.count('compatibility');
-      return result;
+      return readerText(result);
     },
   });
 }
