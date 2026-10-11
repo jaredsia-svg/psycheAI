@@ -557,17 +557,17 @@ async function handleAnalyse(request, response) {
   // keyed on the digest *and* the card it explains, so a report written to
   // explain one card is never served to a reader holding another.
   //
-  // The premium read is the one exception to the 80,000-character line, and
-  // only on a paid unlock: the card's digest with the sources added at the
-  // unlock on top. It is bounded by its own 160,000 instead — see "the
-  // premium read" in docs/digest.js and the two caps that price it.
+  // The premium read is held to the premium pools — see "the premium read"
+  // in docs/digest.js and the two caps that price it; everything else to
+  // the standard pools (POOL_CAPS), priced by FREE_COST_CAP and COST_CAP.
   const deep = full && body.deep === true;
   const sent = Digest.forModel(body.digest, { deep });
   // The backstop for the one thing forModel cannot bound by construction —
   // the number of keys in the few objects it copies whole. An honest digest
   // never gets here; Digest.build lands every real export under the line.
   // Counted as the model reads it, the same measure the trim loop uses.
-  if (Digest.evidenceChars(sent) > (deep ? Digest.DEEP_DIGEST_CHARS : Digest.LIMITS.totalChars)) {
+  // 126,000, or the premium read's 179,000 (Digest.budgetFor).
+  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent, deep)) {
     sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
     return;
   }

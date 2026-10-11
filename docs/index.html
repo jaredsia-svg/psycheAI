@@ -258,13 +258,13 @@
          gets keyboard support, Find-in-page and a working control with no
          script at all. -->
     <!-- The two optional sources, in the order "Load your data" offers them:
-         a WhatsApp chat with a close friend, then Google. -->
+         up to three WhatsApp chats with close connections, then Google. -->
     <details class="optional-card">
       <summary>
-        <span class="optional-title">Optional: Also add a WhatsApp chat or Google data for a fuller analysis</span>
+        <span class="optional-title">Optional: Also add WhatsApp chats or Google data for a fuller analysis</span>
       </summary>
 
-      <h3>WhatsApp chat with a close friend</h3>
+      <h3>WhatsApp chats with close connections (up to 3)</h3>
       <ol data-howto="whatsapp"></ol>
       <h3>Google Takeout</h3>
       <ol data-howto="google"></ol>
@@ -676,10 +676,10 @@
 
     <h3>What data leaves this device?</h3>
     <p>Your Instagram zip file, your photos and videos, and your finished report never leave this
-      device. Other people’s messages stay here too, apart from a short, anonymised line showing what
-      some of your own replies were answering.</p>
-    <p>The only thing sent is a short digest of your own activity: your posts, stories, captions,
-      likes, searches, saves, follows and messages. You see it and can review it before anything goes.</p>
+      device.</p>
+    <p>The only thing sent is a short digest of your own activity, usually about 100 KB of text: your
+      posts, stories, captions, likes, searches, saves, follows and messages. You see it and can review
+      it before anything goes.</p>
     <p>The digest goes to Google Gemini or Anthropic Claude for that one request, and PsycheAI keeps no
       copy of the zip, the digest or the report on its servers. Your report stays in your browser
       until you press Delete everything.</p>
@@ -696,6 +696,8 @@
     <h3>Can anyone else access my data?</h3>
     <p>No. There is no sign-up, no password to create and no email address. Your export, the digest and
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
+    <p>Not even PsycheAI’s administrator can see your data or your results: there is no admin view of
+      them, and nothing from your digest or report is stored or logged.</p>
     <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below, a
       scrambled code that lets each Instagram account have one free card, simple counts for your link
       (such as how many people made a card from it), and the short summary your link shows, which only
@@ -852,11 +854,9 @@
   <div class="sample-dialog-body guide-body">
     <ol class="guide-steps">
       <li class="guide-step">
-        <h3><span class="guide-num">1</span>Open <a
-          href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
-          target="_blank" rel="noopener noreferrer">Download your information</a></h3>
-        <p>The link above brings you to step 2. If it does not open, open your Instagram app and
-          follow the below steps.</p>
+        <h3><span class="guide-num">1</span>Open your Instagram app</h3>
+        <p>Go to your Profile &gt; tap the Menu (≡) top right to Settings &gt; Accounts Centre &gt;
+          Your information and permissions &gt; Export your information.</p>
         <div class="guide-shots">
           <figure class="guide-shot">
             <figcaption>Settings &rarr; tap <b>Accounts Centre</b></figcaption>
@@ -1275,6 +1275,20 @@
      reader is standing: this opens over the waiting screen with the reason and
      the one button that fixes it. #upload-retry on the welcome page stays as
      the way back for somebody who closes this. -->
+<!-- Before "Your data for the full report", when the card's confidence is
+     under 80 (app.js, offerMoreData): more sources make a better report. -->
+<dialog id="more-data-dialog" class="mode-dialog more-data-dialog" aria-labelledby="more-data-title">
+  <div class="more-data-icon" aria-hidden="true">📈</div>
+  <h2 id="more-data-title"></h2>
+  <p class="muted" id="more-data-text"></p>
+  <div class="btn-row">
+    <button class="btn btn-block" id="more-data-continue" type="button"></button>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost btn-block" id="more-data-back" type="button"></button>
+  </div>
+</dialog>
+
 <dialog id="analysis-error-dialog" class="mode-dialog" aria-labelledby="analysis-error-title">
   <h2 id="analysis-error-title">That did not come through</h2>
   <p class="muted" id="analysis-error-message"></p>
@@ -1314,13 +1328,18 @@
      into every <ol data-howto="…"> — the front page and both data popouts — so
      the three can never drift apart again. -->
 <template id="howto-instagram">
-  <li>Open <a href="https://accountscenter.instagram.com/info_and_permissions/dyi/"
-        target="_blank" rel="noopener noreferrer">Download your information</a>.
-      <span class="step-fallback">If the link doesn’t open: Instagram → Settings →
-        <span class="ui-label">Accounts Centre</span> →
-        <span class="ui-label">Your information and permissions</span> →
-        <span class="ui-label">Download your information</span>.</span></li>
-  <li>Choose <span class="ui-label">Create export</span> → your Instagram account →
+  <!-- All in the Instagram app, with no link out: a link to an outside
+       site is one more thing a reader has to trust. Each screen name shows
+       its screenshot from the illustrated guide: on hover with a mouse, on a
+       tap or click anywhere (app.js, mountPeeks). -->
+  <li>Open your Instagram app &gt; Go to your Profile &gt; tap the Menu (≡) top right to Settings &gt;
+      <button type="button" class="ui-label ui-peek" data-peek="guide/01-settings.jpg" data-peek-mark="1"
+        data-peek-alt="Instagram’s Settings and activity screen, with the Accounts Centre row ringed.">Accounts Centre</button>.</li>
+  <li>Tap <button type="button" class="ui-label ui-peek" data-peek="guide/02-info-permissions.jpg" data-peek-mark="2"
+        data-peek-alt="The Accounts Centre menu, with the Your information and permissions row ringed.">Your information and permissions</button> &gt;
+      <button type="button" class="ui-label ui-peek" data-peek="guide/03-export-your-information.jpg" data-peek-mark="3"
+        data-peek-alt="The information and permissions screen, with the Export your information row ringed.">Export your information</button> &gt;
+      <span class="ui-label">Create export</span> &gt; your Instagram account &gt;
       <span class="ui-label">Export to device</span>.</li>
   <li>Set Date range to <span class="ui-label">All time</span>, Format to
       <strong><span class="ui-label">JSON</span> (not HTML)</strong>, and Media quality to
@@ -1349,7 +1368,7 @@
 </template>
 
 <template id="howto-whatsapp">
-  <li>In WhatsApp, open a chat with a close friend → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
+  <li>In WhatsApp, open a chat with a close connection → tap <span class="ui-label">⋮</span> (or the contact’s name on iPhone) →
       <span class="ui-label">More</span> → <span class="ui-label">Export chat</span>.</li>
   <li>Choose <span class="ui-label">Without media</span> and save the file it makes (a .zip) to your
       phone or computer, then load it here. Only your own messages are read, each with a short,

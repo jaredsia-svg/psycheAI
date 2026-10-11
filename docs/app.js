@@ -2667,7 +2667,7 @@
     // scrollTop on an element that is not being rendered is a no-op — so this
     // reset used to be dropped on the floor and the guide reopened wherever
     // the reader had left it, which for anyone who had read to the end meant
-    // opening on step 4 rather than on "Open Download your information".
+    // opening on step 4 rather than on "Open your Instagram app".
     dialog.querySelector('.guide-body').scrollTop = 0;
     history.pushState({ psycheaiGuide: true }, '');
     guideHistoryEntry = true;
@@ -3035,7 +3035,8 @@
           // One chat with a close friend, and Google, both optional.
           titles: { whatsapp: TEXT.whatsappFirstTitle },
           tags: { whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional },
-          whatsappMax: 1,
+          // Up to three chats, as on the report page.
+          whatsappMax: 3,
         });
       } catch (error) {
         showUploadError((error && error.message) || 'Could not read that export.');
@@ -3603,6 +3604,7 @@
     const steps = document.getElementById('howto-' + list.dataset.howto);
     if (steps) list.replaceChildren(steps.content.cloneNode(true));
   }
+  mountPeeks();
 
   $('#open-sources').addEventListener('click', startFromSources);
   // Opens the walkthrough over the popout rather than instead of it: the
@@ -3978,7 +3980,7 @@
     // the free card with the premium report should know both read this.
     // The text the model is actually sent, the same measure the budget counts.
     const sentKb = Math.max(1, Math.round(Digest.evidenceChars(preview) / 1000));
-    const sizeNote = 'About ' + sentKb + ' KB. ' + (deepRead ? TEXT.deepReviewNote
+    const sizeNote = 'About ' + sentKb + ' KB. ' + (deepRead === 'rebuilt' ? TEXT.deepRebuiltNote : deepRead ? TEXT.deepReviewNote
       : 'This same digest is what both your free summary card and the full premium report are read from.');
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
@@ -4227,7 +4229,7 @@
         const deepRead = Boolean(options && options.deep);
         const preview = Digest.forModel(applyReviewDecision(JSON.parse(JSON.stringify(digest)), decision), { deep: deepRead });
 
-        const html = buildDigestPreviewHtml(rows, decision, preview, deepRead);
+        const html = buildDigestPreviewHtml(rows, decision, preview, deepRead && digest.__rebuilt ? 'rebuilt' : deepRead);
         const blob = new Blob([html], { type: 'text/html' });
         const href = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -4439,13 +4441,14 @@
     // page still offers all three, so Facebook stays reachable for anybody who
     // wants it, one screen later. Hidden rather than removed from the markup:
     // one dialog, two audiences.
-    const offered = settings.sources || ['instagram', 'google', 'facebook', 'whatsapp'];
+    // WhatsApp second, after Instagram, as at the first upload.
+    const offered = settings.sources || ['instagram', 'whatsapp', 'google', 'facebook'];
     // Rows, and their instructions, in the order offered: the welcome page
     // asks for Instagram, then a WhatsApp chat, then Google; the report page
     // keeps the markup's own order. Moving a node is all it takes, and every
     // opening sets the order afresh, so neither entry point inherits the
     // other's.
-    const order = offered.concat(['instagram', 'google', 'facebook', 'whatsapp'].filter(x => !offered.includes(x)));
+    const order = offered.concat(['instagram', 'whatsapp', 'google', 'facebook'].filter(x => !offered.includes(x)));
     const optionsBox = dialog.querySelector('.mode-options');
     const helpBox = dialog.querySelector('.supplement-help-body');
     const helpTail = helpBox.querySelector('.help-illustrated');
@@ -4455,8 +4458,7 @@
       const help = helpBox.querySelector('[data-help="' + source + '"]');
       if (help) helpBox.insertBefore(help, helpTail);
     }
-    // How many WhatsApp chats this entry point takes: one on the welcome page
-    // (a close friend's), three from the report page.
+    // How many WhatsApp chats this entry point takes: three, wherever it is.
     const waMax = settings.whatsappMax || 3;
     // The download instructions follow the rows. A reader on the welcome page
     // is offered Instagram and Google, so being walked through a Facebook
@@ -4954,7 +4956,7 @@
       if (freshInstagram && signals) {
         base = adding ? Digest.build(Object.assign({}, signals, { supplements: Object.assign({}, freshInstagram) }), { includeMessages: true }) : digest;
       }
-      premium = premiumDigestFrom(base, extraSupplements);
+      premium = premiumDigestFrom(base, extraSupplements, signals);
       if (!premium || !premium.__deep) premium = null;
     }
 
@@ -8128,7 +8130,37 @@
    * and the run it pays for rewrites the card as well. Back abandons the
    * unlock (null).
    */
+  // Before "Your data for the full report": a card read with under 80%
+  // confidence is told that more sources would help. Resolves true to go on
+  // to the data page, false for Back (the unlock is left).
+  const MORE_DATA_BELOW = 80;
+  function offerMoreData() {
+    const score = Math.round(Number(((state.profile && state.profile.report) || {}).confidence &&
+      state.profile.report.confidence.score));
+    const dialog = $('#more-data-dialog');
+    if (!dialog || !Number.isFinite(score) || score >= MORE_DATA_BELOW) return Promise.resolve(true);
+    $('#more-data-title').textContent = TEXT.moreDataTitle;
+    $('#more-data-text').textContent = TEXT.moreDataText(score);
+    $('#more-data-continue').textContent = TEXT.moreDataContinue;
+    $('#more-data-back').textContent = TEXT.moreDataBack;
+    return new Promise(resolve => {
+      const done = answer => {
+        $('#more-data-continue').onclick = null;
+        $('#more-data-back').onclick = null;
+        dialog.onclose = null;
+        if (dialog.open) dialog.close();
+        resolve(answer);
+      };
+      $('#more-data-continue').onclick = () => done(true);
+      $('#more-data-back').onclick = () => done(false);
+      dialog.onclose = () => done(false);
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+
   async function collectDataForPremium() {
+    if (!(await offerMoreData())) return null;
     for (;;) {
       let collected;
       try {
@@ -8187,18 +8219,20 @@
           base = adding.length ? Digest.build(Object.assign({}, state.signals, { supplements: Object.assign({}, priorSupplements) }),
             { includeMessages: true }) : digest;
         }
-        premium = premiumDigestFrom(base, extra);
+        premium = premiumDigestFrom(base, extra, state.signals);
       } catch (error) {
         flash('#profile-alert', (error && error.message) || 'Could not rebuild your evidence summary.');
         return null;
       }
       if (!premium) { flash('#profile-alert', TEXT.rerunNeedsInstagram); return null; }
-      // Nothing new: the payment sheet follows directly, and the full report
-      // is written from exactly the digest the card was read from.
-      if (!anyFresh) return premium;
-      // Something added or replaced: reviewed as what will be sent. Payment is
-      // the next step whatever happens here: this review sits inside the
-      // unlock itself.
+      // Nothing new and the export gone: the payment sheet follows directly,
+      // and the full report is written from exactly the digest the card was
+      // read from.
+      if (!anyFresh && !premium.__rebuilt) return premium;
+      // Something added or replaced, or the same sources read deeper from the
+      // export still open here: reviewed as what will be sent, since it holds
+      // lines the reader has not seen. Payment is the next step whatever
+      // happens here: this review sits inside the unlock itself.
       const decision = await askReview(premium, { paymentDue: true, deep: Boolean(premium.__deep) });
       if (decision === REVIEW_BACK) continue;
       if (!decision) return null;
@@ -8210,7 +8244,9 @@
       // find what they loaded still loaded; runPremiumAnalysis clears it once
       // the unlock is through. (An Instagram export loaded again with nothing
       // else is simply the new standard digest, and goes as one.)
-      if (premium.__deep) {
+      // Read deeper with nothing added, the card stands: the report is
+      // written to explain it, and the standard digest is left as it was.
+      if (premium.__deep && anyFresh) {
         premium.__standard = digest;
         premium.__fresh = true;
       }
@@ -8219,29 +8255,133 @@
   }
 
   /**
-   * The digest the full premium report reads: `base` — the standard digest,
-   * up to 80,000 characters — with any source in `extra` merged on top, to a
-   * line of 160,000 (docs/digest.js, "the premium read").
+   * The digest the full premium report reads, at the premium pools
+   * (docs/digest.js, DEEP_POOL_CAPS and "the premium read").
    *
-   * Nothing in the base is trimmed: Instagram and every source it already
-   * carried are marked protected, and only the sources added here share the
-   * room above it. A source loaded again replaces its older copy and counts
-   * as added. With nothing to add, `base` itself comes back, unchanged.
+   * With the export still open in this tab (`signals`), it is rebuilt from it:
+   * every source the card was read from, read deeper, with anything in
+   * `extra` — marked `__rebuilt`, since it carries lines the reader has not
+   * reviewed yet. Without it, `base` — the standard digest — with any source
+   * in `extra` merged into its pool, at the premium pools' ceilings: a
+   * WhatsApp chat goes in ahead of the Instagram DMs there, as everywhere,
+   * and the card is redrawn from the result. A source loaded again replaces
+   * its older copy and counts as added. With nothing to add, `base` itself
+   * comes back, unchanged.
    */
-  function premiumDigestFrom(base, extra) {
+  function premiumDigestFrom(base, extra, signals) {
     if (!base) return null;
     const adding = {};
     for (const [key, value] of Object.entries(extra || {})) if (value) adding[key] = value;
+    const rebuilt = signals ? deepDigestFrom(signals, base, adding) : null;
+    if (rebuilt) return rebuilt;
     if (!Object.keys(adding).length) return base;
     const copy = JSON.parse(JSON.stringify(base));
     for (const key of Object.keys(adding)) {
       delete copy[key];
       if (copy.coverage && Array.isArray(copy.coverage.sources)) copy.coverage.sources = copy.coverage.sources.filter(s => s !== key);
     }
-    const protect = ['instagram'].concat(['google', 'facebook', 'whatsapp'].filter(key => copy[key]));
-    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true, protect });
+    const out = Digest.addSupplements(copy, adding, { ownHandle: ownHandle(), ownName: ownDisplayName(), deep: true });
     out.__deep = true;
     return out;
+  }
+
+  // The premium read rebuilt from the export open in this tab. Only when every
+  // source the card was read from is still here to read again: one merged
+  // into a stored digest on an earlier visit is not, and a rebuild would
+  // quietly drop it.
+  function deepDigestFrom(signals, base, adding) {
+    const supplements = Object.assign({}, signals.supplements, adding);
+    if (['google', 'facebook', 'whatsapp'].some(key => base[key] && !supplements[key])) return null;
+    const out = Digest.build(Object.assign({}, signals, { supplements }), { includeMessages: true, deep: true });
+    out.__deep = true;
+    out.__rebuilt = true;
+    return out;
+  }
+
+  // The screen names on the Instagram steps' mobile route (.ui-peek) show
+  // their screenshot from the illustrated guide: on hover where there is a
+  // mouse, and on a tap or click anywhere, which keeps it open until the next
+  // tap elsewhere, Escape or another name. One popup at a time, placed
+  // beside its name and kept inside the window; inside a dialog it is added
+  // to that dialog, so it shows above the dialog rather than under it.
+  function mountPeeks() {
+    let pop = null;
+    let owner = null;
+    let pinned = false;
+    const close = () => {
+      if (pop) pop.remove();
+      if (owner) owner.setAttribute('aria-expanded', 'false');
+      pop = null; owner = null; pinned = false;
+    };
+    const place = () => {
+      if (!pop || !owner) return;
+      const at = owner.getBoundingClientRect();
+      let width = Math.min(240, window.innerWidth - 24);
+      pop.style.width = width + 'px';
+      // A tall screenshot is drawn narrower, to fit beside its name.
+      const room = Math.max(at.top, window.innerHeight - at.bottom) - 16;
+      if (pop.offsetHeight > room && room > 120) {
+        width = Math.max(120, Math.floor(width * room / pop.offsetHeight));
+        pop.style.width = width + 'px';
+      }
+      const left = Math.max(12, Math.min(at.left + at.width / 2 - width / 2, window.innerWidth - width - 12));
+      const height = pop.offsetHeight;
+      const below = at.bottom + 8;
+      const top = below + height <= window.innerHeight - 8 || at.top - 8 - height < 8 ? below : at.top - 8 - height;
+      pop.style.left = left + 'px';
+      pop.style.top = Math.max(8, top) + 'px';
+    };
+    const open = button => {
+      if (owner === button) return;
+      close();
+      owner = button;
+      pop = document.createElement('span');
+      pop.className = 'peek-pop';
+      pop.setAttribute('role', 'tooltip');
+      pop.id = 'peek-pop';
+      const frame = document.createElement('span');
+      frame.className = 'guide-frame';
+      const img = document.createElement('img');
+      img.src = button.dataset.peek;
+      img.alt = button.dataset.peekAlt || '';
+      img.width = 480;
+      img.decoding = 'async';
+      img.addEventListener('load', place);
+      const mark = document.createElement('span');
+      mark.className = 'guide-mark guide-mark-' + (button.dataset.peekMark || '1');
+      mark.setAttribute('aria-hidden', 'true');
+      frame.append(img, mark);
+      pop.append(frame);
+      (button.closest('dialog') || document.body).append(pop);
+      button.setAttribute('aria-expanded', 'true');
+      button.setAttribute('aria-describedby', 'peek-pop');
+      place();
+    };
+    for (const button of document.querySelectorAll('.ui-peek')) button.setAttribute('aria-expanded', 'false');
+    document.addEventListener('click', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button) {
+        event.preventDefault();
+        if (owner === button && pinned) { close(); return; }
+        open(button);
+        pinned = true;
+        return;
+      }
+      if (pop && !pop.contains(event.target)) close();
+    });
+    document.addEventListener('mouseover', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button && !pinned && window.matchMedia('(hover: hover)').matches) open(button);
+    });
+    document.addEventListener('mouseout', event => {
+      const button = event.target.closest && event.target.closest('.ui-peek');
+      if (button && button === owner && !pinned && !button.contains(event.relatedTarget)) close();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && pop) close(); });
+    window.addEventListener('scroll', () => { if (pop) place(); }, true);
+    window.addEventListener('resize', () => { if (pop) place(); });
+    // A closing dialog takes its popup with it.
+    document.addEventListener('close', event => { if (pop && event.target.contains(pop)) close(); }, true);
   }
 
   /** What a digest says about the data it was built from, to tell whether it changed. */

@@ -473,7 +473,7 @@
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
     fullReportSample: 'See sample report',
-    fullReportTitle: 'Unlock the full premium report',
+    fullReportTitle: 'Unlock your Psyche Report',
     // One list, one offer: the explanations behind the card and the four
     // sections it does not touch, read as the single report they are bought as.
     // Each line says what that part of the report actually contains, at the
@@ -535,11 +535,22 @@
     // In the data popout, once a fresh export is loaded over an existing card.
     cardChangeNote: 'Updating your data sources may change your Psyche Card.',
     premiumSourcesTitle: 'Your data for the full report',
+    // Before that page, when the card's confidence is under 80: more sources
+    // make a better report.
+    moreDataTitle: 'Make your report more accurate',
+    moreDataText: (score) => 'Your Psyche Card was read with ' + score + '% confidence. Adding more data – WhatsApp chats ' +
+      'with up to 3 close connections, your Google data or your Facebook data – gives the full report more to go on, ' +
+      'and you can add it on the next page.',
+    moreDataContinue: 'Continue',
+    moreDataBack: 'Back',
     // The review's downloadable copy only, at the unlock: what this file is.
     deepReviewNote: 'This is what the full premium report is written from: everything your card was read from, with the data you just added on top.',
+    // The premium read rebuilt from the export still open in the tab: the
+    // same sources, more of each.
+    deepRebuiltNote: 'This is what the full premium report is written from: the data your card was read from, read in more depth, with anything you just added.',
     premiumSourcesBlurb: 'Add a source or replace one with a fresh export — more data, a fuller report. ' +
       'Or carry on with what is loaded.',
-    premiumUnlockPrefix: 'Unlock the full premium report – ',
+    premiumUnlockPrefix: 'Unlock your Psyche Report – ',
     // Under the price on the free card's unlock button: the other way in.
     premiumUnlockFriends: 'or get 3 friends to make their Psyche Card from your link',
     // Shown while the paid model call is in flight, after payment has already
@@ -600,7 +611,7 @@
     // paying can always fix — so it says what it is rather than blaming them.
     analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
       'again tomorrow.',
-    premiumDialogTitle: 'Unlock the full premium report',
+    premiumDialogTitle: 'Unlock your Psyche Report',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
     // be the wrong verb for sections they already have. Same US$5, same
@@ -726,7 +737,7 @@
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded — tap to load a different one'
       : n + ' of ' + max + ' chats loaded — tap to ' + (n >= max ? 'start over' : 'add another'),
     // The first upload's WhatsApp row and the tag on its two optional rows.
-    whatsappFirstTitle: 'WhatsApp chat with a close friend',
+    whatsappFirstTitle: 'WhatsApp chats with close connections',
     sourceOptional: '(optional)',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
     whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here — this one replaces the last.'

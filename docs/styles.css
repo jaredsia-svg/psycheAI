@@ -930,6 +930,22 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    is a button in someone else's UI"), but drop the bold weight that would
    otherwise make this quiet line compete with the numbered step above it. */
 .step-fallback .ui-label { font-weight: 400; }
+/* A screen name on the Instagram steps' mobile route that shows its
+   screenshot from the illustrated guide (app.js, mountPeeks): the same
+   underlined label, as a button with nothing of a button's look. */
+.ui-peek {
+  font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; padding: 0; margin: 0;
+  cursor: pointer; text-align: inherit;
+  text-decoration: underline; text-decoration-style: dotted; text-decoration-thickness: 1.5px; text-underline-offset: 3px;
+}
+.ui-peek:hover, .ui-peek[aria-expanded="true"] { color: var(--accent); }
+.ui-peek:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.peek-pop {
+  position: fixed; z-index: 1000; display: block; padding: 6px;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(20, 14, 26, .28);
+}
+.peek-pop img { display: block; width: 100%; height: auto; border-radius: 8px; }
 
 /* The hero's primary action scrolls here. Without a scroll margin the card
    lands flush at viewport top, which is underneath the sticky nav — so the
@@ -1155,6 +1171,9 @@ textarea { resize: vertical; }
 .compat-head #report-sub { margin: 0; font-size: .86rem; }
 /* The answer: the ring, the band in words, the verdict. */
 .compat-lead { align-items: center; }
+/* The note before the unlock's data page: an icon over a short message. */
+.more-data-dialog { text-align: center; }
+.more-data-icon { font-size: 2rem; line-height: 1; margin-bottom: .4rem; }
 /* The sync's one-line summary, leading the page: a quote on the brand wash. */
 .compat-summary {
   display: flex; gap: .9rem; align-items: flex-start; padding: 1.3rem clamp(1rem, 4vw, 1.6rem);

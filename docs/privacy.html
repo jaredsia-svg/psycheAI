@@ -38,7 +38,7 @@
     <h2>What is sent, and to whom</h2>
     <ul>
       <li><b>The AI provider.</b> To write a card or report, the reduced summary you reviewed is sent to Google (Gemini API) or Anthropic (Claude API). They process it on servers outside Singapore and return the report. The summary does not include your name or username.</li>
-      <li><b>PsycheAI’s server</b> passes the summary to the provider and the report back. It holds a finished report in memory for up to four hours, so that a dropped connection is not charged twice. It never writes the report to disk.</li>
+      <li><b>PsycheAI’s server</b> only passes the summary to the provider and the report back. It does not store, log or show either to anyone, and PsycheAI has no access to your data or your results. So that a dropped connection is not charged twice, a finished report waits briefly in the server’s working memory, for up to four hours, where only your own device can collect it: it is filed under a code worked out from your summary, which only your device has. It is never written to disk.</li>
       <li><b>Stripe</b> processes payments. PsycheAI never receives your full card number. It sees the amount, the currency and a payment reference.</li>
       <li><b>Render</b> hosts the site and <b>Upstash</b> holds the records listed below. Like any website, they receive your IP address when you connect.</li>
       <li><b>People you send your link to</b> see your Psyche Card. They never see your export, messages or full report.</li>

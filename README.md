@@ -3691,6 +3691,17 @@ a step the guide actually has, and that step has to be the one showing the scree
 (`04-create-export.jpg`). The second is the one that matters — pointing at an existing but wrong step
 is the failure that looks fine.
 
+**Step 1 now names the mobile route instead.** "Click Download your information. If you are on your
+mobile, you can also go to your Instagram app > Settings > Accounts Centre > Your information and
+permissions > Export your information", the same in the steps, the illustrated guide and
+`/download-instagram-data`; the "if the link doesn't open" footnote is gone, and with it the "brings you
+to step 2" sentence and its two checks. In the steps (not the guide, which shows the screens anyway) each
+of the three screen names is a button (`.ui-peek`) that shows its screenshot from the guide, ring and all:
+on hover with a mouse, and on a tap or click anywhere, kept open until the next tap elsewhere or Escape
+(`mountPeeks` in `docs/app.js`). The popup is placed beside its name inside the window, drawn narrower
+when the screenshot is too tall for the room, and added to the open dialog when there is one so it shows
+above it.
+
 **The guide ends with a "Start here" button** rather than a sentence pointing at the bottom of the
 page. It closes the dialog and scrolls straight to the upload card, the same way the hero's own
 "Analyse my data" button already lands on the how-to card — so a reader who has just read six screens
@@ -5583,6 +5594,122 @@ assessment (which now names the careers that suit and drain).
 used to read "Receiving gifts". `Copy.givingLove()` shows it as **Giving gifts** wherever the giving side
 is drawn (the card, the report, the PDF, the card guide), and `withCard` writes it that way into the
 shared card, so a Psyche Sync reads it right too. The data itself is unchanged.
+
+### Each source has a ceiling of its own
+
+A real digest showed the problem: Instagram filled the old 80,000 on its own (79,741), so a WhatsApp chat of
+17,039 of the reader's messages was trimmed to **10 lines** and Google to about thirty entries a list,
+while Instagram kept all 270 messages and 200 captions. The trim loop cut supplements first.
+
+**From first principles.** Cost is characters sent: each 10,000 is about $0.002 a call, and the premium
+report re-sends the digest. Each further line of one source adds less than the one before, while a
+second good source adds a new angle. Instagram and WhatsApp carry the reader's own voice; Google is
+questions and autoplay; Facebook is an older life stage. So each source gets a ceiling of its own, sized
+to what it is worth, the **same in the free read and the premium read** (`SOURCE_CAPS`):
+
+| Source | Ceiling |
+|---|---|
+| Instagram | 75,000 (`DIGEST_CHARS`), built first and never cut for an added source |
+| WhatsApp | 12,000 a chat (`waThreadChars`, about fifty lines with their context), up to 3 chats, plus each chat's counts |
+| Google | 8,000 (its lists, cut back to 30 channels, 8 titles, 25 YouTube and 35 Google searches, come to 5,000–6,000) |
+| Facebook | 12,000, offered at the unlock |
+
+*(Superseded by the three pools below: the ceilings are now shared by kind of evidence.)*
+
+### Two free tiers: Instagram alone, or Instagram and another source
+
+The 126,000 pools are for a reader who loads a second source at the first upload (a WhatsApp chat or
+Google). Taking that effort shows more interest and likely a higher conversion, so it buys the fuller
+card. Instagram alone gets the allocation the card was first sized at, about 80,000, cut by the same pools
+(`SOLO_POOL_CAPS`):
+
+| Pool | Instagram only | Instagram + another source |
+|---|---|---|
+| Public self | 32,000 | 40,000 |
+| Conversations | 46,000 | 72,000 |
+| Searches | — | 8,000 |
+| Fixed | 4,000 (measured 2,600) | 6,000 |
+| **Line** | **82,000** (`SOLO_DIGEST_CHARS`) | **126,000** |
+| Worst-case free card | $0.063 (`SOLO_FREE_COST_CAP`) | $0.072 |
+| Worst-case full report from that digest | $0.152 (`SOLO_COST_CAP`) | $0.161 |
+
+32,000 and 46,000 because a full real account came to about 30,000 of public evidence and 42,500 of DMs.
+The tier is read off the digest itself (`carriesSecondSource`, `poolCapsFor`, `budgetFor`): a source
+unticked at the review does not count, so what is sent falls back to 82,000, and the server's size check
+reads the tier the same way. A digest built with a second source fills Instagram at the larger tier first
+(`poolTier: 'sources'`). Facebook comes in only at the unlock, so it never decides the free tier; the
+premium read keeps its own pools for every reader. A heavy Instagram-only account's 200 captions now
+just pass the 32,000, so its captions are cut to about 180.
+
+### Instagram's steps stay inside the app
+
+Step 1 no longer sends the reader to an outside link — a link to another site is one more thing to
+trust. The steps are now "Open your Instagram app > Go to your Profile > tap the Menu (≡) top right to Settings >
+Accounts Centre", then "Tap Your information and permissions > Export your information > Create export >
+your Instagram account > Export to device", the same in the illustrated guide (whose first screenshot is
+captioned "Settings → tap Accounts Centre") and on `/download-instagram-data`, which also lost its "Open
+Download your information" button and its computer answer's link. The three screen names still show their
+screenshots on hover or tap (`mountPeeks`).
+
+### Privacy wording: no access, and the four-hour hold explained
+
+The FAQ's "What data leaves this device" no longer mentions other people's messages (the review sheet's
+Messenger and DM rows still say what of the other side is included), and says the digest is usually
+about 100 KB of text — it is at most 126,000 characters, and a full Instagram account lands near
+100,000–115,000. "Can anyone else access my data" adds that not even PsycheAI's administrator can see
+your data or results: there is no admin view of them, and nothing from a digest or report is stored or
+logged (the server's logs carry error messages and the kind of report a name was scrubbed from, never
+content). The privacy page's server line used to say only that a finished report is "held in memory for
+up to four hours", which read as PsycheAI having it. It now says what that is: the server stores, logs and
+shows nothing, PsycheAI has no access to your data or results, and the finished report waits in working
+memory under a code worked out from your own summary (`lib/results.js` keys it on a SHA-256 of the
+digest), so only the device holding that summary can collect it.
+
+### Three pools, by kind of evidence
+
+Per-source ceilings left room stranded: an Instagram account with few captions could not lend its spare
+room to Facebook, and a reader with only Facebook's public posts had 12,000 characters for them. So the
+room is now shared **by kind of evidence**, and spare room is shared **inside a pool, never across**
+(`POOL_CAPS`, `DEEP_POOL_CAPS`, `POOLS` and `trimToPools` in `docs/digest.js`):
+
+| Pool | Free | Premium | What is in it, and in what order |
+|---|---|---|---|
+| Public self | 40,000 | 70,000 | Instagram captions, comments, likes, saves, topics, accounts (up to 40,000 in both reads, `INSTAGRAM_PUBLIC_CHARS`); then Facebook posts, comments, friends and searches in the room left, never under 10,000 (`FACEBOOK_MIN_CHARS`) |
+| Conversations | 72,000 | 95,000 | WhatsApp chats first; then Instagram DMs and Messenger share the rest, the larger trimmed first. 12,000 a conversation, 15,000 in the premium read |
+| Searches | 8,000 | 8,000 | Google |
+| Fixed | 6,000 | 6,000 | counts, rhythm, each chat's timings, notes (measured at 5,950 with three chats) |
+| **Line** | **126,000** | **179,000** | `DIGEST_CHARS`, `DEEP_DIGEST_CHARS`; `budgetFor(digest, deep)` |
+
+Facebook is offered only at the unlock, and Messenger with it; the first upload takes Instagram, up to
+three WhatsApp chats and Google. Instagram fills its two pools with the reader's own words
+(`buildFilled`: messages up to the conversations pool, captions up to Instagram's 40,000), and a chat added
+after takes its room back from the Instagram DMs. Measured on a heavy synthetic account: Instagram alone
+114,000 (DMs fill the conversations pool); with three chats and Google 120,000 (chats 34,000, DMs cut
+back to 38,000); the premium read with every source 173,000 (Facebook 30,000 of the public pool; chats
+43,000, DMs and Messenger about 26,000 each).
+
+**The premium read.** With the export still open in the tab, the full report is written from a digest
+rebuilt from it at the premium pools (`deepDigestFrom` in `docs/app.js`). It holds lines the reader has not
+seen, so it is reviewed before payment even when nothing was added; with nothing added the card stands and
+the report is anchored to it. When the export has gone (a reload, a later visit), the report is written from
+the card's own digest; a source added at the unlock is merged into its pool at the premium ceilings (a chat
+still goes in ahead of the DMs, and the card is redrawn). Nothing is protected from trimming there any more:
+protecting the card's DMs left an added chat about 23,000.
+
+**Costs at worst:** free card $0.072 (`FREE_COST_CAP`, 126,000 characters); a full report from the card's
+digest $0.161 (`COST_CAP`); the premium read's report $0.172 (`DEEP_COST_CAP`) and, when data is added
+and the card is redrawn, its card $0.083 (`DEEP_FREE_COST_CAP`): $0.255 together. Of the free card's
+$0.072, the roast is about $0.009 (its 2,400 tokens of prompt and the 2,000 tokens of output room it added).
+
+### "Unlock your Psyche Report", a note when confidence is low, and flattering pattern names
+
+The free page's offer, its button and the payment sheet say **Unlock your Psyche Report**. Pressing it
+with a card read at **under 80% confidence** first opens a short note (`offerMoreData`, `#more-data-dialog`):
+the confidence, and that WhatsApp chats with up to 3 close connections, Google or Facebook data would
+give the full report more to go on, added on the next page. Continue goes on to "Your data for the full
+report"; Back leaves the unlock. That page, like every data popout, now lists Instagram, WhatsApp,
+Google, Facebook. **Signature pattern names must sound flattering** (the behaviour at its best); the
+pattern's line, which only the paid report shows, may name the blind spot plainly.
 
 ## The compatibility link
 

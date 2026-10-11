@@ -97,13 +97,12 @@
     // runs to, head + " … " + tail.
     messageMaxChars: 483,
     // No one conversation's lines may run past this many characters, however
-    // much room is left: one relationship never outweighs the rest of the
-    // evidence. 6,000 for a Messenger conversation or a WhatsApp chat (16,000
-    // in the premium read, DEEP_LIMITS); 10,000 for an Instagram one
-    // (igThreadChars), since Instagram is the export the card is read from and
-    // most readers' messages there sit in a handful of conversations.
-    messageThreadChars: 6000,
-    igThreadChars: 10000,
+    // much room its pool has left: one relationship never outweighs the rest
+    // of the evidence. 12,000 for any conversation — an Instagram DM thread,
+    // a Messenger conversation, a WhatsApp chat — and 15,000 in the premium
+    // read (DEEP_LIMITS). About fifty lines with their context.
+    messageThreadChars: 12000,
+    igThreadChars: 12000,
     // Past this a message is not used at all: an 800-character message is
     // almost always pasted or forwarded — an article, an announcement, a
     // chain message — not something the reader wrote. One carrying a link is
@@ -194,7 +193,10 @@
     // and every one of them is a cap on an *aggregate*, never on a raw list.
     // The same watch history shipped as raw titles would be 3.1M chars and
     // $1.33 of input on its own, five times the entire budget.
-    youtubeChannels: 50,
+    // Thirty, from fifty, and the three lists below cut by about a third too:
+    // Google adds less per character than the reader's own words (a search is
+    // a question, a watched video is often autoplay).
+    youtubeChannels: 30,
     // Twenty-five. The priciest item in the Takeout block at 112 characters
     // apiece against 44 for a channel name, and `topChannels` beside it already
     // covers the same ground — what a title adds over a channel is the
@@ -202,13 +204,13 @@
     // channel list.
     // Ten since the cut that freed room for messages: a random handful from
     // thousands adds little to the channel list beside it.
-    youtubeTitles: 10,
+    youtubeTitles: 8,
     // Forty. This was the last list in the Takeout block still at its original
     // size while channels, titles and Google searches had all been cut — a
     // leftover rather than a decision, and it showed: 4,294 characters, the
     // second-largest thing in a block that had already been halved twice.
-    youtubeSearches: 40,
-    googleSearchTerms: 50,
+    youtubeSearches: 25,
+    googleSearchTerms: 35,
     // Gemini prompts are collected on the device and **not sent**. The text
     // was 15,396 characters at a median of 289 on a real export, and most of
     // that was pasted payload rather than anything the reader wrote — a JSON
@@ -226,28 +228,18 @@
     fbComments: 150,
     fbFriends: 300,
     fbSearches: 80,
-    fbMessages: 200,
+    // 600 so Messenger can fill the room its pool has left at the unlock;
+    // the pool trims it back (trimToPools).
+    fbMessages: 600,
     // The reader's own messages from up to three WhatsApp chats, sampled per
     // chat like any other conversation and tagged [c1]–[c3]. Each chat is
     // guaranteed a quarter of the places when it has that many.
-    waMessages: 200,
-    // No one WhatsApp chat's lines may run past this many characters: a
-    // tenth of the digest's budget (16,000 in the premium read, DEEP_LIMITS).
-    // A private chat is dense and personal; left at the general ceiling one
-    // or two of them outweighed everything else read.
-    waThreadChars: 8000,
-    // And as a share of the evidence actually sent, whatever room is left
-    // (trimToBudget, after the source shares): no one chat over a tenth,
-    // WhatsApp as a whole — three chats at most — over three tenths.
-    waChatMaxDigestShare: 0.1,
-    waMaxDigestShare: 0.3,
-    // The free read with one chat — a close friend's, offered on the first
-    // upload — gives that chat a fixed allowance instead: up to this many
-    // characters in all (its lines and its counts), whatever the rest of the digest
-    // weighs. The share rules above would otherwise cut it to a few lines on
-    // a lighter Instagram account (a tenth of an 11,000-character digest is
-    // 1,100). The premium read turns it off (DEEP_LIMITS) and keeps the shares.
-    waSoloChatChars: 8000,
+    waMessages: 300,
+    // No one WhatsApp chat's lines may run past this many characters (15,000
+    // in the premium read): about fifty lines with their context. Three of
+    // them at their ceiling are half of the conversations pool, so no one
+    // chat sets the tone of the report. See POOLS.
+    waThreadChars: 12000,
     waMinShare: 0.25,
     // And at most two fifths of them, as a hard ceiling: when two or three
     // chats are loaded, places a chat cannot use are left empty rather than
@@ -507,7 +499,10 @@
   // through the report (patterns, motivators, development, pressure points)
   // and needs a larger reserve below. The tenth of a cent keeps the full
   // 80,000-character digest inside the cap at the worst-case output.
-  const COST_CAP = 0.151;
+  //
+  // $0.161 since the digest became three pools at 126,000 — see the worked
+  // figures under "what each call can cost, at most".
+  const COST_CAP = 0.161;
 
   // Photographs used to be part of a run: fourteen of the reader's own stills,
   // decoded and downscaled in the browser and sent alongside the digest. They
@@ -534,68 +529,218 @@
   // ---------- one digest, read by both calls ----------
   //
   // The free summary card and the full premium report read the same digest —
-  // the same file, byte for byte, not a cut-down copy for the card. Two
-  // digests meant two readings of different evidence, and a card whose
-  // conclusions the fuller evidence might not have reached; one digest means
-  // the only difference between the two calls is what they are asked to
-  // write. Its size is the decision, typed rather than derived, and the two
-  // cost ceilings below follow from it.
+  // the same file, byte for byte, not a cut-down copy for the card — unless
+  // the premium read is rebuilt deeper (see "the premium read" below). Its
+  // size is the decision, typed rather than derived, and the cost ceilings
+  // below follow from it.
+
+  // ---------- three pools, by kind of evidence ----------
   //
-  // 80,000 characters. At $0.75/$3.75 per million that is about 22,900
-  // tokens, $0.017 of each call. The caps above are sized so a heavy account
-  // lands near it through the caps themselves — captions and their own
-  // messages are most of any real digest — and the trim loop is the backstop
-  // for the account that is heavy everywhere at once.
-  const DIGEST_CHARS = 80000;
+  // From first principles: cost is characters sent (each 10,000 is about
+  // $0.002 a call), each further line of one kind of evidence adds less than
+  // the one before, and a second source of the *same kind* is worth more than
+  // more of the first. So the room is shared out by kind of evidence rather
+  // than by export, and spare room is shared inside a kind, never across:
+  //
+  //                   free     premium
+  //   public          40,000   70,000   Instagram captions, comments, likes,
+  //                                     saves, topics and accounts; Facebook's
+  //                                     posts, comments, friends and searches
+  //   conversations   72,000   95,000   WhatsApp chats, Instagram DMs and
+  //                                     Messenger, 12,000 a conversation
+  //                                     (15,000 in the premium read)
+  //   searches         8,000    8,000   Google
+  //   fixed            6,000    6,000   counts, rhythm, chat timings, notes
+  //                                     (measured at 5,950 with three chats)
+  //
+  //   most            126,000  179,000
+  //
+  // Inside a pool the order is the point. Conversations: WhatsApp chats go in
+  // first (a chat the reader chose to export is a close connection), and
+  // Instagram DMs and Messenger share what is left, the larger trimmed first.
+  // Public: Instagram fills first, up to 40,000 in both reads, and Facebook —
+  // offered only at the unlock — takes the room left in the pool, never less
+  // than 10,000 when both are there. Room a pool does not use is not handed
+  // to another, so a thin Google never grows the messages and a heavy inbox
+  // never crowds out the captions.
+  const POOL_CAPS = { public: 40000, conversations: 72000, searches: 8000 };
+  const DEEP_POOL_CAPS = { public: 70000, conversations: 95000, searches: 8000 };
+  // Instagram's own share of the public pool, in both reads: the premium
+  // read's larger public pool is room for Facebook, not for more captions.
+  const INSTAGRAM_PUBLIC_CHARS = 40000;
+  // Facebook's part of the public pool is never trimmed below this to make
+  // room for Instagram.
+  const FACEBOOK_MIN_CHARS = 10000;
+  // The structured fields beside the lists — counts, rhythm, each chat's
+  // timings, the notes — which no pool counts.
+  const FIXED_CHARS = 6000;
+  const poolTotal = caps => caps.public + caps.conversations + caps.searches + FIXED_CHARS;
+  const DIGEST_CHARS = poolTotal(POOL_CAPS);
+  const DEEP_DIGEST_CHARS = poolTotal(DEEP_POOL_CAPS);
+
+  // ---------- two free tiers ----------
+  //
+  // The free read's pools above are for a reader who loaded a second source
+  // at the first upload — a WhatsApp chat or Google — and who has shown more
+  // interest by doing so. A reader who loaded Instagram alone gets the
+  // allocation the card was first sized at, about 80,000, cut the same way:
+  //
+  //                   Instagram only   Instagram + another source
+  //   public              32,000         40,000
+  //   conversations       46,000         72,000
+  //   searches                 —          8,000
+  //   fixed                4,000          6,000   (Instagram alone measures 2,600)
+  //
+  //   most                82,000        126,000
+  //
+  // 32,000 and 46,000 because a full real account came to about 30,000 of
+  // public evidence and 42,500 of DMs. The tier is read off the digest itself
+  // (carriesSecondSource): a source unticked at the review does not count,
+  // and the server's size check reads it the same way. Facebook is offered
+  // only at the unlock, so it never decides the free tier. The premium read
+  // has its own pools for every reader (DEEP_POOL_CAPS).
+  const SOLO_POOL_CAPS = { public: 32000, conversations: 46000, searches: 0 };
+  const SOLO_FIXED_CHARS = 4000;
+  const SOLO_DIGEST_CHARS = SOLO_POOL_CAPS.public + SOLO_POOL_CAPS.conversations + SOLO_FIXED_CHARS;
+  /** Whether a digest carries a source beside Instagram, with something of it still in. */
+  function carriesSecondSource(digest) {
+    const d = digest && typeof digest === 'object' ? digest : {};
+    const some = (block, keys) => Boolean(block) && keys.some(key => Array.isArray(block[key]) && block[key].length);
+    return Boolean(d.whatsapp) ||
+      some(d.google, ['topChannels', 'videoTitleSample', 'topYoutubeSearches', 'topGoogleSearches']) ||
+      some(d.facebook, ['postSample', 'commentSample', 'friends', 'topSearches', 'ownMessageSample']);
+  }
+  /** The pools this digest is held to: the free read's two tiers, or the premium read's. */
+  function poolCapsFor(digest) {
+    const caps = LIMITS.poolCaps || POOL_CAPS;
+    // The premium read's, or a test's own.
+    if (caps !== POOL_CAPS) return caps;
+    return LIMITS.poolTier === 'sources' || carriesSecondSource(digest) ? POOL_CAPS : SOLO_POOL_CAPS;
+  }
   LIMITS.totalChars = DIGEST_CHARS;
+  LIMITS.poolCaps = POOL_CAPS;
   // The most items any one list may carry into a request, past which
   // forModel's clamp cuts it whatever it holds.
   LIMITS.maxListItems = 400;
 
+  // Which evidence list belongs to which pool, and to which source. Every
+  // list in EVIDENCE_LISTS is in exactly one pool (a check in
+  // tools/selftest.mjs holds it); a list with no trim entry here is counted
+  // but never cut (mostEngagedWith, a dozen names).
+  const POOLS = {
+    public: [
+      ['instagram', 'samples.captions'], ['instagram', 'samples.comments'],
+      ['instagram', 'samples.likedPostCaptions'], ['instagram', 'samples.likedPostHashtags'],
+      ['instagram', 'instagramTopics'], ['instagram', 'mostLikedAccounts'], ['instagram', 'mostSavedAccounts'],
+      ['instagram', 'mostEngagedWith', 'fixed'],
+      ['facebook', 'facebook.postSample'], ['facebook', 'facebook.commentSample'],
+      ['facebook', 'facebook.friends'], ['facebook', 'facebook.topSearches'],
+    ],
+    conversations: [
+      ['whatsapp', 'whatsapp.ownMessageSample'],
+      ['instagram', 'directMessages.ownMessageSample'],
+      ['facebook', 'facebook.ownMessageSample'],
+    ],
+    searches: [
+      ['google', 'google.topChannels'], ['google', 'google.videoTitleSample'],
+      ['google', 'google.topYoutubeSearches'], ['google', 'google.topGoogleSearches'],
+    ],
+  };
+
+  function getPath(digest, path) {
+    let value = digest;
+    for (const key of path.split('.')) value = value && typeof value === 'object' ? value[key] : undefined;
+    return value;
+  }
+  function setPath(digest, path, list) {
+    const keys = path.split('.');
+    let parent = digest;
+    for (const key of keys.slice(0, -1)) parent = parent[key];
+    parent[keys[keys.length - 1]] = list;
+  }
+  // One list as renderEvidence writes it, header and all.
+  function sectionChars(path, list) {
+    if (!Array.isArray(list)) return 0;
+    const header = '## ' + path + ' — ';
+    return 2 + header.length + (list.length ? String(list.length).length + 7 + listChars(list) : 5);
+  }
+  /** The characters each pool takes, and each source within it, as the model reads them. */
+  function poolSizes(digest) {
+    const out = {};
+    for (const [pool, entries] of Object.entries(POOLS)) {
+      const bySource = {};
+      let total = 0;
+      for (const [source, path] of entries) {
+        const size = sectionChars(path, getPath(digest, path));
+        bySource[source] = (bySource[source] || 0) + size;
+        total += size;
+      }
+      out[pool] = Object.assign({ total }, bySource);
+    }
+    return out;
+  }
+
+  /**
+   * Each pool held to its ceiling (LIMITS.poolCaps), in its own order: the
+   * lowest-ranked list that can still give goes first, the largest of those,
+   * by just enough lines (a tenth at most) to fit. Sources in `fixed`
+   * (protect) are never cut.
+   */
+  function trimToPools(digest, fixed, floor) {
+    const caps = poolCapsFor(digest);
+    for (const [pool, entries] of Object.entries(POOLS)) {
+      const cap = caps[pool];
+      for (let guard = 0; guard < 600; guard++) {
+        const sizes = poolSizes(digest)[pool];
+        // Instagram's own 40,000 of the public pool comes first, in both reads.
+        const igOver = pool === 'public' && cap !== Infinity ? (sizes.instagram || 0) - Math.min(cap, INSTAGRAM_PUBLIC_CHARS) : 0;
+        const over = igOver > 0 ? igOver : sizes.total - cap;
+        if (over <= 0) break;
+        // Lower rank goes first. Conversations: Instagram DMs and Messenger
+        // before WhatsApp. Public: Facebook down to its 10,000, then
+        // Instagram, then Facebook below it.
+        const rank = source => pool === 'conversations' ? (source === 'whatsapp' ? 1 : 0)
+          : pool === 'public' && source === 'facebook' ? ((sizes.facebook || 0) > FACEBOOK_MIN_CHARS ? 0 : 2) : 1;
+        let pick = null;
+        for (const [source, path, kind] of entries) {
+          if (kind === 'fixed' || fixed.has(source)) continue;
+          if (igOver > 0 && source !== 'instagram') continue;
+          const list = getPath(digest, path);
+          if (!Array.isArray(list) || list.length <= floor) continue;
+          const cost = listChars(list);
+          const r = rank(source);
+          if (!pick || r < pick.r || (r === pick.r && cost > pick.cost)) pick = { path, list, cost, r };
+        }
+        if (!pick) break;
+        const per = pick.cost / pick.list.length + 1;
+        const drop = Math.min(pick.list.length - floor,
+          Math.max(1, Math.min(Math.ceil(pick.list.length * 0.1), Math.ceil(over / per))));
+        setPath(digest, pick.path, dropEvenly(pick.list, drop));
+      }
+    }
+  }
+
   // ---------- the premium read ----------
   //
-  // The digest the full premium report is written from: the standard digest
-  // the free card was read from — up to 80,000 characters, untouched — with
-  // any source added at the unlock merged into it, to a line of 160,000.
-  // Nothing is built or kept at upload for it, and nothing in the standard
-  // digest is ever cut to make room: a reader who adds nothing at the unlock
-  // is sent exactly the digest their card was drawn from. (Its names still
-  // say "deep", from when it was an option called Deeper read.)
-  //
-  // Why on top rather than shared. The standard digest is filled by Instagram
-  // and Google before anything else exists, and lands near its 80,000 on a
-  // real account; a Facebook export or WhatsApp chats added at the unlock
-  // used to be merged into that full digest and trimmed first, so they
-  // arrived as a few dozen lines. Here they get the room above it instead —
-  // at least 80,000 between them — shared by weight:
-  //
-  //   WhatsApp   34   the reader's private conversational voice — the
-  //                   evidence attachment, conflict and relationships most
-  //                   depend on
-  //   Google     25   searches and watching: the unperformed self
-  //   Facebook   25   an older life stage, posts and messages
-  //
-  // WhatsApp is also held by ceilings of its own: 16,000 characters a chat
-  // here (waThreadChars), no chat over a tenth of the digest as sent and all
-  // of it no more than three tenths (waChatMaxDigestShare, waMaxDigestShare),
-  // so its weight is a most rather than a promise.
-  // A source that needs less than its part hands the rest on to the others
-  // in proportion (allocateShares below), and one added alone has the whole
-  // room to itself. A source in the standard digest already, and not loaded
-  // again, stays exactly as it is; one loaded again replaces it and is
-  // counted as added.
-  //
-  // Overrides rather than a second table, applied for the length of one merge
-  // (withDepth below), so every sampler that reads LIMITS reads these without
-  // being taught a second set of names. The caps are wide enough that every
-  // added source can fill its part; the weights, not the caps, decide the mix.
-  const DEEP_DIGEST_CHARS = 160000;
-  const SOURCE_SHARES = { whatsapp: 34, google: 25, facebook: 25 };
+  // The digest the full premium report is written from, at the premium
+  // pools above. Rebuilt from the export when it is still open in the tab —
+  // every source the card was read from, read deeper, with anything added at
+  // the unlock — and reviewed before it is sent, since it carries lines the
+  // reader has not seen. When the export has gone (a reload, a later visit),
+  // it is the card's own digest, untouched, with anything added at the unlock
+  // merged into the room its pool has left; with nothing added, exactly the
+  // digest the card was drawn from. (Its names still say "deep", from when it
+  // was an option called Deeper read.)
+  /** The line a digest is held to: 82,000 for Instagram alone, 126,000 with another source, 179,000 for the premium read. */
+  function budgetFor(digest, deep) {
+    if (deep) return DEEP_DIGEST_CHARS;
+    const line = LIMITS.totalChars || DIGEST_CHARS;
+    if (line !== DIGEST_CHARS) return line;
+    return poolCapsFor(digest) === SOLO_POOL_CAPS ? SOLO_DIGEST_CHARS : DIGEST_CHARS;
+  }
   const DEEP_LIMITS = {
-    youtubeChannels: 100, youtubeTitles: 40, youtubeSearches: 100, googleSearchTerms: 140,
-    fbPosts: 300, fbComments: 200, fbMessages: 300, fbSearches: 100, waMessages: 600,
-    messageThreadChars: 16000, waThreadChars: 16000, waSoloChatChars: 0,
-    totalChars: DEEP_DIGEST_CHARS, maxListItems: 800, sourceShares: SOURCE_SHARES,
+    totalChars: DEEP_DIGEST_CHARS, poolCaps: DEEP_POOL_CAPS, maxListItems: 800,
+    igThreadChars: 15000, messageThreadChars: 15000, waThreadChars: 15000, waMessages: 450,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
   function withDepth(deep, fn) {
@@ -609,57 +754,56 @@
     try { return fn(); } finally { Object.assign(LIMITS, saved); }
   }
 
-  // ---------- filling the standard read ----------
+  // ---------- filling the pools ----------
   //
-  // The caps size a heavy account's digest near 80,000 characters, but a
-  // reader with no Google or Facebook data, or a lighter account, lands well
-  // under it — and the room was simply unused. The standard read now spends
-  // it on the reader's own words: built once at the caps, measured, then built
-  // again with the message and caption caps raised by what the room will hold,
-  // about two thirds of it to messages (the most under-sampled of the two)
-  // and a third to captions. The places added are recorded (`__fill`, never
-  // sent), and the trim loop takes them back first and evenly — so a source
-  // added later pushes out the extra, never the other way round.
-  //
-  // The standard read only: the premium read never rebuilds Instagram.
+  // The caps above size a typical account's digest well under its pools, and
+  // the room was simply unused. So Instagram is built once at the caps,
+  // measured against its two pools, then built again with the message cap
+  // raised by what the conversations pool has left and the caption cap by
+  // what Instagram's 40,000 of the public pool has left. The places added are
+  // recorded (`__fill`, never sent). A chat added after — WhatsApp first in
+  // its pool — then takes its room back from the Instagram DMs, never the
+  // other way round (trimToPools).
   const FILL_MIN_ROOM = 1500;
-  const FILL_MESSAGE_SHARE = 2 / 3;
   function buildFilled(signals, opts) {
     const base = build(signals, Object.assign({}, opts, { fill: false }));
-    const room = LIMITS.totalChars - evidenceChars(base);
-    if (room < FILL_MIN_ROOM) return base;
+    const caps = poolCapsFor(base);
+    const sizes = poolSizes(base);
     const msgs = (base.directMessages && base.directMessages.ownMessageSample) || [];
-    const caps = base.samples.captions || [];
+    const capsList = base.samples.captions || [];
     // Only a list its cap actually bound has more to give.
-    const moreMsgs = msgs.length >= LIMITS.messages;
-    const moreCaps = caps.length >= LIMITS.captions;
-    if (!moreMsgs && !moreCaps) return base;
-    const share = moreMsgs && moreCaps ? FILL_MESSAGE_SHARE : moreMsgs ? 1 : 0;
+    const msgRoom = msgs.length >= LIMITS.messages ? caps.conversations - sizes.conversations.total : 0;
+    const capRoom = capsList.length >= LIMITS.captions ? Math.min(caps.public, INSTAGRAM_PUBLIC_CHARS) - sizes.public.instagram : 0;
+    if (msgRoom < FILL_MIN_ROOM && capRoom < FILL_MIN_ROOM) return base;
     const per = list => list.length ? listChars(list) / list.length + 1 : 150;
     const raised = {
-      messages: LIMITS.messages + (moreMsgs ? Math.floor(room * share / per(msgs)) : 0),
-      captions: LIMITS.captions + (moreCaps ? Math.floor(room * (1 - share) / per(caps)) : 0),
+      messages: LIMITS.messages + (msgRoom >= FILL_MIN_ROOM ? Math.floor(msgRoom / per(msgs)) : 0),
+      captions: LIMITS.captions + (capRoom >= FILL_MIN_ROOM ? Math.floor(capRoom / per(capsList)) : 0),
     };
-    // Built untrimmed, then trimmed with the extra recorded, so the loop takes
-    // the extra back before it would touch anything else.
+    // Built with the raised caps; the pools trim any overshoot back evenly.
     const filled = withLimits(raised, () => build(signals, Object.assign({}, opts, { fill: false, maxChars: Infinity })));
-    filled.__fill = { ownMessages: msgs.length, captions: caps.length };
-    trimToBudget(filled, LIMITS.totalChars);
+    filled.__fill = { ownMessages: msgs.length, captions: capsList.length };
+    trimToBudget(filled, budgetFor(filled));
     return filled;
   }
 
   // ---------- what each call can cost, at most ----------
   //
   // Worst case, not average: every token of each output cap reserved as if
-  // the model thinks for all of it, against a digest at its full 80,000.
+  // the model thinks for all of it, against a digest at its full 126,000
+  // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,500 prompt + 22,857 digest × $0.75/M = $0.0243
-  //                 at most $0.0618                    → FREE_COST_CAP $0.062
+  //                  9,500 prompt + 36,000 digest × $0.75/M = $0.0341
+  //                 at most $0.0716                    → FREE_COST_CAP $0.072
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 34,500 prompt + 22,857 digest × $0.75/M = $0.0430
-  //                 at most $0.1480                    → COST_CAP $0.15
+  //                 38,100 prompt + 36,000 digest × $0.75/M = $0.0556
+  //                 at most $0.1606                    → COST_CAP $0.161
+  //
+  // COST_CAP prices a full report written from the card's own digest (the
+  // export gone, nothing added); a premium read at its own pools is priced
+  // by the two caps below.
   //
   // A check in tools/selftest.mjs holds both: charBudget at each cap must
   // cover DIGEST_CHARS, so raising the digest, a prompt or an output cap past
@@ -675,8 +819,20 @@
   // schema stopped asking for ten fields it already had answers to.
   // $0.053 once the card's prompt gained the character-side rule.
   // $0.062 once the free call wrote the roast for My Psyche: about 2,200
-  // tokens more prompt and 2,000 more output room.
-  const FREE_COST_CAP = 0.062;
+  // tokens more prompt and 2,000 more output room. $0.061 with Instagram's
+  // line at 75,000; $0.072 with the three pools at 126,000.
+  const FREE_COST_CAP = 0.072;
+  // Instagram alone, at its 82,000 (see "two free tiers"):
+  //
+  //   free card    10,000 out  × $3.75/M = $0.0375
+  //                  9,500 prompt + 23,429 digest × $0.75/M = $0.0247
+  //                 at most $0.0622                    → SOLO_FREE_COST_CAP $0.063
+  //
+  //   full report  28,000 out  × $3.75/M = $0.1050
+  //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
+  //                 at most $0.1511                    → SOLO_COST_CAP $0.152
+  const SOLO_FREE_COST_CAP = 0.063;
+  const SOLO_COST_CAP = 0.152;
   const FREE_MAX_OUTPUT_TOKENS = 10000;
   // FREE_SYSTEM plus FREE_SCHEMA, held to the real prompt by a check in
   // tools/selftest.mjs the same way FIXED_INPUT_TOKENS is. Measured at 6,117
@@ -692,22 +848,23 @@
 
   // ---------- what the premium read can cost, at most ----------
   //
-  // The same worst case, against the 160,000-character premium digest. When
-  // the unlock adds data the card is redrawn from it as well, so both calls
-  // can read it, and the two together are held under $0.25:
+  // The same worst case, against the 179,000-character premium read (every
+  // premium pool at its ceiling). When the unlock adds data the card is
+  // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                  9,500 prompt + 45,714 digest × $0.75/M = $0.0414
-  //                 at most $0.0789                    → DEEP_FREE_COST_CAP $0.079
+  //                  9,500 prompt + 51,143 digest × $0.75/M = $0.0455
+  //                 at most $0.0830                    → DEEP_FREE_COST_CAP $0.083
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
-  //                 38,100 prompt + 45,714 digest × $0.75/M = $0.0629
-  //                 at most $0.1679                    → DEEP_COST_CAP $0.168
+  //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
+  //                 at most $0.1719                    → DEEP_COST_CAP $0.172
   //
-  // $0.247 for the whole unlock at most, against a US$5 payment. Held by the
-  // same selftest check as the standard caps.
-  const DEEP_FREE_COST_CAP = 0.079;
-  const DEEP_COST_CAP = 0.168;
+  // $0.255 for the whole unlock at most, against a US$5 payment; $0.172 when
+  // nothing is added and the card stands. Held by the same selftest check as
+  // the standard caps.
+  const DEEP_FREE_COST_CAP = 0.083;
+  const DEEP_COST_CAP = 0.172;
 
   const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
@@ -1417,11 +1574,27 @@
    * @param {object} options  { includeMessages }
    */
   function build(signals, options) {
+    // The premium read, built at its own pools and limits (DEEP_LIMITS).
+    if (options && options.deep) return withDepth(true, () => build(signals, Object.assign({}, options, { deep: false })));
     const opts = options || {};
-    // The standard read fills its spare room with the reader's own words —
-    // see buildFilled. Not when a test sets its own ceiling, nor for a caller
-    // that asks for the caps alone.
-    if (opts.fill !== false && !opts.maxChars && LIMITS.totalChars === DIGEST_CHARS) return buildFilled(signals, opts);
+    // Instagram fills its pools with the reader's own words — see
+    // buildFilled — and any other source is then merged into its pool, where
+    // a WhatsApp chat goes in ahead of the Instagram DMs. Not when a test
+    // sets its own ceiling, nor for a caller that asks for the caps alone.
+    const pooled = !opts.maxChars && (LIMITS.totalChars === DIGEST_CHARS || LIMITS.totalChars === DEEP_DIGEST_CHARS);
+    const adds = signals.supplements && Object.keys(signals.supplements).filter(key => signals.supplements[key]);
+    if (adds && adds.length && pooled) {
+      // Instagram built at the tier for a reader with another source.
+      const base = withLimits({ poolTier: 'sources' }, () => build(Object.assign({}, signals, { supplements: {} }), opts));
+      return addSupplements(base, signals.supplements,
+        { ownHandle: signals.profile && signals.profile.username, ownName: signals.profile && signals.profile.name });
+    }
+    if (opts.fill !== false && pooled) return buildFilled(signals, opts);
+    // A test's own ceiling replaces the pools as well as the line.
+    if (opts.maxChars && !opts.openPools) {
+      const open = { public: Infinity, conversations: Infinity, searches: Infinity };
+      return withLimits({ poolCaps: open }, () => build(signals, Object.assign({}, opts, { openPools: true })));
+    }
     const messages = signals.messages || {};
     // `maxChars` exists for the trim-loop tests and nothing else: production
     // passes nothing and gets the one derived ceiling. The loop only fires on
@@ -1617,7 +1790,8 @@
     // actually be sent rather than a slightly longer draft of it.
     redactOwnHandle(digest, signals.profile.username, signals.profile.name);
     pseudonymiseHandles(digest);
-    trimToBudget(digest, maxChars);
+    // The line for this digest's tier (budgetFor), or a test's own.
+    trimToBudget(digest, opts.maxChars || budgetFor(digest));
     return digest;
   }
 
@@ -2023,7 +2197,11 @@
     // Instagram export again to close.
     redactOwnHandle(digest, opts.ownHandle, opts.ownName);
     pseudonymiseHandles(digest);
-    trimToBudget(digest, opts.maxChars || LIMITS.totalChars, opts.protect ? { protect: opts.protect } : undefined);
+    // Each added source goes into its pool (trimToPools): a WhatsApp chat
+    // takes its room from the Instagram DMs, Facebook from what the public
+    // pool has left. `protect` keeps a source whole — the premium read's
+    // base, when the export is gone.
+    trimToBudget(digest, opts.maxChars || budgetFor(digest), opts.protect ? { protect: opts.protect } : undefined);
     return digest;
   }
 
@@ -2204,6 +2382,8 @@
       }
     }
 
+    // Every pool to its own ceiling first, in its own order: see POOLS.
+    trimToPools(digest, protect, SUPPLEMENT_FLOOR);
     // Measured as the model reads it — see renderEvidence.
     let size = evidenceChars(digest);
     // The places the standard read added to fill its room go first, before
@@ -2231,12 +2411,6 @@
         pick[1](dropEvenly(list, drop));
         size = evidenceChars(digest);
       }
-    }
-    // The premium read: each added source trimmed only down to its own part.
-    const shares = floors && floors.shares !== undefined ? floors.shares : LIMITS.sourceShares;
-    if (shares && size > maxChars) {
-      trimBySource(digest, maxChars, shares, supplementGroups(trimmableSupplements), protect, SUPPLEMENT_FLOOR);
-      size = evidenceChars(digest);
     }
     while (size > maxChars) {
       let worst = null;
@@ -2273,61 +2447,9 @@
       size = evidenceChars(digest);
     }
 
-    // WhatsApp never more than waMaxDigestShare of the evidence, and no one
-    // chat more than waChatMaxDigestShare, even with room to spare: its chats
-    // are the densest, most personal text there is, and at half the digest
-    // they set the tone of the whole report. Thinned
-    // evenly, a tenth at a time, down to the supplement floor. A digest the
-    // premium read was given to keep whole (protect) is left as it is.
-    const waEntry = trimmableSupplements.find(entry => entry[0] === 'waOwnMessages');
-    // One chat in the free read: its own fixed allowance, so neither share
-    // applies; it is held to waSoloChatChars below instead.
-    const solo = LIMITS.waSoloChatChars > 0 && digest.whatsapp &&
-      Array.isArray(digest.whatsapp.chats) && digest.whatsapp.chats.length === 1;
-    const waShare = solo ? 0 : LIMITS.waMaxDigestShare;
-    const chatShare = solo ? 0 : LIMITS.waChatMaxDigestShare;
-    if (solo && waEntry) {
-      for (let guard = 0; guard < 200; guard++) {
-        const list = waEntry[1]();
-        if (!Array.isArray(list) || list.length <= 3) break;
-        // The whole WhatsApp block — the lines and the chat's counts — not
-        // the lines alone, so the allowance is what the chat costs in all.
-        if ((sourceSizes(digest).whatsapp || 0) <= LIMITS.waSoloChatChars) break;
-        waEntry[2](dropEvenly(list, Math.max(1, Math.ceil(list.length * 0.05))));
-      }
-    }
-    if (digest.whatsapp && waEntry && chatShare > 0) {
-      // Each chat first: its lines, tagged [c1]–[c3], thinned evenly until it
-      // is no more than a tenth of the evidence.
-      for (let guard = 0; guard < 200; guard++) {
-        const list = waEntry[1]();
-        if (!Array.isArray(list)) break;
-        const total = evidenceChars(digest);
-        const sizes = {};
-        for (const line of list) {
-          const tag = (/\[(c\d)\] /.exec(String(line)) || [])[1] || 'c?';
-          sizes[tag] = (sizes[tag] || 0) + String(line).length + 1;
-        }
-        const over = Object.keys(sizes).filter(tag => sizes[tag] > total * chatShare)
-          .sort((x, y) => sizes[y] - sizes[x])[0];
-        if (!over) break;
-        const chatOf = line => (/\[(c\d)\] /.exec(String(line)) || [])[1] || 'c?';
-        const at = list.map((line, i) => i).filter(i => chatOf(list[i]) === over);
-        if (at.length <= 3) break;
-        const kept = new Set(dropEvenly(at, Math.max(1, Math.ceil(at.length * 0.1))));
-        waEntry[2](list.filter((line, i) => chatOf(line) !== over || kept.has(i)));
-      }
-    }
-    if (digest.whatsapp && waEntry && waShare > 0) {
-      for (let guard = 0; guard < 200; guard++) {
-        const total = evidenceChars(digest);
-        if ((sourceSizes(digest).whatsapp || 0) <= total * waShare) break;
-        const list = waEntry[1]();
-        if (!Array.isArray(list) || list.length <= SUPPLEMENT_FLOOR) break;
-        waEntry[2](dropEvenly(list, Math.max(1, Math.ceil(list.length * 0.1))));
-      }
-    }
-
+    // WhatsApp needs no rule of its own here: each chat is held to its
+    // ceiling where it is sampled (waThreadChars), and the chats go first in
+    // their pool (trimToPools).
     restateShown(digest);
     // Measured after the restatement, not before it: a "shown" that went from
     // 20 to 0 changes the length, and a size that described the draft rather
@@ -2349,35 +2471,6 @@
     facebook: ['postSample', 'commentSample', 'fbFriends', 'fbTopSearches', 'fbOwnMessages'],
     whatsapp: ['waOwnMessages'],
   };
-  function supplementGroups(table) {
-    const out = {};
-    for (const [source, names] of Object.entries(SUPPLEMENT_LISTS)) out[source] = table.filter(entry => names.includes(entry[0]));
-    return out;
-  }
-
-  /**
-   * Each source's room, out of `total`: its weight's part, scaled up to fill
-   * what an absent or smaller source leaves. Water-filling — a source that
-   * needs less than its part keeps what it has, and the rest is shared again
-   * among the others by weight.
-   */
-  function allocateShares(sizes, shares, total) {
-    const out = {};
-    let pool = Math.max(0, total);
-    let open = Object.keys(sizes).filter(key => shares[key] > 0);
-    while (open.length) {
-      const weight = open.reduce((sum, key) => sum + shares[key], 0);
-      const fits = open.filter(key => sizes[key] <= pool * shares[key] / weight);
-      if (!fits.length) {
-        for (const key of open) out[key] = Math.floor(pool * shares[key] / weight);
-        break;
-      }
-      for (const key of fits) { out[key] = sizes[key]; pool -= sizes[key]; }
-      open = open.filter(key => !fits.includes(key));
-    }
-    return out;
-  }
-
   /** How much of the evidence text each source takes, as the model reads it. */
   function sourceSizes(digest) {
     const total = evidenceChars(digest);
@@ -2392,42 +2485,6 @@
     }
     sizes.instagram = total - others;
     return sizes;
-  }
-
-  /**
-   * The premium read's trim. Everything without a weight — Instagram, and
-   * any source the base digest already carried (`fixed`) — is left whole and
-   * its size taken off the line first; the room above it is shared between
-   * the added sources by weight (allocateShares), and each one over its room
-   * is cut back to it, its largest list first, a tenth at a time. No source
-   * is cut for another's sake.
-   */
-  function trimBySource(digest, maxChars, shares, groups, fixed, floor) {
-    const sizes = sourceSizes(digest);
-    let room = maxChars;
-    const open = {};
-    for (const [source, size] of Object.entries(sizes)) {
-      if (fixed.has(source) || !(shares[source] > 0)) room -= size;
-      else open[source] = size;
-    }
-    const rooms = allocateShares(open, shares, room);
-    for (const source of Object.keys(rooms)) {
-      const table = groups[source] || [];
-      for (let guard = 0; guard < 400; guard++) {
-        if (sourceSizes(digest)[source] <= rooms[source]) break;
-        let worst = null;
-        let worstCost = 0;
-        for (const entry of table) {
-          const list = entry[1]();
-          if (!Array.isArray(list) || list.length <= floor) continue;
-          const cost = listChars(list);
-          if (cost > worstCost) { worstCost = cost; worst = entry; }
-        }
-        if (!worst) break;
-        const list = worst[1]();
-        worst[2](dropEvenly(list, list.length - Math.max(floor, Math.min(list.length - 1, Math.floor(list.length * 0.9)))));
-      }
-    }
   }
 
   /** `list` with `n` of its items removed, spread evenly through it, order kept. */
@@ -2628,7 +2685,9 @@
     }
     const digest = clampStrings(out, 0);
     restateShown(digest);
-    trimToBudget(digest, opts.maxChars || LIMITS.totalChars, { floor: 10, supplementFloor: 0 });
+    // The pools and the line, the premium read's when it is asked for as one
+    // (budgetFor).
+    trimToBudget(digest, opts.maxChars || budgetFor(digest), { floor: 10, supplementFloor: 0 });
     return digest;
   }
 
@@ -2786,7 +2845,9 @@
 
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
-    SOURCE_SHARES, allocateShares, sourceSizes, sampleConversations,
+    POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes,
+    SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,
+    sourceSizes, sampleConversations, EVIDENCE_LISTS,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,

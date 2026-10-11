@@ -163,6 +163,10 @@ async function loadSource(page, source, buffer, name) {
 // this suite that is not specifically about that step carries on with what is
 // already loaded, which is also what the ordinary reader does.
 async function skipPremiumDataOffer(page, options) {
+  // A card read with under 80% confidence is first told that more data would
+  // help (offerMoreData); Continue goes on to the data page.
+  await page.waitForSelector('#datasources-dialog[open], #more-data-dialog[open]', { timeout: 20000 });
+  if (await page.locator('#more-data-dialog[open]').count()) await page.click('#more-data-continue');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 20000 });
   await page.click('#datasources-continue');
 }
@@ -174,6 +178,10 @@ async function openUnlockPayment(page, target) {
   await locator.scrollIntoViewIfNeeded();
   await locator.click();
   await skipPremiumDataOffer(page);
+  // With the export still open in the tab the deeper premium read is
+  // reviewed first; with a saved report, the payment sheet follows directly.
+  await page.waitForSelector('#review-dialog[open], #premium-dialog[open]', { timeout: 15000 });
+  if (await page.locator('#review-dialog[open]').count()) await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
 }
 
@@ -441,7 +449,7 @@ try {
   check('the Instagram row says it is required',
     (await rowLabel('instagram')) === 'Instagram (required)', await rowLabel('instagram'));
   check('and the WhatsApp and Google rows say they are optional',
-    (await rowLabel('whatsapp')) === 'WhatsApp chat with a close friend (optional)' &&
+    (await rowLabel('whatsapp')) === 'WhatsApp chats with close connections (optional)' &&
       (await rowLabel('google')) === 'Google Takeout (optional)', await rowLabel('whatsapp') + ' / ' + await rowLabel('google'));
   check('the qualifier is set back from the name rather than reading as part of it',
     await page.evaluate(() => {
@@ -482,8 +490,8 @@ try {
     await page.evaluate(() => !document.querySelector('.optional-card').open) &&
     !(await page.locator('.optional-card ol').first().isVisible()));
   check('its summary offers a WhatsApp chat and Google as optional, WhatsApp first as in "Load your data"',
-    /Optional: Also add a WhatsApp chat or Google data for a fuller analysis/.test(optionalCard) &&
-      optionalCard.indexOf('WhatsApp chat with a close friend') < optionalCard.indexOf('Google Takeout') &&
+    /Optional: Also add WhatsApp chats or Google data for a fuller analysis/.test(optionalCard) &&
+      optionalCard.indexOf('WhatsApp chats with close connections (up to 3)') < optionalCard.indexOf('Google Takeout') &&
       /Export chat/.test(optionalCard) && /Without media/.test(optionalCard), optionalCard.slice(0, 300));
   check('and "How it works" no longer calls Google recommended',
     /Download your data from Instagram \(WhatsApp and Google data are optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
@@ -516,7 +524,7 @@ try {
   // is display:none — assigning scrollTop to an element that is not being
   // rendered is a no-op. So each popout reopened wherever the reader had left
   // it. Anyone who had read the guide to the end reopened on step 4 instead of
-  // "Open Download your information"; anyone who had scrolled the sample
+  // "Open your Instagram app"; anyone who had scrolled the sample
   // reopened halfway down somebody else's report instead of on the summary
   // card.
   //
@@ -527,7 +535,7 @@ try {
   // reordering of the content — scrollTop of 0 is only the right answer while
   // the thing that belongs at the top is still first.
   for (const [opener, dialogId, bodySel, firstSel, wanted] of [
-    ['#guide-open', '#guide-dialog', '.guide-body', '.guide-step h3', /Open\s*Download your information/i],
+    ['#guide-open', '#guide-dialog', '.guide-body', '.guide-step h3', /Open your Instagram app/i],
     // The sample opens on its first section — no Psyche Card above it.
     ['#insight-sample', '#sample-dialog', '#sample-body', '#sample-sections > :not([hidden])', /\S/],
   ]) {
@@ -803,7 +811,7 @@ try {
 
   // ---- a new reader's "Load your data": Instagram, one WhatsApp chat, Google ----
   //
-  // Instagram is required; a WhatsApp chat with a close friend and Google
+  // Instagram is required; up to three WhatsApp chats and Google
   // Takeout are both optional, in that order, with their steps in the same
   // order. One chat only: a second replaces the first.
   {
@@ -818,8 +826,8 @@ try {
         help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
-      check('a new reader is offered Instagram (required), a WhatsApp chat with a close friend (optional), then Google Takeout (optional)',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram (required)', 'WhatsApp chat with a close friend (optional)',
+      check('a new reader is offered Instagram (required), up to three WhatsApp chats with close connections (optional), then Google Takeout (optional)',
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram (required)', 'WhatsApp chats with close connections (optional)',
           'Google Takeout (optional)']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout']) &&
@@ -846,15 +854,16 @@ try {
         await newPage.waitForFunction(sel => document.querySelector(sel).classList.contains('is-added'), waRow, { timeout: 15000 });
         await newPage.waitForTimeout(300);
       }
-      check('one chat at most: a second chat replaces the first, and the row says one is loaded',
-        /Chat loaded/.test(await newPage.locator(waRow).innerText()) &&
-          /One chat is the most here/.test(await newPage.locator('#datasources-status').innerText().catch(() => '')),
+      // Up to three at the first upload now: a second chat is added beside
+      // the first, not in its place.
+      check('up to three chats: a second chat is added beside the first, and the row says two of three are loaded',
+        /2 of 3 chats loaded/.test(await newPage.locator(waRow).innerText()),
         (await newPage.locator(waRow).innerText()) + ' / ' + (await newPage.locator('#datasources-status').innerText().catch(() => '')));
       await continueFromDataSources(newPage);
       await newPage.waitForSelector('#review-dialog[open]', { timeout: 30000 });
       const review = await newPage.locator('#review-dialog').innerText();
-      check('the chat reaches the review, as one chat, beside Instagram',
-        /WhatsApp/.test(review) && /\b1 chat\b|one chat/i.test(review), review.slice(0, 600));
+      check('both chats reach the review, beside Instagram',
+        /WhatsApp/.test(review) && /\b2 chats\b|two chats/i.test(review), review.slice(0, 600));
     } finally {
       await newPage.close();
     }
@@ -2632,7 +2641,7 @@ try {
   // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
-    ['Accounts Centre', 'Your information and permissions', 'Download your information',
+    ['Accounts Centre', 'Your information and permissions', 'Export your information',
       'Create export', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
@@ -2762,32 +2771,15 @@ try {
   check('the three settings are bullets rather than a numbered row each',
     (await page.evaluate(() => getComputedStyle(
       document.querySelector('#guide-dialog .guide-settings')).listStyleType)) === 'disc');
-  // Step 1 tells the reader the deep link skips ahead to step 2, which is a
-  // claim about the guide's own numbering rather than about Instagram — the
-  // kind that goes quietly false the next time a step is added, removed or
-  // reordered, since nothing else in the markup connects the sentence to the
-  // step it names. Pinned to the step the link genuinely lands on: the
-  // accountscenter dyi URL opens the Export your information screen, which is
-  // the first thing step 2 shows.
-  const linkTarget = await page.evaluate(() => {
-    const steps = [...document.querySelectorAll('#guide-dialog .guide-step')];
-    const said = /brings you to step (\d+)/i.exec(steps[0].innerText);
-    if (!said) return { said: null };
-    const n = Number(said[1]);
-    const target = steps[n - 1];
-    return {
-      said: n,
-      exists: Boolean(target),
-      shows: target ? Boolean(target.querySelector('img[src*="04-create-export"]')) : false,
-      number: target ? (target.querySelector('.guide-num') || {}).textContent : null,
-    };
-  });
-  check('step 1\'s "brings you to step 2" points at a step the guide actually has',
-    linkTarget.said !== null && linkTarget.exists &&
-    String(linkTarget.number).trim() === String(linkTarget.said),
-    JSON.stringify(linkTarget));
-  check('and that step is the one showing the screen the link opens',
-    linkTarget.shows, JSON.stringify(linkTarget));
+  // Step 1 is the route inside the Instagram app, with no link out to
+  // another site, in the guide as in the steps.
+  const stepOne = (await page.locator('#guide-dialog .guide-step').first().textContent()).replace(/\s+/g, ' ').trim();
+  check('the guide\'s step 1 is the route in the Instagram app, with no link out',
+    /^1\s*Open your Instagram app/.test(stepOne) &&
+      stepOne.includes('Go to your Profile > tap the Menu (≡) top right to Settings > Accounts Centre > ' +
+        'Your information and permissions > Export your information.') &&
+      (await page.locator('#guide-dialog .guide-step a[href^="http"]').count()) === 0,
+    stepOne);
   const guideText = await page.locator('#guide-dialog').innerText();
   // The settings that actually matter, each named in the guide. These are the
   // ones a reader can get wrong in a way that costs them the whole wait.
@@ -3129,6 +3121,44 @@ try {
         .filter(l => !l.closest('.step-fallback') && !l.closest('#view-about'));
       return labels.length > 0 && labels.every(l => getComputedStyle(l).fontWeight === '600');
     }));
+  // Step 1: the deep link, then the route on mobile, each screen name on it
+  // showing its screenshot from the guide.
+  {
+    const first = (await page.locator('#request-data ol[data-howto="instagram"] li').first().innerText()).replace(/\s+/g, ' ').trim();
+    check('the steps open with the route in the Instagram app, and link out to no other site',
+      first === 'Open your Instagram app > Go to your Profile > tap the Menu (≡) top right to Settings > Accounts Centre.' &&
+        (await page.locator('#request-data ol[data-howto="instagram"] a[href^="http"]').count()) === 0 &&
+        (await page.locator('#request-data ol[data-howto="instagram"] .step-fallback').count()) === 0,
+      first);
+    const peeks = page.locator('#request-data .ui-peek');
+    check('its three screen names each carry their screenshot from the guide',
+      (await peeks.count()) === 3 &&
+        JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.dataset.peek))) ===
+          JSON.stringify(['guide/01-settings.jpg', 'guide/02-info-permissions.jpg', 'guide/03-export-your-information.jpg']));
+    await peeks.first().scrollIntoViewIfNeeded();
+    await peeks.first().click();
+    await page.waitForSelector('.peek-pop img', { timeout: 5000 });
+    const shown = await page.evaluate(() => {
+      const pop = document.querySelector('.peek-pop');
+      const r = pop.getBoundingClientRect();
+      return { src: pop.querySelector('img').getAttribute('src'), ring: Boolean(pop.querySelector('.guide-mark-1')),
+        inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0, expanded: document.querySelector('#request-data .ui-peek').getAttribute('aria-expanded') };
+    });
+    check('a click on "Accounts Centre" shows the guide\'s first screenshot, ringed, inside the window',
+      shown.src === 'guide/01-settings.jpg' && shown.ring && shown.inside && shown.expanded === 'true', JSON.stringify(shown));
+    await peeks.nth(1).click();
+    check('a click on the next name swaps it for that screen\'s, one at a time',
+      (await page.locator('.peek-pop').count()) === 1 &&
+        (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/02-info-permissions.jpg');
+    await page.keyboard.press('Escape');
+    check('and Escape puts it away', (await page.locator('.peek-pop').count()) === 0);
+    await peeks.nth(2).hover();
+    await page.waitForSelector('.peek-pop img', { timeout: 5000 });
+    check('with a mouse, hovering a name shows its screenshot too',
+      (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/03-export-your-information.jpg');
+    await page.mouse.move(2, 2);
+    check('and moving away hides it again', (await page.locator('.peek-pop').count()) === 0);
+  }
   // The free tier: what is on the summary card, by the card's own labels,
   // and a real card drawn beside it.
   await page.waitForFunction(() => {
@@ -5749,7 +5779,67 @@ try {
       !/Share this roast/.test(await page.locator('#profile-body .bonus-card').innerText()));
   await page.click('#profile-body .bonus-hide');
 
-  await clickClear(page, '#profile-body .premium-unlock');
+  // Under 80% confidence, the unlock first says more data would help, then
+  // the data page; Back leaves the unlock.
+  {
+    const score = await page.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).report.confidence.score);
+    await clickClear(page, '#profile-body .premium-unlock');
+    if (score < 80) {
+      await page.waitForSelector('#more-data-dialog[open]', { timeout: 10000 });
+      const note = await page.locator('#more-data-dialog').innerText();
+      check('under 80% confidence, the unlock first says more data would help, before the data page',
+        note.includes(score + '% confidence') && /WhatsApp chats with up to 3 close connections/.test(note) &&
+          /Google data/.test(note) && /Facebook data/.test(note) && !(await page.locator('#datasources-dialog[open]').count()),
+        note.slice(0, 300));
+      await page.click('#more-data-back');
+      await page.waitForTimeout(300);
+      check('and Back there leaves the unlock, with nothing else open',
+        !(await page.locator('#more-data-dialog[open], #datasources-dialog[open], #premium-dialog[open]').count()));
+      await clickClear(page, '#profile-body .premium-unlock');
+    } else {
+      check('at 80% confidence or more, the unlock goes straight to the data page',
+        !(await page.locator('#more-data-dialog[open]').count()));
+    }
+  }
+  // And a card read with 62% confidence, in a page of its own: the note, then
+  // Continue to the data page.
+  {
+    const low = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await low.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      const sample = await low.evaluate(() => fetch('sample.json').then(r => r.json()));
+      await low.evaluate(report => {
+        localStorage.clear();
+        const r = Object.assign({}, report, { summary: '', confidence: Object.assign({}, report.confidence, { score: 62 }) });
+        localStorage.setItem('psycheai_profile', JSON.stringify({ report: r, card: r.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString() }));
+      }, sample);
+      await low.reload({ waitUntil: 'load' });
+      await low.waitForSelector('#profile-body .premium-unlock', { timeout: 20000 });
+      await low.click('#profile-body .premium-unlock');
+      await low.waitForSelector('#more-data-dialog[open]', { timeout: 10000 });
+      const note = await low.locator('#more-data-dialog').innerText();
+      check('under 80% confidence, the unlock first says more data would help, before the data page',
+        /62% confidence/.test(note) && /WhatsApp chats with up to 3 close connections/.test(note) &&
+          /Google data/.test(note) && /Facebook data/.test(note) && /Make your report more accurate/.test(note) &&
+          !(await low.locator('#datasources-dialog[open]').count()), note.slice(0, 300));
+      await low.click('#more-data-continue');
+      await low.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
+      check('and Continue goes on to "Your data for the full report", WhatsApp second',
+        /Your data for the full report/.test(await low.locator('#datasources-dialog-title').innerText()) &&
+          (await low.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
+            .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
+      await low.click('#datasources-back').catch(() => low.keyboard.press('Escape'));
+      await low.waitForTimeout(300);
+      await low.click('#profile-body .premium-unlock');
+      await low.waitForSelector('#more-data-dialog[open]', { timeout: 10000 });
+      await low.click('#more-data-back');
+      await low.waitForTimeout(300);
+      check('and Back on the note leaves the unlock, with nothing else open',
+        !(await low.locator('#more-data-dialog[open], #datasources-dialog[open], #premium-dialog[open]').count()));
+    } finally {
+      await low.close();
+    }
+  }
   await skipPremiumDataOffer(page);
   await page.waitForSelector('#premium-dialog[open]', { timeout: 10000 });
   // showModal() focuses the first focusable descendant when nothing has
@@ -5767,7 +5857,7 @@ try {
       return document.activeElement === document.querySelector('#premium-promo-input');
     }));
   check('the unlock dialog opens with its title and no blurb — the offer already said what it opens',
-    /Unlock the full premium report/.test(await page.locator('#premium-dialog-title').innerText()) &&
+    /Unlock your Psyche Report/.test(await page.locator('#premium-dialog-title').innerText()) &&
     !(await page.locator('#premium-dialog-blurb').isVisible()));
   // A second, independent way to authorise the same call. Only its presence
   // is checked in the browser here — actually submitting a code, right or
@@ -8817,9 +8907,9 @@ try {
   page.off('filechooser', noteChooser);
   check('the button opens the data-sources popout, without asking for anything through a native picker yet',
     (await page.locator('#datasources-dialog').isVisible()) && !popoutPickerOpened);
-  check('all four sources are offered, Instagram included, WhatsApp last',
+  check('all four sources are offered, Instagram first and WhatsApp second, as at the first upload',
     (await page.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option')]
-      .map(b => b.dataset.datasource).join(','))) === 'instagram,google,facebook,whatsapp');
+      .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
   check('Instagram already shows loaded, and its row is still enabled — replacing it is allowed',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]');
@@ -8833,9 +8923,10 @@ try {
     (await page.locator('#datasources-dialog .supplement-help').count()) === 1 &&
     await page.evaluate(() => {
       const help = document.querySelector('#datasources-dialog .supplement-help');
-      const igLink = help.querySelector('a[href*="accountscenter.instagram.com"]');
+      // Instagram's steps stay inside its app: no link out.
+      const igLink = help.querySelector('a[href*="instagram.com"]');
       const text = help.textContent;
-      return Boolean(igLink) && /takeout\.google\.com/i.test(text) && /Facebook/.test(text);
+      return !igLink && /Accounts Centre/.test(text) && /takeout\.google\.com/i.test(text) && /Facebook/.test(text);
     }));
   check('and no payment sheet appeared — the popout itself is free',
     !(await page.evaluate(() => document.querySelector('#premium-dialog').open)));
@@ -9254,6 +9345,13 @@ try {
   check('and with nothing newly loaded, no note says the card may change',
     !(await page.locator('#datasources-confirm').isVisible()));
   await page.click('#datasources-continue');
+  // The export is still open in this tab, so the premium read is rebuilt
+  // from it at the premium pools — lines not reviewed yet — and reviewed
+  // before the payment sheet, though nothing was added.
+  await page.waitForSelector('#review-dialog[open], #premium-dialog[open]', { timeout: 15000 });
+  check('with the export still open, the deeper premium read is reviewed before payment',
+    (await page.locator('#review-dialog[open]').count()) === 1);
+  if (await page.locator('#review-dialog[open]').count()) await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   await page.fill('#premium-promo-input', UITEST_PROMO);
   await page.click('#premium-promo-apply');
@@ -9263,8 +9361,11 @@ try {
   }, { timeout: 30000 });
   {
     const unlockBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
-    check('an unlock with nothing new sends the card\'s own digest, anchored to the card, so the card is not redrawn',
-      unlockBody.product === 'unlock' && unlockBody.deep === undefined && Boolean(unlockBody.anchor),
+    // The export is open, so it is the deeper premium read — still anchored,
+    // since nothing was added and the card stands.
+    check('an unlock with nothing new sends the deeper premium read, anchored to the card, so the card is not redrawn',
+      unlockBody.product === 'unlock' && unlockBody.deep === true && Boolean(unlockBody.anchor) &&
+        unlockBody.digest.coverage.digestChars >= JSON.parse(analyseBodies[beforeReplaceSend]).digest.coverage.digestChars,
       JSON.stringify({ product: unlockBody.product, deep: unlockBody.deep, anchor: Boolean(unlockBody.anchor) }));
   }
   const receiptBeforeRerun = await page.evaluate(() => localStorage.getItem('psycheai_unlock'));
@@ -9599,12 +9700,13 @@ try {
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
     Boolean(bareBodies[0].anchor.card) && bareBodies[0].anchor.summary === undefined &&
     Object.keys(bareBodies[0]).every(k => ['digest', 'promoCode', 'paymentIntentId', 'background',
-      'product', 'anchor', 'account', 'myRef', 'ref'].includes(k)),
+      'product', 'anchor', 'account', 'myRef', 'ref', 'deep'].includes(k)),
     JSON.stringify(bareBodies.map(body => ({ product: body.product, anchor: Boolean(body.anchor) }))));
-  // With nothing added, the premium read is the card's own digest: exactly
-  // what the free card was read from moments before.
+  // With nothing added, the premium read is this export read again at the
+  // premium pools — and an export this small binds none of them, so it is
+  // exactly what the free card was read from moments before.
   const cardRequest = JSON.parse(analyseBodies[analysesBeforeBareUnlock - 1]);
-  check('the unlock with nothing added sends exactly the digest the card was read from',
+  check('the unlock with nothing added sends the same evidence the card was read from, on an export too small for any pool to bind',
     cardRequest.product !== 'unlock' && bareBodies.length === 1 &&
     JSON.stringify(bareBodies[0].digest) === JSON.stringify(cardRequest.digest),
     JSON.stringify({ card: JSON.stringify(cardRequest.digest).length,
@@ -10731,9 +10833,10 @@ try {
           rows: Boolean(document.querySelector('#profile-body .sources-read')),
           text: document.querySelector('#profile-body').textContent.replace(/\s+/g, ' ') };
       });
-      check('the data rows show what the full report read, from the premium read',
+      // Google's lists are the same in both reads now, so the counts agree.
+      check('the data rows show what the full report read, from the premium read, the same as the standard read for Google',
         rows.readFrom && rows.readFrom.sampling.youtubeTitles.shown === sentVideos.shown &&
-          rows.standard.shown < sentVideos.shown && (!rows.rows || rows.text.includes(sentVideos.shown + ' of ')),
+          rows.standard.shown === sentVideos.shown && (!rows.rows || rows.text.includes(sentVideos.shown + ' of ')),
         JSON.stringify({ sent: sentVideos, standard: rows.standard, kept: rows.readFrom && rows.readFrom.sampling.youtubeTitles }));
       check('the premium read runs with no page errors', dpErrors.length === 0, dpErrors.join(' | '));
     } finally {
@@ -11761,7 +11864,7 @@ try {
       check('structured: the unlock button gives the price and the other way in: three friends\' cards from the reader\'s link',
         await sp.evaluate(() => {
           const b = document.querySelector('#profile-body .full-report-locked .premium-unlock');
-          return Boolean(b) && /Unlock the full premium report – US\$5/.test(b.textContent) &&
+          return Boolean(b) && /Unlock your Psyche Report – US\$5/.test(b.textContent) &&
             b.querySelector('.premium-unlock-alt').textContent === 'or get 3 friends to make their Psyche Card from your link';
         }));
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',

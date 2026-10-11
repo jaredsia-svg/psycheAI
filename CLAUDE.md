@@ -56,9 +56,9 @@ There is no build step, bundler or linter. `docs/` is served as-is.
 **Client (`docs/`).** No framework. Scripts are plain `<script>` tags that communicate through `window.*` globals. Load order is in `docs/index.html`, and `app.js` is last.
 - **Reading exports:** `zip.js` → `instagram.js` / `supplement.js` (Google, Facebook) / `whatsapp.js` read the exports in the browser.
 - **The digest:** `digest.js` builds it.
-  - Budgets: `DIGEST_CHARS` 80k for the free read; `DEEP_LIMITS` / `DEEP_DIGEST_CHARS` 160k for the paid read.
-  - Per-source shares: `SOURCE_SHARES`.
-  - WhatsApp caps: `waThreadChars`, `waChatMaxDigestShare`, `waMaxDigestShare`, and `waSoloChatChars` (one chat in a free read gets a fixed 8,000).
+  - Budgets: three pools by kind of evidence, spare room shared only inside a pool (`POOL_CAPS` / `DEEP_POOL_CAPS`, `POOLS`, `trimToPools`): public (Instagram up to 40k, Facebook the rest) 40k / 70k premium; conversations (WhatsApp first, then Instagram DMs and Messenger) 72k / 95k, 12k / 15k a conversation; Google 8k; ~6k fixed. `DIGEST_CHARS` 126k, `DEEP_DIGEST_CHARS` 179k; `budgetFor(digest, deep)`.
+  - Two free tiers: those 126k pools only when the digest carries a second source (`carriesSecondSource`); Instagram alone gets `SOLO_POOL_CAPS` (public 32k, conversations 46k, 4k fixed: 82k). `poolCapsFor(digest)` picks.
+  - The premium read is rebuilt at the premium pools from the export when it is still open in the tab (reviewed before payment), otherwise it is the card's digest with any added source merged in. Costs are priced by `FREE_COST_CAP`, `COST_CAP` and the `DEEP_*` caps.
   - `trimToBudget` enforces all of it.
   - `forModel` whitelists exactly what the server will pass on; the server re-applies it.
 - **The card:** `card.js` encodes the card payload for links (`Card.shape`, `encodeCard`/`decodeCard`).
