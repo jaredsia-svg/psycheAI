@@ -2048,14 +2048,15 @@ try {
       check('Sync goes to My Syncs, where the waiting friend is under "Waiting to sync with you" with a Sync button of their own',
         (await invitePage.locator('#scan-history .scan-results-head h2').innerText()) === 'Sync list' &&
           /Waiting to sync with you/.test(await invitePage.locator('.match-waiting').innerText()) &&
-          (await invitePage.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync' &&
+          (await invitePage.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync?' &&
           /Ava/.test(await invitePage.locator('.match-waiting').innerText()),
         (await invitePage.locator('#scan-history').innerText()));
       // Their Psyche Card, before syncing: from the card their link carries.
-      await invitePage.click('.match-waiting .waiting-card');
+      await invitePage.click('.match-waiting .match-name[data-waiting-card]');
       await invitePage.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full *', { timeout: 10000 });
-      check('a waiting friend has a Card button beside Sync, and it opens their Psyche Card full screen',
-        (await invitePage.locator('.match-waiting .match-row .match-btn').evaluateAll(b => b.map(x => x.textContent))).join('|') === 'Card|Sync' &&
+      check('a waiting friend\'s name is a link to their Psyche Card, beside one filled "Sync?" button',
+        (await invitePage.locator('.match-waiting .match-row button').evaluateAll(b => b.map(x => x.className + ':' + x.textContent))).join('|') ===
+          'match-name:Ava|match-go match-pending sync-invite-go:Sync?' &&
           /Ava/.test(await invitePage.locator('#sample-psyche-card-full').innerText()),
         await invitePage.locator('#sample-psyche-card-full').innerText());
       await invitePage.keyboard.press('Escape');
@@ -10557,8 +10558,8 @@ try {
       probe.remove();
       return same;
     }));
-  check('the intro is about friends, and nothing romantic or about work',
-    /friend/i.test(scanText) && !/couple|colleague|romantic/i.test(scanText), scanText.slice(0, 300));
+  check('the page says nothing romantic or about work, and no row is labelled Friends',
+    !/couple|colleague|romantic/i.test(scanText) && !/Friends ·/.test(scanText), scanText.slice(0, 300));
   check('the intro says what a reader actually gets back',
     /for your Psyche Sync:/.test(scanText) && !/score/i.test(scanText) && /what to look out for/i.test(scanText) && /relate better to each other/.test(scanText), scanText.slice(0, 500));
   check('the paste box says what it is for, and sits right of My link', await page.evaluate(() => {
@@ -10603,16 +10604,44 @@ try {
   // A row per result, the whole row the link, with its score drawn as a ring
   // filled to that score — the --pct a strict CSP only lets through as a
   // data attribute applied afterwards.
-  // A row per past sync, no score: their Psyche Card and the Sync, a button each.
-  check('each past sync is one row with a Card button and a Sync button, and no score',
+  // A row per past sync, no score: their name opens their Psyche Card, and one button the result.
+  check('each past sync is one row: their name a link to their card, one outlined Results button, "Synced" and no score',
     await page.evaluate(() => {
       const rows = [...document.querySelectorAll('#scan-history .match-list:not(.match-waiting) .match-row')];
       return rows.length >= 1 && rows.every(row => !row.querySelector('.match-score') &&
-        Boolean(row.querySelector('button.match-card[data-card]')) && Boolean(row.querySelector('button.match-sync[data-report]')) &&
-        row.querySelector('.match-card').textContent === 'Card' && row.querySelector('.match-sync').textContent === 'Sync' &&
-        /Psyche Card/.test(row.querySelector('.match-card').getAttribute('aria-label')) &&
+        Boolean(row.querySelector('button.match-name[data-card]')) && Boolean(row.querySelector('button.match-results[data-report]')) &&
+        row.querySelectorAll('button').length === 2 && row.querySelector('.match-results').textContent === 'Results' &&
+        /Psyche Card/.test(row.querySelector('.match-name').getAttribute('aria-label')) &&
+        /^Synced · /.test(row.querySelector('.match-meta').textContent) && !/Friends/.test(row.textContent) &&
         row.getBoundingClientRect().right <= window.innerWidth + 1);
     }));
+  // Each circle carries their character's emblem, as at the head of the
+  // report; the initial only when their card names no character with one.
+  // A personal link carries the card's face, the character included; the
+  // plain links this suite syncs with do not, so the first row is given one.
+  const savedHistory = await page.evaluate(() => {
+    const raw = localStorage.getItem('psycheai_history');
+    const history = JSON.parse(raw);
+    history[0].face = Object.assign({}, history[0].face, { c: 'Mulan' });
+    localStorage.setItem('psycheai_history', JSON.stringify(history));
+    return raw;
+  });
+  await page.click('#nav-about');
+  await page.click('#nav-scan');
+  await page.waitForSelector('#scan-history .match-face', { timeout: 10000 });
+  check('each past sync\'s circle shows their character\'s emblem, or their initial without one',
+    await page.evaluate(() => {
+      const history = JSON.parse(localStorage.getItem('psycheai_history') || '[]');
+      const faces = [...document.querySelectorAll('#scan-history .match-list:not(.match-waiting) .match-face')];
+      return faces.length === history.length && history.some(e => e.face && e.face.c) && history.every((entry, i) => {
+        const emblem = Boolean(entry.face && window.PsycheCopy.CHARACTER_EMBLEMS[entry.face.c]);
+        return emblem ? Boolean(faces[i].querySelector('svg.match-emblem')) : /^\S$/.test(faces[i].textContent.trim());
+      });
+    }));
+  await page.evaluate(raw => localStorage.setItem('psycheai_history', raw), savedHistory);
+  await page.click('#nav-about');
+  await page.click('#nav-scan');
+  await page.waitForSelector('#scan-history .match-face', { timeout: 10000 });
   check('the header carries this reader\'s initial beside an open seat for the next link',
     (await page.locator('#scan-initial').innerText()) === 'A' &&
       (await page.locator('.scan-hero .scan-modes li').count()) === 0,
@@ -10815,15 +10844,15 @@ try {
   await page.waitForFunction(() => !document.querySelector('#sync-dialog').open, null, { timeout: 5000 });
   check('a click outside the popout closes it, leaving My Syncs', await page.locator('#view-scan').isVisible() &&
     !(await page.locator('#view-report').isVisible()));
-  await page.click('#scan-history .match-sync[data-report]');
+  await page.click('#scan-history .match-results[data-report]');
   await page.waitForSelector('#sync-dialog[open] #view-report:not([hidden])', { timeout: 10000 });
   check('a sync in the Syncs list opens in the popout too', (await page.locator('#report-body').innerText()).length > 50);
   await page.click('#sync-dialog-close');
   check('and its ✕ closes it', !(await page.evaluate(() => document.querySelector('#sync-dialog').open)));
   // Their Psyche Card, from the same row: drawn from the card their link carried.
-  await page.click('#scan-history .match-card[data-card]');
+  await page.click('#scan-history .match-name[data-card]');
   await page.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full .pc-name, #sample-card-dialog[open] #sample-psyche-card-full *', { timeout: 10000 });
-  check('the Card button opens their Psyche Card full screen, with their name on it',
+  check('their name opens their Psyche Card full screen, with their name on it',
     await page.evaluate(() => {
       const entry = JSON.parse(localStorage.getItem('psycheai_history'))[0];
       const card = document.querySelector('#sample-psyche-card-full');
@@ -12581,7 +12610,7 @@ try {
             Boolean(pasted.card) && pasted.face && pasted.face.c === character, JSON.stringify(pasted.face));
           await friendPage.keyboard.press('Escape');
           await friendPage.evaluate(() => { const d = document.querySelector('#sync-dialog'); if (d.open) d.close(); });
-          await friendPage.click('#scan-history .match-card[data-card]');
+          await friendPage.click('#scan-history .match-name[data-card]');
           await friendPage.waitForTimeout(600);
           check('and the Card button shows that character',
             (await friendPage.locator('#sample-psyche-card-full').innerText()).includes(character));

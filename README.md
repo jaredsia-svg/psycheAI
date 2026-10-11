@@ -2065,10 +2065,17 @@ The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psy
 never shows the bar.
 
 My Syncs is titled **Your Psyche Syncs**, and one card, **Sync list**, lists them all:
-- **Friends waiting** come first, latest first, as dashed rows ("Waiting to sync with you · free, only
-  you see it"), each with the same **Card** and **Sync** buttons a past sync has. **Card** opens their
-  Psyche Card full screen, decoded from the card their link carries, so a reader can see who they are
-  syncing with before choosing to.
+- **People waiting** come first, latest first, as dashed rows ("Waiting to sync with you · free, only
+  you see it"). Each has one filled button, **Sync?**, with a soft glow.
+- **Past syncs** read "Synced · <date>" (the *Friends* label is gone) and have one outlined button,
+  **Results**. Two words and two looks make it plain which rows still wait on the reader and which are
+  done. Both used to read **Sync**, so a waiting row and a finished one looked the same.
+- **Each name is a link to that person's Psyche Card**, full screen. For someone waiting, the card is
+  decoded from the card their link carries, so the reader can see who they are syncing with before
+  choosing to. The separate **Card** button is gone.
+- **Each circle shows their character's emblem**, the one at the head of the report (`emblemSvg`),
+  read from the card face their link carried (`face.c`). It falls back to their initial when there is
+  no character, which happens with a plain `#p=` link (no face) or a character that has no emblem.
 - **Past syncs** follow. Tapping one opens its result in a popout (`#sync-dialog`) over My Syncs,
   not a page of its own.
 
@@ -6091,9 +6098,14 @@ QR code on their card. A stranger running a romantic read against someone's card
 version of this feature, so the romantic and work comparisons were removed outright.
 - **The basis picker is gone:** the romantic / family-friends / work choice, and the
   colleagues / manager / report choice after it.
-- **`lib/prompts.js`:** `COMPATIBILITY_MODES` has the one key `platonic`, labelled *Friends*, and
-  `resolveMode` returns it for anything. `COMPATIBILITY_SYSTEM`'s *Friends only* section rules out
-  romance, attachment and work. `WORK_STANCES` is gone.
+- **`lib/prompts.js`:** `COMPATIBILITY_MODES` has the one key `platonic`, labelled *Connections*,
+  and `resolveMode` returns it for anything. `COMPATIBILITY_SYSTEM`'s *Any two connections* section
+  rules out romance, attachment and work. `WORK_STANCES` is gone.
+- **Any two connections, never named.** The two people may be friends, family or anyone close, and
+  the model is not told which. A sister syncing with her brother got "a dependable friendship built
+  on…", so the prompt now asks how the two sync, vibe and relate, never calls them friends or what
+  they share a friendship, and never names another relationship: *you two*, *the two of you*, *your
+  connection*.
 - **Old reports:** reports saved on the old bases still open on the reader's device, labelled as
   they were.
 

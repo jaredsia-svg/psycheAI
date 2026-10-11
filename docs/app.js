@@ -7348,8 +7348,24 @@
   // Past syncs as a list: a row each, who, on what basis and when, then two
   // buttons — their Psyche Card (kept with the sync since that was saved) and
   // the Sync itself. No score: a sync is read, not rated.
-  const CARD_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><circle cx="12" cy="9" r="2.6"/><path d="M8.8 15h6.4M9.8 18h4.4"/></svg>';
   const SYNC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg>';
+  const RESULTS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5"/></svg>';
+  /**
+   * A row's circle: their character's emblem, the one at the head of the
+   * report, from the card face their link carried; the initial when there is
+   * none (an older link, or a character without an emblem).
+   */
+  function matchFaceHtml(mode, name, face) {
+    const emblem = face && face.c ? Copy.emblemSvg(face.c, 'match-emblem') : '';
+    return '<span class="match-face m-' + esc(mode) + (emblem ? ' has-emblem' : '') + '" aria-hidden="true">' +
+      (emblem || esc(String(name).trim().charAt(0).toUpperCase() || '?')) + '</span>';
+  }
+  /** A row's name: a link-styled button to their Psyche Card when there is one. */
+  function matchNameHtml(name, attr, first) {
+    if (!attr) return '<strong>' + esc(name) + '</strong>';
+    return '<button type="button" class="match-name" ' + attr + ' aria-label="' + esc(TEXT.matchOpenCard(first)) + '">' +
+      esc(name) + '</button>';
+  }
   function historyList(history) {
     const when = value => {
       const date = new Date(value);
@@ -7360,16 +7376,17 @@
         const mode = entry.mode || (entry.report && entry.report.mode) || 'platonic';
         const name = String(entry.withName || '?');
         const first = firstName(name) || name;
-        return '<li><div class="match-row">' +
-          '<span class="match-face m-' + esc(mode) + '" aria-hidden="true">' + esc(name.trim().charAt(0).toUpperCase() || '?') + '</span>' +
-          '<span class="match-who"><strong>' + esc(name) + '</strong>' +
-          '<span class="match-meta">' + esc(MODE_LABELS[mode] || mode) + ' · ' + esc(when(entry.when)) + '</span></span>' +
-          '<span class="match-actions">' +
-          (entry.card ? '<button type="button" class="match-btn match-card" data-card="' + index + '" aria-label="' +
-            esc(TEXT.matchOpenCard(first)) + '">' + CARD_ICON + '<span>' + esc(TEXT.matchCardLabel) + '</span></button>' : '') +
-          '<button type="button" class="match-btn match-sync" data-report="' + index + '" aria-label="' +
-            esc(TEXT.matchOpenSync(first)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.matchSyncLabel) + '</span></button>' +
-          '</span></div></li>';
+        // Their name opens their Psyche Card; the one button, the result.
+        // A sync from before syncs were between any two connections still
+        // says what it was (Romantic, Professional); a current one says Synced.
+        const label = mode === 'platonic' ? TEXT.matchSyncedMeta : (MODE_LABELS[mode] || mode);
+        return '<li><div class="match-row is-synced">' +
+          matchFaceHtml(mode, name, entry.face) +
+          '<span class="match-who">' + matchNameHtml(name, entry.card ? 'data-card="' + index + '"' : '', first) +
+          '<span class="match-meta">' + esc(label) + ' · ' + esc(when(entry.when)) + '</span></span>' +
+          '<button type="button" class="match-go match-results" data-report="' + index + '" aria-label="' +
+            esc(TEXT.matchOpenSync(first)) + '">' + RESULTS_ICON + '<span>' + esc(TEXT.matchSyncLabel) + '</span></button>' +
+          '</div></li>';
       }).join('') +
       '</ul>';
   }
@@ -9849,9 +9866,9 @@
     refreshReportPromo();
   }
   /**
-   * Syncs list: each friend whose link is waiting, with their Psyche Card
-   * (from the card their link carries) and a Sync button of their own, the
-   * same pair a synced friend's row has.
+   * Syncs list: each person whose link is waiting, their name a link to
+   * their Psyche Card (from the card their link carries), and a "Sync?"
+   * button of their own, filled, unlike a past sync's outlined "Results".
    */
   function syncWaitingHtml() {
     const invites = state.profile ? allInvites() : [];
@@ -9859,22 +9876,20 @@
     return '<ul class="match-list match-waiting">' + invites.map((invite, i) => {
       const name = firstName(invite.name) || invite.name || '?';
       return '<li><div class="match-row is-waiting">' +
-        '<span class="match-face m-platonic" aria-hidden="true">' + esc(String(name).trim().charAt(0).toUpperCase()) + '</span>' +
-        '<span class="match-who"><strong>' + esc(name) + '</strong><span class="match-meta">' + esc(TEXT.syncWaitingMeta) + '</span></span>' +
-        '<span class="match-actions">' +
-          '<button type="button" class="match-btn match-card waiting-card" data-i="' + i + '" aria-label="' +
-            esc(TEXT.matchOpenCard(name)) + '">' + CARD_ICON + '<span>' + esc(TEXT.matchCardLabel) + '</span></button>' +
-          '<button type="button" class="match-btn match-sync sync-invite-go" data-i="' + i + '" aria-label="' +
-            esc(TEXT.syncInviteGo(name)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.syncInviteOpen) + '</span></button>' +
-        '</span></div></li>';
+        matchFaceHtml('platonic', name, invite.face) +
+        '<span class="match-who">' + matchNameHtml(name, 'data-waiting-card="' + i + '"', name) +
+          '<span class="match-meta">' + esc(TEXT.syncWaitingMeta) + '</span></span>' +
+        '<button type="button" class="match-go match-pending sync-invite-go" data-i="' + i + '" aria-label="' +
+          esc(TEXT.syncInviteGo(name)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.syncWaitingGo) + '</span></button>' +
+        '</div></li>';
     }).join('') + '</ul>';
   }
   // A waiting friend's Psyche Card, before syncing: decoded from their link.
   document.addEventListener('click', async event => {
-    const button = event.target.closest && event.target.closest('.waiting-card');
+    const button = event.target.closest && event.target.closest('[data-waiting-card]');
     if (!button) return;
     event.preventDefault();
-    const invite = allInvites()[Number(button.dataset.i) || 0];
+    const invite = allInvites()[Number(button.dataset.waitingCard) || 0];
     const card = invite ? await Card.decodeCard(invite.payload) : null;
     if (!card) return;
     openFriendCard(reportFromCard(Object.assign({}, card, { name: firstName(card.name) || card.name }), invite.face));

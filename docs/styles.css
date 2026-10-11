@@ -1310,25 +1310,13 @@ textarea { resize: vertical; }
   font-weight: 800; color: #fff; background: linear-gradient(135deg, #d1477a, #f08c6c);
 }
 .match-face.m-platonic { background: linear-gradient(135deg, #7b3fa0, #b26fd8); }
+/* Their character's emblem in place of the initial. */
+.match-face .match-emblem { width: 24px; height: 24px; color: #fff; }
 .match-face.m-professional { background: linear-gradient(135deg, #3b6fb6, #5fa6c9); }
 .match-who { flex: 1; min-width: 0; display: grid; }
 .match-who strong { font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .match-meta { font-size: .82rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .match-row:not(.is-waiting):hover { transform: none; }
-/* A past sync's two buttons: their Psyche Card, and the Sync. */
-.match-actions { flex: none; display: flex; gap: .4rem; }
-.match-btn {
-  display: grid; justify-items: center; gap: .15rem; min-width: 3.4rem; padding: .45rem .55rem;
-  border-radius: 12px; border: 1px solid var(--line); background: var(--bg-alt); color: var(--accent);
-  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
-  transition: border-color .15s ease, background .15s ease;
-}
-.match-btn svg { width: 20px; height: 20px; }
-.match-btn:hover, .match-btn:focus-visible {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: var(--accent-soft); outline: none;
-}
-.match-btn.match-sync { color: #fff; border-color: transparent; background: linear-gradient(135deg, #7b3fa0, #d1477a); }
-.match-btn.match-sync:hover, .match-btn.match-sync:focus-visible { filter: brightness(1.08); background: linear-gradient(135deg, #7b3fa0, #d1477a); }
 
 /* Checking someone's link and sending your own: side by side where there is
    room, each under an icon of its own. */
@@ -1369,7 +1357,30 @@ textarea { resize: vertical; }
 .card .match-waiting { margin-bottom: .55rem; }
 .match-row.is-waiting { border-style: dashed; background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg)); }
 .match-row.is-waiting:hover { transform: none; box-shadow: none; }
-.match-row.is-waiting .btn { flex: none; min-width: 5.5rem; }
+/* The person's name opens their Psyche Card: a link, in the row's own type. */
+.match-name {
+  justify-self: start; max-width: 100%; padding: 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 1rem; font-weight: 700; color: var(--ink); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  text-underline-offset: 3px; text-decoration-thickness: 1.5px;
+}
+.match-name:hover, .match-name:focus-visible { color: var(--accent); text-decoration-color: currentColor; outline: none; }
+/* One button a row, and two looks: "Sync?", filled, for someone waiting on
+   you; "Results", outlined, for a sync already done. */
+.match-go {
+  flex: none; display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .95rem;
+  border-radius: 999px; font: inherit; font-size: .86rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  transition: filter .15s ease, background .15s ease, border-color .15s ease;
+}
+.match-go svg { width: 17px; height: 17px; }
+.match-go.match-pending {
+  color: #fff; border: 0; background: linear-gradient(135deg, #7b3fa0, #d1477a);
+  box-shadow: 0 4px 14px rgba(209, 71, 122, .28);
+}
+.match-go.match-pending:hover, .match-go.match-pending:focus-visible { filter: brightness(1.08); outline: none; }
+.match-go.match-results { color: var(--accent); border: 1.5px solid color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--bg); }
+.match-go.match-results:hover, .match-go.match-results:focus-visible { background: var(--accent-soft); border-color: var(--accent); outline: none; }
 /* What the link contains: the fields, named, as small chips. */
 .card .link-fields { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
 .card .link-fields li { margin: 0; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem;

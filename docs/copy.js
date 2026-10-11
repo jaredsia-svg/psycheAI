@@ -222,6 +222,8 @@
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
     syncInviteOpen: 'Sync',
+    // A waiting row's button in the Sync list: not synced yet.
+    syncWaitingGo: 'Sync?',
     syncWaitingMeta: 'Waiting to sync with you · free, only you see it',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: () => 'You have connections waiting to sync with you',
@@ -380,8 +382,9 @@
     matchBasis: 'Basis',
     matchScore: 'Score',
     // My Syncs: each past sync's two buttons.
-    matchCardLabel: 'Card',
-    matchSyncLabel: 'Sync',
+    matchSyncLabel: 'Results',
+    // Under a past sync's name, before its date.
+    matchSyncedMeta: 'Synced',
     matchOpenCard: (name) => name ? 'Open ' + possessive(name) + ' Psyche Card' : 'Open their Psyche Card',
     matchOpenSync: (name) => 'Open your Psyche Sync with ' + (name || 'them'),
     matchWhen: 'When',

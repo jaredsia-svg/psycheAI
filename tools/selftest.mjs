@@ -2093,9 +2093,9 @@ check('career section has strengths and weaknesses',
 // Psyche Sync is between friends only. A reader's link is often public, and
 // a stranger running a romantic read against someone's card was the creepy
 // version of this feature, so romantic and work were removed outright.
-check('Psyche Sync has one basis: friends',
+check('Psyche Sync has one basis: any two connections, never romantic',
   JSON.stringify(Object.keys(prompts.COMPATIBILITY_MODES)) === '["platonic"]' &&
-  prompts.COMPATIBILITY_MODES.platonic.label === 'Friends');
+  prompts.COMPATIBILITY_MODES.platonic.label === 'Connections');
 // No score: a summary, where they align, where they differ, how it usually
 // and how to relate better — in that order.
 check('the answer is a summary, align, differ and how to relate — no score, band, verdict or plays-out paragraph',
@@ -2108,10 +2108,11 @@ check('and the prompt asks for no score of any kind',
   !/0–100|0-100/.test(prompts.COMPATIBILITY_SYSTEM + JSON.stringify(prompts.COMPATIBILITY_SCHEMA)));
 check('whatever basis an older page asks for, the sync is between friends',
   ['romantic', 'professional', 'nonsense', undefined].every(m => prompts.resolveMode(m) === 'platonic'));
-check('the user turn asks how in sync two friends are, with the friendship dimensions',
+check('the user turn asks how two people sync, whatever their relationship, never naming it',
   (() => {
     const text = prompts.compatibilityBlocks({ name: 'Sam' }, { name: 'Jordan' }, 'romantic', 'superior')[0].text;
-    return /how in sync these two people are as \*\*friends\*\*/.test(text) &&
+    return /sync, vibe and relate to each other, \*\*whatever their relationship\*\*/.test(text) &&
+      !/friendship|as \*\*friends/i.test(text) &&
       prompts.COMPATIBILITY_MODES.platonic.dimensions.every(d => text.includes(d)) &&
       text.includes('<derived_facts>') && !/romantic|partner|colleague|manage/i.test(text);
   })());
@@ -2357,7 +2358,9 @@ for (const [label, needle] of [
 }
 
 for (const [label, needle] of [
-  ['is about friends only', /# Friends only/],
+  ['is about any two connections, never assuming the relationship', /# Any two connections[\s\S]*never assume it/],
+  ['never calls them friends or a friendship', /Never call them friends or what they share a friendship/],
+  ['says "you two" or "your connection" instead', /say "you two", "the two of you" or "your connection"/],
   ['respects the confidence figure', /respect it/],
   ['writes positively and encouragingly, like the Psyche Card', /# Tone[\s\S]*positive and encouraging throughout/],
   ['frames each difference with a way to make it work, never as a fault', /frame each as a difference with a way to make it work/],
