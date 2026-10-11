@@ -3038,10 +3038,11 @@
           // report page afterwards, which is where somebody who wants it will
           // already be.
           sources: ['instagram', 'whatsapp', 'google'],
+          first: true,
           sublines: { instagram: TEXT.dataSourcesFirstInstagram },
-          // One chat with a close friend, and Google, both optional.
+          // Up to three chats with close connections, and Google, both optional.
           titles: { whatsapp: TEXT.whatsappFirstTitle },
-          tags: { whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional },
+          tags: { instagram: TEXT.sourceRequired, whatsapp: TEXT.sourceOptional, google: TEXT.sourceOptional },
           // Up to three chats, as on the report page.
           whatsappMax: 3,
         });
@@ -4451,6 +4452,8 @@
     // one dialog, two audiences.
     // WhatsApp second, after Instagram, as at the first upload.
     const offered = settings.sources || ['instagram', 'whatsapp', 'google', 'facebook'];
+    // A first upload sets Instagram apart, since it is the one source required.
+    dialog.classList.toggle('is-first-upload', Boolean(settings.first));
     // Rows, and their instructions, in the order offered: the welcome page
     // asks for Instagram, then a WhatsApp chat, then Google; the report page
     // keeps the markup's own order. Moving a node is all it takes, and every
@@ -8359,7 +8362,12 @@
       img.alt = button.dataset.peekAlt || '';
       img.width = 480;
       img.decoding = 'async';
-      img.addEventListener('load', place);
+      // Shown only once the screenshot is ready, so it never paints in
+      // halves; preloaded (below), it is usually ready at once.
+      const reveal = () => { if (pop && pop.contains(img)) { pop.style.visibility = ''; place(); } };
+      pop.style.visibility = 'hidden';
+      img.addEventListener('load', reveal);
+      img.addEventListener('error', reveal);
       const mark = document.createElement('span');
       mark.className = 'guide-mark guide-mark-' + (button.dataset.peekMark || '1');
       mark.setAttribute('aria-hidden', 'true');
@@ -8369,7 +8377,21 @@
       button.setAttribute('aria-expanded', 'true');
       button.setAttribute('aria-describedby', 'peek-pop');
       place();
+      if (img.complete && img.naturalWidth) reveal();
     };
+    // The screenshots, fetched and decoded once the page has settled, so a
+    // hover or tap shows its screenshot at once rather than after a download.
+    const warmed = [];
+    const warm = () => {
+      for (const src of new Set([...document.querySelectorAll('.ui-peek')].map(b => b.dataset.peek))) {
+        const image = new Image();
+        image.src = src;
+        if (image.decode) image.decode().catch(() => {});
+        warmed.push(image);
+      }
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 3000 });
+    else setTimeout(warm, 1500);
     for (const button of document.querySelectorAll('.ui-peek')) button.setAttribute('aria-expanded', 'false');
     document.addEventListener('click', event => {
       const button = event.target.closest && event.target.closest('.ui-peek');

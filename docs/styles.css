@@ -4365,3 +4365,12 @@ details.more[open] > summary::after { content: ' ▴'; }
   .report-promo-text { display: none; }
   .report-promo-cta::before { content: '✨ '; }
 }
+
+/* A first upload: Instagram is the one source required, so it stands out. */
+.datasources-dialog.is-first-upload .mode-option[data-datasource="instagram"] {
+  border: 2px solid var(--accent); background: var(--accent-soft);
+}
+.datasources-dialog.is-first-upload .mode-option[data-datasource="instagram"] .mode-tag-required {
+  display: inline-block; margin-left: .25rem; padding: .05rem .5rem; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: .72rem; font-weight: 650; vertical-align: middle;
+}

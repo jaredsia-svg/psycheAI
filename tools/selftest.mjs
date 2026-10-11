@@ -1532,8 +1532,11 @@ const attachProps = prompts.PREMIUM_SCHEMA.properties.attachment.properties;
   const rowLine = (/data-datasource="instagram"[\s\S]{0,900}?<span class="muted">([^<]+)</
     .exec(markup) || [])[1] || '';
   const wanted = /select multiple files as needed/i;
-  check('the first-upload Instagram row says more than one file can be picked',
-    wanted.test(globalThis.PsycheCopy.TEXT.dataSourcesFirstInstagram),
+  // The first upload's row no longer says it, by request; the picker still
+  // takes several files at once.
+  check('the first-upload Instagram row no longer says it, but several files can still be picked',
+    !wanted.test(globalThis.PsycheCopy.TEXT.dataSourcesFirstInstagram) &&
+      /id="datasources-input"[^>]*\bmultiple\b/.test(markup) && /id="file-input"[^>]*\bmultiple\b/.test(markup),
     globalThis.PsycheCopy.TEXT.dataSourcesFirstInstagram);
   check('and the report page\'s replace row says it too',
     wanted.test(rowLine), rowLine.trim());

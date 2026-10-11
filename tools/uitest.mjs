@@ -446,11 +446,15 @@ try {
   // tag that is present but styled out of existence still fails.
   const rowLabel = async source => (await page.locator(
     '#datasources-dialog [data-datasource="' + source + '"] strong').innerText()).replace(/\s+/g, ' ').trim();
-  check('the Instagram row says it is required',
-    (await rowLabel('instagram')) === 'Instagram (required)', await rowLabel('instagram'));
-  check('and the WhatsApp and Google rows say they are optional',
-    (await rowLabel('whatsapp')) === 'WhatsApp chats with close connections (optional)' &&
-      (await rowLabel('google')) === 'Google Takeout (optional)', await rowLabel('whatsapp') + ' / ' + await rowLabel('google'));
+  check('the Instagram row says it is required, and stands out',
+    (await rowLabel('instagram')) === 'Instagram Required' &&
+      await page.evaluate(() => getComputedStyle(document.querySelector('#datasources-dialog [data-datasource="instagram"]')).borderTopWidth === '2px'),
+    await rowLabel('instagram'));
+  check('and the WhatsApp and Google rows say they are optional, WhatsApp\'s line naming close connections',
+    (await rowLabel('whatsapp')) === 'WhatsApp chats (Optional)' &&
+      (await rowLabel('google')) === 'Google Takeout (Optional)' &&
+      /Up to 3 chats with close connections \(\.zip or \.txt\)/.test(await page.locator('#datasources-dialog [data-datasource="whatsapp"]').innerText()),
+    await rowLabel('whatsapp') + ' / ' + await rowLabel('google'));
   check('the qualifier is set back from the name rather than reading as part of it',
     await page.evaluate(() => {
       const row = document.querySelector('#datasources-dialog [data-datasource="instagram"]');
@@ -826,9 +830,9 @@ try {
         help: [...document.querySelectorAll('#datasources-dialog .supplement-help-body [data-help]:not([hidden]) h3')].map(h => h.textContent),
         steps: document.querySelector('#datasources-dialog [data-help="whatsapp"]').textContent,
       }));
-      check('a new reader is offered Instagram (required), up to three WhatsApp chats with close connections (optional), then Google Takeout (optional)',
-        JSON.stringify(shown.rows) === JSON.stringify(['Instagram (required)', 'WhatsApp chats with close connections (optional)',
-          'Google Takeout (optional)']), JSON.stringify(shown.rows));
+      check('a new reader is offered Instagram (Required), WhatsApp chats (Optional), then Google Takeout (Optional)',
+        JSON.stringify(shown.rows) === JSON.stringify(['Instagram Required', 'WhatsApp chats (Optional)',
+          'Google Takeout (Optional)']), JSON.stringify(shown.rows));
       check('and the download steps follow in the same order, WhatsApp\'s included',
         JSON.stringify(shown.help) === JSON.stringify(['Instagram', 'WhatsApp', 'Google Takeout']) &&
           /Export chat/.test(shown.steps) && /Without media/.test(shown.steps) && !/up to three/i.test(shown.steps),
@@ -2590,7 +2594,7 @@ try {
       return out;
     });
     check('the three policy pages are served, dated, and name the operator and Singapore',
-      Object.values(policies).every(html => /Last updated 9 October 2026/.test(html) && /PsycheAI · Singapore/.test(html) &&
+      Object.values(policies).every(html => /Last updated \d{1,2} October 2026/.test(html) && /PsycheAI · Singapore/.test(html) &&
         /admin@psycheai\.io/.test(html)), Object.keys(policies).filter(k => !policies[k]).join(', '));
     check('the refund policy gives a 24-hour window and how to ask',
       /within 24 hours of payment/.test(policies.refunds) && /last four digits/.test(policies.refunds));

@@ -5654,6 +5654,17 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### The privacy page in the FAQ's words, and a clearer first data popout
+
+The privacy page is now questions and plain answers, the way the FAQ's "Your data" section reads: what
+stays on your device, what leaves it, who receives it, whether anyone else can access it, what PsycheAI
+keeps, and your rights. Every fact it stated before is still there. The first upload's "Add your data"
+popout now sets Instagram apart (an accent border and a "Required" pill), drops "Select multiple files as
+needed" (several files can still be picked at once), and reads "WhatsApp chats (Optional)", "Up to 3 chats
+with close connections (.zip or .txt)". The screenshots behind the Instagram steps are now fetched and
+decoded once the page settles, and a popup is shown only once its image is ready, so a hover or tap shows
+it whole rather than painting in halves.
+
 ### A slim Psyche Report bar once the free card is in
 
 Once a reader has a free card that is not yet unlocked, one slim line under the navigation offers the

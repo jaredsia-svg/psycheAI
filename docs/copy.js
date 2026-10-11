@@ -736,12 +736,14 @@
     // The WhatsApp row: up to three chats, each exported on its own.
     // `max` is 3 from the report page, 1 on a first upload.
     whatsappRowEmpty: (max = 3) => max === 1 ? 'One chat from WhatsApp (.zip or .txt)'
-      : 'Up to ' + max + ' chats (.zip or .txt)',
+      : 'Up to ' + max + ' chats with close connections (.zip or .txt)',
     whatsappRowSome: (n, max = 3) => max === 1 ? 'Chat loaded – tap to load a different one'
       : n + ' of ' + max + ' chats loaded – tap to ' + (n >= max ? 'start over' : 'add another'),
     // The first upload's WhatsApp row and the tag on its two optional rows.
-    whatsappFirstTitle: 'WhatsApp chats with close connections',
-    sourceOptional: '(optional)',
+    whatsappFirstTitle: 'WhatsApp chats',
+    sourceOptional: '(Optional)',
+    // Instagram's tag on a first upload, set as a pill.
+    sourceRequired: 'Required',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
     whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here – this one replaces the last.'
       : 'Three chats is the most – these start a fresh set.',
@@ -805,8 +807,9 @@
     // — the tick looks identical either way, and a half-loaded export usually
     // still clears the recognition check and produces a confident report from
     // half the evidence. Saying it here is the cheap half of the fix.
-    dataSourcesFirstInstagram: 'Load your Instagram data .zip file here. ' +
-      'Select multiple files as needed.',
+    // The "several files" note is gone from the wording; picking several at
+    // once still works (the picker allows it, and readExports merges them).
+    dataSourcesFirstInstagram: 'Load your Instagram data .zip file here.',
     // Only shown once a fresh Instagram export is actually picked — see the
     // reasoning at the call site in app.js for why this cannot always be
     // carried forward automatically.
