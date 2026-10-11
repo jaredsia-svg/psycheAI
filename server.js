@@ -26,6 +26,7 @@ const promo = require('./lib/promo');
 const store = require('./lib/store');
 const referral = require('./lib/referral');
 const links = require('./lib/links');
+const syncbox = require('./lib/syncbox');
 const staticFiles = require('./lib/staticfiles');
 // Short personal links need a store that survives a deploy (Upstash); in
 // memory they would break on the next one, so the page keeps the long link.
@@ -1030,6 +1031,38 @@ async function handleLinkSave(request, response) {
   }
   sendJson(response, 200, { id });
 }
+// A finished Psyche Sync, sent back to the person whose link it was, locked
+// with that link's key (lib/syncbox.js): left by whoever synced, collected by
+// the link's owner, deleted once their device has it.
+async function handleSyncSend(request, response) {
+  if (!SHORT_LINKS()) {
+    sendJson(response, 503, { error: 'Short links are not available on this server.' });
+    return;
+  }
+  const body = await readJsonBody(request);
+  const kept = await syncbox.leave(body && body.id, body && body.ref, body && body.blob);
+  if (kept !== true) {
+    sendJson(response, 400, { error: kept });
+    return;
+  }
+  stats.count('sync_sent');
+  sendJson(response, 200, { ok: true });
+}
+async function handleSyncInbox(request, response) {
+  const body = await readJsonBody(request);
+  const items = await syncbox.collect(body && body.secret);
+  if (!items) {
+    sendJson(response, 400, { error: 'That referral code is not valid.' });
+    return;
+  }
+  sendJson(response, 200, { items });
+}
+async function handleSyncDone(request, response) {
+  const body = await readJsonBody(request);
+  const gone = await syncbox.acknowledge(body && body.secret, body && body.ids);
+  if (gone) stats.count('sync_received', gone);
+  sendJson(response, 200, { gone });
+}
 async function handleLinkOpen(response, url) {
   const found = await links.open(url.searchParams.get('id'));
   if (!found) {
@@ -1190,6 +1223,12 @@ const API_GUARDS = {
   // one is a read of something the link's own id names.
   '/api/link': { limit: 'link', nonce: false },
   '/api/link/save': { limit: 'referral', nonce: true },
+  // Sending a sync back costs a store write, so it takes a ticket; collecting
+  // and clearing are the owner's own reads, keyed by their secret, like
+  // /api/referral.
+  '/api/sync/send': { limit: 'sync-send', nonce: true },
+  '/api/sync/inbox': { limit: 'referral', nonce: false },
+  '/api/sync/done': { limit: 'referral', nonce: false },
 };
 
 // The ticket travels in a header rather than in the body, for three reasons:
@@ -1410,6 +1449,9 @@ function routeRequest(route, url, request, response) {
                   : route === '/api/referral/claim' && request.method === 'POST' ? () => handleReferralClaim(request, response)
                   : route === '/api/link' && request.method === 'GET' ? () => handleLinkOpen(response, url)
                   : route === '/api/link/save' && request.method === 'POST' ? () => handleLinkSave(request, response)
+                  : route === '/api/sync/send' && request.method === 'POST' ? () => handleSyncSend(request, response)
+                  : route === '/api/sync/inbox' && request.method === 'POST' ? () => handleSyncInbox(request, response)
+                  : route === '/api/sync/done' && request.method === 'POST' ? () => handleSyncDone(request, response)
                   : route === '/api/create-payment-intent' && request.method === 'POST' ? () => handleCreatePaymentIntent(request, response)
                     : route === '/api/premium-analysis' && request.method === 'POST' ? () => handlePremiumAnalysis(request, response)
                       : null;

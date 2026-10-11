@@ -224,7 +224,17 @@
     syncInviteOpen: 'Sync',
     // A waiting row's button in the Sync list: not synced yet.
     syncWaitingGo: 'Sync?',
-    syncWaitingMeta: 'Waiting to sync with you · free, only you see it',
+    syncWaitingMeta: 'Waiting to sync with you · free',
+    // Before a sync with someone's personal link, and from the row's Share
+    // button later (app.js, askShareSync).
+    syncShareTitle: (name) => 'Share the results with ' + name + '?',
+    syncShareText: (name) => name + ' will see the results and your Psyche Card in their Sync list. They are locked on the way, so PsycheAI cannot read them. You can also decide after seeing the results: there is a Share button in your Sync list.',
+    syncShareTextLater: (name) => name + ' will see the results and your Psyche Card in their Sync list. They are locked on the way, so PsycheAI cannot read them.',
+    syncShareYes: (name) => 'Yes, share with ' + name,
+    syncShareNo: 'Sync without sharing',
+    syncShareNotNow: 'Not now',
+    syncSentBack: (name) => 'Shared with ' + name + ', with your Psyche Card.',
+    syncShareFailed: (name) => 'That could not be shared with ' + name + ' just now. Try again from your Sync list.',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: () => 'You have connections waiting to sync with you',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
@@ -385,6 +395,13 @@
     matchSyncLabel: 'Results',
     // Under a past sync's name, before its date.
     matchSyncedMeta: 'Synced',
+    // A sync someone ran with this reader's link, sent back to them.
+    matchReceivedMeta: 'Synced with you',
+    matchNew: 'New',
+    // A sync this reader can still share with the person whose link it was.
+    matchShareLabel: 'Share',
+    matchShareAria: (name) => 'Share the results with ' + (name || 'them'),
+    matchSharedMeta: 'Shared',
     matchOpenCard: (name) => name ? 'Open ' + possessive(name) + ' Psyche Card' : 'Open their Psyche Card',
     matchOpenSync: (name) => 'Open your Psyche Sync with ' + (name || 'them'),
     matchWhen: 'When',

@@ -7349,6 +7349,7 @@
   // buttons — their Psyche Card (kept with the sync since that was saved) and
   // the Sync itself. No score: a sync is read, not rated.
   const SYNC_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg>';
+  const SHARE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
   const RESULTS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5"/></svg>';
   /**
    * A row's circle: their character's emblem, the one at the head of the
@@ -7379,14 +7380,21 @@
         // Their name opens their Psyche Card; the one button, the result.
         // A sync from before syncs were between any two connections still
         // says what it was (Romantic, Professional); a current one says Synced.
-        const label = mode === 'platonic' ? TEXT.matchSyncedMeta : (MODE_LABELS[mode] || mode);
+        const label = (mode !== 'platonic' ? (MODE_LABELS[mode] || mode)
+          : entry.received ? TEXT.matchReceivedMeta : TEXT.matchSyncedMeta) + (entry.shared ? ' · ' + TEXT.matchSharedMeta : '');
+        // Not shared with them yet, and it can be: a Share button beside Results.
+        const share = entry.back && !entry.shared && !entry.received && state.server && state.server.shortLinks
+          ? '<button type="button" class="match-go match-share" data-share="' + index + '" aria-label="' +
+            esc(TEXT.matchShareAria(first)) + '">' + SHARE_ICON + '<span>' + esc(TEXT.matchShareLabel) + '</span></button>' : '';
         return '<li><div class="match-row is-synced">' +
           matchFaceHtml(mode, name, entry.face) +
           '<span class="match-who">' + matchNameHtml(name, entry.card ? 'data-card="' + index + '"' : '', first) +
-          '<span class="match-meta">' + esc(label) + ' · ' + esc(when(entry.when)) + '</span></span>' +
+          '<span class="match-meta">' + (entry.fresh ? '<span class="match-new">' + esc(TEXT.matchNew) + '</span>' : '') +
+            esc(label) + ' · ' + esc(when(entry.when)) + '</span></span>' +
+          '<span class="match-actions">' + share +
           '<button type="button" class="match-go match-results" data-report="' + index + '" aria-label="' +
             esc(TEXT.matchOpenSync(first)) + '">' + RESULTS_ICON + '<span>' + esc(TEXT.matchSyncLabel) + '</span></button>' +
-          '</div></li>';
+          '</span></div></li>';
       }).join('') +
       '</ul>';
   }
@@ -7401,7 +7409,15 @@
     const link = event.target.closest('[data-report]');
     if (!link) return;
     event.preventDefault();
-    const entry = store.read(KEYS.history, [])[Number(link.dataset.report)];
+    const history = store.read(KEYS.history, []);
+    const entry = history[Number(link.dataset.report)];
+    if (entry && entry.fresh) {
+      delete entry.fresh;
+      store.write(KEYS.history, history);
+      refreshSyncsDot();
+      link.closest('.match-row') && link.closest('.match-row').querySelector('.match-new') &&
+        link.closest('.match-row').querySelector('.match-new').remove();
+    }
     if (entry) { renderReport(entry.report, entry.withName, entry.when); show('report'); }
   });
   // Their Psyche Card, from My Syncs: drawn from the card their link carried,
@@ -9256,9 +9272,11 @@
     const waiting = state.profile ? allInvites().length : 0;
     setHtml($('#scan-history'), history.length || waiting
       ? '<div class="card scan-results"><div class="scan-results-head"><h2>' + esc(TEXT.syncsList) + '</h2>' +
-        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' + syncWaitingHtml() +
+        '<span class="scan-count">' + (history.length + waiting) + '</span></div>' +
+        syncWaitingHtml() +
         (history.length ? historyList(history) : '') + '</div>' : '');
     $('#link-contents').innerHTML = linkContentsBlock(state.profile && state.profile.card);
+    refreshSyncsDot();
   }
 
   $('#paste-go').addEventListener('click', async () => {
@@ -9312,7 +9330,9 @@
         if (found && found.blob) {
           const opened = openedCard(await unlockCard(found.blob, short[2]));
           if (opened.payload) {
-            return Object.assign(opened, /^[0-9a-f]{12}$/.test(found.ref || '') ? { ref: found.ref } : {});
+            // Where the finished sync can be sent back to (sendSyncBack).
+            return Object.assign(opened, { link: { id: short[1], key: short[2] } },
+              /^[0-9a-f]{12}$/.test(found.ref || '') ? { ref: found.ref } : {});
           }
         }
       } catch (error) { /* falls through to "not a PsycheAI link" */ }
@@ -9330,7 +9350,17 @@
     if (typeof link === 'string') link = await readLinkText(link);
     const other = await Card.decodeCard(link && link.payload);
     if (!other) return false;
-    pastedLink = syncingInvite ? null : { face: link.face || null, ref: link.ref || '' };
+    pastedLink = syncingInvite ? null : { face: link.face || null, ref: link.ref || '', link: link.link || null };
+    // Their personal link can take the result back to them: asked first, each
+    // time. Closing the popout cancels the sync.
+    const invited = syncingInvite ? allInvites().find(i => i.payload === syncingInvite) : null;
+    const backTo = invited ? invited.link : link.link;
+    shareSync = false;
+    if (backTo && state.server && state.server.shortLinks) {
+      const choice = await askShareSync(firstName(other.name) || other.name);
+      if (choice === null) { syncingInvite = null; pastedLink = null; return true; }
+      shareSync = choice;
+    }
 
     // Psyche Sync is between friends, and only that: no basis to pick, so it
     // starts at once. Free, so there is no payment to ask for either.
@@ -9465,17 +9495,21 @@
     // The face their link carried (character, write-up, lists), kept with the
     // sync so their Psyche Card can be opened from My Syncs later.
     let face = null;
+    // Where this sync can be sent back to: the link it came from, and its code.
+    let back = null;
     // The friend's link that brought this sync, now used.
     if (syncingInvite) {
       // A sync with a friend's link counts on that friend's "Your link".
       const synced = allInvites().find(i => i.payload === syncingInvite);
       face = (synced && synced.face) || null;
+      if (synced && synced.link) back = { link: synced.link, ref: synced.ref || '' };
       const mine = store.read(KEYS.referral, null);
       if (synced && synced.ref && !(mine && mine.code === synced.ref)) trackStep('sync_done', synced.ref);
       spendInvite(syncingInvite);
       syncingInvite = null;
       refreshSyncInvite();
     }
+    if (!back && pastedLink && pastedLink.link) back = { link: pastedLink.link, ref: pastedLink.ref };
     if (!face && pastedLink) {
       face = pastedLink.face;
       // A pasted short link counts on its owner's "Your link" too.
@@ -9491,14 +9525,170 @@
     // than adding a second row for the same person.
     const key = syncCardKey(other);
     const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
-    history.unshift({
+    const canShare = Boolean(back && back.link && LINK_ID.test(back.link.id || '') && LINK_KEY.test(back.link.key || ''));
+    history.unshift(Object.assign({
       when: new Date().toISOString(), withName: other.name, with: key, mode: report.mode, stance, report,
       // Their card as their link carried it, to open from My Syncs.
       card: Card.shape(other), face,
-    });
+    // Where the result can still be shared to later, from its row.
+    }, canShare ? { back: { link: back.link, ref: back.ref || '' }, shared: false } : null));
     store.write(KEYS.history, history.slice(0, 25));
     renderReport(report, other.name);
     show('report');
+    if (canShare && shareSync) shareSyncEntry(key);
+    shareSync = false;
+  }
+
+  // Whether the reader chose, in the popout before this sync, to share it.
+  let shareSync = false;
+  /**
+   * "Share the results with Jean?" before a sync with a personal link, or
+   * from the row's Share button later. Resolves true for share, false for
+   * the other button, and null when closed (before a sync, that cancels it).
+   */
+  function askShareSync(name, later) {
+    const dialog = $('#sync-share-dialog');
+    if (!dialog) return Promise.resolve(false);
+    $('#sync-share-title').textContent = TEXT.syncShareTitle(name);
+    $('#sync-share-text').textContent = later ? TEXT.syncShareTextLater(name) : TEXT.syncShareText(name);
+    $('#sync-share-yes').textContent = TEXT.syncShareYes(name);
+    $('#sync-share-no').textContent = later ? TEXT.syncShareNotNow : TEXT.syncShareNo;
+    return new Promise(resolve => {
+      const done = answer => {
+        $('#sync-share-yes').onclick = null;
+        $('#sync-share-no').onclick = null;
+        dialog.onclose = null;
+        if (dialog.open) dialog.close();
+        resolve(answer);
+      };
+      $('#sync-share-yes').onclick = () => done(true);
+      $('#sync-share-no').onclick = () => done(false);
+      dialog.onclose = () => done(null);
+      if (typeof dialog.showModal === 'function') dialog.showModal();
+      else dialog.setAttribute('open', '');
+    });
+  }
+  /** Sends one saved sync back to the person whose link it was, and marks it shared. */
+  async function shareSyncEntry(key) {
+    const entry = (store.read(KEYS.history, []) || []).find(e => e && e.with === key);
+    if (!entry || !entry.back || entry.shared) return false;
+    const sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report);
+    const name = firstName(entry.withName) || entry.withName;
+    if (sent) {
+      const history = store.read(KEYS.history, []) || [];
+      const saved = history.find(e => e && e.with === key);
+      if (saved) { saved.shared = true; store.write(KEYS.history, history); }
+    }
+    if (!$('#view-scan').hidden) renderScan();
+    flash('#scan-alert', sent ? TEXT.syncSentBack(name) : TEXT.syncShareFailed(name));
+    $('#scan-alert').classList.toggle('is-note', sent);
+    return sent;
+  }
+  // The row's Share button, for a sync not shared before.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('[data-share]');
+    if (!button) return;
+    event.preventDefault();
+    const entry = (store.read(KEYS.history, []) || [])[Number(button.dataset.share)];
+    if (!entry || !entry.back || entry.shared) return;
+    if (!(await askShareSync(firstName(entry.withName) || entry.withName, true))) return;
+    button.disabled = true;
+    if (!(await shareSyncEntry(entry.with))) button.disabled = false;
+  });
+
+  // ---------- a sync, sent back to the person whose link it was ----------
+  //
+  // Whoever syncs with someone's personal link holds that link's key, and so
+  // does the device that made it. The finished sync, flipped so the tips for
+  // that person are theirs, goes with this reader's Psyche Card, locked with
+  // the key, to be collected by the link's owner (lib/syncbox.js). PsycheAI
+  // keeps only the locked copy. Only when the reader chooses to, in the popout
+  // before the sync or from the row's Share button afterwards; a long #p=
+  // link has no key and no owner to send to, so nothing can go.
+  const LINK_ID = /^[A-Za-z0-9_-]{10}$/;
+  const LINK_KEY = /^[A-Za-z0-9_-]{16}$/;
+  async function sendSyncBack(link, ref, report) {
+    if (!state.profile || !state.profile.payload || !link) return false;
+    if (!LINK_ID.test(link.id || '') || !LINK_KEY.test(link.key || '') || !/^[0-9a-f]{12}$/.test(ref || '')) return false;
+    const play = report.howToPartner || {};
+    const theirs = Object.assign({}, report, {
+      howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }),
+    });
+    const sent = { v: 1, payload: state.profile.payload, face: cardFace(state.profile.report), report: theirs,
+      when: new Date().toISOString() };
+    try {
+      let blob = await lockCard(JSON.stringify(sent), link.key);
+      // Past what the server keeps, the card goes without its face.
+      if (blob.length > 24000) { sent.face = null; blob = await lockCard(JSON.stringify(sent), link.key); }
+      if (blob.length > 24000) return false;
+      const answer = await LLM.postWithTicket('api/sync/send', { id: link.id, ref, blob });
+      return Boolean(answer && answer.ok);
+    } catch (error) { return false; }
+  }
+
+  // Collecting the syncs others have sent back to this reader's link: on
+  // start, and on coming back to the page, at most once a minute. Each lands
+  // in the Sync list marked New, replacing an older sync with the same card;
+  // the server deletes it once it is saved here. One that cannot be unlocked
+  // (a link key since replaced) can never be read, so it is cleared too.
+  let syncsAskedAt = 0;
+  async function collectSyncs() {
+    if (!state.profile || !(state.server && state.server.shortLinks)) return;
+    const link = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    if (!link || !LINK_KEY.test(link.key || '') || !mine || !/^[0-9a-f]{64}$/.test(mine.secret || '')) return;
+    if (Date.now() - syncsAskedAt < 60000) return;
+    syncsAskedAt = Date.now();
+    let items = [];
+    try {
+      const response = await fetch('api/sync/inbox', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret }),
+      });
+      items = response.ok ? ((await response.json()).items || []) : [];
+    } catch (error) { return; }
+    const done = [];
+    let added = 0;
+    for (const item of items.slice(0, 20)) {
+      try {
+        const data = JSON.parse(await unlockCard(String(item.blob || ''), link.key));
+        const card = data && typeof data.payload === 'string' ? await Card.decodeCard(data.payload) : null;
+        if (card && data.report && typeof data.report === 'object' && !Array.isArray(data.report)) {
+          adoptReceivedSync(card, data);
+          added++;
+        }
+      } catch (error) { /* cannot be unlocked: cleared below */ }
+      done.push(item.id);
+    }
+    if (done.length) {
+      try {
+        await fetch('api/sync/done', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: mine.secret, ids: done }),
+        });
+      } catch (error) { /* collected again next time, and replaces itself */ }
+    }
+    if (!added) return;
+    refreshSyncInvite();
+    refreshSyncsDot();
+    if (!$('#view-scan').hidden) renderScan();
+  }
+  function adoptReceivedSync(card, data) {
+    const key = syncCardKey(card);
+    const when = !isNaN(new Date(data.when)) ? new Date(data.when).toISOString() : new Date().toISOString();
+    const face = data.face && typeof data.face === 'object' && !Array.isArray(data.face) ? data.face : null;
+    const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
+    history.unshift({
+      when, withName: card.name, with: key, mode: 'platonic', stance: null,
+      report: Object.assign({}, data.report, { mode: 'platonic', stance: null }),
+      card: Card.shape(card), face, received: true, fresh: true,
+    });
+    store.write(KEYS.history, history.slice(0, 25));
+    // Their link, if it was waiting here too, is answered by this.
+    for (const invite of allInvites()) if (invite.payload === data.payload) spendInvite(invite.payload);
+  }
+  /** The dot on Syncs while a sync someone sent back is still unopened. */
+  function refreshSyncsDot() {
+    const fresh = (store.read(KEYS.history, []) || []).some(entry => entry && entry.fresh);
+    ['#nav-scan'].forEach(sel => { const nav = $(sel); if (nav) nav.classList.toggle('has-new', fresh); });
   }
 
   // ══════════════ 4. compatibility report ══════════════
@@ -9622,6 +9812,7 @@
     let incoming = '';
     let face = null;
     let fromRef = '';
+    let backLink = null;
     const params = new URLSearchParams(location.search);
     if (params.has('c')) {
       // A short personal link, /c/<id>#<key>, arrives here as ?c=<id>#<key>.
@@ -9646,6 +9837,8 @@
       try {
         if (found && key) ({ payload: incoming, face } = openedCard(await unlockCard(found.blob, key)));
       } catch (error) { incoming = ''; }
+      // The link itself, so the finished sync can go back to its owner.
+      if (incoming && /^[A-Za-z0-9_-]{10}$/.test(id) && /^[A-Za-z0-9_-]{16}$/.test(key)) backLink = { id, key };
       if (!incoming) {
         showUploadError(TEXT.shortLinkUnreadable);
         return true;
@@ -9672,7 +9865,7 @@
     }
     // The link's own code too, so a sync with this friend counts for them.
     addInvite(Object.assign({ payload: incoming, name: card.name, at: Date.now() }, face ? { face } : null,
-      fromRef ? { ref: fromRef } : null));
+      fromRef ? { ref: fromRef } : null, backLink ? { link: backLink } : null));
     // A reader who already has a card lands on it, with the sync one tap
     // away; one who does not sees the friend's card and how to make theirs.
     if (state.profile) {
@@ -10269,6 +10462,8 @@
       renderProfile();
       show('profile');
       offerPendingWork();
+      refreshSyncsDot();
+      collectSyncs();
       return;
     }
     show('welcome');
@@ -10303,6 +10498,7 @@
     // free, and it is what makes putting the phone down for an hour and
     // picking it up again land on the report rather than on a dead spinner.
     if (runningJob()) resumeRunningJob();
+    collectSyncs();
   });
 
   mountInsights();

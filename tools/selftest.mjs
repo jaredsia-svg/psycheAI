@@ -7714,6 +7714,39 @@ check('the schema requires evidence on where they align and differ',
     (await links.publish('nope', 'abc')) === null && (await links.publish(secret, 'x'.repeat(links.MAX_BLOB + 1))) === null &&
       (await links.publish(secret, 'not base64!')) === null);
   check('an unknown or malformed id opens nothing', (await links.open('AAAAAAAAAA')) === null && (await links.open('../x')) === null);
+
+  // A sync sent back to the link's owner (lib/syncbox.js): left by whoever
+  // holds the link, collected only with the owner's secret, deleted once
+  // saved, and held small.
+  const syncbox = await import('../lib/syncbox.js').then(m => m.default);
+  const ref = referral.codeOf(secret);
+  check('a sync can be left for a link\'s owner by whoever holds the link',
+    (await syncbox.leave(id, ref, 'bG9ja2VkLXN5bmM')) === true);
+  check('but not for a link that does not exist, under another code, or too long or not base64url',
+    (await syncbox.leave('AAAAAAAAAA', ref, 'abc')) !== true && (await syncbox.leave(id, 'aaaaaaaaaaaa', 'abc')) !== true &&
+      (await syncbox.leave(id, ref, 'x'.repeat(syncbox.MAX_BLOB + 1))) !== true && (await syncbox.leave(id, ref, 'not base64!')) !== true);
+  const waiting = await syncbox.collect(secret);
+  check('its owner collects it with their secret: the locked copy and when, nothing else',
+    Array.isArray(waiting) && waiting.length === 1 && waiting[0].blob === 'bG9ja2VkLXN5bmM' &&
+      /^[0-9a-f]{16}$/.test(waiting[0].id) && JSON.stringify(Object.keys(waiting[0])) === JSON.stringify(['id', 'blob', 'at']),
+    JSON.stringify(waiting));
+  const otherSecret = createHash('sha256').update('someone else').digest('hex');
+  check('no one else can collect it, and a bad secret collects nothing',
+    (await syncbox.collect(otherSecret)).length === 0 && (await syncbox.collect('nope')) === null);
+  check('once saved on the owner\'s device it is deleted',
+    (await syncbox.acknowledge(secret, [waiting[0].id])) === 1 && (await syncbox.collect(secret)).length === 0);
+  for (let i = 0; i < syncbox.MAX_WAITING; i++) await syncbox.leave(id, ref, 'c3luYw' + i);
+  check('at most ' + syncbox.MAX_WAITING + ' wait for one person, kept ' + syncbox.KEEP_DAYS + ' days',
+    (await syncbox.leave(id, ref, 'b25lbW9yZQ')) !== true && (await syncbox.collect(secret)).length === syncbox.MAX_WAITING &&
+      syncbox.KEEP_DAYS === 30);
+  await syncbox.acknowledge(secret, (await syncbox.collect(secret)).map(item => item.id));
+  // What the FAQ and the privacy page say about it stays literally true.
+  const faq = readFileSync(join(root, 'docs', 'index.html'), 'utf8');
+  const privacyPage = readFileSync(join(root, 'docs', 'privacy.html'), 'utf8');
+  check('the FAQ and privacy page say a sync sent back is locked with the link\'s key and kept ' + syncbox.KEEP_DAYS + ' days at most',
+    /locks it with your link’s key, so\s+PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days/.test(faq) &&
+      /locked the same way with your link’s key, so PsycheAI cannot read them\. They are deleted once your device has them, or after 30 days/.test(privacyPage) &&
+      /if you choose to share it, before syncing or later/.test(privacyPage));
 }
 
 // ---------- WhatsApp chats ----------
@@ -7986,6 +8019,7 @@ check('the schema requires evidence on where they align and differ',
     JSON.stringify(guarded) === JSON.stringify([
       '/api/analyse', '/api/compatibility', '/api/create-payment-intent', '/api/event', '/api/link', '/api/link/save',
       '/api/nonce', '/api/premium-analysis', '/api/referral', '/api/referral/claim', '/api/result',
+      '/api/sync/done', '/api/sync/inbox', '/api/sync/send',
     ]), JSON.stringify(guarded));
   // Two routes are rate-limited without a ticket, and both are named here
   // rather than left to a rule, because "which reads are exempt" is exactly
@@ -7998,7 +8032,10 @@ check('the schema requires evidence on where they align and differ',
   // nothing and returns nothing, and a ticket per step would cost more than
   // the count.
   // /api/link opens a short link by the id the link itself names.
-  const TICKETLESS = ['/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result'];
+  // /api/sync/inbox and /api/sync/done are the link owner's own reads and
+  // clears, keyed by their secret, as /api/referral is.
+  const TICKETLESS = ['/api/event', '/api/link', '/api/nonce', '/api/referral', '/api/result',
+    '/api/sync/done', '/api/sync/inbox'];
   check('and every route but the two reads requires a ticket',
     Object.entries(server.API_GUARDS).every(([route, guard]) =>
       guard.nonce === !TICKETLESS.includes(route)),

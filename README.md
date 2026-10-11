@@ -6109,6 +6109,41 @@ version of this feature, so the romantic and work comparisons were removed outri
 - **Old reports:** reports saved on the old bases still open on the reader's device, labelled as
   they were.
 
+### The result goes back to the person whose link it was
+
+A sync ran on the device of whoever opened the link, and the result stayed there, so the person who
+shared their link never saw it unless it was sent to them by hand. Now it reaches them
+if the person who synced chooses (`lib/syncbox.js`, `sendSyncBack` and `collectSyncs` in `docs/app.js`):
+- **Locked with the link's key.** Whoever syncs with a personal link (`/c/<id>#<key>`) holds its
+  key, and so does the device that made it. The finished sync goes with the sender's Psyche Card and
+  its face, locked in the browser (AES-GCM, the link card's own lock), to `/api/sync/send`. The
+  server keeps it under the owner's invite code, only after checking that the link exists and carries
+  that code, so only someone given the link can leave anything. PsycheAI cannot read it.
+- **Only the owner collects.** `/api/sync/inbox` takes the owner's invite secret. Their device asks on
+  start and on coming back to the page, at most once a minute, unlocks each sync with its own link key,
+  and acknowledges it (`/api/sync/done`), which deletes it. A sync that cannot be unlocked, for example
+  because the link key has since been replaced, is cleared too.
+- **Small and short-lived.** At most 20 syncs wait for one person, each up to 24,000 characters, for
+  30 days.
+- **Flipped for them.** `howToPartner.forA` and `forB` swap, so the tips written for the owner are
+  addressed to them as "you". The row reads **New · Synced with you** with the sender's character in
+  the circle, and a dot on **Syncs** shows until they open its **Results**. A sync from someone whose
+  link was also waiting on that device answers that invite too.
+- **Asked, each time.** Tapping **Sync?** on a waiting row, or syncing a pasted personal link, first
+  opens a popout: *Share the results with Jean?* It explains that Jean will see the results and the
+  reader's Psyche Card, locked so PsycheAI cannot read them, and that there is a Share button for
+  later. The two buttons are **Yes, share with Jean** and **Sync without sharing**. Closing the
+  popout cancels the sync (`askShareSync`). The first version was a tickbox, on by default, which
+  shared before the reader had seen what they were sharing.
+- **Or later, from the row.** A sync with a personal link keeps where it can go (`back` on the
+  history entry). Until it is shared, its row has a **Share** button beside **Results**, which asks
+  the same question with **Not now**. Once shared, the row reads *Synced · Shared* and the button
+  goes; My Syncs says *Shared with Jean, with your Psyche Card.* A long `#p=` link has no key and no
+  owner, so it is never asked and has no Share button.
+- **Wording.** The waiting rows lose "only you see it". The FAQ, the privacy page and the Psyche Sync
+  guide say the result reaches the link's owner, locked, if the sender chooses to share it, and that it is
+  deleted once collected or after 30 days. A selftest holds them to `syncbox.KEEP_DAYS`.
+
 **Wording.** "Compatibility" is "Psyche Sync" everywhere a reader looks, and the score is said the
 way people say it:
 - *78% in sync*, beside a band, on the result page.

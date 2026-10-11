@@ -1357,6 +1357,36 @@ textarea { resize: vertical; }
 .card .match-waiting { margin-bottom: .55rem; }
 .match-row.is-waiting { border-style: dashed; background: color-mix(in srgb, var(--accent-soft) 45%, var(--bg)); }
 .match-row.is-waiting:hover { transform: none; box-shadow: none; }
+/* "Share the results with Jean?": the two circles over a short question. */
+.sync-share-dialog { max-width: 26rem; text-align: center; }
+.sync-share-icon {
+  width: 3rem; height: 3rem; margin: 0 auto .6rem; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; background: linear-gradient(135deg, #7b3fa0, #d1477a);
+}
+.sync-share-icon svg { width: 1.6rem; height: 1.6rem; }
+.sync-share-dialog h2 { margin: 0 0 .5rem; font-size: 1.25rem; }
+.sync-share-dialog p { line-height: 1.5; }
+/* A past sync's buttons: Share (until shared) beside Results. */
+.match-actions { flex: none; display: flex; gap: .4rem; align-items: center; }
+.match-go.match-share { color: var(--ink-soft); border: 1px solid var(--line); background: var(--bg-alt); }
+.match-go.match-share:hover, .match-go.match-share:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+/* On a phone, Share is its icon (its label stays for screen readers), so the
+   name keeps its room. */
+@media (max-width: 520px) {
+  .match-go.match-share { padding: .5rem .6rem; }
+  .match-go.match-share span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .match-go { padding: .5rem .8rem; }
+}
+/* A sync someone sent back, not yet opened. */
+.match-new {
+  display: inline-block; margin-right: .4rem; padding: .02rem .45rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 800; color: #fff; background: var(--accent-2, #d1477a); vertical-align: 1px;
+}
+#nav-scan.has-new { position: relative; }
+#nav-scan.has-new::after {
+  content: ''; position: absolute; top: -2px; right: -8px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-2, #d1477a);
+}
 /* The person's name opens their Psyche Card: a link, in the row's own type. */
 .match-name {
   justify-self: start; max-width: 100%; padding: 0; border: 0; background: none; cursor: pointer;

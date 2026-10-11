@@ -10429,14 +10429,17 @@ try {
     !/Why is there one free card/.test(about) && /scrambled code that lets each Instagram account have one free card/.test(about));
   check('the digest answer no longer explains who might recognise it',
     !/de-identified rather than anonymous/.test(about) && !/someone who already knows you well/.test(about));
-  check('the Psyche Sync answer says what the link actually is, and that it is about friends only',
-    /How does Psyche Sync work\?/.test(about) && /about friendship only, never romance/.test(about) &&
-    /the result stays on their device unless\s+they send it to you/.test(about) &&
+  check('the Psyche Sync answer says what the link actually is, who it is for, and that the result reaches you locked',
+    /How does Psyche Sync work\?/.test(about) && /for friends, family or anyone close, never romance/.test(about) &&
+    /If they choose to share it, the\s+result reaches you too, with their Psyche Card/.test(about) &&
+    /locks it with your link’s key, so\s+PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days/.test(about) &&
     /carries only your card’s short summary, never your data, messages or report/.test(about) &&
     /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
-    /the short summary your link shows, which only\s+your link can open/.test(about) && /none of them names you/.test(about));
+    /the short summary your link shows, which only\s+your link can open/.test(about) &&
+    /any Psyche Sync someone sends you, which only your link can open too\s+and is deleted once your device has it/.test(about) &&
+    /none of them names you/.test(about));
   check('and the full report no longer promises a secret bonus: the roast is free',
     !/secret bonus/i.test(about));
   check('the FAQ gives a contact address',
@@ -12587,6 +12590,9 @@ try {
           friendLists.slice(0, 400) + ' ≠ ' + ownLists.slice(0, 400));
         check('and the invite code with it, so their first free card counts', arrived.referredBy && arrived.referredBy.code === mine.code,
           JSON.stringify(arrived.referredBy));
+        check('and the link itself, so a sync from it can go back to its owner',
+          arrived.invite && arrived.invite.link && arrived.invite.link.id === saved.id && arrived.invite.link.key === saved.key,
+          JSON.stringify(arrived.invite && arrived.invite.link));
         check('and the key is taken out of the address once read', !/#/.test(arrived.address) && !/[?&]c=/.test(arrived.address),
           arrived.address);
         // The same short link pasted into "Sync with others" by someone who
@@ -12594,16 +12600,33 @@ try {
         // the face — the character included — and the Card button shows it.
         {
           const sample = JSON.parse(readFileSync(join(root, 'docs', 'sample.json'), 'utf8'));
-          await friendPage.evaluate(r => {
+          await friendPage.evaluate(async r => {
             localStorage.clear();
-            localStorage.setItem('psycheai_profile', JSON.stringify({ report: r, card: Object.assign({}, r.card, { name: 'Pat Doe' }),
-              payload: 'x', model: 'mock', createdAt: new Date().toISOString() }));
+            const card = Object.assign({}, r.card, { name: 'Pat Doe' });
+            localStorage.setItem('psycheai_profile', JSON.stringify({ report: r, card,
+              payload: await window.PsycheCard.encodeCard(card), model: 'mock', createdAt: new Date().toISOString() }));
           }, sample);
           await friendPage.goto(base, { waitUntil: 'load' });
           await friendPage.click('#nav-scan');
           await friendPage.waitForSelector('#view-scan:not([hidden])', { timeout: 15000 });
           await friendPage.fill('#paste-input', 'Here it is: ' + copied);
           await friendPage.click('#paste-go');
+          // A personal link can take the result back: asked first.
+          await friendPage.waitForSelector('#sync-share-dialog[open]', { timeout: 15000 });
+          const asked = await friendPage.evaluate(() => ({
+            title: document.querySelector('#sync-share-title').textContent,
+            text: document.querySelector('#sync-share-text').textContent,
+            yes: document.querySelector('#sync-share-yes').textContent,
+            no: document.querySelector('#sync-share-no').textContent,
+            synced: (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length,
+          }));
+          const ownerFirst = (await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_profile')).card.name)).split(' ')[0];
+          check('syncing with a personal link first asks whether to share the results with them',
+            asked.title === 'Share the results with ' + ownerFirst + '?' && /will see the results and your Psyche Card in their Sync list/.test(asked.text) &&
+              /PsycheAI cannot read them/.test(asked.text) && /Share button in your Sync list/.test(asked.text) &&
+              asked.yes === 'Yes, share with ' + ownerFirst && asked.no === 'Sync without sharing' && asked.synced === 0,
+            JSON.stringify(asked));
+          await friendPage.click('#sync-share-yes');
           await friendPage.waitForFunction(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length === 1, null, { timeout: 60000 });
           const pasted = await friendPage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history'))[0]);
           check('a pasted short link syncs, and the sync keeps the sender\'s card with its character',
@@ -12614,6 +12637,110 @@ try {
           await friendPage.waitForTimeout(600);
           check('and the Card button shows that character',
             (await friendPage.locator('#sample-psyche-card-full').innerText()).includes(character));
+          await friendPage.keyboard.press('Escape');
+
+          // Shared: the result goes back to the person whose link it was,
+          // with Pat's card, locked with that link's key.
+          await friendPage.waitForFunction(() => /Shared with .+, with your Psyche Card\./.test(document.querySelector('#scan-alert').textContent),
+            null, { timeout: 15000 }).catch(() => {});
+          check('and once shared, My Syncs says so, and the row says Shared with no Share button',
+            /^Shared with \S+, with your Psyche Card\.$/.test(await friendPage.locator('#scan-alert').innerText()) &&
+              await friendPage.evaluate(() => {
+                const entry = JSON.parse(localStorage.getItem('psycheai_history'))[0];
+                return entry.shared === true && Boolean(entry.back) && !document.querySelector('#scan-history [data-share]') &&
+                  /Synced · Shared · /.test(document.querySelector('#scan-history .match-meta').textContent);
+              }),
+            await friendPage.locator('#scan-alert').innerText());
+          const waitingForOwner = await rp.evaluate(async () => {
+            const secret = JSON.parse(localStorage.getItem('psycheai_referral')).secret;
+            return fetch('api/sync/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ secret }) }).then(r => r.json());
+          });
+          check('the server holds it for the link\'s owner, locked: no name, no advice in it',
+            waitingForOwner.items && waitingForOwner.items.length === 1 &&
+              !/Pat|Mock advice/.test(JSON.stringify(waitingForOwner)), JSON.stringify(waitingForOwner).slice(0, 200));
+          const sentReport = pasted.report;
+          // The owner's device collects it on its next start.
+          await rp.reload({ waitUntil: 'load' });
+          await rp.waitForFunction(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).some(e => e && e.received),
+            null, { timeout: 20000 }).catch(() => {});
+          const got = await rp.evaluate(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).find(e => e && e.received) || null);
+          check('the owner\'s device collects it: Pat\'s sync is in their Sync list, marked new, with Pat\'s card',
+            got && got.withName === 'Pat Doe' && got.fresh === true && Boolean(got.card) && got.face &&
+              got.face.c === (sample.essence.character || sample.essence.noun),
+            JSON.stringify(got && { withName: got.withName, fresh: got.fresh, face: got.face && got.face.c }));
+          check('and flipped: the tips written for the owner are now theirs, addressed to "you"',
+            got && JSON.stringify(got.report.howToPartner.forA) === JSON.stringify(sentReport.howToPartner.forB) &&
+              JSON.stringify(got.report.howToPartner.forB) === JSON.stringify(sentReport.howToPartner.forA) &&
+              got.report.summary === sentReport.summary,
+            JSON.stringify(got && got.report.howToPartner));
+          check('and the server deletes it once the owner\'s device has it',
+            (await rp.evaluate(async () => {
+              const secret = JSON.parse(localStorage.getItem('psycheai_referral')).secret;
+              return fetch('api/sync/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret }) }).then(r => r.json());
+            })).items.length === 0);
+          check('a dot on Syncs says there is something new', await rp.evaluate(() => document.querySelector('#nav-scan').classList.contains('has-new')));
+          await rp.click('#nav-scan');
+          await rp.waitForSelector('#scan-history .match-row', { timeout: 10000 });
+          const row = await rp.evaluate(() => {
+            const rows = [...document.querySelectorAll('#scan-history .match-list:not(.match-waiting) .match-row')];
+            const pat = rows.find(r => /Pat Doe/.test(r.textContent));
+            return pat ? { meta: pat.querySelector('.match-meta').textContent, emblem: Boolean(pat.querySelector('svg.match-emblem')) } : null;
+          });
+          check('its row reads New · Synced with you, with Pat\'s character in the circle',
+            row && /^NewSynced with you · /.test(row.meta) && row.emblem, JSON.stringify(row));
+          await rp.click('#scan-history .match-row:has(.match-new) .match-results');
+          await rp.waitForTimeout(500);
+          check('opening its Results clears New and the dot',
+            await rp.evaluate(() => !document.querySelector('#scan-history .match-new') &&
+              !document.querySelector('#nav-scan').classList.contains('has-new') &&
+              !(JSON.parse(localStorage.getItem('psycheai_history')) || []).some(e => e && e.fresh)));
+          await rp.evaluate(() => { const d = document.querySelector('#sync-dialog'); if (d && d.open) d.close(); });
+
+          // Not shared, nothing goes: Pat syncs with the same link again and
+          // says no. A Share button on the row does it later, after the results.
+          const ownerInbox = () => rp.evaluate(async () => {
+            const secret = JSON.parse(localStorage.getItem('psycheai_referral')).secret;
+            return fetch('api/sync/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ secret }) }).then(r => r.json());
+          });
+          await friendPage.evaluate(() => localStorage.setItem('psycheai_history', '[]'));
+          await friendPage.reload({ waitUntil: 'load' });
+          await friendPage.click('#nav-scan');
+          await friendPage.waitForSelector('#view-scan:not([hidden])', { timeout: 10000 });
+          await friendPage.fill('#paste-input', copied);
+          await friendPage.click('#paste-go');
+          await friendPage.waitForSelector('#sync-share-dialog[open]', { timeout: 15000 });
+          await friendPage.click('#sync-share-no');
+          await friendPage.waitForFunction(() => (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length === 1, null, { timeout: 60000 });
+          await friendPage.waitForTimeout(1500);
+          check('"Sync without sharing" syncs, and the result stays on this device: nothing waits for the link\'s owner',
+            (await ownerInbox()).items.length === 0 &&
+              await friendPage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history'))[0].shared === false));
+          await friendPage.keyboard.press('Escape');
+          await friendPage.waitForTimeout(400);
+          const shareButton = await friendPage.evaluate(() => {
+            const button = document.querySelector('#scan-history .match-share[data-share]');
+            return button ? { text: button.textContent, label: button.getAttribute('aria-label') } : null;
+          });
+          check('its row has a Share button beside Results, to share after seeing the results',
+            shareButton && shareButton.text === 'Share' && shareButton.label === 'Share the results with ' + ownerFirst,
+            JSON.stringify(shareButton));
+          await friendPage.click('#scan-history .match-share[data-share]');
+          await friendPage.waitForSelector('#sync-share-dialog[open]', { timeout: 10000 });
+          const later = await friendPage.evaluate(() => ({
+            text: document.querySelector('#sync-share-text').textContent, no: document.querySelector('#sync-share-no').textContent,
+          }));
+          check('which asks the same question, with Not now',
+            later.no === 'Not now' && /will see the results and your Psyche Card/.test(later.text) && !/Share button/.test(later.text),
+            JSON.stringify(later));
+          await friendPage.click('#sync-share-yes');
+          await friendPage.waitForFunction(() => JSON.parse(localStorage.getItem('psycheai_history'))[0].shared === true, null, { timeout: 15000 })
+            .catch(() => {});
+          check('and Yes shares it then: it waits for the link\'s owner, and the Share button goes',
+            (await ownerInbox()).items.length === 1 && !(await friendPage.locator('#scan-history .match-share').count()));
+          await friendPage.goto('about:blank');
         }
         await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });
         await friendPage.waitForTimeout(800);
