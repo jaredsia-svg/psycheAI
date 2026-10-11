@@ -813,6 +813,46 @@ try {
     }
   }
 
+  // ---- an Instagram with almost no writing in it ----
+  //
+  // Captions blank, no comments, no messages: before the review, one note
+  // says the card would be mostly a guess, and its button goes back to "Add
+  // your data" with Instagram still loaded. Said once: the next Continue goes
+  // on to the review.
+  {
+    const thinPage = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+    try {
+      await thinPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await thinPage.click('#open-sources');
+      await thinPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      const [pick] = await Promise.all([
+        thinPage.waitForEvent('filechooser', { timeout: 15000 }),
+        clickSource(thinPage, '#datasources-dialog .mode-option[data-datasource="instagram"]'),
+      ]);
+      await pick.setFiles({ name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip({ silent: true }) });
+      await thinPage.waitForFunction(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]')
+        .classList.contains('is-added'), null, { timeout: 30000 });
+      await thinPage.click('#datasources-continue');
+      await thinPage.waitForSelector('#more-data-dialog[open], #review-dialog[open]', { timeout: 30000 });
+      check('an Instagram with almost no writing is told, before the review, that more data would help',
+        (await thinPage.locator('#more-data-dialog[open]').count()) === 1 &&
+          (await thinPage.locator('#more-data-title').innerText()) === 'Your Instagram has little writing in it' &&
+          /WhatsApp chat with a close connection, or your Google data/.test(await thinPage.locator('#more-data-text').innerText()) &&
+          (await thinPage.locator('#more-data-continue').innerText()).trim() === 'Add more data',
+        await thinPage.locator('#more-data-dialog').innerText());
+      await thinPage.click('#more-data-continue');
+      await thinPage.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
+      check('and "Add more data" goes back to "Add your data", Instagram still loaded',
+        await thinPage.evaluate(() => document.querySelector('#datasources-dialog .mode-option[data-datasource="instagram"]').classList.contains('is-added')));
+      await thinPage.click('#datasources-continue');
+      await thinPage.waitForSelector('#more-data-dialog[open], #review-dialog[open]', { timeout: 30000 });
+      check('the note is said once: the next Continue goes on to the review',
+        (await thinPage.locator('#review-dialog[open]').count()) === 1);
+    } finally {
+      await thinPage.close();
+    }
+  }
+
   // ---- a new reader's "Load your data": Instagram, one WhatsApp chat, Google ----
   //
   // Instagram is required; up to three WhatsApp chats and Google
@@ -3081,6 +3121,8 @@ try {
   await page.click('#datasources-back');
   await page.waitForSelector('#datasources-dialog', { state: 'hidden', timeout: 15000 });
   await page.evaluate(() => window.scrollTo(0, 0));
+  // Off the step labels: a hovered screen name takes the accent on purpose.
+  await page.mouse.move(1, 1);
 
   check('the underline is not the one links use, and every link here is a real destination',
     await page.evaluate(() => {
@@ -4098,8 +4140,10 @@ try {
   // offering a switch over data the digest does not carry is the one failure
   // this screen cannot have. It is also what keeps the supplementary rows
   // honest: they append to these, so a drift here would move that goalpost.
-  check('all six review rows are checkboxes, each checked by default',
-    (await page.locator('#review-list input[type="checkbox"]').count()) === 6 &&
+  // Seven again: Instagram's searches came back as an extra list, without the
+  // searches for people, and with their own row.
+  check('all seven review rows are checkboxes, each checked by default',
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 7 &&
     (await page.evaluate(() =>
       [...document.querySelectorAll('#review-list input[type="checkbox"]')].every(el => el.checked))));
   check('the icon column is gone — nothing in the list is decorative any more',
@@ -4173,8 +4217,8 @@ try {
   check('the file opens on its own — a real, self-contained HTML document',
     html1.startsWith('<!doctype html>') && !/https?:\/\//.test(html1),
     html1.slice(0, 40));
-  check('the readable table says all six rows are included, by default',
-    (html1.match(/>Included</g) || []).length === 6 && (html1.match(/>Excluded</g) || []).length === 0,
+  check('the readable table says all seven rows are included, by default',
+    (html1.match(/>Included</g) || []).length === 7 && (html1.match(/>Excluded</g) || []).length === 0,
     JSON.stringify({ included: (html1.match(/>Included</g) || []).length,
       excluded: (html1.match(/>Excluded</g) || []).length }));
   const preview1 = extractDigestFromPreviewHtml(html1);
@@ -4278,10 +4322,13 @@ try {
     check('it shows on the front page, My Syncs and the FAQ too', Object.values(shownOn).every(Boolean), JSON.stringify(shownOn));
     await page.click('#report-promo-go');
     await page.waitForSelector('#view-profile:not([hidden])', { timeout: 10000 });
-    await page.waitForFunction(() => {
-      const offer = document.querySelector('#view-profile .full-report-locked');
-      return offer && Math.abs(offer.getBoundingClientRect().top - 72) < 40;
-    }, null, { timeout: 5000 }).catch(() => {});
+    // Until the smooth scroll has come to rest: the same place twice, 300ms apart.
+    for (let last = -1, i = 0; i < 20; i++) {
+      await page.waitForTimeout(300);
+      const now = await page.evaluate(() => Math.round(scrollY));
+      if (now === last && now > 0) break;
+      last = now;
+    }
     // Scrolled to it: its head near the top, or as near as the page's end allows.
     const landed = await page.evaluate(() => {
       const offer = document.querySelector('#view-profile .full-report-locked');
@@ -8577,7 +8624,7 @@ try {
   // upload further up and is what keeps that count meaningful. Seven rather
   // than eight since the Gemini row went with the prompt text it described.
   check('adding both sources adds seven rows to the review, not a lumped-together one',
-    (await page.locator('#review-list input[type="checkbox"]').count()) === 13,
+    (await page.locator('#review-list input[type="checkbox"]').count()) === 14,
     (await page.locator('#review-list input[type="checkbox"]').count()) + ' rows');
   const supplementedReview = await page.locator('#review-dialog').innerText();
   for (const label of ['YouTube watch history', 'YouTube searches', 'Google searches',
@@ -8722,9 +8769,9 @@ try {
     optedOut.mostSavedAccounts.length === 0 && optedOut.mostEngagedWith.length === 0);
   check('unticking topics empties Instagram\'s inferred topics, and no ad interests are kept',
     optedOut.instagramTopics.length === 0 && optedOut.instagramAdInterests === undefined);
-  check('and Instagram\'s own search list is not there to untick',
-    optedOut.samples.searches === undefined &&
-    (await page.locator('#review-searches').count()) === 0);
+  check('and Instagram\'s searches have a row of their own, sent as the extra list unless unticked',
+    optedOut.samples.searches === undefined && Array.isArray(optedOut.instagramSearches) &&
+    (await page.locator('#review-searches').count()) === 1);
 
   const optedOutBody = analyseBodies[analyseBodies.length - 1];
   const optedOutSent = JSON.parse(optedOutBody).digest;

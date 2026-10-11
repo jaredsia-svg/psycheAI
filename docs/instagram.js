@@ -441,6 +441,10 @@
         pushEvent(out, 'storyInteraction', mapTimestamp(item, 'Time'));
         out.counts.storyInteractions++;
       }
+      for (const item of asArray(data, 'story_activities_story_likes')) {
+        const author = fixText((item && item.title) || '');
+        if (author) out.storyLikedAuthors.set(author, (out.storyLikedAuthors.get(author) || 0) + 1);
+      }
     },
     // Direct messages are the most sensitive part of an export. Even when the
     // user opts in we keep only aggregates plus the text of their own
@@ -576,6 +580,8 @@
       likedAuthors: new Map(),
       likedCaptions: [],
       savedAuthors: new Map(),
+      // Whose stories they like: the account a story like went to.
+      storyLikedAuthors: new Map(),
       commentedOn: new Map(),
       threadPartners: new Map(),
       messageSenders: new Map(),

@@ -205,7 +205,8 @@ function messageThreads() {
 
 // An outdoorsy, organised, family-oriented persona: steady weekly posting in
 // the morning, hiking and running language, warm tone.
-function buildExport() {
+function buildExport(options) {
+  const silent = Boolean(options && options.silent);
   const captions = [
     'Sunrise trail run before work. 12k, felt strong. #running #training',
     'Weekend hike with the family — grateful for these people.',
@@ -436,12 +437,21 @@ function buildExport() {
     { name: 'media/posts/thumb.png', bytes: makePng(8, 7) },
   ];
 
+  // An account that posts without writing anything: every caption and story
+  // overlay blank, no comments and no messages.
+  if (silent) {
+    const blank = value => Array.isArray(value) ? value.map(blank)
+      : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([k, v]) => [k, k === 'title' ? '' : blank(v)]))
+      : value;
+    return makeZip(files.filter(f => !/messages\/inbox|post_comments/.test(f.name)).map(f =>
+      /posts_1\.json|stories\.json/.test(f.name) ? { name: f.name, content: JSON.stringify(blank(JSON.parse(f.content))) } : f));
+  }
   return makeZip(files);
 }
 
 
-export function buildExportZip() {
-  return buildExport();
+export function buildExportZip(options) {
+  return buildExport(options);
 }
 
 /**

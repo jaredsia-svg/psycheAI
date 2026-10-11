@@ -5654,6 +5654,62 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### Nothing sexual, no accusations, and harm to others is never a joke
+
+A stress test of a married man liking "thirst trap" posts, a cheater, an abusive spouse and boss and a
+man harassing women showed the rules had no answer for infidelity, sexual content, abuse or crime, and
+that the roast, whose brief is the gap between what someone says and does, would aim straight at them.
+A roast naming an affair is a bombshell on a screen a partner can see, and a like is not an affair.
+Every prompt now carries a conduct rule (`CONDUCT_RULE` for the card and roast, `CONDUCT_RULE_REPORT`,
+which never mentions a roast, for the paid report): nothing sexual and nothing about infidelity (at most
+"a lot of late-night scrolling"); never an accusation or a word for a crime ("cheater", "abuser",
+"predator", "harasser"); never a quoted threat; and harm to others is never a joke. Where the reader's
+own messages show controlling, threatening or pressuring behaviour, the roast leaves it alone and the
+advice says plainly, without labels, that it is worth taking seriously and that someone qualified could
+help. The card stays positive and non-romantic. The card prompt measured 9,898 tokens with it, so
+`FREE_FIXED_INPUT_TOKENS` is 9,900; every cap still covers its line.
+
+### Extra Instagram lists fill the public pool's spare room
+
+The Instagram export holds more than the reader's own words, and the digest used little of it: Instagram
+searches were counted and no longer sent (an earlier round removed them, with their review row; the
+reason was not recorded, and the likeliest one, that people search for people, is now handled by
+leaving those searches out), liked-post captions were cut
+to six, and the account lists to fifteen. They now go in as **extra lists**, each held to a ceiling of
+its own (`EXTRA_CAPS`), filling whatever room the reader's own words leave in the public pool,
+including what the conversations left (see "spare room flows one way"):
+
+| List | Ceiling |
+|---|---|
+| Instagram searches, by repeats (`instagramSearches`, new) | 3,000 (~80) |
+| Captions on posts they liked, two years | 8,000 (~40) |
+| Hashtags on posts they liked | 1,500 (~60) |
+| Accounts they like most / save most | 1,200 each (~40) |
+| Accounts whose stories they like most (`storyLikedAccounts`, new) | 900 (~30) |
+| Instagram's inferred topics | 1,200 (~40) |
+
+The reader's own captions and comments come first. The extras are the first thing trimmed when room is
+needed (ranked below Facebook's posts and the reader's own words in `trimToPools`), except a
+**guaranteed 3,000** (`EXTRAS_GUARANTEED`), so a reader who writes a great deal still shows some of what
+they search for and reach for; `buildFilled` counts the extras at that 3,000 when it sizes the captions,
+and the trim takes the rest back. Ad interests stay out. A search shaped like a username (no spaces,
+with a digit, dot or underscore) or matching an account they follow is left out on the device
+(`searchableTerms`): people search for people. The review sheet has a row for the searches ("Your
+Instagram searches"), and story-liked accounts sit under "Accounts you engage with". The prompts call
+the new lists attention and taste, not voice. No line moves: they only use room already allowed.
+
+### A note when Instagram has almost no writing in it
+
+Some readers post photos and videos without writing anything. Their digest is likes, saves, follows and
+timing, and in a test it came to about 2,400 characters: a card that is mostly a guess. On a first upload
+(both the "Add your data" popout and the drop-on-the-card path), when the digest has fewer than 10
+captions and comments, fewer than 50 of the reader's own DM lines, and no WhatsApp chat or Google
+(`thinDigest` in `docs/app.js`), a note comes up before the review: "Your Instagram has little writing in
+it", saying a WhatsApp chat with a close connection or Google data will make the card much more accurate.
+"Add more data" goes back to the popout with Instagram still loaded; "Continue anyway" goes on to the
+review. It is said once per upload. It reuses the low-confidence note's popup (`noteDialog`).
+`buildExportZip({ silent: true })` in `tools/fixture.mjs` makes such an export for the UI suite.
+
 ### The roast goes gentle on someone who is struggling
 
 A stress test of five profiles found the roast the riskiest part of the free card: its brief is the least

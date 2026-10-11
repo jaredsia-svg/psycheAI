@@ -128,7 +128,9 @@
     // `counts.postsLiked` carries it complete, and `coverage.sampling
     // .likedAccounts.available` says how many distinct accounts the fifteen
     // were drawn from.
-    likedAuthors: 15,
+    // 40 since the extra Instagram lists began filling spare room (see
+    // EXTRA_CAPS): each list is held to a ceiling in characters, not this.
+    likedAuthors: 40,
     // Captions on the posts they liked — somebody else's words, not theirs.
     // Fifty, drawn at random from the last twelve months rather than taken off
     // the newest end. The window is the interest judgement: what somebody
@@ -147,17 +149,19 @@
     // hashtags — and what they said about taste the accounts, channels and
     // searches already said more cheaply. Six keep a glimpse of the actual
     // reach; `likedHashtags` below carries the breadth, counted over all of it.
-    likedCaptions: 6,
+    // 40 across two years, held to EXTRA_CAPS' 8,000: room the reader's own
+    // words leave is better spent on what they reach for than left empty.
+    likedCaptions: 40,
     // The hashtags on every liked post in the same window, counted once per
     // post and ranked: the whole twelve months in a few hundred characters,
     // where the caption sample is six posts of it.
-    likedHashtags: 20,
+    likedHashtags: 60,
     // Twelve months, anchored to their newest liked post rather than to the
     // clock. Anchoring to the clock would empty this for anyone dormant for a
     // year, and worse, would move the sample every day — the result cache keys
     // on the digest, so a window that slid with the date would miss the cache
     // and charge the reader for their own retry.
-    likedCaptionWindowSeconds: 365 * 24 * 60 * 60,
+    likedCaptionWindowSeconds: 2 * 365 * 24 * 60 * 60,
     // Lower than the reader's own captions get, on purpose. A liked caption is
     // evidence about their taste, not about their voice, and taste is legible
     // from the first paragraph — where their own writing is the thing being
@@ -172,11 +176,15 @@
     // drifted apart — likes went to fifteen and saves stayed at a hundred and
     // twenty — and a save is if anything the stronger signal per item, since it
     // is something somebody meant to come back to.
-    savedAuthors: 15,
+    savedAuthors: 40,
     // Twenty. Instagram's guesses about someone are its own inference, not
     // anything they did, and past the first couple of dozen they flatten into
     // a tail of ad categories.
-    topics: 20,
+    topics: 40,
+    // Instagram's own search history, by how often each was repeated, and
+    // whose stories they like most (EXTRA_CAPS).
+    igSearches: 80,
+    storyLikedAuthors: 30,
     // Ad interests are no longer sent. They are Instagram's guesses for its
     // advertisers — the weakest evidence in the digest by any measure — and
     // the room goes to the reader's own messages instead.
@@ -638,6 +646,7 @@
       ['instagram', 'samples.likedPostCaptions'], ['instagram', 'samples.likedPostHashtags'],
       ['instagram', 'instagramTopics'], ['instagram', 'mostLikedAccounts'], ['instagram', 'mostSavedAccounts'],
       ['instagram', 'mostEngagedWith', 'fixed'],
+      ['instagram', 'storyLikedAccounts'], ['instagram', 'instagramSearches'],
       ['facebook', 'facebook.postSample'], ['facebook', 'facebook.commentSample'],
       ['facebook', 'facebook.friends'], ['facebook', 'facebook.topSearches'],
     ],
@@ -685,6 +694,46 @@
     return out;
   }
 
+  // ---------- the extra Instagram lists ----------
+  //
+  // What the reader reaches for rather than what they write: their Instagram
+  // searches, captions and hashtags on posts they liked, the accounts they
+  // like, save and whose stories they like most, and Instagram's guesses at
+  // their interests. Each is held to a ceiling of its own, and together they
+  // fill room the reader's own words leave in the public pool (with whatever
+  // the conversations left, see "spare room flows one way"). They are the
+  // first thing trimmed when room is needed — except a guaranteed 3,000, so a
+  // reader who writes a lot still has a glimpse of their searches and taste:
+  // the 200th caption adds less than knowing what somebody looks for.
+  const EXTRA_CAPS = {
+    'instagramSearches': 3000,
+    'samples.likedPostCaptions': 8000,
+    'samples.likedPostHashtags': 1500,
+    'mostLikedAccounts': 1200,
+    'mostSavedAccounts': 1200,
+    'storyLikedAccounts': 900,
+    'instagramTopics': 1200,
+  };
+  const EXTRAS_GUARANTEED = 3000;
+  function extrasSize(digest) {
+    let total = 0;
+    for (const path of Object.keys(EXTRA_CAPS)) total += sectionChars(path, getPath(digest, path));
+    return total;
+  }
+  /** Each extra list to its own ceiling: a ranked list loses its tail, the liked captions evenly. */
+  function capExtras(digest) {
+    for (const [path, cap] of Object.entries(EXTRA_CAPS)) {
+      let list = getPath(digest, path);
+      if (!Array.isArray(list)) continue;
+      while (list.length && sectionChars(path, list) > cap) {
+        const per = listChars(list) / list.length + 1;
+        const drop = Math.max(1, Math.ceil((sectionChars(path, list) - cap) / per));
+        list = path === 'samples.likedPostCaptions' ? dropEvenly(list, drop) : list.slice(0, Math.max(0, list.length - drop));
+      }
+      setPath(digest, path, list);
+    }
+  }
+
   /**
    * Each pool held to its ceiling (LIMITS.poolCaps), in its own order: the
    * lowest-ranked list that can still give goes first, the largest of those,
@@ -693,6 +742,7 @@
    */
   function trimToPools(digest, fixed, floor) {
     const caps = poolCapsFor(digest);
+    if (!fixed.has('instagram')) capExtras(digest);
     // Conversations first, so the room they leave is known before the public
     // pool is held to its ceiling plus that room (publicCeiling).
     for (const pool of ['conversations', 'public', 'searches']) {
@@ -707,10 +757,15 @@
         const over = igOver > 0 ? igOver : sizes.total - cap;
         if (over <= 0) break;
         // Lower rank goes first. Conversations: Instagram DMs and Messenger
-        // before WhatsApp. Public: Facebook down to its 10,000, then
-        // Instagram, then Facebook below it.
-        const rank = source => pool === 'conversations' ? (source === 'whatsapp' ? 1 : 0)
-          : pool === 'public' && source === 'facebook' ? ((sizes.facebook || 0) > FACEBOOK_MIN_CHARS ? 0 : 2) : 1;
+        // before WhatsApp. Public: the extra Instagram lists above their
+        // guaranteed 3,000, then Facebook down to its 10,000, then the
+        // reader's own Instagram words, then the extras' guaranteed part, then
+        // Facebook below its 10,000.
+        const extras = pool === 'public' ? extrasSize(digest) : 0;
+        const rank = (source, path) => pool === 'conversations' ? (source === 'whatsapp' ? 1 : 0)
+          : pool !== 'public' ? 1
+          : source === 'facebook' ? ((sizes.facebook || 0) > FACEBOOK_MIN_CHARS ? 0 : 2)
+          : path in EXTRA_CAPS ? (extras > EXTRAS_GUARANTEED ? -1 : 1.5) : 1;
         let pick = null;
         for (const [source, path, kind] of entries) {
           if (kind === 'fixed' || fixed.has(source)) continue;
@@ -718,7 +773,7 @@
           const list = getPath(digest, path);
           if (!Array.isArray(list) || list.length <= floor) continue;
           const cost = listChars(list);
-          const r = rank(source);
+          const r = rank(source, path);
           if (!pick || r < pick.r || (r === pick.r && cost > pick.cost)) pick = { path, list, cost, r };
         }
         if (!pick) break;
@@ -815,8 +870,12 @@
     }
     // Then captions, into Instagram's public share and whatever room the
     // conversations left (see "spare room flows one way").
+    // The extra lists counted at their guaranteed 3,000 only: the reader's own
+    // captions come before the rest of them, which the trim then takes back.
+    const extras = extrasSize(current);
+    const ownPublic = poolSizes(current).public.instagram - extras + Math.min(extras, EXTRAS_GUARANTEED);
     const capRoom = capsList.length >= LIMITS.captions
-      ? instagramPublicLimit(caps, conversationsSpare(current, caps)) - poolSizes(current).public.instagram : 0;
+      ? instagramPublicLimit(caps, conversationsSpare(current, caps)) - ownPublic : 0;
     if (capRoom >= FILL_MIN_ROOM) {
       raised.captions = Math.min(LIMITS.maxListItems, raised.captions + Math.floor(capRoom / per(capsList)));
       current = rebuild(raised);
@@ -833,7 +892,7 @@
   // (every pool at its ceiling):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,800 prompt + 36,000 digest × $0.75/M = $0.0344
+  //                  9,900 prompt + 36,000 digest × $0.75/M = $0.0344
   //                 at most $0.0719                    → FREE_COST_CAP $0.072
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
@@ -864,8 +923,8 @@
   // Instagram alone, at its 82,000 (see "two free tiers"):
   //
   //   free card    10,000 out  × $3.75/M = $0.0375
-  //                  9,800 prompt + 23,429 digest × $0.75/M = $0.0249
-  //                 at most $0.0624                    → SOLO_FREE_COST_CAP $0.063
+  //                  9,900 prompt + 23,429 digest × $0.75/M = $0.0250
+  //                 at most $0.0625                    → SOLO_FREE_COST_CAP $0.063
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 23,429 digest × $0.75/M = $0.0461
@@ -884,8 +943,8 @@
   // asked for positive and encouraging (9,334); 9,123 once that rule was
   // said once and the fields pointed back at it.
   // 9,800 once the roast learned to go gentle on a reader who is struggling
-  // (9,688 measured).
-  const FREE_FIXED_INPUT_TOKENS = 9800;
+  // (9,688 measured); 9,900 with the conduct rule (CONDUCT_RULE, 9,898).
+  const FREE_FIXED_INPUT_TOKENS = 9900;
 
   // ---------- what the premium read can cost, at most ----------
   //
@@ -894,8 +953,8 @@
   // redrawn from it as well, so both calls can read it:
   //
   //   card         10,000 out  × $3.75/M = $0.0375
-  //                  9,800 prompt + 51,143 digest × $0.75/M = $0.0457
-  //                 at most $0.0832                    → DEEP_FREE_COST_CAP $0.084
+  //                  9,900 prompt + 51,143 digest × $0.75/M = $0.0458
+  //                 at most $0.0833                    → DEEP_FREE_COST_CAP $0.084
   //
   //   full report  28,000 out  × $3.75/M = $0.1050
   //                 38,100 prompt + 51,143 digest × $0.75/M = $0.0669
@@ -1536,6 +1595,21 @@
   // own size is a usable denominator: filtering later would report "160 of 403"
   // while 403 still counted the junk that could never have been shown, which
   // makes the coverage ratio the model calibrates against quietly wrong.
+  // Searches with the people taken out: anything shaped like a username
+  // (no spaces, with a digit, a dot or an underscore) and anything matching
+  // an account they follow.
+  const HANDLE_LIKE = /^[a-z0-9._]{3,30}$/i;
+  function searchableTerms(terms, following) {
+    const followed = new Set((following || []).map(f => String((f && f.name) || f || '').toLowerCase()).filter(Boolean));
+    const out = new Map();
+    for (const [term, count] of terms || []) {
+      const plain = term.toLowerCase().replace(/^@/, '');
+      if (followed.has(plain)) continue;
+      if (HANDLE_LIKE.test(plain) && /[0-9._]/.test(plain)) continue;
+      out.set(term, count);
+    }
+    return out;
+  }
   function countTerms(items, minLength) {
     const floor = minLength || 0;
     const map = new Map();
@@ -1709,6 +1783,11 @@
       mostLikedAccounts: topKeys(signals.likedAuthors, LIMITS.likedAuthors),
       mostSavedAccounts: topKeys(signals.savedAuthors, LIMITS.savedAuthors),
       mostEngagedWith: topKeys(signals.commentedOn, 40),
+      // What they searched for on Instagram, by repeats. A search that looks
+      // like a username, or names an account they follow, is left out: those
+      // are other people (searchableTerms).
+      instagramSearches: topKeys(searchableTerms(searchTerms, signals.following), LIMITS.igSearches, 4),
+      storyLikedAccounts: topKeys(signals.storyLikedAuthors || new Map(), LIMITS.storyLikedAuthors),
       coverage: {
         filesRead: signals.files.used,
         filesSeen: signals.files.total,
@@ -1771,6 +1850,10 @@
       { shown: digest.samples.likedPostHashtags.length, available: likedTags.distinct };
     digest.coverage.sampling.engagedWith =
       { shown: digest.mostEngagedWith.length, available: countOf(signals.commentedOn) };
+    digest.coverage.sampling.instagramSearches =
+      { shown: digest.instagramSearches.length, available: countOf(searchTerms) };
+    digest.coverage.sampling.storyLikedAccounts =
+      { shown: digest.storyLikedAccounts.length, available: countOf(signals.storyLikedAuthors || new Map()) };
 
     if (opts.includeMessages && messages.total) {
       // Filled by sampleConversations as it goes — how many conversations it drew
@@ -2267,7 +2350,7 @@
     'samples.captions', 'samples.comments', 'samples.likedPostCaptions', 'samples.likedPostHashtags',
     'directMessages.ownMessageSample',
     'instagramTopics',
-    'mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith',
+    'mostLikedAccounts', 'mostSavedAccounts', 'mostEngagedWith', 'storyLikedAccounts', 'instagramSearches',
     'google.topChannels', 'google.videoTitleSample', 'google.topYoutubeSearches', 'google.topGoogleSearches',
     'facebook.postSample', 'facebook.commentSample', 'facebook.friends', 'facebook.topSearches',
     'facebook.ownMessageSample',
@@ -2385,6 +2468,8 @@
       ['mostLikedAccounts', () => digest.mostLikedAccounts, v => { digest.mostLikedAccounts = v; }],
       ['mostSavedAccounts', () => digest.mostSavedAccounts, v => { digest.mostSavedAccounts = v; }],
       ['instagramTopics', () => digest.instagramTopics, v => { digest.instagramTopics = v; }],
+      ['storyLikedAccounts', () => digest.storyLikedAccounts, v => { digest.storyLikedAccounts = v; }],
+      ['instagramSearches', () => digest.instagramSearches, v => { digest.instagramSearches = v; }],
     ];
     // Supplement lists are registered separately, and the loop empties these
     // before it touches anything above. The loop is otherwise source-blind —
@@ -2555,6 +2640,8 @@
     likedAccounts: d => d.mostLikedAccounts,
     savedAccounts: d => d.mostSavedAccounts,
     engagedWith: d => d.mostEngagedWith,
+    instagramSearches: d => d.instagramSearches,
+    storyLikedAccounts: d => d.storyLikedAccounts,
     ownMessages: d => d.directMessages && d.directMessages.ownMessageSample,
     youtubeTitles: d => d.google && d.google.videoTitleSample,
     googleSearchTerms: d => d.google && d.google.topGoogleSearches,
@@ -2648,6 +2735,8 @@
       mostLikedAccounts: listOf(d.mostLikedAccounts),
       mostSavedAccounts: listOf(d.mostSavedAccounts),
       mostEngagedWith: listOf(d.mostEngagedWith),
+      storyLikedAccounts: listOf(d.storyLikedAccounts),
+      instagramSearches: listOf(d.instagramSearches),
       coverage: {
         filesRead: coverage.filesRead,
         filesSeen: coverage.filesSeen,
@@ -2787,6 +2876,13 @@
     digest.mostLikedAccounts = [];
     digest.mostSavedAccounts = [];
     digest.mostEngagedWith = [];
+    if (Array.isArray(digest.storyLikedAccounts)) digest.storyLikedAccounts = [];
+    return digest;
+  }
+
+  // The reader unticked their Instagram searches at the review.
+  function omitSearches(digest) {
+    if (Array.isArray(digest.instagramSearches)) digest.instagramSearches = [];
     return digest;
   }
 
@@ -2891,13 +2987,14 @@
 
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
+    EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
     POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes,
     SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,
     sourceSizes, sampleConversations, EVIDENCE_LISTS,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
     MODEL_RATES,
     omitMessages, omitCaptionsAndComments, omitLikedCaptions, omitActivity, omitAccounts,
-    omitTopics,
+    omitTopics, omitSearches,
     omitYouTube, omitYouTubeSearches, omitGoogleSearches, omitChrome,
     omitFacebookPosts, omitFacebookConnections, omitFacebookMessages, omitWhatsApp,
   };

@@ -3171,12 +3171,15 @@ check('the sample arrives in chronological order',
   // here reads the constant to build its expectation and so passes at any
   // value — which is exactly how a limit moved from 100 to 250 once went
   // unnoticed in this block.
-  check('six liked captions, clipped at two hundred characters, and twenty ranked hashtags',
-    Digest.LIMITS.likedCaptions === 6 && Digest.LIMITS.likedCaptionChars === 200 && Digest.LIMITS.likedHashtags === 20,
+  // Forty across two years and sixty hashtags since they became extra lists
+  // that fill spare room, each held to a ceiling in characters (EXTRA_CAPS).
+  check('forty liked captions, clipped at two hundred characters, and sixty ranked hashtags',
+    Digest.LIMITS.likedCaptions === 40 && Digest.LIMITS.likedCaptionChars === 200 && Digest.LIMITS.likedHashtags === 60 &&
+      Digest.EXTRA_CAPS['samples.likedPostCaptions'] === 8000 && Digest.EXTRA_CAPS['samples.likedPostHashtags'] === 1500,
     JSON.stringify([Digest.LIMITS.likedCaptions, Digest.LIMITS.likedCaptionChars]));
   check('the liked captions are sampled to their own limit',
     got.length === Digest.LIMITS.likedCaptions, String(got.length));
-  check('nothing older than the twelve-month window gets a place',
+  check('nothing older than the two-year window gets a place',
     !got.some(line => /\] OLD\d/.test(line)),
     JSON.stringify(got.filter(line => /\] OLD\d/.test(line)).slice(0, 3)));
   // The discriminating half. Taking the newest fifty of the window would put
@@ -4396,8 +4399,8 @@ check('heavy account caps liked accounts', heavy.mostLikedAccounts.length === Di
 // constant to build its expectation and so passes at any value, which is the
 // fourth limit in this file to have had that hole. Fifteen because past the
 // top dozen a real archive's counts flatten into accounts liked once or twice.
-check('and that cap is fifteen, where the tail starts',
-  Digest.LIMITS.likedAuthors === 15 && heavy.mostLikedAccounts.length === 15,
+check('and that cap is forty, held to a ceiling of 1,200 characters',
+  Digest.LIMITS.likedAuthors === 40 && heavy.mostLikedAccounts.length === 40 && Digest.EXTRA_CAPS.mostLikedAccounts === 1200,
   Digest.LIMITS.likedAuthors + ', ' + heavy.mostLikedAccounts.length + ' kept');
 // Saves are the twin of likes and had drifted to eight times the length —
 // likes went to fifteen and saves stayed at a hundred and twenty. A save is if
@@ -4405,10 +4408,10 @@ check('and that cap is fifteen, where the tail starts',
 // back to, so there is no reading on which one deserves eight times the room.
 check('saved accounts are capped the same as liked ones, and actually held there',
   Digest.LIMITS.savedAuthors === Digest.LIMITS.likedAuthors &&
-  Digest.LIMITS.savedAuthors === 15 && heavy.mostSavedAccounts.length === 15,
+  Digest.LIMITS.savedAuthors === 40 && heavy.mostSavedAccounts.length === 40,
   Digest.LIMITS.savedAuthors + ', ' + heavy.mostSavedAccounts.length + ' kept');
 check('and say how many accounts they were chosen from',
-  heavy.coverage.sampling.savedAccounts.shown === 15 &&
+  heavy.coverage.sampling.savedAccounts.shown === 40 &&
   heavy.coverage.sampling.savedAccounts.available === 400,
   JSON.stringify(heavy.coverage.sampling.savedAccounts));
 // Shortening the list must not lose the size of what it was drawn from. Both
@@ -4417,8 +4420,8 @@ check('and say how many accounts they were chosen from',
 check('the total number of likes survives the shortened list, complete',
   heavy.counts.postsLiked === signals.counts.likes && heavy.counts.postsLiked > 15,
   String(heavy.counts.postsLiked));
-check('and the fifteen say how many accounts they were chosen from',
-  heavy.coverage.sampling.likedAccounts.shown === 15 &&
+check('and the forty say how many accounts they were chosen from',
+  heavy.coverage.sampling.likedAccounts.shown === 40 &&
   heavy.coverage.sampling.likedAccounts.available === 900,
   JSON.stringify(heavy.coverage.sampling.likedAccounts));
 check('heavy account caps topics', heavy.instagramTopics.length === Digest.LIMITS.topics);
@@ -5009,6 +5012,49 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
         new Set(clamped.map(line => /\[t\d+\]/.exec(line)[0])).size === 10 && clamped[clamped.length - 1].includes('[t10]'),
       clamped.length + ' lines');
   }
+  // The extra Instagram lists: each to its own ceiling, the first trimmed
+  // when room runs short, except a guaranteed 3,000.
+  {
+    const extraSignals = {
+      ...heavySignals(),
+      searches: Array.from({ length: 3000 }, (_, i) => ['trail running shoes', 'sourdough recipe', 'cheap flights tokyo',
+        'how to start a podcast', 'jessica.tan92', 'followed_friend_1', 'search number ' + (i % 400)][i % 7]),
+      following: [{ name: 'followed_friend_1', ts: 0 }],
+      storyLikedAuthors: new Map(Array.from({ length: 200 }, (_, i) => ['story_author_' + i, 200 - i])),
+      likedCaptions: Array.from({ length: 900 }, (_, i) => ({ text: 'A caption somebody else wrote about the weekend and the food, number ' + i + ' ' + 'x'.repeat(120), ts: 1700000000 + i * 3600 })),
+    };
+    const roomy = Digest.build(extraSignals, { includeMessages: false });
+    const line = x => x && typeof x === 'object' ? x.name + ' ×' + x.count : String(x);
+    const within = Object.entries(Digest.EXTRA_CAPS).every(([path, cap]) => {
+      const list = path.split('.').reduce((o, k) => o && o[k], roomy) || [];
+      // Measured with every line's year tag; the digest says each once, so it is a little shorter.
+      return Array.isArray(list) && list.map(line).join('\n').length <= cap * 1.1;
+    });
+    check('each extra Instagram list stays under its own ceiling, the whole under 18,000',
+      within && Digest.extrasSize(roomy) <= 18500 && roomy.instagramSearches.length > 0 && roomy.storyLikedAccounts.length > 0,
+      String(Digest.extrasSize(roomy)) + ' ' + JSON.stringify(Object.keys(Digest.EXTRA_CAPS).map(path => {
+        const list = path.split('.').reduce((o, k) => o && o[k], roomy) || [];
+        return path + ':' + list.length + ':' + list.map(line).join('\n').length;
+      })));
+    const terms = roomy.instagramSearches.map(entry => entry.name);
+    check('searches shaped like a username, or naming an account they follow, are left out',
+      terms.includes('trail running shoes') && !terms.includes('jessica.tan92') && !terms.includes('followed_friend_1'),
+      JSON.stringify(terms.slice(0, 8)));
+    // A reader who writes a great deal: captions fill the pool, and the extras
+    // give way down to their guaranteed 3,000 and no further.
+    const wordy = Digest.build({ ...extraSignals,
+      captions: Array.from({ length: 4000 }, (_, i) => ({ text: 'A caption I wrote myself about the day and what happened in it, number ' + i + ' ' + 'y'.repeat(200), ts: 1500000000 + i * 86400 })),
+      // And a full inbox, so the conversations leave no room to spill.
+      messages: { total: 9000, threads: 40, groupThreads: 0, sent: 9000, received: 0, avgSentLength: 120,
+        ownTexts: Array.from({ length: 9000 }, (_, i) => ({ text: 'A message of my own, a sentence or two about the plan, number ' + i + ' ' + 'w'.repeat(90), ts: 1600000000 + i * 3600, thread: i % 40 })) } },
+      { includeMessages: true });
+    const extrasWordy = Digest.extrasSize(wordy);
+    check('a reader who writes a lot keeps a guaranteed 3,000 of the extra lists, and their own words get the rest',
+      extrasWordy >= 2500 && extrasWordy <= 3500 &&
+        Digest.poolSizes(wordy).public.total <= 32000 + (46000 - Digest.poolSizes(wordy).conversations.total) &&
+        Digest.EXTRAS_GUARANTEED === 3000,
+      JSON.stringify({ extras: extrasWordy, public: Digest.poolSizes(wordy).public }));
+  }
   // The tier is read off the digest: a source unticked at the review does not count.
   check('a source that is in counts; one emptied at the review does not',
     Digest.carriesSecondSource({ whatsapp: { chats: [{}] } }) &&
@@ -5174,7 +5220,7 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     const pools = Digest.poolSizes(worstFull);
     check('the heaviest honest export lands under its line, every pool within its own ceiling',
       Digest.evidenceChars(worstFull) <= Digest.budgetFor(worstFull) && Digest.evidenceChars(worstFree) <= Digest.budgetFor(worstFull) &&
-        pools.public.total <= 40000 && pools.conversations.total <= 72000 && pools.searches.total <= 8000 &&
+        pools.public.total <= 40000 + (72000 - pools.conversations.total) && pools.conversations.total <= 72000 && pools.searches.total <= 8000 &&
         pools.public.facebook >= Digest.FACEBOOK_MIN_CHARS - 1500,
       Digest.evidenceChars(worstFull) + ' / ' + Digest.evidenceChars(worstFree) + ' ' + JSON.stringify(pools));
   }
@@ -5213,8 +5259,8 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // decision, and should fail here.
   check('the caps are the ones chosen to land a heavy account near its 75,000 characters',
     Digest.LIMITS.captions === 200 && Digest.LIMITS.messages === 270 &&
-    Digest.LIMITS.likedCaptions === 6 && Digest.LIMITS.comments === 60 &&
-    Digest.LIMITS.topics === 20 && !('adInterests' in Digest.LIMITS),
+    Digest.LIMITS.likedCaptions === 40 && Digest.LIMITS.comments === 60 &&
+    Digest.LIMITS.topics === 40 && !('adInterests' in Digest.LIMITS),
     JSON.stringify({ captions: Digest.LIMITS.captions, messages: Digest.LIMITS.messages,
       liked: Digest.LIMITS.likedCaptions, comments: Digest.LIMITS.comments,
       topics: Digest.LIMITS.topics, ads: Digest.LIMITS.adInterests }));
@@ -5514,7 +5560,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     /positive, with no negative connotation/.test(prompts.CARD_SCHEMA.properties.headline.description) &&
     !/neutral or positive|neutrally or positively/.test(free + JSON.stringify(prompts.FREE_SCHEMA)));
   // Its own prompt, and a short one — the premium report keeps the long one.
-  const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '');
+  // The shared limits every prompt carries (ROAST_LIMIT, the data and
+  // conduct rules) are not the card's own rules.
+  const freeRules = free.replace(freeRoast, '').replace(prompts.ROAST_LIMIT, '')
+    .replace(prompts.CONDUCT_RULE, '').replace(prompts.DATA_WORDS, '');
   // A quarter now the full report's prompt has lost the roast to this one.
   check('the card prompt is its own and short: its rules under a quarter of the full report\'s',
     freeRules.length < prompts.PROFILE_SYSTEM.length / 4 && freeRules.length > 4000,
@@ -5894,6 +5943,15 @@ check('every prompt that writes for the reader calls their data "your data", nev
 check('and the server rewrites any that still come back',
   /function readerText/.test(readFileSync(join(root, 'server.js'), 'utf8')) &&
     /return readerText\(cleaned\)/.test(readFileSync(join(root, 'server.js'), 'utf8')));
+
+// Nothing sexual or about infidelity, no accusations, no quoted threats, and
+// harm to others never a joke: in the card and roast, and in the paid report.
+check('every prompt rules out sexual and infidelity content, accusations and quoted threats',
+  [prompts.CLASSIC_FREE_SYSTEM, prompts.STRUCTURED_FREE_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE)) &&
+    [prompts.CLASSIC_FULL_SYSTEM, prompts.STRUCTURED_FULL_SYSTEM, prompts.PREMIUM_SYSTEM].every(text => text.includes(prompts.CONDUCT_RULE_REPORT)) &&
+    [prompts.CONDUCT_RULE, prompts.CONDUCT_RULE_REPORT].every(rule => /Nothing sexual and nothing about infidelity/.test(rule) &&
+      /"cheater", "abuser", "predator", "harasser"/.test(rule) && /Never quote a message that threatens or pressures someone/.test(rule)) &&
+    /Harm to others is never a joke/.test(prompts.CONDUCT_RULE) && !/roast/i.test(prompts.CONDUCT_RULE_REPORT));
 
 // The roast goes gentle when the evidence shows the reader struggling.
 check('the roast goes gentle, teasing only harmless habits, when the evidence shows someone struggling',

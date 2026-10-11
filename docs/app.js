@@ -3027,6 +3027,7 @@
    */
   async function startFromSources() {
     const scrollBefore = window.scrollY;
+    let thinWarned = false;
     for (;;) {
       let collected;
       try {
@@ -3092,6 +3093,12 @@
         // row away from being able to continue.
         flash('#upload-error', TEXT.startNeedsInstagram);
         continue;
+      }
+
+      // Little writing to read: said once, with the way back to the popout.
+      if (!thinWarned && thinDigest(digest)) {
+        thinWarned = true;
+        if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
       }
 
       let decision;
@@ -3963,6 +3970,7 @@
     if (!decision.includeActivity) Digest.omitActivity(target);
     if (!decision.includeAccounts) Digest.omitAccounts(target);
     if (!decision.includeTopics) Digest.omitTopics(target);
+    if (decision.includeSearches === false) Digest.omitSearches(target);
     if (!decision.includeMessages) Digest.omitMessages(target);
     // Each is a no-op when its block is absent, so a reader who added only
     // Google is unaffected by the Facebook keys being false.
@@ -4058,7 +4066,8 @@
     const captionsCount = digest.samples.captions.length;
     const commentsCount = digest.samples.comments.length;
     const engagedCount = digest.mostLikedAccounts.length + digest.mostSavedAccounts.length +
-      digest.mostEngagedWith.length;
+      digest.mostEngagedWith.length + (digest.storyLikedAccounts || []).length;
+    const searchesCount = (digest.instagramSearches || []).length;
     const topicsCount = (digest.instagramTopics || []).length;
     const likedCaptionsCount = (digest.samples.likedPostCaptions || []).length;
     const likedTagsCount = (digest.samples.likedPostHashtags || []).length;
@@ -4093,13 +4102,19 @@
       ['review-liked-captions', 'includeLikedCaptions', likedCaptionsCount + likedTagsCount,
         'Posts you liked', 'Posts you liked – none found',
         likedCaptionsCount + likedTagsCount ? n(likedCaptionsCount, 'caption', 'captions') + ' from posts you liked in ' +
-          'the last year' + (likedTagsCount ? ', and the ' + n(likedTagsCount, 'hashtag', 'hashtags') +
+          'the last two years' + (likedTagsCount ? ', and the ' + n(likedTagsCount, 'hashtag', 'hashtags') +
           ' that came up most across all of them' : '') + ' – ' +
           'written by other people, kept because what you reach for says something about you.' :
           'Your data did not include captions on the posts you liked.'],
       ['review-accounts', 'includeAccounts', engagedCount,
         'Accounts you engage with', 'Accounts you engage with – none found',
-        n(engagedCount, 'name', 'names') + ' among who you like, save and comment on most.'],
+        n(engagedCount, 'name', 'names') + ' among who you like, save, comment on and whose stories you like most.'],
+      // What they searched for on Instagram, most repeated first. Searches
+      // that look like a username, or name an account they follow, were
+      // already left out on this device (searchableTerms in digest.js).
+      ['review-searches', 'includeSearches', searchesCount,
+        'Your Instagram searches', 'Your Instagram searches – none found',
+        n(searchesCount, 'search', 'searches') + ' you made most often on Instagram, with none that look like a person’s username.'],
       ['review-topics', 'includeTopics', topicsCount,
         'Instagram’s own inferred topics', 'Instagram’s own inferred topics – none found',
         n(topicsCount, 'topic', 'topics') + ' Instagram has already guessed you are interested in.'],
@@ -4313,6 +4328,7 @@
       repairOwnName(signals).catch(() => {});
       trackStep('export_loaded');
 
+      let thinWarned = false;
       // The supplement offer and the review are one loop, because Back on the
       // review steps upstream to the offer rather than abandoning the upload.
       // The digest is rebuilt on each pass rather than reused: going back is
@@ -4334,6 +4350,12 @@
         setProgress(80, 'Building your evidence summary…');
         await new Promise(resolve => setTimeout(resolve, 30));
         digest = Digest.build(signals, { includeMessages: true });
+
+        // Little writing to read: said once, with the way back to the offer.
+        if (!thinWarned && thinDigest(digest)) {
+          thinWarned = true;
+          if (await noteDialog(TEXT.thinDataTitle, TEXT.thinDataText, TEXT.thinDataAdd, TEXT.thinDataContinue)) continue;
+        }
 
         decision = await askReview(digest, { paymentDue: mustPayForAnalysis() });
         if (decision !== REVIEW_BACK) break;
@@ -8150,15 +8172,15 @@
   // confidence is told that more sources would help. Resolves true to go on
   // to the data page, false for Back (the unlock is left).
   const MORE_DATA_BELOW = 80;
-  function offerMoreData() {
-    const score = Math.round(Number(((state.profile && state.profile.report) || {}).confidence &&
-      state.profile.report.confidence.score));
+  // The note's popup, for both notes that suggest more data: resolves true
+  // for its first button, false for the second or Escape.
+  function noteDialog(title, text, primary, secondary) {
     const dialog = $('#more-data-dialog');
-    if (!dialog || !Number.isFinite(score) || score >= MORE_DATA_BELOW) return Promise.resolve(true);
-    $('#more-data-title').textContent = TEXT.moreDataTitle;
-    $('#more-data-text').textContent = TEXT.moreDataText(score);
-    $('#more-data-continue').textContent = TEXT.moreDataContinue;
-    $('#more-data-back').textContent = TEXT.moreDataBack;
+    if (!dialog) return Promise.resolve(true);
+    $('#more-data-title').textContent = title;
+    $('#more-data-text').textContent = text;
+    $('#more-data-continue').textContent = primary;
+    $('#more-data-back').textContent = secondary;
     return new Promise(resolve => {
       const done = answer => {
         $('#more-data-continue').onclick = null;
@@ -8173,6 +8195,24 @@
       if (typeof dialog.showModal === 'function') dialog.showModal();
       else dialog.setAttribute('open', '');
     });
+  }
+  function offerMoreData() {
+    const score = Math.round(Number(((state.profile && state.profile.report) || {}).confidence &&
+      state.profile.report.confidence.score));
+    if (!$('#more-data-dialog') || !Number.isFinite(score) || score >= MORE_DATA_BELOW) return Promise.resolve(true);
+    return noteDialog(TEXT.moreDataTitle, TEXT.moreDataText(score), TEXT.moreDataContinue, TEXT.moreDataBack);
+  }
+  // A first upload with almost no writing in it (no captions to speak of, few
+  // messages of their own, and no WhatsApp chat or Google) would make a card
+  // that is mostly a guess. Said before the review, once, with the way back
+  // to "Add your data".
+  const THIN_WRITING = 10;
+  const THIN_MESSAGES = 50;
+  function thinDigest(digest) {
+    const d = digest || {};
+    const written = ((d.samples && d.samples.captions) || []).length + ((d.samples && d.samples.comments) || []).length;
+    const messages = ((d.directMessages && d.directMessages.ownMessageSample) || []).length;
+    return written < THIN_WRITING && messages < THIN_MESSAGES && !Digest.carriesSecondSource(d);
   }
 
   async function collectDataForPremium() {
