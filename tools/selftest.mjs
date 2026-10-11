@@ -4994,6 +4994,18 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       Digest.poolSizes(heavyDms).conversations.total <= 46000 && Digest.poolSizes(heavyDms).public.total > 30000,
       JSON.stringify(Digest.poolSizes(heavyDms)));
   }
+  // The clamp on a list's length thins it evenly: a real reader's filled DM
+  // list was cut off its end at 400, which dropped their last three
+  // conversations and left 14,000 of the conversations pool empty.
+  {
+    const lines = Array.from({ length: 1200 }, (_, i) => '[2024] [t' + (1 + Math.floor(i / 120)) + '] message number ' + i + ' with some words');
+    const clamped = Digest.forModel({ samples: { captions: [], comments: [] }, directMessages: { ownMessageSample: lines },
+      coverage: { sources: ['instagram'], sampling: { ownMessages: { shown: 1200 } } } }, { maxChars: 1e9 }).directMessages.ownMessageSample;
+    check('a list over the clamp is thinned evenly, so every conversation survives it',
+      Digest.LIMITS.maxListItems === 1000 && Digest.DEEP_LIMITS.maxListItems === 1500 && clamped.length === 1000 &&
+        new Set(clamped.map(line => /\[t\d+\]/.exec(line)[0])).size === 10 && clamped[clamped.length - 1].includes('[t10]'),
+      clamped.length + ' lines');
+  }
   // The tier is read off the digest: a source unticked at the review does not count.
   check('a source that is in counts; one emptied at the review does not',
     Digest.carriesSecondSource({ whatsapp: { chats: [{}] } }) &&
@@ -5765,10 +5777,10 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       out.padded = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000) }) });
       out.paddedCard = await post({ digest: Object.assign({}, digest, {
         samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
-          Array.from({ length: 300 }, (_, i) => 'extra caption ' + i)) }) }) });
+          Array.from({ length: 1500 }, (_, i) => 'extra caption ' + i)) }) }) });
       out.paddedFull = await post({ digest: Object.assign({}, digest, { padding: 'x'.repeat(3000000),
         samples: Object.assign({}, digest.samples, { captions: digest.samples.captions.concat(
-          Array.from({ length: 300 }, (_, i) => 'extra caption ' + i)) }) }),
+          Array.from({ length: 1500 }, (_, i) => 'extra caption ' + i)) }) }),
         product: 'unlock', promoCode: '${promo}',
         anchor: { mbti: { type: 'ISTP', letters: [] }, bigFive: { openness: { score: 12, band: 'low' } } } });
       out.notObject = await post({ digest: ['a', 'b'] });
@@ -5849,12 +5861,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
   // the line rather than read at whatever it costs.
   check('a free request with a list stuffed past any real digest is bounded before it is read',
     Boolean(routes.paddedCard) && routes.paddedCard.status === 200 &&
-    Number(basedOn(routes.paddedCard).split(' ')[0]) <= 400,
+    Number(basedOn(routes.paddedCard).split(' ')[0]) <= 1000,
     JSON.stringify(routes.paddedCard && routes.paddedCard.status) + ' ' + basedOn(routes.paddedCard));
   check('a padded paid request is bounded too, never read at the size it was sent',
     Boolean(routes.paddedFull) && routes.paddedFull.status === 200 &&
-    basedOn(routes.paddedFull) !== '500 of 500 captions' &&
-    Number(basedOn(routes.paddedFull).split(' ')[0]) <= 400,
+    !/^1700 of 1700/.test(basedOn(routes.paddedFull)) &&
+    Number(basedOn(routes.paddedFull).split(' ')[0]) <= 1000,
     JSON.stringify(routes.paddedFull && routes.paddedFull.status) + ' ' + basedOn(routes.paddedFull));
   check('a digest forModel cannot bound is refused, not sent at whatever it costs',
     Boolean(routes.stuffed) && routes.stuffed.status === 413, JSON.stringify(routes.stuffed && routes.stuffed.status));

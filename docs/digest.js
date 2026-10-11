@@ -620,8 +620,13 @@
   LIMITS.totalChars = DIGEST_CHARS;
   LIMITS.poolCaps = POOL_CAPS;
   // The most items any one list may carry into a request, past which
-  // forModel's clamp cuts it whatever it holds.
-  LIMITS.maxListItems = 400;
+  // forModel's clamp thins it whatever it holds. 1,000 (1,500 in the premium
+  // read) since the pools began filling the DMs by room rather than by count:
+  // at 400 the clamp cut a filled DM list off its end, and since the list
+  // runs conversation by conversation that dropped the last three of a real
+  // reader's ten and left 14,000 of the conversations pool empty. Filling
+  // never asks for more than this (buildFilled).
+  LIMITS.maxListItems = 1000;
 
   // Which evidence list belongs to which pool, and to which source. Every
   // list in EVIDENCE_LISTS is in exactly one pool (a check in
@@ -762,7 +767,7 @@
     return poolCapsFor(digest) === SOLO_POOL_CAPS ? SOLO_DIGEST_CHARS : DIGEST_CHARS;
   }
   const DEEP_LIMITS = {
-    totalChars: DEEP_DIGEST_CHARS, poolCaps: DEEP_POOL_CAPS, maxListItems: 800,
+    totalChars: DEEP_DIGEST_CHARS, poolCaps: DEEP_POOL_CAPS, maxListItems: 1500,
     igThreadChars: 15000, messageThreadChars: 15000, waThreadChars: 15000, waMessages: 450,
   };
   /** Runs `fn` with the premium read's limits in place when `deep`, and puts them back. */
@@ -805,7 +810,7 @@
     const raised = { messages: LIMITS.messages, captions: LIMITS.captions };
     let current = base;
     if (msgRoom >= FILL_MIN_ROOM) {
-      raised.messages += Math.floor(msgRoom / per(msgs));
+      raised.messages = Math.min(LIMITS.maxListItems, raised.messages + Math.floor(msgRoom / per(msgs)));
       current = rebuild(raised);
     }
     // Then captions, into Instagram's public share and whatever room the
@@ -813,7 +818,7 @@
     const capRoom = capsList.length >= LIMITS.captions
       ? instagramPublicLimit(caps, conversationsSpare(current, caps)) - poolSizes(current).public.instagram : 0;
     if (capRoom >= FILL_MIN_ROOM) {
-      raised.captions += Math.floor(capRoom / per(capsList));
+      raised.captions = Math.min(LIMITS.maxListItems, raised.captions + Math.floor(capRoom / per(capsList)));
       current = rebuild(raised);
     }
     if (current === base) return base;
@@ -2595,7 +2600,12 @@
     }
     // A digest is four levels deep at most. Anything deeper is not one.
     if (depth > 6) return null;
-    if (Array.isArray(value)) return value.slice(0, LIMITS.maxListItems).map(v => clampStrings(v, depth + 1));
+    // Thinned evenly rather than cut off its end, so a list that runs by
+    // conversation or by year loses a little of each, never the last ones.
+    if (Array.isArray(value)) {
+      const list = value.length > LIMITS.maxListItems ? dropEvenly(value, value.length - LIMITS.maxListItems) : value;
+      return list.map(v => clampStrings(v, depth + 1));
+    }
     const out = {};
     for (const key of Object.keys(value).slice(0, 200)) out[key] = clampStrings(value[key], depth + 1);
     return out;

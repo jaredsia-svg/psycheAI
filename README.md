@@ -5654,6 +5654,17 @@ empty — and Google's searches neither give nor take. Measured: Instagram alone
 72,000 and conversations 5,000 (80,000 of 82,000); add three chats and they go in whole (34,000) while
 the public pool gives back what it borrowed.
 
+### The list clamp thins evenly, at 1,000
+
+Four real digests (Instagram alone; with one chat; with one chat and Google; with two chats and Google)
+showed the pools working — 81,000 of 82,000, then 103,000, 106,000 and 117,000 of 126,000, each chat at
+about 11,200 of its 12,000, and nothing identifying left in any of them — and one fault. `forModel`'s
+clamp held every list to 400 items by cutting it off its end. Filling by room asks for more DM lines than
+that, and the DM list runs conversation by conversation, so the last conversations went: three of ten in
+two of the digests, and the clamp left about 14,000 of the conversations pool empty. `maxListItems` is now
+1,000 (1,500 in the premium read), filling never asks for more, and a list over it is thinned evenly
+(`dropEvenly`) so every conversation and every year keeps something.
+
 ### Instagram's steps stay inside the app
 
 Step 1 no longer sends the reader to an outside link — a link to another site is one more thing to
