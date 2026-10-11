@@ -116,7 +116,7 @@ function promoRefusal(code, key) {
   const checked = promo.check(code, key);
   if (!checked.ok) return checked.reason;
   if (checked.percent < 100) {
-    return 'That code takes ' + checked.percent + '% off the full report. Enter it on the payment sheet and pay the rest.';
+    return 'That code takes ' + checked.percent + '% off. Enter it on the payment sheet and pay the rest.';
   }
   return null;
 }
@@ -799,7 +799,7 @@ async function handleCreatePaymentIntent(request, response) {
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';
 
-  // A promo code typed into the unlock sheet comes here first, to learn what
+  // A promo code typed into the payment sheet comes here first, to learn what
   // it is worth. A 100% code needs no payment at all, so the answer is just
   // that (and works on a server with no Stripe keys); a discount comes back as
   // a PaymentIntent for what is left of the price, with the code written onto
@@ -811,8 +811,10 @@ async function handleCreatePaymentIntent(request, response) {
       sendJson(response, 402, { error: checked.reason });
       return;
     }
-    if (product !== 'unlock') {
-      sendJson(response, 402, { error: 'Promo codes are for the full report.' });
+    // The full report, and a card run again past the free one: the two
+    // things sold. A discount re-prices either the same way.
+    if (product !== 'unlock' && product !== 'analysis') {
+      sendJson(response, 402, { error: 'Promo codes are for the full report and for running your card again.' });
       return;
     }
     if (checked.percent >= 100) {

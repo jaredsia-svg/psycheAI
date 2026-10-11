@@ -693,6 +693,7 @@
     // the payment sheet.
     linkPromoNote: (code) => 'Promo code ' + code + ' from your link is applied at checkout.',
     linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the full report free. Tap Apply to start it.',
+    linkPromoFreeCard: (code) => 'Promo code ' + code + ' runs your card again free. Tap Apply to start it.',
     linkPromoRefused: (code, reason) => 'The promo code in your link (' + code + ') could not be used: ' + String(reason || '').replace(/\.$/, '').replace(/^That code/, 'it') + '.',
     // The price on the payment sheet: the full price, and with a discount
     // code the discount and what is left to pay.
@@ -849,9 +850,16 @@
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
     scanTitle: 'Psyche Sync',
-    scanHistory: 'Your Syncs',
+    // Inside an app's own browser (Instagram, Facebook, TikTok…).
+    inAppWarn: (app, ios) => 'You are in ' + app + '\u2019s built-in browser. Your Psyche Card and report are saved only in the browser you make them in, and ' + app + ' can clear this one without warning. ' +
+      (ios ? 'Tap \u22EF or the share icon and choose Open in Safari (or Open in browser).' : 'Tap \u22EE and choose Open in Chrome (or Open in browser).'),
+    inAppData: (app) => 'You are in ' + app + '\u2019s built-in browser, which can clear what is made here. Open psycheai.io in Safari or Chrome before loading your data.',
+    inAppChrome: 'Open in Chrome',
+    inAppCopy: 'Copy link',
+    inAppCopied: 'Link copied',
+    scanHistory: 'Your Psyche Syncs',
     // My Syncs: one list, friends waiting to sync at the top, then past syncs.
-    syncsList: 'Psyche Sync',
+    syncsList: 'Sync list',
   };
 
   // ---------- the structured report layout ----------
@@ -1081,6 +1089,10 @@
       lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
       open: 'See Psyche Report',
       ready: 'Your full report is ready.',
+      // Until the reader has saved the PDF once: where the report lives, and
+      // the one way to keep it.
+      keep: 'Your Psyche Report is saved only in this browser, on this device. PsycheAI keeps no copy, so if your browser clears this site\u2019s data (Safari does after about a week without a visit), it is gone. Download the PDF to keep it.',
+      keepButton: 'Download PDF',
     },
     cardGuide: {
       title: 'How to read your Psyche Card',

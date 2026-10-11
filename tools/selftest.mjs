@@ -5152,11 +5152,12 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       fullConfig.thinkingConfig.thinkingLevel === 'MEDIUM',
       JSON.stringify(fullConfig && { max: fullConfig.maxOutputTokens }));
     // Psyche Sync is free, so it carries its own cap rather than the full
-    // report's 18,000, and thinks at the card's level: MINIMAL is refused by
-    // the current Gemini model, which failed every sync.
-    check('the sync call sends its own cap and the card\'s thinking level, never MINIMAL, under the trimmed prompt',
+    // report's 18,000, and thinks at LOW, below the card's MEDIUM: MINIMAL is
+    // refused by the current Gemini model, which failed every sync.
+    check('the sync call sends its own cap and thinks at LOW, never MINIMAL, under the trimmed prompt',
       Boolean(compatConfig) && compatConfig.maxOutputTokens === gemini.COMPAT_MAX_OUTPUT_TOKENS &&
-      gemini.COMPAT_MAX_OUTPUT_TOKENS <= 8000 && compatConfig.thinkingConfig.thinkingLevel === 'MEDIUM' &&
+      gemini.COMPAT_MAX_OUTPUT_TOKENS <= 8000 && compatConfig.thinkingConfig.thinkingLevel === 'LOW' &&
+      gemini.COMPAT_THINKING_LEVEL === 'LOW' && gemini.THINKING_LEVEL === 'MEDIUM' &&
       compatConfig.systemInstruction === prompts.COMPATIBILITY_SYSTEM && prompts.COMPATIBILITY_SYSTEM.length < 5500,
       JSON.stringify(compatConfig && { max: compatConfig.maxOutputTokens, thinking: compatConfig.thinkingConfig,
         prompt: prompts.COMPATIBILITY_SYSTEM.length }));
@@ -7443,7 +7444,7 @@ check('the schema requires evidence on where they align and differ',
     const { join } = require('node:path');
     const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
       env: { ...process.env, PORT: '${port}', PSYCHEAI_MOCK: '1', PSYCHEAI_PROMO_CODE: '',
-        PSYCHEAI_PROMO_CODES: 'AVA:2:2099-12-31,OLD:5:2000-01-01,HALF:1:2099-12-31:50,FREE:5', PSYCHEAI_STATS_TOKEN: '${token}',
+        PSYCHEAI_PROMO_CODES: 'AVA:2:2099-12-31,OLD:5:2000-01-01,HALF:1:2099-12-31:50,FREE:5,QUART:5:2099-12-31:25', PSYCHEAI_RATE_PAYMENT_INTENT: '20', PSYCHEAI_STATS_TOKEN: '${token}',
         PSYCHEAI_BUDGET_FILE: join(tmpdir(), 'psycheai-selftest-stats-budget-${process.pid}.jsonl'),
         PSYCHEAI_USAGE_STORE: join(tmpdir(), 'psycheai-selftest-stats-usage-${process.pid}.jsonl') },
       stdio: 'ignore',
@@ -7489,7 +7490,11 @@ check('the schema requires evidence on where they align and differ',
       out.halfIntent = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'Half' });
       out.halfPaid = await post({ digest: variant(5), product: 'unlock', paymentIntentId: out.halfIntent.id });
       out.halfAgain = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'half' });
-      out.halfOnAnalysis = await intentFor({ product: 'analysis', promoCode: 'free' });
+      out.freeOnAnalysis = await intentFor({ product: 'analysis', promoCode: 'free' });
+      out.quartIntent = await intentFor({ product: 'analysis', currency: 'sgd', promoCode: 'quart' });
+      out.quartPaid = await post({ digest: variant(6), product: 'analysis', paymentIntentId: out.quartIntent.id });
+      out.quartAlone = await post({ digest: variant(7), product: 'analysis', promoCode: 'quart' });
+      out.codeOnSync = await intentFor({ product: 'compatibility', promoCode: 'free' });
       out.freeCode = await intentFor({ product: 'unlock', currency: 'usd', promoCode: 'FREE' });
       out.badCode = await intentFor({ product: 'unlock', promoCode: 'nope' });
       out.halfForFull = await intentFor({ product: 'unlock', currency: 'sgd' });
@@ -7525,7 +7530,7 @@ check('the schema requires evidence on where they align and differ',
   check('stats routes: an expired code is refused as expired',
     got.expired.status === 402 && got.expired.error === 'That code has expired.', JSON.stringify(got.expired));
   check('promo discount: on its own a percent-off code opens nothing, and says to pay the rest',
-    got.halfAlone && got.halfAlone.status === 402 && /takes 50% off the full report/.test(got.halfAlone.error),
+    got.halfAlone && got.halfAlone.status === 402 && /takes 50% off\. Enter it on the payment sheet/.test(got.halfAlone.error),
     JSON.stringify(got.halfAlone));
   check('promo discount: the payment sheet asks for half the local price, with the code written on the payment',
     got.halfIntent && got.halfIntent.status === 200 && got.halfIntent.currency === 'sgd' && got.halfIntent.amount === 350 &&
@@ -7539,11 +7544,21 @@ check('the schema requires evidence on where they align and differ',
   check('promo discount: at its cap the code is refused before anyone pays',
     got.halfAgain && got.halfAgain.status === 402 && got.halfAgain.error === 'That code has been used up.',
     JSON.stringify(got.halfAgain));
-  check('promo discount: a 100% code asks for no payment, a bad one is refused, and codes are for the full report only',
+  check('promo discount: a 100% code asks for no payment, a bad one is refused, and codes are for what is sold only',
     got.freeCode && got.freeCode.status === 200 && got.freeCode.free === true && !got.freeCode.id &&
       got.badCode && got.badCode.status === 402 && got.badCode.error === 'That code is not valid.' &&
-      got.halfOnAnalysis && got.halfOnAnalysis.status === 402,
-    JSON.stringify({ free: got.freeCode, bad: got.badCode, analysis: got.halfOnAnalysis }));
+      got.freeOnAnalysis && got.freeOnAnalysis.status === 200 && got.freeOnAnalysis.free === true &&
+      got.codeOnSync && got.codeOnSync.status === 402,
+    JSON.stringify({ free: got.freeCode, bad: got.badCode, analysis: got.freeOnAnalysis, sync: got.codeOnSync }));
+  // Running the card again past the free one: a discount takes its share off
+  // that price too (S$3 less 25% is S$2.25), the payment buys the card, and
+  // the code is spent; on its own it still opens nothing.
+  check('promo discount: on a card run again, the sheet asks for the discounted price, and that payment runs it',
+    got.quartIntent && got.quartIntent.status === 200 && got.quartIntent.currency === 'sgd' && got.quartIntent.amount === 225 &&
+      got.quartIntent.discount && got.quartIntent.discount.percent === 25 &&
+      got.quartPaid && got.quartPaid.status === 200 && today['promo:QUART'] === 1 && today.card_paid >= 1 &&
+      got.quartAlone && got.quartAlone.status === 402 && /takes 25% off/.test(got.quartAlone.error),
+    JSON.stringify({ intent: got.quartIntent, paid: got.quartPaid, alone: got.quartAlone, today }));
   check('stats routes: the totals need the token, and say how much of each code is left',
     got.noToken === 401 && got.wrongToken === 401 && Array.isArray(got.stats.promoCodes) &&
       got.stats.promoCodes.find(c => c.code === 'AVA').used === 2 && got.stats.promoCodes.find(c => c.code === 'AVA').cap === 2,

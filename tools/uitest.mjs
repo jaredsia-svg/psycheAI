@@ -807,9 +807,65 @@ try {
         paidWith && paidWith.paymentIntentId === discounted.got.id && !paidWith.promoCode &&
           await halfPage.evaluate(() => !document.querySelector('#premium-dialog').open),
         JSON.stringify(paidWith));
+      // The full report lives only in this browser: until its PDF is saved, a
+      // note at its head says so, with the button; saving it once puts it away.
+      await halfPage.waitForSelector('#profile-body .report-keep-note', { timeout: 30000 }).catch(() => {});
+      const keepText = await halfPage.locator('#profile-body .report-keep-note').innerText().catch(() => '');
+      check('once the full report is in, a note says it is saved only on this device, and to download the PDF',
+        /saved only in this browser, on this device/.test(keepText) && /Download the PDF to keep it/.test(keepText) &&
+          /Download PDF/.test(keepText), keepText);
+      const [saved] = await Promise.all([
+        halfPage.waitForEvent('download', { timeout: 15000 }).catch(() => null),
+        halfPage.click('#profile-body .report-keep-save'),
+      ]);
+      check('its button downloads the PDF, and the note goes, for good',
+        Boolean(saved) && /\.pdf$/.test(saved.suggestedFilename()) &&
+          (await halfPage.locator('.report-keep-note').count()) === 0 &&
+          await halfPage.evaluate(() => localStorage.getItem('psycheai_pdf_saved') === 'true'),
+        saved && saved.suggestedFilename());
+      await halfPage.reload();
+      await halfPage.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
+      check('and it does not come back once the PDF has been saved',
+        (await halfPage.locator('.report-keep-note').count()) === 0);
       await halfPage.fill('#premium-promo-input', '').catch(() => {});
     } finally {
       await halfPage.close();
+    }
+  }
+
+  // ---- opened inside an app's own browser ----
+  //
+  // Instagram's in-app browser marks its user agent: a note under the
+  // navigation asks the reader to open the site in Safari or Chrome, and the
+  // "Add your data" popout says it again. An ordinary browser sees neither.
+  {
+    const igUa = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 330.0.0.0 (iPhone14,5; iOS 17_5; en_US)';
+    const igContext = await browser.newContext({ userAgent: igUa, viewport: { width: 390, height: 844 } });
+    const igPage = await igContext.newPage();
+    try {
+      await igPage.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await igPage.waitForSelector('#inapp-warn:not([hidden])', { timeout: 10000 });
+      const warned = await igPage.locator('#inapp-warn').innerText();
+      check('in Instagram\'s own browser, a note asks to open the site in Safari, with a Copy link button',
+        /You are in Instagram’s built-in browser/.test(warned) && /Open in Safari/.test(warned) && /Copy link/.test(warned) &&
+          await igPage.locator('#inapp-open-chrome').isHidden(), warned);
+      await igPage.click('#open-sources');
+      await igPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('and the Add your data popout says so before any data is loaded',
+        /Open psycheai\.io in Safari or Chrome before loading your data/.test(await igPage.locator('#datasources-inapp').innerText()));
+      await igPage.keyboard.press('Escape');
+      await igPage.click('#inapp-close');
+      check('its ✕ puts the note away', await igPage.locator('#inapp-warn').isHidden());
+    } finally {
+      await igContext.close();
+    }
+    const plain = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await plain.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await plain.waitForTimeout(300);
+      check('an ordinary browser sees no in-app note', await plain.locator('#inapp-warn').isHidden());
+    } finally {
+      await plain.close();
     }
   }
 
@@ -1990,11 +2046,20 @@ try {
       await invitePage.click('#sync-invite-open');
       await invitePage.waitForSelector('#view-scan:not([hidden]) .match-waiting', { timeout: 15000 });
       check('Sync goes to My Syncs, where the waiting friend is under "Waiting to sync with you" with a Sync button of their own',
-        (await invitePage.locator('#scan-history .scan-results-head h2').innerText()) === 'Psyche Sync' &&
+        (await invitePage.locator('#scan-history .scan-results-head h2').innerText()) === 'Sync list' &&
           /Waiting to sync with you/.test(await invitePage.locator('.match-waiting').innerText()) &&
           (await invitePage.locator('.match-waiting .sync-invite-go').evaluateAll(b => b.map(x => x.getAttribute('aria-label') + ':' + x.textContent))).join('|') === 'Sync with Ava:Sync' &&
           /Ava/.test(await invitePage.locator('.match-waiting').innerText()),
         (await invitePage.locator('#scan-history').innerText()));
+      // Their Psyche Card, before syncing: from the card their link carries.
+      await invitePage.click('.match-waiting .waiting-card');
+      await invitePage.waitForSelector('#sample-card-dialog[open] #sample-psyche-card-full *', { timeout: 10000 });
+      check('a waiting friend has a Card button beside Sync, and it opens their Psyche Card full screen',
+        (await invitePage.locator('.match-waiting .match-row .match-btn').evaluateAll(b => b.map(x => x.textContent))).join('|') === 'Card|Sync' &&
+          /Ava/.test(await invitePage.locator('#sample-psyche-card-full').innerText()),
+        await invitePage.locator('#sample-psyche-card-full').innerText());
+      await invitePage.keyboard.press('Escape');
+      await invitePage.waitForFunction(() => !document.querySelector('#sample-card-dialog').open, null, { timeout: 5000 });
       // A sync that fails keeps the friend's link, and the banner, for another try.
       await invitePage.route('**/api/compatibility', route => route.fulfill({ status: 400, contentType: 'application/json',
         body: JSON.stringify({ error: 'Gemini API error: the model refused this.' }) }));
@@ -7693,7 +7758,7 @@ try {
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
     'What you share', 'What works', 'What to look out for',
-    'Your Syncs']);
+    'Your Psyche Syncs']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
   check('the page does not re-type any section title',
@@ -9162,6 +9227,19 @@ try {
   check('re-running with the loaded data still asks to pay before analysing',
     (await page.locator('#premium-dialog-title').innerText()).trim() === 'Run your Psyche Card again');
   await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
+  // A discount code works here as on the full report: the card run again is
+  // re-priced (US$2 less 50% is US$1), and the payment that follows is that one.
+  await page.fill('#premium-promo-input', 'UIHALF');
+  await page.click('#premium-promo-apply');
+  await page.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
+    .catch(() => {});
+  const rerunPrice = await page.$$eval('#premium-price .premium-price-row', rows => rows.map(row =>
+    [row.querySelector('dt').textContent.trim(), row.querySelector('dd').textContent.trim()]));
+  check('a discount code re-prices running the card again too',
+    /UIHALF applied: 50% off\./.test(await page.locator('#premium-status').innerText()) &&
+      JSON.stringify(rerunPrice) === JSON.stringify([['Price', 'US$2'], ['Promo UIHALF (50% off)', '−US$1'], ['You pay', 'US$1']]) &&
+      analyseBodies.length === beforeMergedSend, JSON.stringify(rerunPrice));
+  await page.waitForSelector('#premium-mock-pay:not([hidden])', { timeout: 15000 });
   await page.click('#premium-mock-pay');
   await page.waitForFunction(() => !document.querySelector('#premium-dialog').open, { timeout: 30000 });
   await waitForLength(analyseBodies, beforeMergedSend + 1, 60000);
@@ -9173,6 +9251,8 @@ try {
     JSON.stringify({ sources: mergedBody.digest.coverage.sources,
       captions: mergedBody.digest.samples.captions.length }));
   check('exactly one analysis was sent for it', analyseBodies.length === beforeMergedSend + 1);
+  check('and it ran on the discounted payment, as a card, not on the code',
+    Boolean(mergedBody.paymentIntentId) && !mergedBody.promoCode && mergedBody.product !== 'unlock', JSON.stringify({ product: mergedBody.product }));
   check('and the merged digest still respects the character budget',
     mergedBody.digest.coverage.digestChars <= 240991,
     mergedBody.digest.coverage.digestChars + ' chars');
@@ -10465,10 +10545,10 @@ try {
 
   // ---- the compatibility page reads as its own page ----
   const scanText = await page.locator('#view-scan').innerText();
-  check('the sync page is titled Your Syncs',
-    (await page.locator('#scan-title').innerText()) === 'Your Syncs',
+  check('the sync page is titled Your Psyche Syncs',
+    (await page.locator('#scan-title').innerText()) === 'Your Psyche Syncs',
     await page.locator('#scan-title').innerText());
-  check('the Your Syncs title is the same size as My Report\'s',
+  check('the Your Psyche Syncs title is the same size as My Report\'s',
     await page.evaluate(() => {
       const probe = document.createElement('h2');
       probe.className = 'report-hero-title';
@@ -10512,7 +10592,7 @@ try {
     return Boolean(history.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
   }));
   check('and are rendered, not just positioned',
-    /Your Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
+    /Your Psyche Syncs/.test(scanText) && (await page.locator('#scan-history .match-row').count()) > 0,
     scanText.slice(0, 400));
   check('past results still sit above the paste box on screen', await page.evaluate(() => {
     const history = document.querySelector('#scan-history').getBoundingClientRect();
@@ -10626,7 +10706,7 @@ try {
   // waiting, it opens the list where that sync is.
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
   await page.waitForSelector('#view-scan:not([hidden]) #scan-alert:not([hidden])', { timeout: 30000 });
-  check('the same friend\'s link again, once synced, adds no one waiting: it opens Your Syncs, saying so',
+  check('the same friend\'s link again, once synced, adds no one waiting: it opens Your Psyche Syncs, saying so',
     /already synced with Jordan/.test(await page.locator('#scan-alert').innerText()) &&
       await page.evaluate(() => localStorage.getItem('psycheai_invite') === null) && compatBodies.length === syncsBefore,
     await page.locator('#scan-alert').innerText());
@@ -10722,7 +10802,7 @@ try {
       const waiting = document.querySelector('#scan-history .match-waiting');
       const results = document.querySelector('#scan-history .match-list:not(.match-waiting)');
       return Boolean(waiting && results) && /Mei/.test(waiting.innerText) && !/Kai/.test(waiting.innerText) &&
-        /Kai/.test(results.innerText) && document.querySelector('#scan-history h2').textContent === 'Psyche Sync' &&
+        /Kai/.test(results.innerText) && document.querySelector('#scan-history h2').textContent === 'Sync list' &&
         waiting.compareDocumentPosition(results) === Node.DOCUMENT_POSITION_FOLLOWING;
     }));
   await page.evaluate(() => { localStorage.removeItem('psycheai_invite'); });

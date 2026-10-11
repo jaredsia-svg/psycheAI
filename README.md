@@ -1561,7 +1561,7 @@ the first.
 | `PSYCHEAI_BUDGET_FILE` | Where that day's tally is appended. Default `data/budget.jsonl`. Holds a date, a kind and a timestamp per row — nothing that could identify a caller. |
 | `PSYCHEAI_PREMIUM_PROVIDER` | Which engine runs the four paid sections, independent of the free report's provider above — `gemini` or `anthropic`. Default `gemini`. Set to `anthropic` to revert the paid call to Claude Sonnet 5; needs that provider's own key regardless of which one the free report is using. |
 | `PSYCHEAI_GEMINI_THINKING` | Gemini's thinking level for the card and the full premium report: `MINIMAL`, `LOW`, `MEDIUM` (default) or `HIGH`. Takes effect on restart, no deploy needed. At `HIGH`, Gemini 3 Flash thinks until its output cap is nearly spent, which cut the answer off on 3.8 and is why the default is `MEDIUM` (see [Which model, and going back](#which-model-and-going-back)). An unrecognised value is logged and ignored. |
-| `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the Psyche Sync call alone: `LOW`, `MEDIUM` or `HIGH`. Unset, it follows `PSYCHEAI_GEMINI_THINKING` (`MEDIUM`). The current model refuses `MINIMAL`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
+| `PSYCHEAI_COMPAT_THINKING` | Gemini's thinking level for the Psyche Sync call alone: `LOW`, `MEDIUM` or `HIGH`. Unset, it is `LOW`, whatever `PSYCHEAI_GEMINI_THINKING` says; the card and report stay at `MEDIUM`. The current model refuses `MINIMAL`. Takes effect on restart. See [What a compatibility costs](#what-a-compatibility-costs). |
 | `PSYCHEAI_REPORT_LAYOUT` | `structured` (default) or `classic`. Which report the unlock writes and the page and PDF draw — see [The structured report](#the-structured-report-four-parts-one-thread). Set `classic` to go back to the previous format with no deploy: the prompt, the schema, the page and the PDF all switch together. An unrecognised value is logged and treated as `structured`. |
 | `GEMINI_MODEL` | Gemini model ID, used for both the free report (when Gemini wins auto-detection) and the paid call (when `PSYCHEAI_PREMIUM_PROVIDER=gemini`). Default `gemini-3.8-flash`. Setting this is the zero-deploy way to go back to `gemini-3.7-flash` — see [Which model, and going back](#which-model-and-going-back). |
 | `PSYCHEAI_MODEL` | Claude model ID for the free report's Claude fallback. Default `claude-opus-5`. |
@@ -1615,9 +1615,11 @@ Compatibility is free to the reader, so its call is held small on all three coun
 - **Its own output cap, 8,000 tokens** (`COMPAT_MAX_OUTPUT_TOKENS`), the free card's. It used to
   inherit the full report's 18,000, so a call that thought for long could bill about 7¢. The answer
   is about 1,000 tokens at its longest, and the thinking about 2,500 more.
-- **The card's thinking level, `MEDIUM`** (`PSYCHEAI_COMPAT_THINKING` to change it). It was `MINIMAL`
-  for a while, to save that thinking, but the current Gemini model refuses `MINIMAL` and every sync
-  failed with a 400. So a sync costs about 1.5–2¢ again.
+- **Thinking at `LOW`**, below the card and report's `MEDIUM` (`PSYCHEAI_COMPAT_THINKING` to change
+  it). It was `MINIMAL` for a while, to save that thinking, but the current Gemini model refuses
+  `MINIMAL` and every sync failed with a 400; it then followed the card at `MEDIUM`, about 1.5–2¢ a
+  sync. `LOW` is the lowest the model accepts. A sync's answer is short and built from two cards
+  already reasoned out, so it needs less thinking than the card does.
 - **A shorter system prompt**, 4,830 characters from 9,826, every rule kept. It is under Gemini's
   caching floor, so it is billed in full on every call.
 
@@ -1864,7 +1866,7 @@ so it is built in rather than left to a plugin.
   `docs/manifest.webmanifest` names. Those were re-saved losslessly: `icon-512` went from 103 KB to
   48 KB. If they are redrawn, run them through `PIL`'s `optimize=True` again.
 - **One `<h1>` and a `favicon.ico`.** The front page's document has a single `<h1>`, the hero's.
-  Each app view's title (My Psyche, Your Syncs, the sync popout, FAQ, the print letterhead) is a
+  Each app view's title (My Psyche, Your Psyche Syncs, the sync popout, FAQ, the print letterhead) is a
   `<div class="h1" role="heading" aria-level="1">`. Search engines see one main heading, screen
   readers still hear each visible view's title as its main heading, and `.h1` styles it as one.
   `docs/favicon.ico` (16, 32 and 48px, with bolder strokes at the small sizes so the mark survives)
@@ -2062,9 +2064,11 @@ The bar is the title alone; the line naming who sent a link is gone.
 The bar has one button, **Sync**, which goes to My Syncs. No sync runs on My Psyche, and My Report
 never shows the bar.
 
-On My Syncs one card, **Psyche Sync**, lists them all:
+My Syncs is titled **Your Psyche Syncs**, and one card, **Sync list**, lists them all:
 - **Friends waiting** come first, latest first, as dashed rows ("Waiting to sync with you · free, only
-  you see it"), each with a **Sync** button.
+  you see it"), each with the same **Card** and **Sync** buttons a past sync has. **Card** opens their
+  Psyche Card full screen, decoded from the card their link carries, so a reader can see who they are
+  syncing with before choosing to.
 - **Past syncs** follow. Tapping one opens its result in a popout (`#sync-dialog`) over My Syncs,
   not a page of its own.
 
@@ -2085,7 +2089,7 @@ the same friend twice with the same score. Now:
 **A link already synced is not taken again.** Each past sync stores a fingerprint of the friend's
 card (`with`, from `syncCardKey`: a hash of the card's shape). Opening a friend's link checks it
 (`alreadySynced`). A card synced before is not added to the waiting rows: the reader lands on My
-Syncs (titled **Your Syncs**, the same size as My Report's title) with a note, *You have already synced with Jared — it is in your list
+Syncs (titled **Your Psyche Syncs**, the same size as My Report's title) with a note, *You have already synced with Jared — it is in your list
 below.* Syncs saved before the fingerprint existed are matched by the friend's name. A different
 friend's link, or the same friend with a new card, still waits as usual.
 
@@ -2349,14 +2353,19 @@ discount into free reports.
   this server can write it — a client cannot claim a discount, and a half-price payment presented
   without one fails as the wrong amount.
 - **A discount code never opens anything by itself.** Sent straight to `/api/analyse` or
-  `/api/premium`, it is refused: *That code takes 50% off the full report. Enter it on the payment
-  sheet and pay the rest.*
+  `/api/premium`, it is refused: *That code takes 50% off. Enter it on the payment sheet and pay the
+  rest.*
 - **A use is spent when the paid report is written**, not when the sheet is opened, and counted under
   `promo:HALF` in the stats like any other code. Expiry and the cap are checked before anyone pays;
   a reader who paid just as the cap ran out is still served.
 - **Never below Stripe's minimum charge** for the currency (`MINIMUM` in `docs/prices.js` — 50 cents,
   30p, HK$4, ¥50, RM2): a 95%-off code charges the minimum rather than an amount Stripe would refuse.
-  Codes apply to the full report only; the US$2 extra card keeps 100% codes.
+- **Running the card again takes codes too.** The sheet for a card past the free one (US$2) prices a
+  code exactly as the unlock sheet does: a discount re-prices it (50% off is US$1, S$1.50), a 100% code
+  runs it free, and a code in the reader's link is filled in there as well. Codes once applied to the
+  full report only, which left a reader holding a discount code with nothing to use it on before they
+  were ready for the report. One code covers both, and a capped code spends one use per distinct
+  digest whichever it buys. Psyche Sync is free, so a code there is refused.
 
 **To create one on Render**: Environment → `PSYCHEAI_PROMO_CODES` → add `NEWCODE:cap:YYYY-MM-DD:50`
 to the comma-separated list → Save, which redeploys. Use counts reset when the server restarts (each
@@ -5757,6 +5766,31 @@ usual top padding), and the front page's banner, which runs up to the navigation
 so it steps down by the same gap and rounds its top corners. It never shows beside a friend's sync
 invite: while a friend's link is waiting, that comes first, and the bar appears once the invite is closed
 or the sync is done (`refreshReportPromo`, `syncInviteShowing` in `docs/app.js`).
+
+### The full report lives on one device, and says so
+
+The full report is kept only in the browser it was made in (`localStorage`); the server never stores
+it. A browser can clear that without asking: Safari deletes a site's stored data after seven days of
+use without a visit, a reader can clear their history, and a private tab forgets it on closing. So until
+the reader has downloaded its PDF once, the report opens with a note: *Your Psyche Report is saved only
+in this browser, on this device. PsycheAI keeps no copy, so if your browser clears this site's data
+(Safari does after about a week without a visit), it is gone. Download the PDF to keep it.* It has a
+**Download PDF** button beside it (`showKeepNote` in `docs/app.js`). The first download, from there or
+from the page's own button, sets `psycheai_pdf_saved` and the note goes for good. A new full report
+clears the key, so the note asks again for that one.
+
+### A note in an app's own browser
+
+A link tapped inside Instagram, Facebook, Messenger, TikTok, Snapchat, LINE or X opens in that app's
+own browser. Each keeps its own storage, apart from Safari or Chrome, and the app can clear it at any
+time, so a card made there can vanish, or seem to when the reader later opens the site in their usual
+browser. These browsers mark their user agent (`inAppBrowser`). When one is detected, a note under
+the navigation says so and how to leave: *Tap ⋯ or the share icon and choose Open in Safari* on iOS,
+or *Tap ⋮ and choose Open in Chrome* on Android, where an **Open in Chrome** button sends the same
+address to Chrome directly (an `intent://` link). A **Copy link** button sits beside it. The note's ✕
+puts it away for the visit, and the *Add your data* popout says it again before any data is loaded.
+WhatsApp and Telegram open links in a system browser sheet whose user agent looks like Safari's or
+Chrome's, so nothing can detect those.
 
 ### "Your data", never "the export"
 

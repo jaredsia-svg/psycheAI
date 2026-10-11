@@ -4335,9 +4335,32 @@ details.more[open] > summary::after { content: ' ▴'; }
   margin: 0 0 1rem; padding: .6rem .9rem; border-radius: 12px; font-weight: 700; font-size: .92rem;
   color: var(--good); background: var(--good-soft);
 }
+/* The full report lives only in this browser: until its PDF is saved, a note
+   says so, with the button (app.js, showKeepNote). */
+.report-keep-note {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem;
+  margin: 0 0 1rem; padding: .7rem .9rem; border-radius: 12px; font-size: .88rem; line-height: 1.45;
+  background: var(--accent-soft); border: 1px solid var(--line);
+}
+.report-keep-note p { flex: 1 1 18rem; margin: 0; }
+.report-keep-note .btn { flex: none; }
 /* My Report has no card at its head: its display: grid would beat [hidden]. */
 #view-profile .profile-top[hidden] { display: none; }
 
+/* In an app's own browser: one note under the navigation (app.js, warnInApp). */
+.inapp-warn {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem;
+  max-width: var(--page-w); margin: .5rem auto 0; padding: .6rem 16px; font-size: .85rem; line-height: 1.45;
+  background: var(--warn-soft, var(--accent-soft)); border-block: 1px solid var(--line);
+}
+.inapp-warn[hidden] { display: none; }
+.inapp-warn p { flex: 1 1 20rem; margin: 0; }
+.inapp-warn-actions { display: flex; align-items: center; gap: .4rem; flex: none; }
+.inapp-warn-close {
+  font: inherit; font-size: .8rem; line-height: 1; color: var(--ink-soft);
+  background: none; border: 0; padding: .4rem; cursor: pointer; border-radius: 999px;
+}
+.inapp-warn-close:hover { color: var(--ink); }
 /* The slim offer of the Psyche Report under the navigation (app.js,
    refreshReportPromo): one line, small, a tap away from the offer itself. */
 .report-promo {

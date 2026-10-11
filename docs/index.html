@@ -84,6 +84,18 @@
 <!-- Once a reader has a free card: one slim line offering the Psyche Report,
      on every page but My Report. Not while a friend's link waits to sync
      (app.js, refreshReportPromo). -->
+<!-- Opened inside Instagram's, Facebook's, TikTok's or another app's own
+     browser: what is made here is kept only in that browser, which the app
+     can clear at any time, so the reader is asked to open the site in Safari
+     or Chrome (app.js, inAppBrowser). -->
+<div class="inapp-warn no-print" id="inapp-warn" role="note" hidden>
+  <p id="inapp-warn-text"></p>
+  <div class="inapp-warn-actions">
+    <a class="btn btn-sm" id="inapp-open-chrome" hidden></a>
+    <button class="btn btn-sm btn-ghost" id="inapp-copy" type="button"></button>
+    <button class="inapp-warn-close" id="inapp-close" type="button" aria-label="Close">✕</button>
+  </div>
+</div>
 <div class="report-promo no-print" id="report-promo" hidden>
   <button class="report-promo-go" id="report-promo-go" type="button"></button>
 </div>
@@ -571,7 +583,7 @@
       <span class="scan-spark"><svg viewBox="0 0 24 24" fill="currentColor" focusable="false"><path d="M12 2.6l2.75 5.9 6.45.8-4.75 4.45 1.2 6.4L12 17l-5.65 3.15 1.2-6.4L2.8 9.3l6.45-.8z"/></svg></span>
     </div>
     <p class="scan-eyebrow">Psyche Sync · free, every time</p>
-    <div class="h1" id="scan-title" role="heading" aria-level="1">Your Syncs</div>
+    <div class="h1" id="scan-title" role="heading" aria-level="1">Your Psyche Syncs</div>
     <p class="scan-lede">Open a connection's PsycheAI link for your Psyche Sync: what clicks between
       you, what to look out for, and how to relate better to each other.</p>
   </header>
@@ -1120,6 +1132,7 @@
      picker has to open synchronously from the row's own click. -->
 <dialog id="datasources-dialog" class="mode-dialog datasources-dialog" aria-labelledby="datasources-dialog-title">
   <h2 id="datasources-dialog-title">Add or change your data</h2>
+  <p class="alert" id="datasources-inapp" hidden></p>
   <p class="muted" id="datasources-dialog-blurb">Load newer data to replace a source, or add one
     you have not used yet. Nothing is sent anywhere until you review it on the next screen.</p>
   <div class="mode-options">

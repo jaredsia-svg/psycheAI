@@ -96,6 +96,10 @@
     // ticked off, by a hash of the action's wording. Nothing but those hashes,
     // and it goes with Delete everything like the rest.
     plan: 'psycheai_plan',
+    // Set once the full report's PDF has been downloaded, so the note saying
+    // the report lives only on this device stops asking. A new full report
+    // clears it (adoptFullReport).
+    pdfSaved: 'psycheai_pdf_saved',
     // Someone else's card, from a compatibility link opened before this reader had
     // one of their own. A friend who taps the link usually has no Instagram
     // export yet, and Instagram takes hours to email one, so the invite has to
@@ -1295,6 +1299,7 @@
 
   async function adoptFullReport(result, replaceCard, savedName, readFrom) {
     if (!state.profile) return;
+    store.remove(KEYS.pdfSaved);
     // How much of each source the full report actually read: the premium read
     // when data was added at the unlock (WhatsApp at its full share, where the
     // standard digest beside it holds only a few lines), or nothing to say
@@ -4464,6 +4469,11 @@
   function askDataSources(options) {
     const settings = options || {};
     const dialog = $('#datasources-dialog');
+    // Loading data in an app's own browser: said in the popout too, where the
+    // top bar may have been closed.
+    const inApp = $('#datasources-inapp');
+    inApp.hidden = !IN_APP;
+    if (IN_APP) inApp.textContent = TEXT.inAppData(IN_APP);
     const status = $('#datasources-status');
     const input = $('#datasources-input');
     // Which rows this entry point offers. The welcome page shows Instagram and
@@ -7305,6 +7315,7 @@
     $('#test-compat-open').hidden = structured;
     layoutPsycheCard();
     setHtml($('#profile-body'), hub ? hubSectionsHtml(report) : reportSectionsHtml(report, { explained, page: reportPage }));
+    if (explained && !hub) showKeepNote();
     syncNav();
     refreshReferral().catch(() => {});
     // The card's QR code waits for the short link, then fits the card again.
@@ -7557,6 +7568,20 @@
     return 'Psyche Report - ' + who + ' - ' + ddmmyyyy + '.pdf';
   }
 
+  // The full report is kept only in this browser: until its PDF has been
+  // downloaded once, a note at the head of the report says so, with the button.
+  function showKeepNote() {
+    const body = $('#profile-body');
+    if (!body || body.querySelector('.report-keep-note') || store.read(KEYS.pdfSaved, false)) return;
+    const note = document.createElement('div');
+    note.className = 'report-keep-note no-print';
+    note.innerHTML = '<p>' + esc(Copy.STRUCTURED.reportPage.keep) + '</p>' +
+      '<button class="btn btn-sm report-keep-save" type="button">' + esc(Copy.STRUCTURED.reportPage.keepButton) + '</button>';
+    note.querySelector('.report-keep-save').addEventListener('click', exportPdf);
+    const ready = body.querySelector('.report-ready-note');
+    if (ready) ready.after(note); else body.prepend(note);
+  }
+
   function exportPdf() {
     const profile = state.profile;
     if (!profile) return;
@@ -7570,6 +7595,10 @@
     // Long enough for every browser to have started reading the blob, after
     // which holding it open only costs memory.
     setTimeout(() => URL.revokeObjectURL(href), 10000);
+    if (hasExplanations(profile)) {
+      store.write(KEYS.pdfSaved, true);
+      document.querySelectorAll('.report-keep-note').forEach(note => note.remove());
+    }
   }
 
   // ---------- psyche card: inline preview and full screen ----------
@@ -8634,6 +8663,9 @@
         note.setAttribute('role', 'status');
         note.textContent = Copy.STRUCTURED.reportPage.ready;
         $('#profile-body').prepend(note);
+        // The note saying where the report lives goes under it.
+        const keep = $('#profile-body .report-keep-note');
+        if (keep) note.after(keep);
       } else {
         renderProfile();
       }
@@ -8904,7 +8936,7 @@
       if (!intent) throw new Error(TEXT.premiumNotConfigured);
       await mountIntent(intent, dialog);
       // The code from the reader's link, filled in and applied for them.
-      if (kind === 'unlock' && linkPromo()) {
+      if ((kind === 'unlock' || kind === 'analysis') && linkPromo()) {
         $('#premium-promo-input').value = linkPromo();
         await applyPromoCode({ fromLink: true });
       }
@@ -9028,8 +9060,9 @@
   // while a wallet button is already mounted, and even on a server with no
   // Stripe key set. A discount code comes back as a cheaper PaymentIntent,
   // and the sheet is re-mounted to pay that instead. A code the server
-  // refuses says why, here, before any report is asked for. The extra
-  // analysis's sheet keeps the old path: discounts are for the full report.
+  // refuses says why, here, before any report is asked for. The same for a
+  // card run again past the free one: a discount takes its share off that
+  // price too.
   // `fromLink`: the code came in the reader's link and is applied as the
   // sheet opens. A discount is shown at once; a code that opens the report
   // free waits for the reader's tap rather than starting it unasked; and a
@@ -9040,7 +9073,8 @@
     const code = input.value.trim();
     if (!code) return;
     const dialog = $('#premium-dialog');
-    if (premiumKind !== 'unlock') {
+    const product = premiumKind === 'analysis' ? 'analysis' : 'unlock';
+    if (premiumKind !== product) {
       onPaymentAuthorised({ promoCode: code }, dialog);
       return;
     }
@@ -9049,7 +9083,7 @@
     let answer = null;
     try {
       answer = await LLM.postWithTicket('api/create-payment-intent',
-        { product: 'unlock', currency: CURRENCY, promoCode: code });
+        { product, currency: CURRENCY, promoCode: code });
     } catch (error) {
       if (error && error.status === 402) {
         premiumStatus(fromLink ? TEXT.linkPromoRefused(code, error.message) : error.message, 'bad');
@@ -9063,13 +9097,13 @@
       apply.disabled = false;
     }
     if (answer && answer.discount) {
-      renderPremiumPrice('unlock', answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
+      renderPremiumPrice(product, answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
       premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent), 'good');
       await mountIntent(answer, dialog);
       return;
     }
     if (fromLink) {
-      premiumStatus(TEXT.linkPromoFree(code), 'good');
+      premiumStatus(product === 'analysis' ? TEXT.linkPromoFreeCard(code) : TEXT.linkPromoFree(code), 'good');
       return;
     }
     onPaymentAuthorised({ promoCode: code }, dialog);
@@ -9814,7 +9848,11 @@
     $('#sync-invite-count').textContent = String(invites.length);
     refreshReportPromo();
   }
-  /** Syncs list: each friend whose link is waiting, with a Sync button of their own. */
+  /**
+   * Syncs list: each friend whose link is waiting, with their Psyche Card
+   * (from the card their link carries) and a Sync button of their own, the
+   * same pair a synced friend's row has.
+   */
   function syncWaitingHtml() {
     const invites = state.profile ? allInvites() : [];
     if (!invites.length) return '';
@@ -9823,10 +9861,69 @@
       return '<li><div class="match-row is-waiting">' +
         '<span class="match-face m-platonic" aria-hidden="true">' + esc(String(name).trim().charAt(0).toUpperCase()) + '</span>' +
         '<span class="match-who"><strong>' + esc(name) + '</strong><span class="match-meta">' + esc(TEXT.syncWaitingMeta) + '</span></span>' +
-        '<button class="btn btn-sm sync-invite-go" type="button" data-i="' + i + '" aria-label="' + esc(TEXT.syncInviteGo(name)) + '">' +
-          esc(TEXT.syncInviteOpen) + '</button></div></li>';
+        '<span class="match-actions">' +
+          '<button type="button" class="match-btn match-card waiting-card" data-i="' + i + '" aria-label="' +
+            esc(TEXT.matchOpenCard(name)) + '">' + CARD_ICON + '<span>' + esc(TEXT.matchCardLabel) + '</span></button>' +
+          '<button type="button" class="match-btn match-sync sync-invite-go" data-i="' + i + '" aria-label="' +
+            esc(TEXT.syncInviteGo(name)) + '">' + SYNC_ICON + '<span>' + esc(TEXT.syncInviteOpen) + '</span></button>' +
+        '</span></div></li>';
     }).join('') + '</ul>';
   }
+  // A waiting friend's Psyche Card, before syncing: decoded from their link.
+  document.addEventListener('click', async event => {
+    const button = event.target.closest && event.target.closest('.waiting-card');
+    if (!button) return;
+    event.preventDefault();
+    const invite = allInvites()[Number(button.dataset.i) || 0];
+    const card = invite ? await Card.decodeCard(invite.payload) : null;
+    if (!card) return;
+    openFriendCard(reportFromCard(Object.assign({}, card, { name: firstName(card.name) || card.name }), invite.face));
+  });
+  // An app's own browser: Instagram, Facebook and Messenger, TikTok,
+  // Snapchat, LINE and X each mark their user agent. What is made in one is
+  // kept only there, and the app can clear it whenever it likes, so the
+  // reader is asked to open the site in Safari or Chrome. WhatsApp and
+  // Telegram open links in a system browser sheet that does not say so in
+  // its user agent; nothing here can see those.
+  function inAppBrowser(ua) {
+    const agent = String(ua == null ? navigator.userAgent : ua);
+    if (/Instagram/i.test(agent)) return 'Instagram';
+    if (/Messenger|MessengerForiOS|\bOrca-Android\b/i.test(agent)) return 'Messenger';
+    if (/FBAN|FBAV|FB_IAB|FBIOS/i.test(agent)) return 'Facebook';
+    if (/musical_ly|BytedanceWebview|TikTok/i.test(agent)) return 'TikTok';
+    if (/Snapchat/i.test(agent)) return 'Snapchat';
+    if (/\bLine\//.test(agent)) return 'LINE';
+    if (/Twitter|TwitterAndroid/i.test(agent)) return 'X';
+    return '';
+  }
+  const IN_APP = inAppBrowser();
+  const IN_APP_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  (function warnInApp() {
+    const bar = $('#inapp-warn');
+    if (!bar || !IN_APP) return;
+    let closed = false;
+    try { closed = sessionStorage.getItem('psycheai_inapp_closed') === '1'; } catch (error) { /* private window */ }
+    $('#inapp-warn-text').textContent = TEXT.inAppWarn(IN_APP, IN_APP_IOS);
+    // Android can be sent to Chrome directly; iOS has no such door.
+    const chrome = $('#inapp-open-chrome');
+    if (/Android/i.test(navigator.userAgent)) {
+      chrome.textContent = TEXT.inAppChrome;
+      chrome.href = 'intent://' + location.host + location.pathname + location.search + location.hash +
+        '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+      chrome.hidden = false;
+    }
+    const copy = $('#inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(location.href); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+    });
+    $('#inapp-close').addEventListener('click', () => {
+      bar.hidden = true;
+      try { sessionStorage.setItem('psycheai_inapp_closed', '1'); } catch (error) { /* private window */ }
+    });
+    bar.hidden = closed;
+  })();
+
   // The slim bar offering the Psyche Report, once a free card exists: on the
   // front page, My Psyche, My Syncs and the FAQ, not on My Report or while an
   // analysis runs. Never at the same time as a friend's sync invite: it waits
