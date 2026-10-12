@@ -2260,173 +2260,161 @@
   // ---------- Meet the cast ----------
   //
   // Every character a card can name, each in its own scene cropped to a round
-  // tile, spinning slowly past above the request steps. The strip is moved by
-  // hand (overflow hidden, the track moved by a transform) so it can loop forever: a tile
-  // that leaves one end is moved to the other and the offset given back, so
-  // there are only ever 29 drawings on the page. Dragging moves it with the
-  // pointer and a flick sets it spinning that way, faster, easing back to its
-  // own pace; holding still stops it until let go. A horizontal trackpad
-  // swipe pushes it too; the page's own vertical scroll is never taken. It
-  // only moves while on screen, and not at all for a reader who asked for
-  // less motion, who can still drag it.
+  // tile, above the request steps. It turns slowly on its own until the reader
+  // touches it; from then on it is theirs, scrolled by the browser's own
+  // swipe and momentum, which on a phone is the most responsive thing there
+  // is, and never moves by itself again on that visit. The arrows either side
+  // move it a few tiles at a time. It has no ends: the cast is drawn five
+  // times over (each scene once, in a sprite, and placed by <use>, so the page
+  // carries 29 drawings, not 145), started in the middle copy, and put back
+  // into the middle copy, a whole copy's width away so nothing visibly moves,
+  // whenever it comes to rest near either end. A mouse can drag it too.
+  const CAST_COPIES = 5;
   function mountCast() {
     const strip = $('#cast-strip');
     const track = $('#cast-track');
     if (!strip || !track) return;
     strip.setAttribute('aria-label', TEXT.castLabel);
-    track.innerHTML = Object.keys(Copy.CHARACTER_SYNCS).map(name =>
-      '<li><button type="button" class="cast-tile" data-name="' + esc(name) + '" aria-pressed="false">' +
-        '<span class="cast-art">' + (Copy.characterArt(name, 'cast-scene', true) || Copy.emblemSvg(name, 'cast-emblem')) + '</span>' +
-        '<span class="cast-name">' + esc(name) + '</span></button></li>').join('');
+    const names = Object.keys(Copy.CHARACTER_SYNCS);
+    // Each scene's inside, once, for the copies to <use>.
+    const sprite = names.map((name, i) => {
+      const art = Copy.characterArt(name, 'cast-scene', true);
+      const inner = art.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+      return inner ? '<g id="cast-art-' + i + '">' + inner + '</g>' : '';
+    }).join('');
+    const tile = (name, i, copy) => {
+      const middle = copy === Math.floor(CAST_COPIES / 2);
+      return '<li' + (middle ? '' : ' aria-hidden="true"') + '><button type="button" class="cast-tile" data-name="' + esc(name) + '"' +
+        (middle ? '' : ' tabindex="-1"') + ' aria-pressed="false"><span class="cast-art">' +
+        '<svg class="cast-scene" viewBox="220 20 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' +
+        '<use href="#cast-art-' + i + '"/></svg></span><span class="cast-name">' + esc(name) + '</span></button></li>';
+    };
+    let tiles = '';
+    for (let copy = 0; copy < CAST_COPIES; copy++) tiles += names.map((name, i) => tile(name, i, copy)).join('');
+    track.innerHTML = tiles;
+    const holder = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    holder.setAttribute('class', 'cast-sprite');
+    holder.setAttribute('aria-hidden', 'true');
+    holder.innerHTML = '<defs>' + sprite + '</defs>';
+    strip.parentNode.insertBefore(holder, strip);
     refreshCast();
-    // A tap guesses, before a first card; a tap that ended a drag does not.
-    let justDragged = false;
+
+    const copyWidth = () => track.scrollWidth / CAST_COPIES;
+    // Back into the middle copy, a whole copy's width away: the same tiles.
+    const recentre = () => {
+      const width = copyWidth();
+      if (!width) return;
+      const middle = Math.floor(CAST_COPIES / 2) * width;
+      while (strip.scrollLeft < middle - width * 0.5) strip.scrollLeft += width;
+      while (strip.scrollLeft > middle + width * 0.5) strip.scrollLeft -= width;
+    };
+    const start = () => { strip.scrollLeft = Math.floor(CAST_COPIES / 2) * copyWidth(); position = strip.scrollLeft; };
+
+    // Its own slow turn, until the reader takes over. Kept as a fraction and
+    // written whole, since scrollLeft only takes whole pixels.
+    const PACE = 40; // px a second
+    const reduced = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    let auto = !reduced();
+    let position = 0;
+    let onScreen = false;
+    let frame = 0;
+    let last = 0;
+    const step = now => {
+      frame = 0;
+      if (!auto) return;
+      const dt = Math.min(0.05, (now - (last || now)) / 1000);
+      last = now;
+      position += PACE * dt;
+      const width = copyWidth();
+      if (width && position > (Math.floor(CAST_COPIES / 2) + 0.5) * width) position -= width;
+      strip.scrollLeft = Math.round(position);
+      if (onScreen && !document.hidden) frame = requestAnimationFrame(step);
+    };
+    const run = () => { if (auto && !frame && onScreen && !document.hidden) { last = 0; frame = requestAnimationFrame(step); } };
+    const takeOver = () => {
+      if (!auto) return;
+      auto = false;
+      if (frame) cancelAnimationFrame(frame);
+      frame = 0;
+    };
+    for (const type of ['pointerdown', 'touchstart', 'wheel', 'keydown', 'focusin']) {
+      strip.addEventListener(type, takeOver, { passive: true });
+    }
+
+    // Once the reader's own scrolling comes to rest, and they are not still
+    // touching it, it is put back into the middle copy.
+    let touching = false;
+    let restTimer = 0;
+    strip.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+    const lift = () => { touching = false; clearTimeout(restTimer); restTimer = setTimeout(rest, 180); };
+    strip.addEventListener('touchend', lift, { passive: true });
+    strip.addEventListener('touchcancel', lift, { passive: true });
+    const rest = () => { if (!touching && !auto && !dragging) recentre(); };
+    strip.addEventListener('scroll', () => {
+      if (auto) return;
+      clearTimeout(restTimer);
+      restTimer = setTimeout(rest, 180);
+    }, { passive: true });
+
+    // The arrows: a few tiles at a time, either way.
+    for (const arrow of document.querySelectorAll('.cast-arrow')) {
+      arrow.addEventListener('click', () => {
+        takeOver();
+        const by = Math.max(160, strip.clientWidth * 0.7) * (arrow.dataset.dir === 'left' ? -1 : 1);
+        strip.scrollBy({ left: by, behavior: reduced() ? 'auto' : 'smooth' });
+      });
+    }
+
+    // A mouse drags it (a finger and a trackpad scroll it natively). A drag
+    // is not a tap: the click that ends one picks nothing.
+    let dragging = false;
+    let dragX = 0;
+    let dragged = false;
+    strip.addEventListener('pointerdown', event => {
+      if (event.pointerType !== 'mouse' || event.button !== 0) return;
+      dragging = true;
+      dragged = false;
+      dragX = event.clientX;
+    });
+    window.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const dx = event.clientX - dragX;
+      if (!dragged && Math.abs(dx) < 4) return;
+      dragged = true;
+      strip.scrollLeft -= dx;
+      dragX = event.clientX;
+    });
+    window.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      dragging = false;
+      clearTimeout(restTimer);
+      restTimer = setTimeout(rest, 180);
+    });
+
+    // A tap guesses, before a first card.
     track.addEventListener('click', event => {
-      const tile = event.target.closest('.cast-tile');
-      if (!tile || justDragged || !canGuess()) return;
-      const name = tile.dataset.name;
+      const picked = event.target.closest('.cast-tile');
+      if (!picked) return;
+      if (dragged) { dragged = false; return; }
+      if (!canGuess()) return;
+      const name = picked.dataset.name;
       const current = guessMade();
       if (current && current.name === name) store.remove(KEYS.guess);
       else store.write(KEYS.guess, { name, at: Date.now() });
       refreshCast();
     });
-    const reduced = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const PACE = 45; // px a second, on its own
-    // A flick: up to MAX_SPIN px a second, gliding back to PACE over about
-    // GLIDE seconds. A hard one runs through the whole cast more than once.
-    const MAX_SPIN = 9000;
-    const GLIDE = 1.8;
-    let direction = 1;
-    let velocity = PACE;
-    let held = false;
-    let dragging = false;
-    let lastX = 0;
-    let lastT = 0;
-    let travelled = 0;
-    let samples = [];
-    let onScreen = true;
-    let frame = 0;
-    let last = 0;
-    // Where the track is, in px, kept as a fraction: the slow pace moves it
-    // under a pixel a frame, which scrollLeft would round away. Drawn as a
-    // transform (set through the DOM, which the page's CSP allows).
-    let offset = 0;
-    const draw = () => { track.style.transform = 'translate3d(' + (-offset).toFixed(2) + 'px, 0, 0)'; };
-    // Keeps the loop seamless: a tile wholly off one end goes to the other.
-    const wrap = () => {
-      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-      for (let guard = 0; guard < 80; guard++) {
-        const first = track.firstElementChild;
-        const lastTile = track.lastElementChild;
-        if (!first || !lastTile) break;
-        const width = first.getBoundingClientRect().width + gap;
-        if (offset > width) {
-          track.appendChild(first);
-          offset -= width;
-        } else if (offset < 0) {
-          track.insertBefore(lastTile, first);
-          offset += lastTile.getBoundingClientRect().width + gap;
-        } else break;
-      }
-      draw();
-    };
-    const step = now => {
-      frame = 0;
-      const dt = Math.min(0.05, (now - (last || now)) / 1000);
-      last = now;
-      if (!held && !dragging) {
-        const target = reduced() ? 0 : PACE * direction;
-        velocity += (target - velocity) * (1 - Math.exp(-dt / GLIDE));
-        if (Math.abs(velocity) > 0.5) {
-          offset += velocity * dt;
-          wrap();
-        }
-      }
-      if (onScreen && !document.hidden) frame = requestAnimationFrame(step);
-    };
-    const run = () => { if (!frame && onScreen && !document.hidden) { last = 0; frame = requestAnimationFrame(step); } };
-    // Focusing a tile from the keyboard makes the browser scroll the strip
-    // itself; that is folded into the offset so the two never disagree.
-    strip.addEventListener('scroll', () => {
-      if (!strip.scrollLeft) return;
-      offset += strip.scrollLeft;
-      strip.scrollLeft = 0;
-      wrap();
-    });
-    strip.addEventListener('pointerdown', event => {
-      held = true;
-      dragging = false;
-      justDragged = false;
-      lastX = event.clientX;
-      lastT = performance.now();
-      travelled = 0;
-      samples = [[lastT, 0]];
-      velocity = 0;
-    });
-    strip.addEventListener('pointermove', event => {
-      if (!held) return;
-      const dx = event.clientX - lastX;
-      if (!dragging && Math.abs(dx) < 4) return;
-      // Captured only once it is a drag, so a plain tap still lands on its tile.
-      if (!dragging && strip.setPointerCapture) { try { strip.setPointerCapture(event.pointerId); } catch (error) { /* gone */ } }
-      dragging = true;
-      justDragged = true;
-      const now = performance.now();
-      offset -= dx;
-      wrap();
-      // Px a second, against the pointer: dragging left spins it forwards.
-      // Where the track has been over the last tenth of a second, so a flick
-      // is measured by its whole stroke rather than its last few pixels,
-      // which are often a finger slowing to lift.
-      travelled -= dx;
-      samples.push([now, travelled]);
-      while (samples.length > 2 && now - samples[0][0] > 100) samples.shift();
-      lastX = event.clientX;
-      lastT = now;
-    });
-    const release = () => {
-      if (!held) return;
-      held = false;
-      if (dragging) {
-        const now = performance.now();
-        const first = samples[0];
-        const lastSample = samples[samples.length - 1];
-        // A finger held still before lifting is a drag, not a flick.
-        const fresh = first && lastSample && now - lastSample[0] < 80 && lastSample[0] > first[0];
-        velocity = fresh ? (lastSample[1] - first[1]) / ((lastSample[0] - first[0]) / 1000) : 0;
-        // A flick spins harder than the finger moved, so a strong one carries.
-        velocity = Math.max(-MAX_SPIN, Math.min(MAX_SPIN, velocity * 2));
-        if (Math.abs(velocity) > 40) direction = Math.sign(velocity);
-      } else velocity = 0;
-      dragging = false;
-      run();
-    };
-    strip.addEventListener('pointerup', release);
-    strip.addEventListener('pointercancel', release);
-    strip.addEventListener('lostpointercapture', release);
-    strip.addEventListener('wheel', event => {
-      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      velocity += event.deltaX * 30;
-      velocity = Math.max(-MAX_SPIN, Math.min(MAX_SPIN, velocity));
-      direction = Math.sign(velocity) || direction;
-      run();
-    }, { passive: false });
-    strip.addEventListener('keydown', event => {
-      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-      event.preventDefault();
-      direction = event.key === 'ArrowRight' ? 1 : -1;
-      velocity = 1500 * direction;
-      run();
-    });
+
+    requestAnimationFrame(start);
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(entries => {
         onScreen = entries.some(entry => entry.isIntersecting);
         run();
       }).observe(strip);
+    } else {
+      onScreen = true;
+      run();
     }
     document.addEventListener('visibilitychange', run);
-    run();
   }
 
   // ---------- guess your character ----------
@@ -7834,7 +7822,10 @@
     }
     return pdfLoading;
   }
-  (window.requestIdleCallback || (fn => setTimeout(fn, 1500)))(() => loadPdf().catch(() => {}));
+  // With a deadline: a page that is never idle (the cast strip turns every
+  // frame) would otherwise put it off indefinitely.
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => loadPdf().catch(() => {}), { timeout: 3000 });
+  else setTimeout(() => loadPdf().catch(() => {}), 1500);
 
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();

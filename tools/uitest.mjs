@@ -3817,46 +3817,80 @@ try {
       ', dialogs ' + [...document.querySelectorAll('dialog[open]')].map(d => d.id).join() +
       ', view ' + (document.querySelector('.view:not([hidden])') || {}).id));
 
-  // Meet the cast: every character a card can name, round tiles in their
-  // scenes, slim, spinning on its own; a hold stops it and a drag spins it.
+  // The cast: every character a card can name, round tiles in their scenes,
+  // slim, turning on its own until touched, then scrolled by hand, with arrows
+  // either side and no end.
   {
-    const cast = await page.evaluate(() => ({
-      head: document.querySelector('.cast-head').textContent.trim(),
-      tiles: [...document.querySelectorAll('.cast-tile')].map(t => [t.querySelector('.cast-name').textContent,
-        Boolean(t.querySelector('.cast-art svg'))]),
-      height: document.querySelector('#cast').getBoundingClientRect().height,
-      expected: Object.keys(window.PsycheCopy.CHARACTER_SYNCS),
-    }));
-    check('the cast shows all 29 characters, each in its scene with its name, under the guessing game\'s title',
-      cast.head === 'Guess which character you are and win a Psyche Report for free' && cast.tiles.length === 29 &&
-        cast.tiles.every(([, art]) => art) && JSON.stringify(cast.tiles.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
-      JSON.stringify(cast).slice(0, 300));
-    check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
-    const at = () => page.evaluate(() => {
-      const track = document.querySelector('#cast-track');
-      return track.firstElementChild.textContent + ':' + track.style.transform;
+    const cast = await page.evaluate(() => {
+      const tiles = [...document.querySelectorAll('.cast-tile')];
+      const shown = tiles.filter(t => !t.closest('[aria-hidden="true"]'));
+      return {
+        head: document.querySelector('.cast-head').textContent.trim(),
+        all: tiles.length,
+        shown: shown.map(t => [t.querySelector('.cast-name').textContent, Boolean(t.querySelector('.cast-art svg use'))]),
+        height: document.querySelector('#cast').getBoundingClientRect().height,
+        expected: Object.keys(window.PsycheCopy.CHARACTER_SYNCS),
+        drawings: document.querySelectorAll('.cast-sprite g[id^="cast-art-"]').length,
+        arrows: document.querySelectorAll('.cast-arrow').length,
+      };
     });
+    check('the cast shows all 29 characters, each in its scene with its name, under the guessing game\'s title',
+      cast.head === 'Guess which character you are and win a Psyche Report for free' && cast.shown.length === 29 &&
+        cast.shown.every(([, art]) => art) && JSON.stringify(cast.shown.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
+      JSON.stringify(cast).slice(0, 300));
+    check('drawn five times over for its loop, from 29 drawings, the copies hidden from screen readers',
+      cast.all === 145 && cast.drawings === 29, JSON.stringify({ all: cast.all, drawings: cast.drawings }));
+    check('with an arrow either side', cast.arrows === 2);
+    check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
+    const at = () => page.evaluate(() => document.querySelector('#cast-strip').scrollLeft);
     const before = await at();
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(800);
     const after = await at();
-    check('it spins on its own', before !== after, before + ' → ' + after);
+    check('it turns on its own until touched', after > before, before + ' → ' + after);
+    // A press anywhere on it hands it over: it stops for good.
     const box = await page.locator('#cast-strip').boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
-    await page.waitForTimeout(150);
-    const held = await at();
-    await page.waitForTimeout(600);
-    check('holding it stops it', held === (await at()), held);
-    // A drag to the left moves it forwards, with the pointer.
-    const read = () => page.evaluate(() => {
-      const t = /translate3d\((-?[\d.]+)px/.exec(document.querySelector('#cast-track').style.transform);
-      return t ? Number(t[1]) : 0;
-    });
-    const x0 = await read();
-    await page.mouse.move(box.x + box.width / 2 - 40, box.y + box.height / 2, { steps: 4 });
-    const x1 = await read();
     await page.mouse.up();
-    check('and dragging moves it with the pointer', x1 < x0 - 20 || x1 > x0 + 20, x0 + ' → ' + x1);
+    const handed = await at();
+    await page.waitForTimeout(800);
+    check('once touched it stops turning by itself', Math.abs((await at()) - handed) < 1, handed + ' → ' + (await at()));
+    // A mouse drag scrolls it.
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 - 120, box.y + box.height / 2, { steps: 6 });
+    await page.mouse.up();
+    const dragged = await at();
+    check('dragging it with a mouse scrolls it', dragged > handed + 60, handed + ' → ' + dragged);
+    // The arrows move it a few tiles each way. From the middle copy, so the
+    // step back into it after coming to rest does not enter the reading.
+    await page.evaluate(() => { const strip = document.querySelector('#cast-strip'); strip.scrollLeft = 2 * strip.scrollWidth / 5; });
+    await page.waitForTimeout(400);
+    const middle = await at();
+    await page.click('.cast-arrow-right');
+    await page.waitForTimeout(900);
+    const right = await at();
+    await page.click('.cast-arrow-left');
+    await page.waitForTimeout(900);
+    const left = await at();
+    check('the right arrow moves it on and the left one back', right > middle + 100 && left < right - 100,
+      [middle, right, left].join(' → '));
+    // No end: pushed most of the way to one, it is put back into the middle
+    // copy once it comes to rest, showing the same tiles.
+    const ends = await page.evaluate(async () => {
+      const strip = document.querySelector('#cast-strip');
+      strip.scrollLeft = strip.scrollWidth - strip.clientWidth - 5;
+      const first = () => [...document.querySelectorAll('.cast-tile')].find(t => t.getBoundingClientRect().left > strip.getBoundingClientRect().left + 30);
+      const showing = first() && first().dataset.name;
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const copy = strip.scrollWidth / 5;
+      return { showing, after: first() && first().dataset.name, inMiddle: strip.scrollLeft > copy * 1.4 && strip.scrollLeft < copy * 2.6 };
+    });
+    check('it has no end: near one it is put back into the middle, showing the same characters',
+      ends.inMiddle && ends.showing === ends.after, JSON.stringify(ends));
+    // The press above landed on a tile and so made a guess; taken back, so
+    // the rest of this page's checks see a reader who has not guessed.
+    await page.evaluate(() => localStorage.removeItem('psycheai_guess'));
   }
   await page.evaluate(() => window.scrollTo(0, 0));
 
@@ -12588,7 +12622,7 @@ try {
           others: document.querySelectorAll('.cast-tile.is-picked').length,
         }));
         check('tapping a character makes it the guess, marked, and says it is locked in when the card is made',
-          picked.pressed === 'true' && picked.others === 1 && /^Your guess: Hulk\. Make your free Psyche Card to find out\./.test(picked.note),
+          picked.pressed === 'true' && picked.others === 5 && /^Your guess: Hulk\. Make your free Psyche Card to find out\./.test(picked.note),
           JSON.stringify(picked));
         await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
         await chooseDepth(gp);

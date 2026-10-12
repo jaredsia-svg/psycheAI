@@ -1946,20 +1946,22 @@ The 29 characters are the app's strongest draw, and the front page showed one at
 cropped to a round tile with its name under it, spinning slowly past (about 45px a second,
 `mountCast` in `docs/app.js`), and a line under it saying what to do or what was picked.
 
-*The strip.*
-- **Drag or flick** it either way and it spins that way, as hard as the flick: its speed is the
-  last tenth of a second of the stroke (not the last few pixels, which are a finger slowing to lift),
-  doubled, up to 9,000px a second, gliding back to its own pace over about two seconds. A strong flick
-  runs through the whole cast; a gentle one moves a dozen. It loops in both directions however fast it
-  goes. A finger held still before lifting is a drag, not a flick. **Hold** it still and it stops
-  until let go. A horizontal trackpad swipe pushes it too, and
-  the arrow keys. A vertical scroll that starts on it still scrolls the page (`touch-action: pan-y`).
-- It loops forever with only 29 drawings on the page: the track moves by a fractional transform
-  (scrollLeft rounds to whole pixels, and the slow pace moves it under one a frame), a tile that leaves
-  one end is moved to the other, and a scroll the browser makes to show a focused tile is folded into
-  the same offset.
-- It runs only while on screen and the tab is visible, and not at all for a reader who asked for less
-  motion, who can still drag it.
+*The strip.* It turns slowly on its own (40px a second) until the reader touches it, anywhere: a
+tap, a swipe, a press, a wheel or a key stops that for good on the visit, and from then on it is
+theirs.
+- **It scrolls natively**, the browser's own sideways swipe with its own momentum. An earlier version
+  moved it by hand with pointer events and a transform, and on a phone that felt dead and hard to
+  swipe; the browser's own scrolling is as sensitive as any list on the phone. A mouse can drag it
+  (`pointerType === 'mouse'`), and a drag is not taken as a tap.
+- **Small arrows** either side move it about two-thirds of its width each way, and say it can be swiped.
+- **It has no ends.** The cast is drawn five times over and started in the middle copy. Each scene is
+  drawn once, in a hidden sprite (`.cast-sprite`), and placed by `<use>`, so the page carries 29
+  drawings, not 145, and only the middle copy is read out or tabbed to. When the strip comes to rest
+  (no scrolling for 180ms, no finger down) more than half a copy from the middle, it is moved back a
+  whole copy's width: the same tiles, so nothing visibly moves, and never mid-swipe, which would stop
+  a phone's momentum dead.
+- It turns only while on screen and the tab is visible, and not at all for a reader who asked for less
+  motion.
 - **Get my data** (and an invite's *Get my free Psyche Card*) lands on it, with the request steps
   straight below. The tiles are buttons, not links: the front page gains no links to the new pages.
 

@@ -952,8 +952,8 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    lands flush at viewport top, which is underneath the sticky nav — so the
    reader arrives at the instructions with the heading hidden. */
 .help-card { scroll-margin-top: 4.5rem; }
-/* Meet the cast: one slim row of round tiles above the request steps, moved
-   by app.js (mountCast) rather than scrolled, so it has no scrollbar. */
+/* The cast: one slim row of round tiles above the request steps, scrolled
+   sideways (app.js, mountCast), with no scrollbar and an arrow either side. */
 .cast { margin: 1.2rem 0 .9rem; scroll-margin-top: 4.5rem; }
 .cast-head { margin: 0 0 .3rem; font-size: .95rem; font-weight: 700; color: var(--ink); }
 .cast-note { margin: .2rem 0 0; font-size: .82rem; line-height: 1.35; color: var(--ink-soft); min-height: 1.1em; }
@@ -973,14 +973,27 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent);
 }
 .alert.alert-soft { background: var(--accent-soft); color: var(--ink); border-color: var(--line); }
+.cast-view { position: relative; }
 .cast-strip {
-  overflow: hidden; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
-.cast-strip:active { cursor: grabbing; }
-.cast-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
-.cast-track { list-style: none; margin: 0; padding: 7px 0 2px; display: flex; align-items: flex-start; column-gap: 14px; width: max-content; will-change: transform; }
+.cast-strip::-webkit-scrollbar { display: none; }
+.cast-track { list-style: none; margin: 0; padding: 7px 0 2px; display: flex; align-items: flex-start; column-gap: 14px; width: max-content; }
+.cast-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+/* Small, over the faded ends, level with the tiles' art. */
+.cast-arrow {
+  position: absolute; top: 22px; z-index: 1; width: 30px; height: 30px; border-radius: 999px; padding: 0;
+  display: grid; place-items: center; cursor: pointer; color: var(--accent);
+  border: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent);
+  box-shadow: 0 2px 8px rgba(60, 20, 90, .14);
+}
+.cast-arrow svg { width: 15px; height: 15px; }
+.cast-arrow:hover, .cast-arrow:focus-visible { background: var(--accent-soft); outline: none; }
+.cast-arrow-left { left: -4px; }
+.cast-arrow-right { right: -4px; }
 .cast-art {
   width: 58px; height: 58px; border-radius: 999px; overflow: hidden; display: flex; align-items: center; justify-content: center;
   color: #fff; background: linear-gradient(150deg, var(--accent), var(--accent-2));

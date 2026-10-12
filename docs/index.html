@@ -257,14 +257,18 @@
     <div data-insights></div>
   </div>
 
-  <!-- The cast: all 29 characters a card can name, spinning slowly past.
-       Drag or flick it to spin it faster either way, hold it to stop. Before
+  <!-- The cast: all 29 characters a card can name, turning slowly until
+       touched, then swiped by hand, with arrows either side. Before
        a first card, tap one to guess which you are: a right guess wins a free
        Psyche Report. Get my data lands here, with the request steps straight
        below. Filled by app.js (mountCast). -->
   <section class="cast" id="cast" aria-labelledby="cast-title">
     <p class="cast-head" id="cast-title"></p>
-    <div class="cast-strip" id="cast-strip" role="group"><ul class="cast-track" id="cast-track"></ul></div>
+    <div class="cast-view">
+      <div class="cast-strip" id="cast-strip" role="group"><ul class="cast-track" id="cast-track"></ul></div>
+      <button type="button" class="cast-arrow cast-arrow-left" data-dir="left" aria-label="Scroll the cast left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button type="button" class="cast-arrow cast-arrow-right" data-dir="right" aria-label="Scroll the cast right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
     <p class="cast-note" id="cast-note" aria-live="polite"></p>
   </section>
 
