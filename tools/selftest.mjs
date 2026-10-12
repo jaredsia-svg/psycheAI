@@ -5340,6 +5340,32 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
     check('the extra it took is recorded and never sent',
       filled.__fill && filled.__fill.ownMessages === capped.directMessages.ownMessageSample.length &&
         !('__fill' in Digest.forModel(filled)));
+    check('a reader whose messages fill the pool keeps the 30-character floor',
+      !('messageFloor' in filled.__fill), JSON.stringify(filled.__fill));
+    // A reader with few messages: the room is there, so the floor steps down
+    // and their short messages come in. Fillers never do.
+    {
+      const shorts = ['see you at 8pm', 'what time is it', 'running late!', 'call me later', 'brb, food', 'on my way', 'miss this', 'so tired'];
+      const light = {
+        ...heavySignals(),
+        messages: { total: 600, threads: 3, groupThreads: 0, sent: 300, received: 300, avgSentLength: 20,
+          ownTexts: Array.from({ length: 240 }, (_, i) => ({
+            text: i % 6 === 0 ? 'A longer message about the weekend plans and who is coming, number ' + i
+              : i % 6 === 5 ? 'ok' : shorts[i % shorts.length] + ' ' + (i % 13),
+            ts: 1600000000 + i * 7200, thread: i % 3 })) },
+      };
+      const lightCapped = Digest.build(light, { includeMessages: true, fill: false });
+      const lightFilled = buildFilled(light, { includeMessages: true, fill: true });
+      const sample = lightFilled.directMessages.ownMessageSample.join(' | ');
+      check('with few messages and room to spare, short messages come in as the floor steps down to 15 and 6',
+        lightFilled.directMessages.ownMessageSample.length > lightCapped.directMessages.ownMessageSample.length &&
+          /brb, food|on my way|so tired/.test(sample) && lightFilled.__fill && lightFilled.__fill.messageFloor === 6 &&
+          JSON.stringify(Digest.SHORT_MESSAGE_FLOORS) === '[15,6]',
+        JSON.stringify({ capped: lightCapped.directMessages.ownMessageSample.length, filled: lightFilled.directMessages.ownMessageSample.length,
+          fill: lightFilled.__fill }));
+      check('fillers such as "ok" still never come in, and the pool line holds',
+        !/(^|\| |\] )ok( \||$)/.test(sample) && Digest.poolSizes(lightFilled).conversations.total <= 46000, sample.slice(0, 300));
+    }
     check('every "shown" still matches its list after filling',
       filled.coverage.sampling.ownMessages.shown === filled.directMessages.ownMessageSample.length &&
         filled.coverage.sampling.captions.shown === filled.samples.captions.length);

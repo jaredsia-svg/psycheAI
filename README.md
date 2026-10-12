@@ -6153,6 +6153,18 @@ A full review traced several places where the digest said less than the site pro
 - **A Sync's two cards** are `Card.shape`d on the server, so each field is held to its length and a
   free call cannot be filled to the model's context.
 
+### Short messages, when there is room
+
+A message under 30 characters was dropped unless it opened a conversation, apologised, showed a
+feeling or asked a question, which is right for a heavy account but left a light one's
+conversations pool half empty while "see you at 8" and "running late!" were thrown away. Once the
+message count step is done (`buildFilled`), if the pool still has at least 1,500 characters free,
+the floor steps down to 15 and then to 6 (`SHORT_MESSAGE_FLOORS`) and the DMs are read again.
+Fillers ("ok", "lol", "haha") never come in at any floor, and short messages that repeat are kept
+once. An account whose messages already fill the pool keeps the 30-character floor. The extra
+messages count as fill (`__fill.ownMessages`), so they are the first to go when WhatsApp or another
+chat needs the room.
+
 ### Closing gaps a review found: the app
 
 - **A shared Sync can no longer be forged.** The key that locks a reader's inbox is in their link, and

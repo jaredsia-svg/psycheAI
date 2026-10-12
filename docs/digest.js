@@ -850,6 +850,8 @@
   // its pool — then takes its room back from the Instagram DMs, never the
   // other way round (trimToPools).
   const FILL_MIN_ROOM = 1500;
+  // The message floors tried, in turn, while the conversations pool has room.
+  const SHORT_MESSAGE_FLOORS = [15, 6];
   function buildFilled(signals, opts) {
     const base = build(signals, Object.assign({}, opts, { fill: false }));
     const caps = poolCapsFor(base);
@@ -870,6 +872,18 @@
       raised.messages = Math.min(LIMITS.maxListItems, raised.messages + Math.floor(msgRoom / per(msgs)));
       current = rebuild(raised);
     }
+    // A reader with few messages leaves the pool's room unused, while their
+    // short ones ("see you at 8", "what time?") were dropped by the 30
+    // character floor. With room still left, the floor steps down, to 15 and
+    // then 6, so they come in; fillers ("ok", "lol") never do (MESSAGE_FILLER).
+    for (const floor of SHORT_MESSAGE_FLOORS) {
+      const sample = (current.directMessages && current.directMessages.ownMessageSample) || [];
+      const left = caps.conversations - poolSizes(current).conversations.total;
+      if (left < FILL_MIN_ROOM || sample.length >= raised.messages || floor >= (raised.messageChars || LIMITS.messageChars)) break;
+      raised.messageChars = floor;
+      raised.messages = Math.min(LIMITS.maxListItems, Math.max(raised.messages, sample.length + Math.floor(left / 40)));
+      current = rebuild(raised);
+    }
     // Then captions, into Instagram's public share and whatever room the
     // conversations left (see "spare room flows one way").
     // The extra lists counted at their guaranteed 3,000 only: the reader's own
@@ -883,7 +897,8 @@
       current = rebuild(raised);
     }
     if (current === base) return base;
-    current.__fill = { ownMessages: msgs.length, captions: capsList.length };
+    current.__fill = Object.assign({ ownMessages: msgs.length, captions: capsList.length },
+      raised.messageChars ? { messageFloor: raised.messageChars } : null);
     return current;
   }
 
@@ -3014,7 +3029,7 @@
   root.PsycheDigest = {
     build, addSupplements, forModel, renderEvidence, evidenceChars, DEEP_DIGEST_CHARS, DEEP_LIMITS, withDepth, DEEP_COST_CAP, DEEP_FREE_COST_CAP,
     EXTRA_CAPS, EXTRAS_GUARANTEED, extrasSize,
-    POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes,
+    POOL_CAPS, DEEP_POOL_CAPS, POOLS, INSTAGRAM_PUBLIC_CHARS, FACEBOOK_MIN_CHARS, FIXED_CHARS, budgetFor, poolSizes, SHORT_MESSAGE_FLOORS,
     SOLO_POOL_CAPS, SOLO_FIXED_CHARS, SOLO_DIGEST_CHARS, SOLO_FREE_COST_CAP, SOLO_COST_CAP, carriesSecondSource, poolCapsFor,
     sourceSizes, sampleConversations, EVIDENCE_LISTS,
     LIMITS, DIGEST_CHARS, FREE_COST_CAP, FREE_FIXED_INPUT_TOKENS, FREE_MAX_OUTPUT_TOKENS, charBudget, COST_CAP, FIXED_INPUT_TOKENS, MAX_OUTPUT_TOKENS, PRICING, PRICED_MODEL,
