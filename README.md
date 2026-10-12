@@ -1214,7 +1214,7 @@ nothing renders any more.
 **"See sample report" closes the premium tier**, at its bottom right (`.insight-premium-foot`), so
 "can I see one" comes straight after what the full report holds; the card's heading stands alone. It
 sat beside "What insights will I get?" for a while before that. It is also `.btn-outline` now instead of the filled purple
-`.btn` — a page with `#hero-sample` and this button both filled and both saying the same three words
+`.btn` — a page with the hero's old sample button and this one both filled and both saying the same three words
 was two loud calls to the same next step; secondary styling here has one obviously primary "Analyse my
 data" in the hero and lets this be the quieter of the two ways to see the report.
 
@@ -1889,10 +1889,15 @@ so it is built in rather than left to a plugin.
   tidies the address back to `/`. The server serves `/name` as `name.html` when that page exists,
   and nothing else; anything else is still a 404. The MBTI guide carries the trademark notice.
 - **`robots.txt` and `sitemap.xml`** list every page and keep `/api/` out.
-- **Request the export first.** The export takes Instagram hours to send, so the hero's second button
-  is **Request data**, which goes to the steps card, titled *Request your Instagram data first* with
-  *It takes 30 seconds. Instagram then emails you the file, usually within a few hours.* under it.
-  The illustrated guide it opens is titled *Request your Instagram data*.
+- **Two hero buttons, one for each kind of visitor.** **Get my data** (filled) is for someone who still
+  has to ask Instagram, which takes hours, so it comes first. It goes to the steps card, titled
+  *Request your Instagram data first* with *It takes 30 seconds. Instagram then emails you the file,
+  usually within a few hours.* under it; for a reader with a card it opens the illustrated guide,
+  titled *Request your Instagram data*. **Load my data** (outline) is for someone who has the file:
+  it opens the Add your data popout straight away. Before, they scrolled about five screens to Start
+  here. For a reader with a card it goes to their card and opens the same add-data popout their
+  report uses. The hero used to lead with *See sample report*. The sample is still one tap away, at
+  the foot of the gallery's premium tier.
 - **The logo goes to the main page.** For a reader with a card, `data-nav="main"` shows the main page
   (not `home`, which is also where Back lands and so has to stay their card). There the steps card
   and the Start here card are hidden (`#view-welcome.is-returning`): they already have data. Request
@@ -1931,6 +1936,58 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 `npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
+
+### Three button styles, and one set of line icons
+
+**Buttons.** There were five unrelated looks: the filled gradient, a hairline *ghost*, a tinted *soft*,
+the 2px *outline* and the underlined text link. Now there are three: **filled** (`.btn`) for the one
+main action on a screen, **outline** (`.btn-outline`) for every secondary one, Back and Cancel
+included, and **plain** (`.link-btn`) for a quiet text action. `.btn-ghost` and `.btn-soft` are gone
+from the markup and the stylesheet; a destructive outline (Delete everything) is `.btn-outline.danger`.
+
+**Icons.** Emoji used as icons (📷 💬 🔍 📘 for the sources, 🧲 🌱 💼 🧿 for section heads, 🔥 🎁 for
+the roast, 📖 🔒 📄 🛡️ 📈 on the page's cards) looked generic next to the line icons used elsewhere.
+They are now one line-icon set, `LINE_ICONS` in `docs/copy.js`: 32 icons on a 24px grid with a round
+1.8 stroke in `currentColor`, keyed by the emoji each replaces, so code that names an icon still names it
+the same way (`Copy.lineIcon(glyph)`, or `Copy.iconHtml(glyph)`, which falls back to the emoji). Section
+heads, the source rows, the offer's lists, the roast and the hero video's mute icon draw them, and the
+page's static icons in `index.html` are swapped on load. The Psyche Card keeps its emoji labels, because
+they are part of the shared image, and so do the card guide and the love languages, which mirror what
+the card prints. Line icons are told apart by their drawing, so the UI suite's "no two sections share a
+glyph" check compares their markup.
+
+### One name: the Psyche Report
+
+The paid report went by five names: *full report*, *premium report*, *full premium report*, *paid
+report* and, sometimes, *Psyche Report*. Everything a reader sees now says **Psyche Report**: the app's
+copy, the front page, the guides and policies, the PDF, the Stripe line on a bank statement (*PsycheAI –
+Psyche Report*) and the server's error messages. *My Report* stays as the menu label for where it
+lives, and the small *Premium* badge still marks the sections only it has. Code names (`premium*`,
+`fullReport*`), comments and the model's prompts keep their old words, since no reader sees them.
+
+### Most in sync with: the cast on every card
+
+The card's last row used to be one box, *Receives care as* beside *Shows care as*. With a catalogue
+character it is now two boxes: **Shows care as** (up to two), then **Most in sync with**, the three
+characters the reader's character fits most easily with, each drawn in its own scene cropped to a
+round tile (`Copy.characterArt(name, cls, true)`). Every card now shows four of the 29 characters
+rather than one. A friend who sees their own character on someone's card has a reason to make theirs
+and sync. Receiving stays in the report, the card guide and the PDF report. A card with no catalogue
+character (a long link without its face, or a retired character) keeps the old receiving-and-giving
+panel, since there is nobody to list.
+
+The partners are one table, `CHARACTER_SYNCS` in `docs/copy.js`. The card, the PDF card and the
+character pages (*Most in sync with …*) all read it, so they cannot disagree. It is balanced:
+- every character is named exactly three times (29 × 3 = 87 picks, so three each is the only
+  even share), so no character goes unseen;
+- every woman is paired with at least one man and at least one woman, and every man with at
+  least one woman and at least one man (Baymax, WALL-E, Remy, Pikachu and Totoro are neither, and
+  exempt);
+- the pairings go both ways, except one loop of three (Pikachu → Totoro → Shrek → Pikachu), because 87
+  is odd, so the 29 characters cannot all pair off.
+
+`npm test` checks all of these. The card guide explains the box, and the UI suite checks that the
+reader's own card, QR code included, still fits its 1080×1920 canvas.
 
 ### Pages for search, generated
 
@@ -5838,6 +5895,17 @@ puts it away for the visit, and the *Add your data* popout says it again before 
 WhatsApp and Telegram open links in a system browser sheet whose user agent looks like Safari's or
 Chrome's, so nothing can detect those.
 
+**A friend's invite starts with leaving.** A friend who taps someone's link inside Instagram or
+Messenger used to hit a dead end. The invite was saved in that app's browser, they requested their
+data, and hours later they opened Instagram's email in Mail or Safari, a different browser, where the
+invite did not exist. They made a card, and the sync with whoever invited them never happened. Now,
+in an app's own browser, the invite's first box is **Step 1: open this page in Safari** (or Chrome),
+saying why: *Ava's invite is saved only in Instagram's browser, and your Instagram data takes a few
+hours to arrive.* It comes with **Copy link**, which copies the address they arrived on, key and all,
+and on Android **Open in Chrome**, both built from that address because the app has already taken
+the link out of the address bar. The general note under the navigation stands down while this shows,
+so the same thing is not said twice.
+
 ### "Your data", never "the export"
 
 A report said "the export reveals you are a …", which reads as a file talking about the reader. Everything
@@ -6308,7 +6376,8 @@ way people say it:
 - It carries no attachment style any more: not in `CARD_SCHEMA`, not in the payload (`docs/card.js`
   drops an old link's `a`), and not in *Beyond your card*.
 - Its first column is *With connections* (it was *With friends*: the column covers family and colleagues as much as friends, and still says nothing about romance).
-- Love languages are labelled *Receives care as / Shows care as*.
+- Love languages are labelled *Receives care as / Shows care as*. With a catalogue character the card now
+  shows only *Shows care as*, beside *Most in sync with* (see "Most in sync with: the cast on every card").
 - The relationship strengths and watch-outs are asked for as being with friends.
 - The full premium report keeps *How you attach* and *Who suits you*.
 

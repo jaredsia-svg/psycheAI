@@ -4,7 +4,8 @@
 // description. Every line about a person is neutral or kind, as the card is.
 //
 //   types   the MBTI types this temperament most often reads as (two)
-//   syncs   characters it tends to sync easily with (two), for the Sync line
+//   The three characters each is most in sync with are docs/copy.js's
+//   CHARACTER_SYNCS, shared with the card.
 export const CHARACTERS = [
   {
     name: 'Mulan', franchise: 'Disney',
@@ -16,7 +17,7 @@ export const CHARACTERS = [
       'You rarely announce a goal; you just turn up with it done.'],
     strengths: ['Reliable when it counts', 'Calm in a crisis', 'Protective of the people close to them'],
     growth: ['Letting others help before they are running on empty', 'Saying out loud what they need'],
-    types: ['ISFJ', 'ISTJ'], syncs: ['Baymax', 'Po'],
+    types: ['ISFJ', 'ISTJ'],
   },
   {
     name: 'Elsa', franchise: 'Disney',
@@ -28,7 +29,7 @@ export const CHARACTERS = [
       'You set your own standards and quietly hold to them.'],
     strengths: ['Thoughtful and considered', 'Deeply loyal once trust is built', 'Independent and self-directed'],
     growth: ['Sharing worries before they build up', 'Letting people in a little sooner'],
-    types: ['INFJ', 'INTJ'], syncs: ['Rapunzel', 'Moana'],
+    types: ['INFJ', 'INTJ'],
   },
   {
     name: 'Moana', franchise: 'Disney',
@@ -40,7 +41,7 @@ export const CHARACTERS = [
       'Once you decide on something, you see it through.'],
     strengths: ['Brave and self-starting', 'Inspires the people around them', 'Connects purpose with people'],
     growth: ['Pacing themselves on the long journey', 'Pausing to celebrate progress'],
-    types: ['ENFJ', 'ENFP'], syncs: ['Hiccup', 'Elsa'],
+    types: ['ENFJ', 'ENFP'],
   },
   {
     name: 'Simba', franchise: 'Disney',
@@ -52,7 +53,7 @@ export const CHARACTERS = [
       'You care a lot about the people who count on you.'],
     strengths: ['Warm and generous', 'A natural presence in a group', 'Rises to the moment'],
     growth: ['Facing the hard conversation earlier', 'Trusting their own judgement'],
-    types: ['ESFP', 'ENFJ'], syncs: ['Po', 'Judy Hopps'],
+    types: ['ESFP', 'ENFJ'],
   },
   {
     name: 'Rapunzel', franchise: 'Disney',
@@ -64,7 +65,7 @@ export const CHARACTERS = [
       'Your captions are bright, curious and a little playful.'],
     strengths: ['Creative and resourceful', 'Kind and encouraging', 'Brings energy to new things'],
     growth: ['Finishing as many projects as they start', 'Trusting their own instincts over others’ doubts'],
-    types: ['ENFP', 'ISFP'], syncs: ['Elsa', 'Remy'],
+    types: ['ENFP', 'ISFP'],
   },
   {
     name: 'Judy Hopps', franchise: 'Disney',
@@ -76,7 +77,7 @@ export const CHARACTERS = [
       'You reply fast and like to get things moving.'],
     strengths: ['Determined and hard-working', 'Principled', 'Optimistic about what effort can do'],
     growth: ['Leaving room for other people’s pace', 'Resting without guilt'],
-    types: ['ESTJ', 'ENFJ'], syncs: ['Nick Wilde', 'Simba'],
+    types: ['ESTJ', 'ENFJ'],
   },
   {
     name: 'Nick Wilde', franchise: 'Disney',
@@ -88,7 +89,7 @@ export const CHARACTERS = [
       'Your closest chats are where you are most sincere.'],
     strengths: ['Socially quick and easy company', 'Adaptable', 'Loyal to their closest people'],
     growth: ['Letting the serious side show sooner', 'Following through on the plans they make'],
-    types: ['ENTP', 'ESTP'], syncs: ['Judy Hopps', 'Shrek'],
+    types: ['ENTP', 'ESTP'],
   },
   {
     name: 'Baymax', franchise: 'Disney',
@@ -100,7 +101,7 @@ export const CHARACTERS = [
       'You are the friend people go to when things are hard.'],
     strengths: ['Caring and attentive', 'Patient and calm', 'Steady and dependable'],
     growth: ['Looking after themselves as well as they look after others', 'Asking for care in return'],
-    types: ['ISFJ', 'INFJ'], syncs: ['Mulan', 'Totoro'],
+    types: ['ISFJ', 'INFJ'],
   },
   {
     name: 'Woody', franchise: 'Pixar',
@@ -112,7 +113,7 @@ export const CHARACTERS = [
       'You keep friendships going for years.'],
     strengths: ['Loyal and committed', 'Organised and dependable', 'Holds a group together'],
     growth: ['Sharing the spotlight', 'Trusting others to step up'],
-    types: ['ESFJ', 'ESTJ'], syncs: ['Buzz Lightyear', 'Joy'],
+    types: ['ESFJ', 'ESTJ'],
   },
   {
     name: 'Buzz Lightyear', franchise: 'Pixar',
@@ -124,7 +125,7 @@ export const CHARACTERS = [
       'You bounce back quickly from setbacks.'],
     strengths: ['Confident and driven', 'Brave', 'Rallies a team'],
     growth: ['Laughing at the plan when it goes wrong', 'Listening before leading'],
-    types: ['ESTJ', 'ENTJ'], syncs: ['Woody', 'Wonder Woman'],
+    types: ['ESTJ', 'ENTJ'],
   },
   {
     name: 'WALL-E', franchise: 'Pixar',
@@ -136,7 +137,7 @@ export const CHARACTERS = [
       'Your interests run deep rather than wide.'],
     strengths: ['Patient and gentle', 'Deeply loyal', 'Sees beauty in small things'],
     growth: ['Speaking up for what they want', 'Trying new things a little sooner'],
-    types: ['ISFP', 'INFP'], syncs: ['Totoro', 'Remy'],
+    types: ['ISFP', 'INFP'],
   },
   {
     name: 'Remy', franchise: 'Pixar',
@@ -148,7 +149,7 @@ export const CHARACTERS = [
       'You light up when someone shares your interest.'],
     strengths: ['Skilled and dedicated', 'High standards', 'Creative'],
     growth: ['Showing their work before it is perfect', 'Accepting help'],
-    types: ['ISFP', 'INTP'], syncs: ['Rapunzel', 'WALL-E'],
+    types: ['ISFP', 'INTP'],
   },
   {
     name: 'Joy', franchise: 'Pixar',
@@ -160,7 +161,7 @@ export const CHARACTERS = [
       'You organise the fun.'],
     strengths: ['Optimistic and energising', 'Encouraging', 'Brings people together'],
     growth: ['Letting harder feelings have space', 'Slowing down sometimes'],
-    types: ['ESFJ', 'ENFP'], syncs: ['Woody', 'Pikachu'],
+    types: ['ESFJ', 'ENFP'],
   },
   {
     name: 'Iron Man', franchise: 'Marvel',
@@ -172,7 +173,7 @@ export const CHARACTERS = [
       'You like to fix and improve things.'],
     strengths: ['Inventive and resourceful', 'Confident', 'Thinks fast'],
     growth: ['Listening to the team', 'Showing the care beneath the confidence'],
-    types: ['ENTP', 'ENTJ'], syncs: ['Captain America', 'Spider-Man'],
+    types: ['ENTP', 'ENTJ'],
   },
   {
     name: 'Captain America', franchise: 'Marvel',
@@ -184,7 +185,7 @@ export const CHARACTERS = [
       'You step in when someone is treated unfairly.'],
     strengths: ['Principled and trustworthy', 'Steady leader', 'Loyal'],
     growth: ['Allowing flexibility', 'Taking time for themselves'],
-    types: ['ISTJ', 'ESTJ'], syncs: ['Iron Man', 'Wonder Woman'],
+    types: ['ISTJ', 'ESTJ'],
   },
   {
     name: 'Spider-Man', franchise: 'Marvel',
@@ -196,7 +197,7 @@ export const CHARACTERS = [
       'You have a lot going on and post about some of it.'],
     strengths: ['Kind and helpful', 'Funny', 'Resilient'],
     growth: ['Saying no sometimes', 'Asking for help'],
-    types: ['ENFP', 'ISFP'], syncs: ['Iron Man', 'Hermione Granger'],
+    types: ['ENFP', 'ISFP'],
   },
   {
     name: 'Hulk', franchise: 'Marvel',
@@ -208,7 +209,7 @@ export const CHARACTERS = [
       'You need time out to reset.'],
     strengths: ['Thoughtful and intelligent', 'Gentle', 'Powerful when committed'],
     growth: ['Naming feelings before they build', 'Taking regular breaks'],
-    types: ['INTP', 'INFP'], syncs: ['Batman', 'Hiccup'],
+    types: ['INTP', 'INFP'],
   },
   {
     name: 'Wonder Woman', franchise: 'DC',
@@ -220,7 +221,7 @@ export const CHARACTERS = [
       'You set high standards and help others meet them.'],
     strengths: ['Brave and principled', 'Compassionate', 'A natural leader'],
     growth: ['Accepting help', 'Making room for rest'],
-    types: ['ENFJ', 'ENTJ'], syncs: ['Captain America', 'Buzz Lightyear'],
+    types: ['ENFJ', 'ENTJ'],
   },
   {
     name: 'Batman', franchise: 'DC',
@@ -232,7 +233,7 @@ export const CHARACTERS = [
       'You show care through actions, not words.'],
     strengths: ['Strategic and prepared', 'Disciplined', 'Fiercely loyal'],
     growth: ['Letting people in', 'Trusting others with some of the load'],
-    types: ['INTJ', 'ISTJ'], syncs: ['Hermione Granger', 'Hulk'],
+    types: ['INTJ', 'ISTJ'],
   },
   {
     name: 'Pikachu', franchise: 'Pokémon',
@@ -244,7 +245,7 @@ export const CHARACTERS = [
       'You bring energy to any plan.'],
     strengths: ['Loyal', 'Playful and energising', 'Brave for their friends'],
     growth: ['Resting before the battery runs flat', 'Speaking up when something is wrong'],
-    types: ['ESFP', 'ENFP'], syncs: ['Joy', 'Sailor Moon'],
+    types: ['ESFP', 'ENFP'],
   },
   {
     name: 'Princess Peach', franchise: 'Nintendo',
@@ -256,7 +257,7 @@ export const CHARACTERS = [
       'You handle a lot calmly.'],
     strengths: ['Warm and gracious', 'Capable', 'Good with people'],
     growth: ['Taking the lead', 'Putting their own plans first sometimes'],
-    types: ['ESFJ', 'ENFJ'], syncs: ['Hello Kitty', 'Sailor Moon'],
+    types: ['ESFJ', 'ENFJ'],
   },
   {
     name: 'Totoro', franchise: 'Studio Ghibli',
@@ -268,7 +269,7 @@ export const CHARACTERS = [
       'Friends describe you as easy to be with.'],
     strengths: ['Calm and grounding', 'Kind', 'Present when it matters'],
     growth: ['Speaking up in busy groups', 'Sharing plans and wishes'],
-    types: ['ISFP', 'INFP'], syncs: ['Baymax', 'WALL-E'],
+    types: ['ISFP', 'INFP'],
   },
   {
     name: 'Shrek', franchise: 'DreamWorks',
@@ -280,7 +281,7 @@ export const CHARACTERS = [
       'You are fiercely loyal once someone is in.'],
     strengths: ['Honest', 'Funny', 'Loyal and protective'],
     growth: ['Letting people in a little sooner', 'Softening first impressions'],
-    types: ['ISTP', 'ISTJ'], syncs: ['Nick Wilde', 'Kuromi'],
+    types: ['ISTP', 'ISTJ'],
   },
   {
     name: 'Po', franchise: 'DreamWorks',
@@ -292,7 +293,7 @@ export const CHARACTERS = [
       'You keep trying until it works.'],
     strengths: ['Enthusiastic', 'Kind', 'Persistent'],
     growth: ['Believing in their own ability', 'Focusing on one thing at a time'],
-    types: ['ENFP', 'ESFP'], syncs: ['Mulan', 'Simba'],
+    types: ['ENFP', 'ESFP'],
   },
   {
     name: 'Hiccup', franchise: 'DreamWorks',
@@ -304,7 +305,7 @@ export const CHARACTERS = [
       'You keep a close bond with one or two people.'],
     strengths: ['Inventive', 'Open-minded', 'Bridges differences'],
     growth: ['Trusting their own voice in a group', 'Sharing ideas earlier'],
-    types: ['INTP', 'INFP'], syncs: ['Moana', 'Hulk'],
+    types: ['INTP', 'INFP'],
   },
   {
     name: 'Hermione Granger', franchise: 'Harry Potter',
@@ -316,7 +317,7 @@ export const CHARACTERS = [
       'You speak up when something is unfair.'],
     strengths: ['Knowledgeable', 'Organised', 'Loyal and principled'],
     growth: ['Accepting good enough sometimes', 'Relaxing the plan'],
-    types: ['ISTJ', 'INTJ'], syncs: ['Spider-Man', 'Batman'],
+    types: ['ISTJ', 'INTJ'],
   },
   {
     name: 'Sailor Moon', franchise: 'Sailor Moon',
@@ -328,7 +329,7 @@ export const CHARACTERS = [
       'You show up when friends need you.'],
     strengths: ['Loving', 'Brave when it counts', 'Brings people together'],
     growth: ['Building steady routines', 'Believing in themselves'],
-    types: ['ENFP', 'ESFP'], syncs: ['Pikachu', 'Princess Peach'],
+    types: ['ENFP', 'ESFP'],
   },
   {
     name: 'Hello Kitty', franchise: 'Sanrio',
@@ -340,7 +341,7 @@ export const CHARACTERS = [
       'You keep in touch with lots of people.'],
     strengths: ['Kind', 'Friendly', 'Thoughtful'],
     growth: ['Saying what they really think', 'Putting themselves first sometimes'],
-    types: ['ESFJ', 'ISFJ'], syncs: ['Kuromi', 'Princess Peach'],
+    types: ['ESFJ', 'ISFJ'],
   },
   {
     name: 'Kuromi', franchise: 'Sanrio',
@@ -352,6 +353,6 @@ export const CHARACTERS = [
       'You show care in your own way.'],
     strengths: ['Independent', 'Playful', 'Loyal'],
     growth: ['Showing the soft side more often', 'Letting people help'],
-    types: ['ISTP', 'ENTP'], syncs: ['Hello Kitty', 'Shrek'],
+    types: ['ISTP', 'ENTP'],
   },
 ];

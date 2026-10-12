@@ -7407,6 +7407,28 @@ check('the schema requires evidence on where they align and differ',
   }).map(([name]) => name);
   check('every scene\'s references resolve to its own ids, fade in from the left, and close what it opens',
     broken.length === 0, broken.join(', '));
+  // The three characters each one is most in sync with (docs/copy.js), on
+  // the card and the character pages: balanced, so none is left out.
+  {
+    const copySandbox = {};
+    runInThisContext('(function (window) {' + readFileSync(join(root, 'docs', 'copy.js'), 'utf8') + '})')(copySandbox);
+    const table = copySandbox.PsycheCopy.CHARACTER_SYNCS;
+    const side = Object.fromEntries(prompts.CHARACTER_CATALOGUE.map(([name, , s]) => [name, s]));
+    const names = Object.keys(side);
+    const named = {};
+    Object.values(table).flat().forEach(n => { named[n] = (named[n] || 0) + 1; });
+    check('every catalogue character has three sync partners, all catalogue characters, never itself',
+      names.every(n => (table[n] || []).length === 3 && new Set(table[n]).size === 3 && !table[n].includes(n) &&
+        table[n].every(o => side[o])) && Object.keys(table).length === names.length);
+    check('and every character is named exactly three times as someone\'s partner',
+      names.every(n => named[n] === 3), JSON.stringify(named));
+    check('every woman is paired with at least one man, and every man with at least one woman',
+      names.filter(n => side[n] !== 'n').every(n => table[n].some(o => side[o] === (side[n] === 'w' ? 'm' : 'w'))));
+    check('and at least one of their own, the five drawn as neither exempt',
+      names.filter(n => side[n] !== 'n').every(n => table[n].some(o => side[o] === side[n])));
+    check('the pairings go both ways, but for one loop of three',
+      Object.entries(table).flatMap(([a, list]) => list.filter(b => !table[b].includes(a))).length === 3);
+  }
   check('no scene draws a studio\'s character outright: the art file names no franchise',
     !/Disney|Pixar|Marvel|Nintendo|DreamWorks|Ghibli|Pok[eé]mon|Sanrio|Harry Potter|Hogwarts|Toei/i.test(JSON.stringify(art)));
 }

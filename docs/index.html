@@ -41,7 +41,7 @@
       "description": "A personality analysis read from your own Instagram, Google and Facebook data, with no questionnaire: MBTI, Big Five, love languages, values, interests and the character you are most like, plus Psyche Sync: how in sync you are with your friends.",
       "offers": [
         { "@type": "Offer", "name": "Psyche Card", "price": "0", "priceCurrency": "USD" },
-        { "@type": "Offer", "name": "Full premium report", "price": "5", "priceCurrency": "USD" }
+        { "@type": "Offer", "name": "Psyche Report", "price": "5", "priceCurrency": "USD" }
       ]
     },
     {
@@ -93,7 +93,7 @@
   <p id="inapp-warn-text"></p>
   <div class="inapp-warn-actions">
     <a class="btn btn-sm" id="inapp-open-chrome" hidden></a>
-    <button class="btn btn-sm btn-ghost" id="inapp-copy" type="button"></button>
+    <button class="btn btn-sm btn-outline" id="inapp-copy" type="button"></button>
     <button class="inapp-warn-close" id="inapp-close" type="button" aria-label="Close">✕</button>
   </div>
 </div>
@@ -132,7 +132,7 @@
          Psyche Card and why to make one. Above the hero's two columns,
          across both. Filled in by refreshInvite() in app.js; it stays until
          a profile spends it or it expires. -->
-    <!-- A free full report someone gifted this reader (?gift=): app.js,
+    <!-- A free Psyche Report someone gifted this reader (?gift=): app.js,
          refreshGiftBanner. -->
     <div class="gift-banner no-print" id="gift-banner" hidden>
       <span class="gift-banner-icon" aria-hidden="true">🎁</span>
@@ -152,6 +152,18 @@
       <div class="invite-body">
         <p class="invite-text" id="invite-text"></p>
         <p class="invite-also" id="invite-also" hidden></p>
+        <!-- In an app's own browser, step one: the invite is saved only in this
+             browser, and the export arrives hours later, by email, opened in
+             a different one. Without this the friend makes a card in Safari
+             and the sync never happens. -->
+        <div class="invite-inapp" id="invite-inapp" hidden>
+          <p class="invite-inapp-title" id="invite-inapp-title"></p>
+          <p class="invite-inapp-text" id="invite-inapp-text"></p>
+          <div class="btn-row">
+            <a class="btn" id="invite-inapp-chrome" hidden></a>
+            <button class="btn btn-outline" id="invite-inapp-copy" type="button"></button>
+          </div>
+        </div>
         <div class="btn-row">
           <button class="btn btn-lg" id="invite-guide" type="button">Get my free Psyche Card</button>
         </div>
@@ -164,11 +176,14 @@
       <h1>The personality analysis<br><span class="accent">you didn't know you needed</span></h1>
       <p class="lede">MBTI, Big Five, love languages, career strengths, and other insights &ndash;
         all derived from your Instagram and digital footprint with no questionnaire required.</p>
+      <!-- One button for each kind of visitor: one who still has to ask
+           Instagram for their data (it takes hours to arrive, so that is the
+           first useful thing to do), and one who has the file already, who
+           used to scroll about five screens to find where to load it. The
+           sample report is one tap away in the gallery below. -->
       <div class="btn-row hero-actions">
-        <button class="btn" id="hero-sample" type="button">See sample report</button>
-        <!-- The export takes Instagram hours to send, so the first thing a new
-             reader can usefully do is ask for it: this goes to the steps. -->
-        <button class="btn btn-outline" id="hero-start" type="button">Request data</button>
+        <button class="btn" id="hero-start" type="button">Get my data</button>
+        <button class="btn btn-outline" id="hero-load" type="button">Load my data</button>
       </div>
     </div>
 
@@ -232,7 +247,7 @@
 
     <!-- Filled by app.js's mountInsights from the report's own section names:
          the free summary card and what is on it, with a real card drawn from
-         the sample beside it, then the full premium report by its four parts
+         the sample beside it, then the Psyche Report by its four parts
          and its price. -->
     <div data-insights></div>
   </div>
@@ -411,7 +426,7 @@
        than a raster so it stays crisp at any scale and readable to a screen
        reader. `screen-only`: the PDF already opens with the same material. -->
   <!-- The Psyche Card, and beside it on a free report what it was read from.
-       On a full report at a wide screen the card moves into the left column
+       On a Psyche Report at a wide screen the card moves into the left column
        above the part nav instead (styles.css, .profile-paid). -->
   <div class="profile-top" id="profile-top">
   <section class="card section-card screen-only" id="psyche-card-section" hidden>
@@ -499,8 +514,8 @@
         they see how in sync you are. Free.</p>
       <div class="btn-row">
         <button class="btn" id="share-link" type="button"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4 18-7z"/></svg><span class="cta-label">Send my link</span></button>
-        <button class="btn btn-ghost" id="copy-link" type="button">Copy link</button>
-        <button class="btn btn-ghost" id="compat-paste-toggle" type="button" aria-expanded="false" aria-controls="compat-paste">Got their link? →</button>
+        <button class="btn btn-outline" id="copy-link" type="button">Copy link</button>
+        <button class="btn btn-outline" id="compat-paste-toggle" type="button" aria-expanded="false" aria-controls="compat-paste">Got their link? →</button>
       </div>
       <p class="fineprint link-status" id="share-link-status" role="status"></p>
       <!-- Their link, pasted right here rather than on another page. -->
@@ -528,7 +543,7 @@
     <p id="pending-work-text"></p>
     <div class="btn-row">
       <button class="btn" id="pending-work-go" type="button"></button>
-      <button class="btn btn-ghost" id="pending-work-dismiss" type="button">Not now</button>
+      <button class="btn btn-outline" id="pending-work-dismiss" type="button">Not now</button>
     </div>
   </div>
 
@@ -536,7 +551,7 @@
        card's "Sources used" subsection — see sourcesUsedHtml() in app.js —
        rather than here, so the button sits beside the sources a re-run would
        actually use. -->
-  <!-- An icon and a label each. Beside a full report on a wide screen the row
+  <!-- An icon and a label each. Beside a Psyche Report on a wide screen the row
        moves under the part nav in the left column, as quiet icons whose label
        shows as a tooltip (styles.css, .profile-paid .cta-row). -->
   <!-- The page's foot: its actions, then who wrote it and when. One wrapper so
@@ -546,9 +561,9 @@
   <div class="cta-row no-print">
     <!-- My Report only: back to the card on My Psyche. -->
     <button class="btn" id="report-back" type="button" data-nav="profile" data-tip="Back to my Psyche Card" hidden><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 6l-6 6 6 6"/></svg><span class="cta-label">Back to card</span></button>
-    <button class="btn" id="export-pdf-bottom" data-tip="Download full report"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download full report</span></button>
+    <button class="btn" id="export-pdf-bottom" data-tip="Download Psyche Report"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg><span class="cta-label">Download Psyche Report</span></button>
     <button class="btn" id="test-compat-open" type="button" data-tip="Psyche Sync"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="9" cy="12" r="5.5"/><circle cx="15" cy="12" r="5.5"/></svg><span class="cta-label">Psyche Sync</span></button>
-    <button class="btn btn-ghost danger" id="delete-profile" data-tip="Delete everything"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg><span class="cta-label">Delete everything</span></button>
+    <button class="btn btn-outline danger" id="delete-profile" data-tip="Delete everything"><svg class="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg><span class="cta-label">Delete everything</span></button>
   </div>
 
   <div class="provenance" id="analysed-by"></div>
@@ -566,7 +581,7 @@
   <p id="delete-dialog-text"></p>
   <p class="fineprint" id="delete-dialog-note"></p>
   <div class="delete-dialog-actions">
-    <button class="btn btn-ghost" id="delete-cancel" type="button">Cancel</button>
+    <button class="btn btn-outline" id="delete-cancel" type="button">Cancel</button>
     <button class="btn delete-confirm" id="delete-confirm" type="button">Delete everything</button>
   </div>
 </dialog>
@@ -602,7 +617,7 @@
       <h2 class="link-title">My link</h2></div>
       <p class="muted">Send it to a connection so they can sync with you, and ask for theirs back.</p>
       <div class="btn-row">
-        <button class="btn btn-soft" id="copy-link-scan" type="button">Copy link</button>
+        <button class="btn btn-outline" id="copy-link-scan" type="button">Copy link</button>
       </div>
       <p class="fineprint link-status" id="share-link-scan-status" role="status"></p>
     </div>
@@ -614,7 +629,7 @@
       <label class="field">Their link
         <input type="text" id="paste-input" placeholder="https://psycheai.io/#p=…">
       </label>
-      <button class="btn btn-soft" id="paste-go">Sync</button>
+      <button class="btn btn-outline" id="paste-go">Sync</button>
     </div>
     <!-- What the link carries, across the whole box under both halves. -->
     <div id="link-contents" class="scan-link-contents"></div>
@@ -649,7 +664,7 @@
     <p class="fineprint link-status" id="share-link-report-status" role="status"></p>
   </div>
 
-  <!-- Three actions as the paid report's card tools: an icon above a short
+  <!-- Three actions as the Psyche Report's card tools: an icon above a short
        label. The image is for a story, so it carries the address rather than a
        link; Back goes to My Syncs, where this report is listed. -->
   <div class="compat-actions no-print">
@@ -676,7 +691,7 @@
     <h3>What is PsycheAI?</h3>
     <p>A reading of yourself already sitting in your Instagram (and Google) data. Your free summary
       card names the character you are most like, your signature patterns, what motivates you, your
-      MBTI, Big Five, values, interests and love languages. The full premium report explains every part
+      MBTI, Big Five, values, interests and love languages. The Psyche Report explains every part
       of it with evidence from your data. It is not a test
       and not a diagnosis.</p>
 
@@ -726,10 +741,10 @@
       only in your link. PsycheAI never has the key, so no one at PsycheAI can read them.</p>
 
     <h3>Does PsycheAI count anything?</h3>
-    <p>Only totals for each day: how many Psyche Cards, full reports and Psyche Syncs were
+    <p>Only totals for each day: how many Psyche Cards, Psyche Reports and Psyche Syncs were
       made, how many cards followed a friend’s link, how many promo codes were used, and – for an
       address a creator shares (its <code>?via=</code> part, which this device keeps for 14 days) – how
-      many people arrived on it and how far they got (data loaded, card made, full report). Other
+      many people arrived on it and how far they got (data loaded, card made, Psyche Report). Other
       visits are not counted. Nothing in those totals identifies you, your device or anything you
       uploaded.</p>
 
@@ -753,7 +768,7 @@
 
     <h3>What does it cost?</h3>
     <p>Your first Psyche Card is free, and so is every Psyche Sync. Running your Psyche
-      Card again is <span data-price="analysis">US$2</span>. The full premium report – every section explained, plus your wellbeing,
+      Card again is <span data-price="analysis">US$2</span>. The Psyche Report – every section explained, plus your wellbeing,
       attachment style, ideal partner, career coaching and development plan – is a single
       <span data-price="unlock">US$5</span>. You see the price before you pay.</p>
 
@@ -766,7 +781,7 @@
       PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days.</p>
     <p>Your link carries only your card’s short summary, never your data, messages or report, and
       PsycheAI cannot read it. Every 3 people who make a card from your link, or 2 who buy the full
-      report, earn you a free full report to use or gift.</p>
+      report, earn you a free Psyche Report to use or gift.</p>
 
     <h3>How do I contact PsycheAI?</h3>
     <p>Email <a href="mailto:admin@psycheai.io">admin@psycheai.io</a> – for questions, payment
@@ -816,17 +831,17 @@
     <p class="premium-progress-time" id="premium-progress-time"></p>
   </div>
   <div class="premium-promo">
-    <!-- A free full report earned by inviting friends (lib/referral.js), offered
+    <!-- A free Psyche Report earned by inviting friends (lib/referral.js), offered
          on the unlock's sheet when one is ready. -->
-    <button class="btn btn-ghost premium-referral" id="premium-referral" type="button" hidden></button>
+    <button class="btn btn-outline premium-referral" id="premium-referral" type="button" hidden></button>
     <label class="premium-promo-label" id="premium-promo-label" for="premium-promo-input"></label>
     <div class="premium-promo-row">
       <input type="text" id="premium-promo-input" class="premium-promo-input" autocomplete="off" spellcheck="false" autocapitalize="characters" pattern="[A-Z0-9\-]*" maxlength="32">
-      <button class="btn btn-ghost" id="premium-promo-apply" type="button"></button>
+      <button class="btn btn-outline" id="premium-promo-apply" type="button"></button>
     </div>
   </div>
   <div class="btn-row">
-    <button class="btn btn-ghost" id="premium-cancel" type="button"></button>
+    <button class="btn btn-outline" id="premium-cancel" type="button"></button>
   </div>
   <!-- What paying agrees to, and the refund window, where the money is taken. -->
   <p class="fineprint premium-legal">By paying you agree to the <a href="/terms" target="_blank" rel="noopener">terms</a>.
@@ -1120,7 +1135,7 @@
        about what happens next, since skipping and continuing resolve the same
        way and the data is kept either way. -->
   <div class="btn-row supplement-actions">
-    <button class="btn btn-ghost" id="supplement-back" type="button">Back</button>
+    <button class="btn btn-outline" id="supplement-back" type="button">Back</button>
     <span class="btn-spacer"></span>
     <button class="btn" id="supplement-skip" type="button">Skip this step</button>
     <button class="btn" id="supplement-continue" type="button" hidden>Continue</button>
@@ -1209,7 +1224,7 @@
       <span class="ds-confirm-icon" aria-hidden="true">ℹ️</span>
       <p id="datasources-confirm-text"></p>
       <div class="ds-confirm-actions">
-        <button class="btn btn-ghost" id="datasources-confirm-cancel" type="button">Cancel</button>
+        <button class="btn btn-outline" id="datasources-confirm-cancel" type="button">Cancel</button>
         <button class="btn" id="datasources-confirm-go" type="button">Choose file</button>
       </div>
     </div>
@@ -1251,7 +1266,7 @@
   </details>
 
   <div class="btn-row supplement-actions">
-    <button class="btn btn-ghost" id="datasources-back" type="button">Back</button>
+    <button class="btn btn-outline" id="datasources-back" type="button">Back</button>
     <span class="btn-spacer"></span>
     <button class="btn" id="datasources-continue" type="button">Continue</button>
   </div>
@@ -1287,7 +1302,7 @@
     <a href="/terms" target="_blank" rel="noopener">terms</a> and
     <a href="/privacy" target="_blank" rel="noopener">privacy policy</a>.</p>
   <div class="btn-row">
-    <button class="btn btn-ghost" id="review-cancel" type="button">Back</button>
+    <button class="btn btn-outline" id="review-cancel" type="button">Back</button>
     <button class="btn" id="review-send" type="button">Send this</button>
   </div>
 </dialog>
@@ -1299,7 +1314,7 @@
      reader is standing: this opens over the waiting screen with the reason and
      the one button that fixes it. #upload-retry on the welcome page stays as
      the way back for somebody who closes this. -->
-<!-- Before "Your data for the full report", when the card's confidence is
+<!-- Before "Your data for the Psyche Report", when the card's confidence is
      under 80 (app.js, offerMoreData): more sources make a better report. -->
 <dialog id="more-data-dialog" class="mode-dialog more-data-dialog" aria-labelledby="more-data-title">
   <div class="more-data-icon" aria-hidden="true">📈</div>
@@ -1309,7 +1324,7 @@
     <button class="btn btn-block" id="more-data-continue" type="button"></button>
   </div>
   <div class="btn-row">
-    <button class="btn btn-ghost btn-block" id="more-data-back" type="button"></button>
+    <button class="btn btn-outline btn-block" id="more-data-back" type="button"></button>
   </div>
 </dialog>
 
@@ -1323,7 +1338,7 @@
     <button class="btn btn-block" id="sync-share-yes" type="button"></button>
   </div>
   <div class="btn-row">
-    <button class="btn btn-ghost btn-block" id="sync-share-no" type="button"></button>
+    <button class="btn btn-outline btn-block" id="sync-share-no" type="button"></button>
   </div>
 </dialog>
 
@@ -1334,7 +1349,7 @@
     <button class="btn btn-block" id="analysis-error-retry" type="button">Try again</button>
   </div>
   <div class="btn-row">
-    <button class="btn btn-ghost btn-block" id="analysis-error-close" type="button">Not now</button>
+    <button class="btn btn-outline btn-block" id="analysis-error-close" type="button">Not now</button>
   </div>
   <p class="fineprint">Your data is still loaded – nothing needs uploading again, and a report that
     already finished will come straight back.</p>

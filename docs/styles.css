@@ -698,7 +698,6 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .btn[disabled] { cursor: not-allowed; opacity: .45; filter: grayscale(1); }
 .btn:disabled:hover, .btn[disabled]:hover { filter: grayscale(1); }
 .btn:disabled:active, .btn[disabled]:active { transform: none; }
-.btn-ghost:disabled:hover, .btn-ghost[disabled]:hover { background: transparent; }
 .btn-outline:disabled:hover, .btn-outline[disabled]:hover { background: transparent; }
 /* --accent is a deep purple in the light theme and a pale one in the dark, so
    white holds on one and washes out on the other: measured, filled buttons ran
@@ -723,19 +722,12 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    specificity never enters into it. A .btn-block the app has hidden stays on
    screen without this. */
 .btn-block[hidden] { display: none; }
-.btn-ghost { background: transparent; color: var(--accent); border-color: var(--line); }
-.btn-ghost:hover { background: var(--accent-soft); }
-.btn-ghost.danger { color: var(--danger); }
-
-/* A lighter shade of the filled button: a pale purple tint with purple text,
-   for a secondary action that should not shout (My Syncs' Copy link and
-   Sync). */
-.btn-soft { background: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 22%, transparent); }
-.btn-soft:hover { filter: none; background: color-mix(in srgb, var(--accent) 16%, var(--bg-alt)); }
-@media (prefers-color-scheme: dark) { .btn.btn-soft { color: var(--accent); } }
-
-/* Outlined in the accent rather than the hairline .btn-ghost uses, and at 2px
-   so it holds its own beside a filled button. The padding gives back the pixel
+/* Three button styles, and only three: filled (.btn) for the one main action
+   on a screen, outline (.btn-outline) for every secondary one, Back and Cancel
+   included, and plain (.link-btn) for a quiet text action. There used to be
+   two more, a hairline "ghost" and a tinted "soft", each a near miss of the
+   outline; both are this now.
+   Outlined in the accent, and at 2px so it holds its own beside a filled button. The padding gives back the pixel
    the thicker border takes, so the button occupies the same box as a filled
    one. Its neighbour in the row would otherwise be stretched to match it and
    the whole row would grow — 47px to 49 — for a border nobody asked to be
@@ -745,6 +737,8 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   border: 2px solid var(--accent); padding: calc(.62rem - 1px) calc(1.1rem - 1px);
 }
 .btn-outline:hover { background: var(--accent-soft); }
+.btn-outline.danger { color: var(--danger); border-color: var(--danger); }
+.btn-outline.danger:hover { background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .btn-row { display: flex; flex-wrap: wrap; gap: .6rem; margin: .8rem 0; }
 /* A quiet secondary action reads as a link, not a third button competing
    with Cancel/Send for weight — no box, no background, just the site's
@@ -883,6 +877,14 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   background: var(--accent);
 }
 .invite-banner .invite-text { margin: 0; font-size: .98rem; line-height: 1.55; }
+/* Step one inside an app's own browser: open the page in Safari or Chrome. */
+.invite-inapp {
+  margin: 14px 0 4px; padding: 14px 16px; border-radius: 14px;
+  background: var(--accent-soft); border: 1px solid var(--line);
+}
+.invite-inapp-title { margin: 0 0 6px; font-weight: 700; }
+.invite-inapp-text { margin: 0 0 10px; font-size: .94rem; line-height: 1.5; }
+.invite-inapp .btn-row { margin: 0; }
 .invite-banner .btn-row { margin: 1rem 0 0; }
 .invite-banner .btn-row .btn { width: 100%; }
 
@@ -1543,6 +1545,12 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
   flex: none; display: grid; place-items: center; width: 2.3rem; height: 2.3rem;
   border-radius: 12px; background: var(--accent-soft); font-size: 1.15rem; line-height: 1;
 }
+/* The interface's line icons (Copy.lineIcon), one set in place of emoji:
+   sized to the text they sit in and drawn in the accent. */
+.line-icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
+.card-icon, .mode-icon, .premium-tier-icon, .source-read-icon, .gift-banner-icon, .deid-icon,
+.more-data-icon, .referral-icon, .insight-compat-icon, .partner-summary-icon, .roast-half-icon,
+.bonus-caveat-mark, .beyond-icon, .insight-extras li > span[aria-hidden] { color: var(--accent); }
 .card-sub { margin: .25rem 0 0; color: var(--ink-soft); font-size: .9rem; }
 
 /* Strengths beside weaknesses reads faster than one above the other. */
@@ -3286,6 +3294,22 @@ details.more[open] > summary::after { content: ' ▴'; }
 .pc-sletters li { grid-template-columns: 44px 1fr auto; font-size: 28px; }
 .pc-sletters b { font-size: 40px; line-height: 1; }
 .pc-slove-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+/* The card's last row: how they show care, and the three characters theirs is
+   most in sync with, each in its scene cropped to a round tile. */
+.pc-sbottom > .pc-slove-panel { display: flex; flex-direction: column; }
+.pc-ssyncs { list-style: none; margin: 0; padding: 0; display: flex; justify-content: space-between; gap: 10px; }
+.pc-ssyncs li {
+  flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+}
+.pc-ssyncs b { font-size: 21px; font-weight: 700; line-height: 1.15; }
+.pc-ssync-art {
+  width: 88px; height: 88px; border-radius: 999px; overflow: hidden; flex: none; display: flex;
+  align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2, #c4498e));
+  box-shadow: 0 4px 12px rgba(80, 30, 110, .22);
+}
+.pc-ssync-scene { width: 100%; height: 100%; display: block; }
+.pc-ssync-emblem { width: 56%; height: 56%; }
 .pc-sgrid > .pc-spanel { display: flex; flex-direction: column; }
 /* The report's essence medallion, with an emblem in place of an emoji. */
 .essence-icon.has-emblem { color: var(--accent); }

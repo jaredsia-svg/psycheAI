@@ -531,7 +531,7 @@ async function handleAnalyse(request, response) {
   // the free path, which was harmless while both produced the same report. Now
   // it would hand the paid half of the product to anyone who typed the word.
   if (full && !paying) {
-    sendJson(response, 402, { error: 'The full report is part of the premium unlock.' });
+    sendJson(response, 402, { error: 'The Psyche Report is part of the premium unlock.' });
     return;
   }
 
@@ -541,7 +541,7 @@ async function handleAnalyse(request, response) {
     return;
   }
   if (referralGrant) {
-    const grantProblem = !full ? 'A free report from inviting friends unlocks the full report only.'
+    const grantProblem = !full ? 'A free report from inviting friends unlocks the Psyche Report only.'
       : await referral.grantRefusal(referralGrant, body.digest);
     if (grantProblem) {
       sendJson(response, 402, { error: grantProblem });
@@ -681,7 +681,7 @@ async function handleAnalyse(request, response) {
   if (!holdGrant) {
     holdPayment();
     holdPromo();
-    sendJson(response, 402, { error: 'That free full report has already been used.' });
+    sendJson(response, 402, { error: 'That free Psyche Report has already been used.' });
     return;
   }
   let written = false;
@@ -829,7 +829,7 @@ async function handleCreatePaymentIntent(request, response) {
   // fallback to the cheaper one.
   const body = await readJsonBody(request).catch(() => null);
   const product = body && typeof body.product === 'string' ? body.product : 'unlock';
-  const label = product === 'analysis' ? 'PsycheAI – additional analysis' : 'PsycheAI – full premium report';
+  const label = product === 'analysis' ? 'PsycheAI – additional analysis' : 'PsycheAI – Psyche Report';
   // The currency the page showed its price in, from the shared table; an
   // unknown one is charged in USD.
   const currency = body && typeof body.currency === 'string' ? body.currency : '';

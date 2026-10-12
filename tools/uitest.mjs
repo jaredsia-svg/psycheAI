@@ -803,7 +803,7 @@ try {
       await halfPage.waitForFunction(() => document.querySelector('#premium-dialog') && !document.querySelector('#premium-dialog').open,
         null, { timeout: 60000 }).catch(() => {});
       const paidWith = analyses.find(body => body && body.paymentIntentId);
-      check('and paying that buys the full report on the discounted payment, not on the code',
+      check('and paying that buys the Psyche Report on the discounted payment, not on the code',
         paidWith && paidWith.paymentIntentId === discounted.got.id && !paidWith.promoCode &&
           await halfPage.evaluate(() => !document.querySelector('#premium-dialog').open),
         JSON.stringify(paidWith));
@@ -811,7 +811,7 @@ try {
       // note at its head says so, with the button; saving it once puts it away.
       await halfPage.waitForSelector('#profile-body .report-keep-note', { timeout: 30000 }).catch(() => {});
       const keepText = await halfPage.locator('#profile-body .report-keep-note').innerText().catch(() => '');
-      check('once the full report is in, a note says it is saved only on this device, and to download the PDF',
+      check('once the Psyche Report is in, a note says it is saved only on this device, and to download the PDF',
         /saved only in this browser, on this device/.test(keepText) && /Download the PDF to keep it/.test(keepText) &&
           /Download PDF/.test(keepText), keepText);
       const [saved] = await Promise.all([
@@ -856,6 +856,28 @@ try {
       await igPage.keyboard.press('Escape');
       await igPage.click('#inapp-close');
       check('its ✕ puts the note away', await igPage.locator('#inapp-warn').isHidden());
+      // A friend's link opened here: step one of the invite is to leave, since
+      // the invite is saved only in this browser and the export arrives hours
+      // later, in another one.
+      const igCard = await igPage.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card));
+      const igPayload = await igPage.evaluate(card =>
+        window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Ava Tan' })), igCard);
+      await igPage.evaluate(() => { try { sessionStorage.clear(); } catch (e) { /* none */ } });
+      await igPage.goto('http://localhost:' + PORT + '/#p=' + igPayload, { waitUntil: 'load' });
+      await igPage.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      const step = await igPage.evaluate(() => {
+        const box = document.querySelector('#invite-inapp');
+        const guide = document.querySelector('#invite-guide');
+        return { shown: !box.hidden && box.getBoundingClientRect().height > 0, text: box.innerText,
+          before: Boolean(box.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING),
+          bar: document.querySelector('#inapp-warn').hidden, chrome: document.querySelector('#invite-inapp-chrome').hidden };
+      });
+      check('a friend\'s invite in Instagram\'s browser starts with Step 1: open this page in Safari, before the steps',
+        step.shown && step.before && /Step 1: open this page in Safari/.test(step.text) &&
+          /Ava’s invite is saved only in Instagram’s browser/.test(step.text) && /Copy link/.test(step.text) && step.chrome,
+        JSON.stringify(step));
+      check('and the general note under the navigation stands down while it shows', step.bar, JSON.stringify(step));
+      await igPage.evaluate(() => { try { localStorage.clear(); } catch (e) { /* none */ } });
     } finally {
       await igContext.close();
     }
@@ -864,6 +886,13 @@ try {
       await plain.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await plain.waitForTimeout(300);
       check('an ordinary browser sees no in-app note', await plain.locator('#inapp-warn').isHidden());
+      const plainCard = await plain.evaluate(() => fetch('sample.json').then(r => r.json()).then(s => s.card));
+      const plainPayload = await plain.evaluate(card =>
+        window.PsycheCard.encodeCard(Object.assign({}, card, { name: 'Ava Tan' })), plainCard);
+      await plain.goto('http://localhost:' + PORT + '/#p=' + plainPayload, { waitUntil: 'load' });
+      await plain.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
+      check('nor an invite step to leave it', await plain.locator('#invite-inapp').isHidden());
+      await plain.evaluate(() => { try { localStorage.clear(); } catch (e) { /* none */ } });
     } finally {
       await plain.close();
     }
@@ -1067,7 +1096,7 @@ try {
         faq: [...document.querySelectorAll('[data-price]')].map(node => node.dataset.price + '=' + node.textContent.trim()),
         dollars: /US\$\d/.test(document.body.innerText),
       }));
-      check('a reader in Singapore is shown the premium report at S$7',
+      check('a reader in Singapore is shown the Psyche Report at S$7',
         shown.tiers.length > 0 && shown.tiers.every(text => /^S\$7\b/.test(text)), shown.tiers.join(' | '));
       check('and the FAQ quotes the same local prices',
         shown.faq.includes('unlock=S$7') && shown.faq.includes('analysis=S$3'), shown.faq.join(' | '));
@@ -2163,13 +2192,21 @@ try {
       // the hero's second button says so, and the steps card is titled for it.
       check('a new reader sees the guide links at the foot of the main page',
         await guidePage.locator('.footer-guides').isVisible());
-      check('the hero\'s second button is "Request data", and there is no separate "New here?" line',
-        (await guidePage.locator('#hero-start').innerText()).trim() === 'Request data' &&
+      check('the hero\'s buttons are "Get my data" and "Load my data", and there is no separate "New here?" line',
+        (await guidePage.locator('#hero-start').innerText()).trim() === 'Get my data' &&
+          (await guidePage.locator('#hero-load').innerText()).trim() === 'Load my data' &&
           (await guidePage.locator('.hero-request, #hero-request').count()) === 0);
       check('the steps card is titled "Request your Instagram data first" and says it takes 30 seconds',
         (await guidePage.locator('.help-card h2').innerText()).trim() === 'Request your Instagram data first' &&
           /It takes 30 seconds/.test(await guidePage.locator('.help-card .help-lede').innerText()) &&
           !/How do I get my Instagram data/.test(await guidePage.locator('#view-welcome').innerText()));
+      // Load my data: the Add your data popout, without scrolling to Start here.
+      await guidePage.click('#hero-load');
+      await guidePage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
+      check('"Load my data" opens the Add your data popout straight from the hero',
+        await guidePage.evaluate(() => document.querySelector('#datasources-dialog').open));
+      await guidePage.keyboard.press('Escape');
+      await guidePage.waitForTimeout(300);
       await guidePage.goto('http://localhost:' + PORT + '/#sample', { waitUntil: 'load' });
       await guidePage.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
       check('/#sample opens the sample report straight away, and tidies the address',
@@ -2845,7 +2882,7 @@ try {
   // One rule for all eleven dialogs rather than a class each remembers to
   // toggle — which is what makes the twelfth free. Checked against the sample
   // dialog too, since it is opened by entirely different code.
-  await page.click('#hero-sample');
+  await page.click('#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   await page.waitForTimeout(200);
   check('the lock covers every dialog, not just the one it was written for',
@@ -3354,7 +3391,7 @@ try {
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
     };
   });
-  check('the premium tier is the full report, by its four numbered parts',
+  check('the premium tier is the Psyche Report, by its four numbered parts',
     premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04',
     JSON.stringify(premiumTier));
   check('and How you connect & work carries a Conflict style pill, after Attachment style',
@@ -3416,11 +3453,10 @@ try {
         btn.textContent.trim() === window.PsycheCopy.STRUCTURED.insights.sampleButton &&
         btn.closest('.insight-premium-foot') === tier.lastElementChild;
     }));
-  // Filled purple would repeat the hero's own `#hero-sample`, which says the
-  // same three words in the same place on the same page — two loud calls to
-  // one action. Checked as computed style, not the class list, so a rule
+  // Filled purple would make it a second loud call next to the hero's filled
+  // button. Checked as computed style, not the class list, so a rule
   // change that quietly refilled the button would still be caught.
-  check('the sample button is outlined, not filled like the hero\'s own sample button',
+  check('the sample button is outlined, not filled like the hero\'s main button',
     await page.evaluate(() => {
       const s = getComputedStyle(document.querySelector('#insight-sample'));
       return /rgba?\(0, ?0, ?0, ?0\)|transparent/.test(s.backgroundColor) &&
@@ -3436,11 +3472,12 @@ try {
       const last = [...document.querySelectorAll('.insight-premium .insight-extras li')].pop().getBoundingClientRect();
       return { sameLine: Math.abs((button.top + button.bottom) / 2 - (last.top + last.bottom) / 2) < 12,
         text: document.querySelector('#insight-sample').textContent.trim(),
-        extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()) };
+        extras: [...document.querySelectorAll('.insight-premium .insight-extras li')].map(li => li.textContent.trim()),
+        icons: document.querySelectorAll('.insight-premium .insight-extras li svg.line-icon').length };
     });
     check('on a laptop "See sample" shares the last line of what comes with the report',
       row.sameLine && row.text === 'See sample' &&
-        row.extras.join('|') === '📄A PDF to keep|🔍Evidence behind every finding', JSON.stringify(row));
+        row.extras.join('|') === 'A PDF to keep|Evidence behind every finding' && row.icons === 2, JSON.stringify(row));
   }
   for (const [label, width] of [['a laptop', 1100], ['a phone', 390]]) {
     await page.setViewportSize({ width, height: 900 });
@@ -3622,7 +3659,7 @@ try {
         return Math.round(((hi + 0.05) / (lo + 0.05)) * 100) / 100;
       };
       const root = getComputedStyle(document.documentElement);
-      const text = parse(getComputedStyle(document.querySelector('#hero-sample')).color);
+      const text = parse(getComputedStyle(document.querySelector('#hero-start')).color);
       return {
         start: ratio(text, parse(root.getPropertyValue('--accent'))),
         end: ratio(text, parse(root.getPropertyValue('--accent-2'))),
@@ -3666,7 +3703,7 @@ try {
     await page.setViewportSize({ width, height: 800 });
     heroRowAtWidths[width] = await page.evaluate(() => {
       const start = document.querySelector('#hero-start');
-      const sample = document.querySelector('#hero-sample');
+      const sample = document.querySelector('#hero-load');
       const a = start.getBoundingClientRect();
       const b = sample.getBoundingClientRect();
       if (Math.abs(a.top - b.top) > 2) return 'stacked';
@@ -3682,33 +3719,33 @@ try {
   check('the two hero buttons share one row at every phone width',
     Object.values(heroRowAtWidths).every(v => v === 'one row'), JSON.stringify(heroRowAtWidths));
 
-  // The sample leads. Checked in both document order and rendered position —
+  // Get my data leads. Checked in both document order and rendered position —
   // a flex `order` or `row-reverse` would move it visually while leaving it
   // second to a screen reader and to anything tabbing through.
-  check('the sample button comes first, in the markup and on the screen',
+  check('Get my data comes first, then Load my data, in the markup and on the screen',
     await page.evaluate(() => {
       const buttons = [...document.querySelectorAll('.hero-actions button')].map(b => b.id);
-      const sample = document.querySelector('#hero-sample').getBoundingClientRect();
       const start = document.querySelector('#hero-start').getBoundingClientRect();
-      return buttons.join() === 'hero-sample,hero-start' && sample.left < start.left;
+      const load = document.querySelector('#hero-load').getBoundingClientRect();
+      return buttons.join() === 'hero-start,hero-load' && start.left < load.left;
     }),
     (await page.locator('.hero-actions button').allInnerTexts()).join(' → '));
 
-  // The two actions are told apart by treatment, not position: the sample is
-  // filled, the primary is an outline heavy enough to hold its own next to it.
+  // The two actions are told apart by treatment, not position: Get my data is
+  // filled, Load my data an outline heavy enough to hold its own next to it.
   // A hairline border would leave the pair looking like one button and one
   // afterthought, so the weight is asserted rather than assumed.
-  check('the sample button is the filled one and the primary is a thick outline',
+  check('Get my data is the filled one and Load my data a thick outline',
     await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-start'));
-      const filled = getComputedStyle(document.querySelector('#hero-sample'));
+      const outline = getComputedStyle(document.querySelector('#hero-load'));
+      const filled = getComputedStyle(document.querySelector('#hero-start'));
       const transparent = /rgba\(0, 0, 0, 0\)|transparent/.test(outline.backgroundColor) &&
         outline.backgroundImage === 'none';
       return filled.backgroundImage.includes('gradient') &&
         transparent && parseFloat(outline.borderTopWidth) >= 2;
     }),
     await page.evaluate(() => {
-      const outline = getComputedStyle(document.querySelector('#hero-start'));
+      const outline = getComputedStyle(document.querySelector('#hero-load'));
       return 'outline border ' + outline.borderTopWidth + ', bg ' + outline.backgroundColor;
     }));
   // The thicker border has to be paid for out of the padding. Asserting the
@@ -3725,7 +3762,7 @@ try {
           parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth);
       };
       return Math.abs(box(document.querySelector('#hero-start')) -
-        box(document.querySelector('#hero-sample'))) < 0.5;
+        box(document.querySelector('#hero-load'))) < 0.5;
     }),
     await page.evaluate(() => {
       const box = node => {
@@ -3734,7 +3771,7 @@ try {
           parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth)) * 100) / 100;
       };
       return box(document.querySelector('#hero-start')) + ' vs ' +
-        box(document.querySelector('#hero-sample'));
+        box(document.querySelector('#hero-load'));
     }));
 
   // The reader pressing this on a first visit has no export yet — the file is
@@ -3791,13 +3828,13 @@ try {
   // Its whole value is that it is the real report layout rather than a mockup,
   // which is also the danger: a reader must never be able to mistake it for
   // theirs, and must never be handed the controls that belong to a real one.
-  check('the hero offers a way in and a way to look first',
+  check('the hero offers a way to get the data and a way to load it, and the sample is a tap below',
     (await page.locator('#hero-start').isVisible()) &&
-    (await page.locator('#hero-sample').isVisible()) &&
+    (await page.locator('#hero-load').isVisible()) &&
     (await page.locator('#insight-sample').isVisible()));
 
   const beforeSample = analyseBodies.length;
-  await clickClear(page, '#hero-sample');
+  await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   // The sample is the same section HTML the real report is, disclosures and
   // all — so reading its prose means opening it first, exactly as on the
@@ -3906,15 +3943,15 @@ try {
   // and total. Asked as "what is actually under the pointer".
   check('the closed sample is not still covering the page',
     await page.evaluate(() => {
-      const button = document.querySelector('#hero-sample').getBoundingClientRect();
+      const button = document.querySelector('#insight-sample').getBoundingClientRect();
       const hit = document.elementFromPoint(button.left + button.width / 2,
         button.top + button.height / 2);
-      return Boolean(hit && hit.closest('#hero-sample'));
+      return Boolean(hit && hit.closest('#insight-sample'));
     }),
     await page.evaluate(() =>
       getComputedStyle(document.querySelector('#sample-dialog')).display));
 
-  await clickClear(page, '#hero-sample');
+  await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   await page.click('#sample-close');
   // Waited on the property, not the selector: a closed dialog is display:none,
@@ -3926,7 +3963,7 @@ try {
     (await page.evaluate(() => history.length)) === historyBefore,
     'was ' + historyBefore + ', now ' + (await page.evaluate(() => history.length)));
 
-  await clickClear(page, '#hero-sample');
+  await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   await page.keyboard.press('Escape');
   // Waited on the property, not the selector: a closed dialog is display:none,
@@ -4039,22 +4076,14 @@ try {
     const back = getComputedStyle(document.querySelector('#supplement-back'));
     return /gradient/.test(skip.backgroundImage) && !/gradient/.test(back.backgroundImage);
   }));
-  // Back used to be the 2px accent-purple outline .btn-outline draws — the
-  // same weight as a real choice between two options, which a single "go back"
-  // action is not. It is .btn-ghost now: a plain hairline border in the same
-  // colour every card and divider on the page uses, matching the review
-  // dialog's own Back button exactly rather than each dialog inventing its own
-  // idea of what a back button looks like.
-  check('Back has the review dialog\'s light hairline border, not the accent outline', await page.evaluate(() => {
+  // Three button styles: filled, outline and plain. Back is a secondary
+  // action, so it is the outline, the same in every dialog rather than each
+  // dialog inventing its own idea of what a back button looks like.
+  check('Back is the outline style, matching the review dialog\'s own Back exactly', await page.evaluate(() => {
     const supplementBack = getComputedStyle(document.querySelector('#supplement-back'));
     const reviewBack = getComputedStyle(document.querySelector('#review-cancel'));
-    const probe = document.createElement('span');
-    probe.style.borderColor = 'var(--accent)';
-    document.body.appendChild(probe);
-    const accentColour = getComputedStyle(probe).borderColor;
-    probe.remove();
     return supplementBack.borderColor === reviewBack.borderColor &&
-      supplementBack.borderColor !== accentColour;
+      supplementBack.borderTopWidth === reviewBack.borderTopWidth && parseFloat(supplementBack.borderTopWidth) >= 2;
   }));
 
   // The instructions, repeated here because this is where they are needed and
@@ -4312,7 +4341,7 @@ try {
   // carries `generatedAt` and `coverage.sections`; forModel never copies
   // either, so their absence is what proves the file is the sent object.
   check('the file is the one digest both calls read, and says so',
-    /About \d+ KB\. This same digest is what both your free summary card and the full premium report are read from\./
+    /About \d+ KB\. This same digest is what both your free summary card and the Psyche Report are read from\./
       .test(html1) &&
     JSON.stringify(preview1).length <= await page.evaluate(() => window.PsycheDigest.LIMITS.totalChars) &&
     preview1.generatedAt === undefined && preview1.coverage.sections === undefined,
@@ -4449,7 +4478,7 @@ try {
   });
   const freeReport = freeState.stored.report;
   check('a free run shows the summary card', freeState.cardShown);
-  check('and under it one locked block offering the full report, with one button',
+  check('and under it one locked block offering the Psyche Report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
   check('no written section is on the page — only the secret roast, "Beyond your card", the card that holds the controls, then "Your link"',
@@ -4517,13 +4546,14 @@ try {
         title: block.querySelector('.secret-roast-title').textContent.trim(),
         button: block.querySelector('.secret-roast-reveal').textContent.trim(),
         expanded: block.querySelector('.secret-roast-reveal').getAttribute('aria-expanded'),
+        icons: block.querySelectorAll('.secret-roast-badge svg.line-icon, .secret-roast-title svg.line-icon, .secret-roast-reveal svg.line-icon').length,
         absent: !block.innerHTML.includes(harsh.slice(0, 30)) && block.querySelector('.bonus-body').hidden,
       };
     });
     check('it sits straight under the card, above "Beyond your card"', roast.first && roast.beforeBeyond, JSON.stringify(roast));
     check('dressed as a secret bonus: badge, title and one reveal button',
-      roast.badge === '🎁 Secret bonus unlocked' && roast.title === 'Let us roast you 🔥' &&
-        roast.button === '🔥 Reveal my roast' && roast.expanded === 'false', JSON.stringify(roast));
+      roast.badge === 'Secret bonus unlocked' && roast.title === 'Let us roast you' &&
+        roast.button === 'Reveal my roast' && roast.expanded === 'false' && roast.icons === 3, JSON.stringify(roast));
     check('and its writing is not in the page until the reader asks for it', roast.absent, JSON.stringify(roast));
     await page.click('#profile-body .secret-roast-reveal');
     const opened = await page.evaluate(() => {
@@ -4593,7 +4623,7 @@ try {
   // a payment or a code, anchored to the card above. Stored the way the app
   // stores it, and the page reloaded onto it.
   await explainStoredProfile(page);
-  check('with a code, the server writes the full report, to the same conclusions as the card',
+  check('with a code, the server writes the Psyche Report, to the same conclusions as the card',
     await page.evaluate(() => {
       const stored = JSON.parse(localStorage.getItem('psycheai_profile'));
       return stored.explained === true && typeof stored.report.summary === 'string' &&
@@ -5985,8 +6015,8 @@ try {
           !(await low.locator('#datasources-dialog[open]').count()), note.slice(0, 300));
       await low.click('#more-data-continue');
       await low.waitForSelector('#datasources-dialog[open]', { timeout: 10000 });
-      check('and Continue goes on to "Your data for the full report", WhatsApp second',
-        /Your data for the full report/.test(await low.locator('#datasources-dialog-title').innerText()) &&
+      check('and Continue goes on to "Your data for the Psyche Report", WhatsApp second',
+        /Your data for the Psyche Report/.test(await low.locator('#datasources-dialog-title').innerText()) &&
           (await low.evaluate(() => [...document.querySelectorAll('#datasources-dialog .mode-option:not([hidden])')]
             .map(b => b.dataset.datasource).join(','))) === 'instagram,whatsapp,google,facebook');
       await low.click('#datasources-back').catch(() => low.keyboard.press('Escape'));
@@ -6377,7 +6407,7 @@ try {
   check('the footer grows a second line the moment the unlock succeeds, with no reload needed',
     await page.evaluate(() => {
       const lines = [...document.querySelectorAll('#analysed-by .provenance-item > span:last-child')].map(n => n.textContent.trim());
-      return lines.length === 2 && /^Psyche Card generated by mock on .+\.$/.test(lines[0]) && /^Full premium report written by mock on .+\.$/.test(lines[1]);
+      return lines.length === 2 && /^Psyche Card generated by mock on .+\.$/.test(lines[0]) && /^Psyche Report written by mock on .+\.$/.test(lines[1]);
     }),
     await page.locator('#analysed-by').innerText());
   check('the two lines are visually separate, not one run-on sentence: one box, a line each',
@@ -6500,7 +6530,7 @@ try {
   check('and the two-line footer survives the reload with it',
     await page.evaluate(() => {
       const lines = [...document.querySelectorAll('#analysed-by .provenance-item > span:last-child')].map(n => n.textContent.trim());
-      return lines.length === 2 && /^Psyche Card generated by mock on .+\.$/.test(lines[0]) && /^Full premium report written by mock on .+\.$/.test(lines[1]);
+      return lines.length === 2 && /^Psyche Card generated by mock on .+\.$/.test(lines[0]) && /^Psyche Report written by mock on .+\.$/.test(lines[1]);
     }),
     await page.locator('#analysed-by').innerText());
 
@@ -6900,7 +6930,7 @@ try {
   // for that path.
   check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Back to card | Download full report | Psyche Sync | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Back to card | Download Psyche Report | Psyche Sync | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -7088,10 +7118,11 @@ try {
   // from another while scrolling, and a repeat throws that away. Held as a
   // property of the whole report rather than as a check on those two, so the
   // next section added cannot quietly reintroduce a duplicate.
-  const glyphs = await page.locator('#profile-body .card-icon').allInnerTexts();
+  // Line icons now, so told apart by their drawing rather than their text.
+  const glyphs = await page.locator('#profile-body .card-icon').evaluateAll(nodes => nodes.map(n => n.innerHTML));
   check('and no two sections wear the same glyph',
     new Set(glyphs.map(g => g.trim())).size === glyphs.length,
-    glyphs.map(g => g.trim()).join(' '));
+    String(glyphs.length));
   check('strengths and weaknesses sit side by side',
     (await page.locator('#profile-body .split:not(.love-split)').count()) === 2);
   // The behaviour section carried a two-column advice block and a full-width
@@ -7195,7 +7226,7 @@ try {
     (await page.locator('#export-pdf-bottom').isVisible()) &&
     (await page.locator('#export-pdf-top').count()) === 0);
   check('the export button says what it does',
-    (await page.locator('#export-pdf-bottom').innerText()) === 'Download full report',
+    (await page.locator('#export-pdf-bottom').innerText()) === 'Download Psyche Report',
     await page.locator('#export-pdf-bottom').innerText());
 
   // The report is typeset by pdf.js and downloads straight to the reader's own
@@ -7602,7 +7633,7 @@ try {
   // otherwise a reader who saves the PDF loses the one place that says a
   // second provider wrote the sections they paid for.
   check('the downloaded PDF also names both providers, not just the free one',
-    /Analysed by mock on/i.test(pdfProse) && /Full premium report written by mock on/i.test(pdfProse));
+    /Analysed by mock on/i.test(pdfProse) && /Psyche Report written by mock on/i.test(pdfProse));
 
   // The other half of the rule, and the one that actually enforces the
   // paywall: build the same report with nothing unlocked and the section does
@@ -8056,7 +8087,7 @@ try {
   await page.click('.nav .brand');
   await page.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
   check('the PsycheAI logo takes a reader with a card to the main page',
-    await page.locator('#hero-sample').isVisible() && !(await page.locator('#view-profile').isVisible()));
+    await page.locator('#hero-load').isVisible() && !(await page.locator('#view-profile').isVisible()));
   await page.waitForTimeout(400);
   check('the sample card there is fitted to its box, not left at full size off the page',
     await page.evaluate(() => {
@@ -8093,11 +8124,11 @@ try {
       !(await page.locator('#view-welcome .upload-card').isVisible()));
   await page.click('#hero-start');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
-  check('and "Request data" opens the illustrated guide instead',
+  check('and "Get my data" opens the illustrated guide instead',
     await page.evaluate(() => document.querySelector('#guide-dialog').open));
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('#guide-dialog').open, { timeout: 15000 });
-  await page.click('#hero-sample');
+  await clickClear(page, '#insight-sample');
   await page.waitForSelector('#sample-dialog[open]', { timeout: 20000 });
   await page.click('#sample-close');
   await page.waitForFunction(() => !document.querySelector('#sample-dialog').open, { timeout: 15000 });
@@ -9579,7 +9610,7 @@ try {
   await page.click('#review-send');
   await page.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
   check('the dialog names this as a full re-run rather than a first unlock',
-    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your full premium report');
+    (await page.locator('#premium-dialog-title').innerText()).trim() === 'Re-run your Psyche Report');
   check('and says the charge regenerates everything, not just the paid sections',
     /regenerates everything/i.test(await page.locator('#premium-dialog-blurb').innerText()),
     await page.locator('#premium-dialog-blurb').innerText());
@@ -9600,7 +9631,7 @@ try {
   // One call regenerates the whole premium report — card, written report and
   // the four sections — so there is exactly one request, and no second one to
   // the old premium route.
-  check('rerunning sends exactly one request for the whole premium report, against the enriched digest',
+  check('rerunning sends exactly one request for the whole Psyche Report, against the enriched digest',
     analyseBodies.length === analysesBeforeSend + 1 &&
     Boolean(JSON.parse(analyseBodies[analyseBodies.length - 1]).digest.facebook),
     (analyseBodies.length - analysesBeforeSend) + ' new requests');
@@ -9667,7 +9698,7 @@ try {
     ['instagram', 'google', 'facebook'].every(Boolean) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="facebook"]').isVisible()) &&
     (await page.locator('#datasources-dialog .mode-option[data-datasource="google"]').isVisible()) &&
-    (await page.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
+    (await page.locator('#datasources-dialog-title').innerText()) === 'Your data for the Psyche Report');
 
   // The first tap on a source asks first, before any file picker opens.
   await page.click('#datasources-dialog .mode-option[data-datasource="google"]');
@@ -9765,13 +9796,13 @@ try {
   // further US$2 — charging twice over for one decision to hand over more
   // data. So the same authorisation runs both calls.
   await waitForLength(analyseBodies, analysesBeforeUnlock + 1, 40000);
-  check('adding data at the unlock writes the full report and redraws the card, on the same authorisation',
+  check('adding data at the unlock writes the Psyche Report and redraws the card, on the same authorisation',
     analyseBodies.length === analysesBeforeUnlock + 1,
     (analyseBodies.length - analysesBeforeUnlock) + ' report calls');
   const bundledBody = JSON.parse(analyseBodies[analyseBodies.length - 1]);
   // No anchor: the card was read from less evidence than this report is, so
   // holding the report to it would hold the better reading to the worse one.
-  check('and it is asked for as the full report, not anchored to the card the new data supersedes',
+  check('and it is asked for as the Psyche Report, not anchored to the card the new data supersedes',
     bundledBody.product === 'unlock' && bundledBody.anchor === undefined,
     JSON.stringify({ product: bundledBody.product, anchor: Boolean(bundledBody.anchor) }));
   check('the bundled free run is made against the enriched digest as well',
@@ -9869,7 +9900,7 @@ try {
   // card itself left exactly as it was, QR payload and all. The reader may
   // already have shared it.
   const bareBodies = analyseBodies.slice(analysesBeforeBareUnlock).map(body => JSON.parse(body));
-  check('an unlock with no data added asks once for the full report, anchored to the card',
+  check('an unlock with no data added asks once for the Psyche Report, anchored to the card',
     bareBodies.length === 1 && bareBodies[0].product === 'unlock' &&
     bareBodies[0].promoCode === UITEST_PROMO &&
     bareBodies[0].anchor && bareBodies[0].anchor.mbti.type === cardBeforeBareUnlock.report.mbti.type &&
@@ -9904,7 +9935,7 @@ try {
     !/ESTP|Somebody Else/.test(await page.locator('#psyche-card').innerText()),
     JSON.stringify({ type: afterBareUnlock.report.mbti.type, character: afterBareUnlock.report.essence.character }));
   // And the writing kept is the full report's own — only the labels are pinned.
-  check('with the explanation underneath still the one the full report wrote',
+  check('with the explanation underneath still the one the Psyche Report wrote',
     typeof afterBareUnlock.report.mbti.letters[0].why === 'string' &&
     afterBareUnlock.report.mbti.letters[0].why.length > 20 &&
     typeof afterBareUnlock.report.bigFive.openness.reading === 'string');
@@ -10194,7 +10225,7 @@ try {
     compatDownload.suggestedFilename());
   check('the comparison is a real PDF', compatText.startsWith('%PDF-1.') &&
     compatText.trimEnd().endsWith('%%EOF'));
-  check('the sync fits on one page, in the premium report\'s design: the plum band and the summary box, no score',
+  check('the sync fits on one page, in the Psyche Report\'s design: the plum band and the summary box, no score',
     (compatText.match(/\/Type \/Page[^s]/g) || []).length === 1 && compatText.includes('(IN ONE LINE)') && !compatText.includes('(in sync)'),
     String((compatText.match(/\/Type \/Page[^s]/g) || []).length) + ' pages');
   check('the comparison PDF is titled for the pair, not for one person',
@@ -10237,7 +10268,7 @@ try {
   const actionTiles = await page.evaluate(() => [...document.querySelectorAll('#view-report .compat-actions > *')].map(b => ({
     id: b.id, cls: b.className, icon: Boolean(b.querySelector('svg')), label: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
   })));
-  check('the actions are three tiles like the paid report\'s card tools: Download PDF, Share PDF, Close',
+  check('the actions are three tiles like the Psyche Report\'s card tools: Download PDF, Share PDF, Close',
     actionTiles.map(t => t.id).join(',') === 'export-compat-bottom,share-compat-image,compat-back' &&
       actionTiles.every(t => t.cls === 'cx-tool' && t.icon) &&
       actionTiles.map(t => t.label).join('|') === 'Download PDF|Share PDF|Close' &&
@@ -10450,7 +10481,7 @@ try {
     /Your card summary and any shared Psyche Sync are encrypted on your device, and the key lives\s+only in your link/.test(about) &&
     /PsycheAI never has the key, so no one at PsycheAI can read them/.test(about) &&
     /none of them names you/.test(about));
-  check('and the full report no longer promises a secret bonus: the roast is free',
+  check('and the Psyche Report no longer promises a secret bonus: the roast is free',
     !/secret bonus/i.test(about));
   check('the FAQ gives a contact address',
     /How do I contact PsycheAI\?/.test(about) && /admin@psycheai\.io/.test(about));
@@ -10670,12 +10701,11 @@ try {
       (await page.locator('#view-scan .link-title').innerText()) === 'My link' &&
       (await page.locator('#view-scan .link-panel button').allInnerTexts()).join('|') === 'Copy link',
     await page.locator('#view-scan .link-panel').innerText());
-  check('Copy link and Sync on My Syncs are the lighter shade: a pale tint with purple text, not the filled gradient',
+  check('Copy link and Sync on My Syncs are the outline style, not the filled gradient',
     await page.evaluate(() => ['#copy-link-scan', '#paste-go'].every(sel => {
       const b = document.querySelector(sel), st = getComputedStyle(b);
-      const [r, g, bl] = st.backgroundColor.match(/\d+/g).map(Number);
-      return b.classList.contains('btn-soft') && st.backgroundImage === 'none' && r + g + bl > 600 &&
-        st.color !== 'rgb(255, 255, 255)';
+      return b.classList.contains('btn-outline') && st.backgroundImage === 'none' &&
+        parseFloat(st.borderTopWidth) >= 2 && st.color !== 'rgb(255, 255, 255)';
     })));
   check('the My Syncs intro says what a sync gives, in a line',
     (await page.locator('.scan-lede').innerText()) ===
@@ -11059,7 +11089,7 @@ try {
           text: document.querySelector('#profile-body').textContent.replace(/\s+/g, ' ') };
       });
       // Google's lists are the same in both reads now, so the counts agree.
-      check('the data rows show what the full report read, from the premium read, the same as the standard read for Google',
+      check('the data rows show what the Psyche Report read, from the premium read, the same as the standard read for Google',
         rows.readFrom && rows.readFrom.sampling.youtubeTitles.shown === sentVideos.shown &&
           rows.standard.shown === sentVideos.shown && (!rows.rows || rows.text.includes(sentVideos.shown + ' of ')),
         JSON.stringify({ sent: sentVideos, standard: rows.standard, kept: rows.readFrom && rows.readFrom.sampling.youtubeTitles }));
@@ -11242,7 +11272,7 @@ try {
         return { download: getComputedStyle(document.querySelector('#export-pdf-bottom')).display === 'none',
           beside: note.left >= del.right - 1 && Math.abs((note.top + note.bottom) / 2 - (del.top + del.bottom) / 2) < 30, small };
       });
-      check('structured: My Psyche has no Download full report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
+      check('structured: My Psyche has no Download Psyche Report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
         hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
       check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',
         await sp.evaluate(() => {
@@ -11256,7 +11286,7 @@ try {
             r.top >= tools[0].getBoundingClientRect().bottom - 1 &&
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
-      check('structured: Back lands on My Psyche: card, the secret roast, Beyond your card, Evidence and method, then Your link — no "Your full report" box, no parts',
+      check('structured: Back lands on My Psyche: card, the secret roast, Beyond your card, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
         hubShape.order === 'roast,beyond,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
@@ -11282,7 +11312,7 @@ try {
         check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
-        check('structured, on a phone: a full report opens with Part 00 open and parts 01 to 04 shut',
+        check('structured, on a phone: a Psyche Report opens with Part 00 open and parts 01 to 04 shut',
           (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,together:shut', await states());
         check('structured, on a phone: no part nav floats over the report; the header leads straight into Part 00',
           await sp.evaluate(() => {
@@ -11336,9 +11366,30 @@ try {
           const halves = [...document.querySelectorAll('#psyche-card .pc-slove')].map(ul => ul.textContent.trim());
           return halves;
         });
-        check('structured: gifts read as "Receiving gifts" under Receives care as and "Giving gifts" under Shows care as',
-          gifts.length === 2 && /Receiving gifts/.test(gifts[0]) && /Giving gifts/.test(gifts[1]) && !/Receiving/.test(gifts[1]),
-          JSON.stringify(gifts));
+        // With a catalogue character the card shows only how they show care:
+        // receiving makes room for the characters they are most in sync with.
+        check('structured: gifts read as "Giving gifts" under Shows care as, the only love language on the card',
+          gifts.length === 1 && /Giving gifts/.test(gifts[0]) && !/Receiving/.test(gifts[0]), JSON.stringify(gifts));
+        const bottom = await sp.evaluate(() => {
+          const card = document.querySelector('#psyche-card');
+          const inner = card.querySelector('.pc-story-in');
+          const panels = [...card.querySelectorAll('.pc-sbottom > .pc-spanel')];
+          return {
+            character: (card.querySelector('.pc-sname h2') || {}).textContent,
+            labels: panels.map(p => p.querySelector('.pc-slab').textContent.trim()),
+            syncs: [...card.querySelectorAll('.pc-ssyncs li')].map(li => [li.querySelector('b').textContent,
+              Boolean(li.querySelector('.pc-ssync-art svg'))]),
+            over: inner.scrollHeight - inner.clientHeight,
+            qr: Boolean(card.querySelector('.pc-qr-slot')),
+          };
+        });
+        const expected = await sp.evaluate(name => window.PsycheCopy.syncsOf(name), bottom.character);
+        check('structured: the card\'s last row is Shows care as, then Most in sync with, in two boxes',
+          JSON.stringify(bottom.labels) === JSON.stringify(['🎁Shows care as', '🤝Most in sync with']), JSON.stringify(bottom));
+        check('structured: it shows the character\'s three sync partners, each in its scene',
+          bottom.syncs.length === 3 && bottom.syncs.every(([, art]) => art) &&
+            JSON.stringify(bottom.syncs.map(([n]) => n)) === JSON.stringify(expected), JSON.stringify(bottom));
+        check('structured: the reader\'s own card, QR code and all, still fits its story canvas', bottom.over <= 0, JSON.stringify(bottom));
         await seed(true);
         await sp.click('#nav-profile');
         await sp.waitForSelector('#profile-top:not([hidden])', { timeout: 15000 });
@@ -11786,7 +11837,7 @@ try {
         check('structured: on a phone My Report\'s three actions sit side by side — Delete as a narrow bin on the left, Download, Back to card on the right',
           phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.narrowDelete && phoneActions.iconOnly &&
             phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Delete everything|Download full report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Delete everything|Download Psyche Report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -11850,7 +11901,7 @@ try {
       });
       check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.tips === 'Back to my Psyche Card|Download full report|Delete everything', JSON.stringify(actions));
+          actions.tips === 'Back to my Psyche Card|Download Psyche Report|Delete everything', JSON.stringify(actions));
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {
@@ -12082,9 +12133,9 @@ try {
       // secret bonus.
       check('structured: the unlock offer promises no secret bonus and names no roast',
         offerParts.secret === 0 && !/secret bonus|roast/i.test(offerParts.lockedText), JSON.stringify(offerParts));
-      check('structured: a free card\'s panel says the reasoning is in the premium report, with an en dash, not an em dash',
+      check('structured: a free card\'s panel says the reasoning is in the Psyche Report, with an en dash, not an em dash',
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
-          /Unlock the premium report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
+          /Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
       check('structured: the unlock button gives the price and the other way in: three friends\' cards from the reader\'s link',
         await sp.evaluate(() => {
@@ -12120,7 +12171,7 @@ try {
       await sp.click('.source-read[data-source="facebook"]');
       await sp.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('structured: a free report\'s source row opens the same data sources popout the unlock does',
-        (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the full report');
+        (await sp.locator('#datasources-dialog-title').innerText()) === 'Your data for the Psyche Report');
       // With no premium digest kept and no export in memory, the unlock goes
       // ahead on the standard digest widened to the premium line — it never
       // asks for the Instagram export again.
@@ -12438,7 +12489,7 @@ try {
         };
       });
       check('structured unlock: the roast read before paying is the one kept after', held.roast, JSON.stringify(held));
-      check('structured unlock: the pinned paid report is whole once the card is laid over it',
+      check('structured unlock: the pinned Psyche Report is whole once the card is laid over it',
         Boolean(held.free) && held.character === held.free.character && held.type === held.free.type &&
         held.openness === held.free.openness && Number.isFinite(held.score) && held.card && held.why && held.reading &&
         held.letters.length === 4 && held.letters.every(l => /^[A-Z]:true$/.test(l)) &&
@@ -12503,9 +12554,9 @@ try {
       });
       check('the free report shows "Your link": what it earns, three boxes (cards, paid, syncs), no buttons and nothing to claim yet',
         /Your link/.test(card.text) && card.stats === 3 && !card.ready && !/opened/i.test(card.text) &&
-          /Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report/.test(card.text) &&
+          /Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report/.test(card.text) &&
           /Share your card or link above/.test(card.text) &&
-          /0\s*made a card/.test(card.text) && /0\s*bought the full report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
+          /0\s*made a card/.test(card.text) && /0\s*bought the Psyche Report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&
           await rp.evaluate(() => {
             const nodes = [...document.querySelectorAll('#profile-body > *')];
@@ -12888,8 +12939,8 @@ try {
         cards: document.querySelector('#profile-body .referral-n[data-stat="friends"]').textContent,
         opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
-      check('with three friends in, the card counts them, says a free full report is ready, and offers to use or gift it',
-        ready.cards === '3' && /1 free full report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
+      check('with three friends in, the card counts them, says a free Psyche Report is ready, and offers to use or gift it',
+        ready.cards === '3' && /1 free Psyche Report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
         JSON.stringify(ready));
       check('opens are still counted, though the card no longer shows them', ready.opens >= 1, JSON.stringify(ready));
 
@@ -12898,7 +12949,7 @@ try {
       await rp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
       await rp.waitForSelector('#premium-referral:not([hidden])', { timeout: 15000 });
       check('the unlock\'s sheet offers the free report from inviting friends',
-        /Use your free full report/.test(await rp.locator('#premium-referral').innerText()));
+        /Use your free Psyche Report/.test(await rp.locator('#premium-referral').innerText()));
       const before = bodies.length;
       await rp.click('#premium-referral');
       await rp.waitForFunction(() => {
@@ -12908,10 +12959,10 @@ try {
       await rp.waitForSelector('#profile-body .report-ready-note', { timeout: 15000 });
       check('once unlocked, the reader lands on My Report, told it is ready, and My Report joins the nav',
         await rp.evaluate(() => document.querySelectorAll('#profile-body .part-card').length > 0 &&
-          /Your full report is ready/.test(document.querySelector('#profile-body .report-ready-note').textContent) &&
+          /Your Psyche Report is ready/.test(document.querySelector('#profile-body .report-ready-note').textContent) &&
           !document.querySelector('#nav-full').hidden && document.querySelector('#profile-top').hidden));
       const paidWith = bodies.slice(before).find(body => body.product === 'unlock') || {};
-      check('and using it writes the full report on the free report, with no payment',
+      check('and using it writes the Psyche Report on the free report, with no payment',
         /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,
         JSON.stringify(Object.keys(paidWith)));
       const after = await rp.evaluate(async () => {
@@ -12963,15 +13014,15 @@ try {
           kept: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
           address: location.href,
         }));
-        check('whoever opens a gift link is told they have a free full report waiting, kept on their device',
-          /You’ve been gifted a free full report/.test(arrived.banner) && /Make your free Psyche Card first/.test(arrived.banner) &&
+        check('whoever opens a gift link is told they have a free Psyche Report waiting, kept on their device',
+          /You’ve been gifted a free Psyche Report/.test(arrived.banner) && /Make your free Psyche Card first/.test(arrived.banner) &&
             arrived.kept && giftLink.endsWith(arrived.kept.token) && !/gift=/.test(arrived.address), JSON.stringify(arrived));
         const grantOk = await giftPage.evaluate(async token => {
           const answer = await fetch('api/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ digest: { probe: true }, referralGrant: token, product: 'analysis' }) });
           return answer.status;
         }, arrived.kept.token);
-        check('and the gift is a grant the server knows: it unlocks the full report only', grantOk === 402 || grantOk === 400,
+        check('and the gift is a grant the server knows: it unlocks the Psyche Report only', grantOk === 402 || grantOk === 400,
           String(grantOk));
       } finally {
         await giftPage.close();

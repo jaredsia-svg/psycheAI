@@ -1876,7 +1876,7 @@
     // that unlocked before this pair existed prints the one line it always
     // had rather than a line naming a model with no date, or vice versa.
     if (stamp.premiumModel && stamp.premiumDate) {
-      out.fineprint('Full premium report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
+      out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
 
     // Last, because it is the only block whose content depends on the whole
@@ -2552,8 +2552,16 @@
           });
         },
       });
-      panels.push({ label: TEXT.cardLoveIn, color: ACCENT_2, block: list(loveIn) });
-      panels.push({ label: TEXT.cardLoveOut, color: ACCENT, block: list(loveOut) });
+      // As on the card: with a catalogue character, giving beside the three
+      // characters theirs is most in sync with; otherwise receiving and giving.
+      const syncs = Copy.syncsOf(name);
+      if (syncs.length) {
+        panels.push({ label: TEXT.cardLoveOut, color: ACCENT, block: list(loveOut) });
+        panels.push({ label: TEXT.cardSyncs, color: ACCENT_2, block: list(syncs) });
+      } else {
+        panels.push({ label: TEXT.cardLoveIn, color: ACCENT_2, block: list(loveIn) });
+        panels.push({ label: TEXT.cardLoveOut, color: ACCENT, block: list(loveOut) });
+      }
     }
     const labelH = 16;
     const rows = [];
@@ -3111,7 +3119,7 @@
     }
     out.fineprint('Analysed by ' + (stamp.model || 'the model') + ' on ' + (stamp.date || '') + '.');
     if (stamp.premiumModel && stamp.premiumDate) {
-      out.fineprint('Full premium report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
+      out.fineprint('Psyche Report written by ' + stamp.premiumModel + ' on ' + stamp.premiumDate + '.');
     }
     if (source.bonus) {
       out.page();

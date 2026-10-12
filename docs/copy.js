@@ -55,6 +55,7 @@
     interests: '✨',
     loveIn: '💝',
     loveOut: '🎁',
+    syncs: '🤝',
     confidence: '🎯',
     patterns: '🧵',
     motivators: '🧲',
@@ -209,6 +210,13 @@
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
+    // In an app's own browser, above that: the first step, before any of the
+    // request steps.
+    inviteInAppTitle: (ios) => 'Step 1: open this page in ' + (ios ? 'Safari' : 'Chrome'),
+    inviteInAppText: (app, name, ios) => possessive(name || 'Your connection') + ' invite is saved only in ' + app +
+      '\u2019s browser, and your Instagram data takes a few hours to arrive. Open this page in ' +
+      (ios ? 'Safari' : 'Chrome') + ' now, so the invite is still there when you come back. ' +
+      (ios ? 'Tap \u22EF or the share icon, then Open in Safari.' : 'Or tap \u22EE, then Open in Chrome.'),
     inviteCardHint: 'Tap to explore',
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
@@ -275,6 +283,7 @@
     // friends as much as anyone, since the card travels to anyone.
     cardLoveIn: 'Receives care as',
     cardLoveOut: 'Shows care as',
+    cardSyncs: 'Most in sync with',
     cardConfidence: 'Confidence',
 
     bigFive: 'Big Five',
@@ -462,7 +471,7 @@
     premiumBadge: 'Premium',
     // The welcome hero's video: its accessible name, and the one button on it,
     // which says what tapping it will do.
-    heroVideoLabel: 'PsycheAI in 45 seconds: what it reads, your Psyche Card and the full report',
+    heroVideoLabel: 'PsycheAI in 45 seconds: what it reads, your Psyche Card and the Psyche Report',
     heroVideoSound: 'Tap for sound',
     heroVideoMute: 'Mute',
     heroVideoPlay: 'Play with sound',
@@ -499,8 +508,8 @@
     // The free run is the summary card and nothing else now, so the offer is
     // the writing behind the card plus the four sections — and says that, in
     // that order, rather than pretending the card is a whole report.
-    premiumTierTitle: 'The full premium report',
-    premiumTierBlurb: 'Your Psyche Card is free. The full premium report explains every part of it, and adds four more sections:',
+    premiumTierTitle: 'The Psyche Report',
+    premiumTierBlurb: 'Your Psyche Card is free. The Psyche Report explains every part of it, and adds four more sections:',
     // Shown under a free card, in place of the written report — see
     // fullReportLockedHtml in docs/app.js.
     fullReportSample: 'See sample report',
@@ -510,7 +519,7 @@
     // Each line says what that part of the report actually contains, at the
     // length the four premium covers already run to, so the reader is deciding
     // on specifics rather than on section names.
-    fullReportBlurb: 'Your card shows the conclusions. The full report shows the working, and goes further.',
+    fullReportBlurb: 'Your card shows the conclusions. The Psyche Report shows the working, and goes further.',
     explainWho: 'Why that character fits you and not a neighbouring one, then the long read on who you ' +
       'are – the patterns that run through years of your posts and messages, drawn together into a ' +
       'portrait specific enough that it could not be anyone else\'s.',
@@ -543,7 +552,7 @@
     // behind it and why somebody might want to skip it, not what it costs.
     bonusCoverTitle: 'This roast is deliberately unkind',
     bonusCoverBlurb: 'The least charitable, most honest-friend version of everything above – ' +
-      'deliberately unkind, not a diagnosis, and part of your full report. Read it if you ' +
+      'deliberately unkind, not a diagnosis, and part of your Psyche Report. Read it if you ' +
       'want the truth without the softening; skip it if you do not.',
     // The button that opens the cover, and the one that puts it back. Unlike
     // the paid sections' `.premium-unlock`, clicking this never reaches a
@@ -565,7 +574,7 @@
     premiumPriceLabel: 'US$5',
     // In the data popout, once a fresh export is loaded over an existing card.
     cardChangeNote: 'Updating your data sources may change your Psyche Card.',
-    premiumSourcesTitle: 'Your data for the full report',
+    premiumSourcesTitle: 'Your data for the Psyche Report',
     // Before that page, when the card's confidence is under 80: more sources
     // make a better report.
     // Before the review on a first upload with almost no writing in it.
@@ -577,15 +586,15 @@
     thinDataContinue: 'Continue anyway',
     moreDataTitle: 'Make your report more accurate',
     moreDataText: (score) => 'Your Psyche Card was read with ' + score + '% confidence. Adding more data – WhatsApp chats ' +
-      'with up to 3 close connections, your Google data or your Facebook data – gives the full report more to go on, ' +
+      'with up to 3 close connections, your Google data or your Facebook data – gives the Psyche Report more to go on, ' +
       'and you can add it on the next page.',
     moreDataContinue: 'Continue',
     moreDataBack: 'Back',
     // The review's downloadable copy only, at the unlock: what this file is.
-    deepReviewNote: 'This is what the full premium report is written from: everything your card was read from, with the data you just added on top.',
+    deepReviewNote: 'This is what the Psyche Report is written from: everything your card was read from, with the data you just added on top.',
     // The premium read rebuilt from the export still open in the tab: the
     // same sources, more of each.
-    deepRebuiltNote: 'This is what the full premium report is written from: the data your card was read from, read in more depth, with anything you just added.',
+    deepRebuiltNote: 'This is what the Psyche Report is written from: the data your card was read from, read in more depth, with anything you just added.',
     premiumSourcesBlurb: 'Add a source or replace one with newer data – more data, a fuller report. ' +
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
@@ -605,7 +614,7 @@
     // still sentence next to a spinning bar reads as stalled.
     // The unlock is one call: the written report behind the card, the roast and
     // the four premium sections, in one response.
-    premiumGenerating: 'Writing your full premium report… this may take a few minutes.',
+    premiumGenerating: 'Writing your Psyche Report… this may take a few minutes.',
     // The three states of coming back to an unlock that never arrived. Not one
     // string, because "you already paid" is the part that has to land first
     // and a reader skimming a dialog reads the title.
@@ -624,10 +633,10 @@
     // is to assume it has been stuck there the whole time and to start again.
     resumingJob: 'Your analysis kept running while you were away – it does not need this page to ' +
       'be open. Picking it back up now; it will appear as soon as it is finished.',
-    premiumResumeLabel: 'Get the premium report you paid for',
+    premiumResumeLabel: 'Get the Psyche Report you paid for',
     premiumResumeTitle: 'You have already paid',
     premiumResumeBlurb: 'Your payment went through but the report didn’t arrive. Fetching it again is free.',
-    premiumResumeAction: 'Fetch my premium report',
+    premiumResumeAction: 'Fetch my Psyche Report',
     // The second thing this app sells, and the reason its copy is separate
     // from the unlock's: they buy different things, and a dialog that says
     // "unlock premium sections" while charging US$2 for a re-run would be
@@ -641,8 +650,8 @@
     // bundles the four paid sections back in, at the unlock's own US$5
     // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
-    analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$5 and ' +
-      'refreshes everything – your card and the full premium report.',
+    analysisPriceNoteUnlocked: 'Your Psyche Report is unlocked, so re-running costs US$5 and ' +
+      'refreshes everything – your card and the Psyche Report.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
     // paying can always fix — so it says what it is rather than blaming them.
@@ -652,8 +661,8 @@
     // be the wrong verb for sections they already have. Same US$5, same
     // product, just a different reason to be paying it — see
     // rerunWithAdditionalData's alreadyUnlocked branch.
-    premiumRerunDialogTitle: 'Re-run your full premium report',
-    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data – your card and the full premium report together.',
+    premiumRerunDialogTitle: 'Re-run your Psyche Report',
+    premiumRerunDialogBlurb: 'One charge regenerates everything against your new data – your card and the Psyche Report together.',
     premiumMockPay: 'Simulate payment (mock mode)',
     premiumNotConfigured: 'Payments are not set up on this server yet.',
     // Followed immediately by the card fallback mounting itself (see
@@ -678,7 +687,7 @@
     // Shown between the two calls an unlock-with-added-data makes. Says
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
-    premiumRefreshingFree: 'Writing your full premium report from the new data – your card is redrawn with it at no extra charge…',
+    premiumRefreshingFree: 'Writing your Psyche Report from the new data – your card is redrawn with it at no extra charge…',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
@@ -688,26 +697,26 @@
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
       title: 'Your link',
-      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report – use it yourself or gift it.',
-      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the full report, earn you a free full report – gift it, or use it for a re-run with new data.',
+      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
+      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
       shareHint: 'Share your card or link above to start.',
       cards: 'made a card',
-      paid: 'bought the full report',
+      paid: 'bought the Psyche Report',
       syncs: 'synced with you',
-      ready: n => n === 1 ? '🎉 1 free full report ready' : '🎉 ' + n + ' free full reports ready',
+      ready: n => n === 1 ? '🎉 1 free Psyche Report ready' : '🎉 ' + n + ' free Psyche Reports ready',
       copyShort: 'Copy',
       claim: 'Use it',
       claimPaid: 'Use it for a re-run',
       gift: 'Gift it',
-      useFree: 'Use your free full report – from your link',
-      useGift: 'Use your gifted free full report',
+      useFree: 'Use your free Psyche Report – from your link',
+      useGift: 'Use your gifted free Psyche Report',
       claimFailed: 'There is no free report to claim yet.',
-      giftShareText: 'A free PsycheAI full report, from me 🎁 Make your free Psyche Card, then unlock the full report with this link:',
-      giftCopied: 'Gift link copied. It unlocks one full report, once, within 60 days.',
+      giftShareText: 'A free Psyche Report, from me 🎁 Make your free Psyche Card, then unlock the Psyche Report with this link:',
+      giftCopied: 'Gift link copied. It unlocks one Psyche Report, once, within 60 days.',
       giftsHead: 'Gift links you have made (each works once, for 60 days)',
-      giftArrivedTitle: 'You’ve been gifted a free full report',
-      giftArrivedNew: 'Make your free Psyche Card first, then unlock the full report with it – no payment needed.',
-      giftArrivedHave: 'Unlock your full report with it – no payment needed.',
+      giftArrivedTitle: 'You’ve been gifted a free Psyche Report',
+      giftArrivedNew: 'Make your free Psyche Card first, then unlock the Psyche Report with it – no payment needed.',
+      giftArrivedHave: 'Unlock your Psyche Report with it – no payment needed.',
       giftUse: 'Unlock with my gift',
     },
     premiumPromoPlaceholder: 'Promo code',
@@ -717,7 +726,7 @@
     // A code that came in the reader's link (?promo=), on the unlock box and
     // the payment sheet.
     linkPromoNote: (code) => 'Promo code ' + code + ' from your link is applied at checkout.',
-    linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the full report free. Tap Apply to start it.',
+    linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the Psyche Report free. Tap Apply to start it.',
     linkPromoFreeCard: (code) => 'Promo code ' + code + ' runs your card again free. Tap Apply to start it.',
     linkPromoRefused: (code, reason) => 'The promo code in your link (' + code + ') could not be used: ' + String(reason || '').replace(/\.$/, '').replace(/^That code/, 'it') + '.',
     // The price on the payment sheet: the full price, and with a discount
@@ -1053,7 +1062,7 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts – plus the sections only the full report has.',
+      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts – plus the sections only the Psyche Report has.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
@@ -1078,7 +1087,7 @@
       confidence: 'Confidence',
     },
     pdfCardFoot: 'psycheai.io · your personality, read from your own data',
-    deleteText: 'This removes your Psyche Card, your full report, your evidence summary and every saved ' +
+    deleteText: 'This removes your Psyche Card, your Psyche Report, your evidence summary and every saved ' +
       'Psyche Sync from this browser. It cannot be undone.',
     deleteNote: 'Your count of analyses already run is kept, so this does not restore a free analysis.',
     // Beside a free report's Psyche Card: what each part means, popped out
@@ -1092,7 +1101,7 @@
       pill: (parts, pages) => parts + ' parts' + (pages ? ' · ' + pages + ' pages' : ''),
       lede: 'The working behind your Psyche Card: what each result means, the evidence for it in your own data, and what to do with it.',
       open: 'See Psyche Report',
-      ready: 'Your full report is ready.',
+      ready: 'Your Psyche Report is ready.',
       // Until the reader has saved the PDF once: where the report lives, and
       // the one way to keep it.
       keep: 'Your Psyche Report is saved only in this browser, on this device. PsycheAI keeps no copy, so if your browser clears this site\u2019s data (Safari does after about a week without a visit), it is gone. Download the PDF to keep it.',
@@ -1105,7 +1114,7 @@
         title: 'Your Psyche Card',
         intro: 'Your personality on a single card – who you are most like, what drives you and how you connect, read from your own data.',
         // After the intro: where the reasoning behind the card is, free and paid.
-        introFree: 'Unlock the premium report to read the full analysis and reasoning behind your Psyche Card.',
+        introFree: 'Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card.',
         introPaid: 'See your Psyche Report for the full analysis and reasoning behind your Psyche Card.',
         hover: 'Hover over any part of your card to learn more about your personality.',
         tap: 'Tap any part of your card to learn more about your personality.',
@@ -1165,6 +1174,9 @@
           about: 'Gary Chapman\'s five ways people give and receive care. Many show care one way and want it another – knowing yours, and theirs, keeps it from going unnoticed.',
           yours: f => (f.loveIn ? 'You feel cared for through ' + f.loveIn.toLowerCase() : '') +
             (f.loveIn && f.loveOut ? ', and ' : '') + (f.loveOut ? 'you show it through ' + f.loveOut.toLowerCase() : '') + '.' },
+        { key: 'syncs', icon: '🤝', title: 'Most in sync with', when: f => f.syncs && f.syncs.length,
+          about: 'The three characters whose temperaments fit most easily with yours. Know a friend who is one of them? Send them your link: Psyche Sync shows how the two of you really fit.',
+          yours: f => 'As ' + f.character + ', you click most easily with ' + f.syncs.slice(0, -1).join(', ') + ' and ' + f.syncs[f.syncs.length - 1] + '.' },
       ],
     },
     cardStandFor: 'Values & Beliefs',
@@ -1196,7 +1208,7 @@
       watchOuts: 'Watch-outs',
       holdsBack: 'What holds you back',
       tentative: 'tentative',
-      foot: 'The full report explains each of these with the evidence behind it.',
+      foot: 'The Psyche Report explains each of these with the evidence behind it.',
     },
     whatYouBring: 'What you bring',
     whereItGetsHard: 'Where it gets hard',
@@ -1226,7 +1238,7 @@
     // Under the WhatsApp row of Your data.
     sourceWhatsAppHint: 'Up to 3 chats with close connections are recommended.',
     sourceLoaded: 'Loaded',
-    sourcesFreeNote: 'Adding or changing data comes with the full premium report (US$5).',
+    sourcesFreeNote: 'Adding or changing data comes with the Psyche Report (US$5).',
     // "Read from": what the model actually read of each source, beside what
     // it only counted — "180 of 9,741 of your messages read", "623 stories
     // counted" — so the sample is never mistaken for the whole archive.
@@ -1348,7 +1360,7 @@
   let artDrawn = 0;
 
   /** The scene for a character, as SVG markup, or '' for any other name. */
-  function characterArt(character, className) {
+  function characterArt(character, className, crop) {
     // Own properties only: a name such as "toString" from someone else's card
     // must find nothing, not a function.
     const table = root.PsycheCharacterArt || {};
@@ -1356,8 +1368,115 @@
     const art = Object.prototype.hasOwnProperty.call(table, name) ? table[name] : '';
     if (typeof art !== 'string' || !art) return '';
     const id = 'pc-art-' + (++artDrawn);
-    return '<svg class="' + (className || 'pc-art') + '" viewBox="0 0 520 440" preserveAspectRatio="xMaxYMax slice" ' +
+    // A crop is the subject alone, for a small round tile: the right of the
+    // scene, where each drawing puts it, away from the fade on the left.
+    const box = crop ? '220 20 300 300" preserveAspectRatio="xMidYMid slice' : '0 0 520 440" preserveAspectRatio="xMaxYMax slice';
+    return '<svg class="' + (className || 'pc-art') + '" viewBox="' + box + '" ' +
       'aria-hidden="true" focusable="false">' + art.replace(/\{id\}/g, id) + '</svg>';
+  }
+
+  // The three characters each catalogue character is most in sync with,
+  // printed on the card and on the character pages (tools/seo-pages.mjs).
+  // Balanced: every character is named exactly three times, so none is left
+  // out, and every woman and man is paired with at least one of the other
+  // and at least one of their own (the five drawn as neither are exempt).
+  // The first two are mutual; so is the third, except for one loop of three
+  // (Pikachu, Totoro, Shrek), since 29 characters cannot all pair off.
+  // Retired characters have none, and their cards show the old layout.
+  const CHARACTER_SYNCS = {
+    'Mulan': ['Baymax', 'Po', 'Hermione Granger'],
+    'Elsa': ['Rapunzel', 'Moana', 'Iron Man'],
+    'Moana': ['Hiccup', 'Elsa', 'Joy'],
+    'Simba': ['Po', 'Judy Hopps', 'Princess Peach'],
+    'Rapunzel': ['Elsa', 'Remy', 'Hulk'],
+    'Judy Hopps': ['Nick Wilde', 'Simba', 'Wonder Woman'],
+    'Nick Wilde': ['Judy Hopps', 'Shrek', 'Kuromi'],
+    'Baymax': ['Mulan', 'Totoro', 'Hiccup'],
+    'Woody': ['Buzz Lightyear', 'Joy', 'WALL-E'],
+    'Buzz Lightyear': ['Woody', 'Wonder Woman', 'Captain America'],
+    'WALL-E': ['Totoro', 'Remy', 'Woody'],
+    'Remy': ['Rapunzel', 'WALL-E', 'Batman'],
+    'Joy': ['Woody', 'Pikachu', 'Moana'],
+    'Iron Man': ['Captain America', 'Spider-Man', 'Elsa'],
+    'Captain America': ['Iron Man', 'Wonder Woman', 'Buzz Lightyear'],
+    'Spider-Man': ['Iron Man', 'Hermione Granger', 'Sailor Moon'],
+    'Hulk': ['Batman', 'Hiccup', 'Rapunzel'],
+    'Wonder Woman': ['Captain America', 'Buzz Lightyear', 'Judy Hopps'],
+    'Batman': ['Hermione Granger', 'Hulk', 'Remy'],
+    'Pikachu': ['Joy', 'Sailor Moon', 'Totoro'],
+    'Princess Peach': ['Hello Kitty', 'Sailor Moon', 'Simba'],
+    'Totoro': ['Baymax', 'WALL-E', 'Shrek'],
+    'Shrek': ['Nick Wilde', 'Kuromi', 'Pikachu'],
+    'Po': ['Mulan', 'Simba', 'Hello Kitty'],
+    'Hiccup': ['Moana', 'Hulk', 'Baymax'],
+    'Hermione Granger': ['Spider-Man', 'Batman', 'Mulan'],
+    'Sailor Moon': ['Pikachu', 'Princess Peach', 'Spider-Man'],
+    'Hello Kitty': ['Kuromi', 'Princess Peach', 'Po'],
+    'Kuromi': ['Hello Kitty', 'Shrek', 'Nick Wilde'],
+  };
+
+  /** The three characters a catalogue character is most in sync with, or none. */
+  function syncsOf(character) {
+    const name = String(character || '').trim();
+    return Object.prototype.hasOwnProperty.call(CHARACTER_SYNCS, name) ? CHARACTER_SYNCS[name].slice() : [];
+  }
+
+  // One line-icon set for the app's own interface, in place of the emoji
+  // that used to stand in for icons (📷 💬 🧲 🌱…), which read as generic
+  // beside the line icons used elsewhere. Keyed by the emoji each replaces, so
+  // the places that name an icon keep naming it the same way. Drawn on a 24px
+  // grid with a round 1.8 stroke in currentColor, so each takes the colour of
+  // the text around it. The Psyche Card keeps its emoji (they are part of the
+  // shared image), and so do the card guide and the love languages, which
+  // mirror what the card prints.
+  const LINE_ICONS = {
+    '👤': '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/>',
+    '📊': '<path d="M5 20V11M12 20V5M19 20v-6M3 20h18"/>',
+    '🧭': '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+    '✨': '<path d="M12 3l1.8 4.6L18.5 9.4l-4.7 1.8L12 16l-1.8-4.8L5.5 9.4l4.7-1.8z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
+    '💞': '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+    '📱': '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+    '🧵': '<path d="M3 8c3-3 6-3 9 0s6 3 9 0M3 16c3-3 6-3 9 0s6 3 9 0"/>',
+    '🧲': '<path d="M5 3h4v8a3 3 0 0 0 6 0V3h4v8a7 7 0 0 1-14 0zM5 7.5h4M15 7.5h4"/>',
+    '🌱': '<path d="M12 21v-8M12 13C12 9 9 6 4 6c0 4 3 7 8 7zM12 11c0-3 2-6 7-6 0 3-2 6-7 6z"/>',
+    '🔗': '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+    '🪜': '<path d="M7 3v18M17 3v18M7 7.5h10M7 12h10M7 16.5h10"/>',
+    '💼': '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
+    '🎯': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    '🧿': '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    '⚖️': '<path d="M12 3v18M8 21h8M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/>',
+    '🤝': '<circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-5.5 7-5.5s7 2 7 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2.4.7 4 2.5 4 5.2"/>',
+    '☀️': '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    '🔥': '<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>',
+    '🕳️': '<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>',
+    '💬': '<path d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z"/>',
+    '🧂': '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/>',
+    '🎁': '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v9h14v-9M12 8v13M12 8C10 4 6 4 6 6.5S10 8 12 8zM12 8c2-4 6-4 6-1.5S14 8 12 8z"/>',
+    '📷': '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5v.01"/>',
+    '🔍': '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+    '📘': '<path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5zM5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/>',
+    '📖': '<path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2zM22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/>',
+    '🔒': '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    '📄': '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h6"/>',
+    '🛡️': '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+    '📈': '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+    '💘': '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M9.5 11.5l2 2 3.5-4"/>',
+    '🔇': '<path d="M11 5L6 9H3v6h3l5 4zM16 9l5 6M21 9l-5 6"/>',
+  };
+
+  /** The line icon standing in for an emoji, as SVG markup, or '' for one with none. */
+  function lineIcon(glyph, className) {
+    const key = String(glyph || '').trim();
+    const body = Object.prototype.hasOwnProperty.call(LINE_ICONS, key) ? LINE_ICONS[key] : '';
+    if (!body) return '';
+    return '<svg class="line-icon' + (className ? ' ' + className : '') + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true" focusable="false">' + body + '</svg>';
+  }
+
+  /** An icon for the interface: the line icon for an emoji where there is one, the emoji itself otherwise. */
+  function iconHtml(glyph) {
+    return lineIcon(glyph) || String(glyph || '');
   }
 
   /** The emblem for a catalogue character, as SVG markup, or '' for any other name. */
@@ -1384,6 +1503,6 @@
   root.PsycheCopy = {
     TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
-    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, gentleAttachment,
+    CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, syncsOf, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

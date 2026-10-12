@@ -638,6 +638,7 @@
       ? '<span class="pc-sstrength pc-sstrength-' + esc(strength) + '">' + esc(strength) + '</span>' : '');
     const standFor = titlesOf(report.values, 3).concat(titlesOf(report.beliefs, 1)).slice(0, 4);
     const into = titlesOf(report.interests, 3);
+    const syncs = name ? Copy.syncsOf(name) : [];
     const motives = cardMotivators(report);
     const chips = list => '<div class="pc-schips">' + list.map(item => '<span>' + esc(item) + '</span>').join('') + '</div>';
     const loveList = side => (side || []).slice(0, 2).filter(l => l && l.language).map(l =>
@@ -686,12 +687,23 @@
         (standFor.length ? '<div class="pc-spanel">' + label(CARD_ICONS.values, S.cardStandFor) + chips(standFor) + '</div>' : '') +
         (into.length ? '<div class="pc-spanel">' + label(CARD_ICONS.interests, S.cardInto) + chips(into) + '</div>' : '') +
       '</div>' +
-      // Receiving and giving in one panel, read across: the comparison is
-      // the point, and two boxes for four short lines looked empty.
+      // How they show care, then the three characters theirs is most in sync
+      // with, each in its own box: the cast on every card, and a reason for a
+      // friend who is one of them to make their own. Receiving stays in the
+      // report. A card with no catalogue character (a long link, a retired
+      // one) keeps receiving and giving read across in one panel instead.
+      (syncs.length ? '<div class="pc-sgrid pc-sbottom">' +
+        '<div class="pc-spanel pc-slove-panel">' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) +
+          '<ul class="pc-slove">' + loveList(Copy.givingLove(love.giving)) + '</ul></div>' +
+        '<div class="pc-spanel pc-ssync-panel">' + label(CARD_ICONS.syncs, TEXT.cardSyncs) +
+          '<ul class="pc-ssyncs">' + syncs.map(other => '<li><span class="pc-ssync-art">' +
+            (Copy.characterArt(other, 'pc-ssync-scene', true) || Copy.emblemSvg(other, 'pc-ssync-emblem')) +
+            '</span><b>' + esc(other) + '</b></li>').join('') + '</ul></div>' +
+      '</div>' :
       '<div class="pc-spanel pc-slove-panel">' +
         '<div>' + label(CARD_ICONS.loveIn, TEXT.cardLoveIn) + '<ul class="pc-slove">' + loveList(love.receiving) + '</ul></div>' +
         '<div>' + label(CARD_ICONS.loveOut, TEXT.cardLoveOut) + '<ul class="pc-slove">' + loveList(Copy.givingLove(love.giving)) + '</ul></div>' +
-      '</div>' +
+      '</div>') +
       // On the reader's own card the foot carries the QR code for their link
       // once it is saved (fillCardQr), and the line moves in beside it.
       (own ? '<div class="pc-qr-slot"></div>' : '') +
@@ -888,7 +900,7 @@
   function sectionHead(icon, title, sub, collapsible, result) {
     const chevron = '<span class="card-chevron" aria-hidden="true"></span>';
     return '<div class="card-head' + (collapsible ? ' card-head-toggle' : '') + '">' +
-      '<span class="card-icon">' + icon + '</span>' +
+      '<span class="card-icon">' + Copy.iconHtml(icon) + '</span>' +
       '<div><h2>' +
       (collapsible
         ? '<button class="card-toggle" type="button" aria-expanded="true">' +
@@ -1641,7 +1653,7 @@
     const sample = Boolean(options && options.sample);
     const items = PAID_SECTIONS.map(section =>
       '<li class="premium-tier-item">' +
-      '<span class="premium-tier-icon" aria-hidden="true">' + section.icon + '</span>' +
+      '<span class="premium-tier-icon" aria-hidden="true">' + Copy.iconHtml(section.icon) + '</span>' +
       '<span class="premium-tier-text"><strong>' + esc(section.title()) + '</strong>' +
       '<span>' + esc(section.coverBlurb()) + '</span>' +
       '</span></li>').join('');
@@ -1750,7 +1762,7 @@
   function tierItemsHtml(rows, blurbOf) {
     return rows.map(row =>
       '<li class="premium-tier-item">' +
-      '<span class="premium-tier-icon" aria-hidden="true">' + row.icon + '</span>' +
+      '<span class="premium-tier-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
       '<span class="premium-tier-text"><strong>' + esc(row.title()) + '</strong>' +
       '<span>' + esc(blurbOf(row)) + '</span>' +
       '</span></li>').join('');
@@ -1782,7 +1794,7 @@
     const stat = (key, label) => '<li class="referral-stat">' +
       '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
     return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
-      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">🔗</span><div>' +
+      '<div class="referral-head"><span class="referral-icon" aria-hidden="true">' + Copy.lineIcon('🔗') + '</span><div>' +
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
         '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
       '<ul class="referral-stats">' + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
@@ -1827,7 +1839,7 @@
     const R = TEXT.referral;
     return '<p class="referral-gifts-head">' + esc(R.giftsHead) + '</p><ul class="referral-gift-list">' +
       gifts.map(g => '<li><code>' + esc(giftUrl(g.token).replace(/^https?:\/\//, '')) + '</code>' +
-        '<button class="btn btn-ghost referral-gift-copy" type="button" data-token="' + esc(g.token) + '">' + esc(R.copyShort) + '</button></li>').join('') +
+        '<button class="btn btn-outline referral-gift-copy" type="button" data-token="' + esc(g.token) + '">' + esc(R.copyShort) + '</button></li>').join('') +
       '</ul>';
   }
   async function refreshReferral() {
@@ -2028,11 +2040,11 @@
   // The caveat as a soft note with its own mark, then the two halves, each
   // a panel of its own under an icon: the roast, and the honest friend.
   function bonusBodyHtml(analysis) {
-    return '<p class="fineprint bonus-caveat"><span class="bonus-caveat-mark" aria-hidden="true">🧂</span>' +
+    return '<p class="fineprint bonus-caveat"><span class="bonus-caveat-mark" aria-hidden="true">' + Copy.lineIcon('🧂') + '</span>' +
       '<span>' + esc(TEXT.bonusCaveat) + '</span></p>' +
-      '<div class="roast-half roast-harsh"><h3><span class="roast-half-icon" aria-hidden="true">🔥</span>' +
+      '<div class="roast-half roast-harsh"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('🔥') + '</span>' +
         esc(TEXT.bonusHarsh) + '</h3>' + paragraphs(analysis.harsh) + '</div>' +
-      '<div class="roast-half roast-advice"><h3><span class="roast-half-icon" aria-hidden="true">💬</span>' +
+      '<div class="roast-half roast-advice"><h3><span class="roast-half-icon" aria-hidden="true">' + Copy.lineIcon('💬') + '</span>' +
         esc(TEXT.bonusAdvice) + '</h3>' + paragraphs(analysis.advice) + '</div>';
   }
 
@@ -2063,7 +2075,7 @@
       '<div class="bonus-cover">' +
       '<h3>' + esc(TEXT.bonusCoverTitle) + '</h3>' +
       '<p>' + esc(TEXT.bonusCoverBlurb) + '</p>' +
-      '<button class="btn btn-ghost bonus-reveal" type="button" aria-expanded="false">' +
+      '<button class="btn btn-outline bonus-reveal" type="button" aria-expanded="false">' +
       esc(TEXT.bonusReveal) + '</button></div>' +
       '<div class="bonus-body" hidden></div></div>';
   }
@@ -2079,13 +2091,13 @@
     const R = TEXT.secretRoast;
     return '<section class="card section-card bonus-card secret-roast screen-only" aria-labelledby="secret-roast-title">' +
       '<span class="secret-roast-sparks" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>' +
-      '<p class="secret-roast-badge"><span aria-hidden="true">🎁</span> ' + esc(R.badge) + '</p>' +
-      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">🔥</span></h2>' +
+      '<p class="secret-roast-badge"><span aria-hidden="true">' + Copy.lineIcon('🎁') + '</span> ' + esc(R.badge) + '</p>' +
+      '<h2 id="secret-roast-title" class="secret-roast-title">' + esc(TEXT.bonus) + ' <span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span></h2>' +
       '<div class="bonus-cover secret-roast-cover">' +
       '<p class="secret-roast-lede">' + esc(R.lede) + '</p>' +
       '<p class="secret-roast-warn">' + esc(R.warn) + '</p>' +
       '<button class="btn bonus-reveal secret-roast-reveal" type="button" aria-expanded="false">' +
-      '<span aria-hidden="true">🔥</span> ' + esc(R.reveal) + '</button></div>' +
+      '<span aria-hidden="true">' + Copy.lineIcon('🔥') + '</span> ' + esc(R.reveal) + '</button></div>' +
       '<div class="bonus-body" hidden></div></section>';
   }
 
@@ -2096,7 +2108,7 @@
     // No share button: the roast is for the reader alone.
     setHtml(body, bonusBodyHtml(bonus) +
       '<div class="btn-row bonus-actions">' +
-      '<button class="btn btn-ghost bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>');
+      '<button class="btn btn-outline bonus-hide" type="button">' + esc(TEXT.bonusHide) + '</button></div>');
     body.hidden = false;
     cover.hidden = true;
     // Read in the page's own colours once opened; grey only while covered.
@@ -2205,12 +2217,12 @@
         '</div></li>').join('') + '</ol>' +
       '<div class="insight-premium-foot">' +
         '<ul class="insight-extras">' + I.extras.map(([icon, text]) =>
-          '<li><span aria-hidden="true">' + esc(icon) + '</span>' + esc(text) + '</li>').join('') + '</ul>' +
+          '<li><span aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(text) + '</li>').join('') + '</ul>' +
         '<button class="btn btn-outline" id="insight-sample" type="button">' + esc(I.sampleButton) + '</button>' +
       '</div>' +
     '</div>' +
     '<div class="insight-compat">' +
-      '<span class="insight-compat-icon" aria-hidden="true">🤝</span>' +
+      '<span class="insight-compat-icon" aria-hidden="true">' + Copy.lineIcon('🤝') + '</span>' +
       '<div><h3>' + esc(I.compatTitle) + '</h3><p>' + esc(I.compatBlurb) + '</p></div>' +
     '</div>';
   }
@@ -3136,7 +3148,7 @@
     }
   }
 
-  // "Request data": to the steps for getting the export. A reader who already
+  // "Get my data": to the steps for getting the export. A reader who already
   // has a card has no steps card on this page (see .is-returning), so for them
   // it opens the illustrated guide instead.
   $('#hero-start').addEventListener('click', () => {
@@ -3152,11 +3164,22 @@
     event.preventDefault();
     $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
-  $('#hero-sample').addEventListener('click', event => showSample(event.currentTarget));
+  // "Load my data": the Add your data popout, as Start here's button opens it.
+  // A reader with a card already adds to it from their report instead.
+  $('#hero-load').addEventListener('click', () => {
+    if (state.profile) { go('profile'); startRerun(); return; }
+    startFromSources();
+  });
   // Set by initHeroVideo: closes the video if it is expanded over the page and
   // says whether it was, so Back can close it (see the popstate listener).
   let collapseHeroVideo = null;
   initHeroVideo();
+  // The page's own static icons (index.html) as line icons too: written there
+  // as the emoji they stand for, so the markup still reads without this.
+  document.querySelectorAll('.card-icon, .mode-icon, .gift-banner-icon, .deid-icon, .more-data-icon').forEach(node => {
+    const svg = Copy.lineIcon(node.textContent);
+    if (svg) node.innerHTML = svg;
+  });
 
   /**
    * The welcome hero's video, with a player of its own: a timing bar to drag,
@@ -3240,7 +3263,7 @@
       // The big invitation only while it is silent.
       sound.hidden = !video.muted;
       sound.querySelector('.hero-video-text').textContent = still() && video.paused ? TEXT.heroVideoPlay : TEXT.heroVideoSound;
-      sound.querySelector('.hero-video-icon').textContent = still() && video.paused ? '▶' : '🔇';
+      sound.querySelector('.hero-video-icon').innerHTML = still() && video.paused ? '▶' : Copy.lineIcon('🔇');
     };
     const tick = () => {
       const d = video.duration;
@@ -4009,7 +4032,7 @@
     // The text the model is actually sent, the same measure the budget counts.
     const sentKb = Math.max(1, Math.round(Digest.evidenceChars(preview) / 1000));
     const sizeNote = 'About ' + sentKb + ' KB. ' + (deepRead === 'rebuilt' ? TEXT.deepRebuiltNote : deepRead ? TEXT.deepReviewNote
-      : 'This same digest is what both your free summary card and the full premium report are read from.');
+      : 'This same digest is what both your free summary card and the Psyche Report are read from.');
     const rowsHtml = rows.map(r => {
       const included = decision[r[1]];
       return '<tr><td>' + esc(r[3]) + '</td>' +
@@ -4591,7 +4614,7 @@
       list.replaceChildren(...candidates.map(name => {
         const pick = document.createElement('button');
         pick.type = 'button';
-        pick.className = 'btn btn-ghost wa-who-pick';
+        pick.className = 'btn btn-outline wa-who-pick';
         pick.textContent = name;
         pick.addEventListener('click', () => { box.hidden = true; done(name); });
         return pick;
@@ -5544,7 +5567,7 @@
       { icon: '🔍', label: TEXT.sourceGoogle, loaded: Boolean(digest && digest.google) },
       { icon: '📘', label: TEXT.sourceFacebook, loaded: Boolean(digest && digest.facebook) },
     ].map(row =>
-      '<li class="source-row"><span class="source-name">' + esc(row.icon) + ' ' + esc(row.label) + '</span>' +
+      '<li class="source-row"><span class="source-name">' + Copy.iconHtml(row.icon) + ' ' + esc(row.label) + '</span>' +
       (row.loaded
         ? '<span class="source-tick" role="img" aria-label="' + esc(TEXT.sourceLoaded) + '">✓</span>'
         : '<span class="source-cross" role="img" aria-label="' + esc(TEXT.sourceMissing) + '">✕</span>') +
@@ -6116,7 +6139,7 @@
   /** Who suits them: the one-line verdict as a banner, then the two lists. */
   function idealPartnerStructuredBody(idealPartner) {
     return '<div class="partner">' +
-      (idealPartner.summary ? '<div class="partner-summary"><span class="partner-summary-icon" aria-hidden="true">💞</span>' +
+      (idealPartner.summary ? '<div class="partner-summary"><span class="partner-summary-icon" aria-hidden="true">' + Copy.lineIcon('💞') + '</span>' +
         '<p>' + esc(idealPartner.summary) + '</p></div>' : '') +
       pairedListsHtml({ title: TEXT.idealPartnerNeeds, items: idealPartner.needs },
         { title: TEXT.idealPartnerCarefulOf, items: idealPartner.carefulOf }) + '</div>';
@@ -6468,7 +6491,7 @@
         const what = !row.loaded ? S.sourceNotAdded : lines.length ? lines.join(' · ') : S.sourceLoaded;
         return '<li><button type="button" class="source-read' + (row.loaded ? ' is-loaded' : ' is-missing') + '"' +
             ' data-source="' + row.key + '" data-flow="' + (paid ? 'rerun' : 'unlock') + '">' +
-          '<span class="source-read-icon" aria-hidden="true">' + row.icon + '</span>' +
+          '<span class="source-read-icon" aria-hidden="true">' + Copy.iconHtml(row.icon) + '</span>' +
           '<span class="source-read-body"><span class="source-read-name">' + esc(row.label) + '</span>' +
             '<span class="source-read-what">' + esc(what) + '</span>' +
             (row.hint ? '<span class="source-read-hint">' + esc(row.hint) + '</span>' : '') + '</span>' +
@@ -6664,7 +6687,7 @@
     return '<section class="card section-card beyond-card screen-only" aria-labelledby="beyond-title">' +
       '<h2 id="beyond-title">' + esc(B.title) + '</h2><p class="beyond-sub">' + esc(B.sub) + '</p>' +
       '<div class="beyond-grid">' + columns.map(([icon, title, body]) =>
-        '<div class="beyond-col"><h3><span class="beyond-icon" aria-hidden="true">' + icon + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
+        '<div class="beyond-col"><h3><span class="beyond-icon" aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
       '</div><p class="beyond-foot">' + esc(B.foot) + ' <span aria-hidden="true">↓</span></p></section>';
   }
 
@@ -6917,6 +6940,7 @@
       value: titlesOf(report.values, 1)[0] || titlesOf(report.beliefs, 1)[0] || '',
       interest: titlesOf(report.interests, 1)[0] || '',
       loveIn: first(love.receiving), loveOut: first(Copy.givingLove(love.giving)),
+      syncs: Copy.syncsOf(essenceName(essence)),
     };
   }
 
@@ -6930,6 +6954,7 @@
     bigFive: ['.pc-straits'],
     standFor: ['.pc-schips'],
     love: ['.pc-slove-panel'],
+    syncs: ['.pc-ssync-panel'],
     qr: ['.pc-qr-slot'],
   };
 
@@ -7254,7 +7279,7 @@
       icon + '</span><span>' + esc(lead) + ' <b>' + esc(model) + '</b> on ' + esc(when(at)) + '.</span></span>';
     const lines = [line('✦', 'Psyche Card generated by', profile.model || 'the model', profile.createdAt)];
     if (profile.premiumAnalysis && profile.premiumModel && profile.premiumAt) {
-      lines.push(line('★', 'Full premium report written by', profile.premiumModel, profile.premiumAt));
+      lines.push(line('★', 'Psyche Report written by', profile.premiumModel, profile.premiumAt));
     }
     $('#analysed-by').innerHTML = '<div class="provenance-box">' + lines.join('') + '</div>';
   }
@@ -8764,7 +8789,7 @@
     const paymentRequest = stripe.paymentRequest({
       country: intent.country,
       currency: intent.currency,
-      total: { label: 'PsycheAI full premium report', amount: intent.amount },
+      total: { label: 'PsycheAI – Psyche Report', amount: intent.amount },
       requestPayerName: false,
       requestPayerEmail: false,
     });
@@ -10144,6 +10169,7 @@
     $('#invite-also').textContent = others.length ? TEXT.inviteAlso(others) : '';
     $('#invite-also').hidden = !others.length;
     $('#invite-guide').textContent = TEXT.inviteStart;
+    showInviteInApp(name);
     $('#invite-card-hint').textContent = TEXT.inviteCardHint;
     const open = $('#invite-card-open');
     open.hidden = !inviteReport;
@@ -10273,7 +10299,7 @@
       bar.hidden = true;
       try { sessionStorage.setItem('psycheai_inapp_closed', '1'); } catch (error) { /* private window */ }
     });
-    bar.hidden = closed;
+    bar.hidden = closed || !$('#invite-inapp').hidden;
   })();
 
   // The slim bar offering the Psyche Report, once a free card exists: on the
@@ -10329,6 +10355,37 @@
     } finally {
       button.disabled = false;
     }
+  });
+
+  // Step one of a friend's invite inside an app's own browser (see
+  // renderInvite): open the page in Safari or Chrome, before anything else.
+  // The general note under the navigation says the same, so it stands down
+  // while this shows.
+  function showInviteInApp(name) {
+    const box = $('#invite-inapp');
+    const app = inAppBrowser();
+    box.hidden = !app;
+    if (!app) return;
+    const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    $('#invite-inapp-title').textContent = TEXT.inviteInAppTitle(ios);
+    $('#invite-inapp-text').textContent = TEXT.inviteInAppText(app, name, ios);
+    const chrome = $('#invite-inapp-chrome');
+    chrome.hidden = !/Android/i.test(navigator.userAgent);
+    if (!chrome.hidden) {
+      chrome.textContent = TEXT.inAppChrome;
+      const arrived = new URL(ARRIVED_AT);
+      chrome.href = 'intent://' + arrived.host + arrived.pathname + arrived.search + arrived.hash +
+        '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(ARRIVED_AT) + ';end';
+    }
+    const copy = $('#invite-inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    if ($('#inapp-warn')) $('#inapp-warn').hidden = true;
+  }
+  // The address the friend arrived on, with its key: by now the app has taken
+  // the link out of the address bar.
+  $('#invite-inapp-copy').addEventListener('click', async event => {
+    const copy = event.currentTarget;
+    try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
   });
 
   $('#invite-guide').addEventListener('click', () => {

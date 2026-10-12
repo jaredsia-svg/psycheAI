@@ -123,7 +123,8 @@ const byName = new Map(CHARACTERS.map(c => [c.name, c]));
 for (const c of CHARACTERS) {
   const art = Copy.characterArt(c.name, 'seo-art');
   const types = c.types.map(t => `<a class="chip" href="/${typeSlug(t)}">${t}</a>`).join(' ');
-  const syncs = c.syncs.filter(n => byName.has(n)).map(n => `<a href="/${characterSlug(byName.get(n))}">${esc(n)}</a>`).join(' and ');
+  const links = Copy.syncsOf(c.name).filter(n => byName.has(n)).map(n => `<a href="/${characterSlug(byName.get(n))}">${esc(n)}</a>`);
+  const syncs = links.slice(0, -1).join(', ') + ' and ' + links[links.length - 1];
   const faq = [
     [`How do I find out if I am most like ${c.name}?`, `Make your free Psyche Card from your Instagram data. It names the character whose temperament is closest to yours, with the reasons from your own data.`],
     [`What MBTI type is ${c.name}?`, `People whose card matches ${c.name} most often read as ${c.types.join(' or ')}, though your own type is read from your data, not from the character.`],
@@ -140,7 +141,7 @@ for (const c of CHARACTERS) {
     body: section(`What a ${c.name} reading means`, `<p>${esc(c.about)}</p>`) +
       section(`You might be most like ${c.name} if…`, ticks(c.signs)) +
       section('Strengths and what to watch', `<h3>Strengths</h3>${ticks(c.strengths)}<h3>Worth watching</h3>${ticks(c.growth)}`) +
-      section('Often paired with', `<p>MBTI types this temperament often reads as: ${types}</p><p>Syncs easily with ${syncs}.</p>`) +
+      section('Often paired with', `<p>MBTI types this temperament often reads as: ${types}</p><p>Most in sync with ${syncs}.</p>`) +
       section('How the character is chosen', `<p>Your Psyche Card names the character whose temperament is closest to yours, from ${CHARACTERS.length} characters, using the same evidence as your MBTI and Big Five: how you post, write, keep in touch and spend your attention. It is a reading of temperament, never of looks.</p><p class="fineprint">${esc(c.name)} belongs to ${esc(c.franchise)}. PsycheAI is not affiliated with or endorsed by its owners.</p>`) +
       faqBlock(faq),
   }));
@@ -253,7 +254,7 @@ for (const t of TOPICS) {
       section(`MBTI: ${esc((s.mbti || {}).type || '')}`, `<ul class="ticks">${letters}</ul>`) +
       section('Values and interests', `<p><strong>Values:</strong> ${list(s.values, 'value')}</p><p><strong>Interests:</strong> ${list(s.interests, 'name')}</p>`) +
       section('Love languages', `<p><strong>Receives care as:</strong> ${list(love.receiving, 'language')}</p><p><strong>Shows care as:</strong> ${list(love.giving, 'language')}</p>`) +
-      section('The full report goes further', '<p>The full report (US$5) explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
+      section('The Psyche Report goes further', '<p>The Psyche Report (US$5) explains every part of the card with evidence, and adds wellbeing, attachment style, ideal partner, career coaching and a development plan. <a href="/">Start with your free card</a>.</p>'),
   }));
 }
 
@@ -270,7 +271,7 @@ ${LEGAL.map(s => `  <url><loc>${SITE}/${s}</loc><changefreq>yearly</changefreq><
 `;
 const llms = `# PsycheAI
 
-> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. A full report is US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. A Psyche Report is US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
 
 ## Start here
 - [PsycheAI](${SITE}/): make your free Psyche Card
