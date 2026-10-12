@@ -54,6 +54,7 @@
 }
 </script>
 <link rel="stylesheet" href="styles.css">
+<script src="early.js"></script>
 <!-- favicon.ico (16, 32 and 48px) for crawlers, search results and browsers
      without SVG icons, which also ask for /favicon.ico on their own; the SVG
      below wins wherever it is supported. -->
@@ -103,7 +104,7 @@
 <main class="container">
 
 <!-- ══════════════ welcome ══════════════ -->
-<section id="view-welcome" class="view" hidden>
+<section id="view-welcome" class="view">
   <header class="hero">
     <!-- Backdrop rather than an object in the layout: the mark alone, no
          wordmark, blown up and bled off the right edge behind the text. The
@@ -1424,7 +1425,9 @@
 <script src="prices.js"></script>
 <script src="character-art.js"></script>
 <script src="copy.js"></script>
-<script src="pdf.js"></script>
+<!-- The PDF maker, fetched at low priority and run once the page is idle
+     (app.js, loadPdf): nobody needs it to see the page. -->
+<link rel="prefetch" href="pdf.js" id="pdf-script" as="script">
 <script src="llm.js"></script>
 <script src="app.js"></script>
 </body>

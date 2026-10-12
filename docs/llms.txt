@@ -1,0 +1,26 @@
+# PsycheAI
+
+> A free personality reading from your own Instagram data, with no questionnaire. Your browser reads your Instagram data download, makes a short de-identified summary you review, and an AI model (Google Gemini or Anthropic Claude) writes a Psyche Card: the character you are most like, MBTI, Big Five, values, interests and love languages. A full report is US$5. Psyche Sync compares two people's cards for free. PsycheAI keeps no copy of your data or report.
+
+## Start here
+- [PsycheAI](https://psycheai.io/): make your free Psyche Card
+- [FAQ](https://psycheai.io/faq): privacy, pricing and how it works
+- [Sample report](https://psycheai.io/sample-report): what a reading looks like
+- [Download your Instagram data](https://psycheai.io/download-instagram-data): the steps, in JSON format
+
+## Guides
+- [instagram personality test](https://psycheai.io/instagram-personality-test)
+- [compatibility test](https://psycheai.io/compatibility-test)
+- [mbti test no questions](https://psycheai.io/mbti-test-no-questions)
+- [love language test](https://psycheai.io/love-language-test)
+- [big five personality test](https://psycheai.io/big-five-personality-test)
+- [what instagram knows about you](https://psycheai.io/what-instagram-knows-about-you)
+- [instagram data download help](https://psycheai.io/instagram-data-download-help)
+- [best friend compatibility test](https://psycheai.io/best-friend-compatibility-test)
+
+## Characters and types
+- [Which character are you?](https://psycheai.io/characters)
+- [The 16 MBTI types](https://psycheai.io/mbti-types)
+
+## Policies
+- [Privacy](https://psycheai.io/privacy), [Terms](https://psycheai.io/terms), [Refunds](https://psycheai.io/refunds)

@@ -2492,6 +2492,8 @@
       history.back();
     }
     for (const name of VIEWS) $('#view-' + name).hidden = name !== view;
+    // The front page, kept out of sight by early.js until this choice was made.
+    document.documentElement.classList.remove('view-pending');
     syncNav();
     refreshReportPromo();
     // The psyche card is scaled from the width of the column it sits in, and a
@@ -5796,7 +5798,7 @@
       reportPages = 0;
       const count = () => {
         try {
-          buildReportPdf(state.profile).text().then(text => {
+          loadPdf().then(() => buildReportPdf(state.profile).text()).then(text => {
             if (reportPagesFor !== key) return;
             reportPages = (text.match(/\/Type \/Page[^s]/g) || []).length;
             const pill = $('#report-hero-pill');
@@ -7507,7 +7509,7 @@
     const last = state.lastReport;
     if (!last) return;
     let pdf;
-    try { pdf = compatPdf(last); } catch (error) { linkStatus('#compat-share-status', 'Could not build the PDF.'); return; }
+    try { await loadPdf(); pdf = compatPdf(last); } catch (error) { linkStatus('#compat-share-status', 'Could not build the PDF.'); return; }
     const file = new File([pdf.blob], pdf.name, { type: 'application/pdf' });
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], text: shareMessage() }); return; }
@@ -7526,6 +7528,28 @@
   // page, and on mobile often offered no PDF destination at all. pdf.js writes
   // the file directly, so the download is one click and looks the same
   // everywhere.
+  // ---------- the PDF maker, loaded when the page is idle ----------
+  //
+  // pdf.js is the second-largest script and nothing on screen needs it until
+  // a PDF is asked for, so it is prefetched (index.html) and run once the page
+  // is idle. A download asked for before then waits for it.
+  let pdfLoading = null;
+  function loadPdf() {
+    if (window.PsychePDF) return Promise.resolve();
+    if (!pdfLoading) {
+      pdfLoading = new Promise((resolve, reject) => {
+        const link = $('#pdf-script');
+        const script = document.createElement('script');
+        script.src = link ? link.getAttribute('href') : 'pdf.js';
+        script.onload = () => resolve();
+        script.onerror = () => { pdfLoading = null; reject(new Error('The PDF maker could not be loaded. Check your connection and try again.')); };
+        document.head.appendChild(script);
+      });
+    }
+    return pdfLoading;
+  }
+  (window.requestIdleCallback || (fn => setTimeout(fn, 1500)))(() => loadPdf().catch(() => {}));
+
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
     // Same date-only granularity the free line already used — kept rather
@@ -7603,9 +7627,10 @@
     if (ready) ready.after(note); else body.prepend(note);
   }
 
-  function exportPdf() {
+  async function exportPdf() {
     const profile = state.profile;
     if (!profile) return;
+    try { await loadPdf(); } catch (error) { return; }
     const href = URL.createObjectURL(buildReportPdf(profile));
     const link = document.createElement('a');
     link.download = reportFileName(profile);
@@ -9194,10 +9219,11 @@
     return { blob, name: 'psycheai-sync-' + slug(last.myName) + '-' + slug(last.otherName) + '.pdf' };
   }
 
-  function exportCompatPdf() {
+  async function exportCompatPdf() {
     const last = state.lastReport;
     if (!last) return;
     try {
+      await loadPdf();
       const { blob, name } = compatPdf(last);
       const href = URL.createObjectURL(blob);
       const link = document.createElement('a');

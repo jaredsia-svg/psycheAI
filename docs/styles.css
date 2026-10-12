@@ -168,6 +168,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 1.5rem 0; }
 
 .container { max-width: var(--page-w); margin: 0 auto; padding: clamp(1.2rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2rem) 4rem; }
 .view[hidden] { display: none; }
+/* A returning reader's front page, until app.js has chosen what to show (early.js). */
+html.view-pending #view-welcome { display: none; }
 .footer { border-top: 1px solid var(--line); padding: 1.5rem; text-align: center; color: var(--ink-soft); font-size: .78rem; }
 .footer.is-content .footer-note { display: none; }
 /* Small and quiet: it is for whoever is reporting a problem, not for every reader. */
@@ -4082,6 +4084,19 @@ details.more[open] > summary::after { content: ' ▴'; }
 .guide .btn { display: inline-flex; text-decoration: none; }
 .guide-hero h1 { margin: 0 0 .6rem; }
 .guide-hero .btn-row { margin: 1rem 0 0; }
+/* The search pages (tools/seo-pages.mjs): a breadcrumb over the hero, a
+   character's scene beside its name, and plain lists of links. */
+.crumbs { font-size: .82rem; color: var(--ink-soft); margin: 0 0 .8rem; }
+.crumbs a { color: var(--ink-soft); }
+.crumbs a:hover { color: var(--accent); }
+.seo-art-frame { float: right; width: 150px; height: 128px; margin: 0 0 .6rem 1rem; border-radius: 20px; overflow: hidden;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.seo-art-frame .seo-art { display: block; width: 100%; height: 100%; }
+.guide-image { display: block; width: 100%; height: auto; margin: .4rem 0 1rem; border-radius: 16px; border: 1px solid var(--line); }
+.seo-links { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.seo-links li { margin: 0; line-height: 1.45; }
+.guide .chip { display: inline-flex; padding: .15rem .6rem; border-radius: 999px; text-decoration: none; font-weight: 700; }
+@media (max-width: 560px) { .seo-art-frame { width: 110px; height: 94px; } }
 .guide .card h2 { margin-top: 0; }
 .card ol.guide-steps { list-style: decimal; padding-left: 1.3rem; line-height: 1.55; }
 .card ol.guide-steps li { margin-bottom: .5rem; padding-left: .2rem; }

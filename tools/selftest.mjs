@@ -7339,8 +7339,9 @@ check('the schema requires evidence on where they align and differ',
     `],
     { env: { PATH: process.env.PATH }, timeout: 20000 });
   const got = JSON.parse(child.toString());
-  check('the sitemap lists the front page, the four guides and the three policies', paths.length === 8 &&
-    ['/privacy', '/terms', '/refunds'].every(path => paths.includes(path)), JSON.stringify(paths));
+  check('the sitemap lists the front page, the guides, the policies and the generated pages', paths.length === 62 &&
+    ['/', '/privacy', '/terms', '/refunds', '/faq', '/sample-report', '/characters', '/mbti-types', '/intj-personality']
+      .every(path => paths.includes(path)), JSON.stringify(paths));
   check('every address in the sitemap is served, each naming itself as canonical',
     paths.every(path => got[path].status === 200 && got[path].canonical === 'https://psycheai.io' + path),
     JSON.stringify(got));
@@ -7348,6 +7349,39 @@ check('the schema requires evidence on where they align and differ',
     /^text\/plain/.test(got['/robots.txt'].type) && /xml/.test(got['/sitemap.xml'].type) &&
       /manifest\+json/.test(got['/manifest.webmanifest'].type), JSON.stringify(got));
   check('and a guide that does not exist is still a 404', got['/no-such-guide'].status === 404);
+  // The search pages (tools/seo-pages.mjs): generated, so they are checked
+  // against the generator, and reachable from the guides but never the front
+  // page, which stays as uncluttered as it was.
+  {
+    let fresh = true;
+    try { execFileSync(process.execPath, [join(root, 'tools', 'seo-pages.mjs'), '--check'], { stdio: 'pipe' }); } catch (e) { fresh = false; }
+    check('the generated search pages match their generator (node tools/seo-pages.mjs)', fresh);
+    const pages = paths.filter(p => p !== '/').map(p => [p, readFileSync(join(root, 'docs', p.slice(1) + '.html'), 'utf8')]);
+    const long = pages.map(([p, h]) => [p, (/<title>(.*?)<\/title>/.exec(h) || [, ''])[1].replace(/&amp;/g, '&').length,
+      (/<meta name="description" content="(.*?)">/.exec(h) || [, ''])[1].replace(/&amp;/g, '&').length])
+      .filter(([, t, d]) => !t || t > 60 || !d || d > 160);
+    check('every page in the sitemap has a title of 60 characters or fewer and a description', long.length === 0, JSON.stringify(long));
+    const badLd = pages.filter(([, h]) => [...h.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+      .some(m => { try { JSON.parse(m[1]); return false; } catch (e) { return true; } })).map(([p]) => p);
+    check('every structured-data block on them is valid JSON', badLd.length === 0, badLd.join());
+    const faq = pages.find(([p]) => p === '/faq')[1];
+    check('the FAQ page carries FAQPage data and the app\'s own answers',
+      /"@type":"FAQPage"/.test(faq) && /class="footer-note"/.test(faq) && !/<script src=/.test(faq));
+    const generated = paths.filter(p => /-personality$|^\/(faq|sample-report|characters|mbti-types|love-language-test|big-five-personality-test|what-instagram-knows-about-you|instagram-data-download-help|best-friend-compatibility-test)$/.test(p));
+    check('the front page links to none of the generated pages',
+      generated.length === 54 && generated.every(p => !index.includes('href="' + p + '"') && !index.includes('href="' + p.slice(1) + '"')),
+      generated.filter(p => index.includes('href="' + p + '"')).join());
+    check('the guides link to them instead',
+      ['/characters', '/mbti-types', '/faq', '/sample-report'].every(p => pages.find(([q]) => q === '/instagram-personality-test')[1].includes('href="' + p + '"')));
+    check('llms.txt describes the site for AI search, with the pages it should read',
+      /^# PsycheAI/.test(readFileSync(join(root, 'docs', 'llms.txt'), 'utf8')) &&
+        /https:\/\/psycheai\.io\/faq/.test(readFileSync(join(root, 'docs', 'llms.txt'), 'utf8')));
+    check('the front page\'s landing is in the HTML, visible without JavaScript',
+      /<section id="view-welcome" class="view">/.test(index) && /<script src="early\.js"><\/script>/.test(index));
+    check('the PDF builder is fetched when the page is idle, not before it runs',
+      !/<script src="pdf\.js"/.test(index) && /<link rel="prefetch" href="pdf\.js" id="pdf-script" as="script">/.test(index));
+    check('the old PNG preview is gone', !existsSync(join(root, 'docs', 'media', 'og-card.png')));
+  }
 }
 
 // ---------- a scene for every character ----------

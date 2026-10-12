@@ -1,0 +1,98 @@
+// The topic pages (tools/seo-pages.mjs): one question people search for each,
+// answered properly, with a way into the app. Static HTML, readable without
+// JavaScript. Claims here must stay true to what the app does.
+export const TOPICS = [
+  {
+    slug: 'love-language-test',
+    title: 'Love language test without questions | PsycheAI',
+    description: 'Find your love languages without a quiz: how you like to receive care and how you show it, read from your own Instagram messages and posts.',
+    h1: 'Your love languages, without a quiz',
+    lede: 'Quizzes ask how you would like to be loved. PsycheAI looks at how you actually behave with the people close to you: what you write, what you remember, how you show up.',
+    sections: [
+      ['The five love languages', '<p>The love languages are five ways people tend to give and receive care: <strong>words of affirmation</strong>, <strong>quality time</strong>, <strong>acts of service</strong>, <strong>gifts</strong> and <strong>physical touch</strong>. Most people lean on one or two, and the way someone likes to receive care is often different from the way they give it.</p>'],
+      ['How your data shows them', '<ul class="ticks"><li><strong>Words of affirmation</strong> show in warm comments, thank-yous and the encouragement you write to friends.</li><li><strong>Quality time</strong> shows in plans you make, meet-ups you post and long conversations you keep going.</li><li><strong>Acts of service</strong> show in the favours, help and logistics you take on in your messages.</li><li><strong>Gifts</strong> show in what you mark and celebrate: birthdays, surprises, things you buy for people.</li><li><strong>Physical touch</strong> is hardest to see in data, so it is named only when the evidence is clear.</li></ul>'],
+      ['Receiving and giving, separately', '<p>Your Psyche Card shows two short lists: how you like to <strong>receive</strong> care and how you tend to <strong>show</strong> it, each with its strongest first. The full report explains each one with the moments in your own data that point to it.</p>'],
+      ['Using it with friends and family', '<p>Love languages are most useful between two people. Send a friend or family member your Psyche Card link and Psyche Sync compares how each of you shows care, with simple things each of you could do for the other. It is free, and never about romance.</p>'],
+    ],
+    faq: [
+      ['Is this the official love languages test?', 'No. The five love languages come from Gary Chapman’s book; PsycheAI is not connected to it. It gives a reading inferred from your behaviour, not a questionnaire score.'],
+      ['Do I need to answer any questions?', 'No. Your love languages are read from your own Instagram data, alongside your MBTI, Big Five and values.'],
+      ['Is it free?', 'Yes. Your first Psyche Card, love languages included, is free.'],
+    ],
+  },
+  {
+    slug: 'big-five-personality-test',
+    title: 'Big Five personality test without questions | PsycheAI',
+    description: 'Your Big Five traits (openness, conscientiousness, extraversion, agreeableness, emotional sensitivity) read from your own Instagram data. No questionnaire.',
+    h1: 'A Big Five personality test without a questionnaire',
+    lede: 'The Big Five is the personality model most research uses. PsycheAI scores all five from how you actually behave in your own data, and shows the evidence behind each score.',
+    sections: [
+      ['The five traits', '<ul class="ticks"><li><strong>Openness</strong>: curiosity, imagination and appetite for new things.</li><li><strong>Conscientiousness</strong>: planning, follow-through and reliability.</li><li><strong>Extraversion</strong>: energy from people and activity, measured by the breadth of people you seek out rather than how much you talk.</li><li><strong>Agreeableness</strong>: warmth, cooperation and how you handle disagreement.</li><li><strong>Emotional sensitivity</strong> (often called neuroticism): how strongly you feel stress and worry.</li></ul>'],
+      ['How behaviour is scored', '<p>Each trait is read from patterns, not single posts: how regularly you post and follow through on plans, how many different people you talk to, how you reply when a conversation turns tense, how wide your interests range. Scores run from 0 to 100, and each comes with the evidence that supports it.</p>'],
+      ['Why not just answer questions?', '<p>Questionnaires measure how you see yourself. Behaviour shows what you actually do, which can be different, and more interesting. Both are useful; this one needs no forms and nothing to remember.</p>'],
+      ['What you get', '<p>Your free Psyche Card shows all five scores alongside your MBTI, values, interests and the character you are most like. The full report explains each score with the evidence and what it means for your relationships and work.</p>'],
+    ],
+    faq: [
+      ['How accurate is a Big Five read from social media?', 'It is an inference, not a clinical measurement, and it says how confident it is. Accounts with more of your own writing give a clearer read.'],
+      ['What is the difference between the Big Five and MBTI?', 'MBTI sorts people into 16 types; the Big Five scores five traits on a scale. PsycheAI shows both.'],
+      ['Is it free?', 'Yes. Your first Psyche Card, with all five scores, is free.'],
+    ],
+  },
+  {
+    slug: 'what-instagram-knows-about-you',
+    title: 'What Instagram knows about you, from your data | PsycheAI',
+    description: 'What is in your Instagram data download, from posts and messages to searches and ad interests, and what it can reveal about your personality.',
+    h1: 'What Instagram knows about you',
+    lede: 'Instagram lets you download everything it holds about your account. Most people never look inside. Here is what is in there, and what it says about you.',
+    sections: [
+      ['What is in the download', '<ul class="ticks"><li><strong>Your content</strong>: posts, stories, reels and their captions.</li><li><strong>Your activity</strong>: likes, comments, saved posts, searches and the accounts you follow.</li><li><strong>Messages</strong>: your direct messages, with timestamps.</li><li><strong>How Instagram sees you</strong>: topics and ad interests it has inferred about you.</li><li><strong>Account information</strong>: your profile, login and device history.</li></ul>'],
+      ['What it can reveal', '<p>Together these are a detailed record of how you spend attention and how you treat people: when you are active, who you talk to and how, what you return to, and what you announce but never mention again. That is the material a personality reading is built from.</p>'],
+      ['How PsycheAI reads it, privately', '<p>PsycheAI opens your download inside your own browser. The zip, your photos and your full messages never leave your device. A short summary of your own activity is de-identified first, you review it, and only then is it sent to Google Gemini or Anthropic Claude to write your reading. PsycheAI keeps no copy.</p>'],
+      ['How to get your data', '<p>It takes about 30 seconds to request, and Instagram emails you the file, usually within a few hours. <a href="/download-instagram-data">Follow the step-by-step guide</a>, choosing JSON format and All time.</p>'],
+    ],
+    faq: [
+      ['Can Instagram see what I do with my download?', 'No. Once downloaded, the file is yours, and PsycheAI reads it on your own device.'],
+      ['Does PsycheAI read my photos?', 'No. Photos and videos are never read or uploaded; only text and activity counts are used.'],
+      ['How do I delete what PsycheAI saved?', 'Everything is kept in your browser. Press Delete everything in the app to remove it.'],
+    ],
+  },
+  {
+    slug: 'instagram-data-download-help',
+    title: 'Instagram data download not working? Fixes | PsycheAI',
+    description: 'Fixes for common Instagram data download problems: HTML instead of JSON, a missing email, an expired link, several zip files, and finding the setting.',
+    h1: 'Instagram data download not working? Common fixes',
+    lede: 'Requesting your Instagram data is quick, but a few small settings decide whether the file works. Here are the problems people run into most, and how to fix each.',
+    sections: [
+      ['You chose HTML instead of JSON', '<p>The download has two formats. PsycheAI needs <strong>JSON</strong>; an HTML download cannot be read. Request a new download and set Format to JSON before you confirm.</p>'],
+      ['Only part of your history is there', '<p>The date range defaults to a recent slice. Set Date range to <strong>All time</strong>, or the reading will only see the last few months.</p>'],
+      ['The email has not arrived', '<p>Instagram usually takes a few hours, sometimes longer for large accounts. Check your spam folder and the email address on your account. You can also see the request’s progress in the Download your information screen.</p>'],
+      ['The download link has expired', '<p>The link Instagram sends only works for a few days. If it has expired, request a new download; it is quick to do again.</p>'],
+      ['Your download came as several zip files', '<p>Large accounts can arrive in parts. Load all of them at once: PsycheAI reads them together.</p>'],
+      ['You cannot find the setting', '<p>Open Instagram, go to your profile, tap the menu (≡) at the top right, then <strong>Accounts Centre</strong> → <strong>Your information and permissions</strong> → <strong>Download your information</strong>. <a href="/download-instagram-data">The illustrated guide</a> shows every screen.</p>'],
+      ['The file is too big', '<p>Set Media quality to <strong>Lower</strong>. Your photos and videos are never read, so lower quality only makes the download smaller and faster.</p>'],
+    ],
+    faq: [
+      ['How long does Instagram take to send my data?', 'Usually a few hours. Large accounts can take longer.'],
+      ['Can I use the file on my phone?', 'Yes. Save the zip to Files (iPhone) or Downloads (Android), then load it in PsycheAI in Safari or Chrome.'],
+      ['Is my data safe?', 'The zip is read in your own browser and never uploaded. Only a short, de-identified summary you review is sent for the reading.'],
+    ],
+  },
+  {
+    slug: 'best-friend-compatibility-test',
+    title: 'Best friend compatibility test, free, no quiz | PsycheAI',
+    description: 'How in sync are you with your best friend, sibling or family member? A free Psyche Sync compares two Psyche Cards: what clicks and how to relate better.',
+    h1: 'How in sync are you with your best friend?',
+    lede: 'Psyche Sync compares two Psyche Cards and shows where you align, where you differ and how each of you can relate better to the other. For best friends, siblings, cousins or anyone close.',
+    sections: [
+      ['How it works', '<ol class="guide-steps"><li>Each of you makes a free Psyche Card from your own Instagram data.</li><li>One of you sends the other their personal link.</li><li>One tap shows your Psyche Sync. You can choose to share the result with them.</li></ol>'],
+      ['What it compares', '<p>Your energy and how much contact you each like, your shared interests, your values, how each of you shows care, and how you each handle a disagreement. Each point comes with the evidence from both cards.</p>'],
+      ['For friends and family alike', '<p>The reading never assumes what you are to each other. It works the same for a best friend, a sibling or a parent, and it is never romantic.</p>'],
+      ['No score, no verdict', '<p>There is no percentage and no ranking. Differences are written as differences, each with a way to make it work, so it is something you can share without anyone feeling judged.</p>'],
+    ],
+    faq: [
+      ['Is it free?', 'Yes. Psyche Sync is free, and so is each person’s first Psyche Card.'],
+      ['Does my friend see my data?', 'No. Your link carries only your card’s short summary, never your data, messages or report.'],
+      ['Can I do it with my sister or brother?', 'Yes. Psyche Sync is for any two people who know each other.'],
+    ],
+  },
+];

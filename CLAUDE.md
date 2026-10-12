@@ -20,6 +20,7 @@ npm start             # real providers: needs GEMINI_API_KEY / ANTHROPIC_API_KEY
 npm test              # tools/selftest.mjs — ~1,260 unit/integration checks, no browser
 npm run test:ui       # tools/uitest.mjs — ~1,450 Playwright checks against mock servers it spawns
 npm run test:live     # real API calls (costs tokens); PSYCHEAI_LIVETEST=premium runs only the paid call
+node tools/seo-pages.mjs    # regenerate the search pages, sitemap.xml and llms.txt (npm test fails while stale)
 node promo/capture.mjs && node promo/og.mjs   # redraw promo/assets/card.png and docs/media/og-card.jpg from the sample card
 npm run promo         # rebuild the promo videos (needs promo/.cache: Python venv, voice and ASR models)
 ```
