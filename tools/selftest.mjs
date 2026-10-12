@@ -7378,8 +7378,10 @@ check('the schema requires evidence on where they align and differ',
         /https:\/\/psycheai\.io\/faq/.test(readFileSync(join(root, 'docs', 'llms.txt'), 'utf8')));
     check('the front page\'s landing is in the HTML, visible without JavaScript',
       /<section id="view-welcome" class="view">/.test(index) && /<script src="early\.js"><\/script>/.test(index));
-    check('the PDF builder is fetched when the page is idle, not before it runs',
-      !/<script src="pdf\.js"/.test(index) && /<link rel="prefetch" href="pdf\.js" id="pdf-script" as="script">/.test(index));
+    check('the PDF builder and the data readers are not fetched on arrival, only on demand',
+      /<template id="pdf-scripts">\s*<script src="pdf\.js"><\/script>\s*<\/template>/.test(index) &&
+        /<template id="reader-scripts">\s*<script src="zip\.js"><\/script>\s*<script src="instagram\.js"><\/script>\s*<script src="supplement\.js"><\/script>\s*<script src="whatsapp\.js"><\/script>\s*<script src="digest\.js"><\/script>\s*<\/template>/.test(index) &&
+        !/<link rel="prefetch"[^>]*pdf\.js/.test(index));
     check('the old PNG preview is gone', !existsSync(join(root, 'docs', 'media', 'og-card.png')));
   }
 }
@@ -7426,6 +7428,14 @@ check('the schema requires evidence on where they align and differ',
       names.filter(n => side[n] !== 'n').every(n => table[n].some(o => side[o] === (side[n] === 'w' ? 'm' : 'w'))));
     check('and at least one of their own, the five drawn as neither exempt',
       names.filter(n => side[n] !== 'n').every(n => table[n].some(o => side[o] === side[n])));
+    // The cast strip's tiles are one image, drawn by tools/cast-sprite.mjs in
+    // this table's order; stale, and the strip would show the wrong faces.
+    let spriteFresh = true;
+    try { execFileSync(process.execPath, [join(root, 'tools', 'cast-sprite.mjs'), '--check'], { stdio: 'pipe' }); } catch (e) { spriteFresh = false; }
+    const spriteIndex = JSON.parse(readFileSync(join(root, 'docs', 'media', 'cast-sprite.json'), 'utf8'));
+    check('the cast strip\'s image is current and in the table\'s order (node tools/cast-sprite.mjs)',
+      spriteFresh && JSON.stringify(spriteIndex.names) === JSON.stringify(Object.keys(table)) &&
+        statSync(join(root, 'docs', 'media', 'cast-sprite.webp')).size > 10000);
     check('the pairings go both ways, but for one loop of three',
       Object.entries(table).flatMap(([a, list]) => list.filter(b => !table[b].includes(a))).length === 3);
   }

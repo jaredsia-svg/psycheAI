@@ -7,9 +7,39 @@
   // browser has to copy, or the friend's link is lost on the way to Safari.
   const ARRIVED_AT = location.href;
 
-  const IG = window.PsycheInstagram;
-  const Supplement = window.PsycheSupplement;
-  const Digest = window.PsycheDigest;
+  // The data readers load on demand (loadReaders, index.html's
+  // #reader-scripts), so these are looked up when used rather than held from
+  // the start. Every path that uses them waits for loadReaders first.
+  const lazyGlobal = name => new Proxy({}, {
+    get(target, key) {
+      const found = window[name];
+      if (!found) throw new Error('The data readers are still loading. Try again in a moment.');
+      const value = found[key];
+      return typeof value === 'function' ? value.bind(found) : value;
+    },
+  });
+  const IG = lazyGlobal('PsycheInstagram');
+  const Supplement = lazyGlobal('PsycheSupplement');
+  const Digest = lazyGlobal('PsycheDigest');
+  // Scripts kept in a <template> in index.html, loaded in their order once,
+  // on first asking. A failed load can be asked for again.
+  const scriptsLoading = {};
+  function loadScripts(id) {
+    if (scriptsLoading[id]) return scriptsLoading[id];
+    const holder = document.getElementById(id);
+    const sources = holder ? [...holder.content.querySelectorAll('script')].map(node => node.getAttribute('src')) : [];
+    scriptsLoading[id] = sources.reduce((ready, src) => ready.then(() => new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => { delete scriptsLoading[id]; reject(new Error('Part of the page could not be loaded. Check your connection and try again.')); };
+      document.head.appendChild(script);
+    })), Promise.resolve());
+    return scriptsLoading[id];
+  }
+  /** The data readers (zip, Instagram, Google/Facebook, WhatsApp, the digest). */
+  const loadReaders = () => (window.PsycheDigest && window.PsycheInstagram ? Promise.resolve() : loadScripts('reader-scripts'));
+  window.PsycheLoadReaders = loadReaders;
   const Card = window.PsycheCard;
   const LLM = window.PsycheLLM;
   // The profile page and the PDF are two renderings of one document, so every
@@ -2264,9 +2294,11 @@
   // touches it; from then on it is theirs, scrolled by the browser's own
   // swipe and momentum, which on a phone is the most responsive thing there
   // is, and never moves by itself again on that visit. The arrows either side
-  // move it a few tiles at a time. It has no ends: the cast is drawn five
-  // times over (each scene once, in a sprite, and placed by <use>, so the page
-  // carries 29 drawings, not 145), started in the middle copy, and put back
+  // move it a few tiles at a time. Each tile is a slice of one image,
+  // docs/media/cast-sprite.webp (tools/cast-sprite.mjs), rather than its
+  // scene drawn live: a few hundred plain elements instead of twenty
+  // thousand. It has no ends: the cast is laid out five times over, started
+  // in the middle copy, and put back
   // into the middle copy, a whole copy's width away so nothing visibly moves,
   // whenever it comes to rest near either end. A mouse can drag it too.
   const CAST_COPIES = 5;
@@ -2275,28 +2307,25 @@
     const track = $('#cast-track');
     if (!strip || !track) return;
     strip.setAttribute('aria-label', TEXT.castLabel);
+    // In the image's order, which is this one (npm test holds the two together).
     const names = Object.keys(Copy.CHARACTER_SYNCS);
-    // Each scene's inside, once, for the copies to <use>.
-    const sprite = names.map((name, i) => {
-      const art = Copy.characterArt(name, 'cast-scene', true);
-      const inner = art.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
-      return inner ? '<g id="cast-art-' + i + '">' + inner + '</g>' : '';
-    }).join('');
-    const tile = (name, i, copy) => {
+    const tile = (name, copy) => {
       const middle = copy === Math.floor(CAST_COPIES / 2);
       return '<li' + (middle ? '' : ' aria-hidden="true"') + '><button type="button" class="cast-tile" data-name="' + esc(name) + '"' +
-        (middle ? '' : ' tabindex="-1"') + ' aria-pressed="false"><span class="cast-art">' +
-        '<svg class="cast-scene" viewBox="220 20 300 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">' +
-        '<use href="#cast-art-' + i + '"/></svg></span><span class="cast-name">' + esc(name) + '</span></button></li>';
+        (middle ? '' : ' tabindex="-1"') + ' aria-pressed="false"><span class="cast-art" aria-hidden="true"></span>' +
+        '<span class="cast-name">' + esc(name) + '</span></button></li>';
     };
     let tiles = '';
-    for (let copy = 0; copy < CAST_COPIES; copy++) tiles += names.map((name, i) => tile(name, i, copy)).join('');
+    for (let copy = 0; copy < CAST_COPIES; copy++) tiles += names.map(name => tile(name, copy)).join('');
     track.innerHTML = tiles;
-    const holder = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    holder.setAttribute('class', 'cast-sprite');
-    holder.setAttribute('aria-hidden', 'true');
-    holder.innerHTML = '<defs>' + sprite + '</defs>';
-    strip.parentNode.insertBefore(holder, strip);
+    // Each tile's slice of the image, set through the DOM (the CSP allows
+    // that, not style attributes in markup).
+    // The second layer is the purple shown while the image is on its way.
+    const lastIndex = Math.max(1, names.length - 1);
+    track.querySelectorAll('.cast-art').forEach((art, n) => {
+      art.style.backgroundSize = (names.length * 100) + '% 100%, cover';
+      art.style.backgroundPosition = ((n % names.length) / lastIndex * 100).toFixed(3) + '% 0, 0 0';
+    });
     refreshCast();
 
     const copyWidth = () => track.scrollWidth / CAST_COPIES;
@@ -2559,8 +2588,10 @@
       target.querySelectorAll('.insight-preview:not(#insight-card-open)').forEach(node => node.remove());
       target.insertAdjacentHTML('beforeend', insightCards.slice(1).map((report, i) =>
         insightSlot(i + 1, '', '', I.previewOpenNamed.replace('{name}', (report.card && report.card.name) || ''))).join(''));
-      const cards = [...target.querySelectorAll('.insight-preview .psyche-card')];
-      cards.forEach((el, i) => { el.innerHTML = psycheCardHtml(insightCards[i]); });
+      // Drawn only as each comes into view (arrangeDeck): the front card and
+      // the two peeking out beside it. The rest wait, empty, behind them; six
+      // cards with their scenes were the front page's heaviest part.
+      deckDrawn.clear();
       // Fitted as soon as they are drawn, so the page never lays out a
       // full-size card: 230px wide, or less where a phone leaves less room
       // beside the stack. The stylesheet holds their space until then.
@@ -2571,7 +2602,7 @@
       // rather than taking width from the card in front.
       const peek = room < 340 ? 18 : 24;
       const width = Math.max(150, Math.min(320, room - 2 * peek + 28));
-      cards.forEach(el => fitCard(el, width, width * 1920 / 1080));
+      deckWidth = width;
       target.style.setProperty('--peek', peek + 'px');
       target.style.setProperty('--deck-w', Math.round(width) + 'px');
       target.style.setProperty('--deck-h', Math.round(width * 1920 / 1080) + 'px');
@@ -2589,6 +2620,17 @@
    * pressed or reached by Tab.
    */
   let deckIndex = 0;
+  let deckWidth = 0;
+  const deckDrawn = new Set();
+  // A card of the deck drawn and fitted, the first time it is in view.
+  function drawDeckCard(slot) {
+    const i = Number(slot.getAttribute('data-card')) || 0;
+    const el = slot.querySelector('.psyche-card');
+    if (!el || deckDrawn.has(i) || !insightCards[i] || !deckWidth) return;
+    deckDrawn.add(i);
+    el.innerHTML = psycheCardHtml(insightCards[i]);
+    fitCard(el, deckWidth, deckWidth * 1920 / 1080);
+  }
   function arrangeDeck() {
     const deck = document.getElementById('insight-deck');
     if (!deck) return;
@@ -2600,6 +2642,7 @@
       slot.classList.toggle('is-front', pos === 0);
       slot.tabIndex = pos === 0 ? 0 : -1;
       slot.setAttribute('aria-hidden', pos === 0 ? 'false' : 'true');
+      if (pos === 0 || pos === 1 || pos === count - 1) drawDeckCard(slot);
     });
     const dots = document.querySelectorAll('#insight-deck-dots i');
     dots.forEach((dot, i) => dot.classList.toggle('is-on', i === deckIndex));
@@ -3290,7 +3333,22 @@
    * and there is no report here for any of that to be true of. The shared
    * thing is the popout and the review, not the pricing.
    */
+  // Before a flow that reads or sends data: the readers, said where the reader
+  // is if they cannot be fetched. False means stop.
+  async function readersReady() {
+    try {
+      await loadReaders();
+      return true;
+    } catch (error) {
+      const message = (error && error.message) || 'Part of the page could not be loaded.';
+      if (!$('#view-profile').hidden) flash('#profile-alert', message);
+      else showUploadError(message);
+      return false;
+    }
+  }
+
   async function startFromSources() {
+    if (!(await readersReady())) return;
     const scrollBefore = window.scrollY;
     let thinWarned = false;
     for (;;) {
@@ -4110,6 +4168,7 @@
         say('');
         setSourceProgress(source, 0, 'Opening the archive…');
         try {
+          await loadReaders();
           const reader = source === 'google' ? Supplement.readGoogle : Supplement.readFacebook;
           added[source] = await reader(files, {
             // The readers report {phase, done, total}, so this is a real
@@ -4562,6 +4621,7 @@
   }
 
   async function handleFiles(files) {
+    if (!(await readersReady())) return;
     const chosen = Array.from(files || []).filter(f => /\.zip$/i.test(f.name));
     flash('#upload-error', '');
     if (!chosen.length) {
@@ -4741,6 +4801,8 @@
    * addDataAndRerun, which builds the digest the review dialog shows next.
    */
   function askDataSources(options) {
+    // Fetched while the reader picks a file; each read waits for them.
+    loadReaders().catch(() => {});
     const settings = options || {};
     const dialog = $('#datasources-dialog');
     // Loading data in an app's own browser: said in the popout too, where the
@@ -5018,6 +5080,7 @@
         say('');
         setSourceProgress(source, 0, 'Opening the archive…');
         try {
+          await loadReaders();
           if (source === 'instagram') {
             added.instagram = await IG.readExports(files, {
               includeMessages: true,
@@ -5157,6 +5220,7 @@
   }
 
   async function addDataAndRerun() {
+    if (!(await readersReady())) return;
     // The popout and the review are one loop, for the same reason the first
     // upload's supplement offer and review are (see handleFiles): Back on the
     // review means "let me change what I am sending", and the only screen
@@ -5220,6 +5284,7 @@
   // `freshInstagram` is set — to the supplements the replaced export had —
   // only when an Instagram export was loaded again on the way here.
   async function rerunWithAdditionalData(extraSupplements, freshInstagram) {
+    if (!(await readersReady())) return;
     // Once premium is unlocked, "Add / change data & re-run" stops being the
     // US$2 free-only re-run: the four paid sections are sitting on evidence
     // this new data is about to make stale, so the US$5 unlock price now
@@ -5350,6 +5415,7 @@
   }
 
   async function runAnalysis(digest, auth) {
+    if (!(await readersReady())) return;
     // The same digest the unlock will send, so the card and the full premium
     // report read identical evidence. The server bounds it again either way.
     const sent = Digest.forModel(digest);
@@ -7539,6 +7605,8 @@
     const profile = state.profile;
     if (!profile) return;
     const report = profile.report;
+    // A Psyche Report on this device: the PDF maker, ready for its download.
+    if (hasExplanations(profile)) loadPdf().catch(() => {});
 
     const who = profile.card.name || 'Your';
     $('#profile-title').textContent = who + '’s psyche';
@@ -7802,30 +7870,13 @@
   // page, and on mobile often offered no PDF destination at all. pdf.js writes
   // the file directly, so the download is one click and looks the same
   // everywhere.
-  // ---------- the PDF maker, loaded when the page is idle ----------
+  // ---------- the PDF maker, loaded when a report is on screen ----------
   //
-  // pdf.js is the second-largest script and nothing on screen needs it until
-  // a PDF is asked for, so it is prefetched (index.html) and run once the page
-  // is idle. A download asked for before then waits for it.
-  let pdfLoading = null;
-  function loadPdf() {
-    if (window.PsychePDF) return Promise.resolve();
-    if (!pdfLoading) {
-      pdfLoading = new Promise((resolve, reject) => {
-        const link = $('#pdf-script');
-        const script = document.createElement('script');
-        script.src = link ? link.getAttribute('href') : 'pdf.js';
-        script.onload = () => resolve();
-        script.onerror = () => { pdfLoading = null; reject(new Error('The PDF maker could not be loaded. Check your connection and try again.')); };
-        document.head.appendChild(script);
-      });
-    }
-    return pdfLoading;
-  }
-  // With a deadline: a page that is never idle (the cast strip turns every
-  // frame) would otherwise put it off indefinitely.
-  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => loadPdf().catch(() => {}), { timeout: 3000 });
-  else setTimeout(() => loadPdf().catch(() => {}), 1500);
+  // pdf.js is the second-largest script and nobody needs it until there is a
+  // Psyche Report to save, so it is loaded only then (renderProfile, once a
+  // report is drawn) or when a PDF is asked for, which waits for it.
+  const loadPdf = () => (window.PsychePDF ? Promise.resolve() : loadScripts('pdf-scripts'));
+  window.PsycheLoadPdf = loadPdf;
 
   function buildReportPdf(profile) {
     const stamp = profile.createdAt ? new Date(profile.createdAt) : new Date();
@@ -8570,6 +8621,7 @@
   }
 
   async function collectDataForPremium() {
+    if (!(await readersReady())) return null;
     if (!(await offerMoreData())) return null;
     for (;;) {
       let collected;
@@ -8852,6 +8904,9 @@
   }
 
   async function runPremiumAnalysis(auth, dialog, options) {
+    // The digest is sent through Digest.forModel: the readers first. Said on
+    // the sheet if they cannot be fetched; the receipt is kept for a retry.
+    try { await loadReaders(); } catch (error) { premiumStatus(error.message); return; }
     // A second invocation while one is already running would race the first
     // for pendingPremiumDigest/state.digest and spend an extra retry for
     // nothing — see the comment on premiumRunInFlight's declaration.
@@ -10974,5 +11029,12 @@
 
   mountInsights();
   mountCast();
+  // A reader with a card already is the one likely to add data or unlock: the
+  // readers are fetched for them once the page has settled.
+  if (state.profile) {
+    const warmReaders = () => loadReaders().catch(() => {});
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warmReaders, { timeout: 4000 });
+    else setTimeout(warmReaders, 2000);
+  }
   boot();
 })();

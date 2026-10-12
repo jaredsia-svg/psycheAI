@@ -1451,19 +1451,29 @@
       de-identified line of the message it answered.</li>
 </template>
 
+<!-- The data readers, loaded only once a reader starts loading data, or
+     comes back with a card of their own (app.js, loadReaders): a first visit
+     that only looks around never downloads them. In a <template> so they are
+     neither fetched nor run, while the server still fingerprints their
+     addresses like every other script's. In this order: each may use the one
+     before it. -->
+<template id="reader-scripts">
 <script src="zip.js"></script>
 <script src="instagram.js"></script>
 <script src="supplement.js"></script>
 <script src="whatsapp.js"></script>
 <script src="digest.js"></script>
+</template>
 <script src="card.js"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="prices.js"></script>
 <script src="character-art.js"></script>
 <script src="copy.js"></script>
-<!-- The PDF maker, fetched at low priority and run once the page is idle
-     (app.js, loadPdf): nobody needs it to see the page. -->
-<link rel="prefetch" href="pdf.js" id="pdf-script" as="script">
+<!-- The PDF maker, the same way: loaded only once a Psyche Report is on
+     screen, or a PDF is asked for (app.js, loadPdf). -->
+<template id="pdf-scripts">
+<script src="pdf.js"></script>
+</template>
 <script src="llm.js"></script>
 <script src="app.js"></script>
 </body>

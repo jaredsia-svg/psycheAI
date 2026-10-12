@@ -1938,6 +1938,29 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
 
+### A lighter front page
+
+Measured on an emulated mid-range phone (Chrome with the CPU slowed 4×, 9 Mbps 4G), a first visit was
+painting its text in about 2 seconds but taking about 8 to be ready and 14 to finish, with the CPU
+busy for 11 seconds, almost all of it laying out and styling about 36,000 elements. Now it is about 6,000
+elements, ready in about 3 seconds, finished in under 5, with 5.3 seconds of CPU work:
+- **The cast strip's tiles are one image** (see below), not five live copies of 29 scenes.
+- **The sample-card gallery draws a card only when it is in view**: the front one and the two peeking
+  beside it (`drawDeckCard`, from `arrangeDeck`). The rest are drawn as they come forward. Drawing all
+  six, scenes and all, was the page's heaviest part after the strip, and it was redrawn each time the
+  front page came back.
+- **The PDF maker loads only with a Psyche Report.** It is kept in `<template id="pdf-scripts">`,
+  which the browser neither fetches nor runs while the server still fingerprints its address. It is
+  loaded when a report is drawn (`renderProfile`) or a PDF is asked for. It had been prefetched on
+  every visit and then run when the page went idle.
+- **The data readers load only to read data.** `zip.js`, `instagram.js`, `supplement.js`,
+  `whatsapp.js` and `digest.js` sit in `<template id="reader-scripts">` and are loaded, in that order,
+  when the Add your data popout opens or a file is dropped, and by every flow that reads, reviews or
+  sends a digest (`readersReady`), including a paid run's (`runPremiumAnalysis`). A reader with a
+  card already gets them in the background once the page has settled. `IG`, `Supplement` and
+  `Digest` in `app.js` are looked up when used (`lazyGlobal`), not held from the start. The server
+  loads `digest.js` itself, as before.
+
 ### Guess your character, win the report
 
 The 29 characters are the app's strongest draw, and the front page showed one at a time. Above
@@ -1962,6 +1985,12 @@ theirs.
   a phone's momentum dead.
 - It turns only while on screen and the tab is visible, and not at all for a reader who asked for less
   motion.
+- **Its tiles are one image.** `docs/media/cast-sprite.webp` (65 KB) holds all 29 tiles side by side,
+  drawn by `node tools/cast-sprite.mjs` from the same scenes and crop in the catalogue's order, with
+  `cast-sprite.json` naming that order; each tile is a background position on it. The first version
+  drew the 29 scenes live and placed five copies with `<use>`, which made the browser lay out about
+  17,000 extra elements and nearly doubled the front page's work on a phone. `npm test` fails while
+  the image is out of date.
 - **Get my data** (and an invite's *Get my free Psyche Card*) lands on it, with the request steps
   straight below. The tiles are buttons, not links: the front page gains no links to the new pages.
 

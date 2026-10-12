@@ -3545,8 +3545,17 @@ try {
   // character and person, in a strip that scrolls sideways without the page
   // doing so; full screen, the cards step left and right and wrap round.
   {
-    await page.waitForFunction(() => [...document.querySelectorAll('#insight-deck .insight-preview .psyche-card')].filter(c => c.children.length).length >= 6,
+    // Drawn only as they come into view: the front card and the two peeking
+    // beside it at first, each of the rest once it is stepped forward.
+    await page.waitForFunction(() => [...document.querySelectorAll('#insight-deck .insight-preview .psyche-card')].filter(c => c.children.length).length >= 3,
       null, { timeout: 15000 }).catch(() => null);
+    const drawnAtFirst = await page.evaluate(() => [...document.querySelectorAll('#insight-deck .insight-preview')]
+      .filter(c => c.querySelector('.psyche-card').children.length).map(c => c.getAttribute('data-pos')).sort().join());
+    check('the gallery draws only the cards in view at first: the front one and one peeking each side',
+      drawnAtFirst === '0,1,prev', drawnAtFirst);
+    // Once round the deck and back to the front, so every card has been drawn.
+    for (let i = 0; i < 6; i++) await page.evaluate(() => document.querySelector('.insight-deck-step[data-deck-step="1"]').click());
+    await page.waitForTimeout(300);
     const gallery = await page.evaluate(() => {
       const g = document.querySelector('#insight-deck');
       const cards = [...g.querySelectorAll('.insight-preview')];
@@ -3827,10 +3836,13 @@ try {
       return {
         head: document.querySelector('.cast-head').textContent.trim(),
         all: tiles.length,
-        shown: shown.map(t => [t.querySelector('.cast-name').textContent, Boolean(t.querySelector('.cast-art svg use'))]),
+        shown: shown.map(t => [t.querySelector('.cast-name').textContent,
+          /cast-sprite\.webp/.test(getComputedStyle(t.querySelector('.cast-art')).backgroundImage)]),
         height: document.querySelector('#cast').getBoundingClientRect().height,
         expected: Object.keys(window.PsycheCopy.CHARACTER_SYNCS),
-        drawings: document.querySelectorAll('.cast-sprite g[id^="cast-art-"]').length,
+        drawings: document.querySelectorAll('#cast-track svg').length,
+        // Each copy's tile shows its own slice of the one image.
+        slices: new Set([...document.querySelectorAll('.cast-tile')].map(t => t.querySelector('.cast-art').style.backgroundPosition)).size,
         arrows: document.querySelectorAll('.cast-arrow').length,
       };
     });
@@ -3838,8 +3850,8 @@ try {
       cast.head === 'Guess which character you are and win a Psyche Report for free' && cast.shown.length === 29 &&
         cast.shown.every(([, art]) => art) && JSON.stringify(cast.shown.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
       JSON.stringify(cast).slice(0, 300));
-    check('drawn five times over for its loop, from 29 drawings, the copies hidden from screen readers',
-      cast.all === 145 && cast.drawings === 29, JSON.stringify({ all: cast.all, drawings: cast.drawings }));
+    check('laid out five times over for its loop, each tile a slice of one image, no live drawings',
+      cast.all === 145 && cast.drawings === 0 && cast.slices === 29, JSON.stringify({ all: cast.all, drawings: cast.drawings, slices: cast.slices }));
     check('with an arrow either side', cast.arrows === 2);
     check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
     const at = () => page.evaluate(() => document.querySelector('#cast-strip').scrollLeft);
@@ -4258,6 +4270,7 @@ try {
     !(await page.locator('#view-profile').isVisible()));
   // Nothing exports an image count any more — the photographs went with the
   // depth picker that used to choose between two of them.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   check('no image count survives anywhere in the client',
     await page.evaluate(() => window.PsycheDigest.IMAGES === undefined &&
       window.PsycheImages === undefined));
@@ -4443,6 +4456,7 @@ try {
   // full premium report both read this one digest. The fixture's digest
   // carries `generatedAt` and `coverage.sections`; forModel never copies
   // either, so their absence is what proves the file is the sent object.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   check('the file is the one digest both calls read, and says so',
     /About \d+ KB\. This same digest is what both your free summary card and the Psyche Report are read from\./
       .test(html1) &&
@@ -7744,6 +7758,7 @@ try {
   // difference is the absent `unlocked` key, so a failure here can only mean
   // the gate is not doing anything. This is the shape any future paid section
   // gets checked in too.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const unpaidPdfText = await page.evaluate(async () => {
     const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
     const blob = window.PsychePDF.build(saved.report, saved.card,
@@ -7813,6 +7828,7 @@ try {
   // otherwise push it past the right margin; measured, "Nick Wilde and Judy
   // Hopps of Zootopia" leaves the franchise 48pt over. Build that exact case
   // and read the drawn positions back out of the page stream.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const franchisePlacement = await page.evaluate(async () => {
     const build = (character, franchise) => window.PsychePDF.build(
       { essence: { character, franchise, why: 'Why.' }, summary: 'Summary.',
@@ -7862,6 +7878,7 @@ try {
     JSON.stringify({ longFranchise, shortName }));
 
   // The point of the whole exercise: neither placement runs past the margin.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const franchiseWidths = await page.evaluate(names => names.map(name =>
     window.PsychePDF.measure(window.PsychePDF.toWinAnsi(name), 10, false)),
   ['Marvel', 'Walt Disney Animation']);
@@ -7915,6 +7932,7 @@ try {
   // Layout has to survive both a wordy model and an almost empty one. These
   // build in the page, which is also the only way to reach a long profile
   // without waiting on a real analysis.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const layout = await page.evaluate(() => {
     const long = 'Weathered luminous lantern cartographer inherited quiet riverbed stubborn ' +
       'harbour persistent tidal threshold unhurried considered gradual deliberate.';
@@ -8121,6 +8139,7 @@ try {
   // is untouched by it.
   // What left the device is exactly forModel of what was stored — the same
   // object the unlock sends, so the card and the premium report read it alike.
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   check('a free run sends the one digest, exactly as the unlock will',
     await page.evaluate(sent => {
       const stored = JSON.parse(localStorage.getItem('psycheai_digest'));
@@ -10677,6 +10696,7 @@ try {
     await page.locator('.essence-noun').innerText());
   check('that older profile simply has no franchise beside it',
     (await page.locator('.essence-franchise').count()) === 0);
+  await page.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
   const oldShapePdf = await page.evaluate(async () => {
     const saved = JSON.parse(localStorage.getItem('psycheai_profile'));
     const blob = window.PsychePDF.build(saved.report, saved.card, { date: 'today', model: 'mock' });
@@ -12051,6 +12071,7 @@ try {
       await sp.waitForTimeout(200);
       const spill = await sp.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       check('structured: no sideways scroll on a phone', spill <= 1, spill + 'px');
+      await sp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
       const phoneRows = await sp.evaluate(() => Array.from(document.querySelectorAll('#profile-body .reading-row'))
         .map(r => getComputedStyle(r).gridTemplateColumns.split(' ').length));
       check('structured: on a phone each MBTI and Big Five row stacks the scale above its reading',
@@ -13066,6 +13087,7 @@ try {
       const asOwnPhone = route => route.continue({ headers: Object.assign({}, route.request().headers(),
         { 'x-forwarded-for': '198.51.100.' + (++friendAddress) }) });
       await rp.route('**/api/analyse', asOwnPhone);
+      await rp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
       const credited = await rp.evaluate(async ([text, code]) => {
         const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))),
           b => b.toString(16).padStart(2, '0')).join('');
@@ -13141,6 +13163,7 @@ try {
       // Three more friends earn another, and this one is given away: a gift
       // link that unlocks one full report for whoever opens it.
       await rp.route('**/api/analyse', asOwnPhone);
+      await rp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
       await rp.evaluate(async ([text, code]) => {
         const sha = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
           b => b.toString(16).padStart(2, '0')).join('');

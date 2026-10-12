@@ -982,7 +982,6 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .cast-strip::-webkit-scrollbar { display: none; }
 .cast-track { list-style: none; margin: 0; padding: 7px 0 2px; display: flex; align-items: flex-start; column-gap: 14px; width: max-content; }
-.cast-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 /* Small, over the faded ends, level with the tiles' art. */
 .cast-arrow {
   position: absolute; top: 22px; z-index: 1; width: 30px; height: 30px; border-radius: 999px; padding: 0;
@@ -996,11 +995,9 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .cast-arrow-right { right: -4px; }
 .cast-art {
   width: 58px; height: 58px; border-radius: 999px; overflow: hidden; display: flex; align-items: center; justify-content: center;
-  color: #fff; background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  color: #fff; background: url(media/cast-sprite.webp) no-repeat, linear-gradient(150deg, var(--accent), var(--accent-2));
   box-shadow: 0 3px 10px rgba(80, 30, 110, .2); pointer-events: none;
 }
-.cast-scene { width: 100%; height: 100%; display: block; }
-.cast-emblem { width: 56%; height: 56%; }
 .cast-name {
   font-size: .74rem; font-weight: 600; line-height: 1.15; text-align: center; color: var(--ink);
   max-width: 100%; overflow: hidden;
