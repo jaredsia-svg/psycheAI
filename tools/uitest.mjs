@@ -7758,7 +7758,7 @@ try {
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
     // it has a PDF, so its headings are held to the same rule.
-    'What you share', 'What works', 'What to look out for',
+    'Where you align', 'Where you differ', 'How to relate better',
     'Your Psyche Syncs']);
 
   check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
@@ -10333,7 +10333,7 @@ try {
   check('the server really is only a relay, with no store behind it',
     !/writeFile|appendFile|createWriteStream/.test(serverSource));
   // Reads only. readFileSync is the one other call allowed, and only because
-  // the server loads docs/digest.js once at boot to derive the free digest
+  // the server loads docs/digest.js and docs/card.js once at boot (loadBrowserScript) to derive the free digest and shape sync cards
   // itself — a read of its own code, not of anybody's data. stat and
   // createReadStream are the front page video's: it is streamed in ranges
   // rather than read whole, still a read of the site's own files.
@@ -12661,6 +12661,11 @@ try {
                   /Synced · Shared · /.test(document.querySelector('#scan-history .match-meta').textContent);
               }),
             await friendPage.locator('#scan-alert').innerText());
+          const ownerInboxNow = () => rp.evaluate(async () => {
+            const secret = JSON.parse(localStorage.getItem('psycheai_referral')).secret;
+            return fetch('api/sync/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ secret }) }).then(r => r.json());
+          });
           const waitingForOwner = await rp.evaluate(async () => {
             const secret = JSON.parse(localStorage.getItem('psycheai_referral')).secret;
             return fetch('api/sync/inbox', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -12668,7 +12673,7 @@ try {
           });
           check('the server holds it for the link\'s owner, locked: no name, no advice in it',
             waitingForOwner.items && waitingForOwner.items.length === 1 &&
-              !/Pat|Mock advice/.test(JSON.stringify(waitingForOwner)), JSON.stringify(waitingForOwner).slice(0, 200));
+              !/Pat Doe|Mock advice/.test(JSON.stringify(waitingForOwner)), JSON.stringify(waitingForOwner).slice(0, 200));
           const sentReport = pasted.report;
           // The owner's device collects it on its next start.
           await rp.reload({ waitUntil: 'load' });
@@ -12710,6 +12715,30 @@ try {
               !document.querySelector('#nav-scan').classList.contains('has-new') &&
               !(JSON.parse(localStorage.getItem('psycheai_history')) || []).some(e => e && e.fresh)));
           await rp.evaluate(() => { const d = document.querySelector('#sync-dialog'); if (d && d.open) d.close(); });
+
+          // A forged one: anyone holding this reader's link (it is on their
+          // story card) can leave something, dressed as someone's card. Its
+          // sender link does not open to that card, so it is dropped unseen.
+          await rp.evaluate(async () => {
+            const link = JSON.parse(localStorage.getItem('psycheai_link'));
+            const ref = JSON.parse(localStorage.getItem('psycheai_referral')).code;
+            const fromB64 = t => Uint8Array.from(atob(t.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((t.length + 3) % 4)), c => c.charCodeAt(0));
+            const toB64 = b => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const key = await crypto.subtle.importKey('raw', await crypto.subtle.digest('SHA-256', fromB64(link.key)), 'AES-GCM', false, ['encrypt']);
+            const payload = await window.PsycheCard.encodeCard({ name: 'Mallory Fake', headline: 'Not who they say' });
+            const body = JSON.stringify({ v: 2, payload, report: { summary: 'Invented.' }, from: { id: link.id, key: link.key }, when: new Date().toISOString() });
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(body)));
+            const blob = toB64(new Uint8Array([...iv, ...sealed]));
+            const nonce = (await (await fetch('api/nonce')).json()).nonce;
+            await fetch('api/sync/send', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-PsycheAI-Nonce': nonce },
+              body: JSON.stringify({ id: link.id, ref, blob }) });
+          });
+          await rp.reload({ waitUntil: 'load' });
+          await rp.waitForTimeout(2500);
+          check('a forged sync, its sender link not opening to the card it claims, is dropped and never shown',
+            await rp.evaluate(() => !(JSON.parse(localStorage.getItem('psycheai_history') || '[]')).some(e => e && /Mallory/.test(e.withName || ''))) &&
+              (await ownerInboxNow()).items.length === 0);
 
           // Not shared, nothing goes: Pat syncs with the same link again and
           // says no. A Share button on the row does it later, after the results.
@@ -12813,9 +12842,14 @@ try {
       await rp.click('#premium-cancel');
       await rp.waitForTimeout(300);
 
-      // Three friends, each a different account, arriving on the code.
+      // Three friends, each a different account on a phone of their own
+      // (a different address each: one connection counts at most two).
       await rp.evaluate(() => localStorage.clear());
       await rp.goto(base, { waitUntil: 'load' });
+      let friendAddress = 0;
+      const asOwnPhone = route => route.continue({ headers: Object.assign({}, route.request().headers(),
+        { 'x-forwarded-for': '198.51.100.' + (++friendAddress) }) });
+      await rp.route('**/api/analyse', asOwnPhone);
       const credited = await rp.evaluate(async ([text, code]) => {
         const sha = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))),
           b => b.toString(16).padStart(2, '0')).join('');
@@ -12828,6 +12862,7 @@ try {
         }
         return out;
       }, [digestText, mine.code]);
+      await rp.unroute('**/api/analyse', asOwnPhone);
       check('three friends make their free cards from the link', credited.every(Boolean), JSON.stringify(credited));
       await new Promise(resolve => setTimeout(resolve, 400));
 
@@ -12889,6 +12924,7 @@ try {
 
       // Three more friends earn another, and this one is given away: a gift
       // link that unlocks one full report for whoever opens it.
+      await rp.route('**/api/analyse', asOwnPhone);
       await rp.evaluate(async ([text, code]) => {
         const sha = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
           b => b.toString(16).padStart(2, '0')).join('');
@@ -12898,6 +12934,7 @@ try {
           await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
         }
       }, [digestText, mine.code]);
+      await rp.unroute('**/api/analyse', asOwnPhone);
       await new Promise(resolve => setTimeout(resolve, 400));
       await rp.reload({ waitUntil: 'load' });
       await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });

@@ -389,7 +389,6 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 }
 .card.good { border-left: 3px solid var(--good); }
 .card.warn { border-left: 3px solid var(--warn); }
-.alert-card { border-left: 3px solid var(--danger); background: var(--warn-soft); }
 
 /* Sits above the steps row outside any card, so it takes a smaller size than
    the 1.28rem a card heading gets — but full-strength ink, not the muted grey:
@@ -1054,9 +1053,6 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .pill-row { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1rem; }
 .pill { border: 1px solid var(--line); border-radius: 999px; padding: .1rem .6rem; font-size: .74rem; font-weight: 600; color: var(--ink-soft); vertical-align: middle; }
 code { font-size: .9em; background: var(--accent-soft); padding: .1rem .35rem; border-radius: 4px; }
-
-.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .6rem; }
-.theme-chip { border: 1px solid var(--line); border-radius: 12px; padding: .6rem .75rem; font-size: .9rem; }
 .theme-score {
   display: inline-grid; place-items: center; width: 30px; height: 30px; margin-right: .4rem;
   border-radius: 8px; font-size: .78rem; font-weight: 700; color: #fff; vertical-align: middle;
@@ -1069,7 +1065,6 @@ code { font-size: .9em; background: var(--accent-soft); padding: .1rem .35rem; b
 
 .hours { display: flex; align-items: flex-end; gap: 2px; height: 90px; margin-bottom: .5rem; }
 .hour { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
-.hour-bar { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border-radius: 3px 3px 0 0; min-height: 2px; }
 .hour-label { font-size: .65rem; color: var(--ink-soft); text-align: center; height: 1em; }
 
 /* ---------- forms ---------- */
@@ -1094,9 +1089,6 @@ textarea { resize: vertical; }
 .field input, .field textarea { margin-top: .3rem; }
 .note-field { margin-top: .7rem; }
 .other-input { margin-top: .6rem; }
-
-.chip-grid { display: flex; flex-wrap: wrap; gap: .45rem; }
-.chip-grid.tight { gap: .35rem; }
 .chip {
   display: inline-flex; align-items: center; gap: .35rem; cursor: pointer;
   border: 1px solid var(--line); border-radius: 999px; padding: .32rem .8rem;
@@ -1136,17 +1128,7 @@ textarea { resize: vertical; }
 .note { margin: .5rem 0 0; padding: .5rem .9rem; border-left: 3px solid var(--line); color: var(--ink-soft); font-size: .92rem; }
 
 /* ---------- report ---------- */
-
-.score-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
-.score-card { text-align: center; margin-bottom: 0; }
-.score-card h2 { margin: .8rem 0 .1rem; }
-/* One basis per report, so the score sits beside its verdict rather than
-   stacked in a column beside a sibling. */
-.score-single { display: flex; gap: 1.3rem; align-items: center; text-align: left; margin-bottom: 1.2rem; }
-.score-single h2 { margin: 0 0 .1rem; }
-.score-single .ring { flex: none; }
 .band { font-weight: 700; color: var(--accent); margin-bottom: .6rem; }
-.score-card p:last-child { font-size: .92rem; color: var(--ink-soft); margin: 0; }
 .ring {
   --pct: 0;
   width: 108px; height: 108px; margin: 0 auto; border-radius: 50%;
@@ -1185,14 +1167,9 @@ textarea { resize: vertical; }
 .partner-careful.compat-differ .partner-badge { background: var(--accent-soft); color: var(--accent); }
 .partner-careful.compat-differ .partner-items li::before { color: var(--accent); background: var(--accent-soft); }
 .compat-lead .ring { width: 116px; height: 116px; }
-.compat-band { font-size: 1.2rem; margin: 0 0 .35rem; }
-.score-card .compat-verdict { font-size: 1rem; color: var(--ink); line-height: 1.6; margin: 0; }
 @media (max-width: 540px) {
   .compat-lead { flex-direction: column; text-align: center; }
 }
-.compat-common { margin: .9rem 0 0; }
-.compat-common h3 { margin: 0 0 .45rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); }
-@media (max-width: 540px) { .compat-common .tags { justify-content: center; } }
 /* Evidence: one small line under what it supports. */
 .ev-line { margin: .3rem 0 0; font-size: .78rem; font-style: italic; color: var(--ink-soft); line-height: 1.45; }
 .partner-items .ev-line { padding: 0; }
@@ -1217,12 +1194,6 @@ textarea { resize: vertical; }
 .playbook h3 { margin-top: 0; }
 .playbook ul, .card ul { padding-left: 1.15rem; }
 .card li { margin-bottom: .5rem; }
-
-.score-pill { display: inline-block; min-width: 2.4rem; text-align: center; border-radius: 999px; padding: .1rem .5rem; font-weight: 700; font-size: .84rem; color: #fff; }
-.score-pill.s-a { background: var(--good); }
-.score-pill.s-b { background: var(--accent); }
-.score-pill.s-c { background: var(--warn); }
-.score-pill.s-d { background: var(--danger); }
 
 /* ---------- My Compatibility ---------- */
 
@@ -1275,16 +1246,6 @@ textarea { resize: vertical; }
   font-size: clamp(1.6rem, 3.8vw, 2.2rem); line-height: 1.12; letter-spacing: -.02em;
 }
 .scan-lede { margin: 0; max-width: 36rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.6; }
-.scan-modes { list-style: none; display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 0; padding: 0; position: relative; z-index: 1; }
-.scan-modes li {
-  display: inline-flex; align-items: center; gap: .4rem; margin: 0;
-  padding: .38rem .8rem .38rem .65rem; border-radius: 999px;
-  background: var(--bg-alt); border: 1px solid var(--line);
-  font-size: .86rem; font-weight: 600; color: var(--ink);
-}
-.scan-modes svg { width: 17px; height: 17px; color: var(--accent-2); flex: none; }
-.scan-modes li:nth-child(2) svg { color: var(--accent); }
-.scan-modes li:nth-child(3) svg { color: #3b6fb6; }
 
 /* Past results: one row each, the whole row the link to that report. */
 .scan-results-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
@@ -1439,17 +1400,6 @@ textarea { resize: vertical; }
 .paste-card #paste-go { align-self: flex-start; }
 .scan-actions .link-panel .btn-row { margin-top: 0; padding-top: 0; }
 
-/* What the link carries, as a little preview of what the other person gets. */
-.link-preview {
-  margin: .2rem 0 .9rem; padding: .9rem 1rem; border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 10%, var(--bg-alt)));
-  border: 1px solid var(--line);
-}
-.link-preview-name { margin: 0; font-size: .76rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
-.link-preview-name:empty { display: none; }
-.link-preview-headline { margin: .15rem 0 .6rem; font-size: 1.05rem; font-weight: 700; line-height: 1.4; }
-.link-preview .tag-row { margin: 0; }
-.link-preview .tag { background: var(--bg-alt); }
 
 @media (max-width: 560px) {
   .scan-hero { padding: 1.4rem 1.2rem 1.3rem; border-radius: 20px; }
@@ -1459,7 +1409,6 @@ textarea { resize: vertical; }
   .scan-spark svg { width: 15px; height: 15px; }
   .scan-hero h1, .scan-hero .h1 { padding-right: 0; }
   .scan-lede { font-size: .97rem; }
-  .scan-modes li { font-size: .82rem; }
   .match-row { gap: .7rem; padding: .6rem .65rem; }
   .match-meta { white-space: normal; }
 }
@@ -1674,7 +1623,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
   border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
   padding: .9rem 0;
 }
-.glance-item { display: flex; flex-direction: column; gap: .1rem; }
 .glance-label { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .glance-value { font-weight: 650; font-size: 1rem; line-height: 1.2; }
 .glance-note { font-size: .8rem; color: var(--ink-soft); }
@@ -2393,7 +2341,6 @@ ul.sends li::before { content: "\2192"; position: absolute; left: 0; color: var(
    card's stat row. Same fix as .pc-trait-label: let it shrink and break
    instead. */
 .pc-lab-text { min-width: 0; overflow-wrap: break-word; }
-.pc-big { font-size: 46px; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 .pc-sub { font-size: 24px; color: var(--ink-soft); margin: 6px 0 0; }
 /* The type's own one-line definition, under the nickname — smaller and
    lighter than .pc-sub since it is a full sentence rather than a label, and
@@ -3760,13 +3707,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .cx-status { margin: .5rem 0 0; font-size: .8rem; color: #b3261e; }
 /* Delete everything: a warning sheet, the red action on the right. */
 .delete-dialog { max-width: 26rem; text-align: center; }
-/* The data popout, once a fresh export is loaded over an existing card: a
-   short heads-up that the card may change. */
-.card-change-note {
-  display: flex; gap: .45rem; align-items: flex-start; margin: .7rem 0 0; padding: .5rem .7rem; border-radius: 12px;
-  background: var(--accent-soft); font-size: .82rem; line-height: 1.4; color: var(--ink); text-align: left;
-}
-.card-change-note[hidden] { display: none; }
 
 /* The data popout, compact: title, a short line, the sources in a list of
    their own that scrolls when the screen is short (with a visible bar), and
@@ -3812,14 +3752,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 @keyframes ds-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ds-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ds-confirm, .ds-confirm-box { animation: none; } }
-/* The unlock's Deeper read, in the data popout: a quiet line above the
-   buttons, off until ticked — offered, not pressed on anyone. */
-.deeper-read {
-  display: flex; gap: .45rem; align-items: center; margin: .7rem 0 0; cursor: pointer; text-align: left;
-  font-size: .8rem; line-height: 1.4; color: var(--ink-soft);
-}
-.deeper-read[hidden] { display: none; }
-.deeper-read input { flex: none; width: .95rem; height: .95rem; margin: 0; accent-color: var(--accent); }
 .delete-dialog-icon {
   display: grid; place-items: center; width: 3.2rem; height: 3.2rem; margin: 0 auto .7rem; border-radius: 999px;
   color: #b3261e; background: color-mix(in srgb, #c0392b 12%, var(--bg-alt));
@@ -4130,8 +4062,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 }
 .profile-top > .section-card { margin-bottom: 0; }
 .free-method .confidence-meter { margin: .2rem 0 .7rem; }
-.free-method .free-score { margin: 0 0 .5rem; font-size: .95rem; }
-.free-method .free-why { margin: 0 0 .8rem; font-size: .9rem; color: var(--ink-soft); line-height: 1.5; }
 .free-method .trait-evidence { margin: .3rem 0 0; }
 /* The review's de-identification note: what is taken out before anything is sent. */
 .deid-note {
@@ -4227,8 +4157,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   width: max(20px, calc(44px * var(--pcs))); height: max(20px, calc(44px * var(--pcs))); border-radius: 999px;
   font-size: max(10.5px, calc(23.5px * var(--pcs))); font-weight: 800;
 }
-.beyond-good .beyond-mark { background: var(--accent-soft); color: var(--accent); }
-.beyond-warn .beyond-mark { background: color-mix(in srgb, var(--accent-2) 16%, var(--bg-alt)); color: var(--accent-2); }
 /* The card's footer line. */
 .beyond-foot {
   margin: max(12px, calc(26px * var(--pcs))) 0 0; text-align: center;
@@ -4317,7 +4245,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .sync-invite-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg); z-index: -1; }
 .sync-invite-text { flex: 1; min-width: 0; }
 .sync-invite-title { margin: 0; font-weight: 800; font-size: 1.05rem; }
-.sync-invite-sub { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 @media (max-width: 640px) {
   .sync-invite { flex-wrap: wrap; padding-right: 1.1rem; }
   .sync-invite .btn { width: 100%; }
@@ -4345,15 +4272,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
 .sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
 .sync-invite-actions .btn { min-width: 7rem; }
-/* My Syncs: the friends whose links are waiting, a Sync button each. */
-.scan-waiting { margin-bottom: 1rem; }
-.scan-waiting h2 { margin: 0 0 .2rem; font-size: 1.1rem; }
-.scan-waiting .muted { margin: 0 0 .7rem; font-size: .88rem; }
-.card .scan-waiting-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
-.card .scan-waiting-list li { margin: 0; display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem; border-radius: 14px;
-  background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
-.scan-waiting-list strong { flex: 1; min-width: 0; }
-.scan-waiting-list .match-face { flex: none; }
 /* The unlock button's second line: the other way in, three friends' cards. */
 .premium-unlock-alt { display: block; margin-top: .2rem; font-size: .8rem; font-weight: 500; opacity: .9; }
 /* A promo code from the reader's link, under the unlock button. */
@@ -4369,8 +4287,6 @@ details.more[open] > summary::after { content: ' ▴'; }
   .nav-links .nav-short { display: inline; }
 }
 .nav-links a.is-current { color: var(--accent); font-weight: 700; }
-}
-}
 
 /* My Report: Back sits first in the actions, left of Download. */
 #report-back[hidden] { display: none !important; }

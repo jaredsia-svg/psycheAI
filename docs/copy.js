@@ -393,14 +393,12 @@
           ' does not have this report. Send them your link and they get their own, free.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
-    linkCopied: 'Link copied.',
     shortLinkUnreadable: 'That PsycheAI link could not be opened – it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
     matchWith: 'With',
     matchBasis: 'Basis',
-    matchScore: 'Score',
     // My Syncs: each past sync's two buttons.
     matchSyncLabel: 'Results',
     // Under a past sync's name, before its date.
@@ -645,12 +643,9 @@
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
     analysisPriceNoteUnlocked: 'Your full premium report is unlocked, so re-running costs US$5 and ' +
       'refreshes everything – your card and the full premium report.',
-    analysisFreeNote: 'Your first Psyche Card is free.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
     // paying can always fix — so it says what it is rather than blaming them.
-    analysisBudgetExhausted: 'PsycheAI has hit its limit of free analyses for today. Please try ' +
-      'again tomorrow.',
     premiumDialogTitle: 'Unlock your Psyche Report',
     // Shown instead of the unlock copy above when the reader already has
     // premium and is re-running with added or changed data — "unlock" would
@@ -848,38 +843,20 @@
     // The "several files" note is gone from the wording; picking several at
     // once still works (the picker allows it, and readExports merges them).
     dataSourcesFirstInstagram: 'Load your Instagram data .zip file here.',
-    // Only shown once a fresh Instagram export is actually picked — see the
-    // reasoning at the call site in app.js for why this cannot always be
-    // carried forward automatically.
-    dataSourcesInstagramReplaceNote: 'Replacing Instagram starts your Google, Facebook and WhatsApp data fresh ' +
-      'too – reload them here as well if you want them included in this run.',
-    dataSourcesContinue: 'Continue',
-    dataSourcesBack: 'Back',
 
     // The Psyche Sync report. It is two renderings of one document for the
     // same reason the profile is — the page and the downloadable PDF — so its
     // headings live here too rather than being typed once in each.
-    compatCommon: 'What you share',
     // The sync's sections, in order: the summary leads, then these.
     compatAlign: 'Where you align',
     compatDiffer: 'Where you differ',
     compatRelate: 'How to relate better',
-    // Over What works and What to look out for, which sit side by side under it.
-    compatHowItPlays: 'How it plays out',
-    compatWorks: 'What works',
-    compatRubs: 'What to look out for',
     compatBoth: 'Both of you',
     compatFor: 'For ',
-    compatSuffix: ' sync',
-    // The score, said the way people say it: 78% in sync.
     syncName: 'Psyche Sync',
-    syncScoreLabel: 'Psyche Sync score',
-    syncPercent: (score) => score + '% in sync',
-    syncPercentUnit: 'in sync',
 
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
-    scanTitle: 'Psyche Sync',
     // Inside an app's own browser (Instagram, Facebook, TikTok…).
     inAppWarn: (app, ios) => 'You are in ' + app + '\u2019s built-in browser. Your Psyche Card and report are saved only in the browser you make them in, and ' + app + ' can clear this one without warning. ' +
       (ios ? 'Tap \u22EF or the share icon and choose Open in Safari (or Open in browser).' : 'Tap \u22EE and choose Open in Chrome (or Open in browser).'),
@@ -962,14 +939,11 @@
 
     // Shown under each section in the structured layout: which patterns it
     // shows, as chips that jump to the pattern.
-    connectsTo: 'Connects to',
     raisedBy: 'Raised by',
     showsUpIn: 'Shows up in',
-    fromPattern: 'From pattern',
     earlySigns: 'Early signs',
     counterMove: 'Counter-move',
     reflect: 'Worth asking yourself',
-    whatItTurnsInto: 'turns into',
     levelLabels: { mild: 'Mild', moderate: 'Moderate', marked: 'Marked' },
     // Section keys as a reader would name them, for the "raised by" and
     // "shows up in" chips. Keys match SECTION_KEYS in lib/prompts.js.
@@ -1199,7 +1173,6 @@
     cardFooter: 'psycheai.io · your personality, read from your own data',
     cardTraitShort: { openness: 'Openness', conscientiousness: 'Conscientious', extraversion: 'Extraversion',
       agreeableness: 'Agreeable', neuroticism: 'Sensitivity' },
-    cardStrength: { slight: 'slight', moderate: 'moderate', clear: 'clear' },
     nothingYet: 'Nothing here yet.',
     // The merged sections' own headings.
     howYouAttach: 'Attachment style',
@@ -1236,7 +1209,6 @@
     careerFitTitle: 'Careers that suit you',
     careerFitSuits: 'Suits you best',
     careerFitDraining: 'Likely to drain you',
-    whereItGoesWrong: 'Where it goes wrong',
     // Where an action on the plan came from, when it is not a develop area.
     fromWork: 'How you work',
     fromWellbeing: 'Wellbeing',
@@ -1276,14 +1248,6 @@
       years: n => n + ' years', months: n => n + ' months',
     },
 
-    // The method section after Part 4 (the PDF's method page still uses these rows).
-    methodSources: 'Sources read',
-    methodCoverage: 'What the evidence covers',
-    methodModel: 'Written by',
-    methodBuild: 'Build',
-    methodFormat: 'Report format',
-    methodFormatValue: 'Structured report, v1',
-
     // The extra lines in the unlock list under a free card, for what this
     // layout adds. Same length and register as the explain* lines in TEXT.
     // The types row of the unlock list.
@@ -1310,8 +1274,6 @@
       ['🪜', 'Career assessment', 'Your edge, what you are not yet using, the careers that suit you and the ones that ' +
         'would drain you – and actions for this week, this quarter and this year.'],
     ],
-    explainConflict: 'How you handle disagreement with the people close to you – whether you raise it, smooth ' +
-      'it over, go quiet or come in hot, and what that does to the other person.',
     explainTypeTraitsTitle: 'MBTI & Big Five',
     explainTypeTraits: 'Your four letters and your five traits taken apart – the behaviours behind each, the ' +
       'evidence that pulls the other way, how firmly each one holds, and what it looks like in your ordinary week.',
@@ -1387,8 +1349,12 @@
 
   /** The scene for a character, as SVG markup, or '' for any other name. */
   function characterArt(character, className) {
-    const art = (root.PsycheCharacterArt || {})[String(character || '').trim()];
-    if (!art) return '';
+    // Own properties only: a name such as "toString" from someone else's card
+    // must find nothing, not a function.
+    const table = root.PsycheCharacterArt || {};
+    const name = String(character || '').trim();
+    const art = Object.prototype.hasOwnProperty.call(table, name) ? table[name] : '';
+    if (typeof art !== 'string' || !art) return '';
     const id = 'pc-art-' + (++artDrawn);
     return '<svg class="' + (className || 'pc-art') + '" viewBox="0 0 520 440" preserveAspectRatio="xMaxYMax slice" ' +
       'aria-hidden="true" focusable="false">' + art.replace(/\{id\}/g, id) + '</svg>';
@@ -1396,8 +1362,9 @@
 
   /** The emblem for a catalogue character, as SVG markup, or '' for any other name. */
   function emblemSvg(character, className) {
-    const key = CHARACTER_EMBLEMS[String(character || '').trim()];
-    if (!key || !EMBLEM_PATHS[key]) return '';
+    const name = String(character || '').trim();
+    const key = Object.prototype.hasOwnProperty.call(CHARACTER_EMBLEMS, name) ? CHARACTER_EMBLEMS[name] : '';
+    if (!key || !Object.prototype.hasOwnProperty.call(EMBLEM_PATHS, key)) return '';
     return '<svg class="' + (className || 'emblem') + '" viewBox="0 0 48 48" fill="none" stroke="currentColor" ' +
       'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
       EMBLEM_PATHS[key] + '</svg>';

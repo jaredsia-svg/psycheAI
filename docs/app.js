@@ -2,6 +2,10 @@
 // All state lives in localStorage; the server holds nothing.
 (function () {
   'use strict';
+  // The address this page was opened at, before a friend's link is read and
+  // taken out of it (consumeIncomingLink): what "Copy link" in an app's own
+  // browser has to copy, or the friend's link is lost on the way to Safari.
+  const ARRIVED_AT = location.href;
 
   const IG = window.PsycheInstagram;
   const Supplement = window.PsycheSupplement;
@@ -164,7 +168,7 @@
       try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (error) { return false; }
     },
     remove(key) { try { localStorage.removeItem(key); } catch (error) { /* nothing to drop */ } },
-    clearAll() { for (const key of Object.values(KEYS)) localStorage.removeItem(key); },
+    clearAll() { for (const key of Object.values(KEYS)) { try { localStorage.removeItem(key); } catch (error) { /* blocked */ } } },
   };
   store.remove(KEYS.deepDigest);
 
@@ -5396,13 +5400,32 @@
     const love = (report.relationship && report.relationship.loveLanguages) || {};
     return (love[side] || []).slice(0, 2).filter(l => l && l.language).map(l => String(l.language).slice(0, 30));
   }
+  /**
+   * A card face from someone else's link or sync, held to what cardFace
+   * writes: these fields, as strings and short lists of strings, each cut to
+   * its length. Anything else is dropped, so nothing on it can break a
+   * render or carry more than a face does.
+   */
+  const FACE_FIELDS = { c: 40, fr: 30, i: 8, w: 420 };
+  const FACE_LISTS = { s: [4, 10], p: [3, 80], m: [3, 40], v: [4, 40], n: [3, 40], lr: [2, 30], lg: [2, 30] };
+  function shapeFace(face) {
+    if (!face || typeof face !== 'object' || Array.isArray(face)) return null;
+    const out = {};
+    for (const [key, max] of Object.entries(FACE_FIELDS)) {
+      if (typeof face[key] === 'string') out[key] = face[key].slice(0, max);
+    }
+    for (const [key, [count, max]] of Object.entries(FACE_LISTS)) {
+      if (Array.isArray(face[key])) out[key] = face[key].filter(v => typeof v === 'string').slice(0, count).map(v => v.slice(0, max));
+    }
+    return out;
+  }
   /** A short link's contents: the card payload, and its face where the link carries one. */
   function openedCard(text) {
     const raw = String(text || '');
     if (raw.charAt(0) !== '{') return { payload: raw, face: null };
     try {
       const sealed = JSON.parse(raw);
-      return { payload: String(sealed.p || ''), face: sealed.f && typeof sealed.f === 'object' ? sealed.f : null };
+      return { payload: String(sealed.p || ''), face: shapeFace(sealed.f) };
     } catch (error) {
       return { payload: '', face: null };
     }
@@ -6236,11 +6259,6 @@
     return html;
   }
 
-  function horizonPill(horizon) {
-    const label = TEXT.careerHorizons[horizon];
-    if (!label) return '';
-    return '<span class="pill horizon-pill horizon-' + esc(String(horizon).replace(/\s+/g, '-')) + '">' + esc(label) + '</span>';
-  }
 
   /**
    * Build on, then the areas to develop, then every action from those areas
@@ -7399,11 +7417,6 @@
       '</ul>';
   }
 
-  function scorePill(score) {
-    const value = Math.round(Number(score) || 0);
-    const tier = value >= 80 ? 'a' : value >= 65 ? 'b' : value >= 50 ? 'c' : 'd';
-    return '<span class="score-pill s-' + tier + '">' + value + '</span>';
-  }
 
   document.addEventListener('click', event => {
     const link = event.target.closest('[data-report]');
@@ -7505,31 +7518,6 @@
   $('#copy-link').addEventListener('click', () => copyMyLink($('#copy-link'), '#share-link-status'));
   $('#copy-link-scan').addEventListener('click', () => copyMyLink($('#copy-link-scan'), '#share-link-scan-status'));
 
-  // The mark, stroked from the same SVG path data the nav and the PDF use —
-  // Path2D parses the arcs itself, so unlike the PDF writer this needs no
-  // bezier conversion of its own.
-  function drawBrandMark(context, left, top, size) {
-    const mark = Copy.BRAND_MARK;
-    context.save();
-    context.translate(left, top);
-    context.scale(size / mark.viewBox, size / mark.viewBox);
-    // In the scaled space a stroke of `strokeWidth` units comes out at
-    // strokeWidth * (size / viewBox) pixels — exactly the SVG's own ratio.
-    context.lineWidth = mark.strokeWidth;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.strokeStyle = '#7b3fa0';
-    for (const d of mark.paths) context.stroke(new Path2D(d));
-    // Filled, so it is drawn here rather than living in `paths` with the
-    // stroked orbits.
-    if (mark.dot) {
-      context.fillStyle = '#7b3fa0';
-      context.beginPath();
-      context.arc(mark.dot.cx, mark.dot.cy, mark.dot.r, 0, Math.PI * 2);
-      context.fill();
-    }
-    context.restore();
-  }
 
   const LABEL_FONT_STACK = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
   // The report is typeset into a PDF here rather than handed to the browser's
@@ -7628,7 +7616,9 @@
     // Long enough for every browser to have started reading the blob, after
     // which holding it open only costs memory.
     setTimeout(() => URL.revokeObjectURL(href), 10000);
-    if (hasExplanations(profile)) {
+    // In an app's own browser a download often goes nowhere, so the note
+    // stays there until the PDF is saved somewhere it lands.
+    if (hasExplanations(profile) && !IN_APP) {
       store.write(KEYS.pdfSaved, true);
       document.querySelectorAll('.report-keep-note').forEach(note => note.remove());
     }
@@ -8521,13 +8511,6 @@
     document.addEventListener('close', event => { if (pop && event.target.contains(pop)) close(); }, true);
   }
 
-  /** What a digest says about the data it was built from, to tell whether it changed. */
-  function digestFingerprint(digest) {
-    if (!digest) return '';
-    return JSON.stringify([digest.coverage || null, digest.counts || null,
-      digest.google ? digest.google.counts || true : null, digest.facebook ? digest.facebook.counts || true : null,
-      digest.whatsapp ? (digest.whatsapp.chats || []).map(c => c.counts) : null]);
-  }
 
   /**
    * Runs once a payment has actually cleared, or a valid promo code has been
@@ -9100,19 +9083,26 @@
   // sheet opens. A discount is shown at once; a code that opens the report
   // free waits for the reader's tap rather than starting it unasked; and a
   // code the server refuses is forgotten, so it is not offered again.
+  // One promo check at a time: Enter pressed twice, or Apply then Enter.
+  let promoChecking = false;
   async function applyPromoCode(options) {
     const fromLink = Boolean(options && options.fromLink);
     const input = $('#premium-promo-input');
     const code = input.value.trim();
-    if (!code) return;
+    if (!code || promoChecking) return;
     const dialog = $('#premium-dialog');
     const product = premiumKind === 'analysis' ? 'analysis' : 'unlock';
+    // Whether the sheet the code was typed into is still the one open: a
+    // reader who cancels while the code is checked is not then charged or
+    // started on a report, and a code for one product never runs another.
+    const stillHere = () => dialog.open && premiumKind === product;
     if (premiumKind !== product) {
       onPaymentAuthorised({ promoCode: code }, dialog);
       return;
     }
     const apply = $('#premium-promo-apply');
     apply.disabled = true;
+    promoChecking = true;
     let answer = null;
     try {
       answer = await LLM.postWithTicket('api/create-payment-intent',
@@ -9128,7 +9118,9 @@
       answer = null;
     } finally {
       apply.disabled = false;
+      promoChecking = false;
     }
+    if (!stillHere()) return;
     if (answer && answer.discount) {
       renderPremiumPrice(product, answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
       premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent), 'good');
@@ -9296,20 +9288,6 @@
   });
 
   const MODE_LABELS = Copy.MODE_LABELS;
-  const MODE_HEADINGS = {
-    romantic: 'How to partner each other',
-    platonic: 'How to relate to each other',
-    professional: 'How to work with each other',
-  };
-
-  // A professional run carries a stance as well as a basis, and the stance
-  // owns the heading — "How to work with each other" is wrong for someone who
-  // manages the other person. Reports saved before stances existed have no
-  // stance, so the mode heading stays the fallback.
-  function playbookHeading(mode, stance, otherName) {
-    const chosen = mode === 'professional' && Copy.WORK_STANCES[stance];
-    return chosen ? Copy.stanceText(chosen.heading, otherName) : MODE_HEADINGS[mode];
-  }
 
   // One sync at a time. A second tap on Sync (a double tap on a phone, before
   // the working screen appears) used to start a second, identical sync, and
@@ -9345,9 +9323,23 @@
   // The face and link code of a pasted link, for adoptComparison.
   let pastedLink = null;
 
+  // From the first tap to the sync's end: a second tap in the moments before
+  // the sync starts (reading the link, the share question) starts nothing.
+  let matchStarting = false;
   async function runMatch(link) {
     if (!state.profile) return false;
-    if (syncInFlight) return true;
+    if (syncInFlight || matchStarting) return true;
+    matchStarting = true;
+    const paste = $('#paste-go');
+    if (paste) paste.disabled = true;
+    try {
+      return await startMatch(link);
+    } finally {
+      matchStarting = false;
+      if (paste) paste.disabled = false;
+    }
+  }
+  async function startMatch(link) {
     if (typeof link === 'string') link = await readLinkText(link);
     const other = await Card.decodeCard(link && link.payload);
     if (!other) return false;
@@ -9554,7 +9546,7 @@
     let a = firstName(mine) || mine || 'You';
     let b = firstName(theirs) || theirs || 'They';
     if (a === b) { a += ' A'; b += ' B'; }
-    const swap = text => text.replace(/\b[Pp]erson A\b/g, a).replace(/\b[Pp]erson B\b/g, b);
+    const swap = text => text.replace(/\b[Pp]erson A\b/g, () => a).replace(/\b[Pp]erson B\b/g, () => b);
     const walk = item => typeof item === 'string' ? swap(item)
       : Array.isArray(item) ? item.map(walk)
       : item && typeof item === 'object' ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, walk(v)])) : item;
@@ -9625,7 +9617,7 @@
     $('#compat-return-text').textContent = TEXT.compatReturnText(name, status);
     const share = $('#compat-return-share');
     share.hidden = status !== 'share';
-    share.disabled = false;
+    share.disabled = sharing.has(compatReturnKey);
     $('#compat-return-share-label').textContent = TEXT.syncShareYes(name);
     $('#share-link-report').hidden = status !== 'link';
     panel.dataset.state = status;
@@ -9637,10 +9629,14 @@
     refreshCompatReturn();
   });
   /** Sends one saved sync back to the person whose link it was, and marks it shared. */
+  const sharing = new Set();
   async function shareSyncEntry(key) {
     const entry = (store.read(KEYS.history, []) || []).find(e => e && e.with === key);
-    if (!entry || !entry.back || entry.shared) return false;
-    const sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report);
+    // Once per sync: a second tap while the first is sending sends nothing.
+    if (!entry || !entry.back || entry.shared || sharing.has(key)) return false;
+    sharing.add(key);
+    let sent = false;
+    try { sent = await sendSyncBack(entry.back.link, entry.back.ref, entry.report); } finally { sharing.delete(key); }
     const name = firstName(entry.withName) || entry.withName;
     if (sent) {
       const history = store.read(KEYS.history, []) || [];
@@ -9683,8 +9679,13 @@
     const theirs = Object.assign({}, report, {
       howToPartner: Object.assign({}, play, { forA: play.forB || [], forB: play.forA || [] }),
     });
-    const sent = { v: 1, payload: state.profile.payload, face: cardFace(state.profile.report), report: theirs,
-      when: new Date().toISOString() };
+    // This reader's own link goes with it, so the other side can check the
+    // card it carries really is the one this link shows (verifiedSender).
+    await publishShortLink();
+    const own = store.read(KEYS.link, null);
+    if (!own || !LINK_ID.test(own.id || '') || !LINK_KEY.test(own.key || '')) return false;
+    const sent = { v: 2, payload: state.profile.payload, face: cardFace(state.profile.report), report: theirs,
+      from: { id: own.id, key: own.key }, when: new Date().toISOString() };
     try {
       let blob = await lockCard(JSON.stringify(sent), link.key);
       // Past what the server keeps, the card goes without its face.
@@ -9718,15 +9719,23 @@
     const done = [];
     let added = 0;
     for (const item of items.slice(0, 20)) {
+      let outcome = 'drop';
       try {
         const data = JSON.parse(await unlockCard(String(item.blob || ''), link.key));
         const card = data && typeof data.payload === 'string' ? await Card.decodeCard(data.payload) : null;
         if (card && data.report && typeof data.report === 'object' && !Array.isArray(data.report)) {
-          adoptReceivedSync(card, data);
-          added++;
+          // Only from the person whose card it carries: their own link has to
+          // show that same card. Anyone holding this reader's link could
+          // otherwise send a sync dressed as a friend's.
+          const sender = await verifiedSender(data);
+          if (sender === 'retry') outcome = 'keep';
+          else if (sender === 'ok') outcome = adoptReceivedSync(card, data);
         }
       } catch (error) { /* cannot be unlocked: cleared below */ }
-      done.push(item.id);
+      if (outcome === 'saved') added++;
+      // Kept on the server when it could not be checked or saved just now
+      // (offline, or storage full), to collect next time.
+      if (outcome !== 'keep') done.push(item.id);
     }
     if (done.length) {
       try {
@@ -9740,19 +9749,59 @@
     refreshSyncsDot();
     if (!$('#view-scan').hidden) renderScan();
   }
+  /**
+   * Whether a received sync comes from the person whose card it carries: the
+   * link it names opens to that same card. 'ok', 'bad' (never will), or
+   * 'retry' (could not be asked just now).
+   */
+  async function verifiedSender(data) {
+    const from = data && data.from;
+    if (!from || !LINK_ID.test(from.id || '') || !LINK_KEY.test(from.key || '')) return 'bad';
+    let found;
+    try {
+      const response = await fetch('api/link?id=' + encodeURIComponent(from.id));
+      if (response.status === 404) return 'bad';
+      if (!response.ok) return 'retry';
+      found = await response.json();
+    } catch (error) { return 'retry'; }
+    try {
+      return openedCard(await unlockCard(String(found.blob || ''), from.key)).payload === data.payload ? 'ok' : 'bad';
+    } catch (error) { return 'bad'; }
+  }
+  // Someone else's sync result, held to the shape a sync has: strings and
+  // lists of strings, each cut to a length, and nothing else.
+  function shapeSyncReport(report) {
+    const r = report && typeof report === 'object' && !Array.isArray(report) ? report : {};
+    const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+    const texts = (v, count, max) => (Array.isArray(v) ? v.filter(x => typeof x === 'string').slice(0, count).map(x => x.slice(0, max)) : []);
+    const points = v => (Array.isArray(v) ? v.filter(x => x && typeof x === 'object').slice(0, 5).map(x => ({
+      title: text(x.title, 120), detail: text(x.detail, 700), evidence: texts(x.evidence, 3, 300),
+    })).filter(x => x.title) : []);
+    const play = r.howToPartner && typeof r.howToPartner === 'object' ? r.howToPartner : {};
+    return {
+      mode: 'platonic', stance: null, summary: text(r.summary, 400),
+      align: points(r.align), differ: points(r.differ),
+      howToPartner: { forA: texts(play.forA, 5, 400), forB: texts(play.forB, 5, 400), together: texts(play.together, 4, 400) },
+      caveats: text(r.caveats, 600),
+    };
+  }
+  /** Saves a verified received sync. 'saved', 'drop' (nothing to add), or 'keep' (could not be saved). */
   function adoptReceivedSync(card, data) {
     const key = syncCardKey(card);
     const when = !isNaN(new Date(data.when)) ? new Date(data.when).toISOString() : new Date().toISOString();
-    const face = data.face && typeof data.face === 'object' && !Array.isArray(data.face) ? data.face : null;
-    const history = (store.read(KEYS.history, []) || []).filter(entry => !(entry && entry.with === key));
-    history.unshift({
+    const history = store.read(KEYS.history, []) || [];
+    // A sync this reader ran with them is theirs and stays as it is; only an
+    // earlier one they were sent is replaced.
+    if (history.some(entry => entry && entry.with === key && !entry.received)) return 'drop';
+    const kept = history.filter(entry => !(entry && entry.with === key));
+    kept.unshift({
       when, withName: card.name, with: key, mode: 'platonic', stance: null,
-      report: Object.assign({}, data.report, { mode: 'platonic', stance: null }),
-      card: Card.shape(card), face, received: true, fresh: true,
+      report: shapeSyncReport(data.report), card: Card.shape(card), face: shapeFace(data.face), received: true, fresh: true,
     });
-    store.write(KEYS.history, history.slice(0, 25));
+    if (!store.write(KEYS.history, kept.slice(0, 25))) return 'keep';
     // Their link, if it was waiting here too, is answered by this.
     for (const invite of allInvites()) if (invite.payload === data.payload) spendInvite(invite.payload);
+    return 'saved';
   }
   /** The dot on Syncs while a sync someone sent back is still unopened. */
   function refreshSyncsDot() {
@@ -10192,7 +10241,7 @@
     const copy = $('#inapp-copy');
     copy.textContent = TEXT.inAppCopy;
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(location.href); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+      try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
     });
     $('#inapp-close').addEventListener('click', () => {
       bar.hidden = true;

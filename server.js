@@ -62,12 +62,16 @@ const ROOT = path.join(__dirname, 'docs');
 // whatever the client sent — a client that posts a padded digest gets exactly
 // what an honest client gets, for exactly what an honest client costs. Run as a script rather than required because it is a
 // browser file: it hangs itself off `globalThis` and exports nothing.
-const Digest = (() => {
-  const vm = require('node:vm');
-  const file = path.join(__dirname, 'docs', 'digest.js');
-  vm.runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
-  return globalThis.PsycheDigest;
-})();
+// A browser file run once at boot: it hangs itself off `globalThis`.
+function loadBrowserScript(name, global) {
+  const file = path.join(__dirname, 'docs', name);
+  require('node:vm').runInThisContext(fs.readFileSync(file, 'utf8'), { filename: file });
+  return globalThis[global];
+}
+const Digest = loadBrowserScript('digest.js', 'PsycheDigest');
+// The card's shape (docs/card.js), loaded the same way: a sync is sent two
+// cards, and only the fields a card has, each held to its length, go on.
+const Card = loadBrowserScript('card.js', 'PsycheCard');
 const PORT = Number(process.env.PORT) || 3000;
 
 // How many free-report generations a reader gets before the app asks them to
@@ -651,13 +655,41 @@ async function handleAnalyse(request, response) {
   // which is a server-wide count rather than a per-payment cap, and a promo
   // code carries no cap at all.
   const paidRun = Boolean(paymentIntentId && !promoCode && !referralGrant);
-  const release = paidRun ? paymentLedger.hold(paymentIntentId, ledgerKind) : () => {};
-  if (!release) {
+  // A payment buys one report: its retries are for that report, not others.
+  const bindProblem = paidRun ? await paymentLedger.digestRefusal(paymentIntentId, ledgerKind, key) : null;
+  if (bindProblem) {
+    sendJson(response, 402, { error: bindProblem });
+    return;
+  }
+  const holdPayment = paidRun ? paymentLedger.hold(paymentIntentId, ledgerKind) : () => {};
+  if (!holdPayment) {
     sendJson(response, 429, {
       error: 'This payment is already generating an analysis. Wait for it to finish before trying again.',
     });
     return;
   }
+  // A creator code's place under its cap, and a free report's grant, are
+  // taken now rather than counted once the report is written, so requests at
+  // once cannot spend one more than once. Given back if the report fails.
+  const holdPromo = promoCode ? promo.reserve(promoCode, body.digest) : () => {};
+  if (!holdPromo) {
+    holdPayment();
+    sendJson(response, 402, { error: 'That code has been used up.' });
+    return;
+  }
+  const holdGrant = referralGrant ? await referral.reserveGrant(referralGrant, body.digest) : () => {};
+  if (!holdGrant) {
+    holdPayment();
+    holdPromo();
+    sendJson(response, 402, { error: 'That free full report has already been used.' });
+    return;
+  }
+  let written = false;
+  const release = () => {
+    holdPayment();
+    holdPromo();
+    holdGrant(written);
+  };
   // `results.share`, inside generate(), registers this generation before it
   // awaits anything, so a retry arriving while it runs attaches to it instead
   // of starting a second one, and stores the result on success. Storing it
@@ -696,8 +728,10 @@ async function handleAnalyse(request, response) {
 
       // Both recorded only after the call actually came back, so a provider
       // outage neither spends the day's budget nor burns the reader's payment.
+      written = true;
       if (paying) {
         if (paidRun) paymentLedger.recordUse(paymentIntentId, ledgerKind);
+        if (paidRun) paymentLedger.bindDigest(paymentIntentId, ledgerKind, key);
         if (paidRun) discountRedeemed(paidIntent, body.digest);
       } else {
         budget.record(kind);
@@ -721,7 +755,7 @@ async function handleAnalyse(request, response) {
       }
       // The free card's account, and the friend who invited them.
       if (made === 'card') {
-        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef })
+        referral.afterFreeCard({ account, ref: body.ref, myRef: body.myRef, client: rateLimit.clientKey(request) })
           .then(outcome => {
             if (outcome && outcome.credited) {
               stats.count('referral_friend');
@@ -862,6 +896,13 @@ async function handlePremiumAnalysis(request, response) {
     return;
   }
   const background = wantsBackground(body);
+  // What the model is sent: the whitelisted digest, held to the line, as on
+  // /api/analyse. This route used to pass the posted object on whole.
+  const sent = Digest.forModel(body.digest);
+  if (Digest.evidenceChars(sent) > Digest.budgetFor(sent)) {
+    sendJson(response, 413, { error: 'That digest is larger than any real export produces.' });
+    return;
+  }
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   if (promoCode) {
     const promoProblem = promoRefusal(promoCode, body.digest);
@@ -871,20 +912,27 @@ async function handlePremiumAnalysis(request, response) {
     }
     const engine = requirePremiumEngine(response);
     if (!engine) return;
-    const answeredPromo = servedFromMemory(response, 'premium', body.digest, background);
+    const answeredPromo = servedFromMemory(response, 'premium', sent, background);
     if (answeredPromo) {
       await answeredPromo;
+      return;
+    }
+    const holdPromo = promo.reserve(promoCode, body.digest);
+    if (!holdPromo) {
+      sendJson(response, 402, { error: 'That code has been used up.' });
       return;
     }
     await generate(response, {
       background,
       kind: 'premium',
-      key: body.digest,
+      key: sent,
+      settle: holdPromo,
       produce: async () => {
-        const result = await engine.analysePremium(body.digest);
+        const result = await engine.analysePremium(sent);
+        usage.record('premium', result, true);
         stats.count('premium_sections');
         promoRedeemed(promoCode, body.digest);
-        return result;
+        return scrubbed(result, sent, 'premium');
       },
     });
     return;
@@ -914,9 +962,14 @@ async function handlePremiumAnalysis(request, response) {
   // gets them back without spending a second use of the same payment — and
   // before the hold below, so that a reader who reconnects while their own
   // generation is still running is handed it rather than told to wait.
-  const answeredPaid = servedFromMemory(response, 'premium', body.digest, background);
+  const answeredPaid = servedFromMemory(response, 'premium', sent, background);
   if (answeredPaid) {
     await answeredPaid;
+    return;
+  }
+  const bindProblem = await paymentLedger.digestRefusal(paymentIntentId, 'premium', sent);
+  if (bindProblem) {
+    sendJson(response, 402, { error: bindProblem });
     return;
   }
   // Held across the generation, because canUse above read a count that
@@ -933,15 +986,16 @@ async function handlePremiumAnalysis(request, response) {
   await generate(response, {
     background,
     kind: 'premium',
-    key: body.digest,
+    key: sent,
     settle: release,
     produce: async () => {
-      const result = await engine.analysePremium(body.digest);
+      const result = await engine.analysePremium(sent);
       usage.record('premium', result, true);
       paymentLedger.recordUse(paymentIntentId, 'premium');
+      paymentLedger.bindDigest(paymentIntentId, 'premium', sent);
       discountRedeemed(paidIntent, body.digest);
       stats.count('premium_sections');
-      return scrubbed(result, body.digest, 'premium');
+      return scrubbed(result, sent, 'premium');
     },
   });
 }
@@ -1075,12 +1129,15 @@ async function handleLinkOpen(response, url) {
 
 async function handleCompatibility(request, response) {
   const body = await readJsonBody(request);
-  const a = body && body.a;
-  const b = body && body.b;
-  if (!a || !b || typeof a !== 'object' || typeof b !== 'object') {
+  if (!body || !body.a || !body.b || typeof body.a !== 'object' || typeof body.b !== 'object') {
     sendJson(response, 400, { error: 'Expected two profile cards, "a" and "b".' });
     return;
   }
+  // A card's fields and nothing else, each held to its length: a free call
+  // cannot be filled to the model's whole context, or carry anything a card
+  // does not.
+  const a = Card.shape(body.a);
+  const b = Card.shape(body.b);
   // A compatibility read is free. It draws on the same daily free ceiling as
   // the free card, so the most expensive free call in the app is still
   // bounded across all readers per day, and it is answered from the result

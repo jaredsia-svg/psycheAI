@@ -2771,6 +2771,38 @@ check('the reader\'s own handle is replaced with a placeholder',
       /^\d{4}-\d{2}$/.test(String(Digest.forModel(Object.assign({}, digest, { rhythm: Object.assign({}, digest.rhythm, { firstActivity: '2012-10-21' }) })).rhythm.firstActivity)),
     JSON.stringify([digest.rhythm.firstActivity, digest.rhythm.lastActivity]));
 }
+// Links, a website, a city, postcodes elsewhere, and a name in any script:
+// none of them reach the model, whichever field they sit in.
+{
+  const built = Digest.build({
+    ...signals,
+    profile: Object.assign({}, signals.profile, { name: 'Ömer Yılmaz', bio: 'bakes at www.annbakes.co, Ömer here', website: 'https://annbakes.co', city: 'Leeds' }),
+    captions: [{ text: 'order at https://annbakes.co/order?ref=ig – 14 Elm Street, Leeds LS1 4AP', ts: 1700000000 },
+      { text: 'Toronto M5V 2T6 and SF CA 94110, then 2024 steps and 10000 more', ts: 1700000100 },
+      { text: 'Ömer Yılmaz made this, and so did Yılmaz the other day', ts: 1700000200 }],
+  }, { includeMessages: false });
+  const sent = JSON.stringify(Digest.forModel(built));
+  check('no link, website or city reaches the model, from any field',
+    !/https?:|www\.|annbakes\.co|Leeds\b(?! )|"city"|"website"/.test(sent.replace(/14 Elm Street, Leeds/, '')) &&
+      JSON.stringify(Object.keys(Digest.forModel(built).profile)) === JSON.stringify(['name', 'username', 'bio']), sent.slice(0, 400));
+  check('UK, Canadian and US postcodes are replaced, while plain numbers stay',
+    !/LS1 4AP|M5V 2T6|94110/.test(sent) && /CA PsycheNumber/.test(sent) && /2024 steps and 10000 more/.test(sent), sent.slice(0, 600));
+  check('the reader\'s own name is removed in any script, not only ASCII',
+    !/Ömer Yılmaz|Yılmaz/.test(sent) && /PsycheUser made this/.test(sent), sent.slice(0, 600));
+  const noLinks = JSON.stringify(Digest.forModel({ samples: { captions: ['see https://x.example/a and www.y.example/b'] }, profile: { bio: 'www.z.example', city: 'Paris', website: 'w' } }));
+  check('and forModel strips them itself, so the server does too for a page that did not',
+    !/https?:|www\.|Paris|"website"/.test(noLinks), noLinks);
+}
+// Instagram DMs blank other people's names in the reader's own words, as
+// WhatsApp and Messenger do.
+{
+  const own = IG.ownSide([{ sender: 'Sam Lee', text: 'are you coming?', ts: 1 }, { sender: 'Me Too', text: 'yes Sam, see you at Sam Lee place', ts: 2 }],
+    'Me Too', { blankOwnText: true });
+  check('names of the people they talk to come out of the reader\'s own DMs',
+    own.length === 1 && !/Sam/.test(own[0].text) && /someone/.test(own[0].text), JSON.stringify(own));
+  check('and the Instagram export reads its DMs that way',
+    /ownSide\(list, owner, \{ blankOwnText: true \}\)/.test(readFileSync(join(root, 'docs', 'instagram.js'), 'utf8')));
+}
 check('other people\'s handles are replaced by numbered markers, never sent',
   !JSON.stringify(Digest.forModel(digest)).includes('@mokkzy') && !JSON.stringify(Digest.forModel(digest)).includes('@yuhanchong') &&
     digest.samples.captions.some(c => /\[P\d+\]/.test(c)));
@@ -4960,7 +4992,9 @@ check('a heavy account plus a maxed-out supplement still fits the real budget', 
       Object.values(Digest.POOLS).flat().length === Digest.EVIDENCE_LISTS.length);
   check('a digest\'s line is 82,000 for Instagram alone, 126,000 with another source, 179,000 for the premium read',
     Digest.budgetFor({}) === 82000 && Digest.SOLO_DIGEST_CHARS === 82000 &&
-      Digest.budgetFor({ whatsapp: { chats: [] } }) === DIG && Digest.budgetFor({ google: { topChannels: ['x ×1'] } }) === DIG &&
+      Digest.budgetFor({ whatsapp: { chats: [{ chat: 'c1' }] } }) === DIG && Digest.budgetFor({ google: { topChannels: ['x ×1'] } }) === DIG &&
+      // An empty WhatsApp block is not a second source: it does not open the larger read.
+      Digest.budgetFor({ whatsapp: {} }) === 82000 && Digest.budgetFor({ whatsapp: { chats: [] } }) === 82000 &&
       Digest.budgetFor({}, true) === Digest.DEEP_DIGEST_CHARS && !('SOURCE_CAPS' in Digest) && !('FREE_SOURCES_CHARS' in Digest));
   // The two tiers: Instagram alone at the allocation the card was first
   // sized at, about 80,000, cut by the same pools.
@@ -6193,6 +6227,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('and the count of removals is reported, never the names', removed === 9, String(removed));
   check('the report passed in is not modified', report.activity.diet.includes('bryanfooooo'));
 
+  // Story likes are mostly close friends' accounts, and WhatsApp and
+  // Messenger tags are tags too.
+  {
+    const storyDigest = { storyLikedAccounts: [{ name: 'jane.doe92', count: 14 }] };
+    const out = privacy.scrubResult({ data: { line: 'You like jane.doe92 stories ×14, in chat [c2] and [m1].' } }, storyDigest);
+    check('a story-liked account and the WhatsApp and Messenger tags come out of a report',
+      !/jane\.doe92|\[c2\]|\[m1\]/.test(out.data.line), out.data.line);
+  }
   const result = { data: report, usage: { input: 1 }, model: 'm' };
   const scrubbedResult = privacy.scrubResult(result, leakDigest);
   check('scrubResult cleans an engine result and keeps its usage and model',
@@ -6215,9 +6257,14 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   }
 
   const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
-  check('both report routes scrub before the result is stored or served',
+  check('the premium route sends the whitelisted digest held to the line, not what was posted',
+    /async function handlePremiumAnalysis[\s\S]*const sent = Digest\.forModel\(body\.digest\);[\s\S]*evidenceChars\(sent\) > Digest\.budgetFor\(sent\)/.test(serverSource) &&
+      !/analysePremium\(body\.digest\)/.test(serverSource));
+  check('a sync sends two cards shaped as cards, each field held to its length',
+    /const a = Card\.shape\(body\.a\);\s*const b = Card\.shape\(body\.b\);/.test(serverSource));
+  check('both report routes scrub before the result is stored or served, the premium one on either way in',
     /return scrubbed\(result, sent, kind\)/.test(serverSource) &&
-    /return scrubbed\(result, body\.digest, 'premium'\)/.test(serverSource));
+    (serverSource.match(/return scrubbed\(result, sent, 'premium'\)/g) || []).length === 2);
 }
 
 // ---------- the structured report layout ----------
@@ -7204,6 +7251,37 @@ check('the schema requires evidence on where they align and differ',
     check('text and SVG are compressed; images and video, already compressed, are not',
       sf.js && sf.svg && !sf.jpg && !sf.mp4, JSON.stringify(sf));
   }
+  // Scripts and styles by fingerprint: the page links app.js?v=<hash>, that
+  // address is cached for a year, and any other copy still revalidates.
+  {
+    const vport = 8947;
+    const got = JSON.parse(execFileSync(process.execPath, ['-e', `
+      const { spawn } = require('node:child_process');
+      const server = spawn(process.execPath, [${JSON.stringify(join(root, 'server.js'))}], {
+        env: { ...process.env, PORT: '${vport}', PSYCHEAI_MOCK: '1' }, stdio: 'ignore',
+      });
+      (async () => {
+        const base = 'http://localhost:${vport}';
+        for (let i = 0; i < 100; i++) { try { await fetch(base + '/api/status'); break; } catch (e) { await new Promise(r => setTimeout(r, 100)); } }
+        const page = await fetch(base + '/');
+        const html = await page.text();
+        const ref = (/src="(app\\.js\\?v=[0-9a-f]{12})"/.exec(html) || [])[1] || '';
+        const css = /href="styles\\.css\\?v=[0-9a-f]{12}"/.test(html);
+        const pinned = ref ? await fetch(base + '/' + ref) : null;
+        const plain = await fetch(base + '/app.js');
+        const stale = await fetch(base + '/app.js?v=000000000000');
+        const again = await fetch(base + '/', { headers: { 'If-None-Match': page.headers.get('etag') } });
+        server.kill();
+        process.stdout.write(JSON.stringify({ ref, css, pageCache: page.headers.get('cache-control'),
+          pinned: pinned && pinned.headers.get('cache-control'), plain: plain.headers.get('cache-control'),
+          stale: stale.headers.get('cache-control'), again: again.status }));
+      })().catch(error => { server.kill(); process.stdout.write(JSON.stringify({ error: error.message })); });
+    `], { encoding: 'utf8', timeout: 30000 }));
+    check('the page links its scripts and styles by fingerprint, and still revalidates itself',
+      /^app\.js\?v=[0-9a-f]{12}$/.test(got.ref) && got.css && got.pageCache === 'no-cache' && got.again === 304, JSON.stringify(got));
+    check('a fingerprinted file is cached for a year; without its current fingerprint it revalidates',
+      got.pinned === 'public, max-age=31536000, immutable' && got.plain === 'no-cache' && got.stale === 'no-cache', JSON.stringify(got));
+  }
   check('the share image and app icons exist',
     ['og-card.jpg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', '../favicon.ico']
       .every(name => statSync(join(root, 'docs', 'media', name)).size > 1000));
@@ -7440,6 +7518,18 @@ check('the schema requires evidence on where they align and differ',
         P.label('usd', 'unlock', 250) === 'US$2.50',
       [P.discounted('usd', 'unlock', 50), P.discounted('hkd', 'unlock', 95), P.label('sgd', 'unlock', 350)].join());
   }
+  // A creator code's place under its cap is held while its report is
+  // written, so requests at once cannot all slip under it.
+  {
+    promoCodes.configure({ PSYCHEAI_PROMO_CODES: 'ONEUSE:1' });
+    const first = promoCodes.reserve('oneuse', { r: 1 });
+    const second = promoCodes.reserve('oneuse', { r: 2 });
+    const same = promoCodes.reserve('oneuse', { r: 1 });
+    check('promo: a code with one use left is held for the first report, refused for a second at once',
+      typeof first === 'function' && second === null && typeof same === 'function');
+    first();
+    check('promo: and a report that fails gives the place back', typeof promoCodes.reserve('oneuse', { r: 2 }) === 'function');
+  }
   promoCodes.configure({});
   check('promo: with nothing configured, no code works', !promoCodes.check('AVA50', d1).ok && !promoCodes.enabled());
   promoCodes.configure(process.env);
@@ -7497,6 +7587,8 @@ check('the schema requires evidence on where they align and differ',
       out.halfAlone = await post({ digest: variant(5), product: 'unlock', promoCode: 'half' });
       out.halfIntent = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'Half' });
       out.halfPaid = await post({ digest: variant(5), product: 'unlock', paymentIntentId: out.halfIntent.id });
+      out.halfOther = await post({ digest: variant(8), product: 'unlock', paymentIntentId: out.halfIntent.id });
+      out.halfSame = await post({ digest: variant(5), product: 'unlock', paymentIntentId: out.halfIntent.id });
       out.halfAgain = await intentFor({ product: 'unlock', currency: 'sgd', promoCode: 'half' });
       out.freeOnAnalysis = await intentFor({ product: 'analysis', promoCode: 'free' });
       out.quartIntent = await intentFor({ product: 'analysis', currency: 'sgd', promoCode: 'quart' });
@@ -7549,6 +7641,9 @@ check('the schema requires evidence on where they align and differ',
       got.stats.promoCodes.find(c => c.code === 'HALF').used === 1 &&
       got.stats.promoCodes.find(c => c.code === 'HALF').percent === 50,
     JSON.stringify({ paid: got.halfPaid, today }));
+  check('one payment buys one report: a different digest with it is refused, the same one is not',
+    got.halfOther && got.halfOther.status === 402 && /already been used for a different report/.test(got.halfOther.error) &&
+      got.halfSame && got.halfSame.status === 200, JSON.stringify({ other: got.halfOther, same: got.halfSame }));
   check('promo discount: at its cap the code is refused before anyone pays',
     got.halfAgain && got.halfAgain.status === 402 && got.halfAgain.error === 'That code has been used up.',
     JSON.stringify(got.halfAgain));
@@ -7630,15 +7725,15 @@ check('the schema requires evidence on where they align and differ',
   const friend = n => sha('psycheai:friend' + n);
   const self = await referral.afterFreeCard({ account: me, ref: code, myRef: code });
   check('a reader cannot refer themselves', !self.credited);
-  const first = await referral.afterFreeCard({ account: friend(1), ref: code });
-  const again = await referral.afterFreeCard({ account: friend(1), ref: code });
+  const first = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
+  const again = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
   check('a friend\'s first free card counts once, and only once', first.credited && !again.credited);
-  await referral.afterFreeCard({ account: friend(2), ref: code });
+  await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
   let status = await referral.status(secret);
   check('two friends: two of three, nothing to claim yet',
     status.friends === 2 && status.available === 0 && status.code === code, JSON.stringify(status));
   check('and nothing can be claimed', (await referral.claim(secret)) === null);
-  await referral.afterFreeCard({ account: friend(3), ref: code });
+  await referral.afterFreeCard({ account: friend(3), ref: code, client: '10.0.0.' + 3 });
   status = await referral.status(secret);
   check('three friends earn one free full report', status.earned === 1 && status.available === 1, JSON.stringify(status));
   const grant = await referral.claim(secret);
@@ -7653,10 +7748,43 @@ check('the schema requires evidence on where they align and differ',
   check('a made-up grant unlocks nothing', (await referral.grantRefusal('f'.repeat(48), digestA)) !== null);
   // A friend already credited to one code cannot be credited to another.
   const other = referral.codeOf(sha('another secret'));
-  const twice = await referral.afterFreeCard({ account: friend(4), ref: code });
-  const elsewhere = await referral.afterFreeCard({ account: friend(4), ref: other });
+  const twice = await referral.afterFreeCard({ account: friend(4), ref: code, client: '10.0.0.' + 4 });
+  const elsewhere = await referral.afterFreeCard({ account: friend(4), ref: other, client: '10.0.0.' + 4 });
   check('each friend counts for one referrer only', twice.credited && !elsewhere.credited);
-  for (const n of [5, 6]) await referral.afterFreeCard({ account: friend(n), ref: code });
+  // Made-up friends cannot farm it: at most two credits an hour from one
+  // connection, six a day for one referrer, and none for a code with no card.
+  {
+    const farmSecret = sha('a farmer');
+    const farmCode = referral.codeOf(farmSecret);
+    await referral.afterFreeCard({ account: sha('farmer'), myRef: farmCode });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const fakes = [];
+    for (let n = 0; n < 4; n++) fakes.push((await referral.afterFreeCard({ account: sha('fake' + n), ref: farmCode, client: '203.0.113.9' })).credited);
+    check('made-up accounts from one connection earn at most ' + referral.FRIEND_CREDITS_PER_CONNECTION + ' credits an hour',
+      JSON.stringify(fakes) === JSON.stringify([true, true, false, false]), JSON.stringify(fakes));
+    const spread = [];
+    for (let n = 0; n < 8; n++) spread.push((await referral.afterFreeCard({ account: sha('spread' + n), ref: farmCode, client: '198.51.100.' + n })).credited);
+    check('and one referrer at most ' + referral.FRIEND_CREDITS_PER_DAY + ' a day, however many connections',
+      spread.filter(Boolean).length === referral.FRIEND_CREDITS_PER_DAY - 2, JSON.stringify(spread));
+    const nobody = referral.codeOf(sha('a code no card was made with'));
+    check('a code nobody made a card with earns nothing',
+      !(await referral.afterFreeCard({ account: sha('lonely'), ref: nobody, client: '192.0.2.1' })).credited);
+  }
+  // A grant is tied to its report before the report is written, so two at
+  // once cannot both spend it; a failed report gives it back.
+  {
+    const g = 'a'.repeat(48);
+    await store.run([['SET', 'grant:' + g, 'x', 'EX', 600]]);
+    const one = await referral.reserveGrant(g, { r: 1 });
+    const two = await referral.reserveGrant(g, { r: 2 });
+    const same = await referral.reserveGrant(g, { r: 1 });
+    check('a grant reserved for one report refuses another at once, but not the same one',
+      typeof one === 'function' && two === null && typeof same === 'function');
+    one(false);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    check('and a failed report frees it for another', typeof (await referral.reserveGrant(g, { r: 2 })) === 'function');
+  }
+  for (const n of [5, 6]) await referral.afterFreeCard({ account: friend(n), ref: code, client: '10.0.0.' + n });
   status = await referral.status(secret);
   check('every three more friends earn another', status.friends === 6 && status.earned === 2 && status.available === 1,
     JSON.stringify(status));

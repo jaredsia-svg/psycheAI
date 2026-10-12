@@ -614,7 +614,9 @@
   function carriesSecondSource(digest) {
     const d = digest && typeof digest === 'object' ? digest : {};
     const some = (block, keys) => Boolean(block) && keys.some(key => Array.isArray(block[key]) && block[key].length);
-    return Boolean(d.whatsapp) ||
+    // WhatsApp with something in it, as the others must have: an empty block
+    // is not a second source, and must not open the larger free read.
+    return some(d.whatsapp, ['chats', 'ownMessageSample']) ||
       some(d.google, ['topChannels', 'videoTitleSample', 'topYoutubeSearches', 'topGoogleSearches']) ||
       some(d.facebook, ['postSample', 'commentSample', 'friends', 'topSearches', 'ownMessageSample']);
   }
@@ -1739,8 +1741,9 @@
         name: signals.profile.name || signals.profile.username || '',
         username: signals.profile.username || '',
         bio: trim(signals.profile.bio, 400),
-        city: signals.profile.city || '',
-        website: signals.profile.website || '',
+        // No city and no website: the first places where they live, the
+        // second names them (a shop, a portfolio), and neither says anything
+        // about a personality.
       },
       counts: {
         posts: signals.counts.posts,
@@ -2011,7 +2014,17 @@
     [/\b[STFGM]\d{7}[A-Z]\b/gi, NUMBER_MARK],
     [/\b\d{4}([ -]?)\d{4}\1\d{4}\1\d{1,7}\b/g, NUMBER_MARK],
     [/\b(Singapore|S'pore|SG)\s*\(?\d{6}\)?/gi, '$1 ' + NUMBER_MARK],
+    // Postcodes elsewhere, in the shapes that cannot be anything else: a UK
+    // one ("LS1 4AP", capitals as written), a Canadian one ("M5V 2T6"), and a
+    // US ZIP after its state ("CA 94110"). A bare five-digit run is left
+    // alone, as a year or a price would be.
+    [/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/g, NUMBER_MARK],
+    [/\b[A-Z]\d[A-Z] ?\d[A-Z]\d\b/g, NUMBER_MARK],
+    [/\b([A-Z]{2}) \d{5}(?:-\d{4})?\b/g, '$1 ' + NUMBER_MARK],
   ];
+  // Links, in every field: a link names a person's shop, page or profile, and
+  // says nothing a model could use. Taken out whole, with "www." ones too.
+  const LINKS = /\s*\b(?:https?:\/\/|www\.)\S+/gi;
 
   // Any address, anyone's. The best value in this whole pass: an address is an
   // unambiguous identifier, it turns up in exactly the places that carry the
@@ -2069,6 +2082,10 @@
    * field added later is covered without anybody remembering to cover it —
    * which is the failure this kind of pass usually has.
    */
+  // Word edges for a name in any script: \\b knows only ASCII letters, so
+  // "Ömer" or "王小明" never matched it.
+  const LETTER_BEFORE = '(?<![\\p{L}\\p{N}_])';
+  const LETTER_AFTER = '(?![\\p{L}\\p{N}_])';
   function redactOwnHandle(digest, handle, fullName) {
     const own = String(handle || '').trim().replace(/^@+/, '');
     const name = String(fullName || '').trim();
@@ -2085,7 +2102,7 @@
     if (name) {
       // The whole name always, whatever its length: "Li Wei" as a phrase is
       // the reader and is not two ordinary words in that order by accident.
-      named.push([new RegExp('\\b' + escapeForRegExp(name).replace(/\\?\s+/g, '\\s+') + '\\b', 'gi'), NAME_MARK]);
+      named.push([new RegExp(LETTER_BEFORE + escapeForRegExp(name).replace(/\\?\s+/g, '\\s+') + LETTER_AFTER, 'giu'), NAME_MARK]);
       // Individual parts only when long enough not to be an ordinary word.
       // This is where a careless version does damage: a reader surnamed Brown
       // would have "brown rice" rewritten in their own captions. Five
@@ -2095,7 +2112,7 @@
       // and "user rice" reads as a mistake.
       for (const part of name.split(/\s+/)) {
         if (part.length >= BARE_HANDLE_MIN) {
-          named.push([new RegExp('\\b' + escapeForRegExp(part) + '\\b', 'gi'), NAME_MARK]);
+          named.push([new RegExp(LETTER_BEFORE + escapeForRegExp(part) + LETTER_AFTER, 'giu'), NAME_MARK]);
         }
       }
     }
@@ -2150,7 +2167,8 @@
     const scrub = text => {
       // Addresses first. A phone pattern would otherwise take the digits out
       // of an address like j.smith2024@mail.com and leave a broken one behind.
-      let out = text.replace(EMAIL, EMAIL_MARK);
+      let out = text.replace(LINKS, ' ').replace(/ {2,}/g, ' ').trim();
+      out = out.replace(EMAIL, EMAIL_MARK);
       for (const [pattern, mark] of ID_NUMBERS) out = out.replace(pattern, mark);
       for (const pattern of PHONES) out = out.replace(pattern, PHONE_MARK);
       return out;
@@ -2725,7 +2743,9 @@
     // line, which an honest digest never is.
     const out = {
       schema: 'psycheai-digest/1',
-      profile: plain(d.profile) || {},
+      // Field by field: a digest built before city and website were dropped,
+      // or one sent by hand, carries nothing more than these.
+      profile: (({ name, username, bio }) => ({ name: String(name || ''), username: String(username || ''), bio: String(bio || '') }))(plain(d.profile) || {}),
       samples: {
         captions: listOf(samples.captions),
         comments: listOf(samples.comments),
@@ -2821,6 +2841,10 @@
       };
     }
     const digest = clampStrings(out, 0);
+    // Links, addresses, phone, ID and postcode numbers again, here as well as
+    // when the digest was built: the server re-applies this, so a page that
+    // missed them cannot send them on.
+    redactContacts(digest);
     restateShown(digest);
     // The pools and the line, the premium read's when it is asked for as one
     // (budgetFor).

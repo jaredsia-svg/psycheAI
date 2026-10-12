@@ -639,7 +639,9 @@
       }
       for (const [thread, list] of byThread) {
         if (!list.some(m => m.sender === owner)) continue;
-        for (const own of ownSide(list, owner)) ownTexts.push(Object.assign(own, { thread }));
+        // Other people's names in the reader's own words go too ("see you at
+        // Sam's"), as they do for WhatsApp and Messenger.
+        for (const own of ownSide(list, owner, { blankOwnText: true })) ownTexts.push(Object.assign(own, { thread }));
       }
     }
     // How many conversations they actually took part in, as opposed to how

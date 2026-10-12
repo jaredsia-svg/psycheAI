@@ -9,10 +9,14 @@ each, a behavioural read of how you actually use Instagram, your interests, beli
 your strengths and weaknesses — both in relationships and in your career. Export the whole thing to
 PDF when you are done.
 
-That profile comes with a personal **compatibility link**. Send it to someone; once they open it and
-make their own card, they choose whether they are asking as **partners**, **family or friends**, or
-**colleagues** — and if colleagues, who reports to whom — and the model assesses how the two of you would work together on that basis, with a playbook aimed
-at each of you about the other.
+> **Current behaviour, in short.** The free result is a **Psyche Card**, a shareable story card; the
+> paid **Psyche Report** (US$5) explains it. Each reader has one **personal link** (`/c/<id>#<key>`,
+> also a QR code on the card). A friend or family member who opens it makes their own card, and
+> **Psyche Sync** reads how the two of them sync: no score, never romance, de-identified (Person A and
+> Person B), and shared back to the link's owner only if the person syncing chooses to. This README is
+> the design log, in the order things were decided. Older sections describe things since replaced
+> (romantic and work modes, a percentage score, camera QR scanning); where they disagree, the later
+> section and the code win.
 
 ## Running it
 
@@ -6108,6 +6112,86 @@ version of this feature, so the romantic and work comparisons were removed outri
   connection*.
 - **Old reports:** reports saved on the old bases still open on the reader's device, labelled as
   they were.
+
+### Closing gaps a review found: privacy
+
+A full review traced several places where the digest said less than the site promised:
+- **Links, the profile's website and city.** Links were taken out of liked captions only, so a reader's
+  own captions, bio and comments kept theirs, and the profile's website and city went to the model as
+  they were. The review sheet never showed those two. Links now go from every field
+  (`LINKS` in `redactContacts`), city and website are no longer kept, and `forModel` copies the
+  profile field by field and runs the same contact pass. Because the server re-applies `forModel`, a
+  page that missed something cannot send it on.
+- **Postcodes beyond Singapore.** UK (*LS1 4AP*), Canadian (*M5V 2T6*) and US ZIPs after their state
+  (*CA 94110*) are replaced. A bare five-digit number is left alone, since it is as likely to be a year
+  or a price.
+- **Names in Instagram DMs.** WhatsApp and Messenger blanked the other person's name in the reader's
+  own words, but Instagram did not ("see you at Sam's"). It does now (`blankOwnText`).
+- **Names in any script.** The reader's own name was matched with `\b`, which knows only ASCII
+  letters, so *Ömer Yılmaz* stayed. Name edges are now Unicode letters.
+- **The report scrub** now also checks story-liked accounts, which are mostly close friends, and
+  WhatsApp and Messenger tags (`[c2]`, `[m1]`) as well as Instagram's.
+- **An empty WhatsApp block** no longer opens the larger free read.
+
+### Closing gaps a review found: payments
+
+- **Friends' cards, farmed.** An account is only what the page says it is, and a card is free, so
+  three made-up accounts from one phone earned a US$5 report. A referrer must now have made a card of
+  their own. At most `FRIEND_CREDITS_PER_CONNECTION` (2) friends an hour count from one connection,
+  for any referrer, keyed by a scrambled IP code kept for an hour, as the privacy page says. One
+  referrer earns at most `FRIEND_CREDITS_PER_DAY` (6) a day.
+- **One payment, one report.** A payment's three uses were for retries, but they were counted per
+  payment, so one US$5 wrote reports for three people. Each payment and kind is now tied to the first
+  report written with it (`digestRefusal`, `bindDigest` in `lib/premiumLedger.js`). A different one is
+  refused; the same one again is free.
+- **Spending once, even at once.** A free report's grant and a creator code's place under its cap are
+  now taken before the report is written (`reserveGrant`, `promo.reserve`) and given back if it fails.
+  Before, they were counted afterwards, so requests sent together all passed.
+- **The older premium route** (`/api/premium-analysis`) now sends `Digest.forModel` of what was posted,
+  held to the line, and scrubs what comes back on both ways in. It used to pass the posted object on
+  whole.
+- **A Sync's two cards** are `Card.shape`d on the server, so each field is held to its length and a
+  free call cannot be filled to the model's context.
+
+### Closing gaps a review found: the app
+
+- **A shared Sync can no longer be forged.** The key that locks a reader's inbox is in their link, and
+  their link is on their story card, so anyone could leave a "sync from Jared" with invented text.
+  Each sync now carries the sender's own link, and the receiving device opens it (`verifiedSender`)
+  and checks that it shows the same card the sync claims. One that does not match is dropped unseen.
+  A received sync also never replaces one the reader ran themselves.
+- **Someone else's data is held to shape.** A received sync is rebuilt to the sync's own fields, as
+  strings and short lists each cut to a length (`shapeSyncReport`). A card face from a link or a
+  sync keeps only the fields `cardFace` writes (`shapeFace`). Character lookups take own properties
+  only, so a name like "toString" draws nothing instead of breaking the card.
+- **Nothing lost, nothing doubled.** A received sync is acknowledged, and so deleted from the server,
+  only once it is saved (a full store keeps it for next time). Sharing runs once per sync however
+  often it is tapped. A double tap on the paste box's Sync starts one sync.
+- **Copy link in an app's own browser** copies the address the page was opened at (`ARRIVED_AT`),
+  not the one left after the friend's link has been read out of it.
+- **The keep-your-PDF note** stays in an app's own browser after Download, where a download often
+  goes nowhere.
+- **A promo code checked as the sheet closes** no longer starts a report, and one check runs at a time.
+
+### Faster returning visits: fingerprinted scripts and styles
+
+Every file used to be served `no-cache`, so a returning visitor made about fifteen revalidation round
+trips before the app ran. Each page now links its own scripts and stylesheet with a fingerprint of
+their contents (`app.js?v=1a2b3c4d5e6f`, `versionedHtml` in `lib/staticfiles.js`). A file asked for by
+its current fingerprint is cached for a year (`immutable`). A changed file has a new fingerprint and
+so a new address, so nobody is served an old copy. Pages themselves still revalidate, with an ETag of
+what is sent, so a page whose scripts changed is new even when its own file is not.
+
+### Housekeeping
+
+- **Dead code removed:** five unused functions, 28 unused strings in `copy.js` (the old score, the
+  removed sync sections, the method rows) and 55 style rules for removed features (camera scanning,
+  the score card, the old link preview).
+- **A stray `}` pair in `styles.css`** made browsers drop the rule after it,
+  `#report-back[hidden] { display: none }`, which had never applied. It does now.
+- **Out-of-date pages:** the Psyche Sync guide described a percentage score and a verdict, and the
+  `package.json` description named romantic reports. Both now say what the app does. The README
+  opens with a short note on current behaviour.
 
 ### De-identified, as the card is
 
