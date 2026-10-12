@@ -7808,7 +7808,7 @@ check('the schema requires evidence on where they align and differ',
   check('what is kept is a scrambled code, not the hash the browser sent, and never the username',
     !kept.includes(account) && !kept.includes('someone'), kept);
 
-  // The referral: three friends, one free report; once per friend, never yourself.
+  // The referral: two friends, one free report; once per friend, never yourself.
   const secret = sha('a secret only this browser has');
   const code = referral.codeOf(secret);
   const me = sha('psycheai:referrer');
@@ -7820,14 +7820,13 @@ check('the schema requires evidence on where they align and differ',
   const first = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
   const again = await referral.afterFreeCard({ account: friend(1), ref: code, client: '10.0.0.' + 1 });
   check('a friend\'s first free card counts once, and only once', first.credited && !again.credited);
-  await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
   let status = await referral.status(secret);
-  check('two friends: two of three, nothing to claim yet',
-    status.friends === 2 && status.available === 0 && status.code === code, JSON.stringify(status));
+  check('one friend: one of two, nothing to claim yet',
+    status.friends === 1 && status.available === 0 && status.towardCards === 1 && status.code === code, JSON.stringify(status));
   check('and nothing can be claimed', (await referral.claim(secret)) === null);
-  await referral.afterFreeCard({ account: friend(3), ref: code, client: '10.0.0.' + 3 });
+  await referral.afterFreeCard({ account: friend(2), ref: code, client: '10.0.0.' + 2 });
   status = await referral.status(secret);
-  check('three friends earn one free full report', status.earned === 1 && status.available === 1, JSON.stringify(status));
+  check('two friends earn one free full report', status.earned === 1 && status.available === 1, JSON.stringify(status));
   const grant = await referral.claim(secret);
   check('claiming it gives a grant, and spends it', /^[0-9a-f]{48}$/.test(grant || '') &&
     (await referral.status(secret)).available === 0 && (await referral.claim(secret)) === null);
@@ -7876,14 +7875,14 @@ check('the schema requires evidence on where they align and differ',
     await new Promise(resolve => setTimeout(resolve, 10));
     check('and a failed report frees it for another', typeof (await referral.reserveGrant(g, { r: 2 })) === 'function');
   }
-  for (const n of [5, 6]) await referral.afterFreeCard({ account: friend(n), ref: code, client: '10.0.0.' + n });
+  await referral.afterFreeCard({ account: friend(3), ref: code, client: '10.0.0.' + 3 });
   status = await referral.status(secret);
-  check('every three more friends earn another', status.friends === 6 && status.earned === 2 && status.available === 1,
+  check('every two more friends earn another', status.friends === 4 && status.earned === 2 && status.available === 1,
     JSON.stringify(status));
   check('only the secret\'s holder can ask: a code alone is not a secret',
     (await referral.status(code)) === null);
 
-  // Friends who buy the full report count too: two of them earn a free full
+  // Friends who buy the full report count too: each one earns a free full
   // report, adding to what cards earn. Once per buyer, never the referrer.
   const buyer = n => sha('psycheai:buyer' + n);
   check('the referrer buying through their own link earns nothing',
@@ -7895,12 +7894,11 @@ check('the schema requires evidence on where they align and differ',
   check('a code with no owner is credited nothing',
     !(await referral.afterPaid({ account: buyer(2), ref: referral.codeOf(sha('nobody')), payment: 'pi_2' })));
   status = await referral.status(secret);
-  check('one paid report: one of two, nothing more yet', status.paid === 1 && status.earned === 2 && status.towardPaid === 1,
-    JSON.stringify(status));
+  check('one paid report earns a free full report, on top of the cards\'', status.paid === 1 && status.earned === 3 &&
+    status.available === 2 && status.towardPaid === 0 && status.perCards === 2 && status.perPaid === 1, JSON.stringify(status));
   await referral.afterPaid({ account: buyer(3), ref: code, payment: 'pi_3' });
   status = await referral.status(secret);
-  check('two paid reports earn a free full report, on top of the cards\'', status.paid === 2 && status.earned === 3 &&
-    status.available === 2 && status.perCards === 3 && status.perPaid === 2, JSON.stringify(status));
+  check('and each one after it another', status.paid === 2 && status.earned === 4 && status.available === 3, JSON.stringify(status));
   // Opens are a plain count of the link's code.
   for (let i = 0; i < 3; i++) referral.countOpen(code);
   referral.countOpen('not-a-code');

@@ -510,7 +510,7 @@ async function handleAnalyse(request, response) {
 
   const promoCode = typeof body.promoCode === 'string' ? body.promoCode.trim() : '';
   const paymentIntentId = typeof body.paymentIntentId === 'string' ? body.paymentIntentId.trim() : '';
-  // A free full report earned by inviting three friends (lib/referral.js).
+  // A free full report earned through the reader's link (lib/referral.js).
   const referralGrant = typeof body.referralGrant === 'string' ? body.referralGrant.trim() : '';
   const paying = Boolean(promoCode || paymentIntentId || referralGrant);
 

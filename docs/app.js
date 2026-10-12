@@ -1811,13 +1811,13 @@
    * `.premium-unlock`, so the purchase it starts is the one purchase there is.
    */
   /**
-   * Invite three friends, get the full report free. Filled in by
+   * Invite two connections, get the full report free. Filled in by
    * refreshReferral once the server says where this reader's code stands.
    */
   /**
-   * "Your link": how many opened it, made a card and bought the full report,
-   * and the free full reports that earns — three friends' cards or two paid
-   * reports each, adding up. On a free report under the unlock offer, on a
+   * "Your Referral": how many opened it, made a card and bought the full report,
+   * and the free full reports that earns — two friends' cards or one paid
+   * report each, adding up. On a free report under the unlock offer, on a
    * full one at its end. A free report earned can be used or given away.
    */
   function referralCardHtml(paid) {
@@ -1999,7 +1999,7 @@
     const go = event.target.closest && event.target.closest('.gift-banner-go');
     if (!go) return;
     if (!go.closest('#view-profile')) {
-      $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+      $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
       return;
     }
     const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
@@ -2082,7 +2082,7 @@
           tierItemsHtml(PAID_SECTIONS, section => section.coverBlurb()) + '</ul>') +
       '<button class="btn premium-unlock" type="button" aria-expanded="false">' +
       premiumUnlockLabel(false) +
-      // The other way in, under the price: three friends' cards from their link.
+      // The other way in, under the price: two friends' cards from their link.
       (hasUnfetchedUnlock() ? '' : '<span class="premium-unlock-alt">' + esc(TEXT.premiumUnlockFriends) + '</span>') +
       '</button>' +
       // A code from the link this reader came in on, said before they tap.
@@ -3497,13 +3497,14 @@
     // The cast first, with the request steps straight below it.
     $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
-  // "See below for instructions" in How it works: to the same steps, without
-  // the hash the app reads links from.
+  // "See below for instructions" in How it works: to the cast ("Guess which
+  // character"), with the request steps straight below it, as Get my data
+  // lands — without the hash the app reads links from.
   document.addEventListener('click', event => {
     const below = event.target.closest('a.step-below');
     if (!below) return;
     event.preventDefault();
-    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   // "Load my data": the Add your data popout, as Start here's button opens it.
   // A reader with a card already adds to it from their report instead.
@@ -4439,14 +4440,17 @@
 
     const dmCount = digest.directMessages ? digest.directMessages.ownMessageSample.length : 0;
     const dmTotal = digest.directMessages ? digest.directMessages.totalMessages : 0;
-    const captionsCount = digest.samples.captions.length;
-    const commentsCount = digest.samples.comments.length;
-    const engagedCount = digest.mostLikedAccounts.length + digest.mostSavedAccounts.length +
-      digest.mostEngagedWith.length + (digest.storyLikedAccounts || []).length;
+    // Any block can be missing from a stored digest (an older one, or one
+    // with only a supplement left): counted as none rather than throwing.
+    const samples = digest.samples || {};
+    const captionsCount = (samples.captions || []).length;
+    const commentsCount = (samples.comments || []).length;
+    const engagedCount = (digest.mostLikedAccounts || []).length + (digest.mostSavedAccounts || []).length +
+      (digest.mostEngagedWith || []).length + (digest.storyLikedAccounts || []).length;
     const searchesCount = (digest.instagramSearches || []).length;
     const topicsCount = (digest.instagramTopics || []).length;
-    const likedCaptionsCount = (digest.samples.likedPostCaptions || []).length;
-    const likedTagsCount = (digest.samples.likedPostHashtags || []).length;
+    const likedCaptionsCount = (samples.likedPostCaptions || []).length;
+    const likedTagsCount = (samples.likedPostHashtags || []).length;
 
     // One row per checkbox — id, how many there are to send, the on/off
     // label, and the detail line. The single source both the checklist below
@@ -7699,6 +7703,8 @@
     // My Report starts at Part 00: the card is on My Psyche, one tap back.
     $('#profile-top').hidden = reportPage;
     $('#report-back').hidden = !reportPage;
+    // Delete everything is on My Psyche only, at its foot: never beside the report.
+    $('#delete-profile').hidden = reportPage;
     // Both open on the card with what it means beside it.
     const side = $('#profile-side');
     side.hidden = !structured || reportPage;
@@ -8732,10 +8738,12 @@
         return null;
       }
       if (!premium) { flash('#profile-alert', TEXT.rerunNeedsInstagram); return null; }
-      // Nothing new and the export gone: the payment sheet follows directly,
-      // and the full report is written from exactly the digest the card was
-      // read from.
-      if (!anyFresh && !premium.__rebuilt) return premium;
+      // Nothing new and the export gone: the digest the card was read from,
+      // reviewed again all the same, so a reader can untick a part or download
+      // the file before paying. A copy: what is unticked here leaves this
+      // report out of it, not the card's own digest.
+      // Marked unchanged: the card is not redrawn from it (runPremiumAnalysis).
+      if (premium === state.digest) premium = Object.assign(JSON.parse(JSON.stringify(premium)), { __unchanged: true });
       // Something added or replaced, or the same sources read deeper from the
       // export still open here: reviewed as what will be sent, since it holds
       // lines the reader has not seen. Payment is the next step whatever
@@ -9001,7 +9009,7 @@
     // a resumed run, an older path — has changed when it is not the stored one.
     const deepRead = Boolean(paidDigest.__deep);
     const dataChanged = deepRead ? Boolean(paidDigest.__fresh)
-      : Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest);
+      : Boolean(pendingPremiumDigest && pendingPremiumDigest !== state.digest && !pendingPremiumDigest.__unchanged);
 
     startProgress();
     guardUnload(true);
@@ -9350,13 +9358,19 @@
       // the one place a ticket the server did not recognise still reached the
       // reader as "reload the page and try again". A rate limit or a real
       // failure still arrives here as itself; the catch below shows it.
-      const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
-      if (!intent) throw new Error(TEXT.premiumNotConfigured);
-      await mountIntent(intent, dialog);
-      // The code from the reader's link, filled in and applied for them.
+      // The code from the reader's link, filled in and applied for them,
+      // first: a discount brings its own payment, so the full price is asked
+      // for only when it does not (free, refused, or not checked). One
+      // payment-intent per opening, not two, under that route's rate limit.
+      let priced = false;
       if ((kind === 'unlock' || kind === 'analysis') && linkPromo()) {
         $('#premium-promo-input').value = linkPromo();
-        await applyPromoCode({ fromLink: true });
+        priced = (await applyPromoCode({ fromLink: true })) === 'discount';
+      }
+      if (!priced && dialog.open && premiumKind === kind) {
+        const intent = await LLM.postWithTicket('api/create-payment-intent', { product: kind, currency: CURRENCY });
+        if (!intent) throw new Error(TEXT.premiumNotConfigured);
+        await mountIntent(intent, dialog);
       }
     } catch (error) {
       premiumStatus((error && error.message) || TEXT.premiumFailed, 'bad');
@@ -9491,7 +9505,7 @@
     const fromLink = Boolean(options && options.fromLink);
     const input = $('#premium-promo-input');
     const code = input.value.trim();
-    if (!code || promoChecking) return;
+    if (!code || promoChecking) return 'none';
     const dialog = $('#premium-dialog');
     const product = premiumKind === 'analysis' ? 'analysis' : 'unlock';
     // Whether the sheet the code was typed into is still the one open: a
@@ -9500,7 +9514,7 @@
     const stillHere = () => dialog.open && premiumKind === product;
     if (premiumKind !== product) {
       onPaymentAuthorised({ promoCode: code }, dialog);
-      return;
+      return 'free';
     }
     const apply = $('#premium-promo-apply');
     apply.disabled = true;
@@ -9513,27 +9527,34 @@
       if (error && error.status === 402) {
         premiumStatus(fromLink ? TEXT.linkPromoRefused(code, error.message) : error.message, 'bad');
         if (fromLink) { store.remove(KEYS.linkPromo); input.value = ''; }
-        return;
+        return 'refused';
       }
-      // A server that could not price it (no Stripe keys, an older server):
-      // the analyse route judges the code itself, as it always did.
-      answer = null;
+      // Not checked (a rate limit, the network, Stripe): said so, never taken
+      // for a free code. It once was, and a 75% code read "unlocks the Psyche
+      // Report free" whenever the check failed.
+      premiumStatus(TEXT.promoCheckFailed(code, error && error.message), 'bad');
+      return 'failed';
     } finally {
       apply.disabled = false;
       promoChecking = false;
     }
-    if (!stillHere()) return;
+    if (!stillHere()) return 'gone';
     if (answer && answer.discount) {
       renderPremiumPrice(product, answer.currency, { code: answer.discount.code, percent: answer.discount.percent, amount: answer.amount });
       premiumStatus(TEXT.premiumPromoDiscount(answer.discount.code, answer.discount.percent), 'good');
       await mountIntent(answer, dialog);
-      return;
+      return 'discount';
+    }
+    if (!(answer && answer.free)) {
+      premiumStatus(TEXT.promoCheckFailed(code), 'bad');
+      return 'failed';
     }
     if (fromLink) {
       premiumStatus(product === 'analysis' ? TEXT.linkPromoFreeCard(code) : TEXT.linkPromoFree(code), 'good');
-      return;
+      return 'free';
     }
     onPaymentAuthorised({ promoCode: code }, dialog);
+    return 'free';
   }
   $('#premium-promo-apply').addEventListener('click', () => applyPromoCode());
   // Promo codes are capitals, digits and hyphens only: a lower-case letter is
@@ -10670,6 +10691,9 @@
   }
   const IN_APP = inAppBrowser();
   const IN_APP_IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // Settled once boot knows whether a friend's invite is showing: that has the
+  // same step of its own, so the note would only flash and go.
+  let settleInAppWarn = () => {};
   (function warnInApp() {
     const bar = $('#inapp-warn');
     if (!bar || !IN_APP) return;
@@ -10691,9 +10715,14 @@
     });
     $('#inapp-close').addEventListener('click', () => {
       bar.hidden = true;
+      closed = true;
       try { sessionStorage.setItem('psycheai_inapp_closed', '1'); } catch (error) { /* private window */ }
     });
-    bar.hidden = closed || !$('#invite-inapp').hidden;
+    settleInAppWarn = () => { bar.hidden = closed || !$('#invite-inapp').hidden; };
+    // Shown at once, unless a friend's link is in the address or waiting here:
+    // then boot settles it, after the invite has drawn.
+    const linkArriving = new URLSearchParams(location.search).has('c') || /^#p=/.test(location.hash);
+    if (!linkArriving && (state.profile || !pendingInvite())) settleInAppWarn();
   })();
 
   // The slim bar offering the Psyche Report, once a free card exists: on the
@@ -11078,7 +11107,7 @@
       return;
     }
     show('welcome');
-    refreshInvite();
+    await refreshInvite();
     refreshGiftBanner();
   }
 
@@ -11121,5 +11150,5 @@
     if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(warmReaders, { timeout: 4000 });
     else setTimeout(warmReaders, 2000);
   }
-  boot();
+  boot().finally(() => settleInAppWarn());
 })();

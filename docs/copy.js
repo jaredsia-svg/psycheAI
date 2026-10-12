@@ -638,7 +638,7 @@
       'Or carry on with what is loaded.',
     premiumUnlockPrefix: 'Unlock your Psyche Report – ',
     // Under the price on the free card's unlock button: the other way in.
-    premiumUnlockFriends: 'or get 3 friends to make their Psyche Card from your link',
+    premiumUnlockFriends: 'or get 2 connections to make their Psyche Card from your link',
     // Shown while the paid model call is in flight, after payment has already
     // cleared — this can take as long as the free report did, for the same
     // reason: a long structured response with thinking enabled. The dialog
@@ -689,8 +689,7 @@
     // bundles the four paid sections back in, at the unlock's own US$5
     // rather than the plain re-run's US$2, whether or not a free run is
     // still available. See rerunWithAdditionalData's alreadyUnlocked branch.
-    analysisPriceNoteUnlocked: 'Your Psyche Report is unlocked, so re-running costs US$5 and ' +
-      'refreshes everything – your card and the Psyche Report.',
+    analysisPriceNoteUnlocked: 'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.',
     analysisDeclined: 'No charge was made. Your existing report is untouched.',
     // The daily server-wide ceiling, which is nobody's fault and not something
     // paying can always fix — so it says what it is rather than blaming them.
@@ -735,9 +734,9 @@
     freeUsedBlurb: 'This Instagram account has already had its free Psyche Card. Run it again for US$2.',
     // Invite three friends, get the full report free (lib/referral.js).
     referral: {
-      title: 'Your link',
-      blurb: 'Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
-      blurbPaid: 'Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
+      title: 'Your Referral',
+      blurb: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
+      blurbPaid: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
       shareHint: 'Share your card or link above to start.',
       cards: 'made a card',
       paid: 'bought the Psyche Report',
@@ -767,6 +766,9 @@
     linkPromoNote: (code) => 'Promo code ' + code + ' from your link is applied at checkout.',
     linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the Psyche Report free. Tap Apply to start it.',
     linkPromoFreeCard: (code) => 'Promo code ' + code + ' runs your card again free. Tap Apply to start it.',
+    // A code the server could not check just now: never assumed free.
+    promoCheckFailed: (code, reason) => 'Promo code ' + code + ' could not be checked just now' +
+      (reason ? ' (' + String(reason).replace(/\.$/, '') + ')' : '') + '. Tap Apply to try again.',
     linkPromoRefused: (code, reason) => 'The promo code in your link (' + code + ') could not be used: ' + String(reason || '').replace(/\.$/, '').replace(/^That code/, 'it') + '.',
     // The price on the payment sheet: the full price, and with a discount
     // code the discount and what is left to pay.

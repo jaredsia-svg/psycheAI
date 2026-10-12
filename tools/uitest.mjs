@@ -169,6 +169,10 @@ async function skipPremiumDataOffer(page, options) {
   if (await page.locator('#more-data-dialog[open]').count()) await page.click('#more-data-continue');
   await page.waitForSelector('#datasources-dialog[open]', { timeout: 20000 });
   await page.click('#datasources-continue');
+  // The review follows every time, changed or not: sent as it stands.
+  if (options && options.keepReview) return;
+  await page.waitForSelector('#review-dialog[open], #premium-dialog[open], #profile-alert:not([hidden])', { timeout: 20000 }).catch(() => {});
+  if (await page.locator('#review-dialog[open]').count()) await page.click('#review-send');
 }
 
 // The whole opening move of an unlock: press the button, skip the data offer,
@@ -501,16 +505,17 @@ try {
     /Download your data from Instagram \(WhatsApp and Google data are optional\)\. See below for instructions\./.test(await page.locator('#view-welcome').innerText()) &&
       !/Google data is also recommended/.test(await page.locator('#view-welcome').innerText()));
   {
-    // "below" is a link to "Request your Instagram data first", on this page.
+    // "below" goes to the cast ("Guess which character"), the request steps
+    // straight below it, on this page.
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.click('#view-welcome .steps-row a.step-below');
     await page.waitForTimeout(900);
     const landed = await page.evaluate(() => ({
       text: document.querySelector('#view-welcome .steps-row a.step-below').textContent,
-      top: Math.round(document.querySelector('#request-data').getBoundingClientRect().top),
+      top: Math.round(document.querySelector('#cast').getBoundingClientRect().top),
       hash: location.hash,
     }));
-    check('and its "below" goes to "Request your Instagram data first", without touching the link in the address bar',
+    check('and its "below" goes to the cast, "Guess which character", without touching the link in the address bar',
       landed.text === 'below' && landed.top >= -2 && landed.top < 200 && landed.hash === '', JSON.stringify(landed));
     await page.evaluate(() => window.scrollTo(0, 0));
   }
@@ -692,9 +697,13 @@ try {
           report, card: report.card, payload: 'x', model: 'mock',
           createdAt: new Date().toISOString(),
         }));
+        // A digest of the shape the page stores, small: the unlock's review
+        // reads it.
         localStorage.setItem('psycheai_digest', JSON.stringify({
-          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
-          google: { activity: [] },
+          coverage: { sources: ['instagram'], digestChars: 1000 },
+          counts: { posts: 2, commentsWritten: 1 },
+          samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] },
+          mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [],
         }));
       }, sample);
       await payPage.reload();
@@ -721,8 +730,13 @@ try {
       await unlock.scrollIntoViewIfNeeded();
       await unlock.click();
       // The data sources popout opens first on every unlock now; carrying on
-      // with what is loaded leads to the payment sheet.
-      await skipPremiumDataOffer(payPage);
+      // with what is loaded leads to the review, nothing changed or not, and
+      // then the payment sheet.
+      await skipPremiumDataOffer(payPage, { keepReview: true });
+      const reviewed = await payPage.waitForSelector('#review-dialog[open]', { timeout: 20000 }).then(() => true).catch(() => false);
+      check('with no data changed, the unlock still opens the review, to untick a part or download the file',
+        reviewed && await payPage.locator('#review-dialog #review-download').count() === 1);
+      if (reviewed) await payPage.click('#review-send');
       await payPage.waitForSelector('#premium-dialog[open]', { timeout: 20000 });
       // Mock mode's stand-in for the wallet sheet appears only once a real
       // PaymentIntent has come back, so its arrival is the proof that the
@@ -756,8 +770,8 @@ try {
           createdAt: new Date().toISOString(),
         }));
         localStorage.setItem('psycheai_digest', JSON.stringify({
-          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
-          google: { activity: [] },
+          coverage: { sources: ['instagram'], digestChars: 1000 },
+          counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [],
         }));
       }, sample);
       await halfPage.reload();
@@ -785,11 +799,25 @@ try {
       await halfPage.fill('#premium-promo-input', 'ui half!');
       check('the promo field takes capitals only: lower case is made capitals, anything else dropped',
         (await halfPage.inputValue('#premium-promo-input')) === 'UIHALF', await halfPage.inputValue('#premium-promo-input'));
+      // A check that fails (here, the rate limit) is said as such: never taken
+      // for a free code, and nothing starts.
+      const limited = async route => route.fulfill({ status: 429, contentType: 'application/json',
+        body: JSON.stringify({ error: 'Too many requests from this connection. Try again in 60 seconds.' }) });
+      await halfPage.route('**/api/create-payment-intent', limited);
+      await halfPage.click('#premium-promo-apply');
+      await halfPage.waitForFunction(() => /could not be checked/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
+        .catch(() => {});
+      const failedSaid = await halfPage.locator('#premium-status').innerText();
+      check('a promo check that fails says it could not be checked, never that the code is free, and starts nothing',
+        /^Promo code UIHALF could not be checked just now \(Too many requests/.test(failedSaid) && /Tap Apply to try again\.$/.test(failedSaid) &&
+          !/free/i.test(failedSaid) && analyses.length === 0 && await halfPage.evaluate(() => document.querySelector('#premium-dialog').open),
+        failedSaid);
+      await halfPage.unroute('**/api/create-payment-intent', limited);
       await halfPage.click('#premium-promo-apply');
       await halfPage.waitForFunction(() => /50% off/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
         .catch(() => {});
       const said = await halfPage.locator('#premium-status').innerText();
-      const discounted = intents.find(entry => entry.asked && entry.asked.promoCode);
+      const discounted = intents.find(entry => entry.asked && entry.asked.promoCode && entry.got && entry.got.discount);
       check('a half-price code re-prices the unlock sheet and says so',
         /UIHALF applied: 50% off\./.test(said) &&
           discounted && discounted.got && discounted.got.amount === 250 && discounted.got.discount.percent === 50 &&
@@ -877,6 +905,22 @@ try {
           /Ava’s invite is saved only in Instagram’s browser/.test(step.text) && /Copy link/.test(step.text) && step.chrome,
         JSON.stringify(step));
       check('and the general note under the navigation stands down while it shows', step.bar, JSON.stringify(step));
+      // A fresh load of a friend's link: the general note never shows at all,
+      // rather than flashing until the invite has drawn.
+      const fresh = await igContext.newPage();
+      await fresh.addInitScript(() => {
+        window.__barShown = false;
+        new MutationObserver(() => {
+          const bar = document.querySelector('#inapp-warn');
+          if (bar && !bar.hidden) window.__barShown = true;
+        }).observe(document, { attributes: true, subtree: true, attributeFilter: ['hidden'] });
+      });
+      await fresh.goto('http://localhost:' + PORT + '/?fresh=1#p=' + igPayload, { waitUntil: 'load' });
+      await fresh.waitForSelector('#invite-inapp:not([hidden])', { timeout: 20000 });
+      await fresh.waitForTimeout(500);
+      check('opened fresh, a friend\'s link never flashes the general note before its own Step 1',
+        await fresh.evaluate(() => !window.__barShown && document.querySelector('#inapp-warn').hidden));
+      await fresh.close();
       await igPage.evaluate(() => { try { localStorage.clear(); } catch (e) { /* none */ } });
     } finally {
       await igContext.close();
@@ -1028,7 +1072,7 @@ try {
           report, card: report.card, payload: 'x', model: 'mock', createdAt: new Date().toISOString(),
         }));
         localStorage.setItem('psycheai_digest', JSON.stringify({
-          coverage: { sources: ['instagram', 'google'], digestChars: 1000 }, google: { activity: [] },
+          coverage: { sources: ['instagram'], digestChars: 1000 }, counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [],
         }));
       }, sample);
       await linkPage.reload();
@@ -1095,8 +1139,8 @@ try {
           createdAt: new Date().toISOString(),
         }));
         localStorage.setItem('psycheai_digest', JSON.stringify({
-          coverage: { sources: ['instagram', 'google'], digestChars: 1000 },
-          google: { activity: [] },
+          coverage: { sources: ['instagram'], digestChars: 1000 },
+          counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [],
         }));
       }, sample);
       await sgPage.reload();
@@ -2798,7 +2842,7 @@ try {
   // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
-    ['Accounts Centre', 'Your information and permissions', 'Export your information',
+    ['Menu (≡)', 'Accounts Centre', 'Your information and permissions', 'Export your information',
       'Create export', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
@@ -2963,7 +3007,7 @@ try {
   // ready yet, which is a confusing way to discover you picked a bad name.
   const guideShotImgs = page.locator('#guide-dialog .guide-shot img');
   check('the guide shows real screenshots of each screen',
-    (await guideShotImgs.count()) === 7, (await guideShotImgs.count()) + ' screenshots');
+    (await guideShotImgs.count()) === 8, (await guideShotImgs.count()) + ' screenshots');
   check('and every one of them actually loads',
     await page.evaluate(() => [...document.querySelectorAll('#guide-dialog .guide-shot img')]
       .every(i => i.complete && i.naturalWidth > 0)));
@@ -2972,16 +3016,16 @@ try {
   check('every screenshot describes itself in its alt text',
     await page.evaluate(() => {
       const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
-      return figs.length === 7 && figs.every(f => {
+      return figs.length === 8 && figs.every(f => {
         const img = f.querySelector('img');
         return img && (img.getAttribute('alt') || '').length > 20;
       });
     }));
-  // Six of the seven also carry a caption naming the tap — the step 3 shot is
+  // Seven of the eight also carry a caption naming the tap — the step 3 shot is
   // the exception, because what to do with it (the three settings, then
   // Start export) is now written above it as real content rather than a
   // one-line caption repeating the ring.
-  check('six of the seven name the tap in a caption, and the step 3 shot does not repeat it',
+  check('seven of the eight name the tap in a caption, and the step 3 shot does not repeat it',
     await page.evaluate(() => {
       const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
       const withCaption = figs.filter(f => {
@@ -2990,7 +3034,7 @@ try {
       });
       const confirmShot = document.querySelector('#guide-dialog img[src*="07-confirm-export"]')
         .closest('.guide-shot');
-      return withCaption.length === 6 && !confirmShot.querySelector('figcaption');
+      return withCaption.length === 7 && !confirmShot.querySelector('figcaption');
     }));
   // The caption is the instruction and the picture is the evidence for it, so
   // a reader should meet the instruction first — moved here from below the
@@ -3014,12 +3058,12 @@ try {
   // so it scales with every column width and can be corrected without
   // re-exporting a picture.
   check('every screenshot rings the thing to tap',
-    (await page.locator('#guide-dialog .guide-mark').count()) === 7,
+    (await page.locator('#guide-dialog .guide-mark').count()) === 8,
     (await page.locator('#guide-dialog .guide-mark').count()) + ' marks');
   check('and each ring sits inside its own screenshot, not floating over the page',
     await page.evaluate(() => {
       const figs = [...document.querySelectorAll('#guide-dialog .guide-shot')];
-      return figs.length === 7 && figs.every(f => {
+      return figs.length === 8 && figs.every(f => {
         // Guarded rather than dereferenced: a figure that has lost its ring
         // should fail this check, not throw out of page.evaluate and take the
         // whole suite down with it several hundred checks early.
@@ -3290,10 +3334,10 @@ try {
         (await page.locator('#request-data ol[data-howto="instagram"] .step-fallback').count()) === 0,
       first);
     const peeks = page.locator('#request-data .ui-peek');
-    check('its eight screen names each carry their screenshot from the guide',
-      (await peeks.count()) === 8 &&
+    check('its nine screen names each carry their screenshot from the guide, the Menu first',
+      (await peeks.count()) === 9 &&
         JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim() + '=' + el.dataset.peek))) ===
-          JSON.stringify(['Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
+          JSON.stringify(['Menu (≡)=guide/00-profile-menu.jpg', 'Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
             'Export your information=guide/03-export-your-information.jpg', 'Create export=guide/04-create-export.jpg',
             'Export to device=guide/06-export-to-device.jpg', 'All time=guide/07-confirm-export.jpg',
             'JSON=guide/07-confirm-export.jpg', 'Lower=guide/07-confirm-export.jpg']),
@@ -3304,21 +3348,21 @@ try {
     const shown = await page.evaluate(() => {
       const pop = document.querySelector('.peek-pop');
       const r = pop.getBoundingClientRect();
-      return { src: pop.querySelector('img').getAttribute('src'), ring: Boolean(pop.querySelector('.guide-mark-1')),
+      return { src: pop.querySelector('img').getAttribute('src'), ring: Boolean(pop.querySelector('.guide-mark-0')),
         inside: r.left >= 0 && r.right <= innerWidth && r.top >= 0, expanded: document.querySelector('#request-data .ui-peek').getAttribute('aria-expanded') };
     });
-    check('a click on "Accounts Centre" shows the guide\'s first screenshot, ringed, inside the window',
-      shown.src === 'guide/01-settings.jpg' && shown.ring && shown.inside && shown.expanded === 'true', JSON.stringify(shown));
+    check('a click on "Menu (≡)" shows the profile screenshot with the Menu ringed, inside the window',
+      shown.src === 'guide/00-profile-menu.jpg' && shown.ring && shown.inside && shown.expanded === 'true', JSON.stringify(shown));
     await peeks.nth(1).click();
     check('a click on the next name swaps it for that screen\'s, one at a time',
       (await page.locator('.peek-pop').count()) === 1 &&
-        (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/02-info-permissions.jpg');
+        (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/01-settings.jpg');
     await page.keyboard.press('Escape');
     check('and Escape puts it away', (await page.locator('.peek-pop').count()) === 0);
     await peeks.nth(2).hover();
     await page.waitForSelector('.peek-pop img', { timeout: 5000 });
     check('with a mouse, hovering a name shows its screenshot too',
-      (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/03-export-your-information.jpg');
+      (await page.locator('.peek-pop img').getAttribute('src')) === 'guide/02-info-permissions.jpg');
     await page.mouse.move(2, 2);
     check('and moving away hides it again', (await page.locator('.peek-pop').count()) === 0);
   }
@@ -5201,7 +5245,7 @@ try {
       localStorage.setItem('psycheai_profile', JSON.stringify({
         report, card, payload, model: 'gemini-3.7-flash', createdAt: new Date().toISOString(),
       }));
-      localStorage.setItem('psycheai_digest', JSON.stringify({}));
+      localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram'], digestChars: 1000 }, counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] }));
     });
     await fallbackPage.reload({ waitUntil: 'load' });
     await fallbackPage.waitForSelector('#psyche-card .pc-blurb', { timeout: 20000 });
@@ -6220,7 +6264,7 @@ try {
       localStorage.setItem('psycheai_profile', JSON.stringify({
         report, card, payload, model: 'gemini-3.7-flash', createdAt: new Date().toISOString(),
       }));
-      localStorage.setItem('psycheai_digest', JSON.stringify({}));
+      localStorage.setItem('psycheai_digest', JSON.stringify({ coverage: { sources: ['instagram'], digestChars: 1000 }, counts: { posts: 2, commentsWritten: 1 }, samples: { captions: ['[2024] A caption long enough to keep'], comments: ['A comment long enough to keep'] }, mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] }));
     });
     await cardPage.reload({ waitUntil: 'load' });
     await cardPage.waitForSelector('#profile-body .premium-unlock');
@@ -11397,6 +11441,9 @@ try {
       });
       check('structured: My Psyche has no Download Psyche Report; the run\'s note sits right of Delete everything; the sources\' small text is smaller',
         hubFoot.download && hubFoot.beside && parseFloat(hubFoot.small) <= 11.6, JSON.stringify(hubFoot));
+      check('structured: paid, the note under Evidence and method says what adding data and re-running costs',
+        await sp.evaluate(() => (document.querySelector('#profile-body .sources-read-note') || {}).textContent ===
+          'Adding or changing data and re-running the Psyche Card and Psyche Report costs US$5.'));
       check('structured: paid, the way into My Report is "See Psyche Report" with an arrow to the right, one button across the card\'s three tools',
         await sp.evaluate(() => {
           const b = document.querySelector('#profile-side .cx-tools #open-report');
@@ -11945,22 +11992,21 @@ try {
             .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
           const boxes = buttons.map(b => b.getBoundingClientRect());
           const r = row.getBoundingClientRect();
-          const del = document.querySelector('#delete-profile');
-          const delLabel = del.querySelector('.cta-label').getBoundingClientRect();
-          return { two: buttons.length === 3, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
+          return { two: buttons.length === 2, oneRow: new Set(boxes.map(b => Math.round(b.top))).size === 1,
             sameHeight: boxes.every(b => Math.abs(b.height - boxes[0].height) <= 1),
-            // Delete is the narrow one, on the left; the other two share the rest.
-            narrowDelete: buttons[0] === del && boxes[0].width < 60 && Math.abs(boxes[1].width - boxes[2].width) <= 1,
-            iconOnly: delLabel.width <= 1 && del.querySelector('.cta-label').textContent === 'Delete everything',
+            // No Delete on My Report: the two share the row evenly.
+            noDelete: document.querySelector('#delete-profile').hidden &&
+              getComputedStyle(document.querySelector('#delete-profile')).display === 'none' &&
+              Math.abs(boxes[0].width - boxes[1].width) <= 1,
             across: Math.abs(boxes[0].left - r.left) <= 1 && Math.abs(boxes[boxes.length - 1].right - r.right) <= 1,
             thinCompat: !document.querySelector('#profile-side .cx-compat'),
-            iconAbove: buttons.slice(1).every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
+            iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone My Report\'s three actions sit side by side — Delete as a narrow bin on the left, Download, Back to card on the right',
-          phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.narrowDelete && phoneActions.iconOnly &&
+        check('structured: on a phone My Report\'s two actions sit side by side — Download, Back to card — and no Delete everything',
+          phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.noDelete &&
             phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Delete everything|Download Psyche Report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Download Psyche Report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -12022,9 +12068,9 @@ try {
           quiet: buttons.every(b => /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(b).backgroundColor)),
           tips: buttons.map(b => b.getAttribute('data-tip')).join('|') };
       });
-      check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips',
+      check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips, and no Delete everything',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.tips === 'Back to my Psyche Card|Download Psyche Report|Delete everything', JSON.stringify(actions));
+          actions.tips === 'Back to my Psyche Card|Download Psyche Report', JSON.stringify(actions));
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {
@@ -12261,11 +12307,11 @@ try {
         /single card – who you are/.test(offerParts.intro) && !/—/.test(offerParts.intro) &&
           /Unlock the Psyche Report to read the full analysis and reasoning behind your Psyche Card\./.test(offerParts.intro),
         offerParts.intro);
-      check('structured: the unlock button gives the price and the other way in: three friends\' cards from the reader\'s link',
+      check('structured: the unlock button gives the price and the other way in: two connections\' cards from the reader\'s link',
         await sp.evaluate(() => {
           const b = document.querySelector('#profile-body .full-report-locked .premium-unlock');
           return Boolean(b) && /Unlock your Psyche Report – US\$5/.test(b.textContent) &&
-            b.querySelector('.premium-unlock-alt').textContent === 'or get 3 friends to make their Psyche Card from your link';
+            b.querySelector('.premium-unlock-alt').textContent === 'or get 2 connections to make their Psyche Card from your link';
         }));
       check('structured: a free report\'s Copy link is the third of the card\'s tools, with no long bar under them; Delete stays in the action row',
         await sp.evaluate(() => {
@@ -12288,7 +12334,9 @@ try {
       // never the US$2 re-run of the card.
       // A real report has its evidence summary on the device.
       await sp.evaluate(() => localStorage.setItem('psycheai_digest', JSON.stringify({
-        coverage: { sampling: {} }, counts: {}, rhythm: { spanDays: 400 } })));
+        coverage: { sampling: {} }, counts: {}, rhythm: { spanDays: 400 },
+        samples: { captions: ['[2024] A caption long enough to keep'], comments: [] },
+        mostLikedAccounts: [], mostSavedAccounts: [], mostEngagedWith: [] })));
       await sp.reload({ waitUntil: 'load' });
       await sp.waitForSelector('#view-profile:not([hidden])', { timeout: 30000 });
       await sp.locator('.source-read[data-source="facebook"]').scrollIntoViewIfNeeded();
@@ -12301,9 +12349,14 @@ try {
       // asks for the Instagram export again.
       check('structured: the popout offers no Deeper read option',
         (await sp.locator('#datasources-deeper-input').count()) === 0);
-      // Changing nothing carries on to the US$5 payment, with no consent box:
+      // Changing nothing still shows the review (to untick a part or download
+      // the file), then carries on to the US$5 payment, with no consent box:
       // nothing about the card is about to change.
       await sp.click('#datasources-continue');
+      await sp.waitForSelector('#review-dialog[open]', { timeout: 15000 });
+      check('structured: with nothing changed the review still comes first, its button the payment',
+        (await sp.locator('#review-send').innerText()) === 'Make payment' && (await sp.locator('#review-download').count()) === 1);
+      await sp.click('#review-send');
       await sp.waitForSelector('#premium-dialog[open]', { timeout: 15000 });
       check('structured: with nothing changed it goes to the US$5 unlock — never the US$2 re-run — and asks no consent',
         !/Psyche Card again/i.test(await sp.locator('#premium-dialog-title').innerText()) &&
@@ -12773,9 +12826,9 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your link": what it earns, three boxes (cards, paid, syncs), no buttons and nothing to claim yet',
-        /Your link/.test(card.text) && card.stats === 3 && !card.ready && !/opened/i.test(card.text) &&
-          /Every 3 friends who make their card from your link, or 2 who buy the Psyche Report, earn you a free Psyche Report/.test(card.text) &&
+      check('the free report shows "Your Referral": what it earns, three boxes (cards, paid, syncs), no buttons and nothing to claim yet',
+        /Your Referral/.test(card.text) && card.stats === 3 && !card.ready && !/opened/i.test(card.text) &&
+          /Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report/.test(card.text) &&
           /Share your card or link above/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*bought the Psyche Report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
           !/Towards your next/.test(card.text) &&
@@ -13220,14 +13273,14 @@ try {
       check('and it is spent: none left until three more friends', after.available === 0 && after.claimed === 1 && after.friends === 3,
         JSON.stringify(after));
 
-      // Three more friends earn another, and this one is given away: a gift
-      // link that unlocks one full report for whoever opens it.
+      // One more friend makes four, two reports' worth, and the second is
+      // given away: a gift link that unlocks one full report for whoever opens it.
       await rp.route('**/api/analyse', asOwnPhone);
       await rp.evaluate(() => Promise.all([window.PsycheLoadReaders(), window.PsycheLoadPdf()]));
       await rp.evaluate(async ([text, code]) => {
         const sha = async value => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))),
           b => b.toString(16).padStart(2, '0')).join('');
-        for (let n = 4; n <= 6; n++) {
+        for (let n = 4; n <= 4; n++) {
           const digest = window.PsycheDigest.forModel(JSON.parse(text));
           digest.counts = Object.assign({}, digest.counts, { posts: 2000 + n });
           await window.PsycheLLM.analyseProfile(digest, { account: await sha('psycheai:friend' + n), ref: code });
@@ -13281,7 +13334,7 @@ try {
       const day = totals.days[new Date().toISOString().slice(0, 10)] || {};
       check('the journey is counted per campaign link: arrived, export read, card made',
         day['via:uitest-creator:open'] >= 1 && day['via:uitest-creator:export_loaded'] >= 1 && day['via:uitest-creator'] >= 1 &&
-          day['step:unlock_open'] >= 1 && day.referral_friend === 6 && day.referral_claimed === 1 && day.referral_report === 1 &&
+          day['step:unlock_open'] >= 1 && day.referral_friend === 4 && day.referral_claimed === 1 && day.referral_report === 1 &&
           day.referral_gifted === 1 &&
           day.free_refused_account === 1, JSON.stringify(day));
       check('the invite-friends flow runs with no page errors', rpErrors.length === 0, rpErrors.join(' | '));

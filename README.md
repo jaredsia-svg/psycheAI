@@ -256,9 +256,12 @@ Facebook posts and messages, 600 WhatsApp messages…) are wide enough that the 
 
 *At the unlock* (`collectDataForPremium`, `premiumDigestFrom`):
 
-- **Nothing added:** the card's own 80,000-character digest is sent as it is, the payment sheet
-  follows directly, and the card is **anchored, not redrawn** — the report explains the card the
-  reader already has.
+- **Nothing added:** the card's own 80,000-character digest is sent, and the card is **anchored, not
+  redrawn** — the report explains the card the reader already has. The review still opens first
+  (October 2026), with **Make payment** as its button, so a reader can untick a part or download the
+  file before paying; it works on a copy marked `__unchanged`, so an unticked part leaves this report
+  out of it without touching the card's own digest or redrawing the card. It used to go straight to
+  the payment sheet, which left no way to look at what the report would be written from.
 - **A source added or replaced:** that digest plus the new source, reviewed as what will be sent;
   the run redraws the card from it as well as writing the report. This holds even when the Instagram
   export is still in memory — it is not rebuilt wider. The standard digest takes the same new source,
@@ -2165,7 +2168,7 @@ characters of the secret's SHA-256 and goes in the reader's invite link, `psyche
 A friend arriving on it keeps the code for 60 days (`psycheai_referred_by`). When the friend's
 **first** free card is written, their account is added to that code's friends — once per friend
 account, for one referrer only, and never the referrer's own account (tied to the code when the
-referrer makes their own card). **Every three friends earn one free full premium report.**
+referrer makes their own card). **Every two friends earn one free full premium report.**
 
 A free report shows an **Invite 3 friends** card under the unlock offer. It has three dots, *Copy
 invite link* and *Share*, and once a report is earned, *1 free full report ready* and *Claim your free
@@ -2311,11 +2314,13 @@ Each sync spends only its own friend's link, and only once it lands. A sync with
 a referral code also sends `/api/event` `sync_done` with that code, counted in `ref:<code>:syncs`. The free card credits the most
 recent link the reader arrived on.
 
-## Your link: its numbers, free reports, and gifts
+## Your Referral: its numbers, free reports, and gifts
 
-My Psyche ends with a **Your link** card, below Evidence and method, free or paid. It opens with what
-the link earns: *Every 3 friends who make their card from your link, or 2 who buy the full report,
-earn you a free full report.* Then it says *Share your card or link above*. The card has no
+My Psyche ends with a **Your Referral** card (titled *Your link* until October 2026), below Evidence
+and method, free or paid. It opens with what the link earns: *Every 2 connections who make their card
+from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report.* It was 3 cards or 2
+purchases; it was lowered so a reader sees a reward after two shares, and one friend paying is
+worth a report of its own. Then it says *Share your card or link above*. The card has no
 copy or share buttons of its own; the card's **Share Card** and **Copy link** carry the same link.
 
 Three purple boxes give the counts:
@@ -2334,8 +2339,10 @@ Where each number comes from:
 - *synced with you*: friends' syncs with the card from the reader's link, at most one a day per
   browser, sent with `/api/event` `sync_done`, then `ref:<code>:syncs`.
 
-**Credits.** Every 3 friends' cards earn a free full report, and so does every 2 paid reports. The
-two add up: `earned = floor(friends/3) + floor(paid/2)`. Syncs are shown but earn nothing. The card
+**Credits.** Every 2 friends' cards earn a free full report, and so does each paid report. The
+two add up: `earned = floor(friends/2) + paid` (`FRIENDS_PER_REPORT`, `PAID_PER_REPORT` in
+`lib/referral.js`). The farming limits below are unchanged, so made-up accounts from one connection
+now reach a free report within the hour, and one referrer at most 3 a day from cards. Syncs are shown but earn nothing. The card
 shows progress towards both. Only when a report is ready does it show two buttons:
 - **Use it** opens the unlock, or on a full report the re-run with new data. The sheet's *Use your
   free full report* claims a grant.
@@ -2391,7 +2398,7 @@ It is used by:
 - the classic layout's Send my link.
 
 A gift link keeps its own message, since it is a different link. The free card's unlock button
-also names the other way in: *or get 3 friends to make their Psyche Card from your link*.
+also names the other way in: *or get 2 connections to make their Psyche Card from your link*.
 
 ## Policies: privacy, terms, refunds
 
@@ -2557,6 +2564,14 @@ discount into free reports.
 - **A discount code never opens anything by itself.** Sent straight to `/api/analyse` or
   `/api/premium`, it is refused: *That code takes 50% off. Enter it on the payment sheet and pay the
   rest.*
+- **Only the server's answer makes a code free.** A code is called free only when
+  `/api/create-payment-intent` says `free: true`. Any other failure (a rate limit, the network,
+  Stripe) is said as such, *Promo code JIALAT75 could not be checked just now. Tap Apply to try
+  again.*, and nothing else is offered. The page used to take any failure for a 100% code, so a 75%
+  code read *unlocks the Psyche Report free* whenever the check failed, which happened most often from
+  the rate limit: opening the sheet asked for a full-price payment and then for the link's code, two
+  of the route's six a connection every 10 minutes. A code from the link is now checked first, and the
+  full price is asked for only when it is not a discount: one request per opening.
 - **A use is spent when the paid report is written**, not when the sheet is opened, and counted under
   `promo:HALF` in the stats like any other code. Expiry and the cap are checked before anyone pays;
   a reader who paid just as the cap ran out is still served.
@@ -3907,7 +3922,10 @@ mobile, you can also go to your Instagram app > Settings > Accounts Centre > You
 permissions > Export your information", the same in the steps, the illustrated guide and
 `/download-instagram-data`; the "if the link doesn't open" footnote is gone, and with it the "brings you
 to step 2" sentence and its two checks. In the steps (not the guide, which shows the screens anyway) each
-of the three screen names is a button (`.ui-peek`) that shows its screenshot from the guide, ring and all:
+of the three screen names is a button (`.ui-peek`) that shows its screenshot from the guide, ring and all.
+**Menu (≡)** in step one is one too (`guide/00-profile-menu.jpg`, `.guide-mark-0`): the top half of the
+PsycheAI account's own profile, cut above the "Follow some accounts" suggestions so no one else's
+photo is in it, with the menu button at the top right ringed. It is the guide's first picture as well:
 on hover with a mouse, and on a tap or click anywhere, kept open until the next tap elsewhere or Escape
 (`mountPeeks` in `docs/app.js`). The popup is placed beside its name inside the window, drawn narrower
 when the screenshot is too tall for the room, and added to the open dialog when there is one so it shows
@@ -5771,8 +5789,9 @@ Delete everything is its red bin alone (its name still read out): at the foot of
 and on My Report on a phone, where it sits narrow on the left with Download in the middle and **Back to
 card** on the right. "Your link"'s three counts are compact and have no icons. The front page calls the
 paid report **Your Psyche Report**, and step one says "Download your data from Instagram (WhatsApp and
-Google data are optional). See below for instructions.", its "below" scrolling to "Request your
-Instagram data first" without touching the hash. On My Syncs, "What your link contains" is a row across
+Google data are optional). See below for instructions.", its "below" scrolling to the cast ("Guess
+which character"), with "Request your Instagram data first" straight below it, as Get my data lands,
+without touching the hash. On My Syncs, "What your link contains" is a row across
 the whole box under My link and Sync with others. The revealed roast's caveat is a soft note and its two
 halves are panels under an icon each. The FAQ's two data answers are in full sentences, the digest
 answer drops its paragraph on who might recognise it, the one-free-card question is gone (its code is a
@@ -6003,7 +6022,10 @@ saying why: *Ava's invite is saved only in Instagram's browser, and your Instagr
 hours to arrive.* It comes with **Copy link**, which copies the address they arrived on, key and all,
 and on Android **Open in Chrome**, both built from that address because the app has already taken
 the link out of the address bar. The general note under the navigation stands down while this shows,
-so the same thing is not said twice.
+so the same thing is not said twice. It used to show at once and then stand down when the invite
+drew, a moment later, so a friend's link opened in Instagram flashed the yellow note for a split
+second. Now, when a link is in the address (`?c=`, `#p=`) or an invite is waiting on the device, the
+note waits until boot has finished (`settleInAppWarn`) and shows only if no invite step did.
 
 ### "Your data", never "the export"
 
