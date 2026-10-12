@@ -44,6 +44,7 @@
     <h3>Who receives it?</h3>
     <ul>
       <li><b>Google (Gemini API) or Anthropic (Claude API)</b>, to write your card or report, for that one request. They process it on servers outside Singapore.</li>
+      <li><b>Your guess at your character</b>, if you make one, goes to PsycheAI’s server with your first card’s request, beside the digest. The server checks it against the card once it is written and never passes it to Google or Anthropic.</li>
       <li><b>PsycheAI’s server</b> only passes the digest to them and the report back. It does not store, log or show either. If your connection drops, the finished report waits in the server’s memory for up to four hours so you are not charged twice. Only your device can collect it, and it is never saved to disk.</li>
       <li><b>Stripe</b> handles payments. PsycheAI never sees your card number, only the amount, the currency and a payment reference.</li>
       <li><b>Render</b> hosts the site and <b>Upstash</b> holds the small records below. Like any website, they see your IP address when you connect.</li>
@@ -58,7 +59,7 @@
     <p>Only a few small things, and none of them names you:</p>
     <ul>
       <li>Daily totals, such as how many cards were made that day.</li>
-      <li>A scrambled code of your Instagram username, so each account gets one free card. It cannot be turned back into your username.</li>
+      <li>A scrambled code of your Instagram username, so each account gets one free card, and one guess at its character. It cannot be turned back into your username.</li>
       <li>Simple counts for your link: how many times it was opened, how many friends made a card from it, bought the Psyche Report or synced with you – never who. A free Psyche Report you earn or gift is kept for 60 days.</li>
       <li>If you share your link, a locked copy of your card’s short summary. Your device locks it and only your link holds the key, so PsycheAI cannot read it. It is kept for a year after the link was last opened.</li>
       <li>If someone syncs with your link, the result and their Psyche Card, locked the same way with your link’s key, so PsycheAI cannot read them. They are deleted once your device has them, or after 30 days.</li>

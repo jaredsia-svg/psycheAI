@@ -765,10 +765,20 @@ async function handleAnalyse(request, response) {
           .catch(() => {});
       }
 
+      // A guess at the character, made before this first free card: judged
+      // against the card just written (lib/referral.js, judgeGuess). It came
+      // beside the digest, never inside it, so the model never saw it.
+      const guess = made === 'card' && body.guess ? await referral.judgeGuess({
+        guess: body.guess, character: result.data && result.data.essence && result.data.essence.character,
+        account, client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
+      }).catch(() => null) : null;
+      if (guess) stats.count(guess.won ? (guess.token ? 'guess_won' : 'guess_won_limited') : 'guess_missed');
+
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
       // writes one anyway.
-      return scrubbed(result, sent, kind);
+      const out = scrubbed(result, sent, kind);
+      return guess ? Object.assign({}, out, { guess }) : out;
     },
   });
 }

@@ -952,6 +952,47 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    lands flush at viewport top, which is underneath the sticky nav — so the
    reader arrives at the instructions with the heading hidden. */
 .help-card { scroll-margin-top: 4.5rem; }
+/* Meet the cast: one slim row of round tiles above the request steps, moved
+   by app.js (mountCast) rather than scrolled, so it has no scrollbar. */
+.cast { margin: 1.2rem 0 .9rem; scroll-margin-top: 4.5rem; }
+.cast-head { margin: 0 0 .3rem; font-size: .95rem; font-weight: 700; color: var(--ink); }
+.cast-note { margin: .2rem 0 0; font-size: .82rem; line-height: 1.35; color: var(--ink-soft); min-height: 1.1em; }
+.cast-tile {
+  appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; cursor: inherit;
+  flex: none; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.cast-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 12px; }
+.cast.is-guessing .cast-tile { cursor: pointer; }
+.cast.is-guessing .cast-tile:hover .cast-art { box-shadow: 0 0 0 3px var(--accent-soft), 0 3px 10px rgba(80, 30, 110, .2); }
+/* The guess: a ring and a tick, so it is found again as the strip turns. */
+.cast-tile.is-picked .cast-art { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent); }
+.cast-tile.is-picked .cast-name { color: var(--accent); }
+.cast-tile { position: relative; }
+.cast-tile.is-picked::after {
+  content: '✓'; position: absolute; top: -2px; right: 4px; width: 20px; height: 20px; border-radius: 999px;
+  display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent);
+}
+.alert.alert-soft { background: var(--accent-soft); color: var(--ink); border-color: var(--line); }
+.cast-strip {
+  overflow: hidden; cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.cast-strip:active { cursor: grabbing; }
+.cast-strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+.cast-track { list-style: none; margin: 0; padding: 7px 0 2px; display: flex; align-items: flex-start; column-gap: 14px; width: max-content; will-change: transform; }
+.cast-art {
+  width: 58px; height: 58px; border-radius: 999px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+  color: #fff; background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  box-shadow: 0 3px 10px rgba(80, 30, 110, .2); pointer-events: none;
+}
+.cast-scene { width: 100%; height: 100%; display: block; }
+.cast-emblem { width: 56%; height: 56%; }
+.cast-name {
+  font-size: .74rem; font-weight: 600; line-height: 1.15; text-align: center; color: var(--ink);
+  max-width: 100%; overflow: hidden;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+}
 
 .help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
@@ -4308,6 +4349,12 @@ details.more[open] > summary::after { content: ' ▴'; }
 .gift-banner-title { margin: 0; font-weight: 800; }
 .gift-banner-text { margin: .15rem 0 0; font-size: .86rem; color: var(--ink-soft); }
 .hero > .gift-banner { grid-column: 1 / -1; }
+/* Its ✕, as the sync invite's: the message closes, the free report stays. */
+.gift-banner { position: relative; padding-right: 2.6rem; }
+.invite-banner-close { z-index: 2; }
+@media (max-width: 640px) { .gift-banner .gift-banner-go { margin-right: -1.5rem; } }
+/* The wrong-guess note's ✕. */
+.alert.alert-soft { position: relative; padding-right: 2.4rem; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
 .sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
 .sync-invite-actions .btn { min-width: 7rem; }

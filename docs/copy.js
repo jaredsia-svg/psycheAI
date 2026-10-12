@@ -210,6 +210,21 @@
     inviteText: (name) => 'PsycheAI reads your personality from your own Instagram data. No questionnaire, ' +
       'no sign-up. Get your free Psyche Card, and see how in sync you are with ' + (name || 'them') + '.',
     inviteStart: 'Get my free Psyche Card',
+    // The strip of every character above the request steps: before a first
+    // card, a guess at which one it will name; a right one wins the report.
+    castTitle: 'Guess which character you are and win a Psyche Report for free',
+    castLabel: 'All 29 characters a Psyche Card can name. Drag to spin, hold to pause, tap one to guess.',
+    castPick: 'Tap the character you think you are.',
+    castPicked: (name) => 'Your guess: ' + name + '. Make your free Psyche Card to find out. One guess, locked in when your card is made.',
+    // Once a card exists there is nothing left to guess.
+    castFriendsTitle: 'Which one are your friends?',
+    castFriendsNote: 'Send them your link to find out.',
+    // On the reader's card, once it is made.
+    guessWonTitle: 'You guessed right!',
+    guessWonText: (name) => 'You said ' + name + ', and your Psyche Card agrees. Your Psyche Report is free.',
+    guessWonUse: 'Unlock it free',
+    guessWonLimited: (name) => 'You guessed right: ' + name + '! Today\u2019s free Psyche Reports have all been given out, so this one could not be added.',
+    guessMissed: (guess, name) => 'You guessed ' + guess + ', and your card says ' + name + '. Nice try!',
     // In an app's own browser, above that: the first step, before any of the
     // request steps.
     inviteInAppTitle: (ios) => 'Step 1: open this page in ' + (ios ? 'Safari' : 'Chrome'),

@@ -138,8 +138,13 @@
       <span class="gift-banner-icon" aria-hidden="true">🎁</span>
       <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
       <button class="btn gift-banner-go" type="button"></button>
+      <button class="sync-invite-close gift-banner-close" type="button" aria-label="Close">✕</button>
     </div>
     <section id="invite-banner" class="invite-banner no-print" aria-labelledby="invite-title" hidden>
+      <!-- Closing puts the invite out of sight, not away: once a card is
+           made it still waits on My Syncs, synced when the reader presses
+           Sync there (app.js, refreshInvite). -->
+      <button class="sync-invite-close invite-banner-close" id="invite-banner-close" type="button" aria-label="Close">✕</button>
       <!-- Their card, as it looks on their own screen; tap for full screen. -->
       <div class="invite-card-side">
         <p class="invite-title" id="invite-title"></p>
@@ -251,6 +256,17 @@
          and its price. -->
     <div data-insights></div>
   </div>
+
+  <!-- The cast: all 29 characters a card can name, spinning slowly past.
+       Drag or flick it to spin it faster either way, hold it to stop. Before
+       a first card, tap one to guess which you are: a right guess wins a free
+       Psyche Report. Get my data lands here, with the request steps straight
+       below. Filled by app.js (mountCast). -->
+  <section class="cast" id="cast" aria-labelledby="cast-title">
+    <p class="cast-head" id="cast-title"></p>
+    <div class="cast-strip" id="cast-strip" role="group"><ul class="cast-track" id="cast-track"></ul></div>
+    <p class="cast-note" id="cast-note" aria-live="polite"></p>
+  </section>
 
   <div class="card help help-card" id="request-data">
     <div class="help-head">
@@ -407,6 +423,7 @@
     <span class="gift-banner-icon" aria-hidden="true">🎁</span>
     <div><p class="gift-banner-title"></p><p class="gift-banner-text"></p></div>
     <button class="btn gift-banner-go" type="button"></button>
+    <button class="sync-invite-close gift-banner-close" type="button" aria-label="Close">✕</button>
   </div>
   <!-- At the top of My Psyche while a friend's link waits. Its one button
        goes to My Syncs, where the reader picks who to sync with. -->

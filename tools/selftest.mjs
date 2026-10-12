@@ -6289,7 +6289,7 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('a sync sends two cards shaped as cards, each field held to its length',
     /const a = Card\.shape\(body\.a\);\s*const b = Card\.shape\(body\.b\);/.test(serverSource));
   check('both report routes scrub before the result is stored or served, the premium one on either way in',
-    /return scrubbed\(result, sent, kind\)/.test(serverSource) &&
+    /const out = scrubbed\(result, sent, kind\);\s*return guess \? Object\.assign\(\{\}, out, \{ guess \}\) : out;/.test(serverSource) &&
     (serverSource.match(/return scrubbed\(result, sent, 'premium'\)/g) || []).length === 2);
 }
 
@@ -7908,6 +7908,37 @@ check('the schema requires evidence on where they align and differ',
   const gift = await referral.claim(secret);
   check('a free report can be claimed as a gift link\'s grant, and works for someone else once',
     /^[0-9a-f]{48}$/.test(gift || '') && (await referral.grantRefusal(gift, { someoneElse: 1 })) === null);
+
+  // Guess your character: judged on the server against the card, once per
+  // account, a right guess a grant like any other.
+  {
+    const names = ['Mulan', 'Hulk', 'Po'];
+    const who = n => sha('psycheai:guesser' + n);
+    check('no guess, no account or a name outside the catalogue is not judged at all',
+      (await referral.judgeGuess({ guess: '', character: 'Hulk', account: who(1), names })) === null &&
+        (await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: '', names })) === null &&
+        (await referral.judgeGuess({ guess: 'Mario', character: 'Mario', account: who(1), names })) === null);
+    const miss = await referral.judgeGuess({ guess: 'Po', character: 'Hulk', account: who(1), names, client: '10.1.0.1' });
+    check('a wrong guess is told so, with no grant', miss && miss.won === false && miss.token === null &&
+      miss.guess === 'Po' && miss.character === 'Hulk', JSON.stringify(miss));
+    const second = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(1), names, client: '10.1.0.1' });
+    check('and the same account cannot guess again, right or not', second === null, JSON.stringify(second));
+    const win = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(2), names, client: '10.1.0.2' });
+    check('a right guess wins a grant that unlocks one Psyche Report',
+      win && win.won && /^[0-9a-f]{48}$/.test(win.token || '') && (await referral.grantRefusal(win.token, { mine: 1 })) === null,
+      JSON.stringify(win));
+    const sameRoom = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(3), names, client: '10.1.0.2' });
+    check('a second win from the same connection the same day is right but wins nothing',
+      sameRoom && sameRoom.won && sameRoom.token === null && sameRoom.limited, JSON.stringify(sameRoom));
+    const kept = await store.run([['GET', 'guess:' + store.keyed('acct', who(1))], ['GET', 'guess:' + who(1)]]);
+    check('what is kept for a guess is a scrambled account code, never the hash the browser sent',
+      kept[0] === '1' && kept[1] === null, JSON.stringify(kept));
+    // The model never sees the guess: the server reads body.guess only to
+    // judge it, after the card is written.
+    const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
+    check('the server reads the guess only to judge it, after the card is written',
+      (serverSource.match(/body\.guess/g) || []).length === 2 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource));
+  }
 }
 
 // ---------- the short personal link ----------

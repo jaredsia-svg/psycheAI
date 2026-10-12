@@ -139,10 +139,16 @@
     // A free full report someone gifted this reader (?gift=), and the gift
     // links this reader has made for others.
     gift: 'psycheai_gift',
+    // The character a reader guessed before their first card, and how it went.
+    guess: 'psycheai_guess',
     // Friends' links opened before the latest one, still waiting to sync.
     invitesMore: 'psycheai_invites_more',
     // The sync bar's ✕: the friends' links waiting when it was closed.
     syncBarClosed: 'psycheai_sync_bar_closed',
+    // A gift or won report's banner put away (its token), and a friend's
+    // invite banner put away (its payload). Neither is spent by closing.
+    giftBannerClosed: 'psycheai_gift_banner_closed',
+    inviteBannerClosed: 'psycheai_invite_banner_closed',
     gifts: 'psycheai_gifts_made',
   };
 
@@ -1931,17 +1937,32 @@
   })();
   // Shown on the welcome page (make your card first) and on the report
   // (unlock it now), by the same banner in each.
-  function refreshGiftBanner() {
+  const giftBannerShowing = () => {
     const gift = giftWaiting();
+    return Boolean(gift) && store.read(KEYS.giftBannerClosed, null) !== gift.token;
+  };
+  function refreshGiftBanner() {
+    const gift = giftBannerShowing() ? giftWaiting() : null;
     for (const banner of document.querySelectorAll('.gift-banner')) {
       banner.hidden = !gift;
       if (!gift) continue;
       const own = banner.closest('#view-profile');
-      banner.querySelector('.gift-banner-title').textContent = TEXT.referral.giftArrivedTitle;
-      banner.querySelector('.gift-banner-text').textContent = own ? TEXT.referral.giftArrivedHave : TEXT.referral.giftArrivedNew;
-      banner.querySelector('.gift-banner-go').textContent = own ? TEXT.referral.giftUse : TEXT.inviteStart;
+      // Won by guessing the character, not given: said as a win.
+      const guess = gift.won ? guessMade() : null;
+      banner.querySelector('.gift-banner-title').textContent = guess ? TEXT.guessWonTitle : TEXT.referral.giftArrivedTitle;
+      banner.querySelector('.gift-banner-text').textContent = guess ? TEXT.guessWonText(guess.name)
+        : own ? TEXT.referral.giftArrivedHave : TEXT.referral.giftArrivedNew;
+      banner.querySelector('.gift-banner-go').textContent = guess ? TEXT.guessWonUse : own ? TEXT.referral.giftUse : TEXT.inviteStart;
     }
   }
+  // Its ✕: the banner goes, the report stays offered on the unlock's sheet.
+  document.addEventListener('click', event => {
+    if (!(event.target.closest && event.target.closest('.gift-banner-close'))) return;
+    const gift = giftWaiting();
+    if (gift) store.write(KEYS.giftBannerClosed, gift.token);
+    refreshGiftBanner();
+    refreshReportPromo();
+  });
   document.addEventListener('click', event => {
     const go = event.target.closest && event.target.closest('.gift-banner-go');
     if (!go) return;
@@ -2236,6 +2257,218 @@
   // The full sample first, then the other sample cards, in gallery order.
   let insightCards = [];
   let insightIndex = 0;
+  // ---------- Meet the cast ----------
+  //
+  // Every character a card can name, each in its own scene cropped to a round
+  // tile, spinning slowly past above the request steps. The strip is moved by
+  // hand (overflow hidden, the track moved by a transform) so it can loop forever: a tile
+  // that leaves one end is moved to the other and the offset given back, so
+  // there are only ever 29 drawings on the page. Dragging moves it with the
+  // pointer and a flick sets it spinning that way, faster, easing back to its
+  // own pace; holding still stops it until let go. A horizontal trackpad
+  // swipe pushes it too; the page's own vertical scroll is never taken. It
+  // only moves while on screen, and not at all for a reader who asked for
+  // less motion, who can still drag it.
+  function mountCast() {
+    const strip = $('#cast-strip');
+    const track = $('#cast-track');
+    if (!strip || !track) return;
+    strip.setAttribute('aria-label', TEXT.castLabel);
+    track.innerHTML = Object.keys(Copy.CHARACTER_SYNCS).map(name =>
+      '<li><button type="button" class="cast-tile" data-name="' + esc(name) + '" aria-pressed="false">' +
+        '<span class="cast-art">' + (Copy.characterArt(name, 'cast-scene', true) || Copy.emblemSvg(name, 'cast-emblem')) + '</span>' +
+        '<span class="cast-name">' + esc(name) + '</span></button></li>').join('');
+    refreshCast();
+    // A tap guesses, before a first card; a tap that ended a drag does not.
+    let justDragged = false;
+    track.addEventListener('click', event => {
+      const tile = event.target.closest('.cast-tile');
+      if (!tile || justDragged || !canGuess()) return;
+      const name = tile.dataset.name;
+      const current = guessMade();
+      if (current && current.name === name) store.remove(KEYS.guess);
+      else store.write(KEYS.guess, { name, at: Date.now() });
+      refreshCast();
+    });
+    const reduced = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const PACE = 28; // px a second, on its own
+    let direction = 1;
+    let velocity = PACE;
+    let held = false;
+    let dragging = false;
+    let lastX = 0;
+    let lastT = 0;
+    let onScreen = true;
+    let frame = 0;
+    let last = 0;
+    // Where the track is, in px, kept as a fraction: the slow pace moves it
+    // under a pixel a frame, which scrollLeft would round away. Drawn as a
+    // transform (set through the DOM, which the page's CSP allows).
+    let offset = 0;
+    const draw = () => { track.style.transform = 'translate3d(' + (-offset).toFixed(2) + 'px, 0, 0)'; };
+    // Keeps the loop seamless: a tile wholly off one end goes to the other.
+    const wrap = () => {
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+      for (let guard = 0; guard < 4; guard++) {
+        const first = track.firstElementChild;
+        const lastTile = track.lastElementChild;
+        if (!first || !lastTile) break;
+        const width = first.getBoundingClientRect().width + gap;
+        if (offset > width) {
+          track.appendChild(first);
+          offset -= width;
+        } else if (offset < 0) {
+          track.insertBefore(lastTile, first);
+          offset += lastTile.getBoundingClientRect().width + gap;
+        } else break;
+      }
+      draw();
+    };
+    const step = now => {
+      frame = 0;
+      const dt = Math.min(0.05, (now - (last || now)) / 1000);
+      last = now;
+      if (!held && !dragging) {
+        const target = reduced() ? 0 : PACE * direction;
+        velocity += (target - velocity) * (1 - Math.exp(-dt / 0.9));
+        if (Math.abs(velocity) > 0.5) {
+          offset += velocity * dt;
+          wrap();
+        }
+      }
+      if (onScreen && !document.hidden) frame = requestAnimationFrame(step);
+    };
+    const run = () => { if (!frame && onScreen && !document.hidden) { last = 0; frame = requestAnimationFrame(step); } };
+    // Focusing a tile from the keyboard makes the browser scroll the strip
+    // itself; that is folded into the offset so the two never disagree.
+    strip.addEventListener('scroll', () => {
+      if (!strip.scrollLeft) return;
+      offset += strip.scrollLeft;
+      strip.scrollLeft = 0;
+      wrap();
+    });
+    strip.addEventListener('pointerdown', event => {
+      held = true;
+      dragging = false;
+      justDragged = false;
+      lastX = event.clientX;
+      lastT = performance.now();
+      velocity = 0;
+    });
+    strip.addEventListener('pointermove', event => {
+      if (!held) return;
+      const dx = event.clientX - lastX;
+      if (!dragging && Math.abs(dx) < 4) return;
+      // Captured only once it is a drag, so a plain tap still lands on its tile.
+      if (!dragging && strip.setPointerCapture) { try { strip.setPointerCapture(event.pointerId); } catch (error) { /* gone */ } }
+      dragging = true;
+      justDragged = true;
+      const now = performance.now();
+      offset -= dx;
+      wrap();
+      // Px a second, against the pointer: dragging left spins it forwards.
+      velocity = -dx / Math.max(0.008, (now - lastT) / 1000);
+      lastX = event.clientX;
+      lastT = now;
+    });
+    const release = () => {
+      if (!held) return;
+      held = false;
+      if (dragging) {
+        velocity = Math.max(-1600, Math.min(1600, velocity));
+        if (Math.abs(velocity) > 40) direction = Math.sign(velocity);
+      } else velocity = 0;
+      dragging = false;
+      run();
+    };
+    strip.addEventListener('pointerup', release);
+    strip.addEventListener('pointercancel', release);
+    strip.addEventListener('lostpointercapture', release);
+    strip.addEventListener('wheel', event => {
+      if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      velocity += event.deltaX * 12;
+      velocity = Math.max(-1600, Math.min(1600, velocity));
+      direction = Math.sign(velocity) || direction;
+      run();
+    }, { passive: false });
+    strip.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      direction = event.key === 'ArrowRight' ? 1 : -1;
+      velocity = 600 * direction;
+      run();
+    });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(entries => {
+        onScreen = entries.some(entry => entry.isIntersecting);
+        run();
+      }).observe(strip);
+    }
+    document.addEventListener('visibilitychange', run);
+    run();
+  }
+
+  // ---------- guess your character ----------
+  //
+  // Before a reader's first card, a tap on the cast is a guess at which
+  // character it will name. It is sent beside the digest with that first free
+  // card's request, never inside it, so the model cannot see it, and the
+  // server judges it against the card it wrote (lib/referral.js, judgeGuess):
+  // right, and the reply carries a free report's grant, kept here like a gift.
+  // Once a card exists the strip turns to friends: nothing is left to guess.
+  function guessMade() {
+    const guess = store.read(KEYS.guess, null);
+    return guess && typeof guess.name === 'string' && Object.prototype.hasOwnProperty.call(Copy.CHARACTER_SYNCS, guess.name)
+      ? guess : null;
+  }
+  const canGuess = () => !state.profile;
+  function refreshCast() {
+    const title = $('#cast-title');
+    const track = $('#cast-track');
+    if (!title || !track) return;
+    const open = canGuess();
+    const guess = open ? guessMade() : null;
+    title.textContent = open ? TEXT.castTitle : TEXT.castFriendsTitle;
+    $('#cast-note').textContent = open ? (guess ? TEXT.castPicked(guess.name) : TEXT.castPick) : TEXT.castFriendsNote;
+    $('#cast').classList.toggle('is-guessing', open);
+    for (const tile of track.querySelectorAll('.cast-tile')) {
+      const picked = Boolean(guess && tile.dataset.name === guess.name);
+      tile.classList.toggle('is-picked', picked);
+      tile.setAttribute('aria-pressed', String(picked));
+      tile.setAttribute('aria-disabled', String(!open));
+    }
+  }
+  // The outcome the server sent with a first card: kept with the guess, a win
+  // kept as a gift the unlock's sheet offers, and said once on the card.
+  function takeGuessOutcome(outcome) {
+    if (!outcome || typeof outcome.guess !== 'string') return;
+    const token = /^[0-9a-f]{48}$/.test(String(outcome.token || '')) ? outcome.token : '';
+    store.write(KEYS.guess, { name: outcome.guess, at: Date.now(),
+      outcome: { character: String(outcome.character || ''), won: Boolean(outcome.won), limited: Boolean(outcome.limited), told: false } });
+    if (token && !giftWaiting()) store.write(KEYS.gift, { token, at: Date.now(), won: true });
+  }
+  function sayGuessOutcome() {
+    const guess = store.read(KEYS.guess, null);
+    const outcome = guess && guess.outcome;
+    if (!outcome || outcome.told || !state.profile) return;
+    store.write(KEYS.guess, Object.assign({}, guess, { outcome: Object.assign({}, outcome, { told: true }) }));
+    // A win with its grant is told by the gift banner, worded for it.
+    if (outcome.won && !outcome.limited) return;
+    flash('#profile-alert', outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character));
+    // News rather than a problem: the soft look, not the warning one, with a ✕.
+    const note = $('#profile-alert');
+    note.classList.add('alert-soft');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'sync-invite-close';
+    close.setAttribute('aria-label', 'Close');
+    close.textContent = '✕';
+    close.addEventListener('click', () => { flash('#profile-alert', ''); refreshReportPromo(); });
+    note.appendChild(close);
+    refreshReportPromo();
+  }
+
   function mountInsights() {
     for (const slot of document.querySelectorAll('[data-insights]')) setHtml(slot, insightsHtml());
     drawInsightPreview();
@@ -2859,6 +3092,7 @@
   function flash(selector, message) {
     const node = $(selector);
     if (!node) return;
+    node.classList.remove('alert-soft');
     node.textContent = message || '';
     node.hidden = !message;
   }
@@ -3153,8 +3387,11 @@
   // it opens the illustrated guide instead.
   $('#hero-start').addEventListener('click', () => {
     if (state.profile) { showGuide(); return; }
-    show('welcome');
-    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    // Already here (the hero is on this page): show() would only jump to the
+    // top and redraw the sample card first, for nothing.
+    if ($('#view-welcome').hidden) show('welcome');
+    // The cast first, with the request steps straight below it.
+    $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   // "See below for instructions" in How it works: to the same steps, without
   // the hash the app reads links from.
@@ -5209,10 +5446,14 @@
       flash('#upload-error', 'Your profile was generated but is too large for this browser\'s storage, so it will not survive a reload.');
     }
 
+    takeGuessOutcome(result.guess);
+    refreshCast();
+    refreshGiftBanner();
     // A friend's link waiting is not run here: the reader sees their own
     // card first, and the sync is a tap away on it (refreshSyncInvite).
     renderProfile();
     show('profile');
+    sayGuessOutcome();
   }
 
   /**
@@ -8677,7 +8918,7 @@
         { onJob: key => rememberJob(key, 'full', auth, { replaceCard: dataChanged }) });
       // A gifted report, now used.
       const gift = giftWaiting();
-      if (gift && auth.referralGrant === gift.token) { store.remove(KEYS.gift); refreshGiftBanner(); }
+      if (gift && auth.referralGrant === gift.token) { store.remove(KEYS.gift); refreshGiftBanner(); refreshReportPromo(); }
 
       // The extra data is kept only now, because only now has it bought
       // anything. Abandoning the payment sheet leaves the stored digest — and
@@ -10144,7 +10385,10 @@
   async function refreshInvite() {
     const banner = $('#invite-banner');
     if (!banner) return;
-    const invite = state.profile ? null : pendingInvite();
+    const waiting = state.profile ? null : pendingInvite();
+    // Put away with its ✕: out of sight, but kept, so it still waits on My
+    // Syncs once a card is made, for the reader to press Sync there.
+    const invite = waiting && (store.read(KEYS.inviteBannerClosed, []) || []).includes(waiting.payload) ? null : waiting;
     if (!invite) {
       banner.hidden = true;
       inviteDrawn = '';
@@ -10313,12 +10557,19 @@
     const closed = store.read(KEYS.syncBarClosed, []) || [];
     return invites.some(invite => !closed.includes(invite.payload));
   }
+  // A guess's result on the card: the free report won (or any gifted one)
+  // waiting to be unlocked, or the note on a wrong guess. Either is the one
+  // thing to read there, so the slim bar stands down, as it does for a sync.
+  function prizeShowing() {
+    const note = $('#profile-alert');
+    return giftBannerShowing() || Boolean(note && !note.hidden && note.classList.contains('alert-soft'));
+  }
   function refreshReportPromo() {
     const bar = $('#report-promo');
     if (!bar) return;
     const view = VIEWS.find(name => !$('#view-' + name).hidden);
     const offered = Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length;
-    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing();
+    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing() || prizeShowing();
     if (bar.hidden) return;
     $('#report-promo-go').innerHTML = '<span class="report-promo-text">' + esc(TEXT.reportPromo) + '</span> ' +
       '<strong class="report-promo-cta">' + esc(TEXT.reportPromoCta) + '</strong>';
@@ -10389,9 +10640,14 @@
   });
 
   $('#invite-guide').addEventListener('click', () => {
-    $('.help-card').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
+    $('#cast').scrollIntoView({ behavior: scrollBehaviour(), block: 'start' });
   });
   $('#invite-card-open').addEventListener('click', openInviteCard);
+  $('#invite-banner-close').addEventListener('click', () => {
+    const invite = pendingInvite();
+    if (invite) store.write(KEYS.inviteBannerClosed, (store.read(KEYS.inviteBannerClosed, []) || []).concat(invite.payload).slice(-20));
+    refreshInvite();
+  });
 
   // A creator's or campaign's link carries ?via=<code>. Read once on arrival,
   // kept on this device for VIA_DAYS (the export takes hours, and the card is
@@ -10563,6 +10819,9 @@
     if (mine && mine.code) out.myRef = mine.code;
     const by = referredBy();
     if (by) out.ref = by;
+    // A guess at the character, for the first free card only (judgeGuess).
+    const guess = !auth && !state.profile ? guessMade() : null;
+    if (guess && !guess.outcome) out.guess = guess.name;
     return out;
   }
 
@@ -10703,5 +10962,6 @@
   });
 
   mountInsights();
+  mountCast();
   boot();
 })();

@@ -1919,8 +1919,9 @@ so it is built in rather than left to a plugin.
   (`psycheai_invite`, in `KEYS`, so *Delete everything* takes it) for fourteen days, shown at the top
   of the welcome page — *Ava Tan wants to see how compatible you both are. Download your Instagram data
   and make your free Psyche Card. The compatibility analysis with Ava Tan runs straight after it, also
-  free.* — with **Show me how** for the export steps, and spent on the first card the device makes,
-  which goes straight into the compatibility analysis. There is no button to throw it away; it
+  free.* — with **Show me how** for the export steps. (Later the invite came to wait on My Syncs once
+  the card is made, synced only when the reader presses **Sync** there; see "Psyche Sync".) Its ✕
+  puts the banner out of sight (`psycheai_invite_banner_closed`) without throwing the invite away; it
   expires on its own.
 - **The roast as a story image.** Once the roast is read, **Share this roast** draws its opening
   sentence or two in a panel on a 1080×1920 image — *I let AI read my Instagram. It said:* above,
@@ -1936,6 +1937,54 @@ in [`marketing/PLAN.md`](marketing/PLAN.md).
 `npm test` holds this together: the canonical and share-image tags, valid JSON-LD, the images on
 disk, and every address in the sitemap served with a 200 and naming itself as canonical. The UI suite
 follows a guide's sample link into the open sample.
+
+### Guess your character, win the report
+
+The 29 characters are the app's strongest draw, and the front page showed one at a time. Above
+*Request your Instagram data first* there is now one slim row (about 150px with its note): the title
+**Guess which character you are and win a Psyche Report for free**, every character in its own scene
+cropped to a round tile with its name under it, spinning slowly past (about 28px a second,
+`mountCast` in `docs/app.js`), and a line under it saying what to do or what was picked.
+
+*The strip.*
+- **Drag or flick** it either way and it spins that way, faster, easing back to its own pace in about
+  a second. **Hold** it still and it stops until let go. A horizontal trackpad swipe pushes it too, and
+  the arrow keys. A vertical scroll that starts on it still scrolls the page (`touch-action: pan-y`).
+- It loops forever with only 29 drawings on the page: the track moves by a fractional transform
+  (scrollLeft rounds to whole pixels, and the slow pace moves it under one a frame), a tile that leaves
+  one end is moved to the other, and a scroll the browser makes to show a focused tile is folded into
+  the same offset.
+- It runs only while on screen and the tab is visible, and not at all for a reader who asked for less
+  motion, who can still drag it.
+- **Get my data** (and an invite's *Get my free Psyche Card*) lands on it, with the request steps
+  straight below. The tiles are buttons, not links: the front page gains no links to the new pages.
+
+*The guess.* Before a first card, a tap picks a tile (a ring and a tick; tap again to clear it), kept
+as `psycheai_guess`. It goes with that first free card's request as `guess`, beside the digest and
+never inside it, so the model cannot see it, and only the server judges it, against the card it has just
+written (`referral.judgeGuess`):
+- **One guess per Instagram account, ever**: the scrambled account code is marked the first time,
+  right or wrong, so a second card cannot try again. No account (an export without a username), or a
+  name outside the catalogue, is not judged. Paid re-runs are never judged.
+- **A right guess wins a grant** exactly like a friend-earned free report: one Psyche Report, once,
+  within 60 days. It is kept as a gift (`psycheai_gift` with `won: true`), the card's gift banner says
+  *You guessed right! You said Hulk, and your Psyche Card agrees. Your Psyche Report is free.* with
+  **Unlock it free**, and the unlock sheet offers it.
+- **An account is only what the page says it is**, so a made-up account is a fresh guess. With 29
+  characters a farmer needs about 29 free cards a win, and each win is also held to one a day from one
+  connection and `PSYCHEAI_GUESS_WINS_PER_DAY` (25) for the site; past either, a right guess is told so
+  and wins nothing. The terms say all of this (section 6), and the privacy page says where the guess
+  goes.
+- A wrong guess is told once, softly: *You guessed Po, and your card says Mulan. Nice try!*
+- **Nothing else competes with the result.** While the win banner shows (or any gifted report is
+  waiting), and while the wrong-guess note is up, the slim *Unlock your Psyche Report* bar stands
+  down (`prizeShowing`), as it already does for a friend's Sync invite.
+- Once a card exists the strip turns to friends: *Which one are your friends? Send them your link to
+  find out.*, and nothing is pickable.
+
+`npm test` holds the server's side (one guess per account, a grant only for a win, the connection
+limit, the guess read only after the card is written); the UI suite plays the whole thing on the
+structured server, whose mock card is Hulk.
 
 ### Three button styles, and one set of line icons
 

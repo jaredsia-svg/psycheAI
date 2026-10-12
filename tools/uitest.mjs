@@ -892,6 +892,16 @@ try {
       await plain.goto('http://localhost:' + PORT + '/#p=' + plainPayload, { waitUntil: 'load' });
       await plain.waitForSelector('#invite-banner:not([hidden])', { timeout: 20000 });
       check('nor an invite step to leave it', await plain.locator('#invite-inapp').isHidden());
+      // The invite's ✕: out of sight, and kept, to wait on My Syncs once a card is made.
+      await plain.click('#invite-banner-close');
+      const putAway = await plain.evaluate(() => ({
+        hidden: document.querySelector('#invite-banner').hidden,
+        kept: Boolean(localStorage.getItem('psycheai_invite')),
+      }));
+      await plain.reload({ waitUntil: 'load' });
+      await plain.waitForTimeout(500);
+      check('a friend\'s invite can be closed, stays closed, and is still kept to wait on My Syncs',
+        putAway.hidden && putAway.kept && await plain.locator('#invite-banner').isHidden(), JSON.stringify(putAway));
       await plain.evaluate(() => { try { localStorage.clear(); } catch (e) { /* none */ } });
     } finally {
       await plain.close();
@@ -3777,18 +3787,77 @@ try {
   // The reader pressing this on a first visit has no export yet — the file is
   // an email from Instagram that takes hours — so it lands on the how-to, not
   // on a dropzone they cannot use.
+  // Settled first: the phone widths swept above leave resize work (the
+  // deck's refit) that would otherwise cut the smooth scroll short.
+  await page.waitForTimeout(800);
   await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
   await page.click('#hero-start');
-  await page.waitForTimeout(600);
-  check('the primary action lands on the instructions for getting the export',
+  // Until the smooth scroll has arrived and settled: near the top, and the
+  // same position two reads apart.
+  for (let i = 0, last = null; i < 40; i++) {
+    await page.waitForTimeout(150);
+    const top = await page.evaluate(() => document.querySelector('#cast').getBoundingClientRect().top);
+    if (last !== null && Math.abs(top - last) < 0.5 && top < 300) break;
+    last = top;
+  }
+  check('the primary action lands on Meet the cast, with the instructions for getting the export straight below',
     await page.evaluate(() => {
+      const cast = document.querySelector('#cast').getBoundingClientRect();
       const help = document.querySelector('#view-welcome .help-card').getBoundingClientRect();
       const nav = document.querySelector('.nav').getBoundingClientRect();
-      // Its heading should be at the top of what is left of the viewport.
-      return help.top >= nav.bottom - 4 && help.top < window.innerHeight / 2;
+      // The strip at the top of what is left of the viewport, the steps under it.
+      return cast.top >= nav.bottom - 4 && cast.top < nav.bottom + 80 &&
+        help.top > cast.bottom - 1 && help.top - cast.bottom < 40 && help.top < window.innerHeight / 2;
     }),
     await page.evaluate(() =>
-      'help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top)));
+      'cast at ' + Math.round(document.querySelector('#cast').getBoundingClientRect().top) +
+      ', help-card at ' + Math.round(document.querySelector('.help-card').getBoundingClientRect().top) +
+      ', scrollY ' + Math.round(scrollY) + ', nav ' + Math.round(document.querySelector('.nav').getBoundingClientRect().bottom) +
+      ', dialogs ' + [...document.querySelectorAll('dialog[open]')].map(d => d.id).join() +
+      ', view ' + (document.querySelector('.view:not([hidden])') || {}).id));
+
+  // Meet the cast: every character a card can name, round tiles in their
+  // scenes, slim, spinning on its own; a hold stops it and a drag spins it.
+  {
+    const cast = await page.evaluate(() => ({
+      head: document.querySelector('.cast-head').textContent.trim(),
+      tiles: [...document.querySelectorAll('.cast-tile')].map(t => [t.querySelector('.cast-name').textContent,
+        Boolean(t.querySelector('.cast-art svg'))]),
+      height: document.querySelector('#cast').getBoundingClientRect().height,
+      expected: Object.keys(window.PsycheCopy.CHARACTER_SYNCS),
+    }));
+    check('the cast shows all 29 characters, each in its scene with its name, under the guessing game\'s title',
+      cast.head === 'Guess which character you are and win a Psyche Report for free' && cast.tiles.length === 29 &&
+        cast.tiles.every(([, art]) => art) && JSON.stringify(cast.tiles.map(([n]) => n).sort()) === JSON.stringify(cast.expected.slice().sort()),
+      JSON.stringify(cast).slice(0, 300));
+    check('and it is slim: under 165px tall, its note included', cast.height < 165, String(cast.height));
+    const at = () => page.evaluate(() => {
+      const track = document.querySelector('#cast-track');
+      return track.firstElementChild.textContent + ':' + track.style.transform;
+    });
+    const before = await at();
+    await page.waitForTimeout(700);
+    const after = await at();
+    check('it spins on its own', before !== after, before + ' → ' + after);
+    const box = await page.locator('#cast-strip').boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(150);
+    const held = await at();
+    await page.waitForTimeout(600);
+    check('holding it stops it', held === (await at()), held);
+    // A drag to the left moves it forwards, with the pointer.
+    const read = () => page.evaluate(() => {
+      const t = /translate3d\((-?[\d.]+)px/.exec(document.querySelector('#cast-track').style.transform);
+      return t ? Number(t[1]) : 0;
+    });
+    const x0 = await read();
+    await page.mouse.move(box.x + box.width / 2 - 40, box.y + box.height / 2, { steps: 4 });
+    const x1 = await read();
+    await page.mouse.up();
+    check('and dragging moves it with the pointer', x1 < x0 - 20 || x1 > x0 + 20, x0 + ' → ' + x1);
+  }
   await page.evaluate(() => window.scrollTo(0, 0));
 
   // A page-length glide is the motion "reduce motion" exists to suppress, and
@@ -12498,6 +12567,68 @@ try {
       check('structured unlock: and it draws, with the card\'s character and type in it',
         drawn.includes(held.character) && /How you work/.test(drawn) && upErrors.length === 0,
         upErrors.join(' | ') || drawn.slice(0, 200));
+
+      // Guess your character: a tap on the cast before the first card, judged
+      // on the server against the card it writes (the mock card is Hulk).
+      const gp = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+      const guessBodies = [];
+      gp.on('request', request => {
+        if (request.method() === 'POST' && request.url().endsWith('/api/analyse')) guessBodies.push(JSON.parse(request.postData() || '{}'));
+      });
+      try {
+        await gp.goto('http://localhost:' + structuredPort + '/', { waitUntil: 'load' });
+        await gp.evaluate(() => localStorage.clear());
+        await gp.reload({ waitUntil: 'load' });
+        await gp.waitForSelector('.cast-tile[data-name="Hulk"]', { timeout: 15000 });
+        // The strip never stops moving, so the tap is dispatched rather than aimed.
+        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Hulk"]').click());
+        const picked = await gp.evaluate(() => ({
+          note: document.querySelector('#cast-note').textContent,
+          pressed: document.querySelector('.cast-tile[data-name="Hulk"]').getAttribute('aria-pressed'),
+          others: document.querySelectorAll('.cast-tile.is-picked').length,
+        }));
+        check('tapping a character makes it the guess, marked, and says it is locked in when the card is made',
+          picked.pressed === 'true' && picked.others === 1 && /^Your guess: Hulk\. Make your free Psyche Card to find out\./.test(picked.note),
+          JSON.stringify(picked));
+        await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+        await chooseDepth(gp);
+        await answerReview(gp);
+        await gp.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
+        const sentGuess = guessBodies.find(body => body.guess);
+        check('the guess goes with the first free card, beside the digest and never inside it',
+          sentGuess && sentGuess.guess === 'Hulk' && !JSON.stringify(sentGuess.digest || {}).includes('Hulk'),
+          JSON.stringify(sentGuess && { guess: sentGuess.guess, keys: Object.keys(sentGuess) }));
+        await gp.waitForSelector('#view-profile .gift-banner:not([hidden])', { timeout: 15000 });
+        const won = await gp.evaluate(() => ({
+          gift: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
+          banner: document.querySelector('#view-profile .gift-banner').innerText,
+          promo: document.querySelector('#report-promo').hidden,
+        }));
+        check('a right guess is told on the card, with the free Psyche Report waiting as a gift to unlock',
+          won.gift && won.gift.won === true && /^[0-9a-f]{48}$/.test(won.gift.token) &&
+            /You guessed right!/.test(won.banner) && /You said Hulk, and your Psyche Card agrees/.test(won.banner) &&
+            /Unlock it free/.test(won.banner), JSON.stringify(won));
+        check('and the slim Psyche Report bar stands down while it shows, so the win is the one thing to read',
+          won.promo === true, JSON.stringify(won));
+        await gp.click('#view-profile .gift-banner-close');
+        const closed = await gp.evaluate(() => ({
+          banner: document.querySelector('#view-profile .gift-banner').hidden,
+          promo: document.querySelector('#report-promo').hidden,
+          gift: Boolean(JSON.parse(localStorage.getItem('psycheai_gift') || 'null')),
+        }));
+        check('its ✕ puts the win away, the slim bar comes back, and the free report stays waiting',
+          closed.banner && !closed.promo && closed.gift, JSON.stringify(closed));
+        await gp.click('.brand[data-nav="main"]');
+        await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+        const after = await gp.evaluate(() => ({
+          title: document.querySelector('#cast-title').textContent,
+          guessing: document.querySelector('#cast').classList.contains('is-guessing'),
+        }));
+        check('once the card is made the cast turns to friends, with nothing left to guess',
+          after.title === 'Which one are your friends?' && !after.guessing, JSON.stringify(after));
+      } finally {
+        await gp.close();
+      }
     } finally {
       await up.close();
       structuredServer.kill();
