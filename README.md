@@ -1943,12 +1943,16 @@ follows a guide's sample link into the open sample.
 The 29 characters are the app's strongest draw, and the front page showed one at a time. Above
 *Request your Instagram data first* there is now one slim row (about 150px with its note): the title
 **Guess which character you are and win a Psyche Report for free**, every character in its own scene
-cropped to a round tile with its name under it, spinning slowly past (about 28px a second,
+cropped to a round tile with its name under it, spinning slowly past (about 45px a second,
 `mountCast` in `docs/app.js`), and a line under it saying what to do or what was picked.
 
 *The strip.*
-- **Drag or flick** it either way and it spins that way, faster, easing back to its own pace in about
-  a second. **Hold** it still and it stops until let go. A horizontal trackpad swipe pushes it too, and
+- **Drag or flick** it either way and it spins that way, as hard as the flick: its speed is the
+  last tenth of a second of the stroke (not the last few pixels, which are a finger slowing to lift),
+  doubled, up to 9,000px a second, gliding back to its own pace over about two seconds. A strong flick
+  runs through the whole cast; a gentle one moves a dozen. It loops in both directions however fast it
+  goes. A finger held still before lifting is a drag, not a flick. **Hold** it still and it stops
+  until let go. A horizontal trackpad swipe pushes it too, and
   the arrow keys. A vertical scroll that starts on it still scrolls the page (`touch-action: pan-y`).
 - It loops forever with only 29 drawings on the page: the track moves by a fractional transform
   (scrollLeft rounds to whole pixels, and the slow pace moves it under one a frame), a tile that leaves

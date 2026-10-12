@@ -2291,13 +2291,19 @@
       refreshCast();
     });
     const reduced = () => Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const PACE = 28; // px a second, on its own
+    const PACE = 45; // px a second, on its own
+    // A flick: up to MAX_SPIN px a second, gliding back to PACE over about
+    // GLIDE seconds. A hard one runs through the whole cast more than once.
+    const MAX_SPIN = 9000;
+    const GLIDE = 1.8;
     let direction = 1;
     let velocity = PACE;
     let held = false;
     let dragging = false;
     let lastX = 0;
     let lastT = 0;
+    let travelled = 0;
+    let samples = [];
     let onScreen = true;
     let frame = 0;
     let last = 0;
@@ -2309,7 +2315,7 @@
     // Keeps the loop seamless: a tile wholly off one end goes to the other.
     const wrap = () => {
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
-      for (let guard = 0; guard < 4; guard++) {
+      for (let guard = 0; guard < 80; guard++) {
         const first = track.firstElementChild;
         const lastTile = track.lastElementChild;
         if (!first || !lastTile) break;
@@ -2330,7 +2336,7 @@
       last = now;
       if (!held && !dragging) {
         const target = reduced() ? 0 : PACE * direction;
-        velocity += (target - velocity) * (1 - Math.exp(-dt / 0.9));
+        velocity += (target - velocity) * (1 - Math.exp(-dt / GLIDE));
         if (Math.abs(velocity) > 0.5) {
           offset += velocity * dt;
           wrap();
@@ -2353,6 +2359,8 @@
       justDragged = false;
       lastX = event.clientX;
       lastT = performance.now();
+      travelled = 0;
+      samples = [[lastT, 0]];
       velocity = 0;
     });
     strip.addEventListener('pointermove', event => {
@@ -2367,7 +2375,12 @@
       offset -= dx;
       wrap();
       // Px a second, against the pointer: dragging left spins it forwards.
-      velocity = -dx / Math.max(0.008, (now - lastT) / 1000);
+      // Where the track has been over the last tenth of a second, so a flick
+      // is measured by its whole stroke rather than its last few pixels,
+      // which are often a finger slowing to lift.
+      travelled -= dx;
+      samples.push([now, travelled]);
+      while (samples.length > 2 && now - samples[0][0] > 100) samples.shift();
       lastX = event.clientX;
       lastT = now;
     });
@@ -2375,7 +2388,14 @@
       if (!held) return;
       held = false;
       if (dragging) {
-        velocity = Math.max(-1600, Math.min(1600, velocity));
+        const now = performance.now();
+        const first = samples[0];
+        const lastSample = samples[samples.length - 1];
+        // A finger held still before lifting is a drag, not a flick.
+        const fresh = first && lastSample && now - lastSample[0] < 80 && lastSample[0] > first[0];
+        velocity = fresh ? (lastSample[1] - first[1]) / ((lastSample[0] - first[0]) / 1000) : 0;
+        // A flick spins harder than the finger moved, so a strong one carries.
+        velocity = Math.max(-MAX_SPIN, Math.min(MAX_SPIN, velocity * 2));
         if (Math.abs(velocity) > 40) direction = Math.sign(velocity);
       } else velocity = 0;
       dragging = false;
@@ -2387,8 +2407,8 @@
     strip.addEventListener('wheel', event => {
       if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
       event.preventDefault();
-      velocity += event.deltaX * 12;
-      velocity = Math.max(-1600, Math.min(1600, velocity));
+      velocity += event.deltaX * 30;
+      velocity = Math.max(-MAX_SPIN, Math.min(MAX_SPIN, velocity));
       direction = Math.sign(velocity) || direction;
       run();
     }, { passive: false });
@@ -2396,7 +2416,7 @@
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
       event.preventDefault();
       direction = event.key === 'ArrowRight' ? 1 : -1;
-      velocity = 600 * direction;
+      velocity = 1500 * direction;
       run();
     });
     if ('IntersectionObserver' in window) {
