@@ -1967,9 +1967,11 @@
   })();
   // Shown on the welcome page (make your card first) and on the report
   // (unlock it now), by the same banner in each.
+  // A report won by guessing is told in its own popout (sayGuessOutcome), so
+  // it has no banner as well; a gifted one does.
   const giftBannerShowing = () => {
     const gift = giftWaiting();
-    return Boolean(gift) && store.read(KEYS.giftBannerClosed, null) !== gift.token;
+    return Boolean(gift) && !gift.won && store.read(KEYS.giftBannerClosed, null) !== gift.token;
   };
   function refreshGiftBanner() {
     const gift = giftBannerShowing() ? giftWaiting() : null;
@@ -2459,15 +2461,20 @@
     return guess && typeof guess.name === 'string' && Object.prototype.hasOwnProperty.call(Copy.CHARACTER_SYNCS, guess.name)
       ? guess : null;
   }
-  const canGuess = () => !state.profile;
+  // Only before a first free card: a device that has spent its free run
+  // (runCount survives Delete everything) makes paid runs, which never
+  // carry a guess, so it is not offered one to lose.
+  const canGuess = () => !state.profile && runCount() < freeAnalyses;
   function refreshCast() {
     const title = $('#cast-title');
     const track = $('#cast-track');
     if (!title || !track) return;
     const open = canGuess();
+    const spent = !open && !state.profile;
     const guess = open ? guessMade() : null;
-    title.textContent = open ? TEXT.castTitle : TEXT.castFriendsTitle;
-    $('#cast-note').textContent = open ? (guess ? TEXT.castPicked(guess.name) : TEXT.castPick) : TEXT.castFriendsNote;
+    title.textContent = open ? TEXT.castTitle : spent ? TEXT.castUsedTitle : TEXT.castFriendsTitle;
+    $('#cast-note').textContent = open ? (guess ? TEXT.castPicked(guess.name) : TEXT.castPick)
+      : spent ? TEXT.castUsedNote : TEXT.castFriendsNote;
     $('#cast').classList.toggle('is-guessing', open);
     for (const tile of track.querySelectorAll('.cast-tile')) {
       const picked = Boolean(guess && tile.dataset.name === guess.name);
@@ -2477,33 +2484,65 @@
     }
   }
   // The outcome the server sent with a first card: kept with the guess, a win
-  // kept as a gift the unlock's sheet offers, and said once on the card.
+  // kept as a gift the unlock's sheet offers, and told once, in a popout
+  // (sayGuessOutcome). A guess that comes back with no answer (a paid
+  // re-run, which never carries one) is told it did not count, rather than
+  // left to wonder.
   function takeGuessOutcome(outcome) {
-    if (!outcome || typeof outcome.guess !== 'string') return;
-    const token = /^[0-9a-f]{48}$/.test(String(outcome.token || '')) ? outcome.token : '';
-    store.write(KEYS.guess, { name: outcome.guess, at: Date.now(),
-      outcome: { character: String(outcome.character || ''), won: Boolean(outcome.won), limited: Boolean(outcome.limited), told: false } });
+    const guess = guessMade();
+    if (!guess || guess.outcome) return;
+    const answer = outcome && typeof outcome.guess === 'string' ? outcome : { guess: guess.name, counted: false, reason: 'firstCard' };
+    const token = /^[0-9a-f]{48}$/.test(String(answer.token || '')) ? answer.token : '';
+    const counted = answer.counted !== false;
+    store.write(KEYS.guess, { name: answer.guess, at: Date.now(), outcome: counted
+      ? { character: String(answer.character || ''), won: Boolean(answer.won), limited: Boolean(answer.limited), told: false }
+      : { counted: false, reason: String(answer.reason || 'firstCard'), told: false } });
     if (token && !giftWaiting()) store.write(KEYS.gift, { token, at: Date.now(), won: true });
+  }
+  // A tile of the cast image for one character, as the strip draws it.
+  function castFace(name, label) {
+    const names = Object.keys(Copy.CHARACTER_SYNCS);
+    const i = names.indexOf(name);
+    if (i < 0) return '';
+    const last = Math.max(1, names.length - 1);
+    return '<figure class="guess-face"><span class="cast-art" data-pos="' + (i / last * 100).toFixed(3) + '" data-count="' + names.length +
+      '" aria-hidden="true"></span><figcaption><span>' + esc(label) + '</span><b>' + esc(name) + '</b></figcaption></figure>';
   }
   function sayGuessOutcome() {
     const guess = store.read(KEYS.guess, null);
     const outcome = guess && guess.outcome;
-    if (!outcome || outcome.told || !state.profile) return;
+    const dialog = $('#guess-dialog');
+    if (!outcome || outcome.told || !state.profile || !dialog) return;
     store.write(KEYS.guess, Object.assign({}, guess, { outcome: Object.assign({}, outcome, { told: true }) }));
-    // A win with its grant is told by the gift banner, worded for it.
-    if (outcome.won && !outcome.limited) return;
-    flash('#profile-alert', outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character));
-    // News rather than a problem: the soft look, not the warning one, with a ✕.
-    const note = $('#profile-alert');
-    note.classList.add('alert-soft');
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.className = 'sync-invite-close';
-    close.setAttribute('aria-label', 'Close');
-    close.textContent = '✕';
-    close.addEventListener('click', () => { flash('#profile-alert', ''); refreshReportPromo(); });
-    note.appendChild(close);
-    refreshReportPromo();
+    // Booleans: classList.toggle reads an undefined second argument as "flip".
+    const won = Boolean(outcome.won && !outcome.limited);
+    const notCounted = outcome.counted === false;
+    const faces = [castFace(guess.name, TEXT.guessYours)];
+    if (!notCounted && !outcome.won && outcome.character) faces.push(castFace(outcome.character, TEXT.guessCard));
+    $('#guess-faces').innerHTML = faces.join('');
+    $('#guess-faces').querySelectorAll('.cast-art').forEach(art => {
+      art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
+      art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
+    });
+    $('#guess-title').textContent = notCounted ? TEXT.guessNotCountedTitle : outcome.won ? TEXT.guessWonTitle : TEXT.guessMissedTitle;
+    $('#guess-text').textContent = notCounted ? (TEXT.guessNotCounted[outcome.reason] || TEXT.guessNotCounted.firstCard)
+      : won ? TEXT.guessWonText(guess.name) : outcome.won ? TEXT.guessWonLimited(guess.name) : TEXT.guessMissed(guess.name, outcome.character);
+    dialog.classList.toggle('is-won', won);
+    const go = $('#guess-go');
+    go.textContent = won ? TEXT.guessWonUse : TEXT.guessOk;
+    $('#guess-later').textContent = TEXT.guessLater;
+    $('#guess-later-row').hidden = !won;
+    go.onclick = () => {
+      dialog.close();
+      // A win goes straight to the unlock, which offers the free report.
+      if (won) {
+        const target = document.querySelector('#profile-body .premium-unlock') || $('#rerun-with-data');
+        if (target) target.click();
+      }
+    };
+    $('#guess-later').onclick = () => dialog.close();
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
   }
 
   function mountInsights() {
@@ -3143,7 +3182,6 @@
   function flash(selector, message) {
     const node = $(selector);
     if (!node) return;
-    node.classList.remove('alert-soft');
     node.textContent = message || '';
     node.hidden = !message;
   }
@@ -7766,17 +7804,24 @@
     const link = event.target.closest('[data-report]');
     if (!link) return;
     event.preventDefault();
+    const row = link.closest('.match-row');
+    const mark = row && row.querySelector('.match-new');
+    if (openSyncEntry(Number(link.dataset.report)) && mark) mark.remove();
+  });
+  // One saved sync's results, its New mark spent.
+  function openSyncEntry(index) {
     const history = store.read(KEYS.history, []);
-    const entry = history[Number(link.dataset.report)];
-    if (entry && entry.fresh) {
+    const entry = history[index];
+    if (!entry) return false;
+    if (entry.fresh) {
       delete entry.fresh;
       store.write(KEYS.history, history);
       refreshSyncsDot();
-      link.closest('.match-row') && link.closest('.match-row').querySelector('.match-new') &&
-        link.closest('.match-row').querySelector('.match-new').remove();
     }
-    if (entry) { renderReport(entry.report, entry.withName, entry.when, entry.with); show('report'); }
-  });
+    renderReport(entry.report, entry.withName, entry.when, entry.with);
+    show('report');
+    return true;
+  }
   // Their Psyche Card, from My Syncs: drawn from the card their link carried,
   // in the same full-screen dialog their link's card opens in.
   document.addEventListener('click', event => {
@@ -10075,7 +10120,7 @@
       items = response.ok ? ((await response.json()).items || []) : [];
     } catch (error) { return; }
     const done = [];
-    let added = 0;
+    const arrived = [];
     for (const item of items.slice(0, 20)) {
       let outcome = 'drop';
       try {
@@ -10088,9 +10133,9 @@
           const sender = await verifiedSender(data);
           if (sender === 'retry') outcome = 'keep';
           else if (sender === 'ok') outcome = adoptReceivedSync(card, data);
+          if (outcome === 'saved') arrived.push({ key: syncCardKey(card), name: firstName(card.name) || card.name, character: data.face && data.face.c });
         }
       } catch (error) { /* cannot be unlocked: cleared below */ }
-      if (outcome === 'saved') added++;
       // Kept on the server when it could not be checked or saved just now
       // (offline, or storage full), to collect next time.
       if (outcome !== 'keep') done.push(item.id);
@@ -10102,10 +10147,49 @@
         });
       } catch (error) { /* collected again next time, and replaces itself */ }
     }
-    if (!added) return;
+    if (!arrived.length) return;
     refreshSyncInvite();
     refreshSyncsDot();
     if (!$('#view-scan').hidden) renderScan();
+    saySyncsArrived(arrived);
+  }
+  // Told once, in a popout, as they arrive: who synced with this reader's
+  // card, with a button to the results (or, for several, to My Syncs). They
+  // stay marked New there either way. Another popout open just then is let
+  // finish first.
+  function saySyncsArrived(arrived) {
+    const dialog = $('#synced-dialog');
+    if (!dialog || !arrived.length) return;
+    const busy = document.querySelector('dialog[open]');
+    if (busy && busy !== dialog) {
+      busy.addEventListener('close', () => setTimeout(() => saySyncsArrived(arrived), 0), { once: true });
+      return;
+    }
+    if (dialog.open) dialog.close();
+    const one = arrived.length === 1;
+    const names = arrived.map(a => a.name || '?');
+    const faces = arrived.slice(0, 3).map(a => castFace(a.character, a.name || '?') ||
+      '<figure class="guess-face">' + matchFaceHtml('platonic', a.name || '?', null) + '<figcaption><b>' + esc(a.name || '?') + '</b></figcaption></figure>');
+    $('#synced-faces').innerHTML = faces.join('');
+    $('#synced-faces').querySelectorAll('.cast-art').forEach(art => {
+      art.style.backgroundSize = (Number(art.dataset.count) * 100) + '% 100%, cover';
+      art.style.backgroundPosition = art.dataset.pos + '% 0, 0 0';
+    });
+    $('#synced-title').textContent = one ? TEXT.syncedTitle(names[0]) : TEXT.syncedTitleMany(arrived.length);
+    $('#synced-text').textContent = one ? TEXT.syncedText(names[0]) : TEXT.syncedTextMany(names);
+    $('#synced-go').textContent = one ? TEXT.syncedOpen : TEXT.syncedOpenMany;
+    $('#synced-later').textContent = TEXT.syncedLater;
+    $('#synced-go').onclick = () => {
+      dialog.close();
+      const history = store.read(KEYS.history, []) || [];
+      const index = one ? history.findIndex(entry => entry && entry.with === arrived[0].key && entry.received) : -1;
+      if (index < 0 || !openSyncEntry(index)) go('scan');
+    };
+    $('#synced-later').onclick = () => dialog.close();
+    dialog.addEventListener('close', refreshReportPromo, { once: true });
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    refreshReportPromo();
   }
   /**
    * Whether a received sync comes from the person whose card it carries: the
@@ -10623,19 +10707,19 @@
     const closed = store.read(KEYS.syncBarClosed, []) || [];
     return invites.some(invite => !closed.includes(invite.payload));
   }
-  // A guess's result on the card: the free report won (or any gifted one)
-  // waiting to be unlocked, or the note on a wrong guess. Either is the one
-  // thing to read there, so the slim bar stands down, as it does for a sync.
+  // A free report won by a guess (or any gifted one) waiting to be unlocked:
+  // the one thing to read there, so the slim bar stands down, as it does for
+  // a sync.
   function prizeShowing() {
-    const note = $('#profile-alert');
-    return giftBannerShowing() || Boolean(note && !note.hidden && note.classList.contains('alert-soft'));
+    return giftBannerShowing();
   }
   function refreshReportPromo() {
     const bar = $('#report-promo');
     if (!bar) return;
     const view = VIEWS.find(name => !$('#view-' + name).hidden);
     const offered = Boolean(state.profile) && !hasExplanations(state.profile) && !Object.keys(paidAnalysis()).length;
-    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing() || prizeShowing();
+    bar.hidden = !offered || !PROMO_VIEWS.includes(view) || reportPageOn() || syncInviteShowing() || prizeShowing() ||
+      Boolean($('#synced-dialog') && $('#synced-dialog').open);
     if (bar.hidden) return;
     $('#report-promo-go').innerHTML = '<span class="report-promo-text">' + esc(TEXT.reportPromo) + '</span> ' +
       '<strong class="report-promo-cta">' + esc(TEXT.reportPromoCta) + '</strong>';
@@ -10969,6 +11053,7 @@
     // server that does not report it leaves the default in place instead of
     // setting the allowance to undefined and making every run look free.
     if (Number.isFinite(state.server.freeAnalyses)) freeAnalyses = state.server.freeAnalyses;
+    refreshCast();
     renderServerStatus();
     // The welcome page's sample card was drawn before the server said which
     // layout it writes; redrawn once it has, so it is the card readers get.

@@ -630,6 +630,15 @@ async function handleAnalyse(request, response) {
   // question already being answered, so it costs neither the day's budget nor
   // the reader's payment a second time.
   const background = wantsBackground(body);
+  // The same free card asked for again within the hours a result is held
+  // (lib/results.js): the guess with it is judged against that card here,
+  // since it is never written again and so never judged below.
+  const remembered = kind === 'card' && !paying && body.guess ? results.get(kind, key) : null;
+  if (remembered) {
+    const guess = await judgeFor(body, remembered, request);
+    sendJson(response, 200, guess ? Object.assign({}, remembered, { guess }) : remembered);
+    return;
+  }
   const answered = servedFromMemory(response, kind, key, background);
   if (answered) {
     await answered;
@@ -768,11 +777,7 @@ async function handleAnalyse(request, response) {
       // A guess at the character, made before this first free card: judged
       // against the card just written (lib/referral.js, judgeGuess). It came
       // beside the digest, never inside it, so the model never saw it.
-      const guess = made === 'card' && body.guess ? await referral.judgeGuess({
-        guess: body.guess, character: result.data && result.data.essence && result.data.essence.character,
-        account, client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
-      }).catch(() => null) : null;
-      if (guess) stats.count(guess.won ? (guess.token ? 'guess_won' : 'guess_won_limited') : 'guess_missed');
+      const guess = made === 'card' && body.guess ? await judgeFor(body, result, request) : null;
 
       // Private names out before the report is stored or served — see
       // lib/privacy.js. The prompts forbid them; this catches the run that
@@ -781,6 +786,16 @@ async function handleAnalyse(request, response) {
       return guess ? Object.assign({}, out, { guess }) : out;
     },
   });
+}
+
+/** A guess judged against the card it came with (lib/referral.js, judgeGuess), and counted. */
+async function judgeFor(body, result, request) {
+  const guess = await referral.judgeGuess({
+    guess: body.guess, character: result && result.data && result.data.essence && result.data.essence.character,
+    account: referral.cleanAccount(body.account), client: rateLimit.clientKey(request), names: prompts.CHARACTER_NAMES,
+  }).catch(() => null);
+  if (guess) stats.count(guess.counted === false ? 'guess_not_counted' : guess.won ? (guess.token ? 'guess_won' : 'guess_won_limited') : 'guess_missed');
+  return guess;
 }
 
 /**

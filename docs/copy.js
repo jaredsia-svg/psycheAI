@@ -216,6 +216,10 @@
     castLabel: 'All 29 characters a Psyche Card can name. Drag to spin, hold to pause, tap one to guess.',
     castPick: 'Tap the character you think you are.',
     castPicked: (name) => 'Your guess: ' + name + '. Make your free Psyche Card to find out. One guess, locked in when your card is made.',
+    // A device whose free card is spent (its next run is paid, which never
+    // counts a guess), with no card on it now: nothing to win, so said.
+    castUsedTitle: 'Which one are you?',
+    castUsedNote: 'The guessing game is for a first free Psyche Card, and this device has made one already.',
     // Once a card exists there is nothing left to guess.
     castFriendsTitle: 'Which one are your friends?',
     castFriendsNote: 'Send them your link to find out.',
@@ -225,6 +229,17 @@
     guessWonUse: 'Unlock it free',
     guessWonLimited: (name) => 'You guessed right: ' + name + '! Today\u2019s free Psyche Reports have all been given out, so this one could not be added.',
     guessMissed: (guess, name) => 'You guessed ' + guess + ', and your card says ' + name + '. Nice try!',
+    guessMissedTitle: 'Not this time',
+    guessNotCountedTitle: 'Your guess wasn\u2019t counted',
+    guessNotCounted: {
+      guessed: 'Each Instagram account gets one guess, and this one has already had it.',
+      account: 'Your Instagram data has no username in it, so the guess could not be tied to an account.',
+      firstCard: 'Guesses count only on an Instagram account\u2019s first free Psyche Card, and this account has had one before.',
+    },
+    guessYours: 'Your guess',
+    guessCard: 'Your card',
+    guessLater: 'Later',
+    guessOk: 'OK',
     // In an app's own browser, above that: the first step, before any of the
     // request steps.
     inviteInAppTitle: (ios) => 'Step 1: open this page in ' + (ios ? 'Safari' : 'Chrome'),
@@ -430,6 +445,15 @@
     // A sync someone ran with this reader's link, sent back to them.
     matchReceivedMeta: 'Synced with you',
     matchNew: 'New',
+    // The popout when syncs someone ran with this reader's link arrive.
+    syncedTitle: (name) => name + ' synced with you',
+    syncedTitleMany: (count) => count + ' connections synced with you',
+    syncedText: (name) => name + ' ran a Psyche Sync with your card and shared the results with you. They are in your Sync list.',
+    syncedTextMany: (names) => names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] +
+      ' ran a Psyche Sync with your card and shared the results with you. They are in your Sync list.',
+    syncedOpen: 'See the results',
+    syncedOpenMany: 'See them in My Syncs',
+    syncedLater: 'Later',
     // A sync this reader can still share with the person whose link it was.
     matchShareLabel: 'Share',
     matchShareAria: (name) => 'Share the results with ' + (name || 'them'),

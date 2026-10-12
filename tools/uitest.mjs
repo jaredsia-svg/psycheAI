@@ -12653,26 +12653,27 @@ try {
         check('the guess goes with the first free card, beside the digest and never inside it',
           sentGuess && sentGuess.guess === 'Hulk' && !JSON.stringify(sentGuess.digest || {}).includes('Hulk'),
           JSON.stringify(sentGuess && { guess: sentGuess.guess, keys: Object.keys(sentGuess) }));
-        await gp.waitForSelector('#view-profile .gift-banner:not([hidden])', { timeout: 15000 });
+        // Told in a popout: the guess and that it is right, with the way to the free report.
+        await gp.waitForSelector('#guess-dialog[open]', { timeout: 15000 });
+        const told = await gp.evaluate(() => ({
+          text: document.querySelector('#guess-dialog').innerText,
+          faces: document.querySelectorAll('#guess-faces .guess-face').length,
+          later: getComputedStyle(document.querySelector('#guess-later-row')).display !== 'none',
+        }));
+        check('a right guess is announced in a popout, with the guessed character and Unlock it free',
+          /You guessed right!/.test(told.text) && /You said Hulk/.test(told.text) && /Unlock it free/.test(told.text) &&
+            told.faces === 1 && told.later, JSON.stringify(told));
+        await gp.click('#guess-later');
+        await gp.waitForTimeout(300);
         const won = await gp.evaluate(() => ({
           gift: JSON.parse(localStorage.getItem('psycheai_gift') || 'null'),
-          banner: document.querySelector('#view-profile .gift-banner').innerText,
-          promo: document.querySelector('#report-promo').hidden,
-        }));
-        check('a right guess is told on the card, with the free Psyche Report waiting as a gift to unlock',
-          won.gift && won.gift.won === true && /^[0-9a-f]{48}$/.test(won.gift.token) &&
-            /You guessed right!/.test(won.banner) && /You said Hulk, and your Psyche Card agrees/.test(won.banner) &&
-            /Unlock it free/.test(won.banner), JSON.stringify(won));
-        check('and the slim Psyche Report bar stands down while it shows, so the win is the one thing to read',
-          won.promo === true, JSON.stringify(won));
-        await gp.click('#view-profile .gift-banner-close');
-        const closed = await gp.evaluate(() => ({
           banner: document.querySelector('#view-profile .gift-banner').hidden,
           promo: document.querySelector('#report-promo').hidden,
-          gift: Boolean(JSON.parse(localStorage.getItem('psycheai_gift') || 'null')),
         }));
-        check('its ✕ puts the win away, the slim bar comes back, and the free report stays waiting',
-          closed.banner && !closed.promo && closed.gift, JSON.stringify(closed));
+        check('the win is kept as a free report waiting to be unlocked, with no banner repeating the popout',
+          won.gift && won.gift.won === true && /^[0-9a-f]{48}$/.test(won.gift.token) && won.banner, JSON.stringify(won));
+        check('and the slim Psyche Report bar is the way back to it once the popout is closed',
+          won.promo === false, JSON.stringify(won));
         await gp.click('.brand[data-nav="main"]');
         await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
         const after = await gp.evaluate(() => ({
@@ -12681,6 +12682,40 @@ try {
         }));
         check('once the card is made the cast turns to friends, with nothing left to guess',
           after.title === 'Which one are your friends?' && !after.guessing, JSON.stringify(after));
+        // A device that has spent its free card, with no card on it now (Delete
+        // everything): its next run is paid and never counts a guess, so none is offered.
+        await gp.evaluate(() => { localStorage.clear(); localStorage.setItem('psycheai_runs', '1'); });
+        await gp.reload({ waitUntil: 'load' });
+        await gp.waitForSelector('#view-welcome:not([hidden])', { timeout: 15000 });
+        await gp.waitForTimeout(500);
+        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Po"]').click());
+        const spent = await gp.evaluate(() => ({
+          title: document.querySelector('#cast-title').textContent,
+          note: document.querySelector('#cast-note').textContent,
+          guessing: document.querySelector('#cast').classList.contains('is-guessing'),
+          picked: localStorage.getItem('psycheai_guess'),
+        }));
+        check('a device that has spent its free card is not offered a guess it cannot win, and is told why',
+          spent.title === 'Which one are you?' && /for a first free Psyche Card/.test(spent.note) && !spent.guessing && !spent.picked,
+          JSON.stringify(spent));
+        // The same export again on a fresh device: the card is the one the server
+        // still holds, and this account has had its guess. Said, not left silent.
+        await gp.evaluate(() => localStorage.clear());
+        await gp.reload({ waitUntil: 'load' });
+        await gp.waitForSelector('.cast-tile[data-name="Hulk"]', { timeout: 15000 });
+        await gp.evaluate(() => document.querySelector('.cast-tile[data-name="Hulk"]').click());
+        await gp.setInputFiles('#file-input', { name: 'instagram-export.zip', mimeType: 'application/zip', buffer: buildExportZip() });
+        await chooseDepth(gp);
+        await answerReview(gp);
+        await gp.waitForSelector('#guess-dialog[open]', { timeout: 60000 });
+        const again = await gp.evaluate(() => ({
+          text: document.querySelector('#guess-dialog').innerText,
+          won: document.querySelector('#guess-dialog').classList.contains('is-won'),
+          later: getComputedStyle(document.querySelector('#guess-later-row')).display !== 'none',
+        }));
+        check('a guess that cannot count is told so in the popout, with why, and no prize',
+          /Your guess wasn’t counted/.test(again.text) && /already had it/.test(again.text) && !again.won && !again.later,
+          JSON.stringify(again));
       } finally {
         await gp.close();
       }
@@ -12933,6 +12968,31 @@ try {
                 body: JSON.stringify({ secret }) }).then(r => r.json());
             })).items.length === 0);
           check('a dot on Syncs says there is something new', await rp.evaluate(() => document.querySelector('#nav-scan').classList.contains('has-new')));
+          await rp.waitForSelector('#synced-dialog[open]', { timeout: 10000 }).catch(() => {});
+          const synced = await rp.evaluate(() => ({
+            open: document.querySelector('#synced-dialog').open,
+            title: document.querySelector('#synced-title').textContent,
+            text: document.querySelector('#synced-text').textContent,
+            go: document.querySelector('#synced-go').textContent,
+            later: document.querySelector('#synced-later').textContent,
+            faces: document.querySelectorAll('#synced-faces .guess-face').length,
+            face: (document.querySelector('#synced-faces figcaption') || {}).textContent,
+          }));
+          check('a popout says Pat synced with you, with Pat\'s character, See the results and Later',
+            synced.open && synced.title === 'Pat synced with you' &&
+              synced.text === 'Pat ran a Psyche Sync with your card and shared the results with you. They are in your Sync list.' &&
+              synced.go === 'See the results' && synced.later === 'Later' && synced.faces === 1 &&
+              synced.face === 'Pat' + (sample.essence.character || sample.essence.noun), JSON.stringify(synced));
+          check('the slim report bar stands down while it is open', await rp.evaluate(() => document.querySelector('#report-promo').hidden));
+          await rp.click('#synced-later');
+          check('Later closes it, and the sync stays New with the dot',
+            await rp.evaluate(() => !document.querySelector('#synced-dialog').open &&
+              document.querySelector('#nav-scan').classList.contains('has-new') &&
+              (JSON.parse(localStorage.getItem('psycheai_history')) || []).some(e => e && e.fresh)));
+          await rp.reload({ waitUntil: 'load' });
+          await rp.waitForTimeout(1500);
+          check('and it is told once: not again on the next start',
+            await rp.evaluate(() => !document.querySelector('#synced-dialog').open));
           await rp.click('#nav-scan');
           await rp.waitForSelector('#scan-history .match-row', { timeout: 10000 });
           const row = await rp.evaluate(() => {

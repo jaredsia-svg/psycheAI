@@ -7924,15 +7924,17 @@ check('the schema requires evidence on where they align and differ',
   {
     const names = ['Mulan', 'Hulk', 'Po'];
     const who = n => sha('psycheai:guesser' + n);
-    check('no guess, no account or a name outside the catalogue is not judged at all',
+    const noAccount = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: '', names });
+    check('no guess or a name outside the catalogue is not judged at all, and no account is told so',
       (await referral.judgeGuess({ guess: '', character: 'Hulk', account: who(1), names })) === null &&
-        (await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: '', names })) === null &&
-        (await referral.judgeGuess({ guess: 'Mario', character: 'Mario', account: who(1), names })) === null);
+        (await referral.judgeGuess({ guess: 'Mario', character: 'Mario', account: who(1), names })) === null &&
+        noAccount && noAccount.counted === false && noAccount.reason === 'account', JSON.stringify(noAccount));
     const miss = await referral.judgeGuess({ guess: 'Po', character: 'Hulk', account: who(1), names, client: '10.1.0.1' });
     check('a wrong guess is told so, with no grant', miss && miss.won === false && miss.token === null &&
       miss.guess === 'Po' && miss.character === 'Hulk', JSON.stringify(miss));
     const second = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(1), names, client: '10.1.0.1' });
-    check('and the same account cannot guess again, right or not', second === null, JSON.stringify(second));
+    check('and the same account cannot guess again, right or not, and is told why',
+      second && second.counted === false && second.reason === 'guessed' && !second.token, JSON.stringify(second));
     const win = await referral.judgeGuess({ guess: 'Hulk', character: 'Hulk', account: who(2), names, client: '10.1.0.2' });
     check('a right guess wins a grant that unlocks one Psyche Report',
       win && win.won && /^[0-9a-f]{48}$/.test(win.token || '') && (await referral.grantRefusal(win.token, { mine: 1 })) === null,
@@ -7946,8 +7948,9 @@ check('the schema requires evidence on where they align and differ',
     // The model never sees the guess: the server reads body.guess only to
     // judge it, after the card is written.
     const serverSource = readFileSync(join(root, 'server.js'), 'utf8');
-    check('the server reads the guess only to judge it, after the card is written',
-      (serverSource.match(/body\.guess/g) || []).length === 2 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource));
+    check('the server reads the guess only to judge it, against a card already written or remembered',
+      (serverSource.match(/body\.guess/g) || []).length === 3 && /referral\.judgeGuess\(\{\s*guess: body\.guess/.test(serverSource) &&
+        /const remembered = kind === 'card' && !paying && body\.guess \? results\.get\(kind, key\) : null;/.test(serverSource));
   }
 }
 

@@ -952,6 +952,16 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    lands flush at viewport top, which is underneath the sticky nav — so the
    reader arrives at the instructions with the heading hidden. */
 .help-card { scroll-margin-top: 4.5rem; }
+/* How a guess went: the guessed character's tile, and the card's beside it
+   when they differ (app.js, sayGuessOutcome). */
+.guess-dialog { text-align: center; }
+#guess-later-row[hidden] { display: none; }
+.guess-faces { display: flex; justify-content: center; gap: 1.4rem; margin: .2rem 0 .8rem; }
+.guess-face { margin: 0; display: grid; justify-items: center; gap: .35rem; }
+.guess-face .cast-art { width: 76px; height: 76px; }
+.guess-face figcaption { display: grid; gap: .05rem; font-size: .8rem; color: var(--ink-soft); }
+.guess-face figcaption b { font-size: .92rem; color: var(--ink); }
+.guess-dialog.is-won .guess-face .cast-art { box-shadow: 0 0 0 3px var(--bg), 0 0 0 6px var(--accent); }
 /* The cast: one slim row of round tiles above the request steps, scrolled
    sideways (app.js, mountCast), with no scrollbar and an arrow either side. */
 .cast { margin: 1.2rem 0 .9rem; scroll-margin-top: 4.5rem; }
@@ -972,7 +982,6 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   content: '✓'; position: absolute; top: -2px; right: 4px; width: 20px; height: 20px; border-radius: 999px;
   display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--accent);
 }
-.alert.alert-soft { background: var(--accent-soft); color: var(--ink); border-color: var(--line); }
 .cast-view { position: relative; }
 .cast-strip {
   overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
@@ -4363,8 +4372,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .gift-banner { position: relative; padding-right: 2.6rem; }
 .invite-banner-close { z-index: 2; }
 @media (max-width: 640px) { .gift-banner .gift-banner-go { margin-right: -1.5rem; } }
-/* The wrong-guess note's ✕. */
-.alert.alert-soft { position: relative; padding-right: 2.4rem; }
 @media (max-width: 640px) { .gift-banner { flex-wrap: wrap; } .gift-banner .btn { width: 100%; } }
 .sync-invite-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
 .sync-invite-actions .btn { min-width: 7rem; }

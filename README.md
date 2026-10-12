@@ -2010,10 +2010,25 @@ written (`referral.judgeGuess`):
   connection and `PSYCHEAI_GUESS_WINS_PER_DAY` (25) for the site; past either, a right guess is told so
   and wins nothing. The terms say all of this (section 6), and the privacy page says where the guess
   goes.
-- A wrong guess is told once, softly: *You guessed Po, and your card says Mulan. Nice try!*
-- **Nothing else competes with the result.** While the win banner shows (or any gifted report is
-  waiting), and while the wrong-guess note is up, the slim *Unlock your Psyche Report* bar stands
-  down (`prizeShowing`), as it already does for a friend's Sync invite.
+- **Every guess hears back, in a popout** (`#guess-dialog`, `sayGuessOutcome`) once the card is on
+  screen: the guessed character's tile (and the card's, when they differ) with *You guessed right!*
+  and **Unlock it free**, or *Not this time: You guessed Po, and your card says Mulan. Nice try!*, or
+  *Your guess wasn't counted* and why. The first version said a win with the card's banner and a miss
+  with a note in the alert line, and said nothing at all when a guess was not judged, which is how a
+  reader who chose Iron Man saw no result. Guesses that are not judged, and now say so:
+  - **a paid re-run**, which never carries a guess (the account had its free card, the US$2 sheet
+    came up, a promo code paid it). Also no longer offered at all on a device whose free run is spent
+    (`runCount` survives *Delete everything*): the strip reads *Which one are you?* with *The guessing
+    game is for a first free Psyche Card, and this device has made one already.*;
+  - **an account that has guessed before** (`reason: 'guessed'`) or an export with no username
+    (`'account'`), each now answered by the server rather than dropped;
+  - **the same card asked for again within the hours a result is held** (`lib/results.js`): it is
+    never written again, so the server judges the guess against the remembered card before answering.
+  A won report has no banner on the card as well: the popout says it, and the report waits on the
+  unlock's sheet, which the slim *Unlock your Psyche Report* bar leads back to once the popout is
+  closed. A report gifted by someone else keeps its banner, since nothing else announces it.
+- **Nothing else competes with a gift.** While a gifted report's banner shows, the slim *Unlock your
+  Psyche Report* bar stands down (`prizeShowing`), as it already does for a friend's Sync invite.
 - Once a card exists the strip turns to friends: *Which one are your friends? Send them your link to
   find out.*, and nothing is pickable.
 
@@ -6422,6 +6437,15 @@ if the person who synced chooses (`lib/syncbox.js`, `sendSyncBack` and `collectS
   addressed to them as "you". The row reads **New · Synced with you** with the sender's character in
   the circle, and a dot on **Syncs** shows until they open its **Results**. A sync from someone whose
   link was also waiting on that device answers that invite too.
+- **Told in a popout, once.** The row and the dot were easy to miss for a reader who was not on
+  **Syncs**, so syncs collected in one go are also announced in a popout (`saySyncsArrived`):
+  *Pat synced with you*, with the sender's character tile, **See the results** (straight to that
+  result) and **Later**. Several at once read *3 connections synced with you*, naming them, and the
+  button goes to My Syncs. Either way the rows stay marked New until opened. It shows only when a
+  sync arrives, so it never comes back on a later start. If another popout is open (the guess
+  result, say), it waits for that one to close. The slim report bar stands down while it is open.
+  There is still no push notification or email: PsycheAI holds no way to reach a reader, so a
+  sync is collected only when the owner next opens the site.
 - **Asked, each time.** Tapping **Sync?** on a waiting row, or syncing a pasted personal link, first
   opens a popout: *Share the results with Jean?* It explains that Jean will see the results and the
   reader's Psyche Card, locked so PsycheAI cannot read them, and that there is a Share button for
