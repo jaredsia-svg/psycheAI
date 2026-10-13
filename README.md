@@ -2410,7 +2410,7 @@ also names the other way in: *or get 2 connections to make their Psyche Card fro
 
 **About the founder, at the FAQ's foot.** After "How do I contact PsycheAI?", in small print under a
 thin rule: *Jared, Founder · PsycheAI, founded 2026*, one line on the background (private equity and
-venture capital; privacy-first tools for psychology-based personality analysis and life coaching
+venture capital; AI tools focused on psychology-based personality analysis and life coaching
 across relationships and career) and a LinkedIn link. There for the reader who looks rather than as a
 headline, and not an `h3`, so it is not one of the FAQ's questions on `/faq` or in its FAQPage data.
 
