@@ -1659,7 +1659,14 @@ if (require.main === module) {
     staticFiles.warm(fs.readdirSync(ROOT).map(name => path.join(ROOT, name)),
       file => TYPES[path.extname(file).toLowerCase()] || '');
     if (status.mock) console.log('  Mock mode — serving canned analyses, calling no API.');
-    else if (status.ready) console.log('  Provider: ' + status.provider + ' · model: ' + status.model);
+    else if (status.ready) {
+      // Gemini says which way it is reached, so a switch to Vertex AI can be
+      // confirmed in the log (lib/gemini.js, backend selection).
+      const via = provider.active && typeof provider.active.backendName === 'function' ? provider.active.backendName() : '';
+      console.log('  Provider: ' + status.provider + ' · model: ' + status.model +
+        (via === 'vertex' ? ' · via Vertex AI' + (process.env.GEMINI_API_KEY ? ', GEMINI_API_KEY as fallback' : '')
+          : via === 'gemini-api' ? ' · via the Gemini API key' : ''));
+    }
     else console.log('  Not configured. ' + status.hint);
     // The build, for the operator only: /api/status no longer serves it.
     console.log('  Build: ' + [BUILD.version && 'v' + BUILD.version, BUILD.shortCommit, BUILD.branch, BUILD.platform]

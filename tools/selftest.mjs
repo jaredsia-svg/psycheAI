@@ -280,6 +280,124 @@ check('grok can list models for discovery', typeof grok.listModels === 'function
   T.reset();
 }
 
+// ---------- Vertex AI, with the API key as the fallback ----------
+//
+// The site must keep making cards whatever state the Vertex settings are in:
+// half set, wrong, refused by Google, or switched off. These drive the real
+// selection and retry code against stub clients and a throwaway key.
+{
+  const T = gemini.__testing;
+  const { generateKeyPairSync } = await import('node:crypto');
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const fakeKey = JSON.stringify({
+    type: 'service_account', project_id: 'psycheai-test', client_email: 'tester@psycheai-test.iam.gserviceaccount.com',
+    private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+  });
+  const saved = {};
+  const VARS = ['GEMINI_API_KEY', 'GOOGLE_GENAI_USE_VERTEXAI', 'GOOGLE_APPLICATION_CREDENTIALS_JSON', 'GOOGLE_APPLICATION_CREDENTIALS',
+    'GOOGLE_CLOUD_PROJECT', 'GOOGLE_CLOUD_LOCATION', 'GEMINI_VERTEX_MODEL', 'PSYCHEAI_GEMINI_VERTEX'];
+  for (const name of VARS) saved[name] = process.env[name];
+  const setEnv = values => {
+    for (const name of VARS) delete process.env[name];
+    Object.assign(process.env, values);
+    T.reset();
+  };
+  const quiet = async fn => {
+    const original = console.error;
+    console.error = () => {};
+    try { return await fn(); } finally { console.error = original; }
+  };
+  const answering = (calls, finish = 'STOP') => ({
+    models: {
+      generateContentStream: async request => {
+        calls.push(request);
+        return (async function* () {
+          yield { text: '{"ok":true}', candidates: [{ finishReason: finish }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } };
+        })();
+      },
+    },
+  });
+  const refusing = (calls, message) => ({
+    models: { generateContentStream: async request => { calls.push(request); throw new Error(message); } },
+  });
+  const ask = () => T.complete({ system: 'short system', schema: { type: 'object' }, blocks: [{ type: 'text', text: 'evidence' }] });
+
+  // Asked for, but not complete: the API key carries on, as before.
+  await quiet(async () => {
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true' });
+    check('Vertex asked for with no service account: the API key carries on', T.backend() === 'key' && !T.vertexConfig());
+    check('and its client is an API-key client, though the SDK reads GOOGLE_GENAI_USE_VERTEXAI itself',
+      T.getClient('key').vertexai === false);
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: '{not json' });
+    check('an unreadable key file falls back to the API key too', T.backend() === 'key');
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS: '/nonexistent/key.json' });
+    check('and so does a key path that is not there', T.backend() === 'key');
+  });
+
+  // Complete: Vertex first, global by default, the project from the key file.
+  setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey });
+  const vertexClient = T.getClient('vertex');
+  check('with a service account, Vertex goes first: global, with the project named in the key file',
+    T.backend() === 'vertex' && vertexClient.vertexai === true && vertexClient.project === 'psycheai-test' &&
+      vertexClient.location === 'global', JSON.stringify({ b: T.backend(), p: vertexClient.project, l: vertexClient.location }));
+  check('and the provider reports itself ready on a service account alone',
+    (await selectionFor({ GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey })).ready === true);
+
+  // Vertex refuses for a reason of its own: the call goes again with the key.
+  {
+    const vertexCalls = [], keyCalls = [];
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey });
+    T.setClient(refusing(vertexCalls, '[403 Forbidden] Vertex AI API has not been used in project psycheai-test before or it is disabled.'), 'vertex');
+    T.setClient(answering(keyCalls), 'key');
+    const result = await quiet(() => ask().catch(error => ({ error })));
+    check('Vertex refusing (API not enabled) sends the same call again with the API key, and the card is written',
+      result && !result.error && vertexCalls.length === 1 && keyCalls.length === 1,
+      JSON.stringify({ error: result && result.error && result.error.message, v: vertexCalls.length, k: keyCalls.length }));
+    check('and the key keeps the next calls, rather than Vertex being asked again each time', T.backend() === 'key');
+    await ask();
+    check('so a second call goes straight to the key', vertexCalls.length === 1 && keyCalls.length === 2);
+  }
+  for (const [label, message] of [
+    ['bad credentials', 'Could not refresh access token: invalid_grant'],
+    ['no such model', '[404 Not Found] Publisher Model `gemini-3.8-flash` was not found'],
+    ['quota', '[429 Too Many Requests] RESOURCE_EXHAUSTED: quota exceeded'],
+    ['billing', 'BILLING_DISABLED: billing is disabled for this project'],
+  ]) {
+    const vertexCalls = [], keyCalls = [];
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey });
+    T.setClient(refusing(vertexCalls, message), 'vertex');
+    T.setClient(answering(keyCalls), 'key');
+    const result = await quiet(() => ask().catch(error => ({ error })));
+    check('Vertex refusing over ' + label + ' falls back to the API key', result && !result.error && keyCalls.length === 1,
+      result && result.error ? result.error.message : '');
+  }
+  // A refusal about the content is not Vertex's: the key would refuse it too.
+  {
+    const vertexCalls = [], keyCalls = [];
+    setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey });
+    T.setClient(answering(vertexCalls, 'SAFETY'), 'vertex');
+    T.setClient(answering(keyCalls), 'key');
+    const result = await quiet(() => ask().catch(error => ({ error })));
+    check('a safety stop on Vertex is not sent again with the key', result && result.error && keyCalls.length === 0 && T.backend() === 'vertex');
+  }
+  // Vertex only: its error is said, nothing else to fall back to.
+  {
+    const vertexCalls = [];
+    setEnv({ GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey });
+    T.setClient(refusing(vertexCalls, '[403 Forbidden] PERMISSION_DENIED'), 'vertex');
+    const result = await quiet(() => ask().catch(error => ({ error })));
+    check('with no API key, a Vertex refusal is reported, naming the service account',
+      result && result.error && /service account/i.test(result.error.message), result && result.error && result.error.message);
+  }
+  // A Vertex-only model id, when Vertex names the model differently.
+  setEnv({ GEMINI_API_KEY: 'k', GOOGLE_GENAI_USE_VERTEXAI: 'true', GOOGLE_APPLICATION_CREDENTIALS_JSON: fakeKey, GEMINI_VERTEX_MODEL: 'gemini-3.8-flash-001' });
+  check('GEMINI_VERTEX_MODEL renames the model on Vertex only',
+    T.modelFor('vertex', gemini.MODEL) === 'gemini-3.8-flash-001' && T.modelFor('key', gemini.MODEL) === gemini.MODEL);
+
+  for (const name of VARS) { if (saved[name] === undefined) delete process.env[name]; else process.env[name] = saved[name]; }
+  T.reset();
+}
+
 // Provider selection is env-driven, so exercise the branches rather than
 // documenting them and hoping.
 async function selectionFor(env) {

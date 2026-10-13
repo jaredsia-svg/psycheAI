@@ -1560,6 +1560,10 @@ the first.
 | Variable | Effect |
 |---|---|
 | `GEMINI_API_KEY` | Uses Gemini for the free report. Takes priority if more than one key is set. |
+| `GOOGLE_GENAI_USE_VERTEXAI` | `true` reaches Gemini through Google Cloud's Vertex AI with a service account instead of the API key; see [Gemini through Vertex AI](#gemini-through-vertex-ai). Ignored, with one log line, until the service account below is complete. |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to the service-account key file (on Render, a secret file: `/etc/secrets/gcp-key.json`). Or `GOOGLE_APPLICATION_CREDENTIALS_JSON` with the file's contents. |
+| `GOOGLE_CLOUD_PROJECT` / `GOOGLE_CLOUD_LOCATION` | The Google Cloud project (default: the key file's `project_id`) and region (default `global`). |
+| `GEMINI_VERTEX_MODEL` | Only if Vertex names the model differently from `GEMINI_MODEL`. |
 | `ANTHROPIC_API_KEY` | Uses Claude for the free report if `GEMINI_API_KEY` is not set. |
 | `XAI_API_KEY` | Uses Grok for the free report, if neither of the above is set. Fully supported, just not the default. |
 | `PSYCHEAI_PROVIDER` | Forces `gemini`, `anthropic` or `grok` for the free report when you have more than one key. |
@@ -1593,6 +1597,35 @@ npm run models            # needs GEMINI_API_KEY, lists Gemini's
 
 `gemini-3.8-flash` is the default, at the same price as 3.7. For a deeper read try `GEMINI_MODEL=gemini-3.1-pro-preview`, which is stronger at reasoning
 but preview-only.
+
+### Gemini through Vertex AI
+
+The same Gemini models through Google Cloud, on a service account, to spend Google Cloud credits
+rather than the Gemini API key's billing (`lib/gemini.js`, backend selection). Set
+`GOOGLE_GENAI_USE_VERTEXAI=true`, the key file (`GOOGLE_APPLICATION_CREDENTIALS`, a Render secret
+file, or `GOOGLE_APPLICATION_CREDENTIALS_JSON`), and optionally `GOOGLE_CLOUD_PROJECT` and
+`GOOGLE_CLOUD_LOCATION` (default `global`). The service account needs the **Vertex AI User** role,
+the project the **Vertex AI API** enabled and billing linked.
+
+Built so the site keeps making cards whatever state those settings are in:
+
+- **Half set is off.** Asked for but missing the key file, an unreadable one, or no project: one line
+  in the log and the API key carries on as before.
+- **Every client says which it is.** The SDK reads `GOOGLE_GENAI_USE_VERTEXAI` by itself, and the old
+  `new GoogleGenAI({ apiKey })` would have turned into a Vertex client on the API key the moment that
+  variable was set, failing every call. The key client now passes `vertexai: false`.
+- **The key is the fallback.** With both set, Vertex goes first. A call Vertex refuses for a reason
+  of its own (credentials, permission, the API not enabled, billing, quota, no such model, overload,
+  the network) is sent again with the key at once, and the key keeps the next ten minutes before Vertex
+  is tried again, with a log line each time. A refusal about the content (safety, length, unreadable
+  JSON) is not: the key would refuse it too. Context-cache entries are kept per backend.
+- **The boot log says which:** `Provider: gemini · model: … · via Vertex AI, GEMINI_API_KEY as
+  fallback`, or `via the Gemini API key`.
+
+The privacy page names both ways (the Gemini API or Google Cloud's Vertex AI) and both sets of terms;
+the data goes to Google either way, and on Google Cloud as on the paid Gemini API it is not used for
+training. Choosing a Singapore region would make "processed outside Singapore" untrue; it is
+`global` by default.
 
 ### Which model, and going back
 
