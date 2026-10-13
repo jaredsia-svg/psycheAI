@@ -4498,3 +4498,9 @@ details.more[open] > summary::after { content: ' ▴'; }
   display: inline-block; margin-left: .25rem; padding: .05rem .5rem; border-radius: 999px;
   background: var(--accent); color: #fff; font-size: .72rem; font-weight: 650; vertical-align: middle;
 }
+
+/* The FAQ's foot: who is behind PsycheAI, in small print. */
+.about-founder { margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--ink-soft); }
+.about-founder p { margin: 0 0 .25rem; }
+.about-founder .about-founder-head { font-weight: 400; color: var(--ink); }
+.about-founder a { color: var(--accent); }
