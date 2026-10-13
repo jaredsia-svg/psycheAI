@@ -1018,6 +1018,42 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 
 .help ol { padding-left: 1.2rem; margin-bottom: .8rem; }
 .help li { margin-bottom: .35rem; }
+
+/* The Instagram steps, one row each: a numbered badge, then the step as a
+   sentence with each screen name a purple label that opens its screenshot
+   (mountPeeks). Here the labels are pills rather than the underlined
+   .ui-label, and the hint above says how to open them: tap on a phone,
+   hover with a mouse. */
+.howto-hint { margin: .7rem 0 .2rem; font-size: .86rem; font-weight: 600; color: var(--accent); }
+.howto-hint .hint-mouse { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .howto-hint .hint-touch { display: none; }
+  .howto-hint .hint-mouse { display: inline; }
+}
+ol.howto-rows { list-style: none; padding: 0; margin: .2rem 0 .6rem; counter-reset: howto; }
+ol.howto-rows > li {
+  counter-increment: howto; position: relative; margin: 0; padding: .7rem 0 .7rem 2.6rem;
+  border-top: 1px solid var(--line); line-height: 1.55;
+}
+ol.howto-rows > li:first-child { border-top: 0; }
+ol.howto-rows > li::before {
+  content: counter(howto); position: absolute; left: 0; top: .7rem;
+  width: 1.75rem; height: 1.75rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #fff; font-size: .85rem; font-weight: 800;
+}
+ol.howto-rows .ui-peek {
+  display: inline-block; max-width: 100%; vertical-align: baseline; text-align: left;
+  -webkit-line-clamp: unset; line-clamp: unset; overflow: visible;
+  margin: .1rem 0; padding: .05rem .5rem; border-radius: 7px; line-height: 1.4;
+  background: var(--accent-soft); color: var(--accent); font-weight: 700; text-decoration: none;
+}
+ol.howto-rows .ui-peek:hover, ol.howto-rows .ui-peek[aria-expanded="true"] { background: var(--accent); color: #fff; }
+.howto-set { display: grid; grid-template-columns: max-content auto; gap: .25rem .8rem; align-items: center; margin: .35rem 0 .4rem; }
+.howto-set > span:nth-child(odd) { color: var(--ink-soft); }
+/* In the data popout the upload is above the steps, not below them. */
+.supplement-help-body .howto-below { display: none; }
+.supplement-help-body ol.howto-rows > li { padding-left: 2.2rem; }
+.supplement-help-body ol.howto-rows > li::before { width: 1.5rem; height: 1.5rem; font-size: .75rem; }
 .help-card h2 { margin-top: 0; }
 .help-card p:last-child { margin-bottom: 0; }
 

@@ -3938,7 +3938,16 @@ photo is in it, with the menu button at the top right ringed. It is the guide's 
 screenshot is cropped to the rows from its title down to Ad preferences. The guide's step one no longer
 repeats the route as a sentence: its screenshots carry it. On a phone, See illustration is a link under
 the steps, *See the illustrated walkthrough* (`#steps-guide-open`), rather than the button beside the
-title, which stays on a laptop. The steps, as before:
+title, which stays on a laptop.
+
+**The steps as rows (October 2026).** Five numbered rows (`ol.howto-rows`), each a full sentence, with
+every screen name that has a screenshot as a purple pill, and plain or bold text for one that has none
+(Profile, Start export), so a pill always opens something. Step four sets the three values as a small
+table on **Confirm your export**: Date range All time, Format JSON (not HTML), Media quality Lower. A
+line above says how to open them, by device: *Tap a purple label to see that screen* on a phone,
+*Hover over a purple label…* with a mouse (`(hover: hover) and (pointer: fine)`). Step five ends
+"load it into PsycheAI below", and the "below" is hidden in the data popout, where the upload is
+above. The steps, as before:
 on hover with a mouse, and on a tap or click anywhere, kept open until the next tap elsewhere or Escape
 (`mountPeeks` in `docs/app.js`). The popup is placed beside its name inside the window, drawn narrower
 when the screenshot is too tall for the room, and added to the open dialog when there is one so it shows

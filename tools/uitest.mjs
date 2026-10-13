@@ -2400,10 +2400,10 @@ try {
   // exists.
   check('no format-trap widget is left behind — the warning is text now',
     (await page.locator('.format-trap').count()) === 0);
-  const igStep = (await page.locator('.help-card > ol > li').nth(2).innerText())
+  const igStep = (await page.locator('.help-card > ol > li').nth(3).innerText())
     .replace(/\s+/g, ' ').trim();
-  check('the Instagram list says JSON, not HTML, in one short line',
-    /Format to JSON \(not HTML\)/.test(igStep) && igStep.length < 140, igStep);
+  check('the Instagram list sets the three settings on Confirm your export, JSON marked not HTML',
+    /^On Confirm your export, set: Date range All time Format JSON \(not HTML\) Media quality Lower Then tap Start export and enter your password\.$/.test(igStep), igStep);
 
   // ---- deep links, with the long way round kept underneath ----
   //
@@ -2903,7 +2903,7 @@ try {
   // the check on that line's exact text a few dozen lines up.
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
-    ['Menu (≡)', 'Accounts Centre', 'Your information and permissions', 'Export your information',
+    ['≡\u00a0Menu', 'Accounts Centre', 'Your information and permissions', 'Export your information',
       'Create export', 'your Instagram account', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
@@ -3016,10 +3016,13 @@ try {
     await page.locator('#steps-guide-open').isHidden());
   // On a phone the button goes, and a link under the steps takes its place.
   {
-    const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     try {
       await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
       await phone.waitForTimeout(400);
+      check('on a phone the hint above the steps says to tap',
+        await phone.evaluate(() => [...document.querySelector('#request-data .howto-hint').children]
+          .filter(s => getComputedStyle(s).display !== 'none').map(s => s.textContent).join('|')) === 'Tap a purple label to see that screen.');
       const placed = await phone.evaluate(() => {
         const link = document.querySelector('#steps-guide-open');
         const steps = document.querySelector('#request-data ol[data-howto="instagram"]');
@@ -3372,9 +3375,11 @@ try {
       document.querySelector('.help-card').appendChild(probe);
       const linkColour = getComputedStyle(probe).color;
       probe.remove();
-      const labels = [...document.querySelectorAll('.help-card .ui-label')];
+      // The Instagram steps' labels are purple pills (ol.howto-rows); every
+      // other screen name keeps the underline.
+      const labels = [...document.querySelectorAll('.help-card .ui-label')].filter(l => !l.closest('ol.howto-rows'));
       const links = [...document.querySelectorAll('.help-card a')];
-      return labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
+      return labels.length > 0 && labels.every(l => getComputedStyle(l).textDecorationLine === 'underline') &&
         labels.every(l => getComputedStyle(l).color !== linkColour) &&
         links.length > 0 &&
         links.every(a => /^https:\/\//.test(a.getAttribute('href') || '')) &&
@@ -3405,7 +3410,7 @@ try {
   check('while every other menu label on the page stays bold',
     await page.evaluate(() => {
       const labels = [...document.querySelectorAll('.ui-label')]
-        .filter(l => !l.closest('.step-fallback') && !l.closest('#view-about'));
+        .filter(l => !l.closest('.step-fallback') && !l.closest('#view-about') && !l.closest('ol.howto-rows'));
       return labels.length > 0 && labels.every(l => getComputedStyle(l).fontWeight === '600');
     }));
   // Step 1: the deep link, then the route on mobile, each screen name on it
@@ -3413,15 +3418,26 @@ try {
   {
     const first = (await page.locator('#request-data ol[data-howto="instagram"] li').first().innerText()).replace(/\s+/g, ' ').trim();
     check('the steps open with the route in the Instagram app, and link out to no other site',
-      first === 'Open your Instagram app > Go to your Profile > tap the Menu (≡) top right to Settings > Accounts Centre.' &&
+      first === 'Open your Instagram app > Go to your Profile > tap the ≡ Menu top right > Accounts Centre.' &&
         (await page.locator('#request-data ol[data-howto="instagram"] a[href^="http"]').count()) === 0 &&
         (await page.locator('#request-data ol[data-howto="instagram"] .step-fallback').count()) === 0,
       first);
+    const pills = await page.evaluate(() => {
+      const pill = document.querySelector('#request-data ol.howto-rows .ui-peek');
+      const rows = [...document.querySelectorAll('#request-data ol.howto-rows > li')];
+      const hint = document.querySelector('#request-data .howto-hint');
+      const shown = [...hint.children].filter(s => getComputedStyle(s).display !== 'none').map(s => s.textContent);
+      return { rows: rows.length, badge: getComputedStyle(rows[0], '::before').content,
+        pill: getComputedStyle(pill).textDecorationLine === 'none' && getComputedStyle(pill).backgroundColor !== 'rgba(0, 0, 0, 0)',
+        hint: shown.join('|') };
+    });
+    check('the steps are five numbered rows, each screen name a purple pill, with the hint for a mouse above them',
+      pills.rows === 5 && /counter\(howto\)/.test(pills.badge) && pills.pill && pills.hint === 'Hover over a purple label to see that screen.', JSON.stringify(pills));
     const peeks = page.locator('#request-data .ui-peek');
     check('its ten screen names each carry their screenshot from the guide, the Menu first',
       (await peeks.count()) === 10 &&
         JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim() + '=' + el.dataset.peek))) ===
-          JSON.stringify(['Menu (≡)=guide/00-profile-menu.jpg', 'Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
+          JSON.stringify(['≡\u00a0Menu=guide/00-profile-menu.jpg', 'Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
             'Export your information=guide/03-export-your-information.jpg', 'Create export=guide/04-create-export.jpg',
             'your Instagram account=guide/05-pick-profile.jpg', 'Export to device=guide/06-export-to-device.jpg', 'All time=guide/07-confirm-export.jpg',
             'JSON=guide/07-confirm-export.jpg', 'Lower=guide/07-confirm-export.jpg']),

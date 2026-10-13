@@ -290,7 +290,8 @@
       </button>
     </div>
     <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
-    <ol data-howto="instagram"></ol>
+    <p class="howto-hint"><span class="hint-touch">Tap a purple label to see that screen.</span><span class="hint-mouse">Hover over a purple label to see that screen.</span></p>
+    <ol class="howto-rows" data-howto="instagram"></ol>
     <!-- On a phone the button above is gone and this link takes its place,
          after the steps (styles.css, .help-steps-guide). -->
     <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
@@ -739,8 +740,10 @@
     <p>The only thing sent is a short digest of your own activity, usually about 100 KB of text: your
       posts, stories, captions, likes, searches, saves, follows and messages. You see it and can review
       it before anything goes.</p>
-    <p>The digest goes to Google Gemini or Anthropic Claude for that one request, and PsycheAI keeps no
-      copy of the zip, the digest or the report on its servers. Your report stays in your browser
+    <p>The digest goes to Google Gemini or Anthropic Claude for that one request. PsycheAI uses their
+      paid APIs, which do not use your data to train their models; they may keep it for a short time to
+      check for abuse, under their own terms. PsycheAI keeps no copy of the zip, the digest or the report
+      on its servers. Your report stays in your browser
       until you press Delete everything.</p>
     <p>Our hosting and payment providers can see that the site was used or that a payment was made,
       but they never receive your data. There is no account to create.</p>
@@ -755,7 +758,7 @@
     <h3>Can anyone else access my data?</h3>
     <p>No. There is no sign-up, no password to create and no email address. Your data, the digest and
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
-    <p>Not even PsycheAI’s administrator can see your data or your results: there is no admin view of
+    <p>PsycheAI’s administrator does not see your data or your results: there is no admin view of
       them, and nothing from your digest or report is stored or logged.</p>
     <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below and
       a scrambled code that lets each Instagram account have one free card. The
@@ -1270,7 +1273,7 @@
            row is not offered. -->
       <div class="help-instagram" data-help="instagram">
         <h3>Instagram</h3>
-        <ol data-howto="instagram"></ol>
+        <ol class="howto-rows" data-howto="instagram"></ol>
       </div>
       <div class="help-google" data-help="google">
         <h3>Google Takeout</h3>
@@ -1435,32 +1438,38 @@
      the three can never drift apart again. -->
 <template id="howto-instagram">
   <!-- All in the Instagram app, with no link out: a link to an outside
-       site is one more thing a reader has to trust. Each screen name shows
-       its screenshot from the illustrated guide: on hover with a mouse, on a
-       tap or click anywhere (app.js, mountPeeks). -->
+       site is one more thing a reader has to trust. One row per step, each
+       screen name a purple label that shows its screenshot from the
+       illustrated guide: on hover with a mouse, on a tap or click anywhere
+       (app.js, mountPeeks). A name with no screenshot (Profile, Start export)
+       is plain or bold text, so a purple label always opens something. -->
   <li>Open your Instagram app &gt; Go to your Profile &gt; tap the
       <button type="button" class="ui-label ui-peek" data-peek="guide/00-profile-menu.jpg" data-peek-mark="0"
-        data-peek-alt="An Instagram profile page, with the Menu (three lines) button at the top right ringed.">Menu (≡)</button> top right to Settings &gt;
+        data-peek-alt="An Instagram profile page, with the Menu (three lines) button at the top right ringed.">≡&nbsp;Menu</button> top right &gt;
       <button type="button" class="ui-label ui-peek" data-peek="guide/01-settings.jpg" data-peek-mark="1"
         data-peek-alt="Instagram’s Settings and activity screen, with the Accounts Centre row ringed.">Accounts Centre</button>.</li>
   <li>Tap <button type="button" class="ui-label ui-peek" data-peek="guide/02-info-permissions.jpg" data-peek-mark="2"
         data-peek-alt="The Accounts Centre menu, with the Your information and permissions row ringed.">Your information and permissions</button> &gt;
       <button type="button" class="ui-label ui-peek" data-peek="guide/03-export-your-information.jpg" data-peek-mark="3"
-        data-peek-alt="The information and permissions screen, with the Export your information row ringed.">Export your information</button> &gt;
-      <button type="button" class="ui-label ui-peek" data-peek="guide/04-create-export.jpg" data-peek-mark="4"
-        data-peek-alt="The Export your information screen, with the blue Create export button ringed.">Create export</button> &gt;
+        data-peek-alt="The information and permissions screen, with the Export your information row ringed.">Export your information</button>.</li>
+  <li>Tap <button type="button" class="ui-label ui-peek" data-peek="guide/04-create-export.jpg" data-peek-mark="4"
+        data-peek-alt="The Export your information screen, with the blue Create export button ringed.">Create export</button> &gt; choose
       <button type="button" class="ui-label ui-peek" data-peek="guide/05-pick-profile.jpg" data-peek-mark="5"
         data-peek-alt="The list of accounts to export from, with the Instagram account ringed.">your Instagram account</button> &gt;
       <button type="button" class="ui-label ui-peek" data-peek="guide/06-export-to-device.jpg" data-peek-mark="6"
         data-peek-alt="A choice between Export to device and Export to external service, with Export to device ringed.">Export to device</button>.</li>
-  <li>Set Date range to <button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
-        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">All time</button>, Format to
-      <strong><button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
-        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">JSON</button> (not HTML)</strong>, and Media quality to
-      <button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
-        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">Lower</button>. Start the download. Password is required.</li>
+  <li>On <strong>Confirm your export</strong>, set:
+      <span class="howto-set">
+        <span>Date range</span><span><button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
+        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">All time</button></span>
+        <span>Format</span><span><button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
+        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">JSON</button> <strong>(not HTML)</strong></span>
+        <span>Media quality</span><span><button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"
+        data-peek-alt="The Confirm your export screen, with the Date range, Format and Media quality rows ringed.">Lower</button></span>
+      </span>
+      Then tap <strong>Start export</strong> and enter your password.</li>
   <li>Instagram emails a link, usually within a few hours. Download the .zip to this device and
-      load it into PsycheAI.</li>
+      load it into PsycheAI<span class="howto-below"> below</span>.</li>
 </template>
 <template id="howto-google">
   <li>Open <a href="https://takeout.google.com/settings/takeout/custom/my_activity"
