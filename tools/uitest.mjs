@@ -829,11 +829,11 @@ try {
         body: JSON.stringify({ error: 'Too many requests from this connection. Try again in 60 seconds.' }) });
       await halfPage.route('**/api/create-payment-intent', limited);
       await halfPage.click('#premium-promo-apply');
-      await halfPage.waitForFunction(() => /could not be checked/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
+      await halfPage.waitForFunction(() => /Couldn’t check/.test(document.querySelector('#premium-status').textContent), null, { timeout: 15000 })
         .catch(() => {});
       const failedSaid = await halfPage.locator('#premium-status').innerText();
       check('a promo check that fails says it could not be checked, never that the code is free, and starts nothing',
-        /^Promo code UIHALF could not be checked just now \(Too many requests/.test(failedSaid) && /Tap Apply to try again\.$/.test(failedSaid) &&
+        /^Couldn’t check UIHALF just now \(Too many requests/.test(failedSaid) && /Tap Apply to try again\.$/.test(failedSaid) &&
           !/free/i.test(failedSaid) && analyses.length === 0 && await halfPage.evaluate(() => document.querySelector('#premium-dialog').open),
         failedSaid);
       await halfPage.unroute('**/api/create-payment-intent', limited);
@@ -899,7 +899,7 @@ try {
         text: document.querySelector('#inapp-warn-text').textContent, copy: document.querySelector('#inapp-copy').textContent,
         chrome: document.querySelector('#inapp-open-chrome').hidden }));
       check('in a private window, a note says it looks like one and that it forgets the card on closing, with Copy link',
-        note.shown && note.text === 'This looks like a private window. Your Psyche Card is saved only in this browser, and a private window forgets it when you close it. Open psycheai.io in a normal window to keep it.' &&
+        note.shown && note.text === 'This looks like a private window, which forgets your Psyche Card when closed. Use a normal window to keep it.' &&
           note.copy === 'Copy link' && note.chrome, JSON.stringify(note));
       await priv.click('#inapp-close');
       await priv.reload({ waitUntil: 'load' });
@@ -936,12 +936,12 @@ try {
       await igPage.waitForSelector('#inapp-warn:not([hidden])', { timeout: 10000 });
       const warned = await igPage.locator('#inapp-warn').innerText();
       check('in Instagram\'s own browser, a note asks to open the site in Safari, with a Copy link button',
-        /You are in Instagram’s built-in browser/.test(warned) && /Open in Safari/.test(warned) && /Copy link/.test(warned) &&
+        /^Instagram’s browser can erase your Psyche Card\. Tap ⋯, then Open in Safari\./.test(warned) && /Open in Safari/.test(warned) && /Copy link/.test(warned) &&
           await igPage.locator('#inapp-open-chrome').isHidden(), warned);
       await igPage.click('#open-sources');
       await igPage.waitForSelector('#datasources-dialog[open]', { timeout: 15000 });
       check('and the Add your data popout says so before any data is loaded',
-        /Open psycheai\.io in Safari or Chrome before loading your data/.test(await igPage.locator('#datasources-inapp').innerText()));
+        /Instagram’s browser can erase what you make here\. Open psycheai\.io in Safari or Chrome first\./.test(await igPage.locator('#datasources-inapp').innerText()));
       await igPage.keyboard.press('Escape');
       await igPage.click('#inapp-close');
       check('its ✕ puts the note away', await igPage.locator('#inapp-warn').isHidden());
@@ -2249,7 +2249,7 @@ try {
       await invitePage.click('#paste-go');
       await invitePage.waitForTimeout(800);
       check('pasting a link already synced with says so and does not sync again',
-        /already synced with Ava/.test(await invitePage.locator('#scan-alert').innerText()) && requestsBefore.length === 0 &&
+        /Already synced with Ava/.test(await invitePage.locator('#scan-alert').innerText()) && requestsBefore.length === 0 &&
           await invitePage.evaluate(() => JSON.parse(localStorage.getItem('psycheai_history')).filter(e => /Ava/.test(e.withName)).length === 1),
         await invitePage.locator('#scan-alert').innerText());
       // A list saved with the same sync twice, before this was fixed, is
@@ -2904,7 +2904,7 @@ try {
   check('the how-to underlines every label the reader has to find, and only those',
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | ') ===
     ['Menu (≡)', 'Accounts Centre', 'Your information and permissions', 'Export your information',
-      'Create export', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
+      'Create export', 'your Instagram account', 'Export to device', 'All time', 'JSON', 'Lower'].join(' | '),
     (await page.locator('.help-card > ol .ui-label').allInnerTexts()).map(t => t.trim()).join(' | '));
   // The optional sources get the same treatment for the same reason — these
   // are the words to hunt for in Google's own menus, and they go stale the
@@ -3012,6 +3012,31 @@ try {
       document.querySelector('#guide-open')))));
   check('and the guide is shut until it is asked for',
     !(await page.evaluate(() => document.querySelector('#guide-dialog').open)));
+  check('on a laptop the link under the steps stays hidden, the button doing its job',
+    await page.locator('#steps-guide-open').isHidden());
+  // On a phone the button goes, and a link under the steps takes its place.
+  {
+    const phone = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await phone.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await phone.waitForTimeout(400);
+      const placed = await phone.evaluate(() => {
+        const link = document.querySelector('#steps-guide-open');
+        const steps = document.querySelector('#request-data ol[data-howto="instagram"]');
+        return { button: getComputedStyle(document.querySelector('#guide-open')).display, text: link.textContent,
+          shown: link.getBoundingClientRect().height > 0,
+          after: link.getBoundingClientRect().top >= steps.getBoundingClientRect().bottom - 1 };
+      });
+      check('on a phone, See illustration is a link under the steps: "See the illustrated walkthrough"',
+        placed.button === 'none' && placed.shown && placed.after && placed.text === 'See the illustrated walkthrough', JSON.stringify(placed));
+      await phone.locator('#steps-guide-open').scrollIntoViewIfNeeded();
+      await phone.click('#steps-guide-open');
+      check('and it opens the same guide',
+        await phone.waitForSelector('#guide-dialog[open]', { timeout: 10000 }).then(() => true).catch(() => false));
+    } finally {
+      await phone.close();
+    }
+  }
   await page.click('#guide-open');
   await page.waitForSelector('#guide-dialog[open]', { timeout: 15000 });
   check('pressing it opens the guide over the page rather than navigating away',
@@ -3036,10 +3061,8 @@ try {
   // Step 1 is the route inside the Instagram app, with no link out to
   // another site, in the guide as in the steps.
   const stepOne = (await page.locator('#guide-dialog .guide-step').first().textContent()).replace(/\s+/g, ' ').trim();
-  check('the guide\'s step 1 is the route in the Instagram app, with no link out',
-    /^1\s*Open your Instagram app/.test(stepOne) &&
-      stepOne.includes('Go to your Profile > tap the Menu (≡) top right to Settings > Accounts Centre > ' +
-        'Your information and permissions > Export your information.') &&
+  check('the guide\'s step 1 opens the Instagram app and goes straight to its screenshots, with no route sentence and no link out',
+    /^1\s*Open your Instagram app/.test(stepOne) && !stepOne.includes('Go to your Profile') &&
       (await page.locator('#guide-dialog .guide-step a[href^="http"]').count()) === 0,
     stepOne);
   const guideText = await page.locator('#guide-dialog').innerText();
@@ -3395,12 +3418,12 @@ try {
         (await page.locator('#request-data ol[data-howto="instagram"] .step-fallback').count()) === 0,
       first);
     const peeks = page.locator('#request-data .ui-peek');
-    check('its nine screen names each carry their screenshot from the guide, the Menu first',
-      (await peeks.count()) === 9 &&
+    check('its ten screen names each carry their screenshot from the guide, the Menu first',
+      (await peeks.count()) === 10 &&
         JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim() + '=' + el.dataset.peek))) ===
           JSON.stringify(['Menu (≡)=guide/00-profile-menu.jpg', 'Accounts Centre=guide/01-settings.jpg', 'Your information and permissions=guide/02-info-permissions.jpg',
             'Export your information=guide/03-export-your-information.jpg', 'Create export=guide/04-create-export.jpg',
-            'Export to device=guide/06-export-to-device.jpg', 'All time=guide/07-confirm-export.jpg',
+            'your Instagram account=guide/05-pick-profile.jpg', 'Export to device=guide/06-export-to-device.jpg', 'All time=guide/07-confirm-export.jpg',
             'JSON=guide/07-confirm-export.jpg', 'Lower=guide/07-confirm-export.jpg']),
       JSON.stringify(await peeks.evaluateAll(els => els.map(el => el.textContent.trim()))));
     await peeks.first().scrollIntoViewIfNeeded();
@@ -9221,7 +9244,7 @@ try {
   // A different message from the ordinary "add Google to raise confidence"
   // hint, which is beside the point when the primary source is what is gone.
   check('the note explains what happened rather than offering to raise confidence',
-    /no longer on this device/i.test(await page.locator('.trust-sources > p.muted').innerText()) &&
+    /has cleared the data this report was read from/i.test(await page.locator('.trust-sources > p.muted').innerText()) &&
     !/raise this report/i.test(await page.locator('.trust-sources > p.muted').innerText()),
     await page.locator('.trust-sources > p.muted').innerText());
   // The popout has to agree with the card behind it: a tick here would
@@ -9302,7 +9325,7 @@ try {
     await answerReview(fullPage);
     await fullPage.waitForSelector('#view-profile:not([hidden])', { timeout: 60000 });
     check('a digest too large to store says so, rather than failing silently',
-      /too large for this browser/i.test(await fullPage.locator('#profile-alert').innerText()),
+      /too big for this browser/i.test(await fullPage.locator('#profile-alert').innerText()),
       await fullPage.locator('#profile-alert').innerText());
     // The distinction the copy draws has to be true: the report really is
     // saved, and really will survive a reload — it is only the evidence that
@@ -10704,9 +10727,10 @@ try {
     /PsycheAI cannot read it/.test(about) && !/locked copy/.test(about) && !/score/i.test(about.slice(about.indexOf('How does Psyche Sync work'), about.indexOf('How do I contact'))));
   check('the FAQ says what is stored, rather than claiming nothing is',
     !/no database/i.test(about) && /never stored by PsycheAI/.test(about) &&
-    /the short summary your link shows, and any Psyche\s+Sync someone sends you, deleted once your device has it/.test(about) &&
-    /Your card summary and any shared Psyche Sync are encrypted on your device, and the key lives\s+only in your link/.test(about) &&
-    /PsycheAI never has the key, so no one at PsycheAI can read them/.test(about) &&
+    /Your card summary and any Psyche Sync someone sends you are encrypted on your device, and the key\s+lives only in your link/.test(about) &&
+    /PsycheAI stores them but never has the key, so no one at PsycheAI can read\s+them, and a Sync is deleted once your device has it, or after 30 days/.test(about) &&
+    /Your link’s counts \(such as\s+how many people made a card from it\) are kept too: plain numbers, never who/.test(about) &&
+    /privacy policy<\/a> lists every one|privacy policy lists every one/.test(about) &&
     /none of them names you/.test(about));
   check('and the Psyche Report no longer promises a secret bonus: the roast is free',
     !/secret bonus/i.test(about));
@@ -11007,7 +11031,7 @@ try {
   await page.goto('http://localhost:' + PORT + '/#p=' + otherPayload, { waitUntil: 'load' });
   await page.waitForSelector('#view-scan:not([hidden]) #scan-alert:not([hidden])', { timeout: 30000 });
   check('the same friend\'s link again, once synced, adds no one waiting: it opens Your Psyche Syncs, saying so',
-    /already synced with Jordan/.test(await page.locator('#scan-alert').innerText()) &&
+    /Already synced with Jordan/.test(await page.locator('#scan-alert').innerText()) &&
       await page.evaluate(() => localStorage.getItem('psycheai_invite') === null) && compatBodies.length === syncsBefore,
     await page.locator('#scan-alert').innerText());
   // A new friend's link does wait.
@@ -12928,6 +12952,37 @@ try {
       check('the reader\'s card carries a QR code of that same link, on the page and full screen',
         qr.count === 2 && qr.same && qr.call === 'Scan to see how in sync we are', JSON.stringify(qr));
       const saved = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_link') || 'null'));
+      // Their own link, opened by them (from a bio or a story) or pasted on
+      // Syncs: nobody syncs with themselves, so it says so, and nothing waits.
+      {
+        const home = new URL(copied).origin + '/';
+        await rp.goto(copied, { waitUntil: 'load' });
+        await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+        await rp.waitForSelector('#profile-alert:not([hidden])', { timeout: 10000 }).catch(() => {});
+        const own = await rp.evaluate(() => ({
+          note: document.querySelector('#profile-alert').hidden ? '' : document.querySelector('#profile-alert').textContent,
+          isNote: document.querySelector('#profile-alert').classList.contains('is-note'),
+          waiting: localStorage.getItem('psycheai_invite'),
+          bar: !document.querySelector('#sync-invite').hidden,
+        }));
+        check('opening their own link lands on their own card, saying it is their link to send, with nothing waiting to sync',
+          own.note === 'This is your own link. Send it to friends to sync with them.' &&
+            own.isNote && !own.waiting && !own.bar, JSON.stringify(own));
+        await rp.click('#nav-scan');
+        await rp.waitForSelector('#view-scan:not([hidden])', { timeout: 10000 });
+        await rp.fill('#paste-input', copied);
+        await rp.click('#paste-go');
+        await rp.waitForSelector('#scan-alert:not([hidden])', { timeout: 10000 }).catch(() => {});
+        const pastedOwn = await rp.evaluate(() => ({ note: document.querySelector('#scan-alert').textContent,
+          syncs: (JSON.parse(localStorage.getItem('psycheai_history') || '[]')).length,
+          share: Boolean(document.querySelector('#sync-share-dialog[open]')) }));
+        check('and pasting it on Syncs says the same, running no sync',
+          pastedOwn.note === 'This is your own link. Send it to friends to sync with them.' &&
+            pastedOwn.syncs === 0 && !pastedOwn.share, JSON.stringify(pastedOwn));
+        await rp.goto(home, { waitUntil: 'load' });
+        await rp.waitForSelector('#view-profile:not([hidden])', { timeout: 20000 });
+        await rp.waitForTimeout(500);
+      }
       // Pointing at the code says what it is for.
       await rp.locator('#psyche-card .pc-qr-slot').hover().catch(() => {});
       await rp.waitForTimeout(300);
@@ -13230,7 +13285,7 @@ try {
         await friendPage.goto(base + 'c/' + saved.id, { waitUntil: 'load' });
         await friendPage.waitForTimeout(800);
         check('a short link cut short (no key) says so rather than failing silently',
-          /could not be opened/.test(await friendPage.locator('#upload-error').innerText().catch(() => '')));
+          /couldn’t be opened/.test(await friendPage.locator('#upload-error').innerText().catch(() => '')));
       } finally {
         await friendPage.close();
       }

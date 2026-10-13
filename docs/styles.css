@@ -538,6 +538,14 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
 .help-head > div { flex: 1 1 16rem; }
 .help-lede { margin: .3rem 0 0; color: var(--ink-soft); font-size: .92rem; }
 .help-guide-open { flex: none; padding: .45rem .9rem; font-size: .9rem; }
+/* See illustration is the button on a laptop; on a phone a link under the
+   steps takes its place. */
+.help-steps-guide { display: none; margin: .2rem 0 .6rem; font-size: .95rem; }
+.help-steps-guide .link-btn { font-size: inherit; font-weight: 600; }
+@media (max-width: 719px) {
+  .help-guide-open { display: none; }
+  .help-steps-guide { display: block; }
+}
 
 .guide-steps { list-style: none; margin: 0; padding: 0; }
 .guide-step { padding: 1.4rem 0; border-top: 1px solid var(--line); }
@@ -622,7 +630,7 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
    drawn over are found by the same number. */
 .guide-mark-0 { top: 2.75%; left: 88.6%; width: 10%; height: 11.75%; border-radius: 8px; }
 .guide-mark-1 { top: 43.3%; left: 2%; width: 92%; height: 18.9%; }
-.guide-mark-2 { top: 63.5%; left: 4%; width: 92%; height: 5.5%; }
+.guide-mark-2 { top: 74.9%; left: 4%; width: 92%; height: 9.8%; }
 .guide-mark-3 { top: 55.8%; left: 3%; width: 94%; height: 14.6%; }
 .guide-mark-4 { top: 60.6%; left: 4%; width: 92%; height: 15.9%; }
 .guide-mark-5 { top: 69.9%; left: 4%; width: 92%; height: 19.4%; }

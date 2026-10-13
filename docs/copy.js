@@ -244,9 +244,8 @@
     // request steps.
     inviteInAppTitle: (ios) => 'Step 1: open this page in ' + (ios ? 'Safari' : 'Chrome'),
     inviteInAppText: (app, name, ios) => possessive(name || 'Your connection') + ' invite is saved only in ' + app +
-      '\u2019s browser, and your Instagram data takes a few hours to arrive. Open this page in ' +
-      (ios ? 'Safari' : 'Chrome') + ' now, so the invite is still there when you come back. ' +
-      (ios ? 'Tap \u22EF or the share icon, then Open in Safari.' : 'Or tap \u22EE, then Open in Chrome.'),
+      '\u2019s browser, which can clear it before your data arrives. ' +
+      (ios ? 'Tap \u22EF, then Open in Safari.' : 'Tap \u22EE, then Open in Chrome.'),
     inviteCardHint: 'Tap to explore',
     // On the reader's own report, once their card is made, while a friend's
     // link is waiting.
@@ -255,7 +254,9 @@
     reportPromo: '✨ See the full story behind your card',
     reportPromoCta: 'Unlock your Psyche Report →',
     // Opening a friend's link that was already synced on this device.
-    syncAlreadyDone: (name) => 'You have already synced with ' + (name || 'this connection') + ' – it is in your list below.',
+    // The reader's own link, opened or pasted by them.
+    syncOwnLink: 'This is your own link. Send it to friends to sync with them.',
+    syncAlreadyDone: (name) => 'Already synced with ' + (name || 'this connection') + ' – see your list below.',
     syncInviteGo: (name) => 'Sync with ' + (name || 'them'),
     // The bar on My Psyche has one button, to My Syncs, where the reader
     // picks who to sync with.
@@ -272,7 +273,7 @@
     syncShareNo: 'Sync without sharing',
     syncShareNotNow: 'Not now',
     syncSentBack: (name) => 'Shared with ' + name + ', with your Psyche Card.',
-    syncShareFailed: (name) => 'That could not be shared with ' + name + ' just now. Try again from your Sync list.',
+    syncShareFailed: (name) => 'Couldn\u2019t share with ' + name + ' just now. Try again from your Sync list.',
     // Several friends' links waiting at once: one bar, a button for each.
     syncInviteTitleMany: () => 'You have connections waiting to sync with you',
     inviteAlso: (names) => (names.length === 1 ? names[0] + ' also sent you their card'
@@ -432,7 +433,7 @@
           ' does not have this report. Send them your link and they get their own, free.',
     linkMessageCopied: 'Message and link copied. Paste it to them in WhatsApp, Telegram or a DM.',
     linkMessageCopiedShort: 'Copied ✓',
-    shortLinkUnreadable: 'That PsycheAI link could not be opened – it may have expired, or been cut short when it was copied. Ask for it to be sent again.',
+    shortLinkUnreadable: 'That link couldn\u2019t be opened. It may have expired or been cut short – ask for it again.',
     linkCopyPrompt: 'Copy this and send it to them:',
 
     matches: 'Your matches',
@@ -767,7 +768,7 @@
     linkPromoFree: (code) => 'Promo code ' + code + ' unlocks the Psyche Report free. Tap Apply to start it.',
     linkPromoFreeCard: (code) => 'Promo code ' + code + ' runs your card again free. Tap Apply to start it.',
     // A code the server could not check just now: never assumed free.
-    promoCheckFailed: (code, reason) => 'Promo code ' + code + ' could not be checked just now' +
+    promoCheckFailed: (code, reason) => 'Couldn\u2019t check ' + code + ' just now' +
       (reason ? ' (' + String(reason).replace(/\.$/, '') + ')' : '') + '. Tap Apply to try again.',
     linkPromoRefused: (code, reason) => 'The promo code in your link (' + code + ') could not be used: ' + String(reason || '').replace(/\.$/, '').replace(/^That code/, 'it') + '.',
     // The price on the payment sheet: the full price, and with a discount
@@ -809,9 +810,8 @@
     // report survives in its own localStorage entry, the evidence behind it
     // does not. Says what re-running will ask for rather than leaving a
     // reader to discover it by pressing the button.
-    sourcesInstagramLost: 'The evidence this report was written from is no longer on this device – ' +
-      'your browser may have cleared it to free space. The report itself is safe. To run the ' +
-      'analysis again, load your Instagram data once more below.',
+    sourcesInstagramLost: 'Your browser has cleared the data this report was read from. The report is safe; ' +
+      'to run it again, load your Instagram data below.',
     sourceInstagram: 'Instagram',
     sourceGoogle: 'Google Takeout',
     sourceFacebook: 'Facebook',
@@ -844,14 +844,12 @@
     startContinue: 'Continue with your data',
     startLoadedSuffix: ' already loaded – nothing to upload again.',
     startNeedsInstagram: 'Load your Instagram data to get started.',
-    rerunNeedsInstagram: 'Your Instagram data is no longer on this device, so there is nothing to ' +
-      're-analyse. Load it again in the popout and your report will be rewritten from it.',
+    rerunNeedsInstagram: 'Your Instagram data is no longer on this device. Load it again to rewrite your report.',
     // The digest failed to save — almost always a full localStorage. Said at
     // the moment it happens rather than left for the reader to discover when
     // a re-run has nothing to work from. The report itself is stored
     // separately and is usually fine, so this does not claim otherwise.
-    digestTooLarge: 'Your report is saved, but the evidence summary behind it was too large for this ' +
-      'browser’s storage. Re-running the analysis later will ask for your Instagram data again.',
+    digestTooLarge: 'Your report is saved, but its evidence was too big for this browser. A re-run will ask for your Instagram data again.',
 
     // The popout #rerun-with-data now opens, ahead of the review — see
     // askDataSources() in app.js. Every source already loaded is ticked but
@@ -908,12 +906,12 @@
     // The scan page, which is where a comparison starts and where past ones
     // are listed.
     // Inside an app's own browser (Instagram, Facebook, TikTok…).
-    inAppWarn: (app, ios) => 'You are in ' + app + '\u2019s built-in browser. Your Psyche Card and report are saved only in the browser you make them in, and ' + app + ' can clear this one without warning. ' +
-      (ios ? 'Tap \u22EF or the share icon and choose Open in Safari (or Open in browser).' : 'Tap \u22EE and choose Open in Chrome (or Open in browser).'),
-    inAppData: (app) => 'You are in ' + app + '\u2019s built-in browser, which can clear what is made here. Open psycheai.io in Safari or Chrome before loading your data.',
+    inAppWarn: (app, ios) => app + '\u2019s browser can erase your Psyche Card. ' +
+      (ios ? 'Tap \u22EF, then Open in Safari.' : 'Tap \u22EE, then Open in Chrome.'),
+    inAppData: (app) => app + '\u2019s browser can erase what you make here. Open psycheai.io in Safari or Chrome first.',
     // A private window, by the best guess a page can make (app.js, warnPrivate):
     // said as a guess, since browsers hide it on purpose.
-    privateWarn: 'This looks like a private window. Your Psyche Card is saved only in this browser, and a private window forgets it when you close it. Open psycheai.io in a normal window to keep it.',
+    privateWarn: 'This looks like a private window, which forgets your Psyche Card when closed. Use a normal window to keep it.',
     inAppChrome: 'Open in Chrome',
     inAppCopy: 'Copy link',
     inAppCopied: 'Link copied',

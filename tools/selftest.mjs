@@ -8000,9 +8000,9 @@ check('the schema requires evidence on where they align and differ',
   // What the FAQ and the privacy page say about it stays literally true.
   const faq = readFileSync(join(root, 'docs', 'index.html'), 'utf8');
   const privacyPage = readFileSync(join(root, 'docs', 'privacy.html'), 'utf8');
-  check('the FAQ and privacy page say a sync sent back is locked with the link\'s key and kept ' + syncbox.KEEP_DAYS + ' days at most',
+  check('the FAQ and privacy page say a sync sent back is encrypted with the link\'s key and kept ' + syncbox.KEEP_DAYS + ' days at most',
     /locks it with your link’s key, so\s+PsycheAI cannot read it, and it is deleted once your device has it, or after 30 days/.test(faq) &&
-      /locked the same way with your link’s key, so PsycheAI cannot read them\. They are deleted once your device has them, or after 30 days/.test(privacyPage) &&
+      /encrypted the same way with your link’s key, so PsycheAI cannot read them\. They are deleted once your device has them, or after 30 days/.test(privacyPage) &&
       /if you choose to share it, before syncing or later/.test(privacyPage));
 }
 

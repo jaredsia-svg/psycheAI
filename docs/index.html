@@ -291,6 +291,9 @@
     </div>
     <!-- Filled from #howto-instagram: one copy of the steps for every place that shows them. -->
     <ol data-howto="instagram"></ol>
+    <!-- On a phone the button above is gone and this link takes its place,
+         after the steps (styles.css, .help-steps-guide). -->
+    <p class="help-steps-guide"><button type="button" class="link-btn" id="steps-guide-open">See the illustrated walkthrough</button></p>
 
     <!-- Inside the Instagram card rather than beside it, because the two are
          one job — "get your data" — and a second card of the same weight read
@@ -754,12 +757,14 @@
       the report are never stored by PsycheAI, so there is no collection of them for anyone to take.</p>
     <p>Not even PsycheAI’s administrator can see your data or your results: there is no admin view of
       them, and nothing from your digest or report is stored or logged.</p>
-    <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below, a
-      scrambled code that lets each Instagram account have one free card, simple counts for your link
-      (such as how many people made a card from it), the short summary your link shows, and any Psyche
-      Sync someone sends you, deleted once your device has it.</p>
-    <p>Your card summary and any shared Psyche Sync are encrypted on your device, and the key lives
-      only in your link. PsycheAI never has the key, so no one at PsycheAI can read them.</p>
+    <p>PsycheAI keeps only a few small things, and none of them names you: the daily totals below and
+      a scrambled code that lets each Instagram account have one free card. The
+      <a href="/privacy">privacy policy</a> lists every one.</p>
+    <p>Your card summary and any Psyche Sync someone sends you are encrypted on your device, and the key
+      lives only in your link. PsycheAI stores them but never has the key, so no one at PsycheAI can read
+      them, and a Sync is deleted once your device has it, or after 30 days. Your link’s counts (such as
+      how many people made a card from it) are kept too: plain numbers, never who, under a random code
+      that isn’t tied to your name.</p>
 
     <h3>Does PsycheAI count anything?</h3>
     <p>Only totals for each day: how many Psyche Cards, Psyche Reports and Psyche Syncs were
@@ -914,8 +919,6 @@
     <ol class="guide-steps">
       <li class="guide-step">
         <h3><span class="guide-num">1</span>Open your Instagram app</h3>
-        <p>Go to your Profile &gt; tap the Menu (≡) top right to Settings &gt; Accounts Centre &gt;
-          Your information and permissions &gt; Export your information.</p>
         <div class="guide-shots">
           <figure class="guide-shot">
             <figcaption>Your Profile &rarr; tap the <b>Menu (≡)</b></figcaption>
@@ -936,7 +939,7 @@
           <figure class="guide-shot">
             <figcaption>Tap <b>Your information and permissions</b></figcaption>
             <span class="guide-frame">
-              <img src="guide/02-info-permissions.jpg" width="480" height="931" loading="lazy" decoding="async"
+              <img src="guide/02-info-permissions.jpg" width="480" height="522" loading="lazy" decoding="async"
                    alt="The Accounts Centre menu. The Your information and permissions row is ringed.">
               <span class="guide-mark guide-mark-2" aria-hidden="true"></span>
             </span>
@@ -1445,7 +1448,9 @@
       <button type="button" class="ui-label ui-peek" data-peek="guide/03-export-your-information.jpg" data-peek-mark="3"
         data-peek-alt="The information and permissions screen, with the Export your information row ringed.">Export your information</button> &gt;
       <button type="button" class="ui-label ui-peek" data-peek="guide/04-create-export.jpg" data-peek-mark="4"
-        data-peek-alt="The Export your information screen, with the blue Create export button ringed.">Create export</button> &gt; your Instagram account &gt;
+        data-peek-alt="The Export your information screen, with the blue Create export button ringed.">Create export</button> &gt;
+      <button type="button" class="ui-label ui-peek" data-peek="guide/05-pick-profile.jpg" data-peek-mark="5"
+        data-peek-alt="The list of accounts to export from, with the Instagram account ringed.">your Instagram account</button> &gt;
       <button type="button" class="ui-label ui-peek" data-peek="guide/06-export-to-device.jpg" data-peek-mark="6"
         data-peek-alt="A choice between Export to device and Export to external service, with Export to device ringed.">Export to device</button>.</li>
   <li>Set Date range to <button type="button" class="ui-label ui-peek" data-peek="guide/07-confirm-export.jpg" data-peek-mark="7"

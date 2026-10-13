@@ -2298,6 +2298,14 @@ Syncs (titled **Your Psyche Syncs**, the same size as My Report's title) with a 
 below.* Syncs saved before the fingerprint existed are matched by the friend's name. A different
 friend's link, or the same friend with a new card, still waits as usual.
 
+**A reader's own link is never a friend waiting.** Opening it (from their bio or a story) or pasting
+it on Syncs used to offer a sync with themselves. It is now known (`isOwnLink`) by the link id this
+device published (`psycheai_link`), by its referral code being this device's, or by the card matching
+the reader's own, and they land on their own card (or stay on Syncs) with a note: *This is your own
+link. Send it to friends: they see your Psyche Card, make theirs and sync with you.* An own link saved
+as waiting before this was caught is filtered out of the waiting rows (`ownInvite`). On another
+device with no card of theirs it cannot be told from a friend's link.
+
 Below the list is one box with two halves, divided by a hairline:
 - **My link** (left): **Copy link**, then *What your link contains*: the fields as chips (first name,
   character, tagline, MBTI, Big Five and so on), not the reader's own values.
@@ -3925,7 +3933,12 @@ to step 2" sentence and its two checks. In the steps (not the guide, which shows
 of the three screen names is a button (`.ui-peek`) that shows its screenshot from the guide, ring and all.
 **Menu (≡)** in step one is one too (`guide/00-profile-menu.jpg`, `.guide-mark-0`): the top half of the
 PsycheAI account's own profile, cut above the "Follow some accounts" suggestions so no one else's
-photo is in it, with the menu button at the top right ringed. It is the guide's first picture as well:
+photo is in it, with the menu button at the top right ringed. It is the guide's first picture as well.
+"your Instagram account" in step two is one too (`guide/05-pick-profile.jpg`), and the Accounts Centre
+screenshot is cropped to the rows from its title down to Ad preferences. The guide's step one no longer
+repeats the route as a sentence: its screenshots carry it. On a phone, See illustration is a link under
+the steps, *See the illustrated walkthrough* (`#steps-guide-open`), rather than the button beside the
+title, which stays on a laptop. The steps, as before:
 on hover with a mouse, and on a tap or click anywhere, kept open until the next tap elsewhere or Escape
 (`mountPeeks` in `docs/app.js`). The popup is placed beside its name inside the window, drawn narrower
 when the screenshot is too tall for the room, and added to the open dialog when there is one so it shows

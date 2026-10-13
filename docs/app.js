@@ -3184,6 +3184,8 @@
     if (!node) return;
     node.textContent = message || '';
     node.hidden = !message;
+    // A message is a warning unless its caller marks it a note again.
+    node.classList.remove('is-note');
   }
 
   // ══════════════ 1. upload and analysis ══════════════
@@ -4008,6 +4010,11 @@
   // The FAQ's "what file do I need" answer ends with the same offer, for the
   // reader who came here to find out rather than to load anything yet.
   $('#faq-guide-open').addEventListener('click', event => {
+    event.preventDefault();
+    showGuide();
+  });
+  // On a phone, the link under the steps in place of See illustration.
+  $('#steps-guide-open').addEventListener('click', event => {
     event.preventDefault();
     showGuide();
   });
@@ -9699,6 +9706,10 @@
     // A link already synced with is not run again: its result is in the list.
     const link = state.profile ? await readLinkText($('#paste-input').value) : null;
     const pasted = link ? await Card.decodeCard(link.payload) : null;
+    if (pasted && isOwnLink(pasted, link.link, link.ref)) {
+      sayOwnLink('#scan-alert');
+      return;
+    }
     if (pasted && alreadySynced(pasted)) {
       if (link.link) keepLinkForSharing(pasted, link.link, link.ref);
       renderScan();
@@ -9882,6 +9893,23 @@
    * Whether this card has been synced with on this device already. A sync
    * saved before fingerprints were kept is matched by the friend's name.
    */
+  // This reader's own link or card, come back to them: opened from their bio,
+  // a story, or pasted on Syncs. Nobody syncs with themselves, so it is said
+  // so rather than offered as a friend waiting. Known by the link (its id is
+  // the one this device published, or its referral code is this device's),
+  // or by the card itself. On another device with no card of theirs, it
+  // cannot be told apart from a friend's.
+  function isOwnLink(card, link, ref) {
+    const published = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    if (link && published && published.id && link.id === published.id) return true;
+    if (ref && mine && mine.code === ref) return true;
+    return Boolean(card && state.profile && state.profile.card && syncCardKey(card) === syncCardKey(state.profile.card));
+  }
+  function sayOwnLink(where) {
+    flash(where, TEXT.syncOwnLink);
+    if ($(where)) $(where).classList.add('is-note');
+  }
   function alreadySynced(card) {
     const key = syncCardKey(card);
     return (store.read(KEYS.history, []) || []).some(entry => entry &&
@@ -10434,6 +10462,12 @@
       showUploadError('That PsycheAI link could not be read. Ask for it to be sent again.');
       return true;
     }
+    // The reader's own link: nothing to sync, so their own page, saying so.
+    if (isOwnLink(card, backLink, fromRef)) {
+      if (state.profile) { renderProfile(); show('profile'); sayOwnLink('#profile-alert'); }
+      else show('welcome');
+      return true;
+    }
     // A link already synced with is not a friend waiting again: it opens the
     // list, where that sync is.
     if (state.profile && alreadySynced(card)) {
@@ -10486,7 +10520,17 @@
   /** Every friend whose link is waiting, latest first. */
   function allInvites() {
     const first = pendingInvite();
-    return (first ? [first] : []).concat(moreInvites().filter(i => !first || i.payload !== first.payload));
+    return (first ? [first] : []).concat(moreInvites().filter(i => !first || i.payload !== first.payload))
+      // The reader's own link, saved as waiting before that was caught: never
+      // a friend to sync with.
+      .filter(invite => !ownInvite(invite));
+  }
+  function ownInvite(invite) {
+    const published = store.read(KEYS.link, null);
+    const mine = store.read(KEYS.referral, null);
+    return Boolean((invite.link && published && published.id && invite.link.id === published.id) ||
+      (invite.ref && mine && mine.code === invite.ref) ||
+      (state.profile && state.profile.payload && invite.payload === state.profile.payload));
   }
   function addInvite(invite) {
     const before = pendingInvite();
