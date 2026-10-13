@@ -911,6 +911,9 @@
     inAppWarn: (app, ios) => 'You are in ' + app + '\u2019s built-in browser. Your Psyche Card and report are saved only in the browser you make them in, and ' + app + ' can clear this one without warning. ' +
       (ios ? 'Tap \u22EF or the share icon and choose Open in Safari (or Open in browser).' : 'Tap \u22EE and choose Open in Chrome (or Open in browser).'),
     inAppData: (app) => 'You are in ' + app + '\u2019s built-in browser, which can clear what is made here. Open psycheai.io in Safari or Chrome before loading your data.',
+    // A private window, by the best guess a page can make (app.js, warnPrivate):
+    // said as a guess, since browsers hide it on purpose.
+    privateWarn: 'This looks like a private window. Your Psyche Card is saved only in this browser, and a private window forgets it when you close it. Open psycheai.io in a normal window to keep it.',
     inAppChrome: 'Open in Chrome',
     inAppCopy: 'Copy link',
     inAppCopied: 'Link copied',

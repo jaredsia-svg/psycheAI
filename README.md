@@ -6027,6 +6027,26 @@ drew, a moment later, so a friend's link opened in Instagram flashed the yellow 
 second. Now, when a link is in the address (`?c=`, `#p=`) or an invite is waiting on the device, the
 note waits until boot has finished (`settleInAppWarn`) and shows only if no invite step did.
 
+### A private window
+
+A private (incognito) window forgets the card, the guess, a friend's invite and any free report
+waiting when it closes, the same loss as an app's browser clearing itself. Browsers hide whether a
+window is private on purpose, so the page guesses (`looksPrivate`) and says so as a guess: *This
+looks like a private window. Your Psyche Card is saved only in this browser, and a private window
+forgets it when you close it. Open psycheai.io in a normal window to keep it.* It uses the in-app
+note's bar, with **Copy link** and a ✕ that holds for the tab (`psycheai_private_closed`), and stands
+down for the in-app note when both apply.
+
+- **Chrome, Edge and other Chromium browsers:** a private window's storage quota is tied to memory
+  (about 0.9 GB measured), a normal profile's to the disk (about 160 GB on the same machine). Under
+  twice the JavaScript heap limit reads as private. A normal window on a nearly full device could be
+  taken for one, which is why the note says "looks like".
+- **Firefox:** a private window has no service workers.
+- **Safari (iPhone and Mac):** gives nothing away, so it is never told.
+
+The UI suite's pages are private windows themselves, so each starts with the note closed, as its ✕
+leaves it; the note's own checks use a page without that.
+
 ### "Your data", never "the export"
 
 A report said "the export reveals you are a …", which reads as a file talking about the reader. Everything

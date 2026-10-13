@@ -352,6 +352,30 @@ process.on('exit', stop);
 await waitForServer(PORT);
 
 const browser = await chromium.launch();
+// Playwright's pages are private windows (incognito contexts), so every page
+// would show the private-window note (app.js, warnPrivate). Each starts with
+// it closed, as its ✕ leaves it; the note's own checks use a page without
+// this (rawNewPage). browser.newPage makes its context through newContext, so
+// the raw page is made from a raw context, closed with it.
+const PRIVATE_CLOSED = () => { try { sessionStorage.setItem('psycheai_private_closed', '1'); } catch (e) { /* about:blank */ } };
+const originalNewPage = browser.newPage.bind(browser);
+const rawNewContext = browser.newContext.bind(browser);
+const rawNewPage = async options => {
+  const context = await rawNewContext(options);
+  const opened = await context.newPage();
+  opened.on('close', () => context.close().catch(() => {}));
+  return opened;
+};
+browser.newContext = async options => {
+  const context = await rawNewContext(options);
+  await context.addInitScript(PRIVATE_CLOSED);
+  return context;
+};
+browser.newPage = async options => {
+  const opened = await originalNewPage(options);
+  await opened.addInitScript(PRIVATE_CLOSED);
+  return opened;
+};
 const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
 
 // What actually goes over the wire is the only honest test of the privacy
@@ -858,6 +882,43 @@ try {
       await halfPage.fill('#premium-promo-input', '').catch(() => {});
     } finally {
       await halfPage.close();
+    }
+  }
+
+  // ---- a private window ----
+  //
+  // Playwright's own pages are private (incognito) windows: a Chromium one
+  // gets a storage quota tied to memory, under 1 GB, where a normal profile
+  // gets tens of GB. The note says it is a guess, and its ✕ holds for the tab.
+  {
+    const priv = await rawNewPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await priv.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await priv.waitForSelector('#inapp-warn:not([hidden])', { timeout: 10000 }).catch(() => {});
+      const note = await priv.evaluate(() => ({ shown: !document.querySelector('#inapp-warn').hidden,
+        text: document.querySelector('#inapp-warn-text').textContent, copy: document.querySelector('#inapp-copy').textContent,
+        chrome: document.querySelector('#inapp-open-chrome').hidden }));
+      check('in a private window, a note says it looks like one and that it forgets the card on closing, with Copy link',
+        note.shown && note.text === 'This looks like a private window. Your Psyche Card is saved only in this browser, and a private window forgets it when you close it. Open psycheai.io in a normal window to keep it.' &&
+          note.copy === 'Copy link' && note.chrome, JSON.stringify(note));
+      await priv.click('#inapp-close');
+      await priv.reload({ waitUntil: 'load' });
+      await priv.waitForTimeout(800);
+      check('its ✕ puts it away for the rest of the tab', await priv.locator('#inapp-warn').isHidden());
+    } finally {
+      await priv.close();
+    }
+    // A normal window: the large quota a real profile has.
+    const normal = await rawNewPage({ viewport: { width: 390, height: 844 } });
+    try {
+      await normal.addInitScript(() => {
+        navigator.storage.estimate = () => Promise.resolve({ quota: 160e9, usage: 0 });
+      });
+      await normal.goto('http://localhost:' + PORT + '/', { waitUntil: 'load' });
+      await normal.waitForTimeout(800);
+      check('a normal window, with a normal storage quota, sees no note', await normal.locator('#inapp-warn').isHidden());
+    } finally {
+      await normal.close();
     }
   }
 

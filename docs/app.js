@@ -10725,6 +10725,42 @@
     if (!linkArriving && (state.profile || !pendingInvite())) settleInAppWarn();
   })();
 
+  // A private window forgets the card when it closes. Browsers hide whether a
+  // window is private, so this is a guess, said as one ("This looks like…"):
+  // Chrome, Edge and other Chromium browsers give a private window a storage
+  // quota tied to memory (under 1 GB here) where a normal one gets a share of
+  // the disk (tens of GB); Firefox has no service workers in one. Safari
+  // gives nothing away, so it is never told. The same bar as the in-app note,
+  // which wins when both apply; its ✕ holds for the tab, as that one's does.
+  async function looksPrivate() {
+    try {
+      if (/Firefox\//.test(navigator.userAgent) && !('serviceWorker' in navigator)) return true;
+      if (!navigator.storage || typeof navigator.storage.estimate !== 'function' || !/Chrome\//.test(navigator.userAgent)) return false;
+      const { quota } = await navigator.storage.estimate();
+      const heap = (performance.memory && performance.memory.jsHeapSizeLimit) || 1073741824;
+      return Number.isFinite(quota) && quota > 0 && quota < heap * 2;
+    } catch (error) { return false; }
+  }
+  (async function warnPrivate() {
+    const bar = $('#inapp-warn');
+    if (!bar || IN_APP) return;
+    let closed = false;
+    try { closed = sessionStorage.getItem('psycheai_private_closed') === '1'; } catch (error) { /* none */ }
+    if (closed || !(await looksPrivate())) return;
+    $('#inapp-warn-text').textContent = TEXT.privateWarn;
+    $('#inapp-open-chrome').hidden = true;
+    const copy = $('#inapp-copy');
+    copy.textContent = TEXT.inAppCopy;
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(ARRIVED_AT); copy.textContent = TEXT.inAppCopied; } catch (error) { /* left as it was */ }
+    });
+    $('#inapp-close').addEventListener('click', () => {
+      bar.hidden = true;
+      try { sessionStorage.setItem('psycheai_private_closed', '1'); } catch (error) { /* none */ }
+    });
+    bar.hidden = false;
+  })();
+
   // The slim bar offering the Psyche Report, once a free card exists: on the
   // front page, My Psyche, My Syncs and the FAQ, not on My Report or while an
   // analysis runs. Never at the same time as a friend's sync invite: it waits
