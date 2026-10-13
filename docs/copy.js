@@ -240,6 +240,8 @@
     guessCard: 'Your card',
     guessLater: 'Later',
     guessOk: 'OK',
+    // A ✕ that puts a note away, read out by screen readers.
+    close: 'Close',
     // In an app's own browser, above that: the first step, before any of the
     // request steps.
     inviteInAppTitle: (ios) => 'Step 1: open this page in ' + (ios ? 'Safari' : 'Chrome'),
@@ -682,6 +684,8 @@
     // "unlock premium sections" while charging US$2 for a re-run would be
     // describing the wrong purchase.
     analysisDialogTitle: 'Run your Psyche Card again',
+    // The card-payment button on that sheet, before its price.
+    analysisPayPrefix: 'Run your Psyche Card again – ',
     analysisDialogBlurb: 'Your first Psyche Card is free; each one after that is US$2.',
     // Shown on the upload page and beside the re-run button once the free run
     // is spent, so the price is never a surprise sprung at the last moment.

@@ -4433,9 +4433,17 @@ details.more[open] > summary::after { content: ' ▴'; }
 /* My Report: Back sits first in the actions, left of Download. */
 #report-back[hidden] { display: none !important; }
 .report-ready-note {
-  margin: 0 0 1rem; padding: .6rem .9rem; border-radius: 12px; font-weight: 700; font-size: .92rem;
+  display: flex; align-items: center; justify-content: space-between; gap: .8rem;
+  margin: 0 0 1rem; padding: .6rem .5rem .6rem .9rem; border-radius: 12px; font-weight: 700; font-size: .92rem;
   color: var(--good); background: var(--good-soft);
+  transition: opacity .3s ease;
 }
+.report-ready-note.is-leaving { opacity: 0; }
+.report-ready-close {
+  flex: none; appearance: none; border: 0; background: none; cursor: pointer;
+  color: inherit; font: inherit; font-size: 1rem; line-height: 1; padding: .25rem .45rem; border-radius: 8px; opacity: .75;
+}
+.report-ready-close:hover, .report-ready-close:focus-visible { opacity: 1; background: color-mix(in srgb, var(--good) 12%, transparent); }
 /* The full report lives only in this browser: until its PDF is saved, a note
    says so, with the button (app.js, showKeepNote). */
 .report-keep-note {

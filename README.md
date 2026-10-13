@@ -2544,7 +2544,7 @@ The nav shows My Report only once the report is unlocked. The current page is ma
 on every link (My Psyche, My Report, My Syncs, FAQ): `.is-current` with `aria-current="page"`, in
 bold purple and nothing more. At 640px and below the nav uses short labels: Psyche, Report, Syncs, FAQ. My Report
 gets its own history entry, so the phone's Back button returns to My Psyche. After payment the reader
-lands on My Report at Part 00, with a note: *Your full report is ready.* A classic-layout report stays on
+lands on My Report at Part 00, with a note: *Your Psyche Report is ready.* It has a ✕ and fades by itself after ten seconds. A classic-layout report stays on
 one page.
 
 ## Counting what works, without counting anyone

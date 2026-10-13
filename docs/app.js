@@ -9091,10 +9091,19 @@
       // of its own, that page is where the reader lands, with a line saying so.
       if (fullReportPage()) {
         go('full');
-        const note = document.createElement('p');
+        // Said once, then out of the way: its ✕, or by itself after ten seconds.
+        const note = document.createElement('div');
         note.className = 'report-ready-note';
         note.setAttribute('role', 'status');
-        note.textContent = Copy.STRUCTURED.reportPage.ready;
+        note.innerHTML = '<span>' + esc(Copy.STRUCTURED.reportPage.ready) + '</span>' +
+          '<button type="button" class="report-ready-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
+        const dismiss = () => {
+          if (!note.isConnected) return;
+          note.classList.add('is-leaving');
+          setTimeout(() => note.remove(), 300);
+        };
+        note.querySelector('.report-ready-close').addEventListener('click', dismiss);
+        setTimeout(dismiss, 10000);
         $('#profile-body').prepend(note);
         // The note saying where the report lives goes under it.
         const keep = $('#profile-body .report-keep-note');
@@ -9209,8 +9218,11 @@
     const errorEl = $('#premium-card-error');
     const payButton = $('#premium-card-pay');
     $('#premium-card-label').textContent = TEXT.premiumCardLabel;
-    payButton.textContent = TEXT.premiumUnlockPrefix +
-      (intent.discount ? Prices.label(intent.currency, 'unlock', intent.amount) : TEXT.premiumPriceLabel);
+    // Named for what this sheet sells: the card run again, or the report.
+    payButton.textContent = premiumKind === 'analysis'
+      ? TEXT.analysisPayPrefix + Prices.label(intent.currency, 'analysis', intent.discount ? intent.amount : undefined)
+      : TEXT.premiumUnlockPrefix +
+        (intent.discount ? Prices.label(intent.currency, 'unlock', intent.amount) : TEXT.premiumPriceLabel);
     errorEl.hidden = true;
     errorEl.textContent = '';
     wrap.hidden = false;

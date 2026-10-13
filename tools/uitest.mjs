@@ -13393,6 +13393,15 @@ try {
         await rp.evaluate(() => document.querySelectorAll('#profile-body .part-card').length > 0 &&
           /Your Psyche Report is ready/.test(document.querySelector('#profile-body .report-ready-note').textContent) &&
           !document.querySelector('#nav-full').hidden && document.querySelector('#profile-top').hidden));
+      check('the ready note has a ✕ that puts it away',
+        await rp.evaluate(async () => {
+          const note = document.querySelector('#profile-body .report-ready-note');
+          const close = note && note.querySelector('.report-ready-close');
+          if (!close || close.getAttribute('aria-label') !== 'Close') return false;
+          close.click();
+          await new Promise(resolve => setTimeout(resolve, 450));
+          return !document.querySelector('#profile-body .report-ready-note');
+        }));
       const paidWith = bodies.slice(before).find(body => body.product === 'unlock') || {};
       check('and using it writes the Psyche Report on the free report, with no payment',
         /^[0-9a-f]{48}$/.test(paidWith.referralGrant || '') && !paidWith.paymentIntentId && !paidWith.promoCode,
