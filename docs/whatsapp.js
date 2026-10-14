@@ -154,6 +154,8 @@
         const counts = new Map();
         for (const m of messages) counts.set(m.sender, (counts.get(m.sender) || 0) + 1);
         chats.push({
+          // The file it came from, so the same export loaded twice is caught.
+          file: String(file.name || ''),
           title: titleFromFileName(t.zipName) || titleFromFileName(t.name),
           participants: [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
           messages: messages.slice(-LIMITS.messagesPerChat),
@@ -292,5 +294,29 @@
     };
   }
 
-  root.PsycheWhatsApp = { readChats, resolveOwner, summarise, parseLines, settleDates, titleFromFileName, LIMITS };
+  /**
+   * The same chat twice: the same file name, the same person named in the
+   * export's title ("WhatsApp Chat with Jean"), or the same people in it. A
+   * chat is counted once, so three slots are three different conversations.
+   */
+  function sameChat(a, b) {
+    const base = c => String(c.file || '').replace(/^.*[\\/]/, '').toLowerCase();
+    if (base(a) && base(a) === base(b)) return true;
+    if (a.title && b.title && norm(a.title) === norm(b.title)) return true;
+    const people = c => (c.participants || []).map(p => norm(p.name)).filter(Boolean).sort().join('|');
+    return (a.participants || []).length >= 2 && people(a) === people(b);
+  }
+
+  /** `fresh` without any chat already in `held` or earlier in `fresh`: `{ kept, repeated }`. */
+  function dropRepeats(held, fresh) {
+    const kept = [];
+    const repeated = [];
+    for (const chat of fresh || []) {
+      if ((held || []).concat(kept).some(other => sameChat(chat, other))) repeated.push(chat);
+      else kept.push(chat);
+    }
+    return { kept, repeated };
+  }
+
+  root.PsycheWhatsApp = { readChats, resolveOwner, summarise, parseLines, settleDates, titleFromFileName, sameChat, dropRepeats, LIMITS };
 })(typeof window !== 'undefined' ? window : globalThis);

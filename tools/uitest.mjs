@@ -864,7 +864,8 @@ try {
       await halfPage.waitForSelector('#profile-body .report-keep-note', { timeout: 30000 }).catch(() => {});
       const keepText = await halfPage.locator('#profile-body .report-keep-note').innerText().catch(() => '');
       check('once the Psyche Report is in, a note says it is saved only on this device, and to download the PDF',
-        /saved only in this browser, on this device/.test(keepText) && /Download the PDF to keep it/.test(keepText) &&
+        /saved only in this browser, and PsycheAI keeps no copy/.test(keepText) && /Download the PDF to keep it/.test(keepText) &&
+          !/Safari/.test(keepText) &&
           /Download PDF/.test(keepText), keepText);
       const [saved] = await Promise.all([
         halfPage.waitForEvent('download', { timeout: 15000 }).catch(() => null),
@@ -3533,24 +3534,29 @@ try {
     !/Enneagram|IG behaviour/.test(await page.evaluate(() =>
       [...document.querySelectorAll('#view-welcome .insight-free-copy, #view-welcome .insight-premium, #view-welcome .insight-compat')]
         .map(n => n.textContent).join(' '))));
-  // The premium tier: the full report by its four parts, by the report's own
+  // The premium tier: the full report by its five parts, by the report's own
   // part names, and the price the unlock charges.
   const premiumTier = await page.evaluate(() => {
     const S = window.PsycheCopy.STRUCTURED;
     const tier = document.querySelector('#view-welcome .insight-premium');
     return {
       parts: tier ? [...tier.querySelectorAll('.insight-part h4')].map(n => n.textContent.trim()) : [],
-      want: ['who', 'drives', 'connect', 'together'].map(key => S.parts[key].title),
+      want: ['who', 'drives', 'connect', 'career', 'together'].map(key => S.parts[key].title),
       nums: tier ? [...tier.querySelectorAll('.insight-part-num')].map(n => n.textContent) : [],
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
+      careerChips: tier ? [...tier.querySelectorAll('.insight-part')[3].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
     };
   });
-  check('the premium tier is the Psyche Report, by its four numbered parts',
-    premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04',
+  check('the premium tier is the Psyche Report, by its five numbered parts',
+    premiumTier.parts.join() === premiumTier.want.join() && premiumTier.nums.join() === '01,02,03,04,05' &&
+      premiumTier.parts.join('|') === 'Who you are|What drives you|How you connect|How you work|Putting it together',
     JSON.stringify(premiumTier));
-  check('and How you connect & work carries a Conflict style pill, after Attachment style',
-    premiumTier.connectChips.join('|') === 'Your love languages|Attachment style|Conflict style|Who suits you|How you work',
+  check('and How you connect carries a Conflict style pill, after Attachment style',
+    premiumTier.connectChips.join('|') === 'Your love languages|Attachment style|Conflict style|Who suits you',
     premiumTier.connectChips.join('|'));
+  check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
+    premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
+    premiumTier.careerChips.join('|'));
   check('and Psyche Sync is offered as free',
     /Psyche Sync, free/.test(await page.locator('#view-welcome .insight-compat').textContent()));
 
@@ -3641,7 +3647,7 @@ try {
       const pad = parseFloat(getComputedStyle(tier).paddingRight);
       const t = tier.getBoundingClientRect();
       const b = document.querySelector('#insight-sample').getBoundingClientRect();
-      // Below the four parts; on a laptop it shares the last line with the extras.
+      // Below the five parts; on a laptop it shares the last line with the extras.
       const lowest = Math.max(...[...tier.querySelectorAll('.insight-part')]
         .map(n => n.getBoundingClientRect().bottom));
       return { rightGap: Math.round(t.right - pad - b.right), below: b.top >= lowest - 1 };
@@ -3652,7 +3658,7 @@ try {
   await page.setViewportSize({ width: 1100, height: 900 });
   // The two tiers sit side by side with nothing squeezed: the free tier puts
   // the card beside its list on a laptop and under it on a phone, and the
-  // four parts go two by two, then one by one.
+  // five parts go two by two (the last across the row), then one by one.
   const tierLayout = {};
   for (const width of [1100, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -3675,15 +3681,15 @@ try {
     });
   }
   await page.setViewportSize({ width: 1100, height: 900 });
-  check('on a laptop the deck of cards sits beside its list and the parts run two by two',
-    tierLayout[1100].cardBeside && tierLayout[1100].partRows === 2, JSON.stringify(tierLayout[1100]));
+  check('on a laptop the deck of cards sits beside its list and the parts run two by two, the plan across the last row',
+    tierLayout[1100].cardBeside && tierLayout[1100].partRows === 3, JSON.stringify(tierLayout[1100]));
   for (const width of [1100, 390]) {
     const t = tierLayout[width];
     check('at ' + width + 'px the eight things on the card are one filled box, four rows of two',
       t.boxes === 1 && t.filled && t.featureRows === 4 && t.featureCols === 2 && t.inBox, JSON.stringify(t));
   }
   check('on a phone they stack, with nothing running off the side',
-    tierLayout[390].cardBelow && tierLayout[390].partRows === 4 && tierLayout[390].spill <= 1,
+    tierLayout[390].cardBelow && tierLayout[390].partRows === 5 && tierLayout[390].spill <= 1,
     JSON.stringify(tierLayout[390]));
   // The gallery: the full sample's card and five more, each a different
   // character and person, in a strip that scrolls sideways without the page
@@ -9697,6 +9703,18 @@ try {
         document.querySelector('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText), null, { timeout: 15000 });
       check('a second chat, an Android one named for the other person, is added without asking',
         await waPage.evaluate(() => document.querySelector('#datasources-who').hidden));
+      // The same chat again is not taken twice: the count stays, and it says why.
+      const [again] = await Promise.all([
+        waPage.waitForEvent('filechooser', { timeout: 15000 }),
+        clickSource(waPage, '#datasources-dialog .mode-option[data-datasource="whatsapp"]'),
+      ]);
+      await again.setFiles({ name: 'WhatsApp Chat with Mia Wong.txt', mimeType: 'text/plain', buffer: Buffer.from(pair) });
+      await waPage.waitForFunction(() => /already loaded/.test(document.querySelector('#datasources-status').textContent), null, { timeout: 15000 })
+        .catch(() => {});
+      check('loading the same chat again is refused, saying so, and the count stays at two',
+        (await waPage.locator('#datasources-status').innerText()) === 'Your chat with Mia Wong is already loaded – choose a chat with someone else.' &&
+          /2 of 3 chats loaded/.test(await waPage.locator('#datasources-dialog .mode-option[data-datasource="whatsapp"]').innerText()),
+        await waPage.locator('#datasources-status').innerText());
       await continueFromDataSources(waPage);
       await waPage.waitForSelector('#review-dialog[open]', { timeout: 15000 });
       check('the review lists the WhatsApp chats as their own switch, on',
@@ -11473,8 +11491,8 @@ try {
       await seed(true);
 
       const parts = await sp.$$eval('#profile-body .report-part', nodes => nodes.map(n => n.getAttribute('data-part')));
-      check('structured: the report runs the overview, then four parts',
-        parts.join() === 'overview,who,drives,connect,together', parts.join());
+      check('structured: the report runs the overview, then five parts: How you connect and How you work apart',
+        parts.join() === 'overview,who,drives,connect,career,together', parts.join());
       const shape = await sp.evaluate(() => {
         const body = document.querySelector('#profile-body');
         const parts = Array.from(body.querySelectorAll('.part-card'));
@@ -11490,9 +11508,9 @@ try {
           more: body.querySelectorAll('details.more').length,
         };
       });
-      check('structured: the overview and the four parts are the only disclosures — no appendix — and on a laptop all five start open',
-        shape.toggles === 5 && shape.inner === 0 &&
-        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,together:open' &&
+      check('structured: the overview and the five parts are the only disclosures — no appendix — and on a laptop all six start open',
+        shape.toggles === 6 && shape.inner === 0 &&
+        shape.parts.join() === 'overview:open,who:open,drives:open,connect:open,career:open,together:open' &&
         (await sp.locator('#profile-body .part-card[data-part-card="appendix"]').count()) === 0 &&
         (await sp.locator('#profile-body .bonus-card').count()) === 0, JSON.stringify(shape));
       check('structured: on a laptop the left column\'s box starts level with the report\'s header',
@@ -11500,16 +11518,36 @@ try {
           document.querySelector('#profile-body .report-hero').getBoundingClientRect().top) <= 2),
         await sp.evaluate(() => document.querySelector('#profile-body .part-nav').getBoundingClientRect().top + ' vs ' +
           (document.querySelector('#profile-body .report-hero') || document.body).getBoundingClientRect().top));
-      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "5 parts" in the pill; the left menu has no title and no purple line on top',
+      // The note saying the report lives only here closes with its ✕, and the
+      // left column moves up with the report it was laid level with.
+      const keepClosed = await sp.evaluate(async () => {
+        const note = document.querySelector('#profile-body .report-keep-note');
+        const close = note && note.querySelector('.report-keep-close');
+        if (!close || close.getAttribute('aria-label') !== 'Close') return 'no close: ' + Boolean(note);
+        const box = note.getBoundingClientRect(), x = close.getBoundingClientRect();
+        const corner = box.right - x.right < 12 && x.top - box.top < 12;
+        window.scrollTo(0, 0);
+        close.click();
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const nav = document.querySelector('#profile-body .part-nav').getBoundingClientRect().top;
+        const hero = document.querySelector('#profile-body .report-hero').getBoundingClientRect().top;
+        return { corner, gone: !document.querySelector('#profile-body .report-keep-note'), level: Math.abs(nav - hero) <= 2, nav, hero };
+      });
+      check('structured: the overview has no headline over it, and How you work no intro above its edge',
+        await sp.evaluate(() => !document.querySelector('#profile-body .pull-quote, #profile-body .work-lead') &&
+          !/Mock work style|Mock read of where they appear/.test(document.querySelector('#profile-body').textContent)));
+      check('structured: the keep-the-PDF note has a ✕ in its corner; closing it leaves the left column level with the report\'s header',
+        keepClosed.corner && keepClosed.gone && keepClosed.level, JSON.stringify(keepClosed));
+      check('structured: My Report opens with a header like My Syncs\': "Your Psyche Report", a line on what it is, "6 parts" in the pill; the left menu has no title and no purple line on top',
         await sp.evaluate(() => {
           const hero = document.querySelector('#profile-body .report-hero');
           const nav = document.querySelector('#profile-body .part-nav');
           return Boolean(hero) && hero.querySelector('.report-hero-title').textContent === 'Your Psyche Report' &&
-            /^5 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
+            /^6 parts/.test(hero.querySelector('.scan-eyebrow').textContent) && /Psyche Card/.test(hero.querySelector('.scan-lede').textContent) &&
             !nav.querySelector('.part-nav-title') && !/Your Psyche Report/.test(nav.textContent) &&
             !/linear-gradient/.test(getComputedStyle(nav).backgroundImage) && getComputedStyle(nav, '::before').content === 'none';
         }));
-      await sp.waitForFunction(() => /^5 parts · \d+ pages$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
+      await sp.waitForFunction(() => /^6 parts · \d+ pages$/.test(document.querySelector('#report-hero-pill').textContent), null, { timeout: 15000 });
       check('structured: and once counted, the pill gives the PDF\'s pages too', true);
       check('structured: the part heads are smaller than a page heading',
         await sp.evaluate(() => parseFloat(getComputedStyle(document.querySelector('#profile-body .part-card .part-title')).fontSize) <= 19 &&
@@ -11518,7 +11556,7 @@ try {
         shape.about === 0 && shape.badges === 0 && shape.more === 0, JSON.stringify(shape));
       check('structured: the plan shows only the horizons that have steps — never "Nothing here yet"',
         (await sp.locator('#profile-body .timeline-empty').count()) === 0 && (await sp.locator('#profile-body .timeline-col').count()) >= 1);
-      check('structured: My Report is Parts 00-04 only — no link card, no card, a Back button',
+      check('structured: My Report is Parts 00-05 only — no link card, no card, a Back button',
         (await sp.locator('#profile-body .referral-card').count()) === 0 && await sp.locator('#profile-top').isHidden() &&
           await sp.locator('#report-back').isVisible());
       // My Psyche, unlocked: the card, the link right under it, what it
@@ -11583,8 +11621,8 @@ try {
         check('structured, on a phone the nav uses the short names: Psyche, Report, Syncs, FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).map(t => t.trim()).join('|') === 'Psyche|Report|Syncs|FAQ',
           (await sp.locator('.nav-links a:not([hidden])').allInnerTexts()).join('|'));
-        check('structured, on a phone: a Psyche Report opens with Part 00 open and parts 01 to 04 shut',
-          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,together:shut', await states());
+        check('structured, on a phone: a Psyche Report opens with Part 00 open and parts 01 to 05 shut',
+          (await states()) === 'overview:open,who:shut,drives:shut,connect:shut,career:shut,together:shut', await states());
         check('structured, on a phone: no part nav floats over the report; the header leads straight into Part 00',
           await sp.evaluate(() => {
             const nav = document.querySelector('#profile-body .part-nav');
@@ -11594,7 +11632,7 @@ try {
           }));
         await sp.click('#profile-body .part-card[data-part-card="who"] .card-toggle');
         check('and a tap opens just the part the reader chose',
-          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,together:shut', await states());
+          (await states()) === 'overview:shut,who:open,drives:shut,connect:shut,career:shut,together:shut', await states());
         await sp.click('#profile-body .part-card[data-part-card="drives"] .card-toggle');
         await sp.waitForTimeout(900);
         const opened = await sp.evaluate(() => {
@@ -11603,11 +11641,11 @@ try {
           return { top: Math.round(card.top), navBottom: Math.round(nav.bottom) };
         });
         check('opening another shuts the one before, and brings the opened part\'s top to the top of the screen',
-          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,together:shut' &&
+          (await states()) === 'overview:shut,who:shut,drives:open,connect:shut,career:shut,together:shut' &&
             opened.top >= opened.navBottom - 2 && opened.top < opened.navBottom + 60, (await states()) + ' ' + JSON.stringify(opened));
         await sp.click('#profile-body .part-card[data-part-card="together"] .card-toggle');
         check('and the last part opens and shuts like the others',
-          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,together:open', await states());
+          (await states()) === 'overview:shut,who:shut,drives:shut,connect:shut,career:shut,together:open', await states());
         await sp.setViewportSize(wide);
         await seed(true);
       }
@@ -11840,7 +11878,7 @@ try {
         return [at('.part-card[data-part-card="together"]'), at('.part-card[data-part-card="appendix"]'), inside.join('+'),
           together && together.querySelector('.method-card') ? 1 : 0];
       });
-      check('structured: Part 4 is the last part — no appendix, no roast; Evidence and method is on My Psyche',
+      check('structured: Part 5 is the last part — no appendix, no roast; Evidence and method is on My Psyche',
         order[0] >= 0 && order[1] === -1 && order[2] === '' && order[3] === 0 &&
           (await sp.locator('#profile-body .bonus-card').count()) === 0, order.join());
       await sp.click('#nav-profile');
@@ -11944,8 +11982,8 @@ try {
       });
       check('structured: numbered part headings, and a nav bar that names them as they are headed',
         visuals.structuredClass && visuals.nav.join('|') ===
-          '00Overview|01Who you are|02What drives you|03How you connect & work|04Putting it together' &&
-        visuals.numerals.join() === '00,01,02,03,04', JSON.stringify([visuals.nav, visuals.numerals]));
+          '00Overview|01Who you are|02What drives you|03How you connect|04How you work|05Putting it together' &&
+        visuals.numerals.join() === '00,01,02,03,04,05', JSON.stringify([visuals.nav, visuals.numerals]));
       check('structured: the three patterns share one colour, and there is no thread map',
         visuals.patternColours === 1 && visuals.threadMap === 0, JSON.stringify([visuals.patternColours, visuals.threadMap]));
       check('structured: sections inside a part carry no one-line result of their own — they are open',
@@ -12018,7 +12056,7 @@ try {
         (await sp.locator('#profile-body .partner .partner-need .partner-items li').count()) === samplePremium.idealPartner.needs.length &&
         (await sp.locator('#profile-body .partner .partner-careful .partner-items li').count()) === samplePremium.idealPartner.carefulOf.length);
       // A jump straight into the middle of a long part — the plan, deep in
-      // part 04 — lights that part, not whichever heading last went past.
+      // part 05 — lights that part, not whichever heading last went past.
       {
         const lit = [];
         for (const sel of ['.wellness-card', '.motivators-card, .part-card[data-part-card="drives"] .section-card', '.development-card .timeline']) {
@@ -12056,7 +12094,7 @@ try {
         await sp.evaluate(() => window.scrollTo(0, 0));
         await sp.waitForTimeout(250);
         const landed = [];
-        for (const key of ['drives', 'connect', 'together']) {
+        for (const key of ['drives', 'connect', 'career', 'together']) {
           await sp.click('#profile-body .part-nav-item[data-part-target="' + key + '"]');
           await sp.waitForTimeout(900);
           landed.push(await sp.evaluate(key => {
@@ -12247,8 +12285,8 @@ try {
       const at = text => structuredPdf.lastIndexOf(text);
       const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
-        'Values & Beliefs', 'How you connect & work', 'Attachment style', 'What you bring', 'Who suits you',
-        'What holds you back', 'Putting it together', 'Development plan', 'Your plan',
+        'Values & Beliefs', 'How you connect', 'Attachment style', 'What you bring', 'Who suits you',
+        'YOUR EDGE', 'What holds you back', 'Putting it together', 'Development plan', 'Your plan',
         'Evidence and method', 'Let us roast you'];
       check('structured PDF: the page\'s sections in the page\'s order',
         pdfOrder.every((text, i, all) => at(text) >= 0 && (i === 0 || at(text) > at(all[i - 1]))),
@@ -12279,8 +12317,14 @@ try {
       check('structured PDF: the cover holds the card and the contents list',
         ['YOU ARE MOST LIKE', 'YOUR PATTERNS', 'INSIDE THIS REPORT', 'Putting it together'].every(t => pages[0].includes(t)),
         pages[0].slice(0, 400));
-      check('structured PDF: the overview opens on the headline, the character and four facts',
-        ['IN ONE LINE', 'STRONGEST DRIVE', 'STRONGEST TRAIT', 'CONFIDENCE'].every(t => pages[1].includes(t)), pages[1].slice(0, 400));
+      // No "In one line" banner: that is the card's headline, on the cover.
+      check('structured PDF: the overview opens on the character and four facts, with no "In one line" banner',
+        ['YOU ARE MOST LIKE', 'STRONGEST DRIVE', 'STRONGEST TRAIT', 'CONFIDENCE'].every(t => pages[1].includes(t)) &&
+          !pages[1].includes('IN ONE LINE'), pages[1].slice(0, 400));
+      // How you work opens on the edge: no intro paragraphs above it.
+      check('structured PDF: How you work opens on the edge, with no intro paragraphs',
+        !structuredPdf.includes('Mock work style') && !structuredPdf.includes('Mock read of where they appear'),
+        'intro still printed');
       // A section's heading is never left at the foot of a page with its
       // first block overleaf: the page that opens each section carries its heading.
       const opens = [['Your signature patterns', 'SHOWS UP IN'], ['How you work', 'YOUR EDGE'],
@@ -12294,13 +12338,13 @@ try {
           pages[pages.length - 1].includes('APPENDIX') && pages[pages.length - 1].includes('Let us roast you') &&
           !pages[pages.length - 1].includes('Evidence and method'),
         pages.length + ' pages');
-      check('structured PDF: the contents list names part 05, the appendix',
-        pages[0].includes('05') && pages[0].includes('Appendix') && !pages[0].includes('Let us roast you'), pages[0].slice(-300));
+      check('structured PDF: the contents list names part 06, the appendix',
+        pages[0].includes('06') && pages[0].includes('Appendix') && !pages[0].includes('Let us roast you'), pages[0].slice(-300));
       check('structured PDF: every part opens a page of its own',
-        ['Who you are', 'What drives you', 'How you connect & work', 'Putting it together'].every(title => {
-          const page = pages.findIndex((pg, i) => i > 0 && pg.includes(title));
-          return page > 0 && pages[page].replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title);
-        }));
+        // Some titles are also chips on earlier pages ("How you work" under a
+        // pattern), so look for the page that opens with each, not the first naming it.
+        ['Who you are', 'What drives you', 'How you connect', 'How you work', 'Putting it together'].every(title =>
+          pages.some((pg, i) => i > 0 && pg.replace(/^.*?2026\s*/, '').trimStart().slice(0, 40).includes(title))));
       check('the classic PDF of the same report is unchanged by any of it',
         !classicPdf.includes('Your signature patterns') && !classicPdf.includes('About this report') &&
         classicPdf.includes('How much to trust this'));
@@ -12391,14 +12435,15 @@ try {
           lockedText: document.querySelector('#profile-body .full-report-locked').textContent,
           intro: document.querySelector('#profile-side .cx-home-intro').textContent };
       });
-      check('structured: the free unlock offer runs as four parts, MBTI and the Big Five as one row, and no appendix',
-        offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect & work|04 Putting it together' &&
-          offerParts.counts.join() === '4,2,4,1' && offerParts.typeTraits, JSON.stringify(offerParts));
-      check('structured: How you connect & work in the unlock offer is four rows: relationships & partner, attachment & conflict, work, career',
+      check('structured: the free unlock offer runs as five parts, MBTI and the Big Five as one row, and no appendix',
+        offerParts.parts.join('|') === '01 Who you are|02 What drives you|03 How you connect|04 How you work|05 Putting it together' &&
+          offerParts.counts.join() === '4,2,2,2,1' && offerParts.typeTraits, JSON.stringify(offerParts));
+      check('structured: in the unlock offer How you connect is relationships & partner and attachment & conflict; How you work is work and career',
         await sp.evaluate(() => {
-          const part = document.querySelectorAll('#profile-body .full-report-locked .unlock-part')[2];
-          return [...part.querySelectorAll('.premium-tier-item strong')].map(n => n.textContent).join('|') ===
-            'In relationships & ideal partner traits|Attachment style & conflict style|How you are at work|Career assessment';
+          const parts = document.querySelectorAll('#profile-body .full-report-locked .unlock-part');
+          const rows = part => [...part.querySelectorAll('.premium-tier-item strong')].map(n => n.textContent).join('|');
+          return rows(parts[2]) === 'In relationships & ideal partner traits|Attachment style & conflict style' &&
+            rows(parts[3]) === 'How you are at work|Career assessment';
         }));
       // The roast is free, on My Psyche, so the unlock no longer promises a
       // secret bonus.

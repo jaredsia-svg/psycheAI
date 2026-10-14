@@ -1280,7 +1280,11 @@ the fourth row), which is reached from everywhere the other sources are: the fre
 *Evidence and method* rows (which lead into the unlock, data first), the paid report's
 *Add / change data & re-run*, and **Unlock the full premium report** itself. A chat can be loaded
 as the .zip or the .txt inside it, one at a time or several together; the row says how many of the
-three are loaded, and a fourth starts a fresh set.
+three are loaded, and a fourth starts a fresh set. The same chat is never counted twice
+(`sameChat` / `dropRepeats`): a file whose name matches one already loaded, a chat titled after the
+same person, or a group with the same members is set aside with *"Your chat with Mia is already
+loaded – choose a chat with someone else."*, and the others in the same pick still load. Two slots
+spent on one conversation would double its weight in the read and leave less room for anyone else.
 
 `docs/whatsapp.js` reads them on the device:
 
@@ -2524,14 +2528,14 @@ A paid structured report is split into two pages, which are two modes of `#view-
   (`reportHeroHtml`, `.report-hero`): a purple pill, the title **Your Psyche Report**, a one-line
   lede (*The working behind your Psyche Card: what each result means, the evidence for it in your
   own data, and what to do with it.*), and the character's emblem in a gradient disc. The pill reads
-  *5 parts · N pages*. N is counted from the real PDF (`reportPdfPages` builds it when the browser is
-  idle, counts its pages, and caches the count per report), so until then it reads *5 parts*.
+  *6 parts · N pages* (the overview and five parts). N is counted from the real PDF (`reportPdfPages` builds it when the browser is
+  idle, counts its pages, and caches the count per report), so until then it reads *6 parts*.
   The part nav has no title of its own and no purple line on top (`.part-nav.is-report`). On a
   laptop it is the left column, its top level with the header (`--side-nav-top`, measured in
   `layoutSideActions`). On a phone (under 760px) there is no part nav at all: nothing floats over the
   report, and the part headings are the way between parts. Part heads
-  are smaller than before: the title is 1.15rem, the number about 2rem. Then come Parts 00 to 05. Part 05, the appendix (only the roast
-  now), opens and shuts like the others. The card is not repeated at the top. The left bar's action
+  are smaller than before: the title is 1.15rem, the number about 2rem. Then come Parts 00 to 05
+  (see "How you connect and How you work, apart" below); the roast is on My Psyche. The card is not repeated at the top. The left bar's action
   row starts with **← Back** (`#report-back`), before Download, and returns to My Psyche.
 - **Open or shut by default:** on a laptop every part starts open; on a phone (under 760px) Part 00
   starts open and the others shut.
@@ -4502,7 +4506,7 @@ suite so they survive edits to the prompt.
 
 ## What the report contains
 
-### The structured report: four parts, one thread
+### The structured report: five parts, one thread
 
 The default layout since this change. The classic report was a run of sections that never referred
 to each other; the structured one is laid out the way professional assessments are, with one thread
@@ -4511,13 +4515,61 @@ here is either this app's own or a published academic model.
 
 | | Sections |
 |---|---|
-| **Overview** | Executive summary · **Your signature patterns** |
+| **Overview** | Executive summary (the character and why, the four facts, the summary; no *In one line* banner, which only repeated the card's headline from the cover) · **Your signature patterns** |
 | **Part 1 – Who you are** | MBTI (first, as the type readers look for) · Big Five, drawn as spectrums with both poles described and the typical band shaded (labelled an estimate). The model still writes the Big Five first, since the E/I letter is checked against the extraversion score; only the display order differs · Wellbeing, as the last section of the part |
 | **Part 2 – What drives you** | **What motivates you** (Schwartz's ten basic values, ranked against each other, grouped by his four higher-order values) · Interests · Values & beliefs |
-| **Part 3 – How you connect & work** | In relationships (love languages, attachment style and ideal partner in one section) · **How you work** (the description and the coach's read, one section instead of two) |
-| **Part 4 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it; each develop area carries the strength it tips over from, two early signs, a counter-move and a reflection question) · **Your plan** (about five actions, one column per horizon in the PDF) |
-| **After Part 4** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
+| **Part 3 – How you connect** | In relationships (love languages, attachment style and ideal partner in one section) |
+| **Part 4 – How you work** | The description and the coach's read as one section under the part's own title, opening on the edge: its two intro paragraphs, `career.workStyle` and `careerAssessment.situation`, said again what the edge and the careers list say, so the structured schema no longer asks for them |
+| **Part 5 – Putting it together** | **Development plan** (build on / develop, each naming the pattern it resolves and the sections that raised it; each develop area carries the strength it tips over from, two early signs, a counter-move and a reflection question) · **Your plan** (about five actions, one column per horizon in the PDF) |
+| **After Part 5** | Evidence and method, on its own: the confidence score and why, what was counted in full, and the data sources |
 | **Last** | The roast, after the method rather than mid-report, with no heading of its own |
+
+**How you connect and How you work, apart.** They were one part, *How you connect & work*. Career is
+one of the main reasons people pay, and the menu hid it behind the second half of a part named for
+both; it was also the longest part. Now Part 3 is *How you connect* and Part 4 *How you work* (key
+`career`), on the page, in the menu, in the PDF (each opens a page; the contents run 00 to 06, the
+appendix last), on the front page's premium tier and in the unlock offer (`offerConnect` and
+`offerCareer`, two rows each). The work part has no second "How you work" heading inside it: the part
+title is the heading, and the edge opens it. On the front page five parts run two by two, the plan
+across the last row.
+
+**A pass over the paid prompt for contradictions.** Read end to end against the structured schema and
+the page, the prompt asked for things the paid call never writes or the page never shows:
+- **The digital footprint** (`activity`, `activity.diet`): written in full on every report and shown
+  nowhere in the structured layout. Dropped from the schema (`STRUCTURED_DROPS`) and its instructions
+  cut, which saves output and time.
+- **The shareable card**: the paid call's schema has no card (it is pinned from the free one), but the
+  prompt still told it how to fill each field. Cut (`STRUCTURED_CUTS`).
+- **Attachment "as its own section, written to stand alone"**: it sits inside How you connect, beside
+  the relationship read, and the prompt said so elsewhere. Now it builds on that read.
+- **"Pick the character", "decide the patterns"**: in the paid call these come from the card. The
+  card block now says that wherever the prompt says to pick one of them, the card is that decision.
+- **AI prompts**: the prompt explained how to read them, but the digest never sends them. Removed.
+- **MBTI**: three counted pieces of evidence plus a counted tempering do not fit three or four
+  sentences; now two, none used for another letter.
+- **Which section owns common evidence**: breadth of contact is extraversion's (social connection
+  points back), the hour-of-day shape is rhythm's (cognitive load points back), regularity is J/P's,
+  who starts conversations is attachment's, searches are the interests'. That is what put "378
+  conversations" in three places.
+- WhatsApp is named among the optional sources in both prompts, and the work strengths' length
+  agrees between the list and its items.
+
+The structured prompt is now the classic one with a listed set of splices and cuts
+(`STRUCTURED_SPLICES`, `STRUCTURED_CUTS`), each throwing if its text goes missing, and a check
+rebuilds it from them.
+
+**Each piece of evidence once in a section, twice at most in the report.** A real 20-page report cited
+"378 Instagram conversations" under the E letter, under extraversion and under social connection, and
+the same late-night hours under two wellbeing dimensions side by side. The old rule ("spell it out once,
+then point back") was advice; the prompt now sets two limits. Inside one section (the four MBTI letters
+are one, the five traits another, the wellbeing dimensions another) a fact is used once, evidence lists
+included. Across the report it appears at most twice: in full where it matters most, then at most one
+short back-reference. Twice rather than three times because the second mention is what ties two findings
+to one behaviour; a third only adds length. Signature patterns count as the first use. The MBTI prompt
+also now agrees with its own field (three or four sentences a letter, E/I two or three, pointing back at
+the extraversion evidence rather than citing it again; the body text had said four to six), and the
+character paragraph in the overview is one or two sentences, since the card on the cover already says
+who they are like.
 
 **No Enneagram anywhere, and the patterns are on the free card.** The Enneagram is gone from the app
 — both layouts, both calls, the card, the link, the page and the PDF; the summary card's column names
@@ -4533,7 +4585,7 @@ fault ("The quiet organiser", "Warm in small circles", not "guarded", "avoidant"
 The honest cost of each pattern still exists, in its `line`, which only the paid report shows, and
 in the paid report's development and pressure sections. No pattern is about romance or dating, in
 its name, line or evidence: how someone is with a partner belongs only in the paid report's
-relationship sections (`attachment`, `idealPartner`, under *How you connect & work*). The rules
+relationship sections (`attachment`, `idealPartner`, under *How you connect*). The rules
 are in both calls' prompts and schema descriptions in `lib/prompts.js` (`STRUCTURED_FREE_SYSTEM`,
 `FREE_PATTERNS`, `STRUCTURED_CARD_HIGHLIGHTS`, `CARD_SCHEMA.headline`, and the paid `patterns`).
 Cards already made keep what they were written with until they are re-run.
@@ -6054,10 +6106,13 @@ or the sync is done (`refreshReportPromo`, `syncInviteShowing` in `docs/app.js`)
 The full report is kept only in the browser it was made in (`localStorage`); the server never stores
 it. A browser can clear that without asking: Safari deletes a site's stored data after seven days of
 use without a visit, a reader can clear their history, and a private tab forgets it on closing. So until
-the reader has downloaded its PDF once, the report opens with a note: *Your Psyche Report is saved only
-in this browser, on this device. PsycheAI keeps no copy, so if your browser clears this site's data
-(Safari does after about a week without a visit), it is gone. Download the PDF to keep it.* It has a
-**Download PDF** button beside it (`showKeepNote` in `docs/app.js`). The first download, from there or
+the reader has downloaded its PDF once, the report opens with a short note: *Your Psyche Report is saved
+only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.* (The longer version named
+Safari's seven days; it read as a wall of text above the report.) It has a **Download PDF** button beside
+it (`showKeepNote` in `docs/app.js`) and a ✕ in its corner that puts it away for this visit only: it is
+back on the next, until the PDF is saved. On a laptop the left column is laid level with the report's
+header, so when this note or the "ready" note above it goes, the column is laid out again
+(`removeHeadNote`); otherwise it was left a note's height below the header. The first download, from there or
 from the page's own button, sets `psycheai_pdf_saved` and the note goes for good. A new full report
 clears the key, so the note asks again for that one.
 

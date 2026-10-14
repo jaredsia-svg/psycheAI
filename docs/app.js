@@ -1732,7 +1732,7 @@
    * What the unlock explains and adds, in the order the report runs. The
    * structured layout's list is its own: the overview, then each part's
    * sections with the paid ones where they sit in the report (wellbeing ends
-   * Part 1, attachment, partner and the coach's read join Part 3), then the
+   * Part 1, attachment and partner join Part 3, the coach's read is Part 4), then the
    * plan — and no digital footprint, which that report has not
    * got. Each row carries its own blurb, so the paid ones need no second list.
    */
@@ -1762,7 +1762,7 @@
   }
 
   /**
-   * The same offer, by the report's five parts: what each part holds, then its
+   * The same offer, by the report's numbered parts: what each part holds, then its
    * sections. The overview's summary and patterns open Part 1, the part they
    * lead into, so the offer has the report's five numbered parts and no more.
    */
@@ -1776,9 +1776,10 @@
       { key: 'who', rows: [by(TEXT.whoYouAre), by(S.titles.patterns),
         { icon: '🧭', title: () => S.explainTypeTraitsTitle, blurb: () => S.explainTypeTraits }, by(S.titles.wellness)] },
       { key: 'drives', rows: [by(S.titles.motivators), by(S.explainListsTitle)] },
-      // Four rows: relationships with who suits them, attachment with
-      // conflict, work, and the career assessment.
+      // Two rows each: relationships with who suits them and attachment
+      // with conflict; then work and the career assessment.
       { key: 'connect', rows: S.offerConnect.map(([icon, title, blurb]) => ({ icon, title: () => title, blurb: () => blurb })) },
+      { key: 'career', rows: S.offerCareer.map(([icon, title, blurb]) => ({ icon, title: () => title, blurb: () => blurb })) },
       // No secret bonus beside the plan any more: the roast is free, on My
       // Psyche, so the unlock cannot promise it.
       { key: 'together', rows: [by(S.titles.development)] },
@@ -2203,7 +2204,7 @@
   /**
    * The welcome page's "What insights will I get?": the summary card first —
    * what is on it, beside a real one drawn from the sample — then the full
-   * premium report, by the four parts it is written in, and its price. The
+   * premium report, by the five parts it is written in, and its price. The
    * part and section names are the report's own, so a rename there is a
    * rename here.
    */
@@ -2224,11 +2225,12 @@
   function insightsHtml() {
     const S = Copy.STRUCTURED;
     const I = S.insights;
-    const parts = ['who', 'drives', 'connect', 'together'];
+    const parts = ['who', 'drives', 'connect', 'career', 'together'];
     const sectionsOf = {
       who: [I.characterChip, S.titles.patterns, 'MBTI', TEXT.bigFive, S.titles.wellness],
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
-      connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou, S.titles.work],
+      connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou],
+      career: [TEXT.careerEdge, S.whatHoldsYouBack, S.careerFitTitle],
       together: [S.titles.development],
     };
     return '<div class="insight-tier insight-free">' +
@@ -5144,13 +5146,25 @@
             // right now", not "discard that".
             pendingDataSourceReads.instagram = added.instagram;
           } else if (source === 'whatsapp') {
-            const fresh = await window.PsycheWhatsApp.readChats(files, {
+            const readChats = await window.PsycheWhatsApp.readChats(files, {
               onProgress: p => setSourceProgress(source, p.phase === 'done' ? 100
                 : Math.round(10 + (p.total ? p.done / p.total : 0) * 85), p.label),
             });
             // Up to waMax chats, added to what is loaded; one more starts a
             // fresh set (with a limit of one, a new chat replaces the old).
             const held = pendingDataSourceReads.whatsappChats || [];
+            // A chat already loaded (the same file, or the same person) is
+            // not taken twice: each slot is a different conversation.
+            const { kept, repeated } = window.PsycheWhatsApp.dropRepeats(held, readChats);
+            const repeatNote = repeated.length ? TEXT.whatsappRepeat(repeated.map(c => c.title).filter(Boolean)) : '';
+            if (!kept.length) {
+              setBusy(false);
+              setSourceProgress(source, null, '');
+              say(repeatNote, 'bad');
+              markAdded();
+              return;
+            }
+            const fresh = kept;
             const startOver = held.length + fresh.length > waMax && held.length >= waMax;
             const chats = (startOver ? fresh : held.concat(fresh)).slice(0, waMax);
             const hints = [ownDisplayName(), state.profile && state.profile.card && state.profile.card.name].filter(Boolean);
@@ -5163,10 +5177,10 @@
             added.whatsapp = window.PsycheWhatsApp.summarise(chats, owner);
             pendingDataSourceReads.whatsapp = added.whatsapp;
             pendingDataSourceReads.whatsappChats = chats;
-            if (startOver) {
+            if (startOver || repeatNote) {
               setBusy(false);
               setSourceProgress(source, null, '');
-              say(TEXT.whatsappFull(waMax), '');
+              say([startOver ? TEXT.whatsappFull(waMax) : '', repeatNote].filter(Boolean).join(' '), '');
               markAdded();
               return;
             }
@@ -6129,8 +6143,8 @@
   }
 
   // No appendix any more: Evidence and method is on My Psyche (the sample
-  // keeps it at the end of Part 04), and so is the roast.
-  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'together'];
+  // keeps it at the end of Part 05), and so is the roast.
+  const PART_ORDER = ['overview', 'who', 'drives', 'connect', 'career', 'together'];
   // Below this width a full report opens with its parts shut (renderProfile).
   const PHONE_REPORT = '(max-width: 759px)';
 
@@ -6205,7 +6219,7 @@
     const S = Copy.STRUCTURED;
     const items = PART_ORDER.map(key => [key, String(PART_ORDER.indexOf(key)).padStart(2, '0'), S.parts[key].title]);
     // On a phone it is one thin row under the site's header: the name of the
-    // part being read, then the numerals 00 … 04.
+    // part being read, then the numerals 00 … 05.
     return '<nav class="part-nav' + (ownPage ? ' is-report' : '') + '" aria-label="' + esc(S.partNavLabel) + '">' +
       '<span class="part-nav-lead" aria-hidden="true">' + esc(items[0][2]) + '</span>' + items.map(([key, num, title]) =>
       '<button type="button" class="part-nav-item" data-part-target="' + esc(key) + '" title="' + esc(title) + '">' +
@@ -6547,16 +6561,15 @@
   }
 
   /**
-   * How you work as one section: how they work, the edge and their other
-   * strengths, everything holding them back as one list, and what they are not
-   * using. The description and the coach's read used to sit side by side and
-   * say the same things twice; the actions are on the development plan.
+   * How you work as one section: the edge and their other strengths,
+   * everything holding them back as one list, and what they are not using.
+   * No intro: its two paragraphs (how they work, where they seem to be now)
+   * said again what the edge and the careers list say. The actions are on
+   * the development plan.
    */
   function workStructuredBody(career, coaching) {
     const S = Copy.STRUCTURED;
     let html = '';
-    const lead = [career.workStyle, coaching && coaching.situation].filter(Boolean);
-    if (lead.length) html += '<div class="work-lead">' + lead.map(text => '<p>' + esc(text) + '</p>').join('') + '</div>';
     if (coaching && coaching.edge) {
       html += '<div class="callout career-edge edge-hero"><span class="career-label">' + esc(TEXT.careerEdge) + '</span>' +
         '<h3>' + esc(coaching.edge.headline) + '</h3><p>' + esc(coaching.edge.detail) + '</p>' +
@@ -6898,10 +6911,9 @@
     // Overview, part 00: the summary and the signature patterns, open from
     // the start. Each part is one box, and the sections inside it are always
     // open — four disclosures in the whole report rather than one per section.
-    const headline = String((report.card && report.card.headline) || '').trim();
+    // No headline over it: that line is the card's, printed on the card.
     let part = '<div class="card section-card summary-card">' +
       head('👤', esc(S.titles.summary), 'summary') +
-      (headline ? '<p class="pull-quote">' + esc(headline) + '</p>' : '') +
       essenceBlock(report.essence) + paragraphs(report.summary) + '</div>';
     if (patterns.length) part += patternsCardHtml(patterns);
     html += partCardHtml('overview', part);
@@ -6936,7 +6948,7 @@
       standForHtml(report) + '</div>';
     html += partCardHtml('drives', part);
 
-    // Part 3: how you connect and work.
+    // Part 3: how you connect.
     const relationship = report.relationship || {};
     const attachment = unlocked.attachment;
     const idealPartner = unlocked.idealPartner;
@@ -6948,16 +6960,19 @@
     // Locked (the sample), the two premium halves keep their own covers.
     if (!attachment) part += paidCard(paid('attachment'), unlocked, { sample, flat: true });
     if (!idealPartner) part += paidCard(paid('idealPartner'), unlocked, { sample, flat: true });
-    // How you work: the description and the coach's read as one section.
+    html += partCardHtml('connect', part);
+
+    // Part 4: how you work — the description and the coach's read as one
+    // section, under the part's own title rather than a second "How you work".
     // Locked, the coach's read keeps its own cover below.
     const career = report.career || {};
     const coaching = unlocked.careerAssessment;
-    part += '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
-      head('💼', esc(S.titles.work), 'work') + workStructuredBody(career, coaching) + '</div>';
+    part = '<div class="card section-card work-card' + (coaching ? ' paid-card career-card" data-paid="careerAssessment' : '') + '">' +
+      workStructuredBody(career, coaching) + '</div>';
     if (!coaching) part += paidCard(paid('careerAssessment'), unlocked, { sample, flat: true });
-    html += partCardHtml('connect', part);
+    html += partCardHtml('career', part);
 
-    // Part 4: putting it together.
+    // Part 5: putting it together.
     part = '';
     const workActions = ((coaching && coaching.actions) || []).filter(a => a && a.title)
       .map(a => ({ horizon: a.horizon, step: a.title, detail: a.detail, from: S.fromWork }));
@@ -6973,8 +6988,8 @@
         pressurePointsHtml(report.pressurePoints) + '</div>';
     }
     // Evidence and method lives on My Psyche, beside the card it rates; the
-    // sample, which has no My Psyche, keeps it at the end of Part 04. There
-    // is no Part 05 any more: the roast is on My Psyche too.
+    // sample, which has no My Psyche, keeps it at the end of Part 05. There
+    // is no appendix part on the page: the roast is on My Psyche too.
     if (!ownPage) part += methodCardHtml(report, sample);
     html += partCardHtml('together', part);
     return html;
@@ -6999,7 +7014,7 @@
       if (on && lead) lead.textContent = button.querySelector('.part-nav-label').textContent;
     });
     // Whole parts are watched, not their headings, so a jump into the middle
-    // of a long part (the plan, deep in part 04) still lights that part. The
+    // of a long part (the plan, deep in part 05) still lights that part. The
     // part crossing a thin band near the top of the screen is the current one.
     const inBand = new Set();
     const keyOf = node => node.getAttribute('data-part') || node.getAttribute('data-part-card');
@@ -8001,14 +8016,21 @@
 
   // The full report is kept only in this browser: until its PDF has been
   // downloaded once, a note at the head of the report says so, with the button.
+  // Its ✕ puts it away for this visit; it is back on the next until the PDF is saved.
+  let keepNoteClosed = false;
   function showKeepNote() {
     const body = $('#profile-body');
-    if (!body || body.querySelector('.report-keep-note') || store.read(KEYS.pdfSaved, false)) return;
+    if (!body || keepNoteClosed || body.querySelector('.report-keep-note') || store.read(KEYS.pdfSaved, false)) return;
     const note = document.createElement('div');
     note.className = 'report-keep-note no-print';
     note.innerHTML = '<p>' + esc(Copy.STRUCTURED.reportPage.keep) + '</p>' +
-      '<button class="btn btn-sm report-keep-save" type="button">' + esc(Copy.STRUCTURED.reportPage.keepButton) + '</button>';
+      '<button class="btn btn-sm report-keep-save" type="button">' + esc(Copy.STRUCTURED.reportPage.keepButton) + '</button>' +
+      '<button type="button" class="report-keep-close" aria-label="' + esc(TEXT.close) + '">✕</button>';
     note.querySelector('.report-keep-save').addEventListener('click', exportPdf);
+    note.querySelector('.report-keep-close').addEventListener('click', () => {
+      keepNoteClosed = true;
+      removeHeadNote(note);
+    });
     const ready = body.querySelector('.report-ready-note');
     if (ready) ready.after(note); else body.prepend(note);
   }
@@ -8031,7 +8053,7 @@
     // stays there until the PDF is saved somewhere it lands.
     if (hasExplanations(profile) && !IN_APP) {
       store.write(KEYS.pdfSaved, true);
-      document.querySelectorAll('.report-keep-note').forEach(note => note.remove());
+      document.querySelectorAll('.report-keep-note').forEach(removeHeadNote);
     }
   }
 
@@ -8046,6 +8068,13 @@
     const view = $('#view-profile');
     return Boolean(view && view.classList.contains('profile-paid') &&
       window.matchMedia && window.matchMedia('(min-width: 1000px) and (min-height: 520px)').matches);
+  }
+
+  // A note at the head of the report going moves the report up under the
+  // left column, which was laid level with it: lay the column out again.
+  function removeHeadNote(note) {
+    note.remove();
+    layoutSideActions();
   }
 
   function layoutSideActions() {
@@ -9100,7 +9129,7 @@
         const dismiss = () => {
           if (!note.isConnected) return;
           note.classList.add('is-leaving');
-          setTimeout(() => note.remove(), 300);
+          setTimeout(() => removeHeadNote(note), 300);
         };
         note.querySelector('.report-ready-close').addEventListener('click', dismiss);
         setTimeout(dismiss, 10000);

@@ -832,6 +832,10 @@
     // Instagram's tag on a first upload, set as a pill.
     sourceRequired: 'Required',
     whatsappWhoAreYou: 'Which of these is you? Your own messages are the ones read.',
+    // A WhatsApp chat already loaded (same file or same person), not taken twice.
+    whatsappRepeat: (names) => (names.length === 1 && names[0]
+      ? 'Your chat with ' + names[0] + ' is already loaded'
+      : 'That chat is already loaded') + ' – choose a chat with someone else.',
     whatsappFull: (max = 3) => max === 1 ? 'One chat is the most here – this one replaces the last.'
       : 'Three chats is the most – these start a fresh set.',
     sourceLoaded: 'Loaded',
@@ -935,7 +939,9 @@
   // assessments open each section with a line saying what it measures; that
   // structure is borrowed, the words are not.
   const STRUCTURED = {
-    // The four parts, plus the overview before them and the appendix after.
+    // The five parts, plus the overview before them and the appendix after.
+    // How you connect and How you work were one part; they are two, so a
+    // reader looking for the career read finds it in the menu.
     parts: {
       overview: { label: 'Overview', title: 'Overview',
         intro: 'The short version of everything below, and the patterns that run through it.' },
@@ -943,12 +949,14 @@
         intro: 'Your temperament – your type and the five broad traits underneath it – and how you are doing.' },
       drives: { label: 'Part 2', title: 'What drives you',
         intro: 'What you are working towards, what you keep coming back to, and what you hold to.' },
-      connect: { label: 'Part 3', title: 'How you connect & work',
-        intro: 'How you are with the people close to you, and how you work.' },
-      together: { label: 'Part 4', title: 'Putting it together',
+      connect: { label: 'Part 3', title: 'How you connect',
+        intro: 'How you are with the people close to you.' },
+      career: { label: 'Part 4', title: 'How you work',
+        intro: 'Your edge, what holds you back, and the work that suits you.' },
+      together: { label: 'Part 5', title: 'Putting it together',
         intro: 'What to build on, what to work on, how your strengths behave under pressure, and how this report was made.' },
-      // Part 05: how the report was made, and the roast.
-      appendix: { label: 'Part 5', title: 'Appendix',
+      // Part 06: how the report was made, and the roast.
+      appendix: { label: 'Part 6', title: 'Appendix',
         intro: 'How this report was made, and the roast.' },
     },
 
@@ -1052,8 +1060,8 @@
         'searched and kept coming back to, rather than answers to a questionnaire, and every finding ' +
         'cites the evidence behind it.'],
       ['How it is organised',
-        'An overview with your signature patterns, then four parts: who you are, what drives you, how ' +
-        'you connect and work, and putting it together. Each section opens with what it measures. The ' +
+        'An overview with your signature patterns, then five parts: who you are, what drives you, how ' +
+        'you connect, how you work, and putting it together. Each section opens with what it measures. The ' +
         'patterns run through all of them, and the development plan at the end resolves each one.'],
       ['How to read the scales',
         'Scores run from 0 to 100, where 50 is typical. Each trait is a spectrum with both ends ' +
@@ -1083,7 +1091,7 @@
     // classic report's paragraph. Still says what this is not, and who to ask.
     wellnessNote: 'If anything here weighs on you, a GP or qualified professional can help.',
     // The welcome page's "What insights will I get?": the free card, then the
-    // full report by its four parts. Section names are taken from the report's
+    // full report by its five parts. Section names are taken from the report's
     // own labels in app.js, so these hold only what the page says around them.
     insights: {
       freeBadge: 'Free',
@@ -1108,11 +1116,12 @@
       galleryNext: 'Next card',
       sampleButton: 'See sample',
       premiumTitle: 'Your Psyche Report',
-      premiumBlurb: 'Every part of your card explained with the evidence behind it, in four parts – plus the sections only the Psyche Report has.',
+      premiumBlurb: 'Every part of your card explained with the evidence behind it, in five parts – plus the sections only the Psyche Report has.',
       partBlurbs: {
         who: 'Your character and signature patterns, your MBTI letter by letter, your Big Five trait by trait, and a wellbeing read across six dimensions.',
         drives: 'What motivates you on Schwartz\'s circle of ten values, your interests and where each is heading, and what you stand for.',
-        connect: 'Your love languages, attachment style and who suits you; how you work, your edge and what holds you back.',
+        connect: 'Your love languages, attachment style, how you handle disagreement and who suits you.',
+        career: 'Your edge, your other strengths, what holds you back, and the careers that suit you and the ones that would drain you.',
         together: 'A development plan built from everything above.',
       },
       // Part 1's first section tag, for the character comparison.
@@ -1123,10 +1132,8 @@
     },
     partNavLabel: 'Parts of this report',
     // The card's own labels in the structured layout.
-    // The PDF's overview page: a line over the headline, and the four facts
-    // set as tiles under the character.
+    // The PDF's overview page: the four facts set as tiles under the character.
     pdfGlance: {
-      headline: 'In one line',
       type: 'Type',
       drive: 'Strongest drive',
       trait: 'Strongest trait',
@@ -1150,7 +1157,7 @@
       ready: 'Your Psyche Report is ready.',
       // Until the reader has saved the PDF once: where the report lives, and
       // the one way to keep it.
-      keep: 'Your Psyche Report is saved only in this browser, on this device. PsycheAI keeps no copy, so if your browser clears this site\u2019s data (Safari does after about a week without a visit), it is gone. Download the PDF to keep it.',
+      keep: 'Your Psyche Report is saved only in this browser, and PsycheAI keeps no copy. Download the PDF to keep it.',
       keepButton: 'Download PDF',
     },
     cardGuide: {
@@ -1321,12 +1328,14 @@
     explainDevelopment: 'A development plan built from your own findings – what to lean into, what to work ' +
       'on, with first steps for this week, and the strengths most likely to turn costly under pressure.',
     // MBTI and the Big Five as one row of the unlock offer.
-    // The unlock offer's Part 3, as four rows.
+    // The unlock offer's Parts 3 and 4, two rows each.
     offerConnect: [
       ['💞', 'In relationships & ideal partner traits', 'How you are to be close to – your real strengths and the ' +
         'blind spots that cost you, how you show love and want to receive it, and what you actually need in a partner.'],
       ['🔗', 'Attachment style & conflict style', 'Your likely attachment style with the working shown, and how you ' +
         'handle disagreement with the people close to you – whether you raise it, smooth it over, go quiet or come in hot.'],
+    ],
+    offerCareer: [
       ['💼', 'How you are at work', 'How you work, the strengths you bring and what holds you back, each with the ' +
         'evidence behind it.'],
       ['🪜', 'Career assessment', 'Your edge, what you are not yet using, the careers that suit you and the ones that ' +

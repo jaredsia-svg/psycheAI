@@ -2664,30 +2664,15 @@
   }
 
   /**
-   * The overview's opening: the headline in a gradient block, the character
-   * beside its emblem in a tinted card, and the four facts as tiles — a page
-   * with some shape to it rather than a run of grey under a run of black.
+   * The overview's opening: the character beside its emblem in a tinted card,
+   * and the four facts as tiles — a page with some shape to it rather than a
+   * run of grey under a run of black. No "In one line" banner: that line is
+   * the card's headline, printed on the cover a page earlier.
    */
-  function overviewOpening(out, source, who) {
+  function overviewOpening(out, source) {
     const S = Copy.STRUCTURED;
     const G = S.pdfGlance;
     const doc = out.doc;
-    const headline = String((source.card && source.card.headline) || who.headline || '').trim();
-    if (headline) {
-      const style = { size: 15, bold: true, color: WHITE };
-      const lines = wrap(toWinAnsi(headline), COLUMN - 44, style);
-      const h = 22 + 14 + lines.length * 19 + 14;
-      out.need(h + 10);
-      const top = doc.y;
-      doc.gradientBox(MARGIN, top, COLUMN, h, 13, ACCENT, ACCENT_2, () => {
-        doc.circle(MARGIN + COLUMN - 20, top + 4, 44, mix(ACCENT_2, WHITE, 0.15));
-        doc.circle(MARGIN + COLUMN - 86, top + h + 6, 22, mix(ACCENT_2, WHITE, 0.1));
-      });
-      doc.draw(toWinAnsi(String(G.headline).toUpperCase()), MARGIN + 22, top + 24,
-        { size: 7, bold: true, color: mix(WHITE, ACCENT, 0.15), tracking: 1.6 });
-      lines.forEach((line, i) => doc.draw(line, MARGIN + 22, top + 46 + i * 19, style));
-      doc.y = top + h + 10;
-    }
     const essence = source.essence || {};
     const name = essence.character || essence.noun;
     if (name) {
@@ -2773,7 +2758,7 @@
     const sectionNames = keys => (keys || []).map(key => S.sectionNames[key]).filter(Boolean)
       .filter((name, i, all) => all.indexOf(name) === i);
     const unlocked = stamp.unlocked || {};
-    const numeral = key => String(['overview', 'who', 'drives', 'connect', 'together', 'appendix'].indexOf(key)).padStart(2, '0');
+    const numeral = key => String(['overview', 'who', 'drives', 'connect', 'career', 'together', 'appendix'].indexOf(key)).padStart(2, '0');
 
     const cardBottom = storyCover(doc, source, who, stamp);
     // Supporting text a size down; section titles kept with their first block
@@ -2793,7 +2778,7 @@
     out.page();
     out.part(S.parts.overview, numeral('overview'));
     out.sectionTitle(S.titles.summary, def('summary'));
-    overviewOpening(out, source, who);
+    overviewOpening(out, source);
     const paragraphs = String(source.summary || '').split(/\n{2,}/).map(t => t.trim()).filter(Boolean);
     paragraphs.forEach((text, i) => {
       if (i) out.space(5);
@@ -2930,7 +2915,7 @@
       out.muted(TEXT.valuesEmpty);
     }
 
-    // 03: how you connect and work.
+    // 03: how you connect.
     out.part(S.parts.connect, numeral('connect'));
     const relationship = source.relationship || {};
     const attachment = unlocked.attachment ? gentleAttachmentOf(unlocked.attachment) : unlocked.attachment;
@@ -2989,17 +2974,13 @@
           { title: TEXT.idealPartnerCarefulOf, color: WARN, fill: WARN_WASH, rows: pointRows(idealPartner.carefulOf) });
       });
     }
-    // How you work: the description and the coach's read as one section —
-    // the edge in a box of its own, then what sets them apart beside what
-    // holds them back. The actions are on the plan.
+    // 04: how you work. The description and the coach's read as one section,
+    // under the part's own title — the edge in a box of its own, then what
+    // sets them apart beside what holds them back. The actions are on the plan.
+    out.part(S.parts.career, numeral('career'));
     const career = source.career || {};
     const coaching = unlocked.careerAssessment;
     out.keep(() => {
-      out.sectionTitle(S.titles.work, def('work'));
-      for (const text of [career.workStyle, coaching && coaching.situation].filter(Boolean)) {
-        out.body(text, { size: 10, leading: 15 });
-        out.space(4);
-      }
       if (coaching && coaching.edge) {
         out.panel([
           { text: coaching.edge.headline, style: { size: 12, bold: true, color: INK }, leading: 16 },
@@ -3034,7 +3015,7 @@
         { title: S.careerFitDraining, color: WARN, fill: WARN_WASH, rows: pointRows(fitRows(fit.draining)) });
     }
 
-    // 04: putting it together.
+    // 05: putting it together.
     out.part(S.parts.together, numeral('together'));
     const development = source.development || {};
     const buildOn = (development.buildOn || []).filter(item => item && item.title);

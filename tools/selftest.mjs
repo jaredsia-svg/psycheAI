@@ -1382,10 +1382,12 @@ check('the axis is one passage, not an argument and a rebuttal in two fields',
 check('and `why` is asked for at the depth a Big Five trait gets',
   /depth a Big Five trait gets/i.test(letterDesc('why')) &&
   /three or four sentences/i.test(letterDesc('why')));
-check('the case for a letter needs three separate pieces of evidence, not one read three ways',
-  /at least three distinct pieces of evidence/i.test(letterDesc('why')) &&
+// Two, not three: three or four sentences cannot hold three counted pieces,
+// a counted tempering and the letter in their week.
+check('the case for a letter needs two separate pieces of evidence, not one read twice',
+  /at least two distinct pieces of evidence/i.test(letterDesc('why')) &&
   /different parts of the digest/i.test(letterDesc('why')) &&
-  /not three readings of the same caption/i.test(letterDesc('why')));
+  /not two readings of the same caption/i.test(letterDesc('why')));
 check('and each piece of it is counted',
   /each with a count or a proportion on it/i.test(letterDesc('why')));
 // The tempering is the half that stops a letter being chosen on the first
@@ -2296,7 +2298,9 @@ for (const [label, needle] of [
   ['insists a single video means nothing', /A single video means nothing at all/],
   ['warns that browsing is mostly work and errands', /Browsing is mostly work and errands/],
   ['states that only website names are given, never pages', /never the page, the address, the query or the time/],
-  ['warns that AI prompts are task-shaped', /task-shaped, not self-expressive/],
+  // No AI prompts reach the model any more (digest.js withholds them), so the
+  // rule for reading them went with them.
+  ['says nothing about reading AI prompts, which it is never sent', /^(?![\s\S]*task-shaped, not self-expressive)/],
   ['says searches are questions rather than beliefs', /Searches are questions, not beliefs/],
   ['blocks reading a diagnosis or affiliation out of a search',
     /A searched symptom is not a diagnosis, a searched term is not an affiliation/],
@@ -6441,10 +6445,13 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
 
   const structured = prompts.STRUCTURED_FULL_SCHEMA;
   const classicSchema = prompts.CLASSIC_FULL_SCHEMA;
-  check('the structured schema drops nothing; every other classic field is written unchanged',
-    prompts.STRUCTURED_DROPS.length === 0 && !('enneagram' in structured.properties) &&
+  // The digital footprint is the one drop: the structured page and PDF have
+  // no section for it, so the paid call no longer writes it.
+  check('the structured schema drops only the digital footprint; every other classic field is written unchanged',
+    prompts.STRUCTURED_DROPS.join() === 'activity' && !('activity' in structured.properties) &&
+    !('enneagram' in structured.properties) &&
     Object.keys(structured.properties.essence.properties).join() === 'character,franchise,icon,why' &&
-    Object.keys(classicSchema.properties).filter(key => !['card', 'essence', 'cardHighlights', 'values', 'beliefs',
+    Object.keys(classicSchema.properties).filter(key => !['activity', 'card', 'essence', 'cardHighlights', 'values', 'beliefs',
       'summary', 'career', 'wellness', 'attachment', 'careerAssessment'].includes(key)).every(key =>
       structured.properties[key] === classicSchema.properties[key] && structured.required.includes(key)) &&
     // Reshaped rather than dropped: the same sections, leaner.
@@ -6473,11 +6480,27 @@ check('the roast goes gentle, teasing only harmless habits, when the evidence sh
   check('the executive summary is about 120 words with no scores',
     /About 120 words/.test(structured.properties.summary.description) &&
     /No numbers or scores of any kind/.test(structured.properties.summary.description));
-  check('the structured prompt is the classic one plus the thread',
-    prompts.STRUCTURED_FULL_SYSTEM === (prompts.CLASSIC_FULL_SYSTEM + '\n\n' + prompts.STRUCTURED_ADDON)
-      .replace('go back to `attachment.why` and `attachment.implications` and pull', 'go back to `attachment.why` and pull')
-      .replace('do not smuggle one back into `workStyle` or `watchOuts`.', 'do not smuggle one back into `workStyle`.') &&
-    !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
+  // The classic prompt and the thread, with only the listed splices and cuts:
+  // each one a field the structured schema leaves out or a page it lacks.
+  {
+    let expected = prompts.CLASSIC_FULL_SYSTEM + '\n\n' + prompts.STRUCTURED_ADDON;
+    for (const [from, to] of prompts.STRUCTURED_SPLICES) expected = expected.replace(from, to);
+    for (const [from, to] of prompts.STRUCTURED_CUTS) {
+      const at = expected.indexOf(from);
+      expected = expected.slice(0, at) + expected.slice(expected.indexOf(to, at));
+    }
+    check('the structured prompt is the classic one plus the thread',
+      prompts.STRUCTURED_FULL_SYSTEM === expected && !/Enneagram/.test(prompts.STRUCTURED_FULL_SYSTEM));
+    // Nothing in it asks for a field the paid call does not write, or
+    // describes a section the page does not have.
+    const full = prompts.STRUCTURED_FULL_SYSTEM;
+    check('the structured prompt asks for no digital footprint, no card and no How you work intro, and does not call attachment a stand-alone section',
+      !/^- \*\*activity\*\*/m.test(full) && !/^- \*\*activity\.diet\*\*/m.test(full) && !/^- \*\*card\*\*: a compact/m.test(full) &&
+        !/`career\.workStyle`|`situation`/.test(full) && !/write it to stand alone/.test(full) &&
+        /shown inside How you connect, straight after the relationship read/.test(full));
+    check('the paid call is told the pinned card is the decision wherever the prompt says to pick one',
+      /this card is that decision/.test(prompts.profileBlocks({ coverage: { sources: ['instagram'] } }, { mbtiType: 'INTJ', bigFive: {} })[1].text));
+  }
   check('the prompt that ties them in is in the structured prompt and nowhere in the classic one',
     prompts.STRUCTURED_FULL_SYSTEM.includes(prompts.STRUCTURED_ADDON) &&
     !prompts.CLASSIC_FULL_SYSTEM.includes('# The thread that ties this report together'));
@@ -8132,6 +8155,21 @@ check('the schema requires evidence on where they align and differ',
 // names.
 {
   const WA = globalThis.PsycheWhatsApp;
+  // The same chat is not loaded twice: by file name, by the person the
+  // export is named for, or by the same people in it.
+  {
+    const c = (file, title, names) => ({ file, title, participants: names.map(name => ({ name, count: 1 })) });
+    const held = [c('WhatsApp Chat with Jean.zip', 'Jean', ['Me', 'Jean'])];
+    check('the same WhatsApp file is not loaded twice',
+      WA.dropRepeats(held, [c('WhatsApp Chat with Jean.zip', 'Jean', ['Me', 'Jean'])]).repeated.length === 1);
+    check('nor the same person under another file name',
+      WA.dropRepeats(held, [c('chat (1).zip', 'Jean', ['Me', 'Jean'])]).repeated.length === 1 &&
+        WA.dropRepeats(held, [c('export.zip', '', ['Jean', 'Me'])]).repeated.length === 1);
+    check('while a chat with someone else is taken',
+      WA.dropRepeats(held, [c('WhatsApp Chat with Ava.zip', 'Ava', ['Me', 'Ava'])]).kept.length === 1);
+    check('and two copies in one pick count once',
+      WA.dropRepeats([], [c('a.zip', 'Ava', ['Me', 'Ava']), c('a.zip', 'Ava', ['Me', 'Ava'])]).kept.length === 1);
+  }
   const chatOf = (text, title) => {
     const messages = WA.settleDates(WA.parseLines(text))
       .filter(m => m.text.trim() && !/omitted|end-to-end encrypted|^‎/i.test(m.text.trim()));
@@ -8463,7 +8501,16 @@ check('the schema requires evidence on where they align and differ',
   const profile = prompts.PROFILE_SYSTEM;
   const schema = JSON.stringify(prompts.PROFILE_SCHEMA);
   check('the prompt tells sections to cite a shared finding once and refer back',
-    /point back at it/i.test(profile) && /refers back in a clause/i.test(profile));
+    /back-reference in a clause/i.test(profile) && /names the pattern rather than re-quoting/i.test(profile));
+  // The limits the report asked for: one use inside a section, two in all.
+  check('each piece of evidence: once inside a section (the four MBTI letters are one), twice at most in the report',
+    /\*\*Once inside a section\.\*\*/.test(profile) && /the four MBTI letters together/.test(profile) &&
+      /\*\*Twice at most in the whole report\*\*/.test(profile) && /Never a third time/.test(profile));
+  check('the structured report has no How you work intro: no career.workStyle, no careerAssessment.situation',
+    !('workStyle' in prompts.STRUCTURED_FULL_SCHEMA.properties.career.properties) &&
+      !('situation' in prompts.STRUCTURED_FULL_SCHEMA.properties.careerAssessment.properties) &&
+      !('situation' in prompts.STRUCTURED_PINNED_FULL_SCHEMA.properties.careerAssessment.properties) &&
+      !/`situation`|`career\.workStyle`/.test(prompts.STRUCTURED_FULL_SYSTEM));
   // The guard against over-correcting. "Do not repeat" read alone becomes "do
   // not say", and a report that withholds its evidence to stay short is worse
   // than one that repeats it.

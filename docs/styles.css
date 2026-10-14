@@ -2925,12 +2925,6 @@ p.connects-label { margin: .8rem 0 .2rem; }
 .card-result { margin: .2rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent); }
 .layout-structured .section-card.is-collapsed .card-sub { display: none; }
 
-/* The headline as a pull-quote. */
-.pull-quote {
-  margin: .2rem 0 1rem; padding: .2rem 0 .2rem 1rem; border-left: 4px solid var(--accent);
-  font-size: clamp(1.15rem, 3vw, 1.4rem); font-weight: 650; line-height: 1.35; font-style: italic;
-}
-
 /* Patterns side by side. */
 @media (min-width: 760px) {
   .pattern-list { grid-template-columns: repeat(3, 1fr); }
@@ -3607,7 +3601,11 @@ details.more[open] > summary::after { content: ' ▴'; }
   list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: 1fr; gap: .7rem;
 }
-@media (min-width: 640px) { .insight-parts { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 640px) {
+  .insight-parts { grid-template-columns: 1fr 1fr; }
+  /* Five parts: the last, the plan, takes the whole last row. */
+  .insight-part:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 .insight-part {
   display: flex; gap: .8rem; align-items: flex-start; padding: .9rem 1rem;
   background: var(--bg-alt); border: 1px solid var(--line); border-radius: 14px;
@@ -4448,11 +4446,16 @@ details.more[open] > summary::after { content: ' ▴'; }
    says so, with the button (app.js, showKeepNote). */
 .report-keep-note {
   display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem;
-  margin: 0 0 1rem; padding: .7rem .9rem; border-radius: 12px; font-size: .88rem; line-height: 1.45;
+  position: relative; margin: 0 0 1rem; padding: .7rem 2.4rem .7rem .9rem; border-radius: 12px; font-size: .88rem; line-height: 1.45;
   background: var(--accent-soft); border: 1px solid var(--line);
 }
 .report-keep-note p { flex: 1 1 18rem; margin: 0; }
 .report-keep-note .btn { flex: none; }
+.report-keep-close {
+  position: absolute; top: .35rem; right: .35rem; appearance: none; border: 0; background: none; cursor: pointer;
+  color: var(--ink-soft); font: inherit; font-size: .95rem; line-height: 1; padding: .3rem .45rem; border-radius: 8px;
+}
+.report-keep-close:hover, .report-keep-close:focus-visible { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 /* My Report has no card at its head: its display: grid would beat [hidden]. */
 #view-profile .profile-top[hidden] { display: none; }
 
