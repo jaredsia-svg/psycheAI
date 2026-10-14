@@ -7200,7 +7200,7 @@ try {
   // for that path.
   check('the report closes on exactly the three housekeeping actions, with the rerun button moved elsewhere',
     (await page.locator('#view-profile .cta-row button').allInnerTexts())
-      .map(t => t.trim()).join(' | ') === 'Back to card | Download Psyche Report | Psyche Sync | Delete everything' &&
+      .map(t => t.trim()).join(' | ') === 'Back to card | Download Report | Psyche Sync | Delete everything' &&
     (await page.locator('#reanalyse').count()) === 0 &&
     (await page.locator('.cta-row #rerun-with-data').count()) === 0,
     (await page.locator('#view-profile .cta-row button').allInnerTexts()).map(t => t.trim()).join(' | '));
@@ -7496,7 +7496,7 @@ try {
     (await page.locator('#export-pdf-bottom').isVisible()) &&
     (await page.locator('#export-pdf-top').count()) === 0);
   check('the export button says what it does',
-    (await page.locator('#export-pdf-bottom').innerText()) === 'Download Psyche Report',
+    (await page.locator('#export-pdf-bottom').innerText()) === 'Download Report',
     await page.locator('#export-pdf-bottom').innerText());
 
   // The report is typeset by pdf.js and downloads straight to the reader's own
@@ -12154,10 +12154,10 @@ try {
             iconAbove: buttons.every(b => b.querySelector('.cta-icon').getBoundingClientRect().bottom <= b.querySelector('.cta-label').getBoundingClientRect().top + 1),
             labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|') };
         });
-        check('structured: on a phone My Report\'s two actions sit side by side — Download, Back to card — and no Delete everything',
+        check('structured: on a phone My Report\'s two actions sit side by side — Back to card, Download — and no Delete everything',
           phoneActions.two && phoneActions.oneRow && phoneActions.sameHeight && phoneActions.noDelete &&
             phoneActions.across && phoneActions.iconAbove &&
-            phoneActions.labels === 'Download Psyche Report|Back to card' && phoneActions.thinCompat, JSON.stringify(phoneActions));
+            phoneActions.labels === 'Back to card|Download Report' && phoneActions.thinCompat, JSON.stringify(phoneActions));
         await sp.setViewportSize({ width: 1100, height: 900 });
         await sp.evaluate(() => window.scrollTo(0, 0));
       }
@@ -12214,14 +12214,20 @@ try {
         const buttons = [...row.querySelectorAll('.btn')].filter(b => !b.hidden);
         return { fixed: getComputedStyle(row).position === 'fixed', below: r.top >= nav.bottom - 1 && r.top - nav.bottom < 24,
           column: Math.abs(r.left - nav.left) < 2, onScreen: r.bottom <= innerHeight,
-          icons: buttons.every(b => getComputedStyle(b.querySelector('.cta-icon')).display !== 'none' &&
-            b.querySelector('.cta-label').getBoundingClientRect().width <= 1 && b.getAttribute('data-tip')),
+          // Each icon with its label under it, inside the box.
+          icons: buttons.every(b => {
+            const icon = b.querySelector('.cta-icon').getBoundingClientRect();
+            const label = b.querySelector('.cta-label').getBoundingClientRect();
+            return getComputedStyle(b.querySelector('.cta-icon')).display !== 'none' && label.width > 20 &&
+              label.top >= icon.bottom - 1 && label.left >= r.left && label.right <= r.right;
+          }),
+          labels: buttons.map(b => b.querySelector('.cta-label').textContent).join('|'),
           quiet: buttons.every(b => /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(b).backgroundColor)),
           tips: buttons.map(b => b.getAttribute('data-tip')).join('|') };
       });
-      check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons with tooltips, and no Delete everything',
+      check('structured: on a wide screen the page\'s actions sit under the nav as quiet icons, each labelled under it, and no Delete everything',
         actions.fixed && actions.below && actions.column && actions.onScreen && actions.icons && actions.quiet &&
-          actions.tips === 'Back to my Psyche Card|Download Psyche Report', JSON.stringify(actions));
+          actions.labels === 'Back to card|Download Report', JSON.stringify(actions));
       // Every laptop has the nav down the left — a small one too, where the
       // report moves right to make room — with the actions under it.
       for (const [w, h] of [[1280, 620], [1024, 600]]) {

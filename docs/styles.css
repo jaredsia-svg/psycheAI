@@ -782,8 +782,8 @@ html:has(.hero-video:-webkit-full-screen) { overflow: hidden; scrollbar-gutter: 
   #view-profile.profile-paid .cta-row .btn.danger { color: #b3261e; }
   #view-profile.profile-paid .cta-row .btn.danger .cta-icon { color: #b3261e; }
   #view-profile.profile-paid .cta-row .btn:active { transform: translateY(1px); }
-  /* Back to card last, on the right. */
-  #view-profile.profile-paid .cta-row #report-back { order: 1; }
+  /* Back to card first, on the left; Download on the right. */
+  #view-profile.profile-paid .cta-row #export-pdf-bottom { order: 1; }
 }
 
 /* ---------- upload ---------- */
@@ -3762,8 +3762,8 @@ details.more[open] > summary::after { content: ' ▴'; }
    page's three actions under it. */
 @media (min-width: 1000px) and (min-height: 520px) {
   #view-profile.profile-paid #profile-body .part-nav { max-height: calc(100vh - var(--side-nav-top, 6.5rem) - 5.2rem); overflow-y: auto; }
-  /* The page's three actions, under the nav: quiet icons in the nav's own
-     box style, each named by a tooltip. Its top is the nav's measured foot
+  /* The page's actions, under the nav: quiet icons in the nav's own box
+     style, each with its small label under it. Its top is the nav's measured foot
      (--side-nav-bottom, set by layoutPsycheCard). */
   #view-profile.profile-paid .cta-row {
     position: fixed; z-index: 10; top: var(--side-nav-bottom, 760px); left: max(1rem, calc((100vw - var(--page-w)) / 2 - 248px));
@@ -3772,7 +3772,8 @@ details.more[open] > summary::after { content: ' ▴'; }
     background: color-mix(in srgb, var(--bg-alt) 92%, transparent); backdrop-filter: blur(8px);
   }
   #view-profile.profile-paid .cta-row .btn {
-    position: relative; display: grid; place-items: center; width: 44px; height: 38px; padding: 0; min-height: 0;
+    position: relative; display: grid; place-items: center; align-content: center; gap: .2rem; flex: 1 1 0; min-width: 0;
+    height: auto; padding: .4rem .3rem .35rem; min-height: 0;
     border: 0; border-radius: 10px; background: transparent; color: var(--ink-soft); box-shadow: none;
   }
   #view-profile.profile-paid .cta-row .btn:hover, #view-profile.profile-paid .cta-row .btn:focus-visible {
@@ -3782,13 +3783,9 @@ details.more[open] > summary::after { content: ' ▴'; }
     background: color-mix(in srgb, #c0392b 12%, var(--bg-alt)); color: #b3261e;
   }
   #view-profile.profile-paid .cta-row .cta-icon { display: block; }
+  /* The label under its icon, so no tooltip is needed. */
   #view-profile.profile-paid .cta-row .cta-label {
-    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
-  }
-  #view-profile.profile-paid .cta-row [data-tip]:hover::after, #view-profile.profile-paid .cta-row [data-tip]:focus-visible::after {
-    content: attr(data-tip); position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
-    padding: .3rem .6rem; border-radius: 8px; background: var(--ink); color: var(--bg-alt);
-    font-size: .74rem; font-weight: 600; white-space: nowrap; pointer-events: none; z-index: 2;
+    font-size: .72rem; font-weight: 700; line-height: 1.2; white-space: nowrap;
   }
 }
 

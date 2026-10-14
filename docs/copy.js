@@ -738,7 +738,7 @@
     // Shown between the two calls an unlock-with-added-data makes. Says
     // plainly that the second one is not another charge, because a second
     // progress bar after a payment otherwise reads like one.
-    premiumRefreshingFree: 'Writing your Psyche Report from the new data – your card is redrawn with it at no extra charge…',
+    premiumRefreshingFree: 'Writing your Psyche Report from the new data – this takes a few minutes. Your card is redrawn with it at no extra charge…',
     premiumCancel: 'Cancel',
     premiumRetry: 'Try again',
     premiumPromoLabel: 'Have a promo code?',
