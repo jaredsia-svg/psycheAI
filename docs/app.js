@@ -2231,7 +2231,8 @@
       drives: [S.titles.motivators, TEXT.interests, TEXT.valuesBeliefs],
       connect: [TEXT.loveHead, S.howYouAttach, S.conflictStyle, S.whoSuitsYou],
       career: [TEXT.careerEdge, S.whatHoldsYouBack, S.careerFitTitle],
-      together: [S.titles.development],
+      // No pill: "Development plan" only said the part's own line again.
+      together: [],
     };
     return '<div class="insight-tier insight-free">' +
       '<div class="insight-free-copy">' +
@@ -2268,7 +2269,7 @@
           '<span class="insight-part-num" aria-hidden="true">' + String(i + 1).padStart(2, '0') + '</span>' +
           '<div><h4>' + esc(S.parts[key].title) + '</h4>' +
           '<p>' + esc(I.partBlurbs[key]) + '</p>' +
-          '<p class="insight-part-chips">' + sectionsOf[key].map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' +
+          (sectionsOf[key].length ? '<p class="insight-part-chips">' + sectionsOf[key].map(name => '<span>' + esc(name) + '</span>').join('') + '</p>' : '') +
         '</div></li>').join('') + '</ol>' +
       '<div class="insight-premium-foot">' +
         '<ul class="insight-extras">' + I.extras.map(([icon, text]) =>

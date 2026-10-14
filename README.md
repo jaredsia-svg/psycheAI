@@ -4531,7 +4531,8 @@ both; it was also the longest part. Now Part 3 is *How you connect* and Part 4 *
 appendix last), on the front page's premium tier and in the unlock offer (`offerConnect` and
 `offerCareer`, two rows each). The work part has no second "How you work" heading inside it: the part
 title is the heading, and the edge opens it. On the front page five parts run two by two, the plan
-across the last row.
+across the last row. Putting it together carries no section pill there: "Development plan" only
+repeated its own line.
 
 **A pass over the paid prompt for contradictions.** Read end to end against the structured schema and
 the page, the prompt asked for things the paid call never writes or the page never shows:

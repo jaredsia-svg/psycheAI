@@ -3545,6 +3545,7 @@ try {
       nums: tier ? [...tier.querySelectorAll('.insight-part-num')].map(n => n.textContent) : [],
       connectChips: tier ? [...tier.querySelectorAll('.insight-part')[2].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
       careerChips: tier ? [...tier.querySelectorAll('.insight-part')[3].querySelectorAll('.insight-part-chips span')].map(n => n.textContent) : [],
+      togetherChips: tier ? tier.querySelectorAll('.insight-part')[4].querySelectorAll('.insight-part-chips').length : -1,
     };
   });
   check('the premium tier is the Psyche Report, by its five numbered parts',
@@ -3554,6 +3555,8 @@ try {
   check('and How you connect carries a Conflict style pill, after Attachment style',
     premiumTier.connectChips.join('|') === 'Your love languages|Attachment style|Conflict style|Who suits you',
     premiumTier.connectChips.join('|'));
+  check('and Putting it together has no pill: its line says what it is',
+    premiumTier.togetherChips === 0, String(premiumTier.togetherChips));
   check('and How you work is a part of its own: your edge, what holds you back, the careers that suit you',
     premiumTier.careerChips.join('|') === 'Your edge|What holds you back|Careers that suit you',
     premiumTier.careerChips.join('|'));
