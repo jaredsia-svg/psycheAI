@@ -77,6 +77,14 @@
   const givingLove = list => (Array.isArray(list) ? list : []).map(item =>
     item && item.language === 'Receiving gifts' ? Object.assign({}, item, { language: 'Giving gifts' }) : item);
 
+  // A paragraph's first sentence and the rest, for a lead set in bold: split
+  // at the first full stop, ! or ? followed by a capital, so "e.g. a" stays whole.
+  const leadSentence = text => {
+    const value = String(text || '').trim();
+    const match = value.match(/^([\s\S]+?[.!?]["\u201d\u2019)]?)\s+(?=["\u201c\u2018(]?[A-Z])([\s\S]+)$/);
+    return match ? [match[1], match[2]] : [value, ''];
+  };
+
   // Label, then the key it reads from the activity object. The order is the
   // order the reader meets them in.
   // "Publishing vs reading" used to close this list. It asked the same counts
@@ -358,7 +366,7 @@
     attachmentPractice: 'What it means in practice',
     // How they handle disagreement, inside the attachment read — the line the
     // card shows as its conflict style, explained.
-    attachmentConflict: 'In conflict',
+    attachmentConflict: 'How you deal with conflict',
     loveHead: 'Your love languages',
     loveReceiving: 'How you want to be loved',
     loveReceivingBlurb: 'What lands, when it is aimed at you.',
@@ -743,6 +751,8 @@
       blurb: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
       blurbPaid: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
       shareHint: 'Share your card or link above to start.',
+      // Opens of the link by others, once a day per browser (never the reader's own).
+      opens: 'opened your link',
       cards: 'made a card',
       paid: 'bought the Psyche Report',
       syncs: 'synced with you',
@@ -1556,7 +1566,7 @@
   }
 
   root.PsycheCopy = {
-    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, CARD_ICONS,
+    TRAIT_LABELS, MBTI_POLES, axisLabel, LOVE_LANGUAGE_ICONS, givingLove, leadSentence, CARD_ICONS,
     ACTIVITY_FACETS, WELLNESS_FACETS, MODE_LABELS, WORK_STANCES, stanceText, BRAND_MARK, TEXT, STRUCTURED,
     CHARACTER_EMBLEMS, EMBLEM_PATHS, emblemSvg, characterArt, CHARACTER_SYNCS, syncsOf, LINE_ICONS, lineIcon, iconHtml, gentleAttachment,
   };

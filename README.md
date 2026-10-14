@@ -2368,14 +2368,15 @@ purchases; it was lowered so a reader sees a reward after two shares, and one fr
 worth a report of its own. Then it says *Share your card or link above*. The card has no
 copy or share buttons of its own; the card's **Share Card** and **Copy link** carry the same link.
 
-Three purple boxes give the counts:
+Four purple boxes give the counts, opens first (leftmost) so a reader sees the link working before
+anyone has made a card:
+- **opened your link**
 - **made a card**
 - **bought the full report**
 - **synced with you**
 
-Opens are still counted for the reader's link, but not shown.
 Where each number comes from:
-- *opened it*: each browser's first open of someone's link that day, sent with `/api/event`
+- *opened your link*: each browser's first open of someone's link that day (never the owner's own), sent with `/api/event`
   `referral_open` and the link's code, then `ref:<code>:opens`.
 - *made a card*: friends' first free cards, `ref:<code>:friends`.
 - *bought the full report*: friends who paid for the full report with a real Stripe payment, not
@@ -6333,8 +6334,10 @@ summary and reasoning are left behind. A saved card is re-shaped before it is se
 
 **Each line matches the premium report.** The full report is anchored to the card (`anchorFrom`'s
 `cardLines`): the attachment leaning is `attachment.style`, worded the same way; the conflict style is
-explained by a new **`attachment.conflict`** ("In conflict", under the attachment read on the page
-and in the PDF), which opens with the card's words; social energy and contact are what
+explained by a new **`attachment.conflict`**, which opens with the card's words. It was "In conflict"
+inside the attachment box; it is now its own subsection after it, **How you deal with conflict**, on the
+page and in the PDF, with that opening sentence (the card's conflict style) in bold
+(`Copy.leadSentence` splits it off); social energy and contact are what
 `wellness.socialConnection` explains; and each work cost is one of what holds them back
 (`careerAssessment.holdingBack` or `career.weaknesses`).
 

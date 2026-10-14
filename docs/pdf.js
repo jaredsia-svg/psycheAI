@@ -2946,11 +2946,21 @@
           attachment.style && { text: attachment.style, style: { size: 12, bold: true, color: ACCENT }, leading: 16 },
           attachment.styleTone && { text: attachment.styleTone, style: { size: 10, bold: true, color: INK }, leading: 14, before: 4 },
           attachment.why && { text: attachment.why, style: T_BODY, leading: 13.8, before: 6 },
-          attachment.conflict && { text: TEXT.attachmentConflict, style: T_TITLE, leading: 14, before: 8 },
-          attachment.conflict && { text: attachment.conflict, style: T_BODY, leading: 13.8, before: 2 },
         ], { fill: WASH, bar: ACCENT });
         evidence(attachment.derivedFrom);
       });
+      // How they deal with conflict: its own subsection, as on the page, the
+      // first sentence (the card's conflict style) in bold.
+      if (attachment.conflict) {
+        const [lead, rest] = Copy.leadSentence(attachment.conflict);
+        out.keep(() => {
+          out.subhead(TEXT.attachmentConflict);
+          out.panel([
+            { text: lead, style: { size: 10.6, bold: true, color: INK }, leading: 14.5 },
+            rest && { text: rest, style: T_BODY, leading: 13.8, before: 4 },
+          ].filter(Boolean), { fill: WASH, bar: ACCENT });
+        });
+      }
       // No "In practice": what the style gives and costs is under what they
       // bring and where it gets hard, just below.
     }

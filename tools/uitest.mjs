@@ -12052,6 +12052,15 @@ try {
         merged.planFrom.filter(f => f === 'How you work').length === 3 &&
         merged.planFrom.filter(f => f === 'Wellbeing').length === 2, merged.planFrom.join(', '));
       check('structured: wellbeing no longer has its own list of suggestions', !merged.wellnessHelp);
+      check('structured: How you deal with conflict is its own subsection after attachment, its first sentence in bold',
+        await sp.evaluate(() => {
+          const card = document.querySelector('#profile-body .relationships-card');
+          const head = [...card.querySelectorAll('h3')].find(h => h.textContent === 'How you deal with conflict');
+          const para = head && head.nextElementSibling;
+          return Boolean(head && para && para.matches('p.attach-conflict') && para.querySelector('strong') &&
+            para.textContent.startsWith(para.querySelector('strong').textContent) &&
+            !card.querySelector('.attach-top .attach-conflict') && !/In conflict/.test(card.textContent));
+        }));
       check('structured: attachment has no "In practice" list',
         !/In practice/i.test(await sp.locator('#profile-body .relationships-card').textContent()));
       check('structured: Who suits you is a verdict banner over two numbered lists',
@@ -12288,7 +12297,7 @@ try {
       const at = text => structuredPdf.lastIndexOf(text);
       const pdfOrder = ['Overview', 'Your signature patterns', 'Who you are', 'not clinically validated',
         'Five research-backed traits', 'A read of online behaviour', 'What drives you', 'What motivates you',
-        'Values & Beliefs', 'How you connect', 'Attachment style', 'What you bring', 'Who suits you',
+        'Values & Beliefs', 'How you connect', 'Attachment style', 'How you deal with conflict', 'What you bring', 'Who suits you',
         'YOUR EDGE', 'What holds you back', 'Putting it together', 'Development plan', 'Your plan',
         'Evidence and method', 'Let us roast you'];
       check('structured PDF: the page\'s sections in the page\'s order',
@@ -12975,8 +12984,10 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your Referral": what it earns, three boxes (cards, paid, syncs), no buttons and nothing to claim yet',
-        /Your Referral/.test(card.text) && card.stats === 3 && !card.ready && !/opened/i.test(card.text) &&
+      check('the free report shows "Your Referral": what it earns, four boxes (opens first, then cards, paid, syncs), no buttons and nothing to claim yet',
+        /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
+          await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,paid,syncs') &&
+          /0\s*opened your link/.test(card.text) &&
           /Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report/.test(card.text) &&
           /Share your card or link above/.test(card.text) &&
           /0\s*made a card/.test(card.text) && /0\s*bought the Psyche Report/.test(card.text) && /0\s*synced with you/.test(card.text) &&
@@ -13417,12 +13428,13 @@ try {
       }, null, { timeout: 15000 });
       const ready = await rp.evaluate(async () => ({ text: document.querySelector('#profile-body .referral-card').innerText,
         cards: document.querySelector('#profile-body .referral-n[data-stat="friends"]').textContent,
+        shown: document.querySelector('#profile-body .referral-n[data-stat="opens"]').textContent,
         opens: (await fetch('api/referral', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: JSON.parse(localStorage.getItem('psycheai_referral')).secret }) }).then(r => r.json())).opens }));
       check('with three friends in, the card counts them, says a free Psyche Report is ready, and offers to use or gift it',
         ready.cards === '3' && /1 free Psyche Report ready/.test(ready.text) && /Use it/.test(ready.text) && /Gift it/.test(ready.text),
         JSON.stringify(ready));
-      check('opens are still counted, though the card no longer shows them', ready.opens >= 1, JSON.stringify(ready));
+      check('and the card shows how many opened the link, the server\'s own count', ready.opens >= 1 && ready.shown === String(ready.opens), JSON.stringify(ready));
 
       await rp.click('#profile-body .referral-claim');
       await skipPremiumDataOffer(rp);

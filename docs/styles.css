@@ -4310,7 +4310,7 @@ details.more[open] > summary::after { content: ' ▴'; }
 .referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
 .referral-blurb { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--ink-soft); }
 /* Compact: the number and its label, tight, no icon. */
-.referral-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; margin: .7rem 0 .3rem; padding: 0; list-style: none; }
+.referral-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin: .7rem 0 .3rem; padding: 0; list-style: none; }
 .referral-stat {
   display: grid; justify-items: center; align-content: center; gap: 0; padding: .4rem .35rem; border-radius: 12px; text-align: center;
   background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-size: .72rem; line-height: 1.25; color: var(--ink-soft);

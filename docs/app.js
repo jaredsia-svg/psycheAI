@@ -1823,8 +1823,8 @@
    */
   function referralCardHtml(paid) {
     const R = TEXT.referral;
-    // Three purple boxes: friends who made a card, bought the full report,
-    // and synced with the reader. No buttons of its own: the card's Share
+    // Four purple boxes: opens of the link first, then friends who made a
+    // card, bought the full report, and synced with the reader. No buttons of its own: the card's Share
     // Card and Copy link above carry the same link. "Use it" and "Gift it"
     // appear only once a free report is earned.
     // The number and its label, no icon: the small ones could not be seen.
@@ -1834,7 +1834,7 @@
       '<div class="referral-head"><span class="referral-icon" aria-hidden="true">' + Copy.lineIcon('🔗') + '</span><div>' +
         '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
         '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
-      '<ul class="referral-stats">' + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
+      '<ul class="referral-stats">' + stat('opens', R.opens) + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
         '<button class="btn btn-sm referral-claim" type="button">' + esc(paid ? R.claimPaid : R.claim) + '</button>' +
         '<button class="btn btn-sm btn-outline referral-gift" type="button">' + esc(R.gift) + '</button></div>' +
@@ -1887,7 +1887,7 @@
     if (!status) return;
     const R = TEXT.referral;
     for (const card of cards) {
-      for (const key of ['friends', 'paid', 'syncs']) {
+      for (const key of ['opens', 'friends', 'paid', 'syncs']) {
         const n = card.querySelector('.referral-n[data-stat="' + key + '"]');
         if (n) n.textContent = String(Number(status[key]) || 0);
       }
@@ -6628,10 +6628,14 @@
       html += '<h3>' + esc(S.howYouAttach) + '</h3><div class="attach-top">' + attachmentMapSvg(attachment.style) +
         '<div><p class="attach-style"><strong>' + esc(attachment.style) + '</strong></p>' +
         (attachment.styleTone ? '<p class="attachment-tone">' + esc(attachment.styleTone) + '</p>' : '') +
-        readingFull(attachment.why, attachment.derivedFrom) +
-        // How they handle disagreement: the card's conflict style, explained.
-        (attachment.conflict ? '<p class="attach-conflict"><strong>' + esc(TEXT.attachmentConflict) + '.</strong> ' +
-          esc(attachment.conflict) + '</p>' : '') + '</div></div>';
+        readingFull(attachment.why, attachment.derivedFrom) + '</div></div>';
+      // How they handle disagreement: its own subsection, the card's conflict
+      // style (its first sentence) in bold, then what it does to the other person.
+      if (attachment.conflict) {
+        const [lead, rest] = Copy.leadSentence(attachment.conflict);
+        html += '<h3>' + esc(TEXT.attachmentConflict) + '</h3><p class="attach-conflict"><strong>' + esc(lead) + '</strong>' +
+          (rest ? ' ' + esc(rest) : '') + '</p>';
+      }
       // No "In practice": what the style gives and costs is under what they
       // bring and where it gets hard, just below.
     }
