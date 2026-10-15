@@ -2389,8 +2389,12 @@ My Psyche ends with a **Your Referral** card (titled *Your link* until October 2
 and method, free or paid. It opens with what the link earns: *Every 2 connections who make their card
 from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report.* It was 3 cards or 2
 purchases; it was lowered so a reader sees a reward after two shares, and one friend paying is
-worth a report of its own. Then it says *Share your card or link above*. The card has no
-copy or share buttons of its own; the card's **Share Card** and **Copy link** carry the same link.
+worth a report of its own. Then it says *Share your card or link above*. A small **Copy link**
+sits at the right of the title (`.referral-copy`, since October 2026). It does exactly what the
+card's own **Copy link** does (`copyShareMessage`): the one share message with the short link, and
+*Copied ✓* on the button for two seconds. It runs before the click handler awaits anything, so the
+copy still counts as the tap's own in Safari. It used to have no buttons of its own, but a reader
+looking at the counts is the one most ready to share, and the card's tools were a scroll away.
 
 Four purple boxes give the counts, opens first (leftmost) so a reader sees the link working before
 anyone has made a card:
@@ -2463,6 +2467,7 @@ Every share and copy of the reader's link sends the same message, from `shareMes
 
 It is used by:
 - the card's **Share Card** (with the card image) and **Copy link**;
+- Your Referral's **Copy link**;
 - My Syncs' **Copy link**;
 - the roast's story image, and **Share PDF** on a sync's result;
 - the classic layout's Send my link.
@@ -2536,12 +2541,15 @@ A paid structured report is split into two pages, which are two modes of `#view-
 (`profilePage` in `docs/app.js` is `'hub'` or `'report'`).
 
 - **My Psyche** (`go('profile')`) has the Psyche Card and its guide at the top, then a fixed order:
-  - Beyond your card
+  - the secret roast
   - Evidence and method
-  - Your link
+  - Your Referral
+
+  *Beyond your card* used to sit under the roast; it was removed in October 2026 (see "The K5
+  card, and Beyond your card").
 
   Once paid, the way into My Report is **See Psyche Report →**, one button across the card's three
-  tools (`.cx-open-report`), with an arrow on its right (`.cx-open-arrow`) that nudges right on hover. A free reader has the unlock box under Beyond your card instead. The card
+  tools (`.cx-open-report`), with an arrow on its right (`.cx-open-arrow`) that nudges right on hover. A free reader has the unlock box under the secret roast instead. The card
   panel and, on a phone, the top of the card's box carry the same light wash as My Syncs' header.
   The panel's purple top line is part of its background rather than a `::before` strip: the panel
   cannot clip (the card's popouts spill out of it), so a strip ran square past its rounded corners.
@@ -6423,7 +6431,12 @@ conflict and agreeableness; colleagues on strengths and work costs, work style, 
 conflict and rhythm; a manager on their report's motivators and work costs and both conflict styles.
 The derived facts add the top motivators the two share.
 
-**Beyond your card** (`beyondCardHtml`) shows these lines to the reader, on a free report, between
+**Removed in October 2026.** My Psyche no longer has this panel. My Syncs still names each field
+the link carries under *What your link contains*, but as field names, not the reader's own values,
+so the values themselves are now seen only in a sync and in the full report. `beyondCardHtml`, its styles (`.beyond-*`, `--pcs`) and `Copy.STRUCTURED.beyond` went
+with it. What follows is the record of what it was.
+
+**Beyond your card** (`beyondCardHtml`) showed these lines to the reader, on a free report, between
 the card and the unlock box: three columns — *In relationships* (attachment and conflict, each with a
 *tentative* tag in place of the model's "(tentative)", strengths ✓ and watch-outs), *Day to day*
 (rhythm, social energy & contact) and *At work* (work style, strengths, what holds you back) —

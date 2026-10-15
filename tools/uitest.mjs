@@ -4751,37 +4751,13 @@ try {
   check('and under it one locked block offering the Psyche Report, with one button',
     freeState.locked === 1 && freeState.unlockButtons === 1,
     JSON.stringify({ locked: freeState.locked, buttons: freeState.unlockButtons }));
-  check('no written section is on the page — only the secret roast, "Beyond your card", the card that holds the controls, then "Your link"',
-    freeState.sections.length === 4 && /secret-roast/.test(freeState.sections[0]) && /beyond-card/.test(freeState.sections[1]) &&
-      /confidence-card/.test(freeState.sections[2]) && /referral-card/.test(freeState.sections[3]),
+  check('no written section is on the page — only the secret roast, the card that holds the controls, then "Your link"',
+    freeState.sections.length === 3 && /secret-roast/.test(freeState.sections[0]) &&
+      /confidence-card/.test(freeState.sections[1]) && /referral-card/.test(freeState.sections[2]),
     JSON.stringify(freeState.sections));
-  // "Beyond your card": the card's other lines, between the card and the
-  // unlock box, read from the card the link carries.
-  const beyond = await page.evaluate(() => {
-    const panel = document.querySelector('#profile-body .beyond-card');
-    const card = JSON.parse(localStorage.getItem('psycheai_profile')).card;
-    const locked = document.querySelector('#profile-body .full-report-locked');
-    const text = panel ? panel.innerText : '';
-    const strip = v => String(v || '').replace(/\s*\(tentative\)\s*$/i, '');
-    return {
-      columns: panel ? panel.querySelectorAll('.beyond-col').length : 0,
-      beforeUnlock: Boolean(panel && locked && (panel.compareDocumentPosition(locked) & Node.DOCUMENT_POSITION_FOLLOWING)),
-      lines: ['conflictStyle', 'rhythm', 'energy', 'workStyle'].every(key =>
-        !card[key] || text.toLowerCase().includes(strip(card[key]).toLowerCase())),
-      lists: ['relationshipStrengths', 'relationshipWeaknesses', 'careerStrengths', 'careerWeaknesses']
-        .every(key => (card[key] || []).every(item => text.includes(item))),
-      tentative: panel ? panel.querySelectorAll('.beyond-tag').length : 0,
-      saysLink: /your link, for Psyche Sync/.test(text),
-      attachment: /attachment/i.test(text),
-      friends: /With connections/i.test(text) && !/In relationships/i.test(text),
-    };
-  });
-  check('a free report shows "Beyond your card" in three columns, between the card and the unlock box',
-    beyond.columns === 3 && beyond.beforeUnlock && beyond.saysLink, JSON.stringify(beyond));
-  check('with every line and list the link carries, and the guesses tagged tentative rather than worded so',
-    beyond.lines && beyond.lists && beyond.tentative >= 1, JSON.stringify(beyond));
-  check('it is about friends: no attachment style, and "With connections" rather than "In relationships"',
-    !beyond.attachment && beyond.friends, JSON.stringify(beyond));
+  check('"Beyond your card" is gone from My Psyche',
+    await page.evaluate(() => !document.querySelector('#profile-body .beyond-card') &&
+      !/Beyond your card/.test(document.querySelector('#view-profile').innerText)));
   // "See sample report" at the head of the unlock block: what the unlock buys,
   // to look at first. The same sample the front page opens.
   check('the unlock block carries "See sample report" at the far end of its head',
@@ -4807,11 +4783,9 @@ try {
   {
     const roast = await page.evaluate(() => {
       const block = document.querySelector('#profile-body .secret-roast');
-      const beyondCard = document.querySelector('#profile-body .beyond-card');
       const harsh = JSON.parse(localStorage.getItem('psycheai_profile')).report.bonus.harsh;
       return {
         first: document.querySelector('#profile-body > .section-card') === block,
-        beforeBeyond: Boolean(block && beyondCard && (block.compareDocumentPosition(beyondCard) & Node.DOCUMENT_POSITION_FOLLOWING)),
         badge: block.querySelector('.secret-roast-badge').textContent.trim(),
         title: block.querySelector('.secret-roast-title').textContent.trim(),
         button: block.querySelector('.secret-roast-reveal').textContent.trim(),
@@ -4820,7 +4794,7 @@ try {
         absent: !block.innerHTML.includes(harsh.slice(0, 30)) && block.querySelector('.bonus-body').hidden,
       };
     });
-    check('it sits straight under the card, above "Beyond your card"', roast.first && roast.beforeBeyond, JSON.stringify(roast));
+    check('it sits straight under the card', roast.first, JSON.stringify(roast));
     check('dressed as a secret bonus: badge, title and one reveal button',
       roast.badge === 'Secret bonus unlocked' && roast.title === 'Let us roast you' &&
         roast.button === 'Reveal my roast' && roast.expanded === 'false' && roast.icons === 3, JSON.stringify(roast));
@@ -8057,7 +8031,7 @@ try {
       appUsesCopy: /const Copy = window\.PsycheCopy/.test(app),
       pdfUsesCopy: /root\.PsycheCopy/.test(pdf),
     };
-  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'With connections', 'At work',
+  }, ['Who you are', 'Big Five', 'Interests', 'Values & Beliefs', 'At work',
     'Your digital footprint', 'What your link contains', 'Your matches',
     'How much to trust this',
     // The compatibility report is two renderings of one document too, now that
@@ -8065,7 +8039,7 @@ try {
     'Where you align', 'Where you differ', 'How to relate better',
     'Your Psyche Syncs']);
 
-  check('every section title is defined in copy.js', sharing.inCopy === 14, JSON.stringify(sharing));
+  check('every section title is defined in copy.js', sharing.inCopy === 13, JSON.stringify(sharing));
   check('the page does not re-type any section title',
     sharing.retypedInApp.length === 0, sharing.retypedInApp.join(' | '));
   check('the PDF does not re-type any section title',
@@ -11671,7 +11645,7 @@ try {
       await sp.waitForSelector('#profile-body .method-card', { timeout: 15000 });
       const hubShape = await sp.evaluate(() => ({
         order: [...document.querySelectorAll('#profile-body > section, #profile-body > div')].map(n =>
-          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.beyond-card') ? 'beyond' : n.matches('.open-report-card') ? 'open' :
+          n.matches('.referral-card') ? 'link' : n.matches('.secret-roast') ? 'roast' : n.matches('.open-report-card') ? 'open' :
             n.matches('.method-card') ? 'method' : n.matches('.sync-invite-slot') ? 'sync' : n.className).join(','),
         card: !document.querySelector('#profile-top').hidden, parts: document.querySelectorAll('#profile-body .part-card').length,
         nav: [...document.querySelectorAll('.nav-links a:not([hidden]) .nav-long')].map(a => a.textContent).join('|'),
@@ -11702,7 +11676,7 @@ try {
             Math.abs(r.left - tools[0].getBoundingClientRect().left) < 2 && Math.abs(r.right - tools[2].getBoundingClientRect().right) < 2;
         }));
       check('structured: Back lands on My Psyche: card, the secret roast, Beyond your card, Evidence and method, then Your link — no "Your Psyche Report" box, no parts',
-        hubShape.order === 'roast,beyond,method,link' && hubShape.card && hubShape.parts === 0 &&
+        hubShape.order === 'roast,method,link' && hubShape.card && hubShape.parts === 0 &&
           hubShape.nav === 'My Psyche|My Report|My Syncs' && hubShape.current === 'My Psyche', JSON.stringify(hubShape));
       await sp.click('#open-report');
       await sp.waitForSelector('#profile-body .part-card', { timeout: 15000 });
@@ -13103,7 +13077,7 @@ try {
         const c = document.querySelector('#profile-body .referral-card');
         return { text: c.innerText, stats: c.querySelectorAll('.referral-stat').length, ready: !c.querySelector('.referral-ready-row').hidden };
       });
-      check('the free report shows "Your Referral": what it earns, four boxes (opens first, then cards, paid, syncs), no buttons and nothing to claim yet',
+      check('the free report shows "Your Referral": what it earns, four boxes (opens first, then cards, paid, syncs), only a Copy link button and nothing to claim yet',
         /Your Referral/.test(card.text) && card.stats === 4 && !card.ready &&
           await rp.evaluate(() => [...document.querySelectorAll('#profile-body .referral-card .referral-n')].map(n => n.dataset.stat).join() === 'opens,friends,paid,syncs') &&
           /0\s*opened your link/.test(card.text) &&
@@ -13116,8 +13090,9 @@ try {
             const at = sel => nodes.findIndex(n => n.matches(sel));
             return at('.referral-card') > at('.method-card, .free-method-card, .confidence-card') && at('.referral-card') === nodes.length - 1;
           }) &&
-          await rp.evaluate(() => !document.querySelector('#profile-body .referral-card .referral-copy, #profile-body .referral-card .referral-share') &&
-            [...document.querySelectorAll('#profile-body .referral-card button')].every(b => b.closest('[hidden]'))),
+          await rp.evaluate(() => !document.querySelector('#profile-body .referral-card .referral-share') &&
+            [...document.querySelectorAll('#profile-body .referral-card button')].filter(b => !b.closest('[hidden]'))
+              .map(b => b.className).join() === 'btn btn-sm btn-outline referral-copy'),
         JSON.stringify(card));
       const mine = await rp.evaluate(() => JSON.parse(localStorage.getItem('psycheai_referral')));
       await rp.context().grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
@@ -13129,6 +13104,25 @@ try {
         /^I got .+ for my Psyche Card\. Get yours now for free: /.test(copiedMessage) &&
         /^http:\/\/localhost:\d+\/c\/[A-Za-z0-9_-]{10}#[A-Za-z0-9_-]{16}$/.test(copied), copied);
       check('and it is short enough to share by hand', copied.length < 60, String(copied.length));
+      // Your Referral's own Copy link, small at the right of its title: the
+      // same message and link.
+      const refCopy = await rp.evaluate(() => {
+        const button = document.querySelector('#profile-body .referral-card .referral-copy');
+        const title = document.querySelector('#profile-body .referral-card .referral-title').getBoundingClientRect();
+        const head = document.querySelector('#profile-body .referral-card .referral-head').getBoundingClientRect();
+        const b = button.getBoundingClientRect();
+        return { right: head.right - b.right < 2 && b.left > title.right, level: Math.abs((b.top + b.bottom) / 2 - (title.top + title.bottom) / 2) < 8,
+          small: b.height < 34, text: button.textContent.trim() };
+      });
+      check('Your Referral has a small Copy link at the right of its title',
+        refCopy.right && refCopy.level && refCopy.small && refCopy.text === 'Copy link', JSON.stringify(refCopy));
+      await rp.evaluate(() => navigator.clipboard.writeText('').catch(() => {}));
+      await rp.click('#profile-body .referral-card .referral-copy');
+      await rp.waitForTimeout(300);
+      const refCopied = await rp.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+      check('and it copies the same share message and link as the card\'s Copy link, saying so on the button',
+        refCopied === copiedMessage &&
+          (await rp.locator('#profile-body .referral-card .referral-copy').innerText()).trim() === 'Copied ✓', refCopied);
       // The same link as a QR code in the foot of the reader's own card, on
       // the page and in its full-screen copy, so any copy of the image leads
       // back to it.

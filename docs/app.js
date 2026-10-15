@@ -1824,15 +1824,20 @@
   function referralCardHtml(paid) {
     const R = TEXT.referral;
     // Four purple boxes: opens of the link first, then friends who made a
-    // card, bought the full report, and synced with the reader. No buttons of its own: the card's Share
-    // Card and Copy link above carry the same link. "Use it" and "Gift it"
-    // appear only once a free report is earned.
+    // card, bought the full report, and synced with the reader. A small Copy
+    // link at the head's right does what the card's own Copy link does: the
+    // share message with the link. "Use it" and "Gift it" appear only once a
+    // free report is earned.
     // The number and its label, no icon: the small ones could not be seen.
     const stat = (key, label) => '<li class="referral-stat">' +
       '<b class="referral-n" data-stat="' + key + '">0</b><span>' + esc(label) + '</span></li>';
     return '<section class="card section-card referral-card screen-only" data-paid="' + (paid ? '1' : '0') + '">' +
       '<div class="referral-head"><span class="referral-icon" aria-hidden="true">' + Copy.lineIcon('🔗') + '</span><div>' +
-        '<h3 class="referral-title">' + esc(R.title) + '</h3>' +
+        '<div class="referral-title-row"><h3 class="referral-title">' + esc(R.title) + '</h3>' +
+        '<button class="btn btn-sm btn-outline referral-copy" type="button" title="' + esc(R.copyLinkTip) + '">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+        '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>' +
+        '<span>' + esc(R.copyLink) + '</span></button></div>' +
         '<p class="referral-blurb">' + esc(paid ? R.blurbPaid : R.blurb) + ' ' + esc(R.shareHint) + '</p></div></div>' +
       '<ul class="referral-stats">' + stat('opens', R.opens) + stat('friends', R.cards) + stat('paid', R.paid) + stat('syncs', R.syncs) + '</ul>' +
       '<div class="referral-ready-row" hidden><span class="referral-ready"></span>' +
@@ -1913,6 +1918,8 @@
   document.addEventListener('click', async event => {
     const card = event.target.closest && event.target.closest('.referral-card');
     if (!card) return;
+    // Before anything is awaited, so the copy still counts as the tap's own.
+    if (event.target.closest('.referral-copy')) { copyShareMessage(event.target.closest('.referral-copy')); return; }
     const R = TEXT.referral;
     const mine = await ensureReferral();
     if (event.target.closest('.referral-gift-copy')) {
@@ -2062,8 +2069,7 @@
    */
   function hubSectionsHtml(report) {
     // The way into My Report is a button under the card's tools (cardGuideHtml).
-    return secretRoastHtml(report.bonus) + beyondCardHtml(state.profile && state.profile.card) +
-      methodCardHtml(report, false) + referralCardHtml(true);
+    return secretRoastHtml(report.bonus) + methodCardHtml(report, false) + referralCardHtml(true);
   }
 
   function fullReportLockedHtml() {
@@ -2135,8 +2141,8 @@
   }
 
   /**
-   * My Psyche's roast: the free call's, straight under the card and above
-   * "Beyond your card", dressed as a secret bonus. Same cover rules as
+   * My Psyche's roast: the free call's, straight under the card, dressed as
+   * a secret bonus. Same cover rules as
    * roastBlock: the writing is not in the page until "Reveal my roast", and
    * revealRoast()/hideRoast() work it exactly the same way.
    */
@@ -7042,49 +7048,6 @@
     light('overview');
   }
 
-  /**
-   * "Beyond your card": the card's lines the card itself has no room for —
-   * attachment, conflict, rhythm, social energy, work style, and the
-   * strengths and costs in relationships and at work. They travel in the
-   * compatibility link, so the reader sees what is in it; each is one the full
-   * report explains, so the panel leads into the unlock box under it. A
-   * "(tentative)" the model wrote becomes a tag rather than words in the line.
-   */
-  function beyondCardHtml(card) {
-    if (!card || typeof card !== 'object') return '';
-    const B = Copy.STRUCTURED.beyond;
-    const line = (label, value) => {
-      const raw = Copy.gentleAttachment(String(value || '').trim());
-      if (!raw) return '';
-      const tentative = /\(tentative\)\s*$/i.test(raw);
-      const text = raw.replace(/\s*\(tentative\)\s*$/i, '');
-      return '<div class="beyond-line"><p class="beyond-label">' + esc(label) +
-        (tentative ? ' <span class="beyond-tag">' + esc(B.tentative) + '</span>' : '') + '</p>' +
-        '<p class="beyond-value">' + esc(text.charAt(0).toUpperCase() + text.slice(1)) + '</p></div>';
-    };
-    const list = (label, items, kind) => {
-      const rows = (Array.isArray(items) ? items : []).filter(Boolean);
-      if (!rows.length) return '';
-      return '<div class="beyond-line"><p class="beyond-label">' + esc(label) + '</p><ul class="beyond-list beyond-' + kind + '">' +
-        rows.map(item => '<li><span class="beyond-mark" aria-hidden="true">' + (kind === 'good' ? '✓' : '!') + '</span><b>' + esc(item) + '</b></li>').join('') + '</ul></div>';
-    };
-    const columns = [
-      // With friends, not in love: no attachment style here (the card travels
-      // to anyone its link reaches); the full report keeps it.
-      ['🤝', B.relationships, line(B.conflict, card.conflictStyle) +
-        list(B.strengths, card.relationshipStrengths, 'good') + list(B.watchOuts, card.relationshipWeaknesses, 'warn')],
-      ['☀️', B.dayToDay, line(B.rhythm, card.rhythm) + line(B.energy, card.energy)],
-      ['💼', B.work, line(B.workStyle, card.workStyle) + list(B.strengths, card.careerStrengths, 'good') +
-        list(B.holdsBack, card.careerWeaknesses, 'warn')],
-    ].filter(([, , body]) => body);
-    if (!columns.length) return '';
-    return '<section class="card section-card beyond-card screen-only" aria-labelledby="beyond-title">' +
-      '<h2 id="beyond-title">' + esc(B.title) + '</h2><p class="beyond-sub">' + esc(B.sub) + '</p>' +
-      '<div class="beyond-grid">' + columns.map(([icon, title, body]) =>
-        '<div class="beyond-col"><h3><span class="beyond-icon" aria-hidden="true">' + Copy.iconHtml(icon) + '</span>' + esc(title) + '</h3>' + body + '</div>').join('') +
-      '</div><p class="beyond-foot">' + esc(B.foot) + ' <span aria-hidden="true">↓</span></p></section>';
-  }
-
   /** The attachment read with the app's gentler names put in, field by field. */
   function gentleAttachmentOf(attachment) {
     const out = Object.assign({}, attachment);
@@ -7106,7 +7069,7 @@
       // unlock asks for it before the run.
       // Their link right under their card, while the card is all they have.
       // Their link last, after Evidence and method.
-      return secretRoastHtml(report.bonus) + beyondCardHtml(state.profile && state.profile.card) + fullReportLockedHtml() +
+      return secretRoastHtml(report.bonus) + fullReportLockedHtml() +
         (Object.keys(unlocked).length
           ? PAID_SECTIONS.map(section => paidCard(section, unlocked, {})).join('') : '') +
         (reportLayout() === 'structured' ? freeMethodCardHtml(report) : confidenceCardHtml(report, false)) +
@@ -8158,11 +8121,6 @@
       const fill = $('#view-profile').classList.contains('profile-structured');
       fitCard($('#psyche-card'), width, fill ? CARD_W * 4 : PREVIEW_MAX_H);
       layoutSideActions();
-      // The card's scale as drawn, for "Beyond your card" under it, which sets
-      // its type and panels in the card's own sizes times this — so the two
-      // read as one object at whatever size the card lands.
-      const drawn = $('#psyche-card').getBoundingClientRect().width;
-      if (drawn) $('#view-profile').style.setProperty('--pcs', (drawn / CARD_W).toFixed(4));
     }
     const dialog = $('#card-dialog');
     if (dialog && dialog.open && dialog.classList.contains('is-guided')) fitGuidedCard(dialog, $('#psyche-card-full'));

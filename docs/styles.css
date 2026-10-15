@@ -1650,7 +1650,7 @@ th { color: var(--ink-soft); font-weight: 600; font-size: .84rem; }
 .line-icon { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
 .card-icon, .mode-icon, .premium-tier-icon, .source-read-icon, .gift-banner-icon, .deid-icon,
 .more-data-icon, .referral-icon, .insight-compat-icon, .partner-summary-icon, .roast-half-icon,
-.bonus-caveat-mark, .beyond-icon, .insight-extras li > span[aria-hidden] { color: var(--accent); }
+.bonus-caveat-mark, .insight-extras li > span[aria-hidden] { color: var(--accent); }
 .card-sub { margin: .25rem 0 0; color: var(--ink-soft); font-size: .9rem; }
 
 /* Strengths beside weaknesses reads faster than one above the other. */
@@ -4254,74 +4254,6 @@ details.more[open] > summary::after { content: ' ▴'; }
 .guide-cta p { margin: .3rem 0; }
 .footer-guides { margin: .4rem 0 0; font-size: .74rem; }
 
-/* "Beyond your card", under a free card and above the unlock box: the card's
-   other lines in three columns — relationships, day to day, work — that stack
-   on a phone. Set in the card's own register: its background, its panels,
-   its uppercase labels with an icon in a soft circle, its bold lines, its
-   pills and its footer, each at the card's size in card pixels times --pcs —
-   the card's scale as drawn, set by layoutPsycheCard — so the panel reads
-   at the same size as the card above it. A floor under each keeps it
-   readable where the card is a small thumbnail, on a phone. */
-.beyond-card {
-  --pcs: .5;
-  --b-text: max(12.5px, calc(27px * var(--pcs)));
-  --b-lab: max(10.5px, calc(24px * var(--pcs)));
-  --b-small: max(9.5px, calc(21px * var(--pcs)));
-  --b-dot: max(19px, calc(42px * var(--pcs)));
-  --b-gap: max(8px, calc(20px * var(--pcs)));
-  background: linear-gradient(180deg, var(--bg-alt) 0%, var(--bg) 100%);
-  padding: max(16px, calc(48px * var(--pcs))) max(14px, calc(52px * var(--pcs)));
-  border-radius: max(16px, calc(44px * var(--pcs)));
-}
-.beyond-card h2 { margin: 0; font-size: 1.25rem; }
-.beyond-sub { margin: .25rem 0 max(12px, calc(26px * var(--pcs))); color: var(--ink-soft); font-size: .92rem; }
-.beyond-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--b-gap); }
-@media (max-width: 759px) { .beyond-grid { grid-template-columns: minmax(0, 1fr); } }
-.beyond-col {
-  background: var(--bg-alt); border: 1px solid var(--line); min-width: 0;
-  border-radius: max(13px, calc(28px * var(--pcs)));
-  padding: max(11px, calc(22px * var(--pcs))) max(13px, calc(28px * var(--pcs)));
-}
-.beyond-col h3 {
-  display: flex; align-items: center; gap: max(6px, calc(12px * var(--pcs)));
-  margin: 0 0 max(8px, calc(14px * var(--pcs)));
-  font-size: var(--b-lab); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700;
-}
-.beyond-icon {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  width: var(--b-dot); height: var(--b-dot); border-radius: 999px; background: var(--accent-soft);
-  font-size: max(10.5px, calc(23px * var(--pcs))); letter-spacing: 0;
-}
-.beyond-line + .beyond-line { margin-top: max(9px, calc(18px * var(--pcs))); }
-.beyond-label {
-  display: flex; align-items: center; flex-wrap: wrap; gap: max(5px, calc(10px * var(--pcs)));
-  margin: 0 0 max(4px, calc(8px * var(--pcs)));
-  font-size: var(--b-small); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
-}
-/* The card's MBTI strength pill. */
-.beyond-tag {
-  font-size: var(--b-small); font-weight: 700; letter-spacing: .02em; text-transform: lowercase;
-  padding: max(1px, calc(3px * var(--pcs))) max(6px, calc(13px * var(--pcs))); border-radius: 999px;
-  color: var(--accent); background: var(--accent-soft);
-}
-/* The card's pattern lines: one size, bold, in ink. */
-.beyond-value { margin: 0; font-size: var(--b-text); font-weight: 400; line-height: 1.25; color: var(--ink); }
-.card .beyond-list { list-style: none; margin: 0; padding: 0; display: grid; gap: max(6px, calc(12px * var(--pcs))); }
-.card .beyond-list li { margin: 0; }
-.beyond-list li { display: flex; align-items: center; gap: max(8px, calc(16px * var(--pcs))); font-size: var(--b-text); line-height: 1.25; }
-.beyond-list b { font-weight: 400; }
-/* The card's numerals, ticking strengths and marking watch-outs. */
-.beyond-mark {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  width: max(20px, calc(44px * var(--pcs))); height: max(20px, calc(44px * var(--pcs))); border-radius: 999px;
-  font-size: max(10.5px, calc(23.5px * var(--pcs))); font-weight: 800;
-}
-/* The card's footer line. */
-.beyond-foot {
-  margin: max(12px, calc(26px * var(--pcs))) 0 0; text-align: center;
-  font-size: max(10px, calc(21.5px * var(--pcs))); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft);
-}
-
 /* "Your link" (lib/referral.js): what it earns, three purple boxes for what
    friends did with it, and Use it / Gift it once a free report is earned. */
 .referral-card { margin-top: 1rem; }
@@ -4331,6 +4263,14 @@ details.more[open] > summary::after { content: ' ▴'; }
   background: var(--accent-soft); font-size: 1.25rem;
 }
 .referral-title { margin: .1rem 0 .25rem; font-size: 1.05rem; }
+/* The head's title, with a small Copy link at its right. */
+.referral-head > div { flex: 1; min-width: 0; }
+.referral-title-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.referral-card .btn-sm.referral-copy {
+  flex: none; display: inline-flex; align-items: center; gap: .35rem;
+  padding: .25rem .65rem; min-height: 0; font-size: .78rem;
+}
+.referral-card .referral-copy svg { width: 14px; height: 14px; flex: none; }
 .referral-blurb { margin: 0; font-size: .88rem; line-height: 1.45; color: var(--ink-soft); }
 /* Compact: the number and its label, tight, no icon. */
 .referral-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .45rem; margin: .7rem 0 .3rem; padding: 0; list-style: none; }

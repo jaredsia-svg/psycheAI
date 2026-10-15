@@ -751,6 +751,10 @@
       blurb: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – use it yourself or gift it.',
       blurbPaid: 'Every 2 connections who make their card from your link, or 1 who buys the Psyche Report, earn you a free Psyche Report – gift it, or use it for a re-run with new data.',
       shareHint: 'Share your card or link above to start.',
+      // The small button at the head's right: the same share message and
+      // link as the card's own Copy link.
+      copyLink: 'Copy link',
+      copyLinkTip: 'Copy your share message and link',
       // Opens of the link by others, once a day per browser (never the reader's own).
       opens: 'opened your link',
       cards: 'made a card',
@@ -1273,25 +1277,6 @@
     // How they handle disagreement: the card's conflict style, which the
     // attachment read explains (attachment.conflict). A chip and an unlock row.
     conflictStyle: 'Conflict style',
-    // "Beyond your card": the card's other lines, under it on a free report.
-    // They are what travels in the compatibility link beside what the card
-    // shows, and each is one the full report explains.
-    beyond: {
-      title: 'Beyond your card',
-      sub: 'A few more things your data says. These also go into your link, for Psyche Sync.',
-      relationships: 'With connections',
-      dayToDay: 'Day to day',
-      work: 'At work',
-      conflict: 'In conflict',
-      rhythm: 'Rhythm',
-      energy: 'Social energy & contact',
-      workStyle: 'Work style',
-      strengths: 'Strengths',
-      watchOuts: 'Watch-outs',
-      holdsBack: 'What holds you back',
-      tentative: 'tentative',
-      foot: 'The Psyche Report explains each of these with the evidence behind it.',
-    },
     whatYouBring: 'What you bring',
     whereItGetsHard: 'Where it gets hard',
     whoSuitsYou: 'Who suits you',
